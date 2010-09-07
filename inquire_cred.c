@@ -32,3 +32,13 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_inquire_cred(OM_uint32 *minor,
+                 gss_cred_id_t cred_handle,
+                 gss_name_t *name,
+                 OM_uint32 *lifetime,
+                 gss_cred_usage_t *cred_usage,
+                 gss_OID_set *mechanisms)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

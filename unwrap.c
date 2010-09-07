@@ -32,3 +32,31 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_unwrap(OM_uint32 *minor,
+           gss_ctx_id_t ctx,
+           gss_buffer_t input_message_buffer,
+           gss_buffer_t output_message_buffer,
+           int *conf_state,
+           gss_qop_t *qop_state)
+{
+    OM_uint32 major, tmpMinor;
+    gss_iov_buffer_desc iov[2];
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_STREAM;
+    iov[0].buffer = *input_message_buffer;
+
+    iov[1].type = GSS_IOV_BUFFER_TYPE_DATA | GSS_IOV_BUFFER_FLAG_ALLOCATE;
+    iov[1].buffer.value = NULL;
+    iov[1].buffer.length = 0;
+
+    major = gss_unwrap_iov(minor, ctx, conf_state, qop_state, iov, 2);
+    if (major == GSS_S_COMPLETE) {
+        *output_message_buffer = iov[1].buffer;
+    } else {
+        if (iov[1].type & GSS_IOV_BUFFER_FLAG_ALLOCATED)
+            gss_release_buffer(&tmpMinor, &iov[1].buffer);
+    }
+
+    return major;
+}

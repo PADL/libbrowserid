@@ -32,3 +32,10 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_process_context_token(OM_uint32 *minor,
+                          gss_ctx_id_t ctx,
+                          gss_buffer_t token_buffer)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

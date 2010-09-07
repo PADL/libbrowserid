@@ -32,3 +32,13 @@
 
 #include "gssapiP_eap.h"
 
+#if 0
+OM_uint32
+gssspi_set_cred_option(OM_uint32 *minor,
+                       gss_cred_id_t cred,
+                       const gss_OID desired_object,
+                       const gss_buffer_t value)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+#endif

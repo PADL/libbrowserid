@@ -32,3 +32,9 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_release_name(OM_uint32 *minor,
+                 gss_name_t *name)
+{
+    return gssEapReleaseName(minor, name);
+}

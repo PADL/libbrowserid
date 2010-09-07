@@ -32,3 +32,45 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_wrap_size_limit(OM_uint32 *minor,
+                    gss_ctx_id_t ctx,
+                    int conf_req_flag,
+                    gss_qop_t qop_req,
+                    OM_uint32 req_output_size,
+                    OM_uint32 *max_input_size)
+{
+    gss_iov_buffer_desc iov[4];
+    OM_uint32 major, overhead;
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
+    iov[0].buffer.value = NULL;
+    iov[0].buffer.length = 0;
+
+    iov[1].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[1].buffer.length = req_output_size;
+    iov[1].buffer.value = NULL;
+
+    iov[2].type = GSS_IOV_BUFFER_TYPE_PADDING;
+    iov[2].buffer.value = NULL;
+    iov[2].buffer.length = 0;
+
+    iov[3].type = GSS_IOV_BUFFER_TYPE_TRAILER;
+    iov[3].buffer.value = NULL;
+    iov[3].buffer.length = 0;
+
+    major = gss_wrap_iov_length(minor, ctx, conf_req_flag, qop_req,
+                                NULL, iov, 4);
+    if (GSS_ERROR(major)) {
+        return major;
+    }
+
+    overhead = iov[0].buffer.length + iov[3].buffer.length;
+
+    if (iov[2].buffer.length == 0 && overhead < req_output_size)
+        *max_input_size = req_output_size - overhead;
+    else
+        *max_input_size = 0;
+
+    return GSS_S_COMPLETE;
+}

@@ -32,3 +32,13 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_unwrap_iov(OM_uint32 *minor,
+               gss_ctx_id_t ctx,
+               int *conf_state,
+               gss_qop_t *qop_state,
+               gss_iov_buffer_desc *iov,
+               int iov_count)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

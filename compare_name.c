@@ -32,3 +32,11 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_compare_name(OM_uint32 *minor,
+                 gss_name_t name1,
+                 gss_name_t name2,
+                 int *name_equal)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

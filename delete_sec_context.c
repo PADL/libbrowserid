@@ -32,3 +32,22 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_delete_sec_context(OM_uint32 *minor,
+                       gss_ctx_id_t *context_handle,
+                       gss_buffer_t output_token)
+{
+    if (output_token != GSS_C_NO_BUFFER) {
+        output_token->length = 0;
+        output_token->value = NULL;
+    }
+
+    if (*context_handle == GSS_C_NO_CONTEXT) {
+        *minor = 0;
+        return GSS_S_COMPLETE;
+    }
+
+    /* Delete context token? */
+
+    return gssEapReleaseContext(minor, context_handle);
+}

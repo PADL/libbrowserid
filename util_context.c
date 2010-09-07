@@ -95,6 +95,6 @@ gssEapReleaseContext(OM_uint32 *minor,
     GSSEAP_FREE(ctx);
     *pCtx = GSS_C_NO_CONTEXT;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
-

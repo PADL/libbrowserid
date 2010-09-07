@@ -70,9 +70,8 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 
     memset(cred, 0, sizeof(*cred));
     GSSEAP_FREE(cred);
-
     *pCred = NULL;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
-

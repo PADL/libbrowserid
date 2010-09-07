@@ -53,9 +53,14 @@ gssEapAllocName(OM_uint32 *minor, gss_name_t *pName)
 OM_uint32
 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
 {
-    gss_name_t name = *pName;
+    gss_name_t name;
     krb5_context kerbCtx = NULL;
 
+    if (pName == NULL) {
+        return GSS_S_COMPLETE;
+    }
+
+    name = *pName;
     if (name == GSS_C_NO_NAME) {
         return GSS_S_COMPLETE;
     }
@@ -69,6 +74,6 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     GSSEAP_FREE(name);
     *pName = NULL;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
-

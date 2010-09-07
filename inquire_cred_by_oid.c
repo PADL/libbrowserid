@@ -32,3 +32,11 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_inquire_cred_by_oid(OM_uint32 *minor,
+                        const gss_cred_id_t cred_handle,
+                        const gss_OID desired_object,
+                        gss_buffer_set_t *data_set)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

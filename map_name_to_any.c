@@ -32,3 +32,12 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_map_name_to_any(OM_uint32 *minor,
+                    gss_name_t name,
+                    int authenticated,
+                    gss_buffer_t type_id,
+                    gss_any_t *output)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

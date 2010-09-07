@@ -32,3 +32,9 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_release_cred(OM_uint32 *minor,
+                 gss_cred_id_t *cred_handle)
+{
+    return gssEapReleaseCred(minor, cred_handle);
+}

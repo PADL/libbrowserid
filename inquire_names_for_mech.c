@@ -32,3 +32,10 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_inquire_names_for_mech(OM_uint32 *minor,
+                           gss_OID mechanism,
+                           gss_OID_set *name_types)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

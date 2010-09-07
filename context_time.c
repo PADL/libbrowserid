@@ -32,3 +32,30 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_context_time(OM_uint32 *minor,
+                 gss_ctx_id_t context_handle,
+                 OM_uint32 *time_rec)
+{
+    time_t now, lifetime;
+
+    if (context_handle == GSS_C_NO_CONTEXT) {
+        return GSS_S_NO_CONTEXT;
+    }
+
+    if (!CTX_IS_ESTABLISHED(context_handle)) {
+        return GSS_S_NO_CONTEXT;
+    }
+
+    *minor = 0;
+
+    time(&now);
+    lifetime = context_handle->expiryTime - now;
+    if (lifetime <= 0) {
+        *time_rec = 0;
+        return GSS_S_CONTEXT_EXPIRED;
+    }
+
+    *time_rec = lifetime;
+    return GSS_S_COMPLETE;
+}

@@ -32,3 +32,11 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_set_sec_context_option(OM_uint32 *minor,
+                           gss_ctx_id_t *pCred,
+                           const gss_OID desired_object,
+                           const gss_buffer_t value)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

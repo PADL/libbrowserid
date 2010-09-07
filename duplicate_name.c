@@ -32,3 +32,10 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_duplicate_name(OM_uint32 *minor,
+                   const gss_name_t input_name,
+                   gss_name_t *dest_name)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

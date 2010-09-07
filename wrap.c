@@ -32,3 +32,63 @@
 
 #include "gssapiP_eap.h"
 
+OM_uint32
+gss_wrap(OM_uint32 *minor,
+         gss_ctx_id_t ctx,
+         int conf_req_flag,
+         gss_qop_t qop_req,
+         gss_buffer_t input_message_buffer,
+         int *conf_state,
+         gss_buffer_t output_message_buffer)
+{
+    OM_uint32 major, tmpMinor;
+    gss_iov_buffer_desc iov[4];
+    unsigned char *p;
+    int i;
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
+    iov[0].buffer.value = NULL;
+    iov[0].buffer.length = 0;
+
+    iov[1].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[1].buffer = *input_message_buffer;
+
+    iov[2].type = GSS_IOV_BUFFER_TYPE_PADDING;
+    iov[2].buffer.value = NULL;
+    iov[2].buffer.length = 0;
+
+    iov[3].type = GSS_IOV_BUFFER_TYPE_TRAILER;
+    iov[3].buffer.value = NULL;
+    iov[3].buffer.length = 0;
+
+    major = gss_wrap_iov_length(minor, ctx, conf_req_flag, qop_req,
+                                NULL, iov, 4);
+    if (GSS_ERROR(major)) {
+        return major;
+    }
+
+    for (i = 0, output_message_buffer->length = 0; i < 4; i++) {
+        output_message_buffer->length += iov[i].buffer.length;
+    }
+
+    output_message_buffer->value = GSSEAP_MALLOC(output_message_buffer->length);
+    if (output_message_buffer->value == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    for (i = 0, p = output_message_buffer->value; i < 4; i++) {
+        if (iov[i].type == GSS_IOV_BUFFER_TYPE_DATA) {
+            memcpy(p, input_message_buffer->value, input_message_buffer->length);
+        }
+        iov[i].buffer.value = p;
+        p += iov[i].buffer.length;
+    }
+
+    major = gss_wrap_iov(minor, ctx, conf_req_flag, qop_req, conf_state, iov, 4);
+    if (GSS_ERROR(major)) {
+        gss_release_buffer(&tmpMinor, output_message_buffer);
+    }
+
+    return major;
+}
