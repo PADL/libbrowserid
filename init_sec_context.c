@@ -32,3 +32,110 @@
 
 #include "gssapiP_eap.h"
 
+static OM_uint32
+policyVariableToFlag(enum eapol_bool_var variable)
+{
+    OM_uint32 flag = 0;
+
+    switch (variable) {
+    case EAPOL_eapSuccess:
+        flag = CTX_FLAG_EAP_SUCCESS;
+        break;
+    case EAPOL_eapRestart:
+        flag = CTX_FLAG_EAP_RESTART;
+        break;
+    case EAPOL_eapFail:
+        flag = CTX_FLAG_EAP_FAIL;
+        break;
+    case EAPOL_eapResp:
+        flag = CTX_FLAG_EAP_RESP;
+        break;
+    case EAPOL_eapNoResp:
+        flag = CTX_FLAG_EAP_NO_RESP;
+        break;
+    case EAPOL_eapReq:
+        flag = CTX_FLAG_EAP_REQ;
+        break;
+    case EAPOL_portEnabled:
+        flag = CTX_FLAG_EAP_PORT_ENABLED;
+        break;
+    case EAPOL_altAccept:
+        flag = CTX_FLAG_EAP_ALT_ACCEPT;
+        break;
+    case EAPOL_altReject:
+        flag = CTX_FLAG_EAP_ALT_REJECT;
+        break;
+    }
+
+    return flag;
+}
+
+static Boolean
+peerGetBool(void *data, enum eapol_bool_var variable)
+{
+    gss_ctx_id_t ctx = data;
+    OM_uint32 flag;
+
+    if (ctx == GSS_C_NO_CONTEXT)
+        return FALSE;
+
+    flag = policyVariableToFlag(variable);
+
+    return ((ctx->flags & flag) != 0);
+}
+
+static void
+peerSetBool(void *data, enum eapol_bool_var variable,
+            Boolean value)
+{
+    gss_ctx_id_t ctx = data;
+    OM_uint32 flag;
+
+    if (ctx == GSS_C_NO_CONTEXT)
+        return FALSE;
+
+    flag = policyVariableToFlag(variable);
+
+    if (value)
+        ctx->flags |= flag;
+    else
+        ctx->flags &= ~(flag);
+}
+
+static int
+peerGetInt(void *data, enum eapol_int_var variable)
+{
+    gss_ctx_id_t ctx = data;
+
+    if (ctx == GSS_C_NO_CONTEXT)
+        return FALSE;
+
+    assert(CTX_IS_INITIATOR(ctx));
+
+    switch (variable) {
+    case EAPOL_idleWhile:
+        return ctx->initiatorCtx.idleWhile;
+        break;
+    }
+
+    return 0;
+}
+
+static void
+peerSetInt(void *data, enum eapol_int_var variable,
+           unsigned int value)
+{
+    gss_ctx_id_t ctx = data;
+
+    if (ctx == GSS_C_NO_CONTEXT)
+        return FALSE;
+
+    assert(CTX_IS_INITIATOR(ctx));
+
+    switch (variable) {
+    case EAPOL_idleWhile:
+        ctx->initiatorCtx.idleWhile = value;
+        break;
+    }
+}
+ 

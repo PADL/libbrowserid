@@ -32,3 +32,142 @@
 
 #include "gssapiP_eap.h"
 
+static int
+eapPeerRegisterMethods(void)
+{
+    int ret = 0;
+
+#ifdef EAP_MD5
+    if (ret == 0)
+        ret = eap_peer_md5_register();
+#endif /* EAP_MD5 */
+
+#ifdef EAP_TLS
+    if (ret == 0)
+        ret = eap_peer_tls_register();
+#endif /* EAP_TLS */
+
+#ifdef EAP_MSCHAPv2
+    if (ret == 0)
+        ret = eap_peer_mschapv2_register();
+#endif /* EAP_MSCHAPv2 */
+
+#ifdef EAP_PEAP
+    if (ret == 0)
+        ret = eap_peer_peap_register();
+#endif /* EAP_PEAP */
+
+#ifdef EAP_TTLS
+    if (ret == 0)
+        ret = eap_peer_ttls_register();
+#endif /* EAP_TTLS */
+
+#ifdef EAP_GTC
+    if (ret == 0)
+        ret = eap_peer_gtc_register();
+#endif /* EAP_GTC */
+
+#ifdef EAP_OTP
+    if (ret == 0)
+        ret = eap_peer_otp_register();
+#endif /* EAP_OTP */
+
+#ifdef EAP_SIM
+    if (ret == 0)
+        ret = eap_peer_sim_register();
+#endif /* EAP_SIM */
+
+#ifdef EAP_LEAP
+    if (ret == 0)
+        ret = eap_peer_leap_register();
+#endif /* EAP_LEAP */
+
+#ifdef EAP_PSK
+    if (ret == 0)
+        ret = eap_peer_psk_register();
+#endif /* EAP_PSK */
+
+#ifdef EAP_AKA
+    if (ret == 0)
+        ret = eap_peer_aka_register();
+#endif /* EAP_AKA */
+
+#ifdef EAP_AKA_PRIME
+    if (ret == 0)
+        ret = eap_peer_aka_prime_register();
+#endif /* EAP_AKA_PRIME */
+
+#ifdef EAP_FAST
+    if (ret == 0)
+        ret = eap_peer_fast_register();
+#endif /* EAP_FAST */
+
+#ifdef EAP_PAX
+    if (ret == 0)
+        ret = eap_peer_pax_register();
+#endif /* EAP_PAX */
+
+#ifdef EAP_SAKE
+    if (ret == 0)
+        ret = eap_peer_sake_register();
+#endif /* EAP_SAKE */
+
+#ifdef EAP_GPSK
+    if (ret == 0)
+        ret = eap_peer_gpsk_register();
+#endif /* EAP_GPSK */
+
+#ifdef EAP_WSC
+    if (ret == 0)
+        ret = eap_peer_wsc_register();
+#endif /* EAP_WSC */
+
+#ifdef EAP_IKEV2
+    if (ret == 0)
+        ret = eap_peer_ikev2_register();
+#endif /* EAP_IKEV2 */
+
+#ifdef EAP_VENDOR_TEST
+    if (ret == 0)
+        ret = eap_peer_vendor_test_register();
+#endif /* EAP_VENDOR_TEST */
+
+#ifdef EAP_TNC
+    if (ret == 0)
+        ret = eap_peer_tnc_register();
+#endif /* EAP_TNC */
+
+    return ret;
+}
+
+static int
+gssEapInitLibEap(void)
+{
+    return eapPeerRegisterMethods();
+}
+
+static int
+gssEapInitLibRadSec(void)
+{
+    return 0;
+}
+
+static void gssEapInit(void) __attribute__((constructor));
+static void gssEapFinalize(void) __attribute__((destructor));
+
+static void
+gssEapInit(void)
+{
+    int ret;
+
+    ret = gssEapInitLibEap();
+    if (ret == 0)
+        gssEapInitLibRadSec();
+}
+
+static void
+gssEapFinalize(void)
+{
+    eap_peer_unregister_methods();
+}
+
