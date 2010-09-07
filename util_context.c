@@ -36,6 +36,7 @@ OM_uint32
 gssEapAllocContext(OM_uint32 *minor,
                    gss_ctx_id_t *pCtx)
 {
+    OM_uint32 tmpMinor;
     gss_ctx_id_t ctx;
 
     assert(*pCtx == GSS_C_NO_CONTEXT);
@@ -43,6 +44,12 @@ gssEapAllocContext(OM_uint32 *minor,
     ctx = (gss_ctx_id_t)GSSEAP_CALLOC(1, sizeof(*ctx));
     if (ctx == NULL) {
         *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    *minor = krb5_init_context(&ctx->kerberosCtx);
+    if (*minor != 0) {
+        gssEapReleaseContext(&tmpMinor, &ctx);
         return GSS_S_FAILURE;
     }
 

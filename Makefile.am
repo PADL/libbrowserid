@@ -4,9 +4,9 @@ gssdir = $(libdir)/gss
 
 gss_LTLIBRARIES = libmech_eap.la
 
-libmech_eap_la_CFLAGS  = -g -Wall -fno-strict-aliasing @KRB5_CFLAGS@ @TARGET_CFLAGS@
-libmech_eap_la_LDFLAGS = -export-symbols mech_eap.exports -version-info 0:0:0 @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
-libmech_eap_la_LIBADD  = @KRB5_LIBS@
+libmech_eap_la_CFLAGS  = -DBUILD_GSSEAP_LIB -g -Wall -fno-strict-aliasing @EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
+libmech_eap_la_LDFLAGS = -export-symbols mech_eap.exports -version-info 0:0:0 @EAP_LDFLAGS@ @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
+libmech_eap_la_LIBADD  = @EAP_LIBS@ @KRB5_LIBS@
 
 libmech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
@@ -32,8 +32,10 @@ libmech_eap_la_SOURCES =    			\
 	init_sec_context.c			\
 	inquire_context.c			\
 	inquire_cred.c				\
+	inquire_cred_by_oid.c			\
 	inquire_mechs_for_name.c		\
 	inquire_names_for_mech.c		\
+	inquire_sec_context_by_oid.c		\
 	map_name_to_any.c			\
 	process_context_token.c			\
 	pseudo_random.c				\
@@ -41,9 +43,16 @@ libmech_eap_la_SOURCES =    			\
 	release_cred.c				\
 	release_name.c				\
 	set_name_attribute.c			\
+	set_cred_option.c			\
+	set_sec_context_option.c		\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
+	util_context.c				\
+	util_cksum.c				\
+	util_cred.c				\
+	util_crypt.c				\
+	util_name.c				\
 	verify_mic.c				\
 	wrap.c					\
 	wrap_iov.c				\
