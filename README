@@ -1,0 +1,6 @@
+This is an implementation of the GSS EAP mechanism, as described in
+draft-howlett-eap-gss-xx.txt.
+
+In order to build this, a recent Kerberos implementation (MIT or
+Heimdal), Shibboleth, and EAP libraries are required, along with
+all of their dependencies.
