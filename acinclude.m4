@@ -38,8 +38,8 @@ else
         printf "Kerberos found in $krb5dir\n";
 	krb5_LIBS="-lgssapi_krb5 -lkrb5";
         krb5_LDFLAGS="-L$krb5dir/lib";
-	AC_SUBST(krb5_CFLAGS)
-	AC_SUBST(krb5_LDFLAGS)
-	AC_SUBST(krb5_LIBS)
+	AC_SUBST(KRB5_CFLAGS)
+	AC_SUBST(KRB5_LDFLAGS)
+	AC_SUBST(KRB5_LIBS)
 fi
 ])dnl

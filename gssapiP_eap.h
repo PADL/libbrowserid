@@ -29,3 +29,56 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#ifndef _GSSAPIP_EAP_H_
+#define _GSSAPIP_EAP_H_ 1
+
+#include <gssapi/gssapi.h>
+#include <krb5.h>
+
+#include "gssapi_eap.h"
+
+struct gss_name_struct {
+    OM_uint32 flags;
+    krb5_principal principal;
+    void *aaa;
+    void *assertion;
+};
+
+#define CRED_FLAG_INITIATOR                 0x00000001
+#define CRED_FLAG_ACCEPTOR                  0x00000002
+#define CRED_FLAG_DEFAULT_IDENTITY          0x00000004
+#define CRED_FLAG_PASSWORD                  0x00000008
+
+struct gss_cred_id_struct {
+    OM_uint32 flags;
+    gss_name_t initiatorName;
+    gss_name_t acceptorName;
+    gss_buffer_desc password;
+};
+
+#define CTX_FLAG_INITIATOR                  0x00000001
+
+enum eap_gss_state {
+    EAP_STATE_AUTHENTICATE = 1,
+    EAP_STATE_KEY_TRANSPORT,
+    EAP_STATE_SECURE_ASSOCIATION,
+    EAP_STATE_GSS_CHANNEL_BINDINGS,
+    EAP_STATE_ESTABLISHED
+};
+
+struct gss_ctx_id_struct {
+    enum eap_gss_state state;
+    OM_uint32 flags;
+    OM_uint32 gssFlags;
+    krb5_context kerberosCtx;
+    gss_OID mechanismUsed;
+    krb5_cksumtype checksumType;
+    krb5_keyblock *encryptionKey;
+    gss_name_t initiatorName;
+    gss_name_t acceptorName;
+    OM_uint32 lifetime;
+};
+
+#endif /* _GSSAPIP_EAP_H_ */
+
