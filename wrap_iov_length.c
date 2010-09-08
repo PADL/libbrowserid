@@ -32,6 +32,10 @@
 
 #include "gssapiP_eap.h"
 
+#define INIT_IOV_DATA(_iov)     do { (_iov)->buffer.value = NULL;       \
+        (_iov)->buffer.length = 0; }                                    \
+    while (0)
+
 OM_uint32
 gss_wrap_iov_length(OM_uint32 *minor,
                     gss_ctx_id_t ctx,
@@ -41,5 +45,113 @@ gss_wrap_iov_length(OM_uint32 *minor,
                     gss_iov_buffer_desc *iov,
                     int iov_count)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    gss_iov_buffer_t header, trailer, padding;
+    size_t dataLength, assocDataLength;
+    size_t gssHeaderLen, gssPadLen, gssTrailerLen;
+    unsigned int krbHeaderLen = 0, krbTrailerLen = 0, krbPadLen = 0;
+    krb5_error_code code;
+    krb5_context krbContext;
+    int dce_style;
+    size_t ec;
+
+    if (qop_req != GSS_C_QOP_DEFAULT)
+        return GSS_S_FAILURE;
+
+    if (!CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_NO_CONTEXT;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
+    if (header == NULL) {
+        *minor = EINVAL;
+        return GSS_S_FAILURE;
+    }
+    INIT_IOV_DATA(header);
+
+    trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
+    if (trailer != NULL) {
+        INIT_IOV_DATA(trailer);
+    }
+
+    dce_style = ((ctx->gssFlags & GSS_C_DCE_STYLE) != 0);
+
+    /* For CFX, EC is used instead of padding, and is placed in header or trailer */
+    padding = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_PADDING);
+    if (padding != NULL) {
+        INIT_IOV_DATA(padding);
+    }
+
+    gssEapIovMessageLength(iov, iov_count, &dataLength, &assocDataLength);
+
+    if (conf_req_flag && gssEapIsIntegrityOnly(iov, iov_count))
+        conf_req_flag = FALSE;
+
+    gssHeaderLen = gssPadLen = gssTrailerLen = 0;
+
+    code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
+                                conf_req_flag ?
+                                KRB5_CRYPTO_TYPE_TRAILER : KRB5_CRYPTO_TYPE_CHECKSUM,
+                                &krbTrailerLen);
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_FAILURE;
+    }
+
+    if (conf_req_flag) {
+        code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
+                                    KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
+        if (code != 0) {
+            *minor = code;
+            return GSS_S_FAILURE;
+        }
+    }
+
+    gssHeaderLen = 16; /* Header */
+    if (conf_req_flag) {
+        gssHeaderLen += krbHeaderLen; /* Kerb-Header */
+        gssTrailerLen = 16 /* E(Header) */ + krbTrailerLen; /* Kerb-Trailer */
+
+        code = krb5_c_padding_length(krbContext, ctx->encryptionType,
+                                     dataLength - assocDataLength + 16 /* E(Header) */,
+                                     &krbPadLen);
+        if (code != 0) {
+            *minor = code;
+            return GSS_S_FAILURE;
+        }
+
+        if (krbPadLen == 0 && dce_style) {
+            /* Windows rejects AEAD tokens with non-zero EC */
+            code = krb5_c_block_size(krbContext, ctx->encryptionType, &ec);
+            if (code != 0) {
+                *minor = code;
+                return GSS_S_FAILURE;
+            }
+        } else
+            ec = krbPadLen;
+
+        gssTrailerLen += ec;
+    } else {
+        gssTrailerLen = krbTrailerLen; /* Kerb-Checksum */
+    }
+
+    dataLength += gssPadLen;
+
+    if (trailer == NULL)
+        gssHeaderLen += gssTrailerLen;
+    else
+        trailer->buffer.length = gssTrailerLen;
+
+    assert(gssPadLen == 0 || padding != NULL);
+
+    if (padding != NULL)
+        padding->buffer.length = gssPadLen;
+
+    header->buffer.length = gssHeaderLen;
+
+    if (conf_state != NULL)
+        *conf_state = conf_req_flag;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
 }
