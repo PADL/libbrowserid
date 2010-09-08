@@ -57,18 +57,34 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_ 1
 
-/* Helper APIs */
+#define KRB_KEYTYPE(key)        ((key)->enctype)
+
+int
+gssEapSign(krb5_context context,
+           krb5_cksumtype type,
+           size_t rrc,
+           krb5_keyblock *key,
+           krb5_keyusage sign_usage,
+           gss_iov_buffer_desc *iov,
+           int iov_count);
+
+int
+gssEapVerify(krb5_context context,
+             krb5_cksumtype type,
+             size_t rrc,  
+             krb5_keyblock *key,
+             krb5_keyusage sign_usage,
+             gss_iov_buffer_desc *iov,
+             int iov_count,
+             int *valid);
+
+/* util_context.c */
 OM_uint32 gssEapAllocContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 OM_uint32 gssEapReleaseContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 
-OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
-OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);
-
+/* util_cred.c */
 OM_uint32 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 OM_uint32 gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred);
-
-/* Kerberos token services */
-#define KRB_KEYTYPE(key)        ((key)->enctype)
 
 /* util_crypt.c */
 int
@@ -104,25 +120,54 @@ gssEapIsIntegrityOnly(gss_iov_buffer_desc *iov, int iov_count);
 int
 gssEapAllocIov(gss_iov_buffer_t iov, size_t size);
 
-/* util_cksum.c */
-int
-gssEapSign(krb5_context context,
-           krb5_cksumtype type,
-           size_t rrc,
-           krb5_keyblock *key,
-           krb5_keyusage sign_usage,
-           gss_iov_buffer_desc *iov,
-           int iov_count);
+/* util_mech.c */
+void
+gssEapInternalizeOid(const gss_OID oid,
+                     gss_OID *const pInternalizedOid);
 
-int
-gssEapVerify(krb5_context context,
-             krb5_cksumtype type,
-             size_t rrc,  
-             krb5_keyblock *key,
-             krb5_keyusage sign_usage,
-             gss_iov_buffer_desc *iov,
-             int iov_count,
-             int *valid);
+OM_uint32
+gssEapDefaultMech(OM_uint32 *minor,
+                  gss_OID *oid);
+
+OM_uint32
+gssEapIndicateMechs(OM_uint32 *minor,
+                    gss_OID_set *mechs);
+
+OM_uint32
+gssEapEnctypeToOid(OM_uint32 *minor,
+                   krb5_enctype enctype,
+                   gss_OID *pOid);
+
+OM_uint32
+gssEapOidToEnctype(OM_uint32 *minor,
+                   const gss_OID oid,
+                   krb5_enctype *enctype);
+
+/* util_name.c */
+OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
+OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);
+
+/* util_oid.c */
+OM_uint32
+composeOid(OM_uint32 *minor_status,
+           const char *prefix,
+           size_t prefix_len,
+           int suffix,  
+           gss_OID_desc *oid);
+
+OM_uint32
+decomposeOid(OM_uint32 *minor_status,
+             const char *prefix,
+             size_t prefix_len,
+             gss_OID_desc *oid,
+             int *suffix) ;
+
+static inline int
+oidEqual(const gss_OID_desc *o1, const gss_OID_desc  *o2)
+{
+    return (o1->length == o2->length &&
+            memcmp(o1->elements, o2->elements, o1->length) == 0);
+}
 
 /* util_ordering.c */
 int
@@ -147,6 +192,19 @@ sequenceInit(void **vqueue, uint64_t seqnum,
 /* util_token.c */
 size_t
 tokenSize(const gss_OID_desc *mech, size_t body_size);
+
+void
+makeTokenHeader(const gss_OID_desc *mech,
+                size_t body_size,
+                unsigned char **buf,
+                enum gss_eap_token_type tok_type);
+
+int
+verifyTokenHeader(const gss_OID_desc * mech,
+                  size_t *body_size,
+                  unsigned char **buf_in,
+                  size_t toksize_in,
+                  enum gss_eap_token_type tok_type);
 
 /* Helper macros */
 #define GSSEAP_CALLOC(count, size)      (calloc((count), (size)))
@@ -220,13 +278,6 @@ load_uint64_be(const void *cvp)
     const unsigned char *p = (const unsigned char *)cvp;
 
     return ((uint64_t)load_uint32_be(p) << 32) | load_uint32_be(p + 4);
-}
-
-static inline int
-oidEqual(const gss_OID_desc *o1, const gss_OID_desc  *o2)
-{
-    return (o1->length == o2->length &&
-            memcmp(o1->elements, o2->elements, o1->length) == 0);
 }
 
 #endif /* _UTIL_H_ */

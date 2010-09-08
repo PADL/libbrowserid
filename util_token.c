@@ -89,19 +89,19 @@ static size_t
 der_length_size(size_t length)
 {
     if (length < (1<<7))
-        return(1);
+        return 1;
     else if (length < (1<<8))
-        return(2);
+        return 2;
 #if INT_MAX == 0x7fff
     else
-        return(3);
+        return 3;
 #else
     else if (length < (1<<16))
-        return(3);
+        return 3;
     else if (length < (1<<24))
-        return(4);
+        return 4;
     else
-        return(5);
+        return 5;
 #endif
 }
 
@@ -140,9 +140,9 @@ der_read_length(unsigned char **buf, ssize_t *bufsize)
     (*bufsize)--;
     if (sf & 0x80) {
         if ((sf &= 0x7f) > ((*bufsize)-1))
-            return(-1);
+            return -1;
         if (sf > sizeof(int))
-            return (-1);
+            return -1;
         ret = 0;
         for (; sf; sf--) {
             ret = (ret<<8) + (*(*buf)++);
@@ -162,7 +162,7 @@ tokenSize(const gss_OID_desc *mech, size_t body_size)
 {
     /* set body_size to sequence contents size */
     body_size += 4 + (size_t) mech->length;         /* NEED overflow check */
-    return (1 + der_length_size(body_size) + body_size);
+    return 1 + der_length_size(body_size) + body_size;
 }
 
 /* fills in a buffer with the token header.  The buffer is assumed to
@@ -246,7 +246,7 @@ verifyTokenHeader(
         if (toksize -= 2 < 0)
             return EINVAL;
 
-        if ((*buf++ != ((tok_type>>8) & 0xff)) ||
+        if ((*buf++ != ((tok_type >> 8) & 0xff)) ||
             (*buf++ != (tok_type & 0xff)))
             return EINVAL;
     }

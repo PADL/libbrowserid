@@ -44,6 +44,7 @@ libmech_eap_la_SOURCES =    			\
 	release_any_name_mapping.c		\
 	release_cred.c				\
 	release_name.c				\
+	release_oid.c				\
 	set_name_attribute.c			\
 	set_cred_option.c			\
 	set_sec_context_option.c		\
@@ -54,7 +55,9 @@ libmech_eap_la_SOURCES =    			\
 	util_cksum.c				\
 	util_cred.c				\
 	util_crypt.c				\
+	util_mech.c				\
 	util_name.c				\
+	util_oid.c				\
 	util_ordering.c				\
 	util_token.c				\
 	verify_mic.c				\

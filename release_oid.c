@@ -30,25 +30,23 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _GSSAPI_EAP_H_
-#define _GSSAPI_EAP_H_ 1
+#include "gssapiP_eap.h"
 
-#include <gssapi/gssapi.h>
+OM_uint32
+gss_internal_release_oid(OM_uint32 *minor,
+                         gss_OID *oid)
+{
+    OM_uint32 major;
+    gss_OID internalizedOid = GSS_C_NO_OID;
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+    gssEapInternalizeOid(*oid, &internalizedOid);
 
-/* preferred mechanism */
-extern const gss_OID_desc *const gss_mech_eap;
+    if (*oid != internalizedOid) {
+        /* OID was internalized, so we can mark it as "freed" */
+        *oid = GSS_C_NO_OID;
+        return GSS_S_COMPLETE;
+    }
 
-/* concrete mechanisms */
-extern const gss_OID_desc *const gss_mech_eap_aes128_cts_hmac_sha1_96;
-extern const gss_OID_desc *const gss_mech_eap_aes256_cts_hmac_sha1_96;
-
-#ifdef __cplusplus
+    /* we don't know about this OID */
+    return GSS_S_CONTINUE_NEEDED;
 }
-#endif /* __cplusplus */
-
-#endif /* _GSSAPI_EAP_H_ */
-

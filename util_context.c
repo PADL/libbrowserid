@@ -97,7 +97,7 @@ gssEapReleaseContext(OM_uint32 *minor,
 
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
-
+    gss_release_oid(&tmpMinor, &ctx->mechanismUsed);
     sequenceFree(ctx->seqState);
 
     memset(ctx, 0, sizeof(*ctx));

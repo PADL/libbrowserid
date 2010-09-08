@@ -53,7 +53,6 @@
 
 /* Kerberos includes */
 #include <krb5.h>
-#include "util.h"
 
 struct gss_name_struct {
     OM_uint32 flags;
@@ -170,5 +169,7 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
                         int iov_count,
                         enum gss_eap_token_type toktype);
 
+
+#include "util.h"
 
 #endif /* _GSSAPIP_EAP_H_ */
