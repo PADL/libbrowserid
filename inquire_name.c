@@ -51,11 +51,11 @@ addAttribute(OM_uint32 *minor,
         if (GSS_ERROR(major))
             return major;
 
-        major = gss_add_buffer_set_member(minor, &qualifiedAttr, args->attrs);
+        major = gss_add_buffer_set_member(minor, &qualifiedAttr, &args->attrs);
 
         gss_release_buffer(&tmpMinor, &qualifiedAttr);
     } else {
-        major = gss_add_buffer_set_member(minor, args->prefix, args->attrs);
+        major = gss_add_buffer_set_member(minor, args->prefix, &args->attrs);
     }
 
     return major;
