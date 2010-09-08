@@ -37,6 +37,10 @@ struct eap_gss_attribute_args {
     gss_buffer_set_t attrs;
 };
 
+/*
+ * The purpose of this callback interface is to not expose the attribute
+ * prefixes to the attribute providers themselves.
+ */
 static OM_uint32
 addAttribute(OM_uint32 *minor,
              void *data,
