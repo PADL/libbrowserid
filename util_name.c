@@ -73,7 +73,7 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     }
 
     krb5_init_context(&kerbCtx);
-    krb5_free_principal(kerbCtx, name->kerberosName);
+    krb5_free_principal(kerbCtx, name->krbPrincipal);
     if (kerbCtx != NULL) {
         krb5_free_context(kerbCtx);
     }

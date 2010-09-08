@@ -415,8 +415,11 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
     GSSEAP_KRB_INIT(&context);
 
     kd.contents = NULL;
-    prf.data = NULL;
+    kd.length = 0;
     KRB_KEYTYPE(&kd) = enctype;
+
+    prf.data = NULL;
+    prf.length = 0;
 
     code = krb5_c_keylengths(context, enctype, &keybytes, &keylength);
     if (code != 0)
@@ -459,13 +462,17 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
         goto cleanup;
 
     *pKey = kd;
+    kd.contents = NULL;
 
 cleanup:
-    if (code != 0) {
+    if (kd.contents != NULL) {
+        memset(kd.contents, 0, kd.length);
         GSSEAP_FREE(kd.contents);
     }
-
-    GSSEAP_FREE(prf.data);
+    if (prf.data != NULL) {
+        memset(prf.data, 0, prf.length);
+        GSSEAP_FREE(prf.data);
+    }
 
     *minor = code;
     return (*minor == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;

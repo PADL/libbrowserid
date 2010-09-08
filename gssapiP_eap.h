@@ -55,12 +55,15 @@
 /* Kerberos includes */
 #include <krb5.h>
 
+#define NAME_FLAG_SAML                      0x00000001
+#define NAME_FLAG_RADIUS                    0x00000002
+
 struct gss_name_struct {
-    GSSEAP_MUTEX mutex;
+    GSSEAP_MUTEX mutex; /* mutex protecting attributes */
     OM_uint32 flags;
-    krb5_principal kerberosName;
-    void *aaa;
-    void *assertion;
+    krb5_principal krbPrincipal; /* this is immutable */
+    void *saml;
+    void *avps;
 };
 
 #define CRED_FLAG_INITIATOR                 0x00000001
