@@ -93,7 +93,7 @@ struct gss_cred_id_struct {
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
 enum eap_gss_state {
-    EAP_STATE_AUTHENTICATE = 1,
+    EAP_STATE_AUTHENTICATE = 0,
     EAP_STATE_KEY_TRANSPORT,
     EAP_STATE_SECURE_ASSOCIATION,
     EAP_STATE_GSS_CHANNEL_BINDINGS,
@@ -122,31 +122,25 @@ struct eap_gss_initiator_ctx {
 
 typedef OM_uint32 (*eap_gss_initiator_sm)(OM_uint32 *,
                                           gss_cred_id_t,
-                                          gss_ctx_id_t *,
+                                          gss_ctx_id_t,
+                                          gss_name_t,
                                           gss_OID,
                                           OM_uint32,
                                           OM_uint32,
                                           gss_channel_bindings_t,
                                           gss_buffer_t,
-                                          gss_OID *,
-                                          gss_buffer_t,
-                                          OM_uint32 *,
-                                          OM_uint32 *);
+                                          gss_buffer_t);
 
 /* Acceptor context flags */
 struct eap_gss_acceptor_ctx {
 };
 
 typedef OM_uint32 (*eap_gss_acceptor_sm)(OM_uint32 *,
-                                         gss_ctx_id_t *,
+                                         gss_ctx_id_t,
                                          gss_cred_id_t,
                                          gss_buffer_t,
                                          gss_channel_bindings_t,
-                                         gss_name_t *,
-                                         gss_buffer_t,
-                                         OM_uint32 *,
-                                         OM_uint32 *,
-                                         gss_cred_id_t *);
+                                         gss_buffer_t);
 
 struct gss_ctx_id_struct {
     GSSEAP_MUTEX mutex;

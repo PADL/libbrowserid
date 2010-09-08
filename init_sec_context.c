@@ -139,6 +139,29 @@ peerSetInt(void *data, enum eapol_int_var variable,
     }
 }
 
+static OM_uint32
+eapGssSmAuthenticate(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     gss_ctx_id_t ctx,
+                     gss_name_t target_name,
+                     gss_OID mech_type,
+                     OM_uint32 req_flags,
+                     OM_uint32 time_req,
+                     gss_channel_bindings_t input_chan_bindings,
+                     gss_buffer_t input_token,
+                     gss_buffer_t output_token)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+static eap_gss_initiator_sm eapGssSm[] = {
+    eapGssSmAuthenticate,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+};
+
 OM_uint32
 gss_init_sec_context(OM_uint32 *minor,
                      gss_cred_id_t cred,
@@ -157,8 +180,54 @@ gss_init_sec_context(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *pCtx;
 
-    if (ctx == GSS_C_NO_CONTEXT) {
+    *minor = 0;
+
+    output_token->length = 0;
+    output_token->value = NULL;
+
+    if (cred != GSS_C_NO_CREDENTIAL && !(cred->flags & CRED_FLAG_INITIATE)) {
+        major = GSS_S_NO_CRED;
+        goto cleanup;
     }
+
+    if (ctx == GSS_C_NO_CONTEXT) {
+        if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {
+            major = GSS_S_DEFECTIVE_TOKEN;
+            goto cleanup;
+        }
+
+        major = gssEapAllocContext(minor, &ctx);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    for (; ctx->state != EAP_STATE_ESTABLISHED; ctx->state++) {
+        major = (eapGssSm[ctx->state])(minor,
+                                       cred,
+                                       ctx,
+                                       target_name,
+                                       mech_type,
+                                       req_flags,
+                                       time_req,
+                                       input_chan_bindings,
+                                       input_token,
+                                       output_token);
+        if (GSS_ERROR(major))
+            goto cleanup;
+        if (output_token->length != 0) {
+            assert(major == GSS_S_CONTINUE_NEEDED);
+            break;
+        }
+    }
+
+    if (actual_mech_type != NULL)
+        *actual_mech_type = ctx->mechanismUsed;
+    if (ret_flags != NULL)
+        *ret_flags = ctx->gssFlags;
+    if (time_rec != NULL)
+        gss_context_time(&tmpMinor, ctx, time_rec);
+
+    assert(ctx->state == EAP_STATE_ESTABLISHED || output_token->length != 0);
 
 cleanup:
     if (GSS_ERROR(major))
