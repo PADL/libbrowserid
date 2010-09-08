@@ -154,5 +154,15 @@ gss_init_sec_context(OM_uint32 *minor,
                      OM_uint32 *ret_flags,
                      OM_uint32 *time_rec)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major, tmpMinor;
+    gss_ctx_id_t ctx = *pCtx;
+
+    if (ctx == GSS_C_NO_CONTEXT) {
+    }
+
+cleanup:
+    if (GSS_ERROR(major))
+        gssEapReleaseContext(&tmpMinor, &ctx);
+
+    return major;
 }

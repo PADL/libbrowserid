@@ -53,6 +53,8 @@ gssEapAllocContext(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
+    ctx->state = EAP_STATE_AUTHENTICATE;
+
     *pCtx = ctx;
 
     return GSS_S_COMPLETE;

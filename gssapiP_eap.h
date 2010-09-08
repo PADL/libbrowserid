@@ -120,9 +120,33 @@ struct eap_gss_initiator_ctx {
     struct eap_sm *eap;
 };
 
+typedef OM_uint32 (*eap_gss_initiator_sm)(OM_uint32 *,
+                                          gss_cred_id_t,
+                                          gss_ctx_id_t *,
+                                          gss_OID,
+                                          OM_uint32,
+                                          OM_uint32,
+                                          gss_channel_bindings_t,
+                                          gss_buffer_t,
+                                          gss_OID *,
+                                          gss_buffer_t,
+                                          OM_uint32 *,
+                                          OM_uint32 *);
+
 /* Acceptor context flags */
 struct eap_gss_acceptor_ctx {
 };
+
+typedef OM_uint32 (*eap_gss_acceptor_sm)(OM_uint32 *,
+                                         gss_ctx_id_t *,
+                                         gss_cred_id_t,
+                                         gss_buffer_t,
+                                         gss_channel_bindings_t,
+                                         gss_name_t *,
+                                         gss_buffer_t,
+                                         OM_uint32 *,
+                                         OM_uint32 *,
+                                         gss_cred_id_t *);
 
 struct gss_ctx_id_struct {
     GSSEAP_MUTEX mutex;
