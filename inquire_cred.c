@@ -49,16 +49,16 @@ gss_inquire_cred(OM_uint32 *minor,
     }
 
     if (pLifetime != NULL) {
-        time_t now = time(NULL);
-        time_t lifetime; 
+        time_t now, lifetime; 
  
-        if (cred->expiryTime == ~0) 
+        if (cred->expiryTime == 0) {
             lifetime = GSS_C_INDEFINITE; 
-        else 
+        } else  {
+            now = time(NULL);
             lifetime = now - cred->expiryTime;
-
-        if (lifetime < 0)
-            lifetime = 0;
+            if (lifetime < 0)
+                lifetime = 0;
+        }
 
         *pLifetime = lifetime;
     }

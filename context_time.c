@@ -37,8 +37,6 @@ gss_context_time(OM_uint32 *minor,
                  gss_ctx_id_t context_handle,
                  OM_uint32 *time_rec)
 {
-    time_t now, lifetime;
-
     if (context_handle == GSS_C_NO_CONTEXT) {
         return GSS_S_NO_CONTEXT;
     }
@@ -49,13 +47,19 @@ gss_context_time(OM_uint32 *minor,
 
     *minor = 0;
 
-    time(&now);
-    lifetime = context_handle->expiryTime - now;
-    if (lifetime <= 0) {
-        *time_rec = 0;
-        return GSS_S_CONTEXT_EXPIRED;
+    if (context_handle->expiryTime == 0) {
+        *time_rec = GSS_C_INDEFINITE;
+    } else {
+        time_t now, lifetime;
+
+        time(&now);
+        lifetime = context_handle->expiryTime - now;
+        if (lifetime <= 0) {
+            *time_rec = 0;
+            return GSS_S_CONTEXT_EXPIRED;
+        }
+        *time_rec = lifetime;
     }
 
-    *time_rec = lifetime;
     return GSS_S_COMPLETE;
 }

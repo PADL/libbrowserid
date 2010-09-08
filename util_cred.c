@@ -52,8 +52,6 @@ gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         return GSS_S_FAILURE;
     }
 
-    cred->expiryTime = ~0;
-
     *pCred = cred;
 
     *minor = 0;

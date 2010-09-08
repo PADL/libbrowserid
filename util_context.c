@@ -55,6 +55,18 @@ gssEapAllocContext(OM_uint32 *minor,
 
     ctx->state = EAP_STATE_AUTHENTICATE;
 
+    /*
+     * Integrity, confidentiality, sequencing and replay detection are
+     * always available.  Regardless of what flags are requested in
+     * GSS_Init_sec_context, implementations MUST set the flag corresponding
+     * to these services in the output of GSS_Init_sec_context and
+     * GSS_Accept_sec_context.
+    */
+    ctx->gssFlags = GSS_C_INTEG_FLAG    |
+                    GSS_C_CONF_FLAG     |
+                    GSS_C_SEQUENCE_FLAG |
+                    GSS_C_REPLAY_FLAG;
+
     *pCtx = ctx;
 
     return GSS_S_COMPLETE;

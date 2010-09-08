@@ -39,9 +39,7 @@ gss_internal_release_oid(OM_uint32 *minor,
     OM_uint32 major;
     gss_OID internalizedOid = GSS_C_NO_OID;
 
-    gssEapInternalizeOid(*oid, &internalizedOid);
-
-    if (*oid != internalizedOid) {
+    if (gssEapInternalizeOid(*oid, &internalizedOid)) {
         /* OID was internalized, so we can mark it as "freed" */
         *oid = GSS_C_NO_OID;
         return GSS_S_COMPLETE;

@@ -155,7 +155,7 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context);
     } while (0)
 
 /* util_mech.c */
-void
+int
 gssEapInternalizeOid(const gss_OID oid,
                      gss_OID *const pInternalizedOid);
 
@@ -232,6 +232,11 @@ decomposeOid(OM_uint32 *minor_status,
              size_t prefix_len,
              gss_OID_desc *oid,
              int *suffix) ;
+
+OM_uint32
+duplicateOid(OM_uint32 *minor_status,
+             const gss_OID_desc * const oid,
+             gss_OID *new_oid);
 
 OM_uint32
 duplicateOidSet(OM_uint32 *minor,

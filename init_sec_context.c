@@ -151,7 +151,44 @@ eapGssSmAuthenticate(OM_uint32 *minor,
                      gss_buffer_t input_token,
                      gss_buffer_t output_token)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major, tmpMinor;
+    time_t now;
+
+    if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
+        /* first time */
+        req_flags &= GSS_C_TRANS_FLAG | GSS_C_REPLAY_FLAG | GSS_C_DCE_STYLE;
+        ctx->gssFlags |= req_flags;
+
+        time(&now);
+
+        if (time_req == 0 || time_req == GSS_C_INDEFINITE)
+            ctx->expiryTime = 0;
+        else
+            ctx->expiryTime = now + time_req;
+
+        major = gss_duplicate_name(minor, cred->name, &ctx->initiatorName);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gss_duplicate_name(minor, target_name, &ctx->acceptorName);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        if (mech_type == GSS_C_NULL_OID ||
+            oidEqual(mech_type, GSS_EAP_MECHANISM)) {
+            major = gssEapDefaultMech(minor, &ctx->mechanismUsed);
+        } else if (gssEapIsMechanismOid(mech_type)) {
+            if (!gssEapInternalizeOid(mech_type, &ctx->mechanismUsed))
+                major = duplicateOid(minor, mech_type, &ctx->mechanismUsed);
+        } else {
+            major = GSS_S_BAD_MECH;
+        }
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+cleanup:
+    return major;
 }
 
 static eap_gss_initiator_sm eapGssSm[] = {
@@ -199,6 +236,8 @@ gss_init_sec_context(OM_uint32 *minor,
         major = gssEapAllocContext(minor, &ctx);
         if (GSS_ERROR(major))
             goto cleanup;
+
+        *pCtx = ctx;
     }
 
     for (; ctx->state != EAP_STATE_ESTABLISHED; ctx->state++) {
@@ -220,8 +259,10 @@ gss_init_sec_context(OM_uint32 *minor,
         }
     }
 
-    if (actual_mech_type != NULL)
-        *actual_mech_type = ctx->mechanismUsed;
+    if (actual_mech_type != NULL) {
+        if (!gssEapInternalizeOid(ctx->mechanismUsed, actual_mech_type))
+            duplicateOid(&tmpMinor, ctx->mechanismUsed, actual_mech_type);
+    }
     if (ret_flags != NULL)
         *ret_flags = ctx->gssFlags;
     if (time_rec != NULL)
@@ -231,7 +272,7 @@ gss_init_sec_context(OM_uint32 *minor,
 
 cleanup:
     if (GSS_ERROR(major))
-        gssEapReleaseContext(&tmpMinor, &ctx);
+        gssEapReleaseContext(&tmpMinor, pCtx);
 
     return major;
 }

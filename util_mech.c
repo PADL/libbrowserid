@@ -223,8 +223,7 @@ gssEapDefaultMech(OM_uint32 *minor,
         return GSS_S_BAD_MECH;
     }
 
-    gssEapInternalizeOid(&mechs->elements[0], oid);
-    if (*oid == &mechs->elements[0]) {
+    if (!gssEapInternalizeOid(&mechs->elements[0], oid)) {
         /* don't double-free if we didn't internalize it */
         mechs->elements[0].length = 0;
         mechs->elements[0].elements = NULL;
@@ -236,7 +235,7 @@ gssEapDefaultMech(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
-void
+int
 gssEapInternalizeOid(const gss_OID oid,
                      gss_OID *const pInternalizedOid)
 {
@@ -260,5 +259,8 @@ gssEapInternalizeOid(const gss_OID oid,
 
     if (*pInternalizedOid == GSS_C_NO_OID) {
         *pInternalizedOid = oid;
+        return 0;
     }
+
+    return 1;
 }

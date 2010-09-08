@@ -56,36 +56,37 @@
 
 #include "gssapiP_eap.h"
 
-#if 0
 OM_uint32
-copyOid(OM_uint32 *minor_status,
-        const gss_OID_desc * const oid,
-        gss_OID *new_oid)
+duplicateOid(OM_uint32 *minor,
+             const gss_OID_desc * const oid,
+             gss_OID *newOid)
 {
-    gss_OID         p;
+    gss_OID p;
 
-    *minor_status = 0;
+    *minor = 0;
+    *newOid = GSS_C_NO_OID;
 
-    p = (gss_OID) malloc(sizeof(gss_OID_desc));
-    if (!p) {
-        *minor_status = ENOMEM;
+    p = (gss_OID)GSSEAP_MALLOC(sizeof(*p));
+    if (p == NULL) {
+        *minor = ENOMEM;
         return GSS_S_FAILURE;
     }
     p->length = oid->length;
-    p->elements = malloc(p->length);
-    if (!p->elements) {
-        free(p);
+    p->elements = GSSEAP_MALLCO(p->length);
+    if (p->elements == NULL) {
+        GSSEAP_FREE(p);
         return GSS_S_FAILURE;
     }
+
     memcpy(p->elements, oid->elements, p->length);
-    *new_oid = p;
-    return(GSS_S_COMPLETE);
+    *newOid = p;
+
+    return GSS_S_COMPLETE;
 }
-#endif
 
 /* Compose an OID of a prefix and an integer suffix */
 OM_uint32
-composeOid(OM_uint32 *minor_status,
+composeOid(OM_uint32 *minor,
            const char *prefix,
            size_t prefix_len,
            int suffix,
@@ -96,11 +97,11 @@ composeOid(OM_uint32 *minor_status,
     unsigned char *op;
 
     if (oid == GSS_C_NO_OID) {
-        *minor_status = EINVAL;
+        *minor = EINVAL;
         return GSS_S_FAILURE;
     }
     if (oid->length < prefix_len) {
-        *minor_status = ERANGE;
+        *minor = ERANGE;
         return GSS_S_FAILURE;
     }
 
@@ -115,7 +116,7 @@ composeOid(OM_uint32 *minor_status,
     suffix = osuffix;
 
     if (oid->length < prefix_len + nbytes) {
-        *minor_status = ERANGE;
+        *minor = ERANGE;
         return GSS_S_FAILURE;
     }
 
@@ -131,12 +132,12 @@ composeOid(OM_uint32 *minor_status,
 
     oid->length = prefix_len + nbytes;
 
-    *minor_status = 0;
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
 OM_uint32
-decomposeOid(OM_uint32 *minor_status,
+decomposeOid(OM_uint32 *minor,
              const char *prefix,
              size_t prefix_len,
              gss_OID_desc *oid,
@@ -159,7 +160,7 @@ decomposeOid(OM_uint32 *minor_status,
     for (i = 0; i < slen; i++) {
         *suffix = (*suffix << 7) | (op[i] & 0x7f);
         if (i + 1 != slen && (op[i] & 0x80) == 0) {
-            *minor_status = EINVAL;
+            *minor = EINVAL;
             return GSS_S_FAILURE;
         }
     }
