@@ -42,6 +42,7 @@
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
 #include "gssapi_eap.h"
+#include "util.h"
 
 /* EAP includes */
 #define IEEE8021X_EAPOL 1
@@ -55,6 +56,7 @@
 #include <krb5.h>
 
 struct gss_name_struct {
+    GSSEAP_MUTEX mutex;
     OM_uint32 flags;
     krb5_principal kerberosName;
     void *aaa;
@@ -67,6 +69,7 @@ struct gss_name_struct {
 #define CRED_FLAG_PASSWORD                  0x00000008
 
 struct gss_cred_id_struct {
+    GSSEAP_MUTEX mutex;
     OM_uint32 flags;
     gss_name_t name;
     gss_buffer_desc password;
@@ -110,6 +113,7 @@ struct eap_gss_acceptor_ctx {
 };
 
 struct gss_ctx_id_struct {
+    GSSEAP_MUTEX mutex;
     enum eap_gss_state state;
     OM_uint32 flags;
     OM_uint32 gssFlags;
@@ -140,16 +144,6 @@ struct gss_ctx_id_struct {
 #define KEY_USAGE_INITIATOR_SEAL            514
 #define KEY_USAGE_INITIATOR_SIGN            515
 
-enum gss_eap_token_type {
-    TOK_TYPE_EAP_RESP  = 0x0601,
-    TOK_TYPE_EAP_REQ   = 0x0602,
-    TOK_TYPE_GSS_CB    = 0x0603,
-    TOK_TYPE_MIC       = 0x0404,
-    TOK_TYPE_WRAP      = 0x0504,
-    TOK_TYPE_DELETE    = 0x0405,
-    TOK_TYPE_NONE      = 0xFFFF
-};
-
 /* wrap_iov.c */
 OM_uint32
 gssEapWrapOrGetMIC(OM_uint32 *minor,
@@ -169,7 +163,5 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
                         int iov_count,
                         enum gss_eap_token_type toktype);
 
-
-#include "util.h"
 
 #endif /* _GSSAPIP_EAP_H_ */

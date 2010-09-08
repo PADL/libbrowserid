@@ -35,6 +35,7 @@
 OM_uint32
 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
+    OM_uint32 tmpMinor;
     gss_cred_id_t cred;
 
     assert(*pCred == GSS_C_NO_CREDENTIAL);
@@ -45,8 +46,15 @@ gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         return GSS_S_FAILURE;
     }
 
+    if (GSSEAP_MUTEX_INIT(&cred->mutex) != 0) {
+        *minor = errno;
+        gssEapReleaseCred(&tmpMinor, &cred);
+        return GSS_S_FAILURE;
+    }
+
     *pCred = cred;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -68,6 +76,7 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         GSSEAP_FREE(cred->password.value);
     }
 
+    GSSEAP_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
     GSSEAP_FREE(cred);
     *pCred = NULL;

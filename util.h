@@ -57,6 +57,8 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_ 1
 
+#include <krb5.h>
+
 #define KRB_KEYTYPE(key)        ((key)->enctype)
 
 int
@@ -193,6 +195,16 @@ sequenceInit(void **vqueue, uint64_t seqnum,
              int do_replay, int do_sequence, int wide_nums);
 
 /* util_token.c */
+enum gss_eap_token_type {
+    TOK_TYPE_EAP_RESP  = 0x0601,
+    TOK_TYPE_EAP_REQ   = 0x0602,
+    TOK_TYPE_GSS_CB    = 0x0603,
+    TOK_TYPE_MIC       = 0x0404,
+    TOK_TYPE_WRAP      = 0x0504,
+    TOK_TYPE_DELETE    = 0x0405,
+    TOK_TYPE_NONE      = 0xFFFF
+};
+
 size_t
 tokenSize(const gss_OID_desc *mech, size_t body_size);
 
@@ -220,6 +232,14 @@ verifyTokenHeader(const gss_OID_desc * mech,
         *minor = ENOSYS;                                \
         return GSS_S_FAILURE;                           \
     } while (0)
+
+#include <pthread.h>
+
+#define GSSEAP_MUTEX                    pthread_mutex_t
+#define GSSEAP_MUTEX_INIT(m)            pthread_mutex_init((m), NULL)
+#define GSSEAP_MUTEX_DESTROY(m)         pthread_mutex_destroy((m))
+#define GSSEAP_MUTEX_LOCK(m)            pthread_mutex_lock((m))
+#define GSSEAP_MUTEX_UNLOCK(m)          pthread_mutex_unlock((m))
 
 /* Helper functions */
 static inline void

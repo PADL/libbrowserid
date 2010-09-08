@@ -35,6 +35,7 @@
 OM_uint32
 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName)
 {
+    OM_uint32 tmpMinor;
     gss_name_t name;
 
     assert(*pName == GSS_C_NO_NAME);
@@ -42,6 +43,12 @@ gssEapAllocName(OM_uint32 *minor, gss_name_t *pName)
     name = (gss_name_t)GSSEAP_CALLOC(1, sizeof(*name));
     if (name == NULL) {
         *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    if (GSSEAP_MUTEX_INIT(&name->mutex) != 0) {
+        *minor = errno;
+        gssEapReleaseName(&tmpMinor, &name);
         return GSS_S_FAILURE;
     }
 
@@ -71,9 +78,24 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
         krb5_free_context(kerbCtx);
     }
 
+    GSSEAP_MUTEX_DESTROY(&name->mutex);
     GSSEAP_FREE(name);
     *pName = NULL;
 
     *minor = 0;
     return GSS_S_COMPLETE;
+}
+
+OM_uint32
+gssEapDuplicateName(krb5_context context,
+                    const gss_name_t src,
+                    gss_name_t *dst)
+{
+}
+
+krb5_boolean
+gssEapCompareName(krb5_context context,
+                  gss_name_t name1,
+                  gss_name_t name2)
+{
 }

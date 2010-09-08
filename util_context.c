@@ -47,6 +47,12 @@ gssEapAllocContext(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
+    if (GSSEAP_MUTEX_INIT(&ctx->mutex) != 0) {
+        *minor = errno;
+        gssEapReleaseContext(&tmpMinor, &ctx);
+        return GSS_S_FAILURE;
+    }
+
     *minor = krb5_init_context(&ctx->kerberosCtx);
     if (*minor != 0) {
         gssEapReleaseContext(&tmpMinor, &ctx);
@@ -99,6 +105,8 @@ gssEapReleaseContext(OM_uint32 *minor,
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
     gss_release_oid(&tmpMinor, &ctx->mechanismUsed);
     sequenceFree(ctx->seqState);
+
+    GSSEAP_MUTEX_DESTROY(&ctx->mutex);
 
     memset(ctx, 0, sizeof(*ctx));
     GSSEAP_FREE(ctx);
