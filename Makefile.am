@@ -55,6 +55,7 @@ libmech_eap_la_SOURCES =    			\
 	util_cksum.c				\
 	util_cred.c				\
 	util_crypt.c				\
+	util_krb.c				\
 	util_mech.c				\
 	util_name.c				\
 	util_oid.c				\

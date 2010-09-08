@@ -73,12 +73,15 @@ gss_pseudo_random(OM_uint32 *minor,
     size_t prflen;
     krb5_data t, ns;
     unsigned char *p;
+    krb5_context krbContext;
 
     prf_out->length = 0;
     prf_out->value = NULL;
 
     if (!CTX_IS_ESTABLISHED(ctx))
         return GSS_S_NO_CONTEXT;
+
+    GSSEAP_KRB_INIT(&krbContext);
 
     t.length = 0;
     t.data = NULL;
@@ -99,7 +102,7 @@ gss_pseudo_random(OM_uint32 *minor,
     }
     prf_out->length = desired_output_len;
 
-    code = krb5_c_prf_length(ctx->kerberosCtx,
+    code = krb5_c_prf_length(krbContext,
                              ctx->encryptionType,
                              &prflen);
     if (code != 0)
@@ -125,7 +128,7 @@ gss_pseudo_random(OM_uint32 *minor,
     while (desired_output_len > 0) {
         store_uint32_be(i, ns.data);
 
-        code = krb5_c_prf(ctx->kerberosCtx, ctx->rfc3961Key, &ns, &t);
+        code = krb5_c_prf(krbContext, &ctx->rfc3961Key, &ns, &t);
         if (code != 0)
             goto cleanup;
 
@@ -139,8 +142,8 @@ gss_pseudo_random(OM_uint32 *minor,
 cleanup:
     if (code != 0)
         gss_release_buffer(&tmpMinor, prf_out);
-    krb5_free_data_contents(ctx->kerberosCtx, &ns);
-    krb5_free_data_contents(ctx->kerberosCtx, &t);
+    krb5_free_data_contents(krbContext, &ns);
+    krb5_free_data_contents(krbContext, &t);
 
     *minor = code;
     return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;

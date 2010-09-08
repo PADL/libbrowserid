@@ -82,6 +82,9 @@ unwrapToken(OM_uint32 *minor,
     int valid = 0;
     krb5_cksumtype cksumtype;
     int conf_flag = 0;
+    krb5_context krbContext;
+
+    GSSEAP_KRB_INIT(&krbContext);
 
     *minor = 0;
 
@@ -135,7 +138,7 @@ unwrapToken(OM_uint32 *minor,
         rrc = load_uint16_be(ptr + 6);
         seqnum = load_uint64_be(ptr + 8);
 
-        code = krb5_c_crypto_length(ctx->kerberosCtx,
+        code = krb5_c_crypto_length(krbContext,
                                     ctx->encryptionType,
                                     conf_flag ? KRB5_CRYPTO_TYPE_TRAILER :
                                     KRB5_CRYPTO_TYPE_CHECKSUM,
@@ -167,9 +170,9 @@ unwrapToken(OM_uint32 *minor,
             unsigned char *althdr;
 
             /* Decrypt */
-            code = gssEapDecrypt(ctx->kerberosCtx,
+            code = gssEapDecrypt(krbContext,
                                  ((ctx->gssFlags & GSS_C_DCE_STYLE) != 0),
-                                 ec, rrc, ctx->rfc3961Key,
+                                 ec, rrc, &ctx->rfc3961Key,
                                  keyUsage, 0, iov, iov_count);
             if (code != 0) {
                 *minor = code;
@@ -198,8 +201,8 @@ unwrapToken(OM_uint32 *minor,
             store_uint16_be(0, ptr + 4);
             store_uint16_be(0, ptr + 6);
 
-            code = gssEapVerify(ctx->kerberosCtx, cksumtype, rrc,
-                                ctx->rfc3961Key, keyUsage,
+            code = gssEapVerify(krbContext, cksumtype, rrc,
+                                &ctx->rfc3961Key, keyUsage,
                                 iov, iov_count, &valid);
             if (code != 0 || valid == FALSE) {
                 *minor = code;
@@ -217,8 +220,8 @@ unwrapToken(OM_uint32 *minor,
             goto defective;
         seqnum = load_uint64_be(ptr + 8);
 
-        code = gssEapVerify(ctx->kerberosCtx, cksumtype, 0,
-                            ctx->rfc3961Key, keyUsage,
+        code = gssEapVerify(krbContext, cksumtype, 0,
+                            &ctx->rfc3961Key, keyUsage,
                             iov, iov_count, &valid);
         if (code != 0 || valid == FALSE) {
             *minor = code;
@@ -284,12 +287,14 @@ unwrapStream(OM_uint32 *minor,
 {
     unsigned char *ptr;
     OM_uint32 code = 0, major = GSS_S_FAILURE;
-    krb5_context context = ctx->kerberosCtx;
+    krb5_context krbContext;
     int conf_req_flag, toktype2;
     int i = 0, j;
     gss_iov_buffer_desc *tiov = NULL;
     gss_iov_buffer_t stream, data = NULL;
     gss_iov_buffer_t theader, tdata = NULL, tpadding, ttrailer;
+
+    GSSEAP_KRB_INIT(&krbContext);
 
     assert(toktype == TOK_TYPE_WRAP);
 
@@ -375,7 +380,7 @@ unwrapStream(OM_uint32 *minor,
         }
 
         if (conf_req_flag) {
-            code = krb5_c_crypto_length(context, ctx->encryptionType,
+            code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
                                         KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
             if (code != 0)
                 goto cleanup;
@@ -383,7 +388,7 @@ unwrapStream(OM_uint32 *minor,
         }
 
         /* no PADDING for CFX, EC is used instead */
-        code = krb5_c_crypto_length(context, ctx->encryptionType,
+        code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
                                     conf_req_flag
                                       ? KRB5_CRYPTO_TYPE_TRAILER
                                       : KRB5_CRYPTO_TYPE_CHECKSUM,

@@ -117,11 +117,10 @@ struct gss_ctx_id_struct {
     enum eap_gss_state state;
     OM_uint32 flags;
     OM_uint32 gssFlags;
-    krb5_context kerberosCtx;
     gss_OID mechanismUsed;
     krb5_enctype encryptionType;
     krb5_cksumtype checksumType;
-    krb5_keyblock *rfc3961Key;
+    krb5_keyblock rfc3961Key;
     gss_name_t initiatorName;
     gss_name_t acceptorName;
     time_t expiryTime;
@@ -139,10 +138,10 @@ struct gss_ctx_id_struct {
 #define TOK_FLAG_WRAP_CONFIDENTIAL          0x02
 #define TOK_FLAG_ACCEPTOR_SUBKEY            0x04
 
-#define KEY_USAGE_ACCEPTOR_SEAL             512
-#define KEY_USAGE_ACCEPTOR_SIGN             513
-#define KEY_USAGE_INITIATOR_SEAL            514
-#define KEY_USAGE_INITIATOR_SIGN            515
+#define KEY_USAGE_ACCEPTOR_SEAL             22
+#define KEY_USAGE_ACCEPTOR_SIGN             23
+#define KEY_USAGE_INITIATOR_SEAL            24
+#define KEY_USAGE_INITIATOR_SIGN            25
 
 /* wrap_iov.c */
 OM_uint32

@@ -86,16 +86,3 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     return GSS_S_COMPLETE;
 }
 
-OM_uint32
-gssEapDuplicateName(krb5_context context,
-                    const gss_name_t src,
-                    gss_name_t *dst)
-{
-}
-
-krb5_boolean
-gssEapCompareName(krb5_context context,
-                  gss_name_t name1,
-                  gss_name_t name2)
-{
-}

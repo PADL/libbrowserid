@@ -122,6 +122,24 @@ gssEapIsIntegrityOnly(gss_iov_buffer_desc *iov, int iov_count);
 int
 gssEapAllocIov(gss_iov_buffer_t iov, size_t size);
 
+OM_uint32
+gssEapDeriveRFC3961Key(OM_uint32 *minor,
+                       gss_buffer_t msk,
+                       krb5_enctype enctype,
+                       krb5_keyblock *pKey);
+
+/* util_krb.c */
+OM_uint32
+gssEapKerberosInit(OM_uint32 *minor, krb5_context *context);
+
+#define GSSEAP_KRB_INIT(ctx) do {                   \
+        OM_uint32 tmpMajor;                         \
+        tmpMajor  = gssEapKerberosInit(minor, ctx); \
+        if (GSS_ERROR(tmpMajor)) {                  \
+            return tmpMajor;                        \
+        }                                           \
+    } while (0)
+
 /* util_mech.c */
 void
 gssEapInternalizeOid(const gss_OID oid,
@@ -236,10 +254,21 @@ verifyTokenHeader(const gss_OID_desc * mech,
 #include <pthread.h>
 
 #define GSSEAP_MUTEX                    pthread_mutex_t
+#define GSSEAP_MUTEX_INITIALIZER        PTHREAD_MUTEX_INITIALIZER
+
 #define GSSEAP_MUTEX_INIT(m)            pthread_mutex_init((m), NULL)
 #define GSSEAP_MUTEX_DESTROY(m)         pthread_mutex_destroy((m))
 #define GSSEAP_MUTEX_LOCK(m)            pthread_mutex_lock((m))
 #define GSSEAP_MUTEX_UNLOCK(m)          pthread_mutex_unlock((m))
+
+#define GSSEAP_THREAD_KEY               pthread_key_t
+#define GSSEAP_KEY_CREATE(k, d)         pthread_key_create((k), (d))
+#define GSSEAP_GETSPECIFIC(k)           pthread_getspecific((k))
+#define GSSEAP_SETSPECIFIC(k, d)        pthread_setspecific((k), (d))
+
+#define GSSEAP_THREAD_ONCE              pthread_once_t
+#define GSSEAP_ONCE(o, i)               pthread_once((o), (i))
+#define GSSEAP_ONCE_INITIALIZER         PTHREAD_ONCE_INIT
 
 /* Helper functions */
 static inline void

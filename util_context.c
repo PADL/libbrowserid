@@ -53,12 +53,6 @@ gssEapAllocContext(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    *minor = krb5_init_context(&ctx->kerberosCtx);
-    if (*minor != 0) {
-        gssEapReleaseContext(&tmpMinor, &ctx);
-        return GSS_S_FAILURE;
-    }
-
     *pCtx = ctx;
 
     return GSS_S_COMPLETE;
@@ -82,10 +76,13 @@ gssEapReleaseContext(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *pCtx;
+    krb5_context krbContext = NULL;
 
     if (ctx == GSS_C_NO_CONTEXT) {
         return GSS_S_COMPLETE;
     }
+
+    gssEapKerberosInit(&tmpMinor, &krbContext);
 
     if (CTX_IS_INITIATOR(ctx)) {
         releaseInitiatorContext(&ctx->initiatorCtx);
@@ -93,14 +90,7 @@ gssEapReleaseContext(OM_uint32 *minor,
         releaseAcceptorContext(&ctx->acceptorCtx);
     }
 
-    if (ctx->rfc3961Key != NULL) {
-        krb5_free_keyblock(ctx->kerberosCtx, ctx->rfc3961Key);
-    }
-
-    if (ctx->kerberosCtx != NULL) {
-        krb5_free_context(ctx->kerberosCtx);
-    }
-
+    krb5_free_keyblock_contents(krbContext, &ctx->rfc3961Key);
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
     gss_release_oid(&tmpMinor, &ctx->mechanismUsed);

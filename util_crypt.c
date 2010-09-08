@@ -394,3 +394,79 @@ gssEapAllocIov(gss_iov_buffer_t iov, size_t size)
 
     return 0;
 }
+
+static char
+keyDerivationConstant[] = "rfc4121-gss-eap";
+
+OM_uint32
+gssEapDeriveRFC3961Key(OM_uint32 *minor,
+                       gss_buffer_t msk,
+                       krb5_enctype enctype,
+                       krb5_keyblock *pKey)
+{
+    krb5_context context;
+    krb5_data data, prf;
+    krb5_keyblock kd;
+    krb5_error_code code;
+    size_t keybytes, keylength, prflength;
+
+    memset(pKey, 0, sizeof(*pKey));
+
+    GSSEAP_KRB_INIT(&context);
+
+    kd.contents = NULL;
+    prf.data = NULL;
+    KRB_KEYTYPE(&kd) = enctype;
+
+    code = krb5_c_keylengths(context, enctype, &keybytes, &keylength);
+    if (code != 0)
+        goto cleanup;
+
+    data.length = msk->length;
+    data.data = (char *)msk->value;
+
+    kd.contents = GSSEAP_MALLOC(keylength);
+    if (kd.contents == NULL) {
+        code = ENOMEM;
+        goto cleanup;
+    }
+    kd.length = keylength;
+
+    code = krb5_c_random_to_key(context, enctype, &data, &kd);
+    if (code != 0)
+        goto cleanup;
+
+    data.length = sizeof(keyDerivationConstant) - 1;
+    data.data = keyDerivationConstant;
+
+    code = krb5_c_prf_length(context, enctype, &prflength);
+    if (code != 0)
+        goto cleanup;
+
+    prf.length = prflength;
+    prf.data = GSSEAP_MALLOC(prflength);
+    if (data.data == NULL) {
+        code = ENOMEM;
+        goto cleanup;
+    }
+
+    code = krb5_c_prf(context, &kd, &data, &prf);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_c_random_to_key(context, enctype, &prf, &kd);
+    if (code != 0)
+        goto cleanup;
+
+    *pKey = kd;
+
+cleanup:
+    if (code != 0) {
+        GSSEAP_FREE(kd.contents);
+    }
+
+    GSSEAP_FREE(prf.data);
+
+    *minor = code;
+    return (*minor == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
+}

@@ -32,14 +32,42 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
-gss_compare_name(OM_uint32 *minor,
-                 gss_name_t name1,
-                 gss_name_t name2,
-                 int *name_equal)
-{
-    OM_uint32 major;
-    krb5_context context;
+static GSSEAP_THREAD_ONCE krbContextKeyOnce = GSSEAP_ONCE_INITIALIZER;
+static GSSEAP_THREAD_KEY krbContextKey;
 
-    GSSEAP_KRB_INIT(&context);
+static void
+destroyKrbContext(void *arg)
+{
+    krb5_context context = (krb5_context)arg;
+
+    if (context != NULL)
+        krb5_free_context(context);
+}
+
+static void
+createKrbContextKey(void)
+{
+    GSSEAP_KEY_CREATE(&krbContextKey, destroyKrbContext);
+}
+
+OM_uint32
+gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
+{
+    *minor = 0;
+
+    GSSEAP_ONCE(&krbContextKeyOnce, createKrbContextKey);
+
+    *context = GSSEAP_GETSPECIFIC(krbContextKey);
+    if (*context == NULL) {
+        *minor = krb5_init_context(context);
+        if (*minor == 0) {
+            if (GSSEAP_SETSPECIFIC(krbContextKey, *context) != 0) {
+                *minor = errno;
+                krb5_free_context(*context);
+                *context = NULL;
+            }
+        }
+    }
+
+    return *minor == 0 ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
