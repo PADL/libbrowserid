@@ -66,7 +66,12 @@ gss_inquire_context(OM_uint32 *minor,
 
     if (lifetime_rec != NULL) {
         time_t now = time(NULL);
-        time_t lifetime = now - ctx->expiryTime;
+        time_t lifetime;
+
+        if (ctx->expiryTime == ~0)
+            lifetime = GSS_C_INDEFINITE;
+        else
+            lifetime = now - ctx->expiryTime;
 
         if (lifetime < 0)
             lifetime = 0;

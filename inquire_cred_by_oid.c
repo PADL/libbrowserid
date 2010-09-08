@@ -32,11 +32,29 @@
 
 #include "gssapiP_eap.h"
 
+static struct {
+    gss_OID_desc oid;
+    OM_uint32 (*inquire)(OM_uint32 *, const gss_cred_id_t,
+                         const gss_OID, gss_buffer_set_t *);
+} inquireCredOps[] = {
+};
+
 OM_uint32
 gss_inquire_cred_by_oid(OM_uint32 *minor,
                         const gss_cred_id_t cred_handle,
                         const gss_OID desired_object,
                         gss_buffer_set_t *data_set)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major = GSS_S_UNAVAILABLE;
+    int i;
+
+    for (i = 0; i < sizeof(inquireCredOps) / sizeof(inquireCredOps[0]); i++) {
+        if (oidEqual(&inquireCredOps[i].oid, desired_object)) {
+            major = (*inquireCredOps[i].inquire)(minor, cred_handle,
+                                                 desired_object, data_set);
+            break;
+        }
+    }
+
+    return major;
 }

@@ -34,11 +34,60 @@
 
 OM_uint32
 gss_inquire_cred(OM_uint32 *minor,
-                 gss_cred_id_t cred_handle,
+                 gss_cred_id_t cred,
                  gss_name_t *name,
-                 OM_uint32 *lifetime,
+                 OM_uint32 *pLifetime,
                  gss_cred_usage_t *cred_usage,
                  gss_OID_set *mechanisms)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major = GSS_S_COMPLETE;
+
+    if (name != NULL) {
+        major = gss_duplicate_name(minor, cred->name, name);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if (pLifetime != NULL) {
+        time_t now = time(NULL);
+        time_t lifetime; 
+ 
+        if (cred->expiryTime == ~0) 
+            lifetime = GSS_C_INDEFINITE; 
+        else 
+            lifetime = now - cred->expiryTime;
+
+        if (lifetime < 0)
+            lifetime = 0;
+
+        *pLifetime = lifetime;
+    }
+
+    if (cred_usage != NULL) {
+        OM_uint32 flags = (cred->flags & (CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT));
+
+        switch (flags) {
+        case CRED_FLAG_INITIATE:
+            *cred_usage = GSS_C_INITIATE;
+            break;
+        case CRED_FLAG_ACCEPT:
+            *cred_usage = GSS_C_ACCEPT;
+            break;
+        default:
+            *cred_usage = GSS_C_BOTH;
+            break;
+        }
+    }
+
+    if (mechanisms != NULL) {
+        if (cred->mechanisms != GSS_C_NO_OID_SET)
+            major = duplicateOidSet(minor, cred->mechanisms, mechanisms);
+        else
+            major = gssEapIndicateMechs(minor, mechanisms);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+cleanup:
+    return major;
 }

@@ -42,5 +42,6 @@ gss_store_cred(OM_uint32 *minor,
                gss_OID_set *elements_stored,
                gss_cred_usage_t *cred_usage_stored)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    *minor = 0;
+    return GSS_S_UNAVAILABLE;
 }
