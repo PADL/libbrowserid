@@ -37,5 +37,20 @@ gss_process_context_token(OM_uint32 *minor,
                           gss_ctx_id_t ctx,
                           gss_buffer_t token_buffer)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major;
+    gss_iov_buffer_desc iov[1];
+
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        return GSS_S_NO_CONTEXT;
+    }
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
+    iov[0].buffer = *token_buffer;
+
+    major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
+                                    iov, 1, TOK_TYPE_DELETE_CONTEXT);
+    if (GSS_ERROR(major))
+        return major;
+
+    return gssEapReleaseContext(minor, &ctx);
 }

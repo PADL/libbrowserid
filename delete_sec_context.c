@@ -37,6 +37,8 @@ gss_delete_sec_context(OM_uint32 *minor,
                        gss_ctx_id_t *context_handle,
                        gss_buffer_t output_token)
 {
+    OM_uint32 major;
+
     if (output_token != GSS_C_NO_BUFFER) {
         output_token->length = 0;
         output_token->value = NULL;
@@ -47,7 +49,22 @@ gss_delete_sec_context(OM_uint32 *minor,
         return GSS_S_COMPLETE;
     }
 
-    /* Delete context token? */
+    if (output_token != GSS_C_NO_BUFFER) {
+        gss_iov_buffer_desc iov[2];
+
+        iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
+        iov[0].buffer.value = NULL;
+        iov[0].buffer.length = 0;
+
+        iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER | GSS_IOV_BUFFER_FLAG_ALLOCATE;
+        iov[1].buffer.value = NULL;
+        iov[1].buffer.length = 0;
+
+        major = gssEapWrapOrGetMIC(minor, *context_handle, FALSE, FALSE,
+                                   iov, 2, TOK_TYPE_DELETE_CONTEXT);
+        if (GSS_ERROR(major))
+            return major;
+    }
 
     return gssEapReleaseContext(minor, context_handle);
 }

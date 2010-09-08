@@ -228,8 +228,8 @@ unwrapToken(OM_uint32 *minor,
             return GSS_S_BAD_SIG;
         }
         code = sequenceCheck(&ctx->seqState, seqnum);
-    } else if (toktype == TOK_TYPE_DELETE) {
-        if (load_uint16_be(ptr) != TOK_TYPE_DELETE)
+    } else if (toktype == TOK_TYPE_DELETE_CONTEXT) {
+        if (load_uint16_be(ptr) != TOK_TYPE_DELETE_CONTEXT)
             goto defective;
         goto verify_mic_1;
     } else {

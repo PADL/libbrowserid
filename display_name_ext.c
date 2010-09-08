@@ -39,7 +39,9 @@ gss_display_name_ext(OM_uint32 *minor,
                      gss_buffer_t display_name)
 {
     *minor = 0;
+
     display_name->length = 0;
-    display_name->buffer = NULL;
+    display_name->value = NULL;
+
     return GSS_S_UNAVAILABLE;
 }
