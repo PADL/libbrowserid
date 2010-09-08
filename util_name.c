@@ -386,3 +386,126 @@ cleanup:
 
     return major;
 }
+
+static gss_buffer_desc attributePrefixes[] = {
+    {
+        /* ATTR_TYPE_NONE */
+        0,
+        NULL,
+    },
+    {
+        /* ATTR_TYPE_SAML_AAA_ASSERTION */
+        sizeof("urn:ietf:params:gss-eap:saml-aaa-assertion"),
+        "urn:ietf:params:gss-eap:saml-aaa-assertion"
+    },
+    {
+        /* ATTR_TYPE_SAML_ATTR */
+        sizeof("urn:ietf:params:gss-eap:saml-attr"),
+        "urn:ietf:params:gss-eap:saml-attr"
+    },
+    {
+        /* ATTR_TYPE_RADIUS_AVP */
+        sizeof("urn:ietf:params:gss-eap:radius-avp"),
+        "urn:ietf:params:gss-eap:radius-avp",
+    }
+};
+
+enum gss_eap_attribute_type
+gssEapAttributePrefixToType(const gss_buffer_t prefix)
+{
+    enum gss_eap_attribute_type i;
+
+    for (i = ATTR_TYPE_SAML_AAA_ASSERTION;
+         i < sizeof(attributePrefixes) / sizeof(attributePrefixes[0]);
+         i++)
+    {
+        gss_buffer_t p = &attributePrefixes[i];
+
+        if (p->length == prefix->length &&
+            memcmp(p->value, prefix->value, prefix->length) == 0) {
+            return i;
+        }
+    }
+
+    return ATTR_TYPE_NONE;
+}
+
+gss_buffer_t
+gssEapAttributeTypeToPrefix(enum gss_eap_attribute_type type)
+{
+    if (type <= ATTR_TYPE_NONE ||
+        type > ATTR_TYPE_RADIUS_AVP)
+        return GSS_C_NO_BUFFER;
+
+    return &attributePrefixes[type];
+}
+
+OM_uint32
+decomposeAttributeName(OM_uint32 *minor,
+                       const gss_buffer_t attribute,
+                       gss_buffer_t prefix,
+                       gss_buffer_t suffix)
+{
+    char *p = NULL;
+    int i;
+
+    for (i = 0; i < attribute->length; i++) {
+        if (((char *)attribute->value)[i] == ' ') {
+            p = (char *)attribute->value + i + 1;
+            break;
+        }
+    }
+
+    prefix->value = attribute->value;
+    prefix->length = i;
+
+    if (p != NULL && *p != '\0')  {
+        suffix->length = attribute->length - 1 - prefix->length;
+        suffix->value = p;
+    } else {
+        suffix->length = 0;
+        suffix->value = NULL;
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+composeAttributeName(OM_uint32 *minor,
+                       const gss_buffer_t prefix,
+                       const gss_buffer_t suffix,
+                       gss_buffer_t attribute)
+{
+    size_t len = 0;
+    char *p;
+
+    attribute->length = 0;
+    attribute->value = NULL;
+
+    if (prefix == GSS_C_NO_BUFFER || prefix->length == 0)
+        return GSS_S_COMPLETE;
+
+    len = prefix->length;
+    if (suffix != NULL) {
+        len += 1 + suffix->length;
+    }
+
+    p = attribute->value = GSSEAP_MALLOC(len + 1);
+    if (attribute->value == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+    attribute->length = len;
+
+    memcpy(p, prefix->value, prefix->length);
+    if (suffix != NULL) {
+        p[prefix->length] = ' ';
+        memcpy(p + prefix->length + 1, suffix->value, suffix->length);
+    }
+
+    p[attribute->length] = '\0';
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
