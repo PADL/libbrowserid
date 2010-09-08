@@ -272,15 +272,15 @@ sequenceInit(void **vqueue, uint64_t seqnum,
 
 /* util_token.c */
 enum gss_eap_token_type {
-    TOK_TYPE_NONE                    = 0x0000,
-    TOK_TYPE_EAP_RESP                = 0x0601,
-    TOK_TYPE_EAP_REQ                 = 0x0602,
-    TOK_TYPE_GSS_CHANNEL_BINDINGS    = 0x0603,
-    TOK_TYPE_MIC                     = 0x0404,
-    TOK_TYPE_WRAP                    = 0x0504,
-    TOK_TYPE_EXPORT_NAME             = 0x0401,
-    TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,
-    TOK_TYPE_DELETE_CONTEXT          = 0x0405,
+    TOK_TYPE_NONE                    = 0x0000,  /* no token */
+    TOK_TYPE_MIC                     = 0x0404,  /* RFC 4121 MIC token */
+    TOK_TYPE_WRAP                    = 0x0504,  /* RFC 4121 wrap token */
+    TOK_TYPE_EXPORT_NAME             = 0x0401,  /* RFC 2743 exported name */
+    TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,  /* draft-ietf-kitten-gss-naming */
+    TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
+    TOK_TYPE_EAP_RESP                = 0x0601,  /* draft-howlett-eap-gss */
+    TOK_TYPE_EAP_REQ                 = 0x0602,  /* draft-howlett-eap-gss */
+    TOK_TYPE_GSS_CHANNEL_BINDINGS    = 0x0603,  /* draft-howlett-eap-gss */
 };
 
 size_t
