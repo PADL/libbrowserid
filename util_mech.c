@@ -47,28 +47,40 @@
  *        mechInvoke(5)
  */
 
-/*
- * Prefix for GSS EAP mechanisms. A Kerberos encryption type is
- * concatenated with this to form a concrete mechanism OID.
- */
 static const gss_OID_desc gssEapMechPrefix = {
-    /* 1.3.6.1.4.1.5322.21.1 */
-    11, "\x06\x09\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01"
+    /* Note that alone this is not a valid DER encoded OID */
+    11, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x00"
 };
 
-const gss_OID_desc *const gss_mech_eap = &gssEapMechPrefix;
-
 static const gss_OID_desc gssEapConcreteMechs[] = {
+    /* 1.3.6.1.4.1.5322.21.1  */
+    { 11, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01" },
     /* 1.3.6.1.4.1.5322.21.1.17 */
     { 12, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x11" },
     /* 1.3.6.1.4.1.5322.21.1.18 */
     { 12, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x12" }
 };
 
-const gss_OID_desc *const gss_mech_eap_aes128_cts_hmac_sha1_96 =
+const gss_OID_desc *const gss_mech_eap =
     &gssEapConcreteMechs[0];
-const gss_OID_desc *const gss_mech_eap_aes256_cts_hmac_sha1_96 =
+const gss_OID_desc *const gss_mech_eap_aes128_cts_hmac_sha1_96 =
     &gssEapConcreteMechs[1];
+const gss_OID_desc *const gss_mech_eap_aes256_cts_hmac_sha1_96 =
+    &gssEapConcreteMechs[2];
+
+int
+gssEapIsMechanismOid(const gss_OID oid)
+{
+    if (oidEqual(oid, gss_mech_eap)) {
+        return TRUE;
+    } else if (oid->length > gssEapMechPrefix.length &&
+               memcmp(oid->elements, gssEapMechPrefix.elements,
+                      gssEapMechPrefix.length) == 0) {
+        return TRUE;
+    }
+
+    return FALSE;
+}
 
 OM_uint32
 gssEapOidToEnctype(OM_uint32 *minor,
@@ -105,7 +117,7 @@ gssEapEnctypeToOid(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    oid->elements = GSSEAP_MALLOC(gssEapMechPrefix.length + 2);
+    oid->elements = GSSEAP_MALLOC(gssEapMechPrefix.length + 1);
     if (oid->elements == NULL) {
         *minor = ENOMEM;
         free(oid);
@@ -157,6 +169,10 @@ gssEapIndicateMechs(OM_uint32 *minor,
 
     for (i = 0; etypes[i] != ENCTYPE_NULL; i++) {
         gss_OID mechOid;
+
+        /* XXX currently we aren't equipped to encode these enctypes */
+        if (etypes[i] < 0 || etypes[i] > 127)
+            continue;
 
         major = gssEapEnctypeToOid(minor, etypes[i], &mechOid);
         if (GSS_ERROR(major))
@@ -213,16 +229,12 @@ gssEapInternalizeOid(const gss_OID oid,
 
     *pInternalizedOid = GSS_C_NO_OID;
 
-    if (oidEqual(oid, &gssEapMechPrefix)) {
-        *pInternalizedOid = (const gss_OID)&gssEapMechPrefix;
-    } else {
-        for (i = 0;
-             i < sizeof(gssEapConcreteMechs) / sizeof(gssEapConcreteMechs[0]);
-             i++) {
-            if (oidEqual(oid, &gssEapConcreteMechs[i])) {
-                *pInternalizedOid = (const gss_OID)&gssEapConcreteMechs[i];
-                break;
-            }
+    for (i = 0;
+         i < sizeof(gssEapConcreteMechs) / sizeof(gssEapConcreteMechs[0]);
+         i++) {
+        if (oidEqual(oid, &gssEapConcreteMechs[i])) {
+            *pInternalizedOid = (const gss_OID)&gssEapConcreteMechs[i];
+            break;
         }
     }
 

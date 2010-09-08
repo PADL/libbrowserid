@@ -143,6 +143,9 @@ gssEapOidToEnctype(OM_uint32 *minor,
                    const gss_OID oid,
                    krb5_enctype *enctype);
 
+int
+gssEapIsMechanismOid(const gss_OID oid);
+
 /* util_name.c */
 OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);

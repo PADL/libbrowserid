@@ -38,4 +38,11 @@ gss_canonicalize_name(OM_uint32 *minor,
                       const gss_OID mech_type,
                       gss_name_t *output_name)
 {
+    if (mech_type != GSS_C_NULL_OID &&
+        !gssEapIsMechanismOid(mech_type)) {
+        *minor = 0;
+        return GSS_S_BAD_MECH;
+    }
+
+    return gss_duplicate_name(minor, input_name, output_name);
 }
