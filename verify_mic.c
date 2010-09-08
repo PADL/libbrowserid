@@ -34,10 +34,20 @@
 
 OM_uint32
 gss_verify_mic(OM_uint32 *minor,
-               gss_ctx_id_t context_handle,
+               gss_ctx_id_t ctx,
                gss_buffer_t message_buffer,
                gss_buffer_t message_token,
                gss_qop_t *qop_state)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    gss_iov_buffer_desc iov[2];
+    int conf_state;
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[0].buffer = *message_buffer;
+
+    iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER;
+    iov[1].buffer = *message_token;
+
+    return gssEapUnwrapOrVerifyMIC(minor, ctx, &conf_state, qop_state,
+                                   iov, 2, TOK_TYPE_MIC);
 }

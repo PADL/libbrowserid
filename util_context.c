@@ -87,8 +87,8 @@ gssEapReleaseContext(OM_uint32 *minor,
         releaseAcceptorContext(&ctx->acceptorCtx);
     }
 
-    if (ctx->encryptionKey != NULL) {
-        krb5_free_keyblock(ctx->kerberosCtx, ctx->encryptionKey);
+    if (ctx->rfc3961Key != NULL) {
+        krb5_free_keyblock(ctx->kerberosCtx, ctx->rfc3961Key);
     }
 
     if (ctx->kerberosCtx != NULL) {

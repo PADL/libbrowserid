@@ -68,27 +68,27 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     gss_iov_buffer_t header;
     gss_iov_buffer_t padding;
     gss_iov_buffer_t trailer;
-    unsigned char acceptor_flag;
+    unsigned char acceptorFlag;
     unsigned char *outbuf = NULL;
     unsigned char *tbuf = NULL;
-    int key_usage;
+    int keyUsage;
     size_t rrc = 0;
-    unsigned int gss_headerlen, gss_trailerlen;
-    size_t data_length, assoc_data_length;
+    unsigned int gssHeaderLen, gssTrailerLen;
+    size_t dataLen, assocDataLen;
 
     if (!CTX_IS_ESTABLISHED(ctx))
         return GSS_S_NO_CONTEXT;
 
-    acceptor_flag = CTX_IS_INITIATOR(ctx) ? 0 : TOK_FLAG_SENDER_IS_ACCEPTOR;
-    key_usage = ((toktype == TOK_TYPE_WRAP)
-                 ? (CTX_IS_INITIATOR(ctx)
-                    ? KEY_USAGE_INITIATOR_SEAL
-                    : KEY_USAGE_ACCEPTOR_SEAL)
-                 : (CTX_IS_INITIATOR(ctx)
-                    ? KEY_USAGE_INITIATOR_SIGN
-                    : KEY_USAGE_ACCEPTOR_SIGN));
+    acceptorFlag = CTX_IS_INITIATOR(ctx) ? 0 : TOK_FLAG_SENDER_IS_ACCEPTOR;
+    keyUsage = ((toktype == TOK_TYPE_WRAP)
+                ? (CTX_IS_INITIATOR(ctx)
+                   ? KEY_USAGE_INITIATOR_SEAL
+                   : KEY_USAGE_ACCEPTOR_SEAL)
+                : (CTX_IS_INITIATOR(ctx)
+                   ? KEY_USAGE_INITIATOR_SIGN
+                   : KEY_USAGE_ACCEPTOR_SIGN));
 
-    gssEapIovMessageLength(iov, iov_count, &data_length, &assoc_data_length);
+    gssEapIovMessageLength(iov, iov_count, &dataLen, &assocDataLen);
 
     header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
     if (header == NULL) {
@@ -103,68 +103,68 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
 
     if (toktype == TOK_TYPE_WRAP && conf_req_flag) {
-        unsigned int k5_headerlen, k5_trailerlen, k5_padlen;
+        unsigned int krbHeaderLen, krbTrailerLen, krbPadLen;
         size_t ec = 0;
-        size_t conf_data_length = data_length - assoc_data_length;
+        size_t confDataLen = dataLen - assocDataLen;
 
         code = krb5_c_crypto_length(ctx->kerberosCtx, ctx->encryptionType,
-                                    KRB5_CRYPTO_TYPE_HEADER, &k5_headerlen);
+                                    KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
         if (code != 0)
             goto cleanup;
 
         code = krb5_c_padding_length(ctx->kerberosCtx, ctx->encryptionType,
-                                     conf_data_length + 16 /* E(Header) */,
-                                     &k5_padlen);
+                                     confDataLen + 16 /* E(Header) */,
+                                     &krbPadLen);
         if (code != 0)
             goto cleanup;
 
-        if (k5_padlen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE)) {
+        if (krbPadLen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE)) {
             /* Windows rejects AEAD tokens with non-zero EC */
             code = krb5_c_block_size(ctx->kerberosCtx, ctx->encryptionType, &ec);
             if (code != 0)
                 goto cleanup;
         } else
-            ec = k5_padlen;
+            ec = krbPadLen;
 
         code = krb5_c_crypto_length(ctx->kerberosCtx, ctx->encryptionType,
-                                    KRB5_CRYPTO_TYPE_TRAILER, &k5_trailerlen);
+                                    KRB5_CRYPTO_TYPE_TRAILER, &krbTrailerLen);
         if (code != 0)
             goto cleanup;
 
-        gss_headerlen = 16 /* Header */ + k5_headerlen;
-        gss_trailerlen = ec + 16 /* E(Header) */ + k5_trailerlen;
+        gssHeaderLen = 16 /* Header */ + krbHeaderLen;
+        gssTrailerLen = ec + 16 /* E(Header) */ + krbTrailerLen;
 
         if (trailer == NULL) {
-            rrc = gss_trailerlen;
+            rrc = gssTrailerLen;
             /* Workaround for Windows bug where it rotates by EC + RRC */
             if (ctx->gssFlags & GSS_C_DCE_STYLE)
                 rrc -= ec;
-            gss_headerlen += gss_trailerlen;
+            gssHeaderLen += gssTrailerLen;
         }
 
         if (header->type & GSS_IOV_BUFFER_FLAG_ALLOCATE) {
-            code = gssEapAllocIov(header, (size_t) gss_headerlen);
-        } else if (header->buffer.length < gss_headerlen)
+            code = gssEapAllocIov(header, (size_t)gssHeaderLen);
+        } else if (header->buffer.length < gssHeaderLen)
             code = KRB5_BAD_MSIZE;
         if (code != 0)
             goto cleanup;
         outbuf = (unsigned char *)header->buffer.value;
-        header->buffer.length = (size_t) gss_headerlen;
+        header->buffer.length = (size_t)gssHeaderLen;
 
         if (trailer != NULL) {
             if (trailer->type & GSS_IOV_BUFFER_FLAG_ALLOCATE)
-                code = gssEapAllocIov(trailer, (size_t) gss_trailerlen);
-            else if (trailer->buffer.length < gss_trailerlen)
+                code = gssEapAllocIov(trailer, (size_t)gssTrailerLen);
+            else if (trailer->buffer.length < gssTrailerLen)
                 code = KRB5_BAD_MSIZE;
             if (code != 0)
                 goto cleanup;
-            trailer->buffer.length = (size_t) gss_trailerlen;
+            trailer->buffer.length = (size_t)gssTrailerLen;
         }
 
         /* TOK_ID */
         store_uint16_be((uint16_t)toktype, outbuf);
         /* flags */
-        outbuf[2] = (acceptor_flag
+        outbuf[2] = (acceptorFlag
                      | (conf_req_flag ? TOK_FLAG_WRAP_CONFIDENTIAL : 0)
                      | (0 ? TOK_FLAG_ACCEPTOR_SUBKEY : 0));
         /* filler */
@@ -189,8 +189,8 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
         code = gssEapEncrypt(ctx->kerberosCtx,
                              ((ctx->gssFlags & GSS_C_DCE_STYLE) != 0),
-                             ec, rrc, ctx->encryptionKey,
-                             key_usage, 0, iov, iov_count);
+                             ec, rrc, ctx->rfc3961Key,
+                             keyUsage, 0, iov, iov_count);
         if (code != 0)
             goto cleanup;
 
@@ -201,44 +201,44 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     } else if (toktype == TOK_TYPE_WRAP && !conf_req_flag) {
     wrap_with_checksum:
 
-        gss_headerlen = 16;
+        gssHeaderLen = 16;
 
         code = krb5_c_crypto_length(ctx->kerberosCtx, ctx->encryptionType,
                                     KRB5_CRYPTO_TYPE_CHECKSUM,
-                                    &gss_trailerlen);
+                                    &gssTrailerLen);
         if (code != 0)
             goto cleanup;
 
-        assert(gss_trailerlen <= 0xFFFF);
+        assert(gssTrailerLen <= 0xFFFF);
 
         if (trailer == NULL) {
-            rrc = gss_trailerlen;
-            gss_headerlen += gss_trailerlen;
+            rrc = gssTrailerLen;
+            gssHeaderLen += gssTrailerLen;
         }
 
         if (header->type & GSS_IOV_BUFFER_FLAG_ALLOCATE)
-            code = gssEapAllocIov(header, (size_t) gss_headerlen);
-        else if (header->buffer.length < gss_headerlen)
+            code = gssEapAllocIov(header, (size_t)gssHeaderLen);
+        else if (header->buffer.length < gssHeaderLen)
             code = KRB5_BAD_MSIZE;
         if (code != 0)
             goto cleanup;
         outbuf = (unsigned char *)header->buffer.value;
-        header->buffer.length = (size_t) gss_headerlen;
+        header->buffer.length = (size_t)gssHeaderLen;
 
         if (trailer != NULL) {
             if (trailer->type & GSS_IOV_BUFFER_FLAG_ALLOCATE)
-                code = gssEapAllocIov(trailer, (size_t) gss_trailerlen);
-            else if (trailer->buffer.length < gss_trailerlen)
+                code = gssEapAllocIov(trailer, (size_t)gssTrailerLen);
+            else if (trailer->buffer.length < gssTrailerLen)
                 code = KRB5_BAD_MSIZE;
             if (code != 0)
                 goto cleanup;
-            trailer->buffer.length = (size_t) gss_trailerlen;
+            trailer->buffer.length = (size_t)gssTrailerLen;
         }
 
         /* TOK_ID */
         store_uint16_be((uint16_t)toktype, outbuf);
         /* flags */
-        outbuf[2] = (acceptor_flag
+        outbuf[2] = (acceptorFlag
                      | (0 ? TOK_FLAG_ACCEPTOR_SUBKEY : 0));
         /* filler */
         outbuf[3] = 0xFF;
@@ -258,7 +258,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         store_64_be(ctx->sendSeq, outbuf + 8);
 
         code = gssEapSign(ctx->kerberosCtx, ctx->checksumType,
-                          rrc, ctx->encryptionKey, key_usage,
+                          rrc, ctx->rfc3961Key, keyUsage,
                           iov, iov_count);
         if (code != 0)
             goto cleanup;
@@ -267,7 +267,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
         if (toktype == TOK_TYPE_WRAP) {
             /* Fix up EC field */
-            store_uint16_be(gss_trailerlen, outbuf + 4);
+            store_uint16_be(gssTrailerLen, outbuf + 4);
             /* Fix up RRC field */
             store_uint16_be(rrc, outbuf + 6);
         }

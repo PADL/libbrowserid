@@ -73,11 +73,11 @@ unwrapToken(OM_uint32 *minor,
     gss_iov_buffer_t header;
     gss_iov_buffer_t padding;
     gss_iov_buffer_t trailer;
-    unsigned char acceptor_flag;
+    unsigned char acceptorFlag;
     unsigned char *ptr = NULL;
-    int key_usage;
+    int keyUsage;
     size_t rrc, ec;
-    size_t data_length, assoc_data_length;
+    size_t dataLen, assocDataLen;
     uint64_t seqnum;
     int valid = 0;
     krb5_cksumtype cksumtype;
@@ -97,16 +97,16 @@ unwrapToken(OM_uint32 *minor,
 
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
 
-    acceptor_flag = CTX_IS_INITIATOR(ctx) ? TOK_FLAG_SENDER_IS_ACCEPTOR : 0;
-    key_usage = (toktype == TOK_TYPE_WRAP
-                 ? (!CTX_IS_INITIATOR(ctx)
-                    ? KEY_USAGE_INITIATOR_SEAL
-                    : KEY_USAGE_ACCEPTOR_SEAL)
-                 : (!CTX_IS_INITIATOR(ctx)
-                    ? KEY_USAGE_INITIATOR_SIGN
-                    : KEY_USAGE_ACCEPTOR_SIGN));
+    acceptorFlag = CTX_IS_INITIATOR(ctx) ? TOK_FLAG_SENDER_IS_ACCEPTOR : 0;
+    keyUsage = (toktype == TOK_TYPE_WRAP
+                ? (!CTX_IS_INITIATOR(ctx)
+                   ? KEY_USAGE_INITIATOR_SEAL
+                   : KEY_USAGE_ACCEPTOR_SEAL)
+                : (!CTX_IS_INITIATOR(ctx)
+                   ? KEY_USAGE_INITIATOR_SIGN
+                   : KEY_USAGE_ACCEPTOR_SIGN));
 
-    gssEapIovMessageLength(iov, iov_count, &data_length, &assoc_data_length);
+    gssEapIovMessageLength(iov, iov_count, &dataLen, &assocDataLen);
 
     ptr = (unsigned char *)header->buffer.value;
 
@@ -115,7 +115,7 @@ unwrapToken(OM_uint32 *minor,
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
-    if ((ptr[2] & TOK_FLAG_SENDER_IS_ACCEPTOR) != acceptor_flag) {
+    if ((ptr[2] & TOK_FLAG_SENDER_IS_ACCEPTOR) != acceptorFlag) {
         return GSS_S_BAD_SIG;
     }
 
@@ -124,7 +124,7 @@ unwrapToken(OM_uint32 *minor,
     }
 
     if (toktype == TOK_TYPE_WRAP) {
-        unsigned int k5_trailerlen;
+        unsigned int krbTrailerLen;
 
         if (load_uint16_be(ptr) != TOK_TYPE_WRAP)
             goto defective;
@@ -136,10 +136,10 @@ unwrapToken(OM_uint32 *minor,
         seqnum = load_uint64_be(ptr + 8);
 
         code = krb5_c_crypto_length(ctx->kerberosCtx,
-                                    KRB_KEYTYPE(ctx->encryptionKey),
+                                    ctx->encryptionType,
                                     conf_flag ? KRB5_CRYPTO_TYPE_TRAILER :
                                     KRB5_CRYPTO_TYPE_CHECKSUM,
-                                    &k5_trailerlen);
+                                    &krbTrailerLen);
         if (code != 0) {
             *minor = code;
             return GSS_S_FAILURE;
@@ -147,7 +147,7 @@ unwrapToken(OM_uint32 *minor,
 
         /* Deal with RRC */
         if (trailer == NULL) {
-            size_t desired_rrc = k5_trailerlen;
+            size_t desired_rrc = krbTrailerLen;
 
             if (conf_flag) {
                 desired_rrc += 16; /* E(Header) */
@@ -169,8 +169,8 @@ unwrapToken(OM_uint32 *minor,
             /* Decrypt */
             code = gssEapDecrypt(ctx->kerberosCtx,
                                  ((ctx->gssFlags & GSS_C_DCE_STYLE) != 0),
-                                 ec, rrc, ctx->encryptionKey,
-                                 key_usage, 0, iov, iov_count);
+                                 ec, rrc, ctx->rfc3961Key,
+                                 keyUsage, 0, iov, iov_count);
             if (code != 0) {
                 *minor = code;
                 return GSS_S_BAD_SIG;
@@ -191,7 +191,7 @@ unwrapToken(OM_uint32 *minor,
             }
         } else {
             /* Verify checksum: note EC is checksum size here, not padding */
-            if (ec != k5_trailerlen)
+            if (ec != krbTrailerLen)
                 goto defective;
 
             /* Zero EC, RRC before computing checksum */
@@ -199,7 +199,7 @@ unwrapToken(OM_uint32 *minor,
             store_uint16_be(0, ptr + 6);
 
             code = gssEapVerify(ctx->kerberosCtx, cksumtype, rrc,
-                                ctx->encryptionKey, key_usage,
+                                ctx->rfc3961Key, keyUsage,
                                 iov, iov_count, &valid);
             if (code != 0 || valid == FALSE) {
                 *minor = code;
@@ -218,7 +218,7 @@ unwrapToken(OM_uint32 *minor,
         seqnum = load_uint64_be(ptr + 8);
 
         code = gssEapVerify(ctx->kerberosCtx, cksumtype, 0,
-                            ctx->encryptionKey, key_usage,
+                            ctx->rfc3961Key, keyUsage,
                             iov, iov_count, &valid);
         if (code != 0 || valid == FALSE) {
             *minor = code;
@@ -359,8 +359,8 @@ unwrapStream(OM_uint32 *minor,
 
     {
         size_t ec, rrc;
-        unsigned int k5_headerlen = 0;
-        unsigned int k5_trailerlen = 0;
+        unsigned int krbHeaderLen = 0;
+        unsigned int krbTrailerLen = 0;
 
         conf_req_flag = ((ptr[0] & TOK_FLAG_WRAP_CONFIDENTIAL) != 0);
         ec = conf_req_flag ? load_uint16_be(ptr + 2) : 0;
@@ -376,10 +376,10 @@ unwrapStream(OM_uint32 *minor,
 
         if (conf_req_flag) {
             code = krb5_c_crypto_length(context, ctx->encryptionType,
-                                        KRB5_CRYPTO_TYPE_HEADER, &k5_headerlen);
+                                        KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
             if (code != 0)
                 goto cleanup;
-            theader->buffer.length += k5_headerlen; /* length validated later */
+            theader->buffer.length += krbHeaderLen; /* length validated later */
         }
 
         /* no PADDING for CFX, EC is used instead */
@@ -387,12 +387,12 @@ unwrapStream(OM_uint32 *minor,
                                     conf_req_flag
                                       ? KRB5_CRYPTO_TYPE_TRAILER
                                       : KRB5_CRYPTO_TYPE_CHECKSUM,
-                                    &k5_trailerlen);
+                                    &krbTrailerLen);
         if (code != 0)
             goto cleanup;
 
         ttrailer->buffer.length = ec + (conf_req_flag ? 16 : 0 /* E(Header) */) +
-                                  k5_trailerlen;
+                                  krbTrailerLen;
         ttrailer->buffer.value = (unsigned char *)stream->buffer.value +
             stream->buffer.length - ttrailer->buffer.length;
     }

@@ -30,8 +30,6 @@
  * SUCH DAMAGE.
  */
 /*
- * lib/gssapi/krb5/prf.c
- *
  * Copyright 2009 by the Massachusetts Institute of Technology.
  * All Rights Reserved.
  *
@@ -53,8 +51,6 @@
  * M.I.T. makes no representations about the suitability of
  * this software for any purpose.  It is provided "as is" without express
  * or implied warranty.
- *
- *
  */
 
 #include "gssapiP_eap.h"
@@ -129,7 +125,7 @@ gss_pseudo_random(OM_uint32 *minor,
     while (desired_output_len > 0) {
         store_uint32_be(i, ns.data);
 
-        code = krb5_c_prf(ctx->kerberosCtx, ctx->encryptionKey, &ns, &t);
+        code = krb5_c_prf(ctx->kerberosCtx, ctx->rfc3961Key, &ns, &t);
         if (code != 0)
             goto cleanup;
 

@@ -34,10 +34,28 @@
 
 OM_uint32
 gss_get_mic(OM_uint32 *minor,
-            gss_ctx_id_t context_handle,
-            gss_qop_t qop_req,
+            gss_ctx_id_t ctx,
+            gss_qop_t qop_req __attribute__((__unused__)),
             gss_buffer_t message_buffer,
             gss_buffer_t message_token)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major;
+    gss_iov_buffer_desc iov[2];
+
+    message_token->value = NULL;
+    message_token->length = 0;
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[0].buffer = *message_buffer;
+
+    iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER | GSS_IOV_BUFFER_FLAG_ALLOCATE;
+    iov[1].buffer.value = NULL;
+    iov[1].buffer.length = 0;
+
+    major = gssEapWrapOrGetMIC(minor, ctx, FALSE, FALSE, iov, 2, TOK_TYPE_MIC);
+    if (major == GSS_S_COMPLETE) {
+        *message_token = iov[1].buffer;
+    }
+
+    return major;
 }

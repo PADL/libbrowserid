@@ -118,7 +118,7 @@ struct gss_ctx_id_struct {
     gss_OID mechanismUsed;
     krb5_enctype encryptionType;
     krb5_cksumtype checksumType;
-    krb5_keyblock *encryptionKey;
+    krb5_keyblock *rfc3961Key;
     gss_name_t initiatorName;
     gss_name_t acceptorName;
     time_t expiryTime;
