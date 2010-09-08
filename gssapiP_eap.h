@@ -60,6 +60,9 @@
 #define NAME_FLAG_SAML                      0x00000010
 #define NAME_FLAG_RADIUS                    0x00000020
 
+#define NAME_HAS_ATTRIBUTES(name)           ((name)->flags & \
+                                             (NAME_FLAG_SAML | NAME_FLAG_RADIUS))
+
 struct eap_gss_saml_assertion;
 struct eap_gss_avp_list;
 

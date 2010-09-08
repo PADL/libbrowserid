@@ -36,5 +36,5 @@ OM_uint32
 gss_indicate_mechs(OM_uint32 *minor,
                    gss_OID_set *mech_set)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    return gssEapIndicateMechs(minor, mech_set);
 }

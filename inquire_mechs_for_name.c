@@ -37,5 +37,5 @@ gss_inquire_mechs_for_name(OM_uint32 *minor,
                            const gss_name_t input_name,
                            gss_OID_set *mech_types)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    return gssEapIndicateMechs(minor, mech_types);
 }

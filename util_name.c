@@ -325,10 +325,8 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
     /*
      * Don't export a composite name if we don't have any attributes.
      */
-    if (composite &&
-        (name->flags & (NAME_FLAG_SAML | NAME_FLAG_RADIUS)) == 0) {
+    if (composite && !NAME_HAS_ATTRIBUTES(name))
         composite = 0;
-    }
 
     *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
     if (*minor != 0)
