@@ -39,5 +39,6 @@ gss_map_name_to_any(OM_uint32 *minor,
                     gss_buffer_t type_id,
                     gss_any_t *output)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    *minor = 0;
+    return GSS_S_UNAVAILABLE;
 }

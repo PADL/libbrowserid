@@ -48,6 +48,8 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
     OM_uint32 major = GSS_S_UNAVAILABLE;
     int i;
 
+    *data_set = GSS_C_NO_BUFFER_SET;
+
     for (i = 0; i < sizeof(inquireCredOps) / sizeof(inquireCredOps[0]); i++) {
         if (oidEqual(&inquireCredOps[i].oid, desired_object)) {
             major = (*inquireCredOps[i].inquire)(minor, cred_handle,

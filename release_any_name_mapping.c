@@ -38,5 +38,6 @@ gss_release_any_name_mapping(OM_uint32 *minor,
                              gss_buffer_t type_id,
                              gss_any_t *input)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    *minor = 0;
+    return GSS_S_UNAVAILABLE;
 }

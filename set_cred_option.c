@@ -32,13 +32,29 @@
 
 #include "gssapiP_eap.h"
 
-#if 0
+static struct {
+    gss_OID_desc oid;
+    OM_uint32 (*setOption)(OM_uint32 *, gss_cred_id_t *pCred,
+                           const gss_OID, const gss_buffer_t);
+} setCredOps[] = {
+};
+
 OM_uint32
 gssspi_set_cred_option(OM_uint32 *minor,
-                       gss_cred_id_t cred,
+                       gss_cred_id_t *cred,
                        const gss_OID desired_object,
                        const gss_buffer_t value)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major = GSS_S_UNAVAILABLE;
+    int i;
+
+    for (i = 0; i < sizeof(setCredOps) / sizeof(setCredOps[0]); i++) {
+        if (oidEqual(&setCredOps[i].oid, desired_object)) {
+            major = (*setCredOps[i].setOption)(minor, cred,
+                                              desired_object, value);
+            break;
+        }
+    }
+
+    return major;
 }
-#endif
