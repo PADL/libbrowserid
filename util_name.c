@@ -132,6 +132,12 @@ krbPrincipalToName(OM_uint32 *minor,
     name->krbPrincipal = *principal;
     *principal = NULL;
 
+    if (name->krbPrincipal->length == 1) {
+        name->flags |= NAME_FLAG_NAI;
+    } else {
+        name->flags |= NAME_FLAG_SERVICE;
+    }
+
     *minor = 0;
     return GSS_S_COMPLETE;
 }
