@@ -71,3 +71,94 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
 
     return *minor == 0 ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
+
+/*
+ * Derive a key for RFC 4121 use by using the following
+ * derivation function:
+ *
+ *    random-to-key(prf(random-to-key([e]msk), "rfc4121-gss-eap"))
+ *
+ * where random-to-key and prf are defined in RFC 3961.
+ */
+OM_uint32
+gssEapDeriveRFC3961Key(OM_uint32 *minor,
+                       gss_buffer_t msk,
+                       krb5_enctype enctype,
+                       krb5_keyblock *pKey)
+{
+    krb5_context context;
+    krb5_data data, prf;
+    krb5_keyblock kd;
+    krb5_error_code code;
+    size_t keybytes, keylength, prflength;
+
+    memset(pKey, 0, sizeof(*pKey));
+
+    GSSEAP_KRB_INIT(&context);
+
+    kd.contents = NULL;
+    kd.length = 0;
+    KRB_KEYTYPE(&kd) = enctype;
+
+    prf.data = NULL;
+    prf.length = 0;
+
+    code = krb5_c_keylengths(context, enctype, &keybytes, &keylength);
+    if (code != 0)
+        goto cleanup;
+
+    data.length = msk->length;
+    data.data = (char *)msk->value;
+
+    kd.contents = GSSEAP_MALLOC(keylength);
+    if (kd.contents == NULL) {
+        code = ENOMEM;
+        goto cleanup;
+    }
+    kd.length = keylength;
+
+    /* Convert MSK into a Kerberos key */
+    code = krb5_c_random_to_key(context, enctype, &data, &kd);
+    if (code != 0)
+        goto cleanup;
+
+    data.length = sizeof("rfc4121-gss-eap") - 1;
+    data.data = "rfc4121-gss-eap";
+
+    /* Plug derivation constant and key into PRF */
+    code = krb5_c_prf_length(context, enctype, &prflength);
+    if (code != 0)
+        goto cleanup;
+
+    prf.length = prflength;
+    prf.data = GSSEAP_MALLOC(prflength);
+    if (data.data == NULL) {
+        code = ENOMEM;
+        goto cleanup;
+    }
+
+    code = krb5_c_prf(context, &kd, &data, &prf);
+    if (code != 0)
+        goto cleanup;
+
+    /* Finally, convert PRF output into a new key which we will return */
+    code = krb5_c_random_to_key(context, enctype, &prf, &kd);
+    if (code != 0)
+        goto cleanup;
+
+    *pKey = kd;
+    kd.contents = NULL;
+
+cleanup:
+    if (kd.contents != NULL) {
+        memset(kd.contents, 0, kd.length);
+        GSSEAP_FREE(kd.contents);
+    }
+    if (prf.data != NULL) {
+        memset(prf.data, 0, prf.length);
+        GSSEAP_FREE(prf.data);
+    }
+
+    *minor = code;
+    return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
+}
