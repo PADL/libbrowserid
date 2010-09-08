@@ -144,6 +144,10 @@ int
 sequenceInit(void **vqueue, uint64_t seqnum,
              int do_replay, int do_sequence, int wide_nums);
 
+/* util_token.c */
+size_t
+tokenSize(const gss_OID_desc *mech, size_t body_size);
+
 /* Helper macros */
 #define GSSEAP_CALLOC(count, size)      (calloc((count), (size)))
 #define GSSEAP_FREE(ptr)                (free((ptr)))
@@ -216,6 +220,13 @@ load_uint64_be(const void *cvp)
     const unsigned char *p = (const unsigned char *)cvp;
 
     return ((uint64_t)load_uint32_be(p) << 32) | load_uint32_be(p + 4);
+}
+
+static inline int
+oidEqual(const gss_OID_desc *o1, const gss_OID_desc  *o2)
+{
+    return (o1->length == o2->length &&
+            memcmp(o1->elements, o2->elements, o1->length) == 0);
 }
 
 #endif /* _UTIL_H_ */

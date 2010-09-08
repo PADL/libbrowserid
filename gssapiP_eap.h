@@ -142,9 +142,13 @@ struct gss_ctx_id_struct {
 #define KEY_USAGE_INITIATOR_SIGN            515
 
 enum gss_eap_token_type {
-    TOK_TYPE_MIC     = 0x0404,
-    TOK_TYPE_WRAP    = 0x0504,
-    TOK_TYPE_DELETE  = 0x0405
+    TOK_TYPE_EAP_RESP  = 0x0601,
+    TOK_TYPE_EAP_REQ   = 0x0602,
+    TOK_TYPE_GSS_CB    = 0x0603,
+    TOK_TYPE_MIC       = 0x0404,
+    TOK_TYPE_WRAP      = 0x0504,
+    TOK_TYPE_DELETE    = 0x0405,
+    TOK_TYPE_NONE      = 0xFFFF
 };
 
 /* wrap_iov.c */

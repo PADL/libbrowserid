@@ -4,8 +4,10 @@ gssdir = $(libdir)/gss
 
 gss_LTLIBRARIES = libmech_eap.la
 
-libmech_eap_la_CFLAGS  = -DBUILD_GSSEAP_LIB -g -Wall -fno-strict-aliasing @EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
-libmech_eap_la_LDFLAGS = -export-symbols mech_eap.exports -version-info 0:0:0 @EAP_LDFLAGS@ @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
+libmech_eap_la_CFLAGS  = -DBUILD_GSSEAP_LIB -g -Wall -fno-strict-aliasing \
+                         @EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
+libmech_eap_la_LDFLAGS = -export-symbols mech_eap.exports -version-info 0:0:0 \
+                         @EAP_LDFLAGS@ @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
 libmech_eap_la_LIBADD  = @EAP_LIBS@ @KRB5_LIBS@
 
 libmech_eap_la_SOURCES =    			\
@@ -54,6 +56,7 @@ libmech_eap_la_SOURCES =    			\
 	util_crypt.c				\
 	util_name.c				\
 	util_ordering.c				\
+	util_token.c				\
 	verify_mic.c				\
 	wrap.c					\
 	wrap_iov.c				\
