@@ -10,7 +10,6 @@ gss_delete_sec_context
 gss_display_name
 gss_display_name_ext
 gss_duplicate_name
-gss_eap_mech
 gss_export_name
 gss_export_sec_context
 gss_get_mic
@@ -39,3 +38,7 @@ gss_wrap
 gss_wrap_iov
 gss_wrap_iov_length
 gss_wrap_size_limit
+GSS_EAP_MECHANISM
+GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM
+GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM
+GSS_EAP_NT_PRINCIPAL_NAME

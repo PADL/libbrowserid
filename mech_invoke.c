@@ -38,5 +38,6 @@ gssspi_mech_invoke(OM_uint32 *minor,
                    const gss_OID desired_object,
                    gss_buffer_t value)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    *minor = 0;
+    return GSS_S_UNAVAILABLE;
 }

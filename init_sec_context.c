@@ -92,7 +92,7 @@ peerSetBool(void *data, enum eapol_bool_var variable,
     OM_uint32 flag;
 
     if (ctx == GSS_C_NO_CONTEXT)
-        return FALSE;
+        return;
 
     flag = policyVariableToFlag(variable);
 
@@ -128,7 +128,7 @@ peerSetInt(void *data, enum eapol_int_var variable,
     gss_ctx_id_t ctx = data;
 
     if (ctx == GSS_C_NO_CONTEXT)
-        return FALSE;
+        return;
 
     assert(CTX_IS_INITIATOR(ctx));
 
@@ -139,3 +139,20 @@ peerSetInt(void *data, enum eapol_int_var variable,
     }
 }
 
+OM_uint32
+gss_init_sec_context(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     gss_ctx_id_t *pCtx,
+                     gss_name_t target_name,
+                     gss_OID mech_type,
+                     OM_uint32 req_flags,
+                     OM_uint32 time_req,
+                     gss_channel_bindings_t input_chan_bindings,
+                     gss_buffer_t input_token,
+                     gss_OID *actual_mech_type,
+                     gss_buffer_t output_token,
+                     OM_uint32 *ret_flags,
+                     OM_uint32 *time_rec)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
