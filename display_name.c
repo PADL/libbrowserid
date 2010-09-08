@@ -65,7 +65,7 @@ gss_display_name(OM_uint32 *minor,
 
     krb5_free_unparsed_name(krbContext, krbName);
 
-    *output_name_type = (gss_OID)GSS_EAP_NT_PRINCIPAL_NAME;
+    *output_name_type = GSS_EAP_NT_PRINCIPAL_NAME;
 
     return GSS_S_COMPLETE;
 }

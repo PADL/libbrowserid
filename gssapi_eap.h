@@ -39,12 +39,12 @@
 extern "C" {
 #endif /* __cplusplus */
 
-extern const gss_OID_desc *const GSS_EAP_MECHANISM;
-extern const gss_OID_desc *const GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM;
-extern const gss_OID_desc *const GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM;
+extern gss_OID GSS_EAP_MECHANISM;
+extern gss_OID GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM;
+extern gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM;
 
 /* name type */
-extern const gss_OID_desc *const GSS_EAP_NT_PRINCIPAL_NAME;
+extern gss_OID GSS_EAP_NT_PRINCIPAL_NAME;
 
 #ifdef __cplusplus
 }

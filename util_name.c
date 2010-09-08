@@ -60,8 +60,7 @@ static const gss_OID_desc gssEapNtPrincipalName = {
     12, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x02\x01"
 };
 
-const gss_OID_desc *const GSS_EAP_NT_PRINCIPAL_NAME =
-    &gssEapNtPrincipalName;
+gss_OID GSS_EAP_NT_PRINCIPAL_NAME = &gssEapNtPrincipalName;
 
 OM_uint32
 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName)
@@ -218,6 +217,7 @@ importExportedName(OM_uint32 *minor,
     int composite = 0;
     size_t len, remain;
     gss_buffer_desc buf;
+    enum gss_eap_token_type tok_type;
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -227,44 +227,39 @@ importExportedName(OM_uint32 *minor,
     if (remain < 6 + GSS_EAP_MECHANISM->length + 4)
         return GSS_S_BAD_NAME;
 
-    if (*p++ != 0x04)
+    /* TOK_ID */
+    tok_type = load_uint16_be(p);
+    if (tok_type != TOK_TYPE_EXPORT_NAME &&
+        tok_type != TOK_TYPE_EXPORT_NAME_COMPOSITE)
         return GSS_S_BAD_NAME;
-
-    switch (*p++) {
-    case 0x02:
-        composite = 1;
-        break;
-    case 0x01:
-        break;
-    default:
-        return GSS_S_BAD_NAME;
-        break;
-    }
+    p += 2;
     remain -= 2;
 
+    /* MECH_OID_LEN */
     len = load_uint16_be(p);
     if (len != 2 + GSS_EAP_MECHANISM->length)
         return GSS_S_BAD_NAME;
     p += 2;
     remain -= 2;
 
-    if (*p++ != 0x06)
+    /* MECH_OID */
+    if (p[0] != 0x06)
         return GSS_S_BAD_NAME;
-    if (*p++ != GSS_EAP_MECHANISM->length)
+    if (p[1] != GSS_EAP_MECHANISM->length)
         return GSS_S_BAD_MECH;
-    remain -= 2;
-
     if (memcmp(p, GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length))
         return GSS_S_BAD_MECH;
-    p += GSS_EAP_MECHANISM->length;
-    remain -= GSS_EAP_MECHANISM->length;
+    p += 2 + GSS_EAP_MECHANISM->length;
+    remain -= 2 + GSS_EAP_MECHANISM->length;
 
+    /* NAME_LEN */
     len = load_uint32_be(p);
     p += 4;
 
     if (remain < len)
         return GSS_S_BAD_NAME;
 
+    /* NAME */
     buf.length = len;
     buf.value = p;
 
@@ -315,7 +310,7 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
                            gss_buffer_t exportedName,
                            int composite)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major = GSS_S_FAILURE, tmpMinor;
     krb5_context krbContext;
     char *krbName = NULL;
     size_t krbNameLen;
@@ -325,12 +320,6 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
     exportedName->value = NULL;
 
     GSSEAP_KRB_INIT(&krbContext);
-
-    if (name == GSS_C_NO_NAME) {
-        *minor = EINVAL;
-        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
-    }
-
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
     /*
@@ -342,10 +331,8 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
     }
 
     *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
-    if (*minor != 0) {
-        major = GSS_S_FAILURE;
+    if (*minor != 0)
         goto cleanup;
-    }
     krbNameLen = strlen(krbName);
 
     exportedName->length = 6 + GSS_EAP_MECHANISM->length + 4 + krbNameLen;
@@ -357,26 +344,30 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
     exportedName->value = GSSEAP_MALLOC(exportedName->length);
     if (exportedName->value == NULL) {
         *minor = ENOMEM;
-        major = GSS_S_FAILURE;
         goto cleanup;
     }
 
+    /* TOK | MECH_OID_LEN */
     p = (unsigned char *)exportedName->value;
-    *p++ = 0x04;
-    if (composite) {
-        *p++ = 0x02;
-    } else {
-        *p++ = 0x01;
-    }
+    store_uint16_be(composite
+                        ? TOK_TYPE_EXPORT_NAME_COMPOSITE
+                        : TOK_TYPE_EXPORT_NAME,
+                    p);
+    p += 2;
     store_uint16_be(GSS_EAP_MECHANISM->length + 2, p);
     p += 2;
+
+    /* MECH_OID */
     *p++ = 0x06;
     *p++ = GSS_EAP_MECHANISM->length & 0xff;
     memcpy(p, GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length);
     p += GSS_EAP_MECHANISM->length;
 
+    /* NAME_LEN */
     store_uint32_be(krbNameLen, p);
     p += 4;
+
+    /* NAME */
     memcpy(p, krbName, krbNameLen);
     p += krbNameLen;
 

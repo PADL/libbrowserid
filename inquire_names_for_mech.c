@@ -37,5 +37,36 @@ gss_inquire_names_for_mech(OM_uint32 *minor,
                            gss_OID mechanism,
                            gss_OID_set *name_types)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major, tmpMinor;
+
+    if (!gssEapIsMechanismOid(mechanism)) {
+        *minor = 0;
+        return GSS_S_BAD_MECH;
+    }
+
+    major = gss_create_empty_oid_set(minor, name_types);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gss_add_oid_set_member(minor, GSS_C_NT_USER_NAME, name_types);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gss_add_oid_set_member(minor, GSS_C_NT_HOSTBASED_SERVICE, name_types);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gss_add_oid_set_member(minor, GSS_C_NT_EXPORT_NAME, name_types);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gss_add_oid_set_member(minor, GSS_EAP_NT_PRINCIPAL_NAME, name_types);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
+    if (GSS_ERROR(major))
+        gss_release_oid_set(&tmpMinor, name_types);
+
+    return major;
 }

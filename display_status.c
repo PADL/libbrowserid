@@ -47,8 +47,7 @@ gss_display_status(OM_uint32 *minor,
     status_string->length = 0;
     status_string->value = NULL;
 
-    if (mech_type != GSS_C_NO_OID &&
-        !gssEapIsMechanismOid(mech_type)) {
+    if (!gssEapIsMechanismOid(mech_type)) {
         return GSS_S_BAD_MECH;
     }
 
