@@ -176,6 +176,10 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
                            const gss_name_t name,
                            gss_buffer_t exportedName,
                            int composite);
+OM_uint32 gssEapImportName(OM_uint32 *minor,
+                           const gss_buffer_t input_name_buffer,
+                           gss_OID input_name_type,
+                           gss_name_t *output_name);
 
 /* util_oid.c */
 OM_uint32
@@ -193,10 +197,15 @@ decomposeOid(OM_uint32 *minor_status,
              int *suffix) ;
 
 static inline int
-oidEqual(const gss_OID_desc *o1, const gss_OID_desc  *o2)
+oidEqual(const gss_OID_desc *o1, const gss_OID_desc *o2)
 {
-    return (o1->length == o2->length &&
-            memcmp(o1->elements, o2->elements, o1->length) == 0);
+    if (o1 == GSS_C_NO_OID)
+        return (o2 == GSS_C_NO_OID);
+    else if (o2 == GSS_C_NO_OID)
+        return (o1 == GSS_C_NO_OID);
+    else
+        return (o1->length == o2->length &&
+                memcmp(o1->elements, o2->elements, o1->length) == 0);
 }
 
 /* util_ordering.c */
@@ -358,4 +367,24 @@ makeStringBuffer(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+static OM_uint32
+bufferToString(OM_uint32 *minor,
+               const gss_buffer_t buffer,
+               char **pString)
+{
+    char *s;
+
+    s = GSSEAP_MALLOC(buffer->length + 1);
+    if (s == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+    memcpy(s, buffer->value, buffer->length);
+    s[buffer->length] = '\0';
+
+    *pString = s;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
 #endif /* _UTIL_H_ */

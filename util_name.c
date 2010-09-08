@@ -118,6 +118,198 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     return GSS_S_COMPLETE;
 }
 
+static OM_uint32
+krbPrincipalToName(OM_uint32 *minor,
+                   krb5_principal *principal,
+                   gss_name_t *pName)
+{
+    OM_uint32 major;
+    gss_name_t name;
+
+    major = gssEapAllocName(minor, &name);
+    if (GSS_ERROR(major))
+        return major;
+
+    name->krbPrincipal = *principal;
+    *principal = NULL;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+importServiceName(OM_uint32 *minor,
+                  const gss_buffer_t nameBuffer,
+                  gss_name_t *pName)
+{
+    OM_uint32 major, tmpMinor;
+    krb5_context krbContext;
+    krb5_principal krbPrinc;
+    char *service, *host;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    major = bufferToString(minor, nameBuffer, &service);
+    if (GSS_ERROR(major))
+        return major;
+
+    host = strchr(service, '@');
+    if (host != NULL) {
+        *host = '\0';
+        host++;
+    }    
+
+    /* XXX this is probably NOT what we want to be doing */
+    *minor = krb5_sname_to_principal(krbContext, host, service,
+                                     KRB5_NT_SRV_HST, &krbPrinc);
+    if (*minor != 0) {
+        GSSEAP_FREE(service);
+        return GSS_S_FAILURE;
+    }
+
+    major = krbPrincipalToName(minor, &krbPrinc, pName);
+    if (GSS_ERROR(major)) {
+        krb5_free_principal(krbContext, krbPrinc);
+    }
+
+    GSSEAP_FREE(service);
+    return major;
+}
+
+static OM_uint32
+importUserName(OM_uint32 *minor,
+               const gss_buffer_t nameBuffer,
+               gss_name_t *pName)
+{
+    OM_uint32 major, tmpMinor;
+    krb5_context krbContext;
+    krb5_principal krbPrinc;
+    char *nameString;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    major = bufferToString(minor, nameBuffer, &nameString);
+    if (GSS_ERROR(major))
+        return major;
+
+    *minor = krb5_parse_name(krbContext, nameString, &krbPrinc);
+    if (*minor != 0) {
+        GSSEAP_FREE(nameString);
+        return GSS_S_FAILURE;
+    }
+
+    major = krbPrincipalToName(minor, &krbPrinc, pName);
+    if (GSS_ERROR(major)) {
+        krb5_free_principal(krbContext, krbPrinc);
+    }
+
+    GSSEAP_FREE(nameString);
+    return major;
+}
+
+static OM_uint32
+importExportedName(OM_uint32 *minor,
+                   const gss_buffer_t nameBuffer,
+                   gss_name_t *pName)
+{
+    OM_uint32 major, tmpMinor;
+    krb5_context krbContext;
+    unsigned char *p;
+    int composite = 0;
+    size_t len, remain;
+    gss_buffer_desc buf;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    p = (unsigned char *)nameBuffer->value;
+    remain = nameBuffer->length;
+
+    if (remain < 6 + GSS_EAP_MECHANISM->length + 4)
+        return GSS_S_BAD_NAME;
+
+    if (*p++ != 0x04)
+        return GSS_S_BAD_NAME;
+
+    switch (*p++) {
+    case 0x02:
+        composite = 1;
+        break;
+    case 0x01:
+        break;
+    default:
+        return GSS_S_BAD_NAME;
+        break;
+    }
+    remain -= 2;
+
+    len = load_uint16_be(p);
+    if (len != 2 + GSS_EAP_MECHANISM->length)
+        return GSS_S_BAD_NAME;
+    p += 2;
+    remain -= 2;
+
+    if (*p++ != 0x06)
+        return GSS_S_BAD_NAME;
+    if (*p++ != GSS_EAP_MECHANISM->length)
+        return GSS_S_BAD_MECH;
+    remain -= 2;
+
+    if (memcmp(p, GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length))
+        return GSS_S_BAD_MECH;
+    p += GSS_EAP_MECHANISM->length;
+    remain -= GSS_EAP_MECHANISM->length;
+
+    len = load_uint32_be(p);
+    p += 4;
+
+    if (remain < len)
+        return GSS_S_BAD_NAME;
+
+    buf.length = len;
+    buf.value = p;
+
+    p += len;
+    remain -= len;
+
+    if (composite == 0 && remain != 0)
+        return GSS_S_BAD_NAME;
+
+    major = importUserName(minor, &buf, pName);
+    if (GSS_ERROR(major))
+        return major;
+
+    /* XXX TODO composite handling */
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32 gssEapImportName(OM_uint32 *minor,
+                           const gss_buffer_t nameBuffer,
+                           gss_OID nameType,
+                           gss_name_t *name)
+{
+    OM_uint32 major, tmpMinor;
+
+    *name = GSS_C_NO_NAME;
+
+    if (nameType == GSS_C_NULL_OID ||
+        oidEqual(nameType, GSS_C_NT_USER_NAME) ||
+        oidEqual(nameType, GSS_EAP_NT_PRINCIPAL_NAME))
+        major = importUserName(minor, nameBuffer, name);
+    else if (oidEqual(nameType, GSS_C_NT_HOSTBASED_SERVICE) ||
+               oidEqual(nameType, GSS_C_NT_HOSTBASED_SERVICE_X))
+        major = importServiceName(minor, nameBuffer, name);
+    else if (oidEqual(nameType, GSS_C_NT_EXPORT_NAME))
+        major = importExportedName(minor, nameBuffer, name);
+    else
+        major = GSS_S_BAD_NAMETYPE;
+
+    if (GSS_ERROR(major))
+        gssEapReleaseName(&tmpMinor, name);
+
+    return major;
+}
+
 OM_uint32 gssEapExportName(OM_uint32 *minor,
                            const gss_name_t name,
                            gss_buffer_t exportedName,
@@ -156,13 +348,13 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
     }
     krbNameLen = strlen(krbName);
 
-    exportedName->length = 6 + GSS_EAP_MECHANISM->length + krbNameLen;
+    exportedName->length = 6 + GSS_EAP_MECHANISM->length + 4 + krbNameLen;
     if (composite) {
         /* TODO: export SAML/AVP, this is pending specification */
         GSSEAP_NOT_IMPLEMENTED;
     }
 
-    exportedName->value = GSSEAP_MALLOC(exportedName->value);
+    exportedName->value = GSSEAP_MALLOC(exportedName->length);
     if (exportedName->value == NULL) {
         *minor = ENOMEM;
         major = GSS_S_FAILURE;

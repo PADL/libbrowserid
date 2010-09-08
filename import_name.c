@@ -38,5 +38,6 @@ gss_import_name(OM_uint32 *minor,
                 gss_OID input_name_type,
                 gss_name_t *output_name)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    return gssEapImportName(minor, import_name_buffer,
+                            input_name_type, output_name);
 }
