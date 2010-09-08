@@ -52,6 +52,8 @@ gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         return GSS_S_FAILURE;
     }
 
+    cred->expiryTime = ~0;
+
     *pCred = cred;
 
     *minor = 0;
@@ -63,7 +65,6 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
     OM_uint32 tmpMinor;
     gss_cred_id_t cred = *pCred;
-    krb5_context kerbCtx = NULL;
 
     if (cred == GSS_C_NO_CREDENTIAL) {
         return GSS_S_COMPLETE;
@@ -83,4 +84,83 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 
     *minor = 0;
     return GSS_S_COMPLETE;
+}
+
+OM_uint32
+gssEapAcquireCred(OM_uint32 *minor,
+                  const gss_name_t desiredName,
+                  const gss_buffer_t password,
+                  OM_uint32 timeReq,
+                  const gss_OID_set desiredMechs,
+                  int credUsage,
+                  gss_cred_id_t *pCred,
+                  gss_OID_set *pActualMechs,
+                  OM_uint32 *timeRec)
+{
+    OM_uint32 major, tmpMinor;
+    gss_cred_id_t cred;
+
+    *pCred = GSS_C_NO_CREDENTIAL;
+
+    major = gssEapAllocCred(minor, &cred);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (desiredName != GSS_C_NO_NAME) {
+        major = gss_duplicate_name(minor, desiredName, &cred->name);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    } else {
+        cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
+    }
+
+    if (password != GSS_C_NO_BUFFER) {
+        major = duplicateBuffer(minor, password, &cred->password);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        cred->flags |= CRED_FLAG_PASSWORD;
+    }
+
+    major = gssEapValidateMechs(minor, desiredMechs);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = duplicateOidSet(minor, desiredMechs, &cred->mechanisms);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    switch (credUsage) {
+    case GSS_C_BOTH:
+        cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
+        break;
+    case GSS_C_INITIATE:
+        cred->flags |= CRED_FLAG_INITIATE;
+        break;
+    case GSS_C_ACCEPT:
+        cred->flags |= CRED_FLAG_ACCEPT;
+        break;
+    default:
+        major = GSS_S_FAILURE;
+        goto cleanup;
+        break;
+    }
+
+    if (pActualMechs != NULL) {
+        major = duplicateOidSet(minor, cred->mechanisms, pActualMechs);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if (timeRec != NULL)
+        *timeRec = GSS_C_INDEFINITE;
+
+    *pCred = cred;
+    major = GSS_S_COMPLETE;
+
+cleanup:
+    if (GSS_ERROR(major))
+        gssEapReleaseCred(&tmpMinor, &cred);
+
+    return major;
 }

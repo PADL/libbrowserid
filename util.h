@@ -91,6 +91,17 @@ OM_uint32 gssEapReleaseContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 OM_uint32 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 OM_uint32 gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 
+OM_uint32
+gssEapAcquireCred(OM_uint32 *minor,
+                  const gss_name_t desiredName,
+                  const gss_buffer_t password,
+                  OM_uint32 timeReq,
+                  const gss_OID_set desiredMechs,
+                  int cred_usage,
+                  gss_cred_id_t *pCred,
+                  gss_OID_set *pActualMechs,
+                  OM_uint32 *timeRec);
+
 /* util_crypt.c */
 int
 gssEapEncrypt(krb5_context context, int dce_style, size_t ec,
@@ -169,6 +180,10 @@ gssEapOidToEnctype(OM_uint32 *minor,
 int
 gssEapIsMechanismOid(const gss_OID oid);
 
+OM_uint32
+gssEapValidateMechs(OM_uint32 *minor,
+                   const gss_OID_set mechs);
+
 /* util_name.c */
 OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);
@@ -195,6 +210,11 @@ decomposeOid(OM_uint32 *minor_status,
              size_t prefix_len,
              gss_OID_desc *oid,
              int *suffix) ;
+
+OM_uint32
+duplicateOidSet(OM_uint32 *minor,
+                const gss_OID_set src,
+                gss_OID_set *dst);
 
 static inline int
 oidEqual(const gss_OID_desc *o1, const gss_OID_desc *o2)
@@ -389,4 +409,31 @@ bufferToString(OM_uint32 *minor,
     *minor = 0;
     return GSS_S_COMPLETE;
 }
+
+static OM_uint32
+duplicateBuffer(OM_uint32 *minor,
+                const gss_buffer_t src,
+                gss_buffer_t dst)
+{
+    dst->length = 0;
+    dst->value = NULL;
+
+    if (src == GSS_C_NO_BUFFER)
+        return GSS_S_COMPLETE;
+
+    dst->value = GSSEAP_MALLOC(src->length + 1);
+    if (dst->value == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    dst->length = src->length;
+    memcpy(dst->value, src->value, dst->length);
+
+    ((unsigned char *)dst->value)[dst->length] = '\0';
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
 #endif /* _UTIL_H_ */

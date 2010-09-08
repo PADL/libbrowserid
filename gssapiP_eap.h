@@ -74,8 +74,8 @@ struct gss_name_struct {
     struct eap_gss_avp_list *avps;
 };
 
-#define CRED_FLAG_INITIATOR                 0x00000001
-#define CRED_FLAG_ACCEPTOR                  0x00000002
+#define CRED_FLAG_INITIATE                  0x00000001
+#define CRED_FLAG_ACCEPT                    0x00000002
 #define CRED_FLAG_DEFAULT_IDENTITY          0x00000004
 #define CRED_FLAG_PASSWORD                  0x00000008
 
@@ -84,6 +84,7 @@ struct gss_cred_id_struct {
     OM_uint32 flags;
     gss_name_t name;
     gss_buffer_desc password;
+    gss_OID_set mechanisms;
     time_t expiryTime;
 };
 

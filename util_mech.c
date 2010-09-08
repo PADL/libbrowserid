@@ -47,12 +47,12 @@
  *        mechInvoke(5)
  */
 
-static const gss_OID_desc gssEapMechPrefix = {
+static gss_OID_desc gssEapMechPrefix = {
     /* Note that alone this is not a valid DER encoded OID */
     11, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x00"
 };
 
-static const gss_OID_desc gssEapConcreteMechs[] = {
+static gss_OID_desc gssEapConcreteMechs[] = {
     /* 1.3.6.1.4.1.5322.21.1  */
     { 11, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01" },
     /* 1.3.6.1.4.1.5322.21.1.17 */
@@ -79,6 +79,28 @@ gssEapIsMechanismOid(const gss_OID oid)
     }
 
     return FALSE;
+}
+
+OM_uint32
+gssEapValidateMechs(OM_uint32 *minor,
+                    const gss_OID_set mechs)
+{
+    int i;
+
+    *minor = 0;
+
+    if (mechs == GSS_C_NO_OID_SET) {
+        return GSS_S_COMPLETE;
+    }
+
+    for (i = 0; i < mechs->count; i++) {
+        gss_OID oid = &mechs->elements[i];
+
+        if (!gssEapIsMechanismOid(oid))
+            return GSS_S_BAD_MECH;
+    }
+
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32

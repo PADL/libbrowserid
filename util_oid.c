@@ -184,3 +184,34 @@ gssEapReleaseOid(OM_uint32 *minor, gss_OID *oid)
     return major;
 }
 #endif
+
+OM_uint32
+duplicateOidSet(OM_uint32 *minor,
+                const gss_OID_set src,
+                gss_OID_set *dst)
+{
+    OM_uint32 major, tmpMinor;
+    int i;
+
+    if (src == GSS_C_NO_OID_SET) {
+        *dst = GSS_C_NO_OID_SET;
+        return GSS_S_COMPLETE;
+    }
+
+    major = gss_create_empty_oid_set(minor, dst);
+    if (GSS_ERROR(major))
+        return major;
+
+    for (i = 0; i < src->count; i++) {
+        gss_OID oid = &src->elements[i];
+
+        major = gss_add_oid_set_member(minor, oid, dst);
+        if (GSS_ERROR(major))
+            break;
+    }
+
+    if (GSS_ERROR(major))
+        gss_release_oid_set(&tmpMinor, dst);
+
+    return major;
+}

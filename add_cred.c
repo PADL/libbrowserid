@@ -32,6 +32,11 @@
 
 #include "gssapiP_eap.h"
 
+/*
+ * Note that this shouldn't really be required to be implemented by anything
+ * apart from the mechanism glue layer. However, Heimdal does call into the
+ * mechanism here.
+ */
 OM_uint32
 gss_add_cred(OM_uint32 *minor,
              gss_cred_id_t input_cred_handle,
@@ -45,5 +50,33 @@ gss_add_cred(OM_uint32 *minor,
              OM_uint32 *initiator_time_rec,
              OM_uint32 *acceptor_time_rec)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major;
+    OM_uint32 time_req, time_rec = 0;
+    gss_OID_set_desc mechs;
+
+    *output_cred_handle = GSS_C_NO_CREDENTIAL;
+
+    if (cred_usage == GSS_C_ACCEPT)
+        time_req = acceptor_time_req;
+    else
+        time_req = initiator_time_req;
+
+    mechs.count = 1;
+    mechs.elements = desired_mech;
+
+    major = gss_acquire_cred(minor,
+                             desired_name,
+                             time_req,
+                             &mechs,
+                             cred_usage,
+                             output_cred_handle,
+                             actual_mechs,
+                             &time_rec);
+
+    if (initiator_time_rec != NULL)
+        *initiator_time_rec = time_rec;
+    if (acceptor_time_rec != NULL)
+        *acceptor_time_rec = time_rec;
+
+    return major;
 }

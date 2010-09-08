@@ -43,5 +43,7 @@ gss_acquire_cred_with_password(OM_uint32 *minor,
                                gss_OID_set *actual_mechs,
                                OM_uint32 *time_rec)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    return gssEapAcquireCred(minor, desired_name, password,
+                             time_req, desired_mechs, cred_usage,
+                             output_cred_handle, actual_mechs, time_rec);
 }
