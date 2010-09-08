@@ -38,5 +38,8 @@ gss_display_name_ext(OM_uint32 *minor,
                      gss_OID display_as_name_type,
                      gss_buffer_t display_name)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    *minor = 0;
+    display_name->length = 0;
+    display_name->buffer = NULL;
+    return GSS_S_UNAVAILABLE;
 }
