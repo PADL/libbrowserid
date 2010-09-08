@@ -75,7 +75,8 @@ gssEapChecksum(krb5_context context,
     if (verify)
         *valid = FALSE;
 
-    code = krb5_c_crypto_length(context, KRB_KEYTYPE(key), KRB5_CRYPTO_TYPE_CHECKSUM, &k5_checksumlen);
+    code = krb5_c_crypto_length(context, KRB_KEYTYPE(key),
+                                KRB5_CRYPTO_TYPE_CHECKSUM, &k5_checksumlen);
     if (code != 0)
         return code;
 
@@ -102,7 +103,7 @@ gssEapChecksum(krb5_context context,
 
     /* Data */
     for (j = 0; j < iov_count; j++) {
-        kiov[i].flags = gssEapTranslateCryptoFlag(iov[j].type);
+        kiov[i].flags = gssEapMapCryptoFlag(iov[j].type);
         kiov[i].data.length = iov[j].buffer.length;
         kiov[i].data.data = (char *)iov[j].buffer.value;
         i++;

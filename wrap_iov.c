@@ -76,18 +76,17 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     unsigned int gss_headerlen, gss_trailerlen;
     size_t data_length, assoc_data_length;
 
-    if (!CTX_IS_ESTABLISHED(ctx)) {
+    if (!CTX_IS_ESTABLISHED(ctx))
         return GSS_S_NO_CONTEXT;
-    }
 
     acceptor_flag = CTX_IS_INITIATOR(ctx) ? 0 : TOK_FLAG_SENDER_IS_ACCEPTOR;
     key_usage = ((toktype == TOK_TYPE_WRAP)
                  ? (CTX_IS_INITIATOR(ctx)
-                    ? KRB_USAGE_INITIATOR_SEAL
-                    : KRB_USAGE_ACCEPTOR_SEAL)
+                    ? KEY_USAGE_INITIATOR_SEAL
+                    : KEY_USAGE_ACCEPTOR_SEAL)
                  : (CTX_IS_INITIATOR(ctx)
-                    ? KRB_USAGE_INITIATOR_SIGN
-                    : KRB_USAGE_ACCEPTOR_SIGN));
+                    ? KEY_USAGE_INITIATOR_SIGN
+                    : KEY_USAGE_ACCEPTOR_SIGN));
 
     gssEapIovMessageLength(iov, iov_count, &data_length, &assoc_data_length);
 
@@ -163,7 +162,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         }
 
         /* TOK_ID */
-        store_16_be((uint16_t)toktype, outbuf);
+        store_uint16_be((uint16_t)toktype, outbuf);
         /* flags */
         outbuf[2] = (acceptor_flag
                      | (conf_req_flag ? TOK_FLAG_WRAP_CONFIDENTIAL : 0)
@@ -171,12 +170,15 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         /* filler */
         outbuf[3] = 0xFF;
         /* EC */
-        store_16_be(ec, outbuf + 4);
+        store_uint16_be(ec, outbuf + 4);
         /* RRC */
-        store_16_be(0, outbuf + 6);
+        store_uint16_be(0, outbuf + 6);
         store_64_be(ctx->sendSeq, outbuf + 8);
 
-        /* EC | copy of header to be encrypted, located in (possibly rotated) trailer */
+        /*
+         * EC | copy of header to be encrypted, located in
+         * (possibly rotated) trailer
+         */
         if (trailer == NULL)
             tbuf = (unsigned char *)header->buffer.value + 16; /* Header */
         else
@@ -193,7 +195,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
             goto cleanup;
 
         /* RRC */
-        store_16_be(rrc, outbuf + 6);
+        store_uint16_be(rrc, outbuf + 6);
 
         ctx->sendSeq++;
     } else if (toktype == TOK_TYPE_WRAP && !conf_req_flag) {
@@ -234,7 +236,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         }
 
         /* TOK_ID */
-        store_16_be((uint16_t)toktype, outbuf);
+        store_uint16_be((uint16_t)toktype, outbuf);
         /* flags */
         outbuf[2] = (acceptor_flag
                      | (0 ? TOK_FLAG_ACCEPTOR_SUBKEY : 0));
@@ -245,13 +247,13 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
              * checksum length later.
              */
             /* EC */
-            store_16_be(0, outbuf + 4);
+            store_uint16_be(0, outbuf + 4);
             /* RRC */
-            store_16_be(0, outbuf + 6);
+            store_uint16_be(0, outbuf + 6);
         } else {
             /* MIC and DEL store 0xFF in EC and RRC */
-            store_16_be(0xFFFF, outbuf + 4);
-            store_16_be(0xFFFF, outbuf + 6);
+            store_uint16_be(0xFFFF, outbuf + 4);
+            store_uint16_be(0xFFFF, outbuf + 6);
         }
         store_64_be(ctx->sendSeq, outbuf + 8);
 
@@ -265,9 +267,9 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
         if (toktype == TOK_TYPE_WRAP) {
             /* Fix up EC field */
-            store_16_be(gss_trailerlen, outbuf + 4);
+            store_uint16_be(gss_trailerlen, outbuf + 4);
             /* Fix up RRC field */
-            store_16_be(rrc, outbuf + 6);
+            store_uint16_be(rrc, outbuf + 6);
         }
     } else if (toktype == TOK_TYPE_MIC) {
         trailer = NULL;

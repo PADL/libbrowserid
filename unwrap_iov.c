@@ -30,8 +30,6 @@
  * SUCH DAMAGE.
  */
 /*
- * lib/gssapi/krb5/k5sealv3iov.c
- *
  * Copyright 2008 by the Massachusetts Institute of Technology.
  * All Rights Reserved.
  *
@@ -53,20 +51,23 @@
  * M.I.T. makes no representations about the suitability of
  * this software for any purpose.  It is provided "as is" without express
  * or implied warranty.
- *
- *
  */
 
 #include "gssapiP_eap.h"
 
+/*
+ * Caller must provide TOKEN | DATA | PADDING | TRAILER, except
+ * for DCE in which case it can just provide TOKEN | DATA (must
+ * guarantee that DATA is padded)
+ */
 OM_uint32
-gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
-                        gss_ctx_id_t ctx,
-                        int *conf_state,
-                        gss_qop_t *qop_state,
-                        gss_iov_buffer_desc *iov,
-                        int iov_count,
-                        enum gss_eap_token_type toktype)
+unwrapToken(OM_uint32 *minor,
+            gss_ctx_id_t ctx,
+            int *conf_state,
+            gss_qop_t *qop_state,
+            gss_iov_buffer_desc *iov,
+            int iov_count,
+            enum gss_eap_token_type toktype)
 {
     OM_uint32 code;
     gss_iov_buffer_t header;
@@ -78,17 +79,14 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
     size_t rrc, ec;
     size_t data_length, assoc_data_length;
     uint64_t seqnum;
-    krb5_boolean valid;
+    int valid = 0;
     krb5_cksumtype cksumtype;
     int conf_flag = 0;
 
-    *minor_status = 0;
+    *minor = 0;
 
     if (qop_state != NULL)
         *qop_state = GSS_C_QOP_DEFAULT;
-
-    if (!CTX_IS_ESTABLISHED(ctx))
-        return GSS_S_NO_CONTEXT;
 
     header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
     assert(header != NULL);
@@ -102,18 +100,18 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
     acceptor_flag = CTX_IS_INITIATOR(ctx) ? TOK_FLAG_SENDER_IS_ACCEPTOR : 0;
     key_usage = (toktype == TOK_TYPE_WRAP
                  ? (!CTX_IS_INITIATOR(ctx)
-                    ? KRB_USAGE_INITIATOR_SEAL
-                    : KRB_USAGE_ACCEPTOR_SEAL)
+                    ? KEY_USAGE_INITIATOR_SEAL
+                    : KEY_USAGE_ACCEPTOR_SEAL)
                  : (!CTX_IS_INITIATOR(ctx)
-                    ? KRB_USAGE_INITIATOR_SIGN
-                    : KRB_USAGE_ACCEPTOR_SIGN));
+                    ? KEY_USAGE_INITIATOR_SIGN
+                    : KEY_USAGE_ACCEPTOR_SIGN));
 
     gssEapIovMessageLength(iov, iov_count, &data_length, &assoc_data_length);
 
     ptr = (unsigned char *)header->buffer.value;
 
     if (header->buffer.length < 16) {
-        *minor_status = 0;
+        *minor = 0;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -128,14 +126,14 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
     if (toktype == TOK_TYPE_WRAP) {
         unsigned int k5_trailerlen;
 
-        if (load_16_be(ptr) != TOK_TYPE_WRAP)
+        if (load_uint16_be(ptr) != TOK_TYPE_WRAP)
             goto defective;
         conf_flag = ((ptr[2] & TOK_FLAG_WRAP_CONFIDENTIAL) != 0);
         if (ptr[3] != 0xFF)
             goto defective;
-        ec = load_16_be(ptr + 4);
-        rrc = load_16_be(ptr + 6);
-        seqnum = load_64_be(ptr + 8);
+        ec = load_uint16_be(ptr + 4);
+        rrc = load_uint16_be(ptr + 6);
+        seqnum = load_uint64_be(ptr + 8);
 
         code = krb5_c_crypto_length(ctx->kerberosCtx,
                                     KRB_KEYTYPE(ctx->encryptionKey),
@@ -143,7 +141,7 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
                                     KRB5_CRYPTO_TYPE_CHECKSUM,
                                     &k5_trailerlen);
         if (code != 0) {
-            *minor_status = code;
+            *minor = code;
             return GSS_S_FAILURE;
         }
 
@@ -174,7 +172,7 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
                                  ec, rrc, ctx->encryptionKey,
                                  key_usage, 0, iov, iov_count);
             if (code != 0) {
-                *minor_status = code;
+                *minor = code;
                 return GSS_S_BAD_SIG;
             }
 
@@ -184,11 +182,11 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
             else
                 althdr = (unsigned char *)trailer->buffer.value + ec;
 
-            if (load_16_be(althdr) != TOK_TYPE_WRAP
+            if (load_uint16_be(althdr) != TOK_TYPE_WRAP
                 || althdr[2] != ptr[2]
                 || althdr[3] != ptr[3]
                 || memcmp(althdr + 8, ptr + 8, 8) != 0) {
-                *minor_status = 0;
+                *minor = 0;
                 return GSS_S_BAD_SIG;
             }
         } else {
@@ -197,45 +195,45 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
                 goto defective;
 
             /* Zero EC, RRC before computing checksum */
-            store_16_be(0, ptr + 4);
-            store_16_be(0, ptr + 6);
+            store_uint16_be(0, ptr + 4);
+            store_uint16_be(0, ptr + 6);
 
             code = gssEapVerify(ctx->kerberosCtx, cksumtype, rrc,
                                 ctx->encryptionKey, key_usage,
                                 iov, iov_count, &valid);
             if (code != 0 || valid == FALSE) {
-                *minor_status = code;
+                *minor = code;
                 return GSS_S_BAD_SIG;
             }
         }
 
-        code = g_order_check(&ctx->seqState, seqnum);
+        code = sequenceCheck(&ctx->seqState, seqnum);
     } else if (toktype == TOK_TYPE_MIC) {
-        if (load_16_be(ptr) != TOK_TYPE_MIC)
+        if (load_uint16_be(ptr) != TOK_TYPE_MIC)
             goto defective;
 
     verify_mic_1:
         if (ptr[3] != 0xFF)
             goto defective;
-        seqnum = load_64_be(ptr + 8);
+        seqnum = load_uint64_be(ptr + 8);
 
         code = gssEapVerify(ctx->kerberosCtx, cksumtype, 0,
                             ctx->encryptionKey, key_usage,
                             iov, iov_count, &valid);
         if (code != 0 || valid == FALSE) {
-            *minor_status = code;
+            *minor = code;
             return GSS_S_BAD_SIG;
         }
-        code = g_order_check(&ctx->seqState, seqnum);
+        code = sequenceCheck(&ctx->seqState, seqnum);
     } else if (toktype == TOK_TYPE_DELETE) {
-        if (load_16_be(ptr) != TOK_TYPE_DELETE)
+        if (load_uint16_be(ptr) != TOK_TYPE_DELETE)
             goto defective;
         goto verify_mic_1;
     } else {
         goto defective;
     }
 
-    *minor_status = 0;
+    *minor = 0;
 
     if (conf_state != NULL)
         *conf_state = conf_flag;
@@ -243,9 +241,240 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
     return code;
 
 defective:
-    *minor_status = 0;
+    *minor = 0;
 
     return GSS_S_DEFECTIVE_TOKEN;
+}
+
+int
+rotateLeft(void *ptr, size_t bufsiz, size_t rc)
+{
+    void *tbuf;
+
+    if (bufsiz == 0)
+        return 0;
+    rc = rc % bufsiz;
+    if (rc == 0)
+        return 0;
+
+    tbuf = GSSEAP_MALLOC(rc);
+    if (tbuf == NULL)
+        return ENOMEM;
+
+    memcpy(tbuf, ptr, rc);
+    memmove(ptr, (char *)ptr + rc, bufsiz - rc);
+    memcpy((char *)ptr + bufsiz - rc, tbuf, rc);
+    GSSEAP_FREE(tbuf);
+
+    return 0;
+}
+
+/*
+ * Split a STREAM | SIGN_DATA | DATA into
+ *         HEADER | SIGN_DATA | DATA | PADDING | TRAILER
+ */
+static OM_uint32
+unwrapStream(OM_uint32 *minor,
+             gss_ctx_id_t ctx,
+             int *conf_state,
+             gss_qop_t *qop_state,
+             gss_iov_buffer_desc *iov,
+             int iov_count,
+             enum gss_eap_token_type toktype)
+{
+    unsigned char *ptr;
+    OM_uint32 code = 0, major = GSS_S_FAILURE;
+    krb5_context context = ctx->kerberosCtx;
+    int conf_req_flag, toktype2;
+    int i = 0, j;
+    gss_iov_buffer_desc *tiov = NULL;
+    gss_iov_buffer_t stream, data = NULL;
+    gss_iov_buffer_t theader, tdata = NULL, tpadding, ttrailer;
+
+    assert(toktype == TOK_TYPE_WRAP);
+
+    if (toktype != TOK_TYPE_WRAP || (ctx->gssFlags & GSS_C_DCE_STYLE)) {
+        code = EINVAL;
+        goto cleanup;
+    }
+
+    stream = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_STREAM);
+    assert(stream != NULL);
+
+    if (stream->buffer.length < 16) {
+        major = GSS_S_DEFECTIVE_TOKEN;
+        goto cleanup;
+    }
+
+    ptr = (unsigned char *)stream->buffer.value;
+    toktype2 = load_uint16_be(ptr);
+    ptr += 2;
+
+    tiov = (gss_iov_buffer_desc *)GSSEAP_CALLOC((size_t)iov_count + 2,
+                                                sizeof(gss_iov_buffer_desc));
+    if (tiov == NULL) {
+        code = ENOMEM;
+        goto cleanup;
+    }
+
+    /* HEADER */
+    theader = &tiov[i++];
+    theader->type = GSS_IOV_BUFFER_TYPE_HEADER;
+    theader->buffer.value = stream->buffer.value;
+    theader->buffer.length = 16;
+
+    /* n[SIGN_DATA] | DATA | m[SIGN_DATA] */
+    for (j = 0; j < iov_count; j++) {
+        OM_uint32 type = GSS_IOV_BUFFER_TYPE(iov[j].type);
+
+        if (type == GSS_IOV_BUFFER_TYPE_DATA) {
+            if (data != NULL) {
+                /* only a single DATA buffer can appear */
+                code = EINVAL;
+                goto cleanup;
+            }
+
+            data = &iov[j];
+            tdata = &tiov[i];
+        }
+        if (type == GSS_IOV_BUFFER_TYPE_DATA ||
+            type == GSS_IOV_BUFFER_TYPE_SIGN_ONLY)
+            tiov[i++] = iov[j];
+    }
+
+    if (data == NULL) {
+        /* a single DATA buffer must be present */
+        code = EINVAL;
+        goto cleanup;
+    }
+
+    /* PADDING | TRAILER */
+    tpadding = &tiov[i++];
+    tpadding->type = GSS_IOV_BUFFER_TYPE_PADDING;
+    tpadding->buffer.length = 0;
+    tpadding->buffer.value = NULL;
+
+    ttrailer = &tiov[i++];
+    ttrailer->type = GSS_IOV_BUFFER_TYPE_TRAILER;
+
+    {
+        size_t ec, rrc;
+        unsigned int k5_headerlen = 0;
+        unsigned int k5_trailerlen = 0;
+
+        conf_req_flag = ((ptr[0] & TOK_FLAG_WRAP_CONFIDENTIAL) != 0);
+        ec = conf_req_flag ? load_uint16_be(ptr + 2) : 0;
+        rrc = load_uint16_be(ptr + 4);
+
+        if (rrc != 0) {
+            code = rotateLeft((unsigned char *)stream->buffer.value + 16,
+                              stream->buffer.length - 16, rrc);
+            if (code != 0)
+                goto cleanup;
+            store_uint16_be(0, ptr + 4); /* set RRC to zero */
+        }
+
+        if (conf_req_flag) {
+            code = krb5_c_crypto_length(context, ctx->encryptionType,
+                                        KRB5_CRYPTO_TYPE_HEADER, &k5_headerlen);
+            if (code != 0)
+                goto cleanup;
+            theader->buffer.length += k5_headerlen; /* length validated later */
+        }
+
+        /* no PADDING for CFX, EC is used instead */
+        code = krb5_c_crypto_length(context, ctx->encryptionType,
+                                    conf_req_flag
+                                      ? KRB5_CRYPTO_TYPE_TRAILER
+                                      : KRB5_CRYPTO_TYPE_CHECKSUM,
+                                    &k5_trailerlen);
+        if (code != 0)
+            goto cleanup;
+
+        ttrailer->buffer.length = ec + (conf_req_flag ? 16 : 0 /* E(Header) */) +
+                                  k5_trailerlen;
+        ttrailer->buffer.value = (unsigned char *)stream->buffer.value +
+            stream->buffer.length - ttrailer->buffer.length;
+    }
+
+    /* IOV: -----------0-------------+---1---+--2--+----------------3--------------*/
+    /* Old: GSS-Header | Conf        | Data  | Pad |                               */
+    /* CFX: GSS-Header | Kerb-Header | Data  |     | EC | E(Header) | Kerb-Trailer */
+    /* GSS: -------GSS-HEADER--------+-DATA--+-PAD-+----------GSS-TRAILER----------*/
+
+    /* validate lengths */
+    if (stream->buffer.length < theader->buffer.length +
+        tpadding->buffer.length +
+        ttrailer->buffer.length) {
+        code = KRB5_BAD_MSIZE;
+        major = GSS_S_DEFECTIVE_TOKEN;
+        goto cleanup;
+    }
+
+    /* setup data */
+    tdata->buffer.length = stream->buffer.length - ttrailer->buffer.length -
+        tpadding->buffer.length - theader->buffer.length;
+
+    assert(data != NULL);
+
+    if (data->type & GSS_IOV_BUFFER_FLAG_ALLOCATE) {
+        code = gssEapAllocIov(tdata, tdata->buffer.length);
+        if (code != 0)
+            goto cleanup;
+
+        memcpy(tdata->buffer.value,
+               (unsigned char *)stream->buffer.value + theader->buffer.length,
+               tdata->buffer.length);
+    } else {
+        tdata->buffer.value = (unsigned char *)stream->buffer.value +
+                              theader->buffer.length;
+    }
+
+    assert(i <= iov_count + 2);
+
+    major = unwrapToken(&code, ctx, conf_state, qop_state,
+                        tiov, i, toktype);
+    if (major == GSS_S_COMPLETE) {
+        *data = *tdata;
+    } else if (tdata->type & GSS_IOV_BUFFER_FLAG_ALLOCATED) {
+        OM_uint32 tmp;
+
+        gss_release_buffer(&tmp, &tdata->buffer);
+        tdata->type &= ~(GSS_IOV_BUFFER_FLAG_ALLOCATED);
+    }
+
+cleanup:
+    if (tiov != NULL)
+        GSSEAP_FREE(tiov);
+
+    *minor = code;
+
+    return major;
+}
+
+OM_uint32
+gssEapUnwrapOrVerifyMIC(OM_uint32 *minor,
+                        gss_ctx_id_t ctx,
+                        int *conf_state,
+                        gss_qop_t *qop_state,
+                        gss_iov_buffer_desc *iov,
+                        int iov_count,
+                        enum gss_eap_token_type toktype)
+{
+    OM_uint32 major;
+
+    if (!CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_NO_CONTEXT;
+
+    if (gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_STREAM) != NULL) {
+        major = unwrapStream(minor, ctx, conf_state, qop_state,
+                             iov, iov_count, toktype);
+    } else {
+        major = unwrapToken(minor, ctx, conf_state, qop_state,
+                            iov, iov_count, toktype);
+    }
+
+    return major;
 }
 
 OM_uint32
@@ -256,8 +485,6 @@ gss_unwrap_iov(OM_uint32 *minor,
                gss_iov_buffer_desc *iov,
                int iov_count)
 {
-    return gssEapUnwrapOrVerifyMIC(minor, ctx,
-                                   iov, iov_count, conf_state,
-                                   qop_state, TOK_TYPE_WRAP);
-
+    return gssEapUnwrapOrVerifyMIC(minor, ctx, conf_state, qop_state,
+                                   iov, iov_count, TOK_TYPE_WRAP);
 }

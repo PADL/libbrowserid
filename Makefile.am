@@ -53,6 +53,7 @@ libmech_eap_la_SOURCES =    			\
 	util_cred.c				\
 	util_crypt.c				\
 	util_name.c				\
+	util_ordering.c				\
 	verify_mic.c				\
 	wrap.c					\
 	wrap_iov.c				\

@@ -98,6 +98,8 @@ gssEapReleaseContext(OM_uint32 *minor,
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
 
+    sequenceFree(ctx->seqState);
+
     memset(ctx, 0, sizeof(*ctx));
     GSSEAP_FREE(ctx);
     *pCtx = GSS_C_NO_CONTEXT;

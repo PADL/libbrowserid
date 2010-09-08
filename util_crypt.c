@@ -85,10 +85,10 @@
  * RRC is rotate count.
  */
 static krb5_error_code
-translateIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
-             krb5_enctype enctype, gss_iov_buffer_desc *iov,
-             int iov_count, krb5_crypto_iov **pkiov,
-             size_t *pkiov_count)
+mapIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
+       krb5_enctype enctype, gss_iov_buffer_desc *iov,
+       int iov_count, krb5_crypto_iov **pkiov,
+       size_t *pkiov_count)
 {
     gss_iov_buffer_t header;
     gss_iov_buffer_t trailer;
@@ -156,7 +156,7 @@ translateIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
     i++;
 
     for (j = 0; j < iov_count; j++) {
-        kiov[i].flags = gssEapTranslateCryptoFlag(iov[j].type);
+        kiov[i].flags = gssEapMapCryptoFlag(iov[j].type);
         if (kiov[i].flags == KRB5_CRYPTO_TYPE_EMPTY)
             continue;
 
@@ -219,9 +219,9 @@ gssEapEncrypt(krb5_context context, int dce_style, size_t ec,
         pivd = NULL;
     }
 
-    code = translateIov(context, dce_style, ec, rrc,
-                        KRB_KEYTYPE(key), iov, iov_count,
-                        &kiov, &kiov_count);
+    code = mapIov(context, dce_style, ec, rrc,
+                  KRB_KEYTYPE(key), iov, iov_count,
+                  &kiov, &kiov_count);
     if (code == 0) {
         code = krb5_c_encrypt_iov(context, key, usage, pivd, kiov, kiov_count);
         GSSEAP_FREE(kiov);
@@ -259,9 +259,9 @@ gssEapDecrypt(krb5_context context, int dce_style, size_t ec,
         pivd = NULL;
     }
 
-    code = translateIov(context, dce_style, ec, rrc,
-                        KRB_KEYTYPE(key), iov, iov_count,
-                        &kiov, &kiov_count);
+    code = mapIov(context, dce_style, ec, rrc,
+                  KRB_KEYTYPE(key), iov, iov_count,
+                  &kiov, &kiov_count);
     if (code == 0) {
         code = krb5_c_decrypt_iov(context, key, usage, pivd, kiov, kiov_count);
         GSSEAP_FREE(kiov);
@@ -274,7 +274,7 @@ gssEapDecrypt(krb5_context context, int dce_style, size_t ec,
 }
 
 krb5_cryptotype
-gssEapTranslateCryptoFlag(OM_uint32 type)
+gssEapMapCryptoFlag(OM_uint32 type)
 {
     krb5_cryptotype ktype;
 
