@@ -277,7 +277,8 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     } else if (toktype == TOK_TYPE_MIC) {
         trailer = NULL;
         goto wrap_with_checksum;
-    } else if (toktype == TOK_TYPE_DELETE) {
+    } else if (toktype == TOK_TYPE_DELETE_CONTEXT) {
+        trailer = NULL;
         goto wrap_with_checksum;
     } else {
         abort();
