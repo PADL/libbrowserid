@@ -56,8 +56,17 @@ samlExportAssertion(OM_uint32 *minor,
 }
 
 OM_uint32
+samlGetAttributeTypes(OM_uint32 *minor,
+                      const struct eap_gss_saml_assertion *assertion,
+                      void *data,
+                      OM_uint32 (*addAttribute)(OM_uint32 *, void *, gss_buffer_t))
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+OM_uint32
 samlGetAttribute(OM_uint32 *minor,
-                 struct eap_gss_saml_assertion *assertion,
+                 const struct eap_gss_saml_assertion *assertion,
                  gss_buffer_t attr,
                  int *authenticated,
                  int *complete,

@@ -51,8 +51,17 @@ radiusFreeAVPs(OM_uint32 *minor,
 }
 
 OM_uint32
+radiusGetAttributeTypes(OM_uint32 *minor,
+                        const struct eap_gss_avp_list *avps,
+                        void *data,
+                        OM_uint32 (*addAttribute)(OM_uint32 *, void *, gss_buffer_t))
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+OM_uint32
 radiusGetAVP(OM_uint32 *minor,
-             struct eap_gss_avp_list *avps,
+             const struct eap_gss_avp_list *avps,
              gss_buffer_t attr,
              int *authenticated,
              int *complete,

@@ -214,9 +214,9 @@ decomposeAttributeName(OM_uint32 *minor,
                        gss_buffer_t suffix);
 OM_uint32
 composeAttributeName(OM_uint32 *minor,
-                       const gss_buffer_t prefix,
-                       const gss_buffer_t suffix,
-                       gss_buffer_t attribute);
+                     const gss_buffer_t prefix,
+                     const gss_buffer_t suffix,
+                     gss_buffer_t attribute);
 
 /* util_oid.c */
 OM_uint32

@@ -32,6 +32,35 @@
 
 #include "gssapiP_eap.h"
 
+struct eap_gss_attribute_args {
+    gss_buffer_t prefix;
+    gss_buffer_set_t attrs;
+};
+
+static OM_uint32
+addAttribute(OM_uint32 *minor,
+             void *data,
+             gss_buffer_t attribute)
+{
+    struct eap_gss_attribute_args *args = (struct eap_gss_attribute_args *)data;
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc qualifiedAttr;
+
+    if (attribute != GSS_C_NO_BUFFER) {
+        major = composeAttributeName(minor, args->prefix, attribute, &qualifiedAttr);
+        if (GSS_ERROR(major))
+            return major;
+
+        major = gss_add_buffer_set_member(minor, &qualifiedAttr, args->attrs);
+
+        gss_release_buffer(&tmpMinor, &qualifiedAttr);
+    } else {
+        major = gss_add_buffer_set_member(minor, args->prefix, args->attrs);
+    }
+
+    return major;
+}
+
 OM_uint32 gss_inquire_name(OM_uint32 *minor,
                            gss_name_t name,
                            int *name_is_MN,
@@ -40,6 +69,7 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     krb5_context krbContext;
+    struct eap_gss_attribute_args args;
 
     *name_is_MN = 1;
     *MN_mech = GSS_EAP_MECHANISM;
@@ -53,8 +83,37 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
     GSSEAP_KRB_INIT(&krbContext);
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
+    major = gss_create_empty_buffer_set(minor, attrs);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    args.attrs = *attrs;
+
+    if (name->assertion != NULL) {
+        args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_SAML_AAA_ASSERTION);
+
+        major = addAttribute(minor, &args, GSS_C_NO_BUFFER);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_SAML_ATTR);
+        major = samlGetAttributeTypes(minor, name->assertion, &args, addAttribute);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if (name->avps != NULL) {
+        args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_RADIUS_AVP);
+        major = radiusGetAttributeTypes(minor, name->avps, &args, addAttribute);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
 cleanup:
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
+
+    if (GSS_ERROR(major))
+        gss_release_buffer_set(&tmpMinor, attrs);
 
     return major;
 }
