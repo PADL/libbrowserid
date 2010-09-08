@@ -49,3 +49,26 @@ radiusFreeAVPs(OM_uint32 *minor,
 {
     GSSEAP_FREE(avps);
 }
+
+OM_uint32
+radiusGetAVP(OM_uint32 *minor,
+             struct eap_gss_avp_list *avps,
+             gss_buffer_t attr,
+             int *authenticated,
+             int *complete,
+             gss_buffer_t value,
+             gss_buffer_t display_value,
+             int *more)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+OM_uint32
+radiusSetAVP(OM_uint32 *minor,
+             struct eap_gss_avp_list *avps,
+             int complete,
+             gss_buffer_t attr,
+             gss_buffer_t value)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}

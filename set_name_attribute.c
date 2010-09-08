@@ -39,5 +39,39 @@ gss_set_name_attribute(OM_uint32 *minor,
                        gss_buffer_t attr,
                        gss_buffer_t value)
 {
-    GSSEAP_NOT_IMPLEMENTED;
-} 
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc prefix, suffix;
+    enum gss_eap_attribute_type type;
+
+    if (name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
+    }
+
+    GSSEAP_MUTEX_LOCK(&name->mutex);
+
+    major = decomposeAttributeName(minor, attr, &prefix, &suffix);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    type = gssEapAttributePrefixToType(&prefix);
+    switch (type) {
+    case ATTR_TYPE_SAML_ATTR:
+        major = samlSetAttribute(minor, name->assertion,
+                                 complete, &suffix, value);
+        break;
+    case ATTR_TYPE_RADIUS_AVP:
+        major = radiusSetAVP(minor, name->avps,
+                             complete, &suffix, value);
+        break;
+    default:
+        *minor = ENOENT;
+        major = GSS_S_UNAVAILABLE;
+        break;
+    }
+
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&name->mutex);
+
+    return major;
+}
