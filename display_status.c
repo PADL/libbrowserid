@@ -30,25 +30,43 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _GSSAPI_EAP_H_
-#define _GSSAPI_EAP_H_ 1
+#include "gssapiP_eap.h"
 
-#include <gssapi/gssapi.h>
+OM_uint32
+gss_display_status(OM_uint32 *minor,
+                   OM_uint32 status_value,
+                   int status_type,
+                   gss_OID mech_type,
+                   OM_uint32 *message_context,
+                   gss_buffer_t status_string)
+{
+    OM_uint32 major, tmpMinor;
+    krb5_context krbContext;
+    const char *errMsg;
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+    status_string->length = 0;
+    status_string->value = NULL;
 
-extern const gss_OID_desc *const GSS_EAP_MECHANISM;
-extern const gss_OID_desc *const GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM;
-extern const gss_OID_desc *const GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM;
+    if (mech_type != GSS_C_NO_OID &&
+        !gssEapIsMechanismOid(mech_type)) {
+        return GSS_S_BAD_MECH;
+    }
 
-/* name type */
-extern const gss_OID_desc *const GSS_EAP_NT_PRINCIPAL_NAME;
+    if (status_type != GSS_C_MECH_CODE) {
+        /* we rely on the mechglue for GSS_C_GSS_CODE */
+        return GSS_S_BAD_STATUS;
+    }
 
-#ifdef __cplusplus
+    /* XXX we need to support RADIUS codes too? */
+    GSSEAP_KRB_INIT(&krbContext);
+
+    errMsg = krb5_get_error_message(krbContext, status_value);
+    if (errMsg != NULL) {
+        major = makeStringBuffer(minor, errMsg, status_string);
+        krb5_free_error_message(krbContext, errMsg);
+    } else {
+        major = GSS_S_COMPLETE;
+    }
+
+    return GSS_S_COMPLETE;
 }
-#endif /* __cplusplus */
-
-#endif /* _GSSAPI_EAP_H_ */
-

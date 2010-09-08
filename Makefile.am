@@ -22,6 +22,7 @@ libmech_eap_la_SOURCES =    			\
 	delete_sec_context.c			\
 	display_name.c				\
 	display_name_ext.c			\
+	display_status.c			\
 	duplicate_name.c			\
 	eap_mech.c				\
 	export_name.c				\

@@ -61,17 +61,17 @@ static const gss_OID_desc gssEapConcreteMechs[] = {
     { 12, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x12" }
 };
 
-const gss_OID_desc *const gss_mech_eap =
+const gss_OID_desc *const GSS_EAP_MECHANISM =
     &gssEapConcreteMechs[0];
-const gss_OID_desc *const gss_mech_eap_aes128_cts_hmac_sha1_96 =
+const gss_OID_desc *const GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM =
     &gssEapConcreteMechs[1];
-const gss_OID_desc *const gss_mech_eap_aes256_cts_hmac_sha1_96 =
+const gss_OID_desc *const GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM =
     &gssEapConcreteMechs[2];
 
 int
 gssEapIsMechanismOid(const gss_OID oid)
 {
-    if (oidEqual(oid, gss_mech_eap)) {
+    if (oidEqual(oid, GSS_EAP_MECHANISM)) {
         return TRUE;
     } else if (oid->length > gssEapMechPrefix.length &&
                memcmp(oid->elements, gssEapMechPrefix.elements,
@@ -236,6 +236,11 @@ gssEapInternalizeOid(const gss_OID oid,
             *pInternalizedOid = (const gss_OID)&gssEapConcreteMechs[i];
             break;
         }
+    }
+
+    if (*pInternalizedOid == GSS_C_NO_OID) {
+        if (oidEqual(oid, GSS_EAP_NT_PRINCIPAL_NAME))
+            *pInternalizedOid = (const gss_OID)GSS_EAP_NT_PRINCIPAL_NAME;
     }
 
     if (*pInternalizedOid == GSS_C_NO_OID) {

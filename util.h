@@ -332,4 +332,23 @@ load_uint64_be(const void *cvp)
     return ((uint64_t)load_uint32_be(p) << 32) | load_uint32_be(p + 4);
 }
 
+static OM_uint32
+makeStringBuffer(OM_uint32 *minor,
+                 const char *string,
+                 gss_buffer_t buffer)
+{
+    size_t len = strlen(string);
+
+    buffer->value = GSSEAP_MALLOC(len + 1);
+    if (buffer->value == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+    memcpy(buffer->value, string, len + 1);
+    buffer->length = len;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
 #endif /* _UTIL_H_ */
