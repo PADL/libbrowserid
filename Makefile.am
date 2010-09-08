@@ -38,6 +38,7 @@ libmech_eap_la_SOURCES =    			\
 	inquire_cred.c				\
 	inquire_cred_by_oid.c			\
 	inquire_mechs_for_name.c		\
+	inquire_name.c				\
 	inquire_names_for_mech.c		\
 	inquire_sec_context_by_oid.c		\
 	map_name_to_any.c			\

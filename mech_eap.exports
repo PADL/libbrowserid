@@ -20,6 +20,7 @@ gss_indicate_mechs
 gss_init_sec_context
 gss_inquire_context
 gss_inquire_cred
+gss_inquire_name
 gss_inquire_mechs_for_name
 gss_inquire_names_for_mech
 gss_map_name_to_any
