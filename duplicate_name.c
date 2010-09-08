@@ -37,5 +37,48 @@ gss_duplicate_name(OM_uint32 *minor,
                    const gss_name_t input_name,
                    gss_name_t *dest_name)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major, tmpMinor;
+    krb5_context krbContext;
+    gss_name_t name;
+
+    if (name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
+    }
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    major = gssEapAllocName(minor, &name);
+    if (GSS_ERROR(major)) {
+        return major;
+    }
+
+    /* Lock mutex for copying mutable attributes */
+    GSSEAP_MUTEX_LOCK(&input_name->mutex);
+
+    *minor = krb5_copy_principal(krbContext, input_name->krbPrincipal,
+                                 &name->krbPrincipal);
+    if (*minor != 0) {
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+
+    major = radiusDuplicateAVPs(minor, input_name->avps, &name->avps);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = samlDuplicateAssertion(minor, input_name->assertion, &name->assertion);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    *dest_name = name;
+
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&input_name->mutex);
+
+    if (GSS_ERROR(major)) {
+        gssEapReleaseName(&tmpMinor, &name);
+    }
+
+    return major;
 }

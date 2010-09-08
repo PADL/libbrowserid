@@ -55,15 +55,20 @@
 /* Kerberos includes */
 #include <krb5.h>
 
-#define NAME_FLAG_SAML                      0x00000001
-#define NAME_FLAG_RADIUS                    0x00000002
+#define NAME_FLAG_NAI                       0x00000001
+#define NAME_FLAG_SERVICE                   0x00000002
+#define NAME_FLAG_SAML                      0x00000010
+#define NAME_FLAG_RADIUS                    0x00000020
+
+struct eap_gss_saml_assertion;
+struct eap_gss_avp_list;
 
 struct gss_name_struct {
     GSSEAP_MUTEX mutex; /* mutex protecting attributes */
     OM_uint32 flags;
     krb5_principal krbPrincipal; /* this is immutable */
-    void *saml;
-    void *avps;
+    struct eap_gss_saml_assertion *assertion;
+    struct eap_gss_avp_list *avps;
 };
 
 #define CRED_FLAG_INITIATOR                 0x00000001

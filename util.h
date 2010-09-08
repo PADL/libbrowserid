@@ -59,6 +59,9 @@
 
 #include <krb5.h>
 
+#include "util_saml.h"
+#include "util_radius.h"
+
 #define KRB_KEYTYPE(key)        ((key)->enctype)
 
 int
@@ -169,6 +172,10 @@ gssEapIsMechanismOid(const gss_OID oid);
 /* util_name.c */
 OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);
+OM_uint32 gssEapExportName(OM_uint32 *minor,
+                           const gss_name_t name,
+                           gss_buffer_t exportedName,
+                           int composite);
 
 /* util_oid.c */
 OM_uint32

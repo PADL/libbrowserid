@@ -29,6 +29,29 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+/*
+ * Portions Copyright 2009 by the Massachusetts Institute of Technology.
+ * All Rights Reserved.
+ *
+ * Export of this software from the United States of America may
+ *   require a specific license from the United States Government.
+ *   It is the responsibility of any person or organization contemplating
+ *   export to obtain such a license before exporting.
+ *
+ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
+ * distribute this software and its documentation for any purpose and
+ * without fee is hereby granted, provided that the above copyright
+ * notice appear in all copies and that both that copyright notice and
+ * this permission notice appear in supporting documentation, and that
+ * the name of M.I.T. not be used in advertising or publicity pertaining
+ * to distribution of the software without specific, written prior
+ * permission.  Furthermore if you modify this software you must label
+ * your software as modified software and not distribute it in such a
+ * fashion that it might be confused with the original M.I.T. software.
+ * M.I.T. makes no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without express
+ * or implied warranty.
+ */
 
 #include "gssapiP_eap.h"
 
@@ -69,7 +92,8 @@ OM_uint32
 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
 {
     gss_name_t name;
-    krb5_context kerbCtx = NULL;
+    krb5_context krbContext = NULL;
+    OM_uint32 tmpMinor;
 
     if (pName == NULL) {
         return GSS_S_COMPLETE;
@@ -80,11 +104,11 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
         return GSS_S_COMPLETE;
     }
 
-    krb5_init_context(&kerbCtx);
-    krb5_free_principal(kerbCtx, name->krbPrincipal);
-    if (kerbCtx != NULL) {
-        krb5_free_context(kerbCtx);
-    }
+    GSSEAP_KRB_INIT(&krbContext);
+    krb5_free_principal(krbContext, name->krbPrincipal);
+
+    radiusFreeAVPs(&tmpMinor, name->avps);
+    samlFreeAssertion(&tmpMinor, name->assertion);
 
     GSSEAP_MUTEX_DESTROY(&name->mutex);
     GSSEAP_FREE(name);
@@ -94,3 +118,84 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     return GSS_S_COMPLETE;
 }
 
+OM_uint32 gssEapExportName(OM_uint32 *minor,
+                           const gss_name_t name,
+                           gss_buffer_t exportedName,
+                           int composite)
+{
+    OM_uint32 major, tmpMinor;
+    krb5_context krbContext;
+    char *krbName = NULL;
+    size_t krbNameLen;
+    unsigned char *p;
+
+    exportedName->length = 0;
+    exportedName->value = NULL;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    if (name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
+    }
+
+    GSSEAP_MUTEX_LOCK(&name->mutex);
+
+    /*
+     * Don't export a composite name if we don't have any attributes.
+     */
+    if (composite &&
+        (name->flags & (NAME_FLAG_SAML | NAME_FLAG_RADIUS)) == 0) {
+        composite = 0;
+    }
+
+    *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
+    if (*minor != 0) {
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+    krbNameLen = strlen(krbName);
+
+    exportedName->length = 6 + GSS_EAP_MECHANISM->length + krbNameLen;
+    if (composite) {
+        /* TODO: export SAML/AVP, this is pending specification */
+        GSSEAP_NOT_IMPLEMENTED;
+    }
+
+    exportedName->value = GSSEAP_MALLOC(exportedName->value);
+    if (exportedName->value == NULL) {
+        *minor = ENOMEM;
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+
+    p = (unsigned char *)exportedName->value;
+    *p++ = 0x04;
+    if (composite) {
+        *p++ = 0x02;
+    } else {
+        *p++ = 0x01;
+    }
+    store_uint16_be(GSS_EAP_MECHANISM->length + 2, p);
+    p += 2;
+    *p++ = 0x06;
+    *p++ = GSS_EAP_MECHANISM->length & 0xff;
+    memcpy(p, GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length);
+    p += GSS_EAP_MECHANISM->length;
+
+    store_uint32_be(krbNameLen, p);
+    p += 4;
+    memcpy(p, krbName, krbNameLen);
+    p += krbNameLen;
+
+    *minor = 0;
+    major = GSS_S_COMPLETE;
+
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&name->mutex);
+    if (GSS_ERROR(major))
+        gss_release_buffer(&tmpMinor, exportedName);
+    krb5_free_unparsed_name(krbContext, krbName);
+
+    return major;
+}

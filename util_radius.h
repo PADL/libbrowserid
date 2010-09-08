@@ -32,10 +32,18 @@
 
 #include "gssapiP_eap.h"
 
+#ifndef _UTIL_RADIUS_H_
+#define _UTIL_RADIUS_H_ 1
+
+struct eap_gss_avp_list;
+
 OM_uint32
-gss_export_name(OM_uint32 *minor,
-                const gss_name_t input_name,
-                gss_buffer_t exported_name)
-{
-    return gssEapExportName(minor, input_name, exported_name, 0);
-}
+radiusDuplicateAVPs(OM_uint32 *minor,
+                    const struct eap_gss_avp_list *in,
+                    struct eap_gss_avp_list **out);
+
+OM_uint32
+radiusFreeAVPs(OM_uint32 *minor,
+               struct eap_gss_avp_list *in);
+
+#endif /* _UTIL_RADIUS_H_ */

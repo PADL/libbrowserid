@@ -33,9 +33,9 @@
 #include "gssapiP_eap.h"
 
 OM_uint32
-gss_export_name(OM_uint32 *minor,
-                const gss_name_t input_name,
-                gss_buffer_t exported_name)
+gss_export_name_composite(OM_uint32 *minor,
+                          gss_name_t input_name,
+                          gss_buffer_t exported_name)
 {
-    return gssEapExportName(minor, input_name, exported_name, 0);
+    return gssEapExportName(minor, input_name, exported_name, 1);
 }

@@ -33,9 +33,16 @@
 #include "gssapiP_eap.h"
 
 OM_uint32
-gss_export_name(OM_uint32 *minor,
-                const gss_name_t input_name,
-                gss_buffer_t exported_name)
+samlDuplicateAssertion(OM_uint32 *minor,
+                       const struct eap_gss_saml_assertion *in,
+                       struct eap_gss_saml_assertion **out)
 {
-    return gssEapExportName(minor, input_name, exported_name, 0);
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+OM_uint32
+samlFreeAssertion(OM_uint32 *minor,
+                  struct eap_gss_saml_assertion *assertion)
+{
+    GSSEAP_NOT_IMPLEMENTED;
 }

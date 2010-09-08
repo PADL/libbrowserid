@@ -26,6 +26,7 @@ libmech_eap_la_SOURCES =    			\
 	duplicate_name.c			\
 	eap_mech.c				\
 	export_name.c				\
+	export_name_composite.c			\
 	export_sec_context.c			\
 	get_mic.c				\
 	get_name_attribute.c			\
@@ -61,6 +62,8 @@ libmech_eap_la_SOURCES =    			\
 	util_name.c				\
 	util_oid.c				\
 	util_ordering.c				\
+	util_radius.c				\
+	util_saml.c				\
 	util_token.c				\
 	verify_mic.c				\
 	wrap.c					\

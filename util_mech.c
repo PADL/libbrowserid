@@ -144,25 +144,20 @@ OM_uint32
 gssEapIndicateMechs(OM_uint32 *minor,
                     gss_OID_set *mechs)
 {
-    krb5_context context;
+    krb5_context krbContext;
     OM_uint32 major, tmpMinor;
     krb5_enctype *etypes;
     int i;
 
-    *minor = krb5_init_context(&context);
-    if (*minor != 0) {
-        return GSS_S_FAILURE;
-    }
+    GSSEAP_KRB_INIT(&krbContext);
 
-    *minor = krb5_get_permitted_enctypes(context, &etypes);
+    *minor = krb5_get_permitted_enctypes(krbContext, &etypes);
     if (*minor != 0) {
-        krb5_free_context(context);
         return GSS_S_FAILURE;
     }
 
     major = gss_create_empty_oid_set(minor, mechs);
     if (GSS_ERROR(major)) {
-        krb5_free_context(context);
         GSSEAP_FREE(etypes); /* XXX */
         return major;
     }
@@ -186,7 +181,6 @@ gssEapIndicateMechs(OM_uint32 *minor,
     }
 
     GSSEAP_FREE(etypes); /* XXX */
-    krb5_free_context(context);
 
     return major;
 }
