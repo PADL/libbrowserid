@@ -118,6 +118,7 @@ struct eap_gss_initiator_ctx {
     struct eap_peer_config eapPeerConfig;
     struct eap_config eapConfig;
     struct eap_sm *eap;
+    struct wpabuf reqData;
 };
 
 /* Acceptor context flags */

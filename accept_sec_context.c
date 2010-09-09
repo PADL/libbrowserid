@@ -111,14 +111,16 @@ gss_accept_sec_context(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = (sm->processToken)(minor,
-                               ctx,
-                               cred,
-                               &innerInputToken,
-                               input_chan_bindings,
-                               &innerOutputToken);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    do {
+        major = (sm->processToken)(minor,
+                                   ctx,
+                                   cred,
+                                   &innerInputToken,
+                                   input_chan_bindings,
+                                   &innerOutputToken);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    } while (major == GSS_S_CONTINUE_NEEDED && innerOutputToken.length == 0);
 
     if (src_name != NULL && ctx->initiatorName != GSS_C_NO_NAME) {
         major = gss_duplicate_name(&minor, ctx->initiatorName, src_name);

@@ -150,7 +150,9 @@ peerSetInt(void *data, enum eapol_int_var variable,
 static struct wpabuf *
 peerGetEapReqData(void *ctx)
 {
-    return NULL;
+    gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
+
+    return &gssCtx->initiatorCtx.reqData;
 }
 
 static void
@@ -318,6 +320,9 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
             goto cleanup;
     }
 
+    wpabuf_set(&ctx->initiatorCtx.reqData,
+               inputToken->value, inputToken->length);
+
     code = eap_peer_sm_step(ctx->initiatorCtx.eap);
 
     if (ctx->flags & CTX_FLAG_EAP_RESP) {
@@ -351,6 +356,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
     }
 
 cleanup:
+    wpabuf_set(&ctx->initiatorCtx.reqData, NULL, 0);
     peerConfigFree(&tmpMinor, ctx);
 
     return major;
@@ -499,18 +505,24 @@ gss_init_sec_context(OM_uint32 *minor,
         innerInputToken.value = NULL;
     }
 
-    major = (sm->processToken)(minor,
-                               cred,
-                               ctx,
-                               target_name,
-                               mech_type,
-                               req_flags,
-                               time_req,
-                               input_chan_bindings,
-                               &innerInputToken,
-                               &innerOutputToken);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    /*
+     * Advance through state machine whilst empty tokens are emitted and
+     * the status is not GSS_S_COMPLETE or an error status.
+     */
+    do {
+        major = (sm->processToken)(minor,
+                                   cred,
+                                   ctx,
+                                   target_name,
+                                   mech_type,
+                                   req_flags,
+                                   time_req,
+                                   input_chan_bindings,
+                                   &innerInputToken,
+                                   &innerOutputToken);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    } while (major == GSS_S_CONTINUE_NEEDED && innerOutputToken.length == 0);
 
     if (actual_mech_type != NULL) {
         if (!gssEapInternalizeOid(ctx->mechanismUsed, actual_mech_type))
