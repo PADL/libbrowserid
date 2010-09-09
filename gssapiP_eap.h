@@ -49,7 +49,6 @@
 /* EAP includes */
 #include <common.h>
 #include <eap_peer/eap.h>
-#include <eap_peer/eap_i.h>
 #include <eap_peer/eap_config.h>
 #include <crypto/tls.h>                     /* XXX testing implementation only */
 #include <wpabuf.h>

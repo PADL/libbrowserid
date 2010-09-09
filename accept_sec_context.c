@@ -136,6 +136,8 @@ int eap_sm_method_pending(struct eap_sm *sm);
 const u8 * eap_get_identity(struct eap_sm *sm, size_t *len);
 struct eap_eapol_interface * eap_get_interface(struct eap_sm *sm);
 
+#include <eap_server/eap_i.h>
+
 static OM_uint32
 initTls(OM_uint32 *minor,
         gss_ctx_id_t ctx)
