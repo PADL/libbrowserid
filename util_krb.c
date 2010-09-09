@@ -82,7 +82,8 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
  */
 OM_uint32
 gssEapDeriveRFC3961Key(OM_uint32 *minor,
-                       gss_buffer_t msk,
+                       const unsigned char *key,
+                       size_t keyLength,
                        krb5_enctype enctype,
                        krb5_keyblock *pKey)
 {
@@ -107,8 +108,8 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    data.length = msk->length;
-    data.data = (char *)msk->value;
+    data.length = keyLength;
+    data.data = (char *)key;
 
     kd.contents = GSSEAP_MALLOC(keylength);
     if (kd.contents == NULL) {

@@ -62,10 +62,11 @@ gssEapAllocContext(OM_uint32 *minor,
      * to these services in the output of GSS_Init_sec_context and
      * GSS_Accept_sec_context.
     */
-    ctx->gssFlags = GSS_C_INTEG_FLAG    |
-                    GSS_C_CONF_FLAG     |
-                    GSS_C_SEQUENCE_FLAG |
-                    GSS_C_REPLAY_FLAG;
+    ctx->gssFlags = GSS_C_TRANS_FLAG    |   /* exporting contexts */
+                    GSS_C_INTEG_FLAG    |   /* integrity */
+                    GSS_C_CONF_FLAG     |   /* confidentiality */
+                    GSS_C_SEQUENCE_FLAG |   /* sequencing */
+                    GSS_C_REPLAY_FLAG;      /* replay detection */
 
     *pCtx = ctx;
 
@@ -76,7 +77,6 @@ static void
 releaseInitiatorContext(struct eap_gss_initiator_ctx *ctx)
 {
     eap_peer_sm_deinit(ctx->eap);
-    wpabuf_free(ctx->eapReqData);
 }
 
 static void

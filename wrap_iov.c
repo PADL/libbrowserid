@@ -80,6 +80,9 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     if (!CTX_IS_ESTABLISHED(ctx))
         return GSS_S_NO_CONTEXT;
 
+    if (ctx->encryptionType == ENCTYPE_NULL)
+        return GSS_S_UNAVAILABLE;
+
     GSSEAP_KRB_INIT(&krbContext);
 
     acceptorFlag = CTX_IS_INITIATOR(ctx) ? 0 : TOK_FLAG_SENDER_IS_ACCEPTOR;
@@ -260,7 +263,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         }
         store_64_be(ctx->sendSeq, outbuf + 8);
 
-        code = gssEapSign(krbContext, ctx->checksumType,
+        code = gssEapSign(krbContext, 0, /* 0 == pick from crypto */
                           rrc, &ctx->rfc3961Key, keyUsage,
                           iov, iov_count);
         if (code != 0)

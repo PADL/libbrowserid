@@ -70,6 +70,14 @@ policyVariableToFlag(enum eapol_bool_var variable)
     return flag;
 }
 
+static struct eap_peer_config *
+peerGetConfig(void *ctx)
+{
+    gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
+
+    return &gssCtx->initiatorCtx.eapPeerConfig;
+}
+
 static Boolean
 peerGetBool(void *data, enum eapol_bool_var variable)
 {
@@ -102,7 +110,7 @@ peerSetBool(void *data, enum eapol_bool_var variable,
         ctx->flags &= ~(flag);
 }
 
-static int
+static unsigned int
 peerGetInt(void *data, enum eapol_int_var variable)
 {
     gss_ctx_id_t ctx = data;
@@ -139,6 +147,120 @@ peerSetInt(void *data, enum eapol_int_var variable,
     }
 }
 
+static struct wpabuf *
+peerGetEapReqData(void *ctx)
+{
+    return NULL;
+}
+
+static void
+peerSetConfigBlob(void *ctx, struct wpa_config_blob *blob)
+{
+}
+
+static const struct wpa_config_blob *
+peerGetConfigBlob(void *ctx, const char *name)
+{
+    return NULL;
+}
+
+static void
+peerNotifyPending(void *ctx)
+{
+}
+
+static struct eapol_callbacks gssEapPolicyCallbacks = {
+    peerGetConfig,
+    peerGetBool,
+    peerSetBool,
+    peerGetInt,
+    peerSetInt,
+    peerGetEapReqData,
+    peerSetConfigBlob,
+    peerGetConfigBlob,
+    peerNotifyPending,
+};
+
+static OM_uint32
+peerConfigInit(OM_uint32 *minor,
+               gss_cred_id_t cred,
+               gss_ctx_id_t ctx,
+               int loadConfig)
+{
+    krb5_context krbContext;
+    struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
+    krb5_error_code code;
+    char *identity;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    if (loadConfig) {
+    }
+
+    code = krb5_unparse_name(krbContext, cred->name->krbPrincipal, &identity);
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_FAILURE;
+    }
+
+    eapPeerConfig->identity = (unsigned char *)identity;
+    eapPeerConfig->identity_len = strlen(identity);
+    eapPeerConfig->password = (unsigned char *)cred->password.value;
+    eapPeerConfig->password_len = cred->password.length;
+
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+peerConfigFree(OM_uint32 *minor,
+               gss_ctx_id_t ctx)
+{
+    krb5_context krbContext;
+    struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    krb5_free_unparsed_name(krbContext, (char *)eapPeerConfig->identity);
+
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+peerDeriveKey(OM_uint32 *minor,
+              gss_ctx_id_t ctx)
+{
+    OM_uint32 major;
+    const unsigned char *key;
+    size_t keyLength;
+    krb5_context krbContext;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    /* Cache encryption type derived from selected mechanism OID */
+    major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
+    if (GSS_ERROR(major))
+        return major;
+
+    if (ctx->encryptionType != ENCTYPE_NULL &&
+        eap_key_available(ctx->initiatorCtx.eap)) {
+        key = eap_get_eapKeyData(ctx->initiatorCtx.eap, &keyLength);
+
+        major = gssEapDeriveRFC3961Key(minor, key, keyLength,
+                                       ctx->encryptionType, &ctx->rfc3961Key);
+        if (GSS_ERROR(major))
+            return major;
+    } else {
+        /*
+         * draft-howlett-eap-gss says that integrity/confidentialty should
+         * always be advertised as available, but if we have no keying
+         * material it seems confusing to the caller to advertise this.
+         */
+        ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
+    }
+
+    return GSS_S_COMPLETE;
+}
+
 static OM_uint32
 eapGssSmInitAuthenticate(OM_uint32 *minor,
                          gss_cred_id_t cred,
@@ -153,14 +275,24 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     time_t now;
+    int initialContextToken = 0, code;
 
-    if (inputToken == GSS_C_NO_BUFFER || inputToken->length == 0) {
-        /* first time */
-        reqFlags &= GSS_C_TRANS_FLAG | GSS_C_REPLAY_FLAG | GSS_C_DCE_STYLE;
-        ctx->gssFlags |= reqFlags;
+    initialContextToken = (inputToken == GSS_C_NO_BUFFER ||
+                           inputToken->length == 0);
+
+    major = peerConfigInit(minor, cred, ctx, initialContextToken);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (initialContextToken) {
+        ctx->flags |= CTX_FLAG_EAP_PORT_ENABLED;
+
+        ctx->initiatorCtx.eap = eap_peer_sm_init(ctx,
+                                                 &gssEapPolicyCallbacks,
+                                                 ctx,
+                                                 &ctx->initiatorCtx.eapConfig);
 
         time(&now);
-
         if (timeReq == 0 || timeReq == GSS_C_INDEFINITE)
             ctx->expiryTime = 0;
         else
@@ -186,8 +318,104 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
             goto cleanup;
     }
 
+    code = eap_peer_sm_step(ctx->initiatorCtx.eap);
+
+    if (ctx->flags & CTX_FLAG_EAP_RESP) {
+        struct wpabuf *resp;
+        gss_buffer_desc buf;
+
+        ctx->flags &= ~(CTX_FLAG_EAP_RESP);
+
+        resp = eap_get_eapRespData(ctx->initiatorCtx.eap);
+
+        if (resp != NULL) {
+            buf.length = wpabuf_len(resp);
+            buf.value = (void *)wpabuf_head(resp);
+
+            major = duplicateBuffer(minor, &buf, outputToken);
+            if (GSS_ERROR(major))
+                goto cleanup;
+
+            major = GSS_S_CONTINUE_NEEDED;
+        }
+    }
+
+    if (ctx->flags & CTX_FLAG_EAP_SUCCESS) {
+        major = peerDeriveKey(minor, ctx);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        ctx->state = EAP_STATE_ESTABLISHED;
+    } else if (code == 0) {
+        major = GSS_S_FAILURE;
+    }
+
 cleanup:
+    peerConfigFree(&tmpMinor, ctx);
+
     return major;
+}
+
+static OM_uint32
+eapGssSmInitKeyTransport(OM_uint32 *minor,
+                         gss_cred_id_t cred,
+                         gss_ctx_id_t ctx,
+                         gss_name_t target,
+                         gss_OID mech,
+                         OM_uint32 reqFlags,
+                         OM_uint32 timeReq,
+                         gss_channel_bindings_t chanBindings,
+                         gss_buffer_t inputToken,
+                         gss_buffer_t outputToken)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+static OM_uint32
+eapGssSmInitSecureAssoc(OM_uint32 *minor,
+                        gss_cred_id_t cred,
+                        gss_ctx_id_t ctx,
+                        gss_name_t target,
+                        gss_OID mech,
+                        OM_uint32 reqFlags,
+                        OM_uint32 timeReq,
+                        gss_channel_bindings_t chanBindings,
+                        gss_buffer_t inputToken,
+                        gss_buffer_t outputToken)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+static OM_uint32
+eapGssSmInitGssChannelBindings(OM_uint32 *minor,
+                               gss_cred_id_t cred,
+                               gss_ctx_id_t ctx,
+                               gss_name_t target,
+                               gss_OID mech,
+                               OM_uint32 reqFlags,
+                               OM_uint32 timeReq,
+                               gss_channel_bindings_t chanBindings,
+                               gss_buffer_t inputToken,
+                               gss_buffer_t outputToken)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+static OM_uint32
+eapGssSmInitEstablished(OM_uint32 *minor,
+                        gss_cred_id_t cred,
+                        gss_ctx_id_t ctx,
+                        gss_name_t target,
+                        gss_OID mech,
+                        OM_uint32 reqFlags,
+                        OM_uint32 timeReq,
+                        gss_channel_bindings_t chanBindings,
+                        gss_buffer_t inputToken,
+                        gss_buffer_t outputToken)
+{
+    /* Called with already established context */
+    *minor = EINVAL;
+    return GSS_S_BAD_STATUS;
 }
 
 static struct eap_gss_initiator_sm {
@@ -204,7 +432,11 @@ static struct eap_gss_initiator_sm {
                               gss_buffer_t,
                               gss_buffer_t);
 } eapGssInitiatorSm[] = {
-    { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP, eapGssSmInitAuthenticate },
+    { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP,  eapGssSmInitAuthenticate        },
+    { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP,  eapGssSmInitKeyTransport        },
+    { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP,  eapGssSmInitSecureAssoc         },
+    { TOK_TYPE_GSS_CB,  TOK_TYPE_NONE,      eapGssSmInitGssChannelBindings  },
+    { TOK_TYPE_NONE,    TOK_TYPE_NONE,      eapGssSmInitEstablished         },
 };
 
 OM_uint32

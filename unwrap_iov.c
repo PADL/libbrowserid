@@ -471,6 +471,9 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor,
     if (!CTX_IS_ESTABLISHED(ctx))
         return GSS_S_NO_CONTEXT;
 
+    if (ctx->encryptionType == ENCTYPE_NULL)
+        return GSS_S_UNAVAILABLE;
+
     if (gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_STREAM) != NULL) {
         major = unwrapStream(minor, ctx, conf_state, qop_state,
                              iov, iov_count, toktype);
