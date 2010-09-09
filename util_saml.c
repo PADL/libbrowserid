@@ -50,6 +50,14 @@ samlFreeAssertion(OM_uint32 *minor,
 }
 
 OM_uint32
+samlImportAssertion(OM_uint32 *minor,
+                    gss_buffer_t buffer,
+                    struct eap_gss_saml_assertion *pAssertion)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+OM_uint32
 samlExportAssertion(OM_uint32 *minor,
                     struct eap_gss_saml_assertion *assertion,
                     gss_buffer_t buffer)

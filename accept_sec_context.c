@@ -267,7 +267,6 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     int code;
     struct wpabuf respData;
     static struct eapol_callbacks cb = { serverGetEapUser, serverGetEapReqIdText };
-
     if (ctx->acceptorCtx.eap == NULL) {
         struct eap_config eapConfig;
 

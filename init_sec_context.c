@@ -334,7 +334,9 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        resp = eap_sm_buildIdentity(ctx->initiatorCtx.eap, 0, 1);
+        /* Use this to emit an empty token*/
+        wpabuf_set(&ctx->initiatorCtx.reqData, "", 0);
+        resp = &ctx->initiatorCtx.reqData;
         major = GSS_S_CONTINUE_NEEDED;
         goto cleanup;
     } else {
@@ -543,13 +545,13 @@ gss_init_sec_context(OM_uint32 *minor,
                                    &innerOutputToken);
         if (GSS_ERROR(major))
             goto cleanup;
-    } while (major == GSS_S_CONTINUE_NEEDED && innerOutputToken.length == 0);
+    } while (major == GSS_S_CONTINUE_NEEDED && innerOutputToken.value == NULL);
 
     if (actual_mech_type != NULL) {
         if (!gssEapInternalizeOid(ctx->mechanismUsed, actual_mech_type))
             duplicateOid(&tmpMinor, ctx->mechanismUsed, actual_mech_type);
     }
-    if (innerOutputToken.length != 0) {
+    if (innerOutputToken.value != NULL) {
         tmpMajor = gssEapMakeToken(&tmpMinor, ctx, &innerOutputToken,
                                    sm->outputTokenType, output_token);
         if (GSS_ERROR(tmpMajor)) {

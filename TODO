@@ -1,4 +1,4 @@
-- SAML
-- encoders
-- OID encoders
-- gss_internal_release_oid
+- hook up SAML library
+- hook up RADIUS
+- export/import sec context
+- export/import composite (with attrs) name
