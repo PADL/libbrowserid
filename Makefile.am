@@ -54,6 +54,7 @@ libmech_eap_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
+	util_buffer.c				\
 	util_context.c				\
 	util_cksum.c				\
 	util_cred.c				\

@@ -76,6 +76,23 @@ enum gss_eap_token_type {
     TOK_TYPE_GSS_CHANNEL_BINDINGS    = 0x0603,  /* draft-howlett-eap-gss */
 };
 
+/* util_buffer.c */
+OM_uint32
+makeStringBuffer(OM_uint32 *minor,
+                 const char *string,
+                 gss_buffer_t buffer);
+
+OM_uint32
+bufferToString(OM_uint32 *minor,
+               const gss_buffer_t buffer,
+               char **pString);
+
+OM_uint32
+duplicateBuffer(OM_uint32 *minor,
+                const gss_buffer_t src,
+                gss_buffer_t dst);
+
+/* util_cksum.c */
 int
 gssEapSign(krb5_context context,
            krb5_cksumtype type,
@@ -206,6 +223,9 @@ gssEapOidToEnctype(OM_uint32 *minor,
 int
 gssEapIsMechanismOid(const gss_OID oid);
 
+int
+gssEapIsConcreteMechanismOid(const gss_OID oid);
+
 OM_uint32
 gssEapValidateMechs(OM_uint32 *minor,
                    const gss_OID_set mechs);
@@ -312,7 +332,7 @@ makeTokenHeader(const gss_OID_desc *mech,
                 enum gss_eap_token_type tok_type);
 
 int
-verifyTokenHeader(const gss_OID_desc * mech,
+verifyTokenHeader(gss_OID mech,
                   size_t *body_size,
                   unsigned char **buf_in,
                   size_t toksize_in,
@@ -409,72 +429,6 @@ load_uint64_be(const void *cvp)
     const unsigned char *p = (const unsigned char *)cvp;
 
     return ((uint64_t)load_uint32_be(p) << 32) | load_uint32_be(p + 4);
-}
-
-static OM_uint32
-makeStringBuffer(OM_uint32 *minor,
-                 const char *string,
-                 gss_buffer_t buffer)
-{
-    size_t len = strlen(string);
-
-    buffer->value = GSSEAP_MALLOC(len + 1);
-    if (buffer->value == NULL) {
-        *minor = ENOMEM;
-        return GSS_S_FAILURE;
-    }
-    memcpy(buffer->value, string, len + 1);
-    buffer->length = len;
-
-    *minor = 0;
-    return GSS_S_COMPLETE;
-}
-
-static OM_uint32
-bufferToString(OM_uint32 *minor,
-               const gss_buffer_t buffer,
-               char **pString)
-{
-    char *s;
-
-    s = GSSEAP_MALLOC(buffer->length + 1);
-    if (s == NULL) {
-        *minor = ENOMEM;
-        return GSS_S_FAILURE;
-    }
-    memcpy(s, buffer->value, buffer->length);
-    s[buffer->length] = '\0';
-
-    *pString = s;
-
-    *minor = 0;
-    return GSS_S_COMPLETE;
-}
-
-static OM_uint32
-duplicateBuffer(OM_uint32 *minor,
-                const gss_buffer_t src,
-                gss_buffer_t dst)
-{
-    dst->length = 0;
-    dst->value = NULL;
-
-    if (src == GSS_C_NO_BUFFER)
-        return GSS_S_COMPLETE;
-
-    dst->value = GSSEAP_MALLOC(src->length + 1);
-    if (dst->value == NULL) {
-        *minor = ENOMEM;
-        return GSS_S_FAILURE;
-    }
-
-    dst->length = src->length;
-    memcpy(dst->value, src->value, dst->length);
-
-    ((unsigned char *)dst->value)[dst->length] = '\0';
-
-    *minor = 0;
-    return GSS_S_COMPLETE;
 }
 
 #endif /* _UTIL_H_ */

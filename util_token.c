@@ -197,12 +197,11 @@ makeTokenHeader(
  */
 
 int
-verifyTokenHeader(
-    const gss_OID_desc * mech,
-    size_t *body_size,
-    unsigned char **buf_in,
-    size_t toksize_in,
-    enum gss_eap_token_type tok_type)
+verifyTokenHeader(gss_OID mech,
+                  size_t *body_size,
+                  unsigned char **buf_in,
+                  size_t toksize_in,
+                  enum gss_eap_token_type tok_type)
 {
     unsigned char *buf = *buf_in;
     ssize_t seqsize;
@@ -239,8 +238,13 @@ verifyTokenHeader(
     toid.elements = buf;
     buf += toid.length;
 
-    if (!oidEqual(&toid, mech))
+    if (mech->elements == NULL) {
+        *mech = toid;
+        if (toid.length == 0)
+            return EINVAL;
+    } else if (!oidEqual(&toid, mech)) {
         return EINVAL;
+    }
 
     if (tok_type != TOK_TYPE_NONE) {
         if (toksize -= 2 < 0)

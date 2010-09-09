@@ -88,7 +88,7 @@ OM_uint32
 gssEapReleaseContext(OM_uint32 *minor,
                      gss_ctx_id_t *pCtx)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 tmpMinor;
     gss_ctx_id_t ctx = *pCtx;
     krb5_context krbContext = NULL;
 
@@ -127,7 +127,6 @@ gssEapMakeToken(OM_uint32 *minor,
                 enum gss_eap_token_type tokenType,
                 gss_buffer_t outputToken)
 {
-    OM_uint32 major;
     unsigned char *p;
 
     outputToken->length = tokenSize(ctx->mechanismUsed, innerToken->length);
@@ -155,11 +154,31 @@ gssEapVerifyToken(OM_uint32 *minor,
     OM_uint32 major;
     size_t bodySize;
     unsigned char *p = (unsigned char *)inputToken->value;
+    gss_OID_desc oidBuf;
+    gss_OID oid;
 
-    major = verifyTokenHeader(ctx->mechanismUsed, &bodySize, &p,
-                              inputToken->length, tokenType);
+    if (ctx->mechanismUsed != GSS_C_NO_OID) {
+        oid = ctx->mechanismUsed;
+    } else {
+        oidBuf.elements = NULL;
+        oidBuf.length = 0;
+        oid = &oidBuf;
+    }
+
+    major = verifyTokenHeader(oid, &bodySize, &p, inputToken->length, tokenType);
     if (GSS_ERROR(major))
         return major;
+
+    if (ctx->mechanismUsed != GSS_C_NO_OID) {
+        if (!gssEapIsConcreteMechanismOid(oid))
+            return GSS_S_BAD_MECH;
+
+        if (!gssEapInternalizeOid(oid, &ctx->mechanismUsed)) {
+            major = duplicateOid(minor, oid, &ctx->mechanismUsed);
+            if (GSS_ERROR(major))
+                return major;
+        }
+    }
 
     innerInputToken->length = bodySize;
     innerInputToken->value = p;

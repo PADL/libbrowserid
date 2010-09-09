@@ -66,19 +66,19 @@ gss_OID GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapConcreteMechs[1];
 gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapConcreteMechs[2];
 
 int
+gssEapIsConcreteMechanismOid(const gss_OID oid)
+{
+    return oid->length > gssEapMechPrefix.length &&
+           memcmp(oid->elements, gssEapMechPrefix.elements,
+                  gssEapMechPrefix.length) == 0;
+}
+
+int
 gssEapIsMechanismOid(const gss_OID oid)
 {
-    if (oid == GSS_C_NO_OID) {
-        return TRUE;
-    } else if (oidEqual(oid, GSS_EAP_MECHANISM)) {
-        return TRUE;
-    } else if (oid->length > gssEapMechPrefix.length &&
-               memcmp(oid->elements, gssEapMechPrefix.elements,
-                      gssEapMechPrefix.length) == 0) {
-        return TRUE;
-    }
-
-    return FALSE;
+    return oid == GSS_C_NO_OID ||
+           oidEqual(oid, GSS_EAP_MECHANISM) ||
+           gssEapIsConcreteMechanismOid(oid);
 }
 
 OM_uint32

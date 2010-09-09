@@ -140,46 +140,45 @@ peerSetInt(void *data, enum eapol_int_var variable,
 }
 
 static OM_uint32
-eapGssSmAuthenticate(OM_uint32 *minor,
-                     gss_cred_id_t cred,
-                     gss_ctx_id_t ctx,
-                     gss_name_t target_name,
-                     gss_OID mech_type,
-                     OM_uint32 req_flags,
-                     OM_uint32 time_req,
-                     gss_channel_bindings_t input_chan_bindings,
-                     gss_buffer_t input_token,
-                     gss_buffer_t output_token)
+eapGssSmInitAuthenticate(OM_uint32 *minor,
+                         gss_cred_id_t cred,
+                         gss_ctx_id_t ctx,
+                         gss_name_t target,
+                         gss_OID mech,
+                         OM_uint32 reqFlags,
+                         OM_uint32 timeReq,
+                         gss_channel_bindings_t chanBindings,
+                         gss_buffer_t inputToken,
+                         gss_buffer_t outputToken)
 {
     OM_uint32 major, tmpMinor;
     time_t now;
 
-    if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
+    if (inputToken == GSS_C_NO_BUFFER || inputToken->length == 0) {
         /* first time */
-        req_flags &= GSS_C_TRANS_FLAG | GSS_C_REPLAY_FLAG | GSS_C_DCE_STYLE;
-        ctx->gssFlags |= req_flags;
+        reqFlags &= GSS_C_TRANS_FLAG | GSS_C_REPLAY_FLAG | GSS_C_DCE_STYLE;
+        ctx->gssFlags |= reqFlags;
 
         time(&now);
 
-        if (time_req == 0 || time_req == GSS_C_INDEFINITE)
+        if (timeReq == 0 || timeReq == GSS_C_INDEFINITE)
             ctx->expiryTime = 0;
         else
-            ctx->expiryTime = now + time_req;
+            ctx->expiryTime = now + timeReq;
 
         major = gss_duplicate_name(minor, cred->name, &ctx->initiatorName);
         if (GSS_ERROR(major))
             goto cleanup;
 
-        major = gss_duplicate_name(minor, target_name, &ctx->acceptorName);
+        major = gss_duplicate_name(minor, target, &ctx->acceptorName);
         if (GSS_ERROR(major))
             goto cleanup;
 
-        if (mech_type == GSS_C_NULL_OID ||
-            oidEqual(mech_type, GSS_EAP_MECHANISM)) {
+        if (mech == GSS_C_NULL_OID || oidEqual(mech, GSS_EAP_MECHANISM)) {
             major = gssEapDefaultMech(minor, &ctx->mechanismUsed);
-        } else if (gssEapIsMechanismOid(mech_type)) {
-            if (!gssEapInternalizeOid(mech_type, &ctx->mechanismUsed))
-                major = duplicateOid(minor, mech_type, &ctx->mechanismUsed);
+        } else if (gssEapIsConcreteMechanismOid(mech)) {
+            if (!gssEapInternalizeOid(mech, &ctx->mechanismUsed))
+                major = duplicateOid(minor, mech, &ctx->mechanismUsed);
         } else {
             major = GSS_S_BAD_MECH;
         }
@@ -205,13 +204,13 @@ static struct eap_gss_initiator_sm {
                               gss_buffer_t,
                               gss_buffer_t);
 } eapGssInitiatorSm[] = {
-    { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP, eapGssSmAuthenticate },
+    { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP, eapGssSmInitAuthenticate },
 };
 
 OM_uint32
 gss_init_sec_context(OM_uint32 *minor,
                      gss_cred_id_t cred,
-                     gss_ctx_id_t *pCtx,
+                     gss_ctx_id_t *context_handle,
                      gss_name_t target_name,
                      gss_OID mech_type,
                      OM_uint32 req_flags,
@@ -224,7 +223,7 @@ gss_init_sec_context(OM_uint32 *minor,
                      OM_uint32 *time_rec)
 {
     OM_uint32 major, tmpMinor;
-    gss_ctx_id_t ctx = *pCtx;
+    gss_ctx_id_t ctx = *context_handle;
     struct eap_gss_initiator_sm *sm = NULL;
     gss_buffer_desc innerInputToken, innerOutputToken;
 
@@ -237,22 +236,24 @@ gss_init_sec_context(OM_uint32 *minor,
     output_token->value = NULL;
 
     if (cred != GSS_C_NO_CREDENTIAL && !(cred->flags & CRED_FLAG_INITIATE)) {
-        major = GSS_S_NO_CRED;
-        goto cleanup;
+        return GSS_S_NO_CRED;
     }
 
     if (ctx == GSS_C_NO_CONTEXT) {
         if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {
-            major = GSS_S_DEFECTIVE_TOKEN;
-            goto cleanup;
+            return GSS_S_DEFECTIVE_TOKEN;
         }
 
         major = gssEapAllocContext(minor, &ctx);
         if (GSS_ERROR(major))
-            goto cleanup;
+            return major;
 
-        *pCtx = ctx;
+        ctx->flags |= CTX_FLAG_INITIATOR;
+
+        *context_handle = ctx;
     }
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     sm = &eapGssInitiatorSm[ctx->state];
 
@@ -274,32 +275,33 @@ gss_init_sec_context(OM_uint32 *minor,
                                req_flags,
                                time_req,
                                input_chan_bindings,
-                               input_token,
-                               output_token);
+                               &innerInputToken,
+                               &innerOutputToken);
     if (GSS_ERROR(major))
         goto cleanup;
-
-    if (output_token->length != 0) {
-        major = gssEapMakeToken(minor, ctx, &innerOutputToken,
-                                sm->outputTokenType, output_token);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
 
     if (actual_mech_type != NULL) {
         if (!gssEapInternalizeOid(ctx->mechanismUsed, actual_mech_type))
             duplicateOid(&tmpMinor, ctx->mechanismUsed, actual_mech_type);
+    }
+    if (innerOutputToken.length != 0) {
+        major = gssEapMakeToken(minor, ctx, &innerOutputToken,
+                                sm->outputTokenType, output_token);
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
     if (ret_flags != NULL)
         *ret_flags = ctx->gssFlags;
     if (time_rec != NULL)
         gss_context_time(&tmpMinor, ctx, time_rec);
 
-    assert(ctx->state == EAP_STATE_ESTABLISHED || output_token->length != 0);
+    assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
     if (GSS_ERROR(major))
-        gssEapReleaseContext(&tmpMinor, pCtx);
+        gssEapReleaseContext(&tmpMinor, context_handle);
 
     gss_release_buffer(&tmpMinor, &innerOutputToken);
 
