@@ -334,7 +334,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        resp = eap_sm_buildIdentity(ctx->initiatorCtx.eap, 0, 0);
+        resp = eap_sm_buildIdentity(ctx->initiatorCtx.eap, 0, 1);
         major = GSS_S_CONTINUE_NEEDED;
         goto cleanup;
     } else {
