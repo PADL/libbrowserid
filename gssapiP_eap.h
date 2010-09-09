@@ -120,17 +120,6 @@ struct eap_gss_initiator_ctx {
     struct eap_sm *eap;
 };
 
-typedef OM_uint32 (*eap_gss_initiator_sm)(OM_uint32 *,
-                                          gss_cred_id_t,
-                                          gss_ctx_id_t,
-                                          gss_name_t,
-                                          gss_OID,
-                                          OM_uint32,
-                                          OM_uint32,
-                                          gss_channel_bindings_t,
-                                          gss_buffer_t,
-                                          gss_buffer_t);
-
 /* Acceptor context flags */
 struct eap_gss_acceptor_ctx {
 };

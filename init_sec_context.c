@@ -191,12 +191,21 @@ cleanup:
     return major;
 }
 
-static eap_gss_initiator_sm eapGssSm[] = {
-    eapGssSmAuthenticate,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+static struct eap_gss_initiator_sm {
+    enum gss_eap_token_type inputTokenType;
+    enum gss_eap_token_type outputTokenType;
+    OM_uint32 (*processToken)(OM_uint32 *,
+                              gss_cred_id_t,
+                              gss_ctx_id_t,
+                              gss_name_t,
+                              gss_OID,
+                              OM_uint32,
+                              OM_uint32,
+                              gss_channel_bindings_t,
+                              gss_buffer_t,
+                              gss_buffer_t);
+} eapGssInitiatorSm[] = {
+    { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP, eapGssSmAuthenticate },
 };
 
 OM_uint32
@@ -216,8 +225,13 @@ gss_init_sec_context(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *pCtx;
+    struct eap_gss_initiator_sm *sm = NULL;
+    gss_buffer_desc innerInputToken, innerOutputToken;
 
     *minor = 0;
+
+    innerOutputToken.length = 0;
+    innerOutputToken.value = NULL;
 
     output_token->length = 0;
     output_token->value = NULL;
@@ -240,23 +254,36 @@ gss_init_sec_context(OM_uint32 *minor,
         *pCtx = ctx;
     }
 
-    for (; ctx->state != EAP_STATE_ESTABLISHED; ctx->state++) {
-        major = (eapGssSm[ctx->state])(minor,
-                                       cred,
-                                       ctx,
-                                       target_name,
-                                       mech_type,
-                                       req_flags,
-                                       time_req,
-                                       input_chan_bindings,
-                                       input_token,
-                                       output_token);
+    sm = &eapGssInitiatorSm[ctx->state];
+
+    if (input_token != GSS_C_NO_BUFFER) {
+        major = gssEapVerifyToken(minor, ctx, input_token,
+                                  sm->inputTokenType, &innerInputToken);
         if (GSS_ERROR(major))
             goto cleanup;
-        if (output_token->length != 0) {
-            assert(major == GSS_S_CONTINUE_NEEDED);
-            break;
-        }
+    } else {
+        innerInputToken.length = 0;
+        innerInputToken.value = NULL;
+    }
+
+    major = (sm->processToken)(minor,
+                               cred,
+                               ctx,
+                               target_name,
+                               mech_type,
+                               req_flags,
+                               time_req,
+                               input_chan_bindings,
+                               input_token,
+                               output_token);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (output_token->length != 0) {
+        major = gssEapMakeToken(minor, ctx, &innerOutputToken,
+                                sm->outputTokenType, output_token);
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
 
     if (actual_mech_type != NULL) {
@@ -273,6 +300,8 @@ gss_init_sec_context(OM_uint32 *minor,
 cleanup:
     if (GSS_ERROR(major))
         gssEapReleaseContext(&tmpMinor, pCtx);
+
+    gss_release_buffer(&tmpMinor, &innerOutputToken);
 
     return major;
 }

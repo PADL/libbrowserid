@@ -119,3 +119,51 @@ gssEapReleaseContext(OM_uint32 *minor,
     *minor = 0;
     return GSS_S_COMPLETE;
 }
+
+OM_uint32
+gssEapMakeToken(OM_uint32 *minor,
+                gss_ctx_id_t ctx,
+                const gss_buffer_t innerToken,
+                enum gss_eap_token_type tokenType,
+                gss_buffer_t outputToken)
+{
+    OM_uint32 major;
+    unsigned char *p;
+
+    outputToken->length = tokenSize(ctx->mechanismUsed, innerToken->length);
+    outputToken->value = GSSEAP_MALLOC(outputToken->length);
+    if (outputToken->value == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    p = (unsigned char *)outputToken->value;
+    makeTokenHeader(ctx->mechanismUsed, innerToken->length, &p, tokenType);
+    memcpy(p, innerToken->value, innerToken->length);
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+gssEapVerifyToken(OM_uint32 *minor,
+                  gss_ctx_id_t ctx,
+                  const gss_buffer_t inputToken,
+                  enum gss_eap_token_type tokenType,
+                  gss_buffer_t innerInputToken)
+{
+    OM_uint32 major;
+    size_t bodySize;
+    unsigned char *p = (unsigned char *)inputToken->value;
+
+    major = verifyTokenHeader(ctx->mechanismUsed, &bodySize, &p,
+                              inputToken->length, tokenType);
+    if (GSS_ERROR(major))
+        return major;
+
+    innerInputToken->length = bodySize;
+    innerInputToken->value = p;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
