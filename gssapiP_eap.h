@@ -36,6 +36,8 @@
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <time.h>
 
 /* GSS includes */
@@ -45,8 +47,6 @@
 #include "util.h"
 
 /* EAP includes */
-#define IEEE8021X_EAPOL 1
-
 #include <common.h>
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>

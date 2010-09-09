@@ -179,7 +179,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         store_uint16_be(ec, outbuf + 4);
         /* RRC */
         store_uint16_be(0, outbuf + 6);
-        store_64_be(ctx->sendSeq, outbuf + 8);
+        store_uint64_be(ctx->sendSeq, outbuf + 8);
 
         /*
          * EC | copy of header to be encrypted, located in
@@ -261,7 +261,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
             store_uint16_be(0xFFFF, outbuf + 4);
             store_uint16_be(0xFFFF, outbuf + 6);
         }
-        store_64_be(ctx->sendSeq, outbuf + 8);
+        store_uint64_be(ctx->sendSeq, outbuf + 8);
 
         code = gssEapSign(krbContext, 0, /* 0 == pick from crypto */
                           rrc, &ctx->rfc3961Key, keyUsage,

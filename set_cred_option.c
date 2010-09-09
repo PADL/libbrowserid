@@ -41,7 +41,7 @@ static struct {
 
 OM_uint32
 gssspi_set_cred_option(OM_uint32 *minor,
-                       gss_cred_id_t *cred,
+                       gss_cred_id_t cred,
                        const gss_OID desired_object,
                        const gss_buffer_t value)
 {
@@ -50,7 +50,7 @@ gssspi_set_cred_option(OM_uint32 *minor,
 
     for (i = 0; i < sizeof(setCredOps) / sizeof(setCredOps[0]); i++) {
         if (oidEqual(&setCredOps[i].oid, desired_object)) {
-            major = (*setCredOps[i].setOption)(minor, cred,
+            major = (*setCredOps[i].setOption)(minor, &cred,
                                               desired_object, value);
             break;
         }

@@ -47,7 +47,9 @@ OM_uint32
 radiusFreeAVPs(OM_uint32 *minor,
                struct eap_gss_avp_list *avps)
 {
-    GSSEAP_FREE(avps);
+    if (avps != NULL) {
+        GSSEAP_NOT_IMPLEMENTED;
+    }
 }
 
 OM_uint32

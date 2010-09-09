@@ -198,8 +198,8 @@ serverGetEapUser(void *ctx,
      */
     user->methods[0].vendor = EAP_VENDOR_IETF;
     user->methods[0].method = EAP_TYPE_MSCHAPV2;
-    user->password = (unsigned char *)strdup("");
-    user->password_len = 0;
+    user->password = (unsigned char *)strdup(" ");
+    user->password_len = 1;
 
     return 0;
 }
@@ -280,6 +280,10 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
             major = GSS_S_FAILURE;
             goto cleanup;
         }
+
+        ctx->acceptorCtx.eapPolInterface = eap_get_interface(ctx->acceptorCtx.eap);
+        ctx->acceptorCtx.eapPolInterface->portEnabled = TRUE;
+        ctx->acceptorCtx.eapPolInterface->eapRestart = TRUE;
     }
 
     if (ctx->acceptorName == GSS_C_NO_NAME && cred->name != GSS_C_NO_NAME) {

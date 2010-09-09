@@ -47,18 +47,13 @@
  *        mechInvoke(5)
  */
 
-static gss_OID_desc gssEapMechPrefix = {
-    /* Note that alone this is not a valid DER encoded OID */
-    11, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x00"
-};
-
 static gss_OID_desc gssEapConcreteMechs[] = {
     /* 1.3.6.1.4.1.5322.21.1  */
-    { 11, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01" },
+    { 9, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01" },
     /* 1.3.6.1.4.1.5322.21.1.17 */
-    { 12, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x11" },
+    { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x11" },
     /* 1.3.6.1.4.1.5322.21.1.18 */
-    { 12, "\x06\x0A\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x12" }
+    { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x12" }
 };
 
 gss_OID GSS_EAP_MECHANISM                            = &gssEapConcreteMechs[0];
@@ -68,9 +63,9 @@ gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapConcreteMechs[2];
 int
 gssEapIsConcreteMechanismOid(const gss_OID oid)
 {
-    return oid->length > gssEapMechPrefix.length &&
-           memcmp(oid->elements, gssEapMechPrefix.elements,
-                  gssEapMechPrefix.length) == 0;
+    return oid->length > GSS_EAP_MECHANISM->length &&
+           memcmp(oid->elements, GSS_EAP_MECHANISM->elements,
+                  GSS_EAP_MECHANISM->length) == 0;
 }
 
 int
@@ -112,8 +107,8 @@ gssEapOidToEnctype(OM_uint32 *minor,
     int suffix;
 
     major = decomposeOid(minor,
-                         gssEapMechPrefix.elements,
-                         gssEapMechPrefix.length,
+                         GSS_EAP_MECHANISM->elements,
+                         GSS_EAP_MECHANISM->length,
                          oid,
                          &suffix);
     if (major == GSS_S_COMPLETE)
@@ -138,7 +133,7 @@ gssEapEnctypeToOid(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    oid->elements = GSSEAP_MALLOC(gssEapMechPrefix.length + 1);
+    oid->elements = GSSEAP_MALLOC(GSS_EAP_MECHANISM->length + 1);
     if (oid->elements == NULL) {
         *minor = ENOMEM;
         free(oid);
@@ -146,8 +141,8 @@ gssEapEnctypeToOid(OM_uint32 *minor,
     }
 
     major = composeOid(minor,
-                       gssEapMechPrefix.elements,
-                       gssEapMechPrefix.length,
+                       GSS_EAP_MECHANISM->elements,
+                       GSS_EAP_MECHANISM->length,
                        enctype,
                        oid);
     if (major == GSS_S_COMPLETE) {

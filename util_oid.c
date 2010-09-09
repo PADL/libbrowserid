@@ -72,7 +72,7 @@ duplicateOid(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
     p->length = oid->length;
-    p->elements = GSSEAP_MALLCO(p->length);
+    p->elements = GSSEAP_MALLOC(p->length);
     if (p->elements == NULL) {
         GSSEAP_FREE(p);
         return GSS_S_FAILURE;

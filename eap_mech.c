@@ -243,6 +243,8 @@ eapServerRegisterMethods(void)
     if (ret == 0)
         ret = eap_server_tnc_register();
 #endif /* EAP_SERVER_TNC */
+
+    return ret;
 }
 
 static int

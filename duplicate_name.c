@@ -41,7 +41,7 @@ gss_duplicate_name(OM_uint32 *minor,
     krb5_context krbContext;
     gss_name_t name;
 
-    if (name == GSS_C_NO_NAME) {
+    if (input_name == GSS_C_NO_NAME) {
         *minor = EINVAL;
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
     }
@@ -63,13 +63,18 @@ gss_duplicate_name(OM_uint32 *minor,
         goto cleanup;
     }
 
-    major = radiusDuplicateAVPs(minor, input_name->avps, &name->avps);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    if (input_name->avps != NULL) {
+        major = radiusDuplicateAVPs(minor, input_name->avps, &name->avps);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
-    major = samlDuplicateAssertion(minor, input_name->assertion, &name->assertion);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    if (input_name->assertion != NULL) {
+        major = samlDuplicateAssertion(minor, input_name->assertion,
+                                       &name->assertion);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
     *dest_name = name;
 

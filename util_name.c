@@ -68,7 +68,7 @@ gssEapAllocName(OM_uint32 *minor, gss_name_t *pName)
     OM_uint32 tmpMinor;
     gss_name_t name;
 
-    assert(*pName == GSS_C_NO_NAME);
+    *pName = GSS_C_NO_NAME;
 
     name = (gss_name_t)GSSEAP_CALLOC(1, sizeof(*name));
     if (name == NULL) {
@@ -138,7 +138,9 @@ krbPrincipalToName(OM_uint32 *minor,
         name->flags |= NAME_FLAG_SERVICE;
     }
 
+    *pName = name;
     *minor = 0;
+
     return GSS_S_COMPLETE;
 }
 

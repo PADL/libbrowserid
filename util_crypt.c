@@ -316,7 +316,7 @@ gssEapLocateIov(gss_iov_buffer_desc *iov, int iov_count, OM_uint32 type)
 }
 
 void
-gssEapIovMessageLnegth(gss_iov_buffer_desc *iov,
+gssEapIovMessageLength(gss_iov_buffer_desc *iov,
                        int iov_count,
                        size_t *data_length_p,
                        size_t *assoc_data_length_p)
@@ -394,4 +394,3 @@ gssEapAllocIov(gss_iov_buffer_t iov, size_t size)
 
     return 0;
 }
-

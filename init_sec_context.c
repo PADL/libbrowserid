@@ -353,7 +353,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
         ctx->state = EAP_STATE_ESTABLISHED;
         major = GSS_S_COMPLETE;
-    } else if (code == 0) {
+    } else if ((ctx->flags & CTX_FLAG_EAP_FAIL) || code == 0) {
         major = GSS_S_FAILURE;
     }
 

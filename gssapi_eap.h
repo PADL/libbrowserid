@@ -51,4 +51,3 @@ extern gss_OID GSS_EAP_NT_PRINCIPAL_NAME;
 #endif /* __cplusplus */
 
 #endif /* _GSSAPI_EAP_H_ */
-

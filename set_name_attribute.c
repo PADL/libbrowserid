@@ -39,7 +39,7 @@ gss_set_name_attribute(OM_uint32 *minor,
                        gss_buffer_t attr,
                        gss_buffer_t value)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     gss_buffer_desc prefix, suffix;
     enum gss_eap_attribute_type type;
 

@@ -38,7 +38,7 @@ gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     OM_uint32 tmpMinor;
     gss_cred_id_t cred;
 
-    assert(*pCred == GSS_C_NO_CREDENTIAL);
+    *pCred = GSS_C_NO_CREDENTIAL;
 
     cred = (gss_cred_id_t)GSSEAP_CALLOC(1, sizeof(*cred));
     if (cred == NULL) {
@@ -104,11 +104,39 @@ gssEapAcquireCred(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+    switch (credUsage) {
+    case GSS_C_BOTH:
+        cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
+        break;
+    case GSS_C_INITIATE:
+        cred->flags |= CRED_FLAG_INITIATE;
+        break;
+    case GSS_C_ACCEPT:
+        cred->flags |= CRED_FLAG_ACCEPT;
+        break;
+    default:
+        major = GSS_S_FAILURE;
+        goto cleanup;
+        break;
+    }
+
     if (desiredName != GSS_C_NO_NAME) {
         major = gss_duplicate_name(minor, desiredName, &cred->name);
         if (GSS_ERROR(major))
             goto cleanup;
     } else {
+        if (cred->flags & CRED_FLAG_INITIATE) {
+            gss_buffer_desc buf;
+
+            buf.value = getlogin(); /* XXX */
+            buf.length = strlen((char *)buf.value);
+
+            major = gss_import_name(&minor, &buf,
+                                    GSS_C_NT_USER_NAME, &cred->name);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+
         cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
     }
 
@@ -127,22 +155,6 @@ gssEapAcquireCred(OM_uint32 *minor,
     major = duplicateOidSet(minor, desiredMechs, &cred->mechanisms);
     if (GSS_ERROR(major))
         goto cleanup;
-
-    switch (credUsage) {
-    case GSS_C_BOTH:
-        cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
-        break;
-    case GSS_C_INITIATE:
-        cred->flags |= CRED_FLAG_INITIATE;
-        break;
-    case GSS_C_ACCEPT:
-        cred->flags |= CRED_FLAG_ACCEPT;
-        break;
-    default:
-        major = GSS_S_FAILURE;
-        goto cleanup;
-        break;
-    }
 
     if (pActualMechs != NULL) {
         major = duplicateOidSet(minor, cred->mechanisms, pActualMechs);

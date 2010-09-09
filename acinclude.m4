@@ -29,9 +29,9 @@ if test x_$found_krb5 != x_yes; then
 ----------------------------------------------------------------------
 ])
 else
-        printf "Kerberos found in $krb5dir\n";
+	printf "Kerberos found in $krb5dir\n";
 	KRB5_LIBS="-lgssapi_krb5 -lkrb5";
-        KRB5_LDFLAGS="-L$krb5dir/lib";
+	KRB5_LDFLAGS="-L$krb5dir/lib";
 	AC_SUBST(KRB5_CFLAGS)
 	AC_SUBST(KRB5_LDFLAGS)
 	AC_SUBST(KRB5_LIBS)
@@ -67,12 +67,38 @@ if test x_$found_eap != x_yes; then
 ----------------------------------------------------------------------
 ])
 else
-        printf "EAP found in $eapdir\n";
-	EAP_LIBS="-leap";
-        EAP_LDFLAGS="-L$eapdir/eap_example";
+	printf "EAP found in $eapdir\n";
+	EAP_CFLAGS="$EAP_CFLAGS \
+-DEAP_TLS \
+-DEAP_PEAP \
+-DEAP_TTLS \
+-DEAP_MD5 \
+-DEAP_MSCHAPv2 \
+-DEAP_GTC \
+-DEAP_OTP \
+-DEAP_LEAP \
+-DEAP_PSK \
+-DEAP_PAX \
+-DEAP_SAKE \
+-DEAP_GPSK \
+-DEAP_GPSK_SHA256 \
+-DEAP_SERVER_IDENTITY \
+-DEAP_SERVER_TLS \
+-DEAP_SERVER_PEAP \
+-DEAP_SERVER_TTLS \
+-DEAP_SERVER_MD5 \
+-DEAP_SERVER_MSCHAPV2 \
+-DEAP_SERVER_GTC \
+-DEAP_SERVER_PSK \
+-DEAP_SERVER_PAX \
+-DEAP_SERVER_SAKE \
+-DEAP_SERVER_GPSK \
+-DEAP_SERVER_GPSK_SHA256 \
+-DIEEE8021X_EAPOL";
+	EAP_LIBS="-leap -lutils -lcrypto -ltls";
+	EAP_LDFLAGS="-L$eapdir/eap_example -L$eapdir/src/utils -L$eapdir/src/crypto -L$eapdir/src/tls";
 	AC_SUBST(EAP_CFLAGS)
 	AC_SUBST(EAP_LDFLAGS)
 	AC_SUBST(EAP_LIBS)
 fi
 ])dnl
-

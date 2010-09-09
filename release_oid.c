@@ -36,7 +36,6 @@ OM_uint32
 gss_internal_release_oid(OM_uint32 *minor,
                          gss_OID *oid)
 {
-    OM_uint32 major;
     gss_OID internalizedOid = GSS_C_NO_OID;
 
     if (gssEapInternalizeOid(*oid, &internalizedOid)) {
