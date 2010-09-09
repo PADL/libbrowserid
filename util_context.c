@@ -110,7 +110,7 @@ gssEapReleaseContext(OM_uint32 *minor,
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
     gss_release_oid(&tmpMinor, &ctx->mechanismUsed);
-    sequenceFree(ctx->seqState);
+    sequenceFree(&ctx->seqState);
 
     GSSEAP_MUTEX_DESTROY(&ctx->mutex);
 
@@ -171,7 +171,7 @@ gssEapVerifyToken(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    if (ctx->mechanismUsed != GSS_C_NO_OID) {
+    if (ctx->mechanismUsed == GSS_C_NO_OID) {
         if (!gssEapIsConcreteMechanismOid(oid))
             return GSS_S_BAD_MECH;
 

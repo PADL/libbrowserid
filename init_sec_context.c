@@ -68,6 +68,7 @@ policyVariableToFlag(enum eapol_bool_var variable)
     }
 
     return flag;
+        
 }
 
 static struct eap_peer_config *
@@ -183,6 +184,8 @@ static struct eapol_callbacks gssEapPolicyCallbacks = {
     peerNotifyPending,
 };
 
+extern int wpa_debug_level;
+
 static OM_uint32
 peerConfigInit(OM_uint32 *minor,
                gss_cred_id_t cred,
@@ -197,6 +200,8 @@ peerConfigInit(OM_uint32 *minor,
     GSSEAP_KRB_INIT(&krbContext);
 
     if (loadConfig) {
+        eapPeerConfig->fragment_size = 1024;
+        wpa_debug_level = 0;
     }
 
     code = krb5_unparse_name(krbContext, cred->name->krbPrincipal, &identity);
@@ -228,8 +233,8 @@ peerConfigFree(OM_uint32 *minor,
 }
 
 static OM_uint32
-peerDeriveKey(OM_uint32 *minor,
-              gss_ctx_id_t ctx)
+completeInit(OM_uint32 *minor,
+             gss_ctx_id_t ctx)
 {
     OM_uint32 major;
     const unsigned char *key;
@@ -260,6 +265,11 @@ peerDeriveKey(OM_uint32 *minor,
         ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
     }
 
+    sequenceInit(&ctx->seqState, ctx->recvSeq,
+                 ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                 ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                 TRUE);
+
     return GSS_S_COMPLETE;
 }
 
@@ -275,9 +285,11 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
                          gss_buffer_t inputToken,
                          gss_buffer_t outputToken)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
+    OM_uint32 tmpMajor, tmpMinor;
     time_t now;
     int initialContextToken = 0, code;
+    struct wpabuf *resp = NULL;
 
     initialContextToken = (inputToken == GSS_C_NO_BUFFER ||
                            inputToken->length == 0);
@@ -287,12 +299,15 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         goto cleanup;
 
     if (initialContextToken) {
+        struct eap_config eapConfig;
+
+        memset(&eapConfig, 0, sizeof(eapConfig));
         ctx->flags |= CTX_FLAG_EAP_PORT_ENABLED;
 
         ctx->initiatorCtx.eap = eap_peer_sm_init(ctx,
                                                  &gssEapPolicyCallbacks,
                                                  ctx,
-                                                 &ctx->initiatorCtx.eapConfig);
+                                                 &eapConfig);
 
         time(&now);
         if (timeReq == 0 || timeReq == GSS_C_INDEFINITE)
@@ -318,46 +333,49 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         }
         if (GSS_ERROR(major))
             goto cleanup;
+
+        resp = eap_sm_buildIdentity(ctx->initiatorCtx.eap, 0, 0);
+        major = GSS_S_CONTINUE_NEEDED;
+        goto cleanup;
+    } else {
+        ctx->flags |= CTX_FLAG_EAP_REQ; /* we have a Request from the acceptor */
     }
 
     wpabuf_set(&ctx->initiatorCtx.reqData,
                inputToken->value, inputToken->length);
 
+    major = GSS_S_CONTINUE_NEEDED;
+
     code = eap_peer_sm_step(ctx->initiatorCtx.eap);
-
     if (ctx->flags & CTX_FLAG_EAP_RESP) {
-        struct wpabuf *resp;
-        gss_buffer_desc buf;
-
         ctx->flags &= ~(CTX_FLAG_EAP_RESP);
 
         resp = eap_get_eapRespData(ctx->initiatorCtx.eap);
-
-        if (resp != NULL) {
-            buf.length = wpabuf_len(resp);
-            buf.value = (void *)wpabuf_head(resp);
-
-            major = duplicateBuffer(minor, &buf, outputToken);
-            if (GSS_ERROR(major))
-                goto cleanup;
-
-            major = GSS_S_CONTINUE_NEEDED;
-        }
-    }
-
-    if (ctx->flags & CTX_FLAG_EAP_SUCCESS) {
-        major = peerDeriveKey(minor, ctx);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
+    } else if (ctx->flags & CTX_FLAG_EAP_SUCCESS) {
+        major = completeInit(minor, ctx);
         ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
         ctx->state = EAP_STATE_ESTABLISHED;
-        major = GSS_S_COMPLETE;
     } else if ((ctx->flags & CTX_FLAG_EAP_FAIL) || code == 0) {
         major = GSS_S_FAILURE;
     }
 
 cleanup:
+    if (resp != NULL) {
+        OM_uint32 tmpMajor;
+        gss_buffer_desc buf;
+
+        assert(major == GSS_S_CONTINUE_NEEDED);
+
+        buf.length = wpabuf_len(resp);
+        buf.value = (void *)wpabuf_head(resp);
+
+        tmpMajor = duplicateBuffer(&tmpMinor, &buf, outputToken);
+        if (GSS_ERROR(tmpMajor)) {
+            major = tmpMajor;
+            *minor = tmpMinor;
+        }
+    }
+
     wpabuf_set(&ctx->initiatorCtx.reqData, NULL, 0);
     peerConfigFree(&tmpMinor, ctx);
 
@@ -462,7 +480,8 @@ gss_init_sec_context(OM_uint32 *minor,
                      OM_uint32 *ret_flags,
                      OM_uint32 *time_rec)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
+    OM_uint32 tmpMajor, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
     struct eap_gss_initiator_sm *sm = NULL;
     gss_buffer_desc innerInputToken, innerOutputToken;
@@ -531,10 +550,13 @@ gss_init_sec_context(OM_uint32 *minor,
             duplicateOid(&tmpMinor, ctx->mechanismUsed, actual_mech_type);
     }
     if (innerOutputToken.length != 0) {
-        major = gssEapMakeToken(minor, ctx, &innerOutputToken,
-                                sm->outputTokenType, output_token);
-        if (GSS_ERROR(major))
+        tmpMajor = gssEapMakeToken(&tmpMinor, ctx, &innerOutputToken,
+                                   sm->outputTokenType, output_token);
+        if (GSS_ERROR(tmpMajor)) {
+            major = tmpMajor;
+            *minor = tmpMinor;
             goto cleanup;
+        }
     }
     if (ret_flags != NULL)
         *ret_flags = ctx->gssFlags;

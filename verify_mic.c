@@ -39,15 +39,25 @@ gss_verify_mic(OM_uint32 *minor,
                gss_buffer_t message_token,
                gss_qop_t *qop_state)
 {
-    gss_iov_buffer_desc iov[2];
+    gss_iov_buffer_desc iov[3];
     int conf_state;
+
+    if (message_token->length < 16) {
+        *minor = KRB5_BAD_MSIZE;
+        return GSS_S_BAD_SIG;
+    }
 
     iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
     iov[0].buffer = *message_buffer;
 
     iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER;
-    iov[1].buffer = *message_token;
+    iov[1].buffer.length = 16;
+    iov[1].buffer.value = message_token->value;
+
+    iov[2].type = GSS_IOV_BUFFER_TYPE_TRAILER;
+    iov[2].buffer.length = message_token->length - 16;
+    iov[2].buffer.value = (unsigned char *)message_token->value + 16;
 
     return gssEapUnwrapOrVerifyMIC(minor, ctx, &conf_state, qop_state,
-                                   iov, 2, TOK_TYPE_MIC);
+                                   iov, 3, TOK_TYPE_MIC);
 }

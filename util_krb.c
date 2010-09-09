@@ -108,7 +108,12 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    data.length = keyLength;
+    if (keyLength < keybytes) {
+        code = KRB5_BAD_MSIZE;
+        goto cleanup;
+    }
+
+    data.length = keybytes;
     data.data = (char *)key;
 
     kd.contents = GSSEAP_MALLOC(keylength);
@@ -131,7 +136,11 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    prf.length = prflength;
+    if (prflength < keybytes) {
+        code = KRB5_CRYPTO_INTERNAL;
+        goto cleanup;
+    }
+    prf.length = keybytes;
     prf.data = GSSEAP_MALLOC(prflength);
     if (data.data == NULL) {
         code = ENOMEM;

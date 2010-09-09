@@ -80,7 +80,6 @@ unwrapToken(OM_uint32 *minor,
     size_t dataLen, assocDataLen;
     uint64_t seqnum;
     int valid = 0;
-    krb5_cksumtype cksumtype;
     int conf_flag = 0;
     krb5_context krbContext;
 
@@ -201,7 +200,7 @@ unwrapToken(OM_uint32 *minor,
             store_uint16_be(0, ptr + 4);
             store_uint16_be(0, ptr + 6);
 
-            code = gssEapVerify(krbContext, cksumtype, rrc,
+            code = gssEapVerify(krbContext, 0, rrc,
                                 &ctx->rfc3961Key, keyUsage,
                                 iov, iov_count, &valid);
             if (code != 0 || valid == FALSE) {
@@ -220,7 +219,7 @@ unwrapToken(OM_uint32 *minor,
             goto defective;
         seqnum = load_uint64_be(ptr + 8);
 
-        code = gssEapVerify(krbContext, cksumtype, 0,
+        code = gssEapVerify(krbContext, 0, 0,
                             &ctx->rfc3961Key, keyUsage,
                             iov, iov_count, &valid);
         if (code != 0 || valid == FALSE) {

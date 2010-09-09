@@ -208,7 +208,7 @@ verifyTokenHeader(gss_OID mech,
     gss_OID_desc toid;
     ssize_t toksize = (ssize_t)toksize_in;
 
-    if (toksize -= 1 < 0)
+    if ((toksize -= 1) < 0)
         return ERANGE;
 
     if (*buf++ != 0x60)
@@ -221,18 +221,18 @@ verifyTokenHeader(gss_OID mech,
     if (seqsize != toksize)
         return ERANGE;
 
-    if (toksize -= 1 < 0)
+    if ((toksize -= 1) < 0)
         return ERANGE;
 
     if (*buf++ != 0x06)
         return EINVAL;
 
-    if (toksize -= 1 < 0)
+    if ((toksize -= 1) < 0)
         return ERANGE;
 
     toid.length = *buf++;
 
-    if (toksize -= toid.length < 0)
+    if ((toksize -= toid.length) < 0)
         return ERANGE;
 
     toid.elements = buf;
@@ -247,7 +247,7 @@ verifyTokenHeader(gss_OID mech,
     }
 
     if (tok_type != TOK_TYPE_NONE) {
-        if (toksize -= 2 < 0)
+        if ((toksize -= 2) < 0)
             return EINVAL;
 
         if ((*buf++ != ((tok_type >> 8) & 0xff)) ||

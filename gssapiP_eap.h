@@ -49,6 +49,7 @@
 /* EAP includes */
 #include <common.h>
 #include <eap_peer/eap.h>
+#include <eap_peer/eap_i.h>
 #include <eap_peer/eap_config.h>
 #include <crypto/tls.h>                     /* XXX testing implementation only */
 #include <wpabuf.h>
@@ -117,7 +118,6 @@ enum eap_gss_state {
 struct eap_gss_initiator_ctx {
     unsigned int idleWhile;
     struct eap_peer_config eapPeerConfig;
-    struct eap_config eapConfig;
     struct eap_sm *eap;
     struct wpabuf reqData;
 };
@@ -126,7 +126,6 @@ struct eap_gss_acceptor_ctx {
     struct eap_eapol_interface *eapPolInterface;
     void *tlsContext;
     struct eap_sm *eap;
-    struct eap_config eapConfig; /* XXX */
 };
 
 struct gss_ctx_id_struct {

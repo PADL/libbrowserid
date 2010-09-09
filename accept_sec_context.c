@@ -214,8 +214,7 @@ serverGetEapReqIdText(void *ctx,
 #endif
 
 static OM_uint32
-serverDeriveKey(OM_uint32 *minor,
-                gss_ctx_id_t ctx)
+completeAccept(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     OM_uint32 major;
     krb5_context krbContext;
@@ -245,6 +244,11 @@ serverDeriveKey(OM_uint32 *minor,
         ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
     }
 
+    sequenceInit(&ctx->seqState, ctx->recvSeq,
+                 ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                 ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                 TRUE);
+
     return GSS_S_COMPLETE;
 }
 
@@ -256,26 +260,24 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_channel_bindings_t chanBindings,
                            gss_buffer_t outputToken)
 {
-    OM_uint32 major, tmpMinor, tmpMajor;
+    OM_uint32 major;
+    OM_uint32 tmpMinor, tmpMajor;
     int code;
     struct wpabuf respData;
-    struct eap_config *config = (struct eap_config *)&ctx->acceptorCtx.eapConfig;
     static struct eapol_callbacks cb = { serverGetEapUser, serverGetEapReqIdText };
 
-    wpabuf_set(&respData, inputToken->value, inputToken->length);
-    ctx->acceptorCtx.eapPolInterface->eapRespData = &respData;
-    ctx->acceptorCtx.eapPolInterface->eapResp = TRUE;
-
     if (ctx->acceptorCtx.eap == NULL) {
-        /* initial context token */
-        config->eap_server = 1;
-        config->ssl_ctx = ctx->acceptorCtx.tlsContext;
+        struct eap_config eapConfig;
 
         major = initTls(minor, ctx);
         if (GSS_ERROR(major))
             goto cleanup;
 
-        ctx->acceptorCtx.eap = eap_server_sm_init(ctx, &cb, config);
+        memset(&eapConfig, 0, sizeof(eapConfig));
+        eapConfig.eap_server = 1;
+        eapConfig.ssl_ctx = ctx->acceptorCtx.tlsContext;
+
+        ctx->acceptorCtx.eap = eap_server_sm_init(ctx, &cb, &eapConfig);
         if (ctx->acceptorCtx.eap == NULL) {
             major = GSS_S_FAILURE;
             goto cleanup;
@@ -286,11 +288,17 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         ctx->acceptorCtx.eapPolInterface->eapRestart = TRUE;
     }
 
-    if (ctx->acceptorName == GSS_C_NO_NAME && cred->name != GSS_C_NO_NAME) {
+    if (ctx->acceptorName == GSS_C_NO_NAME &&
+        cred != GSS_C_NO_CREDENTIAL &&
+        cred->name != GSS_C_NO_NAME) {
         major = gss_duplicate_name(minor, cred->name, &ctx->acceptorName);
         if (GSS_ERROR(major))
             goto cleanup;
     }
+
+    wpabuf_set(&respData, inputToken->value, inputToken->length);
+    ctx->acceptorCtx.eapPolInterface->eapRespData = &respData;
+    ctx->acceptorCtx.eapPolInterface->eapResp = TRUE;
 
     code = eap_server_sm_step(ctx->acceptorCtx.eap);
 
@@ -300,13 +308,9 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     }
 
     if (ctx->acceptorCtx.eapPolInterface->eapSuccess) {
-        major = serverDeriveKey(minor, ctx);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
         ctx->acceptorCtx.eapPolInterface->eapSuccess = 0;
         ctx->state = EAP_STATE_ESTABLISHED;
-        major = GSS_S_COMPLETE;
+        major = completeAccept(minor, ctx);
     } else if (ctx->acceptorCtx.eapPolInterface->eapFail) {
         ctx->acceptorCtx.eapPolInterface->eapFail = 0;
         major = GSS_S_FAILURE;
@@ -323,11 +327,14 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         tmpMajor = duplicateBuffer(&tmpMinor, &buf, outputToken);
         if (GSS_ERROR(tmpMajor)) {
             major = tmpMajor;
+            *minor = tmpMinor;
             goto cleanup;
         }
     }
 
 cleanup:
+    ctx->acceptorCtx.eapPolInterface->eapRespData = NULL;
+
     return major;
 }
 
@@ -374,7 +381,8 @@ gss_accept_sec_context(OM_uint32 *minor,
                        OM_uint32 *time_rec,
                        gss_cred_id_t *delegated_cred_handle)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
+    OM_uint32 tmpMajor, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
     struct eap_gss_acceptor_sm *sm = NULL;
     gss_buffer_desc innerInputToken, innerOutputToken;
@@ -423,27 +431,33 @@ gss_accept_sec_context(OM_uint32 *minor,
             goto cleanup;
     } while (major == GSS_S_CONTINUE_NEEDED && innerOutputToken.length == 0);
 
-    if (src_name != NULL && ctx->initiatorName != GSS_C_NO_NAME) {
-        major = gss_duplicate_name(minor, ctx->initiatorName, src_name);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
     if (mech_type != NULL) {
         if (!gssEapInternalizeOid(ctx->mechanismUsed, mech_type))
             duplicateOid(&tmpMinor, ctx->mechanismUsed, mech_type);
     }
     if (innerOutputToken.length != 0) {
-        major = gssEapMakeToken(minor, ctx, &innerOutputToken,
-                                sm->outputTokenType, output_token);
-        if (GSS_ERROR(major))
+        tmpMajor = gssEapMakeToken(&tmpMinor, ctx, &innerOutputToken,
+                                   sm->outputTokenType, output_token);
+        if (GSS_ERROR(tmpMajor)) {
+            major = tmpMajor;
+            *minor = tmpMinor;
             goto cleanup;
+        }
     }
     if (ret_flags != NULL)
         *ret_flags = ctx->gssFlags;
-    if (time_rec != NULL)
-        gss_context_time(&tmpMinor, ctx, time_rec);
     if (delegated_cred_handle != NULL)
         *delegated_cred_handle = GSS_C_NO_CREDENTIAL;
+
+    if (major == GSS_S_COMPLETE) {
+        if (src_name != NULL && ctx->initiatorName != GSS_C_NO_NAME) {
+            major = gss_duplicate_name(&tmpMinor, ctx->initiatorName, src_name);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+        if (time_rec != NULL)
+            gss_context_time(&tmpMinor, ctx, time_rec);
+    }
 
     assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
 

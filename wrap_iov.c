@@ -295,10 +295,7 @@ cleanup:
 
     *minor = code;
 
-    if (code == 0)
-        return GSS_S_FAILURE;
-    else
-        return GSS_S_COMPLETE;
+    return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
 
 OM_uint32
