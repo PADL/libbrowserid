@@ -350,7 +350,9 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
+        ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
         ctx->state = EAP_STATE_ESTABLISHED;
+        major = GSS_S_COMPLETE;
     } else if (code == 0) {
         major = GSS_S_FAILURE;
     }

@@ -50,6 +50,7 @@
 #include <common.h>
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>
+#include <crypto/tls.h>                     /* XXX testing implementation only */
 #include <wpabuf.h>
 
 /* Kerberos includes */
@@ -121,8 +122,11 @@ struct eap_gss_initiator_ctx {
     struct wpabuf reqData;
 };
 
-/* Acceptor context flags */
 struct eap_gss_acceptor_ctx {
+    struct eap_eapol_interface *eapPolInterface;
+    void *tlsContext;
+    struct eap_sm *eap;
+    struct eap_config eapConfig; /* XXX */
 };
 
 struct gss_ctx_id_struct {
