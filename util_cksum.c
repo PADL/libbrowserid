@@ -180,7 +180,7 @@ gssEapEncodeGssChannelBindings(OM_uint32 *minor,
     unsigned char *p;
 
     if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS) {
-        length = sizeof(OM_uint32) * 5;
+        length = 24;
         length += chanBindings->initiator_address.length;
         length += chanBindings->acceptor_address.length;
         length += chanBindings->application_data.length;
