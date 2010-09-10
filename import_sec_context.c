@@ -34,9 +34,9 @@
 
 static OM_uint32
 gssEapImportPartialContext(OM_uint32 *minor,
-                          unsigned char **pBuf,
-                          size_t *pRemain,
-                          gss_ctx_id_t ctx)
+                           unsigned char **pBuf,
+                           size_t *pRemain,
+                           gss_ctx_id_t ctx)
 {
     unsigned char *p = *pBuf;
     size_t remain = *pRemain;

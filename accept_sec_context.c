@@ -370,15 +370,8 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
     iov[0].buffer.length = 0;
     iov[0].buffer.value = NULL;
 
-#if 0
-    major = gssEapEncodeGssChannelBindings(minor, chanBindings,
-                                            &iov[0].buffer);
-    if (GSS_ERROR(major))
-        return major;
-#else
     if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
         iov[0].buffer = chanBindings->application_data;
-#endif
 
     iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER;
     iov[1].buffer.length = 16;

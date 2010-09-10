@@ -121,10 +121,12 @@ gssEapVerify(krb5_context context,
              int iov_count,
              int *valid);
 
+#if 0
 OM_uint32
 gssEapEncodeGssChannelBindings(OM_uint32 *minor,
                                gss_channel_bindings_t chanBindings,
                                gss_buffer_t encodedBindings);
+#endif
 
 /* util_context.c */
 OM_uint32 gssEapAllocContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);

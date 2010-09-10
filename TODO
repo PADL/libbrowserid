@@ -1,4 +1,4 @@
 - hook up SAML library
-- hook up RADIUS
-- export/import sec context
-- export/import composite (with attrs) name
+- hook up libradsec, AVP parsing logic
+- better handling of mechanism-specific error namespace
+- better interfaces for initiator EAP configuration/credential management

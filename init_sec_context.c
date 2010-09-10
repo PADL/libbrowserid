@@ -452,17 +452,8 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
     iov[1].buffer.length = 0;
     iov[1].buffer.value = NULL;
 
-#if 0
-    major = gssEapEncodeGssChannelBindings(minor, chanBindings,
-                                            &iov[0].buffer);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    iov[0].type |= GSS_IOV_BUFFER_FLAG_ALLOCATED;
-#else
     if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
         iov[0].buffer = chanBindings->application_data;
-#endif
 
     major = gssEapWrapOrGetMIC(minor, ctx, FALSE, FALSE, iov, 2,
                                TOK_TYPE_GSS_CB);
