@@ -170,6 +170,7 @@ gssEapVerify(krb5_context context,
                           sign_usage, iov, iov_count, 1, valid);
 }
 
+#if 0
 OM_uint32
 gssEapEncodeGssChannelBindings(OM_uint32 *minor,
                                gss_channel_bindings_t chanBindings,
@@ -212,3 +213,4 @@ gssEapEncodeGssChannelBindings(OM_uint32 *minor,
     *minor = 0;
     return GSS_S_COMPLETE;
 }
+#endif
