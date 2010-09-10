@@ -135,6 +135,7 @@ struct gss_ctx_id_struct {
     OM_uint32 flags;
     OM_uint32 gssFlags;
     gss_OID mechanismUsed;
+    krb5_cksumtype checksumType;
     krb5_enctype encryptionType;
     krb5_keyblock rfc3961Key;
     gss_name_t initiatorName;

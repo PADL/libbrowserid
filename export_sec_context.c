@@ -96,7 +96,7 @@ gssEapExportSecContext(OM_uint32 *minor,
 
     length  = 16;                               /* version, state, flags, etc */
     length += 4 + ctx->mechanismUsed->length;   /* mechanismUsed */
-    length += 8 + key.length;                   /* rfc3961Key.value */
+    length += 12 + key.length;                  /* rfc3961Key.value */
     length += 4 + initiatorName.length;         /* initiatorName.value */
     length += 4 + acceptorName.length;          /* acceptorName.value */
     length += 24 + sequenceSize(ctx->seqState); /* seqState */
@@ -120,8 +120,9 @@ gssEapExportSecContext(OM_uint32 *minor,
     store_uint32_be(ctx->gssFlags,         &p[12]);
     p = store_oid(ctx->mechanismUsed,      &p[16]);
 
-    store_uint32_be(ctx->encryptionType,   &p[0]);
-    p = store_buffer(&key,                 &p[4], FALSE);
+    store_uint32_be(ctx->checksumType,     &p[0]);
+    store_uint32_be(ctx->encryptionType,   &p[4]);
+    p = store_buffer(&key,                 &p[8], FALSE);
 
     p = store_buffer(&initiatorName,       p, FALSE);
     p = store_buffer(&acceptorName,        p, FALSE);

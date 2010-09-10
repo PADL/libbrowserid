@@ -81,7 +81,7 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
  * where random-to-key and prf are defined in RFC 3961.
  */
 OM_uint32
-gssEapDeriveRFC3961Key(OM_uint32 *minor,
+gssEapDeriveRfc3961Key(OM_uint32 *minor,
                        const unsigned char *key,
                        size_t keyLength,
                        krb5_enctype enctype,
@@ -170,4 +170,23 @@ cleanup:
 
     *minor = code;
     return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
+}
+
+extern krb5_error_code
+krb5int_c_mandatory_cksumtype(krb5_context, krb5_enctype, krb5_cksumtype *);
+
+OM_uint32
+rfc3961EncTypeToChecksumType(OM_uint32 *minor,
+                             krb5_enctype etype,
+                             krb5_cksumtype *cksumtype)
+{
+    krb5_context krbContext;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    *minor = krb5int_c_mandatory_cksumtype(krbContext, etype, cksumtype);
+    if (*minor != 0)
+        return GSS_S_FAILURE;
+
+    return GSS_S_COMPLETE;
 }

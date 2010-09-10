@@ -270,7 +270,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         }
         store_uint64_be(ctx->sendSeq, outbuf + 8);
 
-        code = gssEapSign(krbContext, 0, /* 0 == pick from crypto */
+        code = gssEapSign(krbContext, ctx->checksumType,
                           rrc, &ctx->rfc3961Key, keyUsage,
                           iov, iov_count);
         if (code != 0)

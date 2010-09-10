@@ -209,7 +209,7 @@ unwrapToken(OM_uint32 *minor,
             store_uint16_be(0, ptr + 4);
             store_uint16_be(0, ptr + 6);
 
-            code = gssEapVerify(krbContext, 0, rrc,
+            code = gssEapVerify(krbContext, ctx->checksumType, rrc,
                                 &ctx->rfc3961Key, keyUsage,
                                 iov, iov_count, &valid);
             if (code != 0 || valid == FALSE) {
@@ -228,7 +228,7 @@ unwrapToken(OM_uint32 *minor,
             goto defective;
         seqnum = load_uint64_be(ptr + 8);
 
-        code = gssEapVerify(krbContext, 0, 0,
+        code = gssEapVerify(krbContext, ctx->checksumType, 0,
                             &ctx->rfc3961Key, keyUsage,
                             iov, iov_count, &valid);
         if (code != 0 || valid == FALSE) {

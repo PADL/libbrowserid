@@ -219,9 +219,6 @@ static OM_uint32
 acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     OM_uint32 major;
-    krb5_context krbContext;
-
-    GSSEAP_KRB_INIT(&krbContext);
 
     /* Cache encryption type derived from selected mechanism OID */
     major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
@@ -230,7 +227,12 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
 
     if (ctx->encryptionType != ENCTYPE_NULL &&
         ctx->acceptorCtx.eapPolInterface->eapKeyAvailable) {
-        major = gssEapDeriveRFC3961Key(minor,
+        major = rfc3961EncTypeToChecksumType(minor, ctx->encryptionType,
+                                             &ctx->checksumType);
+        if (GSS_ERROR(major))
+            return major;
+
+        major = gssEapDeriveRfc3961Key(minor,
                                        ctx->acceptorCtx.eapPolInterface->eapKeyData,
                                        ctx->acceptorCtx.eapPolInterface->eapKeyDataLen,
                                        ctx->encryptionType,

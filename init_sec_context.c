@@ -238,9 +238,6 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
     OM_uint32 major;
     const unsigned char *key;
     size_t keyLength;
-    krb5_context krbContext;
-
-    GSSEAP_KRB_INIT(&krbContext);
 
     /* Cache encryption type derived from selected mechanism OID */
     major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
@@ -251,7 +248,12 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
         eap_key_available(ctx->initiatorCtx.eap)) {
         key = eap_get_eapKeyData(ctx->initiatorCtx.eap, &keyLength);
 
-        major = gssEapDeriveRFC3961Key(minor, key, keyLength,
+        major = rfc3961EncTypeToChecksumType(minor, ctx->encryptionType,
+                                             &ctx->checksumType);
+        if (GSS_ERROR(major))
+            return major;
+
+        major = gssEapDeriveRfc3961Key(minor, key, keyLength,
                                        ctx->encryptionType, &ctx->rfc3961Key);
         if (GSS_ERROR(major))
             return major;

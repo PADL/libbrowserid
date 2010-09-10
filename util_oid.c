@@ -168,24 +168,6 @@ decomposeOid(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
-#if 0
-OM_uint32
-gssEapReleaseOid(OM_uint32 *minor, gss_OID *oid)
-{
-    OM_uint32 major;
-
-    major = gss_internal_release_oid(minor, oid);
-    if (major == GSS_S_CONTINUE_NEEDED) {
-        GSSEAP_FREE(oid->elements);
-        GSSEAP_FREE(oid);
-        *oid = GSS_C_NO_OID;
-        major = GSS_S_COMPLETE;
-    }
-
-    return major;
-}
-#endif
-
 OM_uint32
 duplicateOidSet(OM_uint32 *minor,
                 const gss_OID_set src,

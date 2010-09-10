@@ -98,6 +98,8 @@ static OM_uint32
 importKerberosKey(OM_uint32 *minor,
                   unsigned char **pBuf,
                   size_t *pRemain,
+                  krb5_cksumtype *checksumType,
+                  krb5_enctype *pEncryptionType,
                   krb5_keyblock *key)
 {
     unsigned char *p = *pBuf;
@@ -106,25 +108,26 @@ importKerberosKey(OM_uint32 *minor,
     OM_uint32 length;
     gss_buffer_desc tmp;
 
-    if (remain < 8) {
+    if (remain < 12) {
         *minor = ERANGE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
-    encryptionType = load_uint32_be(&p[0]);
-    length         = load_uint32_be(&p[4]);
+    *checksumType  = load_uint32_be(&p[0]);
+    encryptionType = load_uint32_be(&p[4]);
+    length         = load_uint32_be(&p[8]);
 
     if ((length != 0) != (encryptionType != ENCTYPE_NULL)) {
         *minor = ERANGE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
-    if (remain - 8 < length) {
+    if (remain - 12 < length) {
         *minor = ERANGE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
-    if (load_buffer(&p[8], length, &tmp) == NULL) {
+    if (load_buffer(&p[12], length, &tmp) == NULL) {
         *minor = ENOMEM;
         return GSS_S_FAILURE;
     }
@@ -133,8 +136,9 @@ importKerberosKey(OM_uint32 *minor,
     KRB_KEY_LENGTH(key) = tmp.length;
     KRB_KEY_DATA(key)   = (unsigned char *)tmp.value;
 
-    *pBuf    += 8 + length;
-    *pRemain -= 8 + length;
+    *pBuf    += 12 + length;
+    *pRemain -= 12 + length;
+    *pEncryptionType = encryptionType;
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -213,11 +217,12 @@ gssEapImportContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    major = importKerberosKey(minor, &p, &remain, &ctx->rfc3961Key);
+    major = importKerberosKey(minor, &p, &remain,
+                              &ctx->checksumType,
+                              &ctx->encryptionType,
+                              &ctx->rfc3961Key);
     if (GSS_ERROR(major))
         return major;
-
-    ctx->encryptionType = KRB_KEY_TYPE(&ctx->rfc3961Key);
 
     major = importName(minor, &p, &remain, &ctx->initiatorName);
     if (GSS_ERROR(major))

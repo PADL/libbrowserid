@@ -198,7 +198,7 @@ int
 gssEapAllocIov(gss_iov_buffer_t iov, size_t size);
 
 OM_uint32
-gssEapDeriveRFC3961Key(OM_uint32 *minor,
+gssEapDeriveRfc3961Key(OM_uint32 *minor,
                        const unsigned char *key,
                        size_t keyLength,
                        krb5_enctype enctype,
@@ -207,6 +207,11 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
 /* util_krb.c */
 OM_uint32
 gssEapKerberosInit(OM_uint32 *minor, krb5_context *context);
+
+OM_uint32
+rfc3961EncTypeToChecksumType(OM_uint32 *minor,
+                             krb5_enctype etype,
+                             krb5_cksumtype *cksumtype);
 
 #define GSSEAP_KRB_INIT(ctx) do {                   \
         OM_uint32 tmpMajor;                         \
