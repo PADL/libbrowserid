@@ -123,7 +123,7 @@ sequenceInit(void **vqueue, uint64_t seqnum,
 {
     queue *q;
 
-    if ((q = (queue *) malloc(sizeof(queue))) == NULL)
+    if ((q = (queue *) GSSEAP_MALLOC(sizeof(queue))) == NULL)
         return(ENOMEM);
 
     /* This stops valgrind from complaining about writing uninitialized
@@ -237,7 +237,7 @@ sequenceFree(void **vqueue)
 
     q = (queue *) (*vqueue);
 
-    free(q);
+    GSSEAP_FREE(q);
 
     *vqueue = NULL;
 }
@@ -245,18 +245,17 @@ sequenceFree(void **vqueue)
 /*
  * These support functions are for the serialization routines
  */
-int
-sequenceSize(void *vqueue, size_t *sizep)
+size_t
+sequenceSize(void *vqueue)
 {
-    *sizep += sizeof(queue);
-    return 0;
+    return sizeof(queue);
 }
 
 int
 sequenceExternalize(void *vqueue, unsigned char **buf, size_t *lenremain)
 {
     if (*lenremain < sizeof(queue))
-        return ENOMEM;
+        return ERANGE;
     memcpy(*buf, vqueue, sizeof(queue));
     *buf += sizeof(queue);
     *lenremain -= sizeof(queue);
@@ -270,8 +269,8 @@ sequenceInternalize(void **vqueue, unsigned char **buf, size_t *lenremain)
     void *q;
 
     if (*lenremain < sizeof(queue))
-        return EINVAL;
-    if ((q = malloc(sizeof(queue))) == 0)
+        return ERANGE;
+    if ((q = GSSEAP_MALLOC(sizeof(queue))) == 0)
         return ENOMEM;
     memcpy(q, *buf, sizeof(queue));
     *buf += sizeof(queue);

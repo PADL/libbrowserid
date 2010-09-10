@@ -205,7 +205,7 @@ gssEapEncrypt(krb5_context context, int dce_style, size_t ec,
     krb5_crypto_iov *kiov;
 
     if (iv) {
-        code = krb5_c_block_size(context, KRB_KEYTYPE(key), &blocksize);
+        code = krb5_c_block_size(context, KRB_KEY_TYPE(key), &blocksize);
         if (code)
             return(code);
 
@@ -220,7 +220,7 @@ gssEapEncrypt(krb5_context context, int dce_style, size_t ec,
     }
 
     code = mapIov(context, dce_style, ec, rrc,
-                  KRB_KEYTYPE(key), iov, iov_count,
+                  KRB_KEY_TYPE(key), iov, iov_count,
                   &kiov, &kiov_count);
     if (code == 0) {
         code = krb5_c_encrypt_iov(context, key, usage, pivd, kiov, kiov_count);
@@ -245,7 +245,7 @@ gssEapDecrypt(krb5_context context, int dce_style, size_t ec,
     krb5_crypto_iov *kiov;
 
     if (iv) {
-        code = krb5_c_block_size(context, KRB_KEYTYPE(key), &blocksize);
+        code = krb5_c_block_size(context, KRB_KEY_TYPE(key), &blocksize);
         if (code)
             return(code);
 
@@ -260,7 +260,7 @@ gssEapDecrypt(krb5_context context, int dce_style, size_t ec,
     }
 
     code = mapIov(context, dce_style, ec, rrc,
-                  KRB_KEYTYPE(key), iov, iov_count,
+                  KRB_KEY_TYPE(key), iov, iov_count,
                   &kiov, &kiov_count);
     if (code == 0) {
         code = krb5_c_decrypt_iov(context, key, usage, pivd, kiov, kiov_count);

@@ -97,9 +97,8 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
 
     GSSEAP_KRB_INIT(&context);
 
-    kd.contents = NULL;
-    kd.length = 0;
-    KRB_KEYTYPE(&kd) = enctype;
+    KRB_KEY_INIT(&kd);
+    KRB_KEY_TYPE(&kd) = enctype;
 
     prf.data = NULL;
     prf.length = 0;
@@ -116,12 +115,12 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
     data.length = keybytes;
     data.data = (char *)key;
 
-    kd.contents = GSSEAP_MALLOC(keylength);
-    if (kd.contents == NULL) {
+    KRB_KEY_DATA(&kd) = GSSEAP_MALLOC(keylength);
+    if (KRB_KEY_DATA(&kd) == NULL) {
         code = ENOMEM;
         goto cleanup;
     }
-    kd.length = keylength;
+    KRB_KEY_LENGTH(&kd) = keylength;
 
     /* Convert MSK into a Kerberos key */
     code = krb5_c_random_to_key(context, enctype, &data, &kd);
@@ -157,12 +156,12 @@ gssEapDeriveRFC3961Key(OM_uint32 *minor,
         goto cleanup;
 
     *pKey = kd;
-    kd.contents = NULL;
+    KRB_KEY_DATA(&kd) = NULL;
 
 cleanup:
-    if (kd.contents != NULL) {
-        memset(kd.contents, 0, kd.length);
-        GSSEAP_FREE(kd.contents);
+    if (KRB_KEY_DATA(&kd) != NULL) {
+        memset(KRB_KEY_DATA(&kd), 0, KRB_KEY_LENGTH(&kd));
+        GSSEAP_FREE(KRB_KEY_DATA(&kd));
     }
     if (prf.data != NULL) {
         memset(prf.data, 0, prf.length);

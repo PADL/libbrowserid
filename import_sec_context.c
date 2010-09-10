@@ -32,10 +32,267 @@
 
 #include "gssapiP_eap.h"
 
+static OM_uint32
+gssEapImportPartialContext(OM_uint32 *minor,
+                          unsigned char **pBuf,
+                          size_t *pRemain,
+                          gss_ctx_id_t ctx)
+{
+    unsigned char *p = *pBuf;
+    size_t remain = *pRemain;
+    gss_buffer_desc buf;
+
+    if (remain < 4) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    buf.length = load_uint32_be(p);
+
+    if (buf.length != 0) {
+        *minor = EINVAL;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+importMechanismOid(OM_uint32 *minor,
+                   unsigned char **pBuf,
+                   size_t *pRemain,
+                   gss_OID *pOid)
+{
+    OM_uint32 major;
+    unsigned char *p = *pBuf;
+    size_t remain = *pRemain;
+    gss_OID_desc oidBuf;
+
+    oidBuf.length = load_uint32_be(p);
+    if (remain < 4 + oidBuf.length || oidBuf.length == 0) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    oidBuf.elements = &p[4];
+
+    if (!gssEapIsConcreteMechanismOid(&oidBuf)) {
+        return GSS_S_BAD_MECH;
+    }
+
+    if (!gssEapInternalizeOid(&oidBuf, pOid)) {
+        major = duplicateOid(minor, &oidBuf, pOid);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    *pBuf    += 4 + oidBuf.length;
+    *pRemain -= 4 + oidBuf.length;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+importKerberosKey(OM_uint32 *minor,
+                  unsigned char **pBuf,
+                  size_t *pRemain,
+                  krb5_keyblock *key)
+{
+    unsigned char *p = *pBuf;
+    size_t remain = *pRemain;
+    OM_uint32 encryptionType;
+    OM_uint32 length;
+    gss_buffer_desc tmp;
+
+    if (remain < 8) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    encryptionType = load_uint32_be(&p[0]);
+    length         = load_uint32_be(&p[4]);
+
+    if ((length != 0) != (encryptionType != ENCTYPE_NULL)) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    if (remain - 8 < length) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    if (load_buffer(&p[8], length, &tmp) == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    KRB_KEY_TYPE(key)   = encryptionType;
+    KRB_KEY_LENGTH(key) = tmp.length;
+    KRB_KEY_DATA(key)   = (unsigned char *)tmp.value;
+
+    *pBuf    += 8 + length;
+    *pRemain -= 8 + length;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+importName(OM_uint32 *minor,
+           unsigned char **pBuf,
+           size_t *pRemain,
+           gss_name_t *pName)
+{
+    OM_uint32 major;
+    unsigned char *p = *pBuf;
+    size_t remain = *pRemain;
+    gss_buffer_desc tmp;
+
+    if (remain < 4) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    tmp.length = load_uint32_be(p);
+    if (tmp.length != 0) {
+        if (remain - 4 < tmp.length) {
+            *minor = ERANGE;
+            return GSS_S_DEFECTIVE_TOKEN;
+        }
+
+        tmp.value = p + 4;
+
+        major = gssEapImportName(minor, &tmp, GSS_C_NT_EXPORT_NAME, pName);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    *pBuf    += 4 + tmp.length;
+    *pRemain -= 4 + tmp.length;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+gssEapImportContext(OM_uint32 *minor,
+                    gss_buffer_t token,
+                    gss_ctx_id_t ctx)
+{
+    OM_uint32 major;
+    unsigned char *p = (unsigned char *)token->value;
+    size_t remain = token->length;
+
+    if (remain < 16) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+    if (load_uint32_be(&p[0]) != EAP_EXPORT_CONTEXT_V1) {
+        *minor = EINVAL;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+    ctx->state      = load_uint32_be(&p[4]);
+    ctx->flags      = load_uint32_be(&p[8]);
+    ctx->gssFlags   = load_uint32_be(&p[12]);
+    p      += 16;
+    remain -= 16;
+
+    /* Validate state */
+    if (ctx->state < EAP_STATE_AUTHENTICATE ||
+        ctx->state > EAP_STATE_ESTABLISHED)
+        return GSS_S_DEFECTIVE_TOKEN;
+
+    /* Only acceptor can export partial context tokens */
+    if (CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_DEFECTIVE_TOKEN;
+
+    major = importMechanismOid(minor, &p, &remain, &ctx->mechanismUsed);
+    if (GSS_ERROR(major))
+        return major;
+
+    major = importKerberosKey(minor, &p, &remain, &ctx->rfc3961Key);
+    if (GSS_ERROR(major))
+        return major;
+
+    ctx->encryptionType = KRB_KEY_TYPE(&ctx->rfc3961Key);
+
+    major = importName(minor, &p, &remain, &ctx->initiatorName);
+    if (GSS_ERROR(major))
+        return major;
+
+    major = importName(minor, &p, &remain, &ctx->acceptorName);
+    if (GSS_ERROR(major))
+        return major;
+
+    /* Check that, if context is established, names are valid */
+    if (CTX_IS_ESTABLISHED(ctx) &&
+        (CTX_IS_INITIATOR(ctx) ? ctx->acceptorName == GSS_C_NO_NAME
+                               : ctx->initiatorName == GSS_C_NO_NAME)) {
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    if (remain < 24 + sequenceSize(ctx->seqState)) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+    ctx->expiryTime = (time_t)load_uint64_be(&p[0]); /* XXX */
+    ctx->sendSeq    = load_uint64_be(&p[8]);
+    ctx->recvSeq    = load_uint64_be(&p[16]);
+    p      += 24;
+    remain -= 24;
+
+    *minor = sequenceInternalize(&ctx->seqState, &p, &remain);
+    if (*minor != 0)
+        return GSS_S_FAILURE;
+
+    /*
+     * The partial context should only be expected for unestablished
+     * acceptor contexts.
+     */
+    if (!CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) {
+        major = gssEapImportPartialContext(minor, &p, &remain, ctx);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    assert(remain == 0);
+
+    *minor = 0;
+    major = GSS_S_COMPLETE;
+
+    return major;
+}
+
 OM_uint32
 gss_import_sec_context(OM_uint32 *minor,
                        gss_buffer_t interprocess_token,
                        gss_ctx_id_t *context_handle)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major, tmpMinor;
+    gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
+
+    *context_handle = GSS_C_NO_CONTEXT;
+
+    if (interprocess_token == GSS_C_NO_BUFFER ||
+        interprocess_token->length == 0)
+        return GSS_S_DEFECTIVE_TOKEN;
+
+    major = gssEapAllocContext(minor, &ctx);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssEapImportContext(minor, interprocess_token, ctx);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    *context_handle = ctx;
+
+cleanup:
+    if (GSS_ERROR(major))
+        gssEapReleaseContext(&tmpMinor, &ctx);
+
+    return major;
 }

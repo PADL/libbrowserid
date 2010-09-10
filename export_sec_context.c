@@ -32,10 +32,148 @@
 
 #include "gssapiP_eap.h"
 
+static OM_uint32
+gssEapExportPartialContext(OM_uint32 *minor,
+                           gss_ctx_id_t ctx,
+                           gss_buffer_t token)
+{
+    token->length = 0;
+    token->value = NULL;
+
+    /*
+     * The format of this token awaits definition by libradsec.
+     */
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+gssEapExportSecContext(OM_uint32 *minor,
+                       gss_ctx_id_t ctx,
+                       gss_buffer_t token)
+{
+    OM_uint32 major, tmpMinor;
+    size_t length;
+    gss_buffer_desc initiatorName, acceptorName;
+    gss_buffer_desc partialCtx, key;
+    unsigned char *p;
+
+    initiatorName.length = 0;
+    initiatorName.value = NULL;
+
+    acceptorName.length = 0;
+    acceptorName.value = NULL;
+
+    partialCtx.length = 0;
+    partialCtx.value = NULL;
+
+    if ((CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) ||
+        ctx->mechanismUsed == GSS_C_NO_OID)
+        return GSS_S_NO_CONTEXT;
+
+    key.length = KRB_KEY_LENGTH(&ctx->rfc3961Key);
+    key.value  = KRB_KEY_DATA(&ctx->rfc3961Key);
+
+    if (ctx->initiatorName != GSS_C_NO_NAME) {
+        major = gssEapExportName(minor, ctx->initiatorName, &initiatorName, TRUE);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+    if (ctx->acceptorName != GSS_C_NO_NAME) {
+        major = gssEapExportName(minor, ctx->acceptorName, &acceptorName, TRUE);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    /*
+     * The partial context is only transmitted for unestablished acceptor
+     * contexts.
+     */
+    if (!CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) {
+        major = gssEapExportPartialContext(minor, ctx, &partialCtx);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    length  = 16;                               /* version, state, flags, etc */
+    length += 4 + ctx->mechanismUsed->length;   /* mechanismUsed */
+    length += 8 + key.length;                   /* rfc3961Key.value */
+    length += 4 + initiatorName.length;         /* initiatorName.value */
+    length += 4 + acceptorName.length;          /* acceptorName.value */
+    length += 24 + sequenceSize(ctx->seqState); /* seqState */
+
+    if (partialCtx.value != NULL)
+        length += 4 + partialCtx.length;        /* partialCtx.value */
+
+    token->value = GSSEAP_MALLOC(length);
+    if (token->value == NULL) {
+        *minor = ENOMEM;
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+    token->length = length;
+
+    p = (unsigned char *)token->value;
+
+    store_uint32_be(EAP_EXPORT_CONTEXT_V1, &p[0]);        /* version */
+    store_uint32_be(ctx->state,            &p[4]);
+    store_uint32_be(ctx->flags,            &p[8]);
+    store_uint32_be(ctx->gssFlags,         &p[12]);
+    p = store_oid(ctx->mechanismUsed,      &p[16]);
+
+    store_uint32_be(ctx->encryptionType,   &p[0]);
+    p = store_buffer(&key,                 &p[4], FALSE);
+
+    p = store_buffer(&initiatorName,       p, FALSE);
+    p = store_buffer(&acceptorName,        p, FALSE);
+
+    store_uint64_be(ctx->expiryTime,       &p[0]);
+    store_uint64_be(ctx->sendSeq,          &p[8]);
+    store_uint64_be(ctx->recvSeq,          &p[16]);
+    p += 24;
+    sequenceExternalize(ctx->seqState,     &p, &length);
+
+    if (partialCtx.value != NULL)
+        p = store_buffer(&partialCtx, p, FALSE);
+
+    assert(p == (unsigned char *)token->value + token->length);
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    if (GSS_ERROR(major))
+        gss_release_buffer(&tmpMinor, token);
+    gss_release_buffer(&tmpMinor, &initiatorName);
+    gss_release_buffer(&tmpMinor, &acceptorName);
+    gss_release_buffer(&tmpMinor, &partialCtx);
+
+    return major;
+}
+
 OM_uint32
 gss_export_sec_context(OM_uint32 *minor,
                        gss_ctx_id_t *context_handle,
                        gss_buffer_t interprocess_token)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    OM_uint32 major, tmpMinor;
+    gss_ctx_id_t ctx = *context_handle;
+
+    if (ctx == GSS_C_NO_CONTEXT)
+        return GSS_S_NO_CONTEXT;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    major = gssEapExportSecContext(minor, ctx, interprocess_token);
+    if (GSS_ERROR(major)) {
+        GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+        return major;
+    }
+
+    *context_handle = GSS_C_NO_CONTEXT;
+
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    gssEapReleaseContext(&tmpMinor, &ctx);
+
+    return GSS_S_COMPLETE;
 }

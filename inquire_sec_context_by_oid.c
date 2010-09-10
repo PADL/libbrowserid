@@ -43,8 +43,8 @@ inquireSessionKey(OM_uint32 *minor,
     gss_buffer_desc buf;
     gss_OID_desc oid;
 
-    buf.length = ctx->rfc3961Key.length;
-    buf.value = ctx->rfc3961Key.contents;
+    buf.length = KRB_KEY_LENGTH(&ctx->rfc3961Key);
+    buf.value = KRB_KEY_DATA(&ctx->rfc3961Key);
 
     major = gss_add_buffer_set_member(minor, &buf, dataSet);
     if (GSS_ERROR(major))

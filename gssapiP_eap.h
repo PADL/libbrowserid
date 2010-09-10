@@ -140,14 +140,14 @@ struct gss_ctx_id_struct {
     gss_name_t initiatorName;
     gss_name_t acceptorName;
     time_t expiryTime;
+    uint64_t sendSeq, recvSeq;
+    void *seqState;
     union {
         struct eap_gss_initiator_ctx initiator;
         #define initiatorCtx         ctxU.initiator
         struct eap_gss_acceptor_ctx  acceptor;
         #define acceptorCtx          ctxU.acceptor
     } ctxU;
-    uint64_t sendSeq, recvSeq;
-    void *seqState;
 };
 
 #define TOK_FLAG_SENDER_IS_ACCEPTOR         0x01

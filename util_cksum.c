@@ -75,7 +75,7 @@ gssEapChecksum(krb5_context context,
     if (verify)
         *valid = FALSE;
 
-    code = krb5_c_crypto_length(context, KRB_KEYTYPE(key),
+    code = krb5_c_crypto_length(context, KRB_KEY_TYPE(key),
                                 KRB5_CRYPTO_TYPE_CHECKSUM, &k5_checksumlen);
     if (code != 0)
         return code;

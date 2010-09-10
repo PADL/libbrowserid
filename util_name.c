@@ -255,7 +255,7 @@ importExportedName(OM_uint32 *minor,
         return GSS_S_BAD_NAME;
     if (p[1] != GSS_EAP_MECHANISM->length)
         return GSS_S_BAD_MECH;
-    if (memcmp(p, GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length))
+    if (memcmp(&p[2], GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length))
         return GSS_S_BAD_MECH;
     p += 2 + GSS_EAP_MECHANISM->length;
     remain -= 2 + GSS_EAP_MECHANISM->length;
@@ -263,6 +263,7 @@ importExportedName(OM_uint32 *minor,
     /* NAME_LEN */
     len = load_uint32_be(p);
     p += 4;
+    remain -= 4;
 
     if (remain < len)
         return GSS_S_BAD_NAME;
@@ -286,10 +287,11 @@ importExportedName(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
-OM_uint32 gssEapImportName(OM_uint32 *minor,
-                           const gss_buffer_t nameBuffer,
-                           gss_OID nameType,
-                           gss_name_t *name)
+OM_uint32
+gssEapImportName(OM_uint32 *minor,
+                 const gss_buffer_t nameBuffer,
+                 gss_OID nameType,
+                 gss_name_t *name)
 {
     OM_uint32 major, tmpMinor;
 
@@ -313,10 +315,11 @@ OM_uint32 gssEapImportName(OM_uint32 *minor,
     return major;
 }
 
-OM_uint32 gssEapExportName(OM_uint32 *minor,
-                           const gss_name_t name,
-                           gss_buffer_t exportedName,
-                           int composite)
+OM_uint32
+gssEapExportName(OM_uint32 *minor,
+                 const gss_name_t name,
+                 gss_buffer_t exportedName,
+                 int composite)
 {
     OM_uint32 major = GSS_S_FAILURE, tmpMinor;
     krb5_context krbContext;
@@ -344,7 +347,7 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
     exportedName->length = 6 + GSS_EAP_MECHANISM->length + 4 + krbNameLen;
     if (composite) {
         /* TODO: export SAML/AVP, this is pending specification */
-        GSSEAP_NOT_IMPLEMENTED;
+        
     }
 
     exportedName->value = GSSEAP_MALLOC(exportedName->length);

@@ -62,7 +62,14 @@
 #include "util_saml.h"
 #include "util_radius.h"
 
-#define KRB_KEYTYPE(key)        ((key)->enctype)
+#define KRB_KEY_TYPE(key)       ((key)->enctype)
+#define KRB_KEY_DATA(key)       ((key)->contents)
+#define KRB_KEY_LENGTH(key)     ((key)->length)
+#define KRB_KEY_INIT(key)       do {        \
+        KRB_KEY_TYPE(key) = ENCTYPE_NULL;   \
+        KRB_KEY_DATA(key) = NULL;           \
+        KRB_KEY_LENGTH(key) = 0;            \
+    } while (0)
 
 enum gss_eap_token_type {
     TOK_TYPE_NONE                    = 0x0000,  /* no token */
@@ -75,6 +82,8 @@ enum gss_eap_token_type {
     TOK_TYPE_EAP_REQ                 = 0x0602,  /* draft-howlett-eap-gss */
     TOK_TYPE_GSS_CB                  = 0x0603,  /* draft-howlett-eap-gss */
 };
+
+#define EAP_EXPORT_CONTEXT_V1           1
 
 /* util_buffer.c */
 OM_uint32
@@ -316,8 +325,8 @@ sequenceInternalize(void **vqueue, unsigned char **buf, size_t *lenremain);
 int
 sequenceExternalize(void *vqueue, unsigned char **buf, size_t *lenremain);
 
-int
-sequenceSize(void *vqueue, size_t *sizep);
+size_t
+sequenceSize(void *vqueue);
 
 void
 sequenceFree(void **vqueue);
@@ -440,17 +449,52 @@ load_uint64_be(const void *cvp)
     return ((uint64_t)load_uint32_be(p) << 32) | load_uint32_be(p + 4);
 }
 
-static inline void
+static inline unsigned char *
 store_buffer(gss_buffer_t buffer, void *vp, int wide_nums)
 {
     unsigned char *p = (unsigned char *)vp;
 
-    if (wide_nums)
+    if (wide_nums) {
         store_uint64_be(buffer->length, p);
-    else
+        p += 8;
+    } else {
         store_uint32_be(buffer->length, p);
-    if (buffer->value != NULL)
-        memcpy(p + 4, buffer->value, buffer->length);
+        p += 4;
+    }
+
+    if (buffer->value != NULL) {
+        memcpy(p, buffer->value, buffer->length);
+        p += buffer->length;
+    }
+
+    return p;
 }
 
+static inline unsigned char *
+load_buffer(const void *cvp, size_t length, gss_buffer_t buffer)
+{
+    buffer->length = 0;
+    buffer->value = GSSEAP_MALLOC(length);
+    if (buffer->value == NULL)
+        return NULL;
+    buffer->length = length;
+    memcpy(buffer->value, cvp, length);
+    return (unsigned char *)cvp + length;
+}
+
+static inline unsigned char *
+store_oid(gss_OID oid, void *vp)
+{
+    gss_buffer_desc buf;
+
+    if (oid != GSS_C_NO_OID) {
+        buf.length = oid->length;
+        buf.value = oid->elements;
+    } else {
+        buf.length = 0;
+        buf.value = NULL;
+    }
+
+    return store_buffer(&buf, vp, FALSE);
+}
 #endif /* _UTIL_H_ */
