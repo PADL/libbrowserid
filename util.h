@@ -112,6 +112,11 @@ gssEapVerify(krb5_context context,
              int iov_count,
              int *valid);
 
+OM_uint32
+gssEapEncodeGssChannelBindings(OM_uint32 *minor,
+                               gss_channel_bindings_t chanBindings,
+                               gss_buffer_t encodedBindings);
+
 /* util_context.c */
 OM_uint32 gssEapAllocContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 OM_uint32 gssEapReleaseContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
@@ -144,6 +149,8 @@ gssEapAcquireCred(OM_uint32 *minor,
                   gss_cred_id_t *pCred,
                   gss_OID_set *pActualMechs,
                   OM_uint32 *timeRec);
+
+int gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech);
 
 /* util_crypt.c */
 int
@@ -332,8 +339,9 @@ makeTokenHeader(const gss_OID_desc *mech,
                 unsigned char **buf,
                 enum gss_eap_token_type tok_type);
 
-int
-verifyTokenHeader(gss_OID mech,
+OM_uint32
+verifyTokenHeader(OM_uint32 *minor,
+                  gss_OID mech,
                   size_t *body_size,
                   unsigned char **buf_in,
                   size_t toksize_in,
@@ -430,6 +438,19 @@ load_uint64_be(const void *cvp)
     const unsigned char *p = (const unsigned char *)cvp;
 
     return ((uint64_t)load_uint32_be(p) << 32) | load_uint32_be(p + 4);
+}
+
+static inline void
+store_buffer(gss_buffer_t buffer, void *vp, int wide_nums)
+{
+    unsigned char *p = (unsigned char *)vp;
+
+    if (wide_nums)
+        store_uint64_be(buffer->length, p);
+    else
+        store_uint32_be(buffer->length, p);
+    if (buffer->value != NULL)
+        memcpy(p + 4, buffer->value, buffer->length);
 }
 
 #endif /* _UTIL_H_ */

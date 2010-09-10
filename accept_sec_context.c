@@ -216,7 +216,7 @@ serverGetEapReqIdText(void *ctx,
 #endif
 
 static OM_uint32
-completeAccept(OM_uint32 *minor, gss_ctx_id_t ctx)
+acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     OM_uint32 major;
     krb5_context krbContext;
@@ -310,8 +310,12 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     if (ctx->acceptorCtx.eapPolInterface->eapSuccess) {
         ctx->acceptorCtx.eapPolInterface->eapSuccess = 0;
-        ctx->state = EAP_STATE_ESTABLISHED;
-        major = completeAccept(minor, ctx);
+        major = acceptReady(minor, ctx);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        ctx->state = EAP_STATE_GSS_CHANNEL_BINDINGS;
+        major = GSS_S_CONTINUE_NEEDED;
     } else if (ctx->acceptorCtx.eapPolInterface->eapFail) {
         ctx->acceptorCtx.eapPolInterface->eapFail = 0;
         major = GSS_S_FAILURE;
@@ -340,6 +344,59 @@ cleanup:
 }
 
 static OM_uint32
+eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
+                                 gss_ctx_id_t ctx,
+                                 gss_cred_id_t cred,
+                                 gss_buffer_t inputToken,
+                                 gss_channel_bindings_t chanBindings,
+                                 gss_buffer_t outputToken)
+{
+    OM_uint32 major, tmpMinor;
+    gss_iov_buffer_desc iov[2];
+
+    outputToken->length = 0;
+    outputToken->value = NULL;
+
+    if (chanBindings == GSS_C_NO_CHANNEL_BINDINGS) {
+        ctx->state = EAP_STATE_ESTABLISHED;
+        return GSS_S_COMPLETE;
+    }
+
+    if (inputToken->length < 14) {
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[0].buffer.length = 0;
+    iov[0].buffer.value = NULL;
+
+    major = gssEapEncodeGssChannelBindings(minor, chanBindings,
+                                            &iov[0].buffer);
+    if (GSS_ERROR(major))
+        return major;
+
+    iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER;
+    iov[1].buffer.length = 16;
+    iov[1].buffer.value = (unsigned char *)inputToken->value - 2;
+
+    assert(load_uint16_be(iov[1].buffer.value) == TOK_TYPE_GSS_CB);
+
+    iov[2].type = GSS_IOV_BUFFER_TYPE_TRAILER;
+    iov[2].buffer.length = inputToken->length - 14;
+    iov[2].buffer.value = (unsigned char *)inputToken->value + 14;
+
+    major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
+                                    iov, 3, TOK_TYPE_GSS_CB);
+    if (major == GSS_S_COMPLETE) {
+        ctx->state = EAP_STATE_ESTABLISHED;
+    }
+
+    gss_release_buffer(&tmpMinor, &iov[0].buffer);
+
+    return major;
+}
+
+static OM_uint32
 eapGssSmAcceptEstablished(OM_uint32 *minor,
                           gss_ctx_id_t ctx,
                           gss_cred_id_t cred,
@@ -362,11 +419,13 @@ static struct eap_gss_acceptor_sm {
                               gss_channel_bindings_t,
                               gss_buffer_t);
 } eapGssAcceptorSm[] = {
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptAuthenticate   },
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  NULL                         },
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  NULL                         },
-    { TOK_TYPE_GSS_CB,      TOK_TYPE_NONE,     NULL                         },
-    { TOK_TYPE_NONE,        TOK_TYPE_NONE,     eapGssSmAcceptEstablished    },
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptAuthenticate       },
+#if 0
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  NULL                             },
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  NULL                             },
+#endif
+    { TOK_TYPE_GSS_CB,      TOK_TYPE_NONE,     eapGssSmAcceptGssChannelBindings },
+    { TOK_TYPE_NONE,        TOK_TYPE_NONE,     eapGssSmAcceptEstablished        },
 };
 
 OM_uint32
@@ -421,7 +480,15 @@ gss_accept_sec_context(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+    /* If credentials were provided, check they're usable with this mech */
+    if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
+        major = GSS_S_BAD_MECH;
+        goto cleanup;
+    }
+
     do {
+        sm = &eapGssAcceptorSm[ctx->state];
+
         major = (sm->processToken)(minor,
                                    ctx,
                                    cred,

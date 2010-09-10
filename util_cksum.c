@@ -169,3 +169,46 @@ gssEapVerify(krb5_context context,
     return gssEapChecksum(context, type, rrc, key,
                           sign_usage, iov, iov_count, 1, valid);
 }
+
+OM_uint32
+gssEapEncodeGssChannelBindings(OM_uint32 *minor,
+                               gss_channel_bindings_t chanBindings,
+                               gss_buffer_t encodedBindings)
+{
+    OM_uint32 major, tmpMinor;
+    size_t length;
+    unsigned char *p;
+
+    if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS) {
+        length = sizeof(OM_uint32) * 5;
+        length += chanBindings->initiator_address.length;
+        length += chanBindings->acceptor_address.length;
+        length += chanBindings->application_data.length;
+
+        encodedBindings->value = GSSEAP_MALLOC(length);
+        if (encodedBindings->value == NULL) {
+            *minor = ENOMEM;
+            return GSS_S_FAILURE;
+        }
+
+        encodedBindings->length = length;
+        p = (unsigned char *)encodedBindings->value;
+
+        store_uint32_be(chanBindings->initiator_addrtype, p);
+        store_buffer(&chanBindings->initiator_address, p + 4, 0);
+        p += 4 + chanBindings->initiator_address.length;
+
+        store_uint32_be(chanBindings->acceptor_addrtype, p);
+        store_buffer(&chanBindings->acceptor_address, p + 4, 0);
+        p += 4 + chanBindings->acceptor_address.length;
+
+        store_buffer(&chanBindings->application_data, p, 1);
+        p += chanBindings->application_data.length;
+    } else {
+        encodedBindings->length = 0;
+        encodedBindings->value = NULL;
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}

@@ -167,9 +167,10 @@ gssEapVerifyToken(OM_uint32 *minor,
         oid = &oidBuf;
     }
 
-    major = verifyTokenHeader(oid, &bodySize, &p, inputToken->length, tokenType);
+    major = verifyTokenHeader(minor, oid, &bodySize, &p,
+                              inputToken->length, tokenType);
     if (GSS_ERROR(major))
-        return major;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     if (ctx->mechanismUsed == GSS_C_NO_OID) {
         if (!gssEapIsConcreteMechanismOid(oid))

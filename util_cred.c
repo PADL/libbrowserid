@@ -131,7 +131,7 @@ gssEapAcquireCred(OM_uint32 *minor,
             buf.value = getlogin(); /* XXX */
             buf.length = strlen((char *)buf.value);
 
-            major = gss_import_name(&minor, &buf,
+            major = gss_import_name(minor, &buf,
                                     GSS_C_NT_USER_NAME, &cred->name);
             if (GSS_ERROR(major))
                 goto cleanup;
@@ -173,4 +173,20 @@ cleanup:
         gssEapReleaseCred(&tmpMinor, &cred);
 
     return major;
+}
+
+int
+gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech)
+{
+    OM_uint32 minor;
+    int present = 0;
+
+    assert(mech != GSS_C_NO_OID);
+
+    if (cred == GSS_C_NO_CREDENTIAL || cred->mechanisms == GSS_C_NO_OID_SET)
+        return TRUE;
+
+    gss_test_oid_set_member(&minor, mech, cred->mechanisms, &present);
+
+    return present;
 }

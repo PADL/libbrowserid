@@ -196,8 +196,9 @@ makeTokenHeader(
  * *body_size are left unmodified on error.
  */
 
-int
-verifyTokenHeader(gss_OID mech,
+OM_uint32
+verifyTokenHeader(OM_uint32 *minor,
+                  gss_OID mech,
                   size_t *body_size,
                   unsigned char **buf_in,
                   size_t toksize_in,
@@ -208,32 +209,34 @@ verifyTokenHeader(gss_OID mech,
     gss_OID_desc toid;
     ssize_t toksize = (ssize_t)toksize_in;
 
+    *minor = 0;
+
     if ((toksize -= 1) < 0)
-        return ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     if (*buf++ != 0x60)
-        return EINVAL;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     seqsize = der_read_length(&buf, &toksize);
     if (seqsize < 0)
-        return ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     if (seqsize != toksize)
-        return ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     if ((toksize -= 1) < 0)
-        return ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     if (*buf++ != 0x06)
-        return EINVAL;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     if ((toksize -= 1) < 0)
-        return ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     toid.length = *buf++;
 
     if ((toksize -= toid.length) < 0)
-        return ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
 
     toid.elements = buf;
     buf += toid.length;
@@ -241,21 +244,21 @@ verifyTokenHeader(gss_OID mech,
     if (mech->elements == NULL) {
         *mech = toid;
         if (toid.length == 0)
-            return EINVAL;
+            return GSS_S_BAD_MECH;
     } else if (!oidEqual(&toid, mech)) {
-        return EINVAL;
+        return GSS_S_BAD_MECH;
     }
 
     if (tok_type != TOK_TYPE_NONE) {
         if ((toksize -= 2) < 0)
-            return EINVAL;
+            return GSS_S_DEFECTIVE_TOKEN;
 
         if ((*buf++ != ((tok_type >> 8) & 0xff)) ||
             (*buf++ != (tok_type & 0xff)))
-            return EINVAL;
+            return GSS_S_DEFECTIVE_TOKEN;
     }
     *buf_in = buf;
     *body_size = toksize;
 
-    return 0;
+    return GSS_S_COMPLETE;
 }

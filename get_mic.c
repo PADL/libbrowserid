@@ -45,6 +45,9 @@ gss_get_mic(OM_uint32 *minor,
     message_token->value = NULL;
     message_token->length = 0;
 
+    if (!CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_NO_CONTEXT;
+
     iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
     iov[0].buffer = *message_buffer;
 
@@ -52,7 +55,7 @@ gss_get_mic(OM_uint32 *minor,
     iov[1].buffer.value = NULL;
     iov[1].buffer.length = 0;
 
-    major = gssEapWrapOrGetMIC(minor, ctx, FALSE, FALSE, iov, 2, TOK_TYPE_MIC);
+    major = gssEapWrapOrGetMIC(minor, ctx, FALSE, NULL, iov, 2, TOK_TYPE_MIC);
     if (major == GSS_S_COMPLETE) {
         *message_token = iov[1].buffer;
     }

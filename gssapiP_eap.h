@@ -95,8 +95,10 @@ struct gss_cred_id_struct {
 
 enum eap_gss_state {
     EAP_STATE_AUTHENTICATE = 0,
+#if 0
     EAP_STATE_KEY_TRANSPORT,
     EAP_STATE_SECURE_ASSOCIATION,
+#endif
     EAP_STATE_GSS_CHANNEL_BINDINGS,
     EAP_STATE_ESTABLISHED
 };
@@ -156,6 +158,7 @@ struct gss_ctx_id_struct {
 #define KEY_USAGE_ACCEPTOR_SIGN             23
 #define KEY_USAGE_INITIATOR_SEAL            24
 #define KEY_USAGE_INITIATOR_SIGN            25
+#define KEY_USAGE_CHANNEL_BINDINGS          64
 
 /* wrap_iov.c */
 OM_uint32

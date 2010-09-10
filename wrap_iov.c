@@ -77,22 +77,29 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     size_t dataLen, assocDataLen;
     krb5_context krbContext;
 
-    if (!CTX_IS_ESTABLISHED(ctx))
-        return GSS_S_NO_CONTEXT;
-
     if (ctx->encryptionType == ENCTYPE_NULL)
         return GSS_S_UNAVAILABLE;
 
     GSSEAP_KRB_INIT(&krbContext);
 
     acceptorFlag = CTX_IS_INITIATOR(ctx) ? 0 : TOK_FLAG_SENDER_IS_ACCEPTOR;
-    keyUsage = ((toktype == TOK_TYPE_WRAP)
-                ? (CTX_IS_INITIATOR(ctx)
+
+    switch (toktype) {
+    case TOK_TYPE_WRAP:
+        keyUsage = CTX_IS_INITIATOR(ctx)
                    ? KEY_USAGE_INITIATOR_SEAL
-                   : KEY_USAGE_ACCEPTOR_SEAL)
-                : (CTX_IS_INITIATOR(ctx)
+                   : KEY_USAGE_ACCEPTOR_SEAL;
+        break;
+    case TOK_TYPE_GSS_CB:
+        keyUsage = KEY_USAGE_CHANNEL_BINDINGS;
+        break;
+    case TOK_TYPE_MIC:
+    default:
+        keyUsage = CTX_IS_INITIATOR(ctx)
                    ? KEY_USAGE_INITIATOR_SIGN
-                   : KEY_USAGE_ACCEPTOR_SIGN));
+                   : KEY_USAGE_ACCEPTOR_SIGN;
+        break;
+    }
 
     gssEapIovMessageLength(iov, iov_count, &dataLen, &assocDataLen);
 
@@ -269,7 +276,8 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         if (code != 0)
             goto cleanup;
 
-        ctx->sendSeq++;
+        if (toktype != TOK_TYPE_GSS_CB)
+            ctx->sendSeq++;
 
         if (toktype == TOK_TYPE_WRAP) {
             /* Fix up EC field */
@@ -277,7 +285,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
             /* Fix up RRC field */
             store_uint16_be(rrc, outbuf + 6);
         }
-    } else if (toktype == TOK_TYPE_MIC) {
+    } else if (toktype == TOK_TYPE_MIC || toktype == TOK_TYPE_GSS_CB) {
         trailer = NULL;
         goto wrap_with_checksum;
     } else if (toktype == TOK_TYPE_DELETE_CONTEXT) {
@@ -307,6 +315,9 @@ gss_wrap_iov(OM_uint32 *minor,
              gss_iov_buffer_desc *iov,
              int iov_count)
 {
+    if (!CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_NO_CONTEXT;
+
     return gssEapWrapOrGetMIC(minor, ctx, conf_req_flag, conf_state,
                              iov, iov_count, TOK_TYPE_WRAP);
 }
