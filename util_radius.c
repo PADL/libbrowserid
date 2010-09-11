@@ -57,7 +57,8 @@ OM_uint32
 radiusGetAttributeTypes(OM_uint32 *minor,
                         const struct eap_gss_avp_list *avps,
                         void *data,
-                        OM_uint32 (*addAttribute)(OM_uint32 *, void *, gss_buffer_t))
+                        OM_uint32 (*addAttribute)(OM_uint32 *,
+                                                  void *, gss_buffer_t))
 {
     GSSEAP_NOT_IMPLEMENTED;
 }
