@@ -41,11 +41,12 @@ samlDuplicateAssertion(OM_uint32 *minor,
 }
 
 OM_uint32
-samlFreeAssertion(OM_uint32 *minor,
-                  struct eap_gss_saml_assertion *assertion)
+samlReleaseAssertion(OM_uint32 *minor,
+                     struct eap_gss_saml_assertion **assertion)
 {
-    if (assertion != NULL) {
+    if (*assertion != NULL) {
         GSSEAP_NOT_IMPLEMENTED;
+        *assertion = NULL;
     }
 }
 

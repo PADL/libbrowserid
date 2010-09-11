@@ -53,8 +53,8 @@ samlExportAssertion(OM_uint32 *minor,
                     gss_buffer_t buffer);
 
 OM_uint32
-samlFreeAssertion(OM_uint32 *minor,
-                  struct eap_gss_saml_assertion *assertion);
+samlReleaseAssertion(OM_uint32 *minor,
+                     struct eap_gss_saml_assertion **assertion);
 
 OM_uint32
 samlGetAttributeTypes(OM_uint32 *minor,

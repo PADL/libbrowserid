@@ -43,8 +43,8 @@ radiusDuplicateAVPs(OM_uint32 *minor,
                     struct eap_gss_avp_list **out);
 
 OM_uint32
-radiusFreeAVPs(OM_uint32 *minor,
-               struct eap_gss_avp_list *in);
+radiusReleaseAVPs(OM_uint32 *minor,
+                  struct eap_gss_avp_list **avps);
 
 OM_uint32
 radiusGetAttributeTypes(OM_uint32 *minor,

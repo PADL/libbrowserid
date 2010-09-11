@@ -44,11 +44,12 @@ radiusDuplicateAVPs(OM_uint32 *minor,
 }
 
 OM_uint32
-radiusFreeAVPs(OM_uint32 *minor,
-               struct eap_gss_avp_list *avps)
+radiusReleaseAVPs(OM_uint32 *minor,
+                  struct eap_gss_avp_list **avps)
 {
-    if (avps != NULL) {
+    if (*avps != NULL) {
         GSSEAP_NOT_IMPLEMENTED;
+        *avps = NULL;
     }
 }
 
