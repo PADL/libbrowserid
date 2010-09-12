@@ -201,6 +201,11 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
 
     memset(&cksum, 0, sizeof(cksum));
 
+    /*
+     * This is a complete hack but it's the only way to work with
+     * MIT Kerberos pre-1.9 without using private API, as it does
+     * not support passing in zero as the checksum type.
+     */
     *minor = krb5_c_make_checksum(krbContext, 0, key, 0, &data, &cksum);
     if (*minor != 0)
         return GSS_S_FAILURE;
