@@ -136,7 +136,7 @@ gssEapEnctypeToOid(OM_uint32 *minor,
     oid->elements = GSSEAP_MALLOC(GSS_EAP_MECHANISM->length + 1);
     if (oid->elements == NULL) {
         *minor = ENOMEM;
-        free(oid);
+        GSSEAP_FREE(oid);
         return GSS_S_FAILURE;
     }
 
@@ -149,8 +149,8 @@ gssEapEnctypeToOid(OM_uint32 *minor,
         gssEapInternalizeOid(oid, pOid);
         *pOid = oid;
     } else {
-        free(oid->elements);
-        free(oid);
+        GSSEAP_FREE(oid->elements);
+        GSSEAP_FREE(oid);
     }
 
     return major;
