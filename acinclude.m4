@@ -133,7 +133,7 @@ if test x_$found_shibsp != x_yes; then
 ])
 else
 	printf "Shibboleth found in $shibspdir\n";
-	SHIBSP_LIBS="-lshibspsp -lsaml -lxml-security-c -lxmltooling -lxerces-c";
+	SHIBSP_LIBS="-lshibsp -lsaml -lxml-security-c -lxmltooling -lxerces-c";
 	SHIBSP_LDFLAGS="-L$shibspdir/lib";
 	AC_SUBST(SHIBSP_CXXFLAGS)
 	AC_SUBST(SHIBSP_LDFLAGS)
