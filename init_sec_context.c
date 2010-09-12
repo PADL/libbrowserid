@@ -248,13 +248,13 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
         eap_key_available(ctx->initiatorCtx.eap)) {
         key = eap_get_eapKeyData(ctx->initiatorCtx.eap, &keyLength);
 
-        major = rfc3961EncTypeToChecksumType(minor, ctx->encryptionType,
-                                             &ctx->checksumType);
+        major = gssEapDeriveRfc3961Key(minor, key, keyLength,
+                                       ctx->encryptionType, &ctx->rfc3961Key);
         if (GSS_ERROR(major))
             return major;
 
-        major = gssEapDeriveRfc3961Key(minor, key, keyLength,
-                                       ctx->encryptionType, &ctx->rfc3961Key);
+        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                           &ctx->checksumType);
         if (GSS_ERROR(major))
             return major;
     } else {

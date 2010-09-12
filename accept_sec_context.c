@@ -32,6 +32,9 @@
 
 #include "gssapiP_eap.h"
 
+#define BUILTIN_EAP
+
+#ifdef BUILTIN_EAP
 #define EAP_MAX_METHODS 8
 
 #define EAP_TTLS_AUTH_PAP 1
@@ -39,7 +42,6 @@
 #define EAP_TTLS_AUTH_MSCHAP 4
 #define EAP_TTLS_AUTH_MSCHAPV2 8
 
-#if 1
 struct eap_user {
         struct {
                 int vendor;
@@ -213,7 +215,7 @@ serverGetEapReqIdText(void *ctx,
     *len = 0;
     return NULL;
 }
-#endif
+#endif /* BUILTIN_EAP */
 
 static OM_uint32
 acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
@@ -227,16 +229,16 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
 
     if (ctx->encryptionType != ENCTYPE_NULL &&
         ctx->acceptorCtx.eapPolInterface->eapKeyAvailable) {
-        major = rfc3961EncTypeToChecksumType(minor, ctx->encryptionType,
-                                             &ctx->checksumType);
-        if (GSS_ERROR(major))
-            return major;
-
         major = gssEapDeriveRfc3961Key(minor,
                                        ctx->acceptorCtx.eapPolInterface->eapKeyData,
                                        ctx->acceptorCtx.eapPolInterface->eapKeyDataLen,
                                        ctx->encryptionType,
                                        &ctx->rfc3961Key);
+        if (GSS_ERROR(major))
+            return major;
+
+        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                           &ctx->checksumType);
         if (GSS_ERROR(major))
             return major;
     } else {

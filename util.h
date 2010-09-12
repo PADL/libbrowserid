@@ -209,9 +209,9 @@ OM_uint32
 gssEapKerberosInit(OM_uint32 *minor, krb5_context *context);
 
 OM_uint32
-rfc3961EncTypeToChecksumType(OM_uint32 *minor,
-                             krb5_enctype etype,
-                             krb5_cksumtype *cksumtype);
+rfc3961ChecksumTypeForKey(OM_uint32 *minor,
+                          krb5_keyblock *key,
+                          krb5_cksumtype *cksumtype);
 
 #define GSSEAP_KRB_INIT(ctx) do {                   \
         OM_uint32 tmpMajor;                         \

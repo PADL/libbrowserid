@@ -172,21 +172,43 @@ cleanup:
     return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
 
+#ifdef HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE
 extern krb5_error_code
 krb5int_c_mandatory_cksumtype(krb5_context, krb5_enctype, krb5_cksumtype *);
+#endif
 
 OM_uint32
-rfc3961EncTypeToChecksumType(OM_uint32 *minor,
-                             krb5_enctype etype,
-                             krb5_cksumtype *cksumtype)
+rfc3961ChecksumTypeForKey(OM_uint32 *minor,
+                          krb5_keyblock *key,
+                          krb5_cksumtype *cksumtype)
 {
     krb5_context krbContext;
+#ifndef HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE
+    krb5_data data;
+    krb5_checksum cksum;
+#endif
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    *minor = krb5int_c_mandatory_cksumtype(krbContext, etype, cksumtype);
+#ifdef HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE
+    *minor = krb5int_c_mandatory_cksumtype(krbContext, KRB_KEY_TYPE(key),
+                                           cksumtype);
     if (*minor != 0)
         return GSS_S_FAILURE;
+#else
+    data.length = 0;
+    data.data = NULL;
+
+    memset(&cksum, 0, sizeof(cksum));
+
+    *minor = krb5_c_make_checksum(krbContext, 0, key, 0, &data, &cksum);
+    if (*minor != 0)
+        return GSS_S_FAILURE;
+
+    *cksumtype = cksum.checksum_type;
+
+    krb5_free_checksum_contents(krbContext, &cksum);
+#endif /* HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE */
 
     return GSS_S_COMPLETE;
 }
