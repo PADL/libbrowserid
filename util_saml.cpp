@@ -135,7 +135,6 @@ private:
 
 struct eap_gss_saml_attr_ctx {
     ResolutionContext *resCtx;
-    gss_buffer_desc assertion;
 };
 
 static OM_uint32
@@ -348,6 +347,9 @@ samlGetAttributeTypes(OM_uint32 *minor,
     return major;
 }
 
+/*
+ * SAML implementation of gss_get_name_attribute
+ */
 OM_uint32
 samlGetAttribute(OM_uint32 *minor,
                  const struct eap_gss_saml_attr_ctx *ctx,
@@ -404,6 +406,9 @@ samlGetAttribute(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+/*
+ * No plans to support gss_set_name_attribute at this time.
+ */
 OM_uint32
 samlSetAttribute(OM_uint32 *minor,
                  struct eap_gss_saml_attr_ctx *ctx,
@@ -414,6 +419,10 @@ samlSetAttribute(OM_uint32 *minor,
     return GSS_S_UNAVAILABLE;
 }
 
+/*
+ * In order to implement gss_export_name and gss_export_sec_context,
+ * we need to serialise a resolved attribute context to a buffer.
+ */
 OM_uint32
 samlExportAttrContext(OM_uint32 *minor,
                       struct eap_gss_saml_attr_ctx *ctx,
@@ -422,6 +431,10 @@ samlExportAttrContext(OM_uint32 *minor,
     GSSEAP_NOT_IMPLEMENTED;
 }
 
+/*
+ * In order to implement gss_import_name and gss_import_sec_context,
+ * we need to deserialise a resolved attribute context from a buffer.
+ */
 OM_uint32
 samlImportAttrContext(OM_uint32 *minor,
                       gss_buffer_t buffer,
