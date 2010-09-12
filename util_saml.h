@@ -79,11 +79,6 @@ samlSetAttribute(OM_uint32 *minor,
                  gss_buffer_t value);
 
 OM_uint32
-samlGetAssertion(OM_uint32 *minor,
-                 struct eap_gss_saml_attr_ctx *ctx,
-                 gss_buffer_t buffer);
-
-OM_uint32
 samlExportAttrContext(OM_uint32 *minor,
                       struct eap_gss_saml_attr_ctx *ctx,
                       gss_buffer_t buffer);

@@ -201,10 +201,6 @@ samlDuplicateAttrContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = duplicateBuffer(minor, (gss_buffer_t)&in->assertion, &ctx->assertion);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
     ctx->resCtx = new DummyContext(in->resCtx->getResolvedAttributes());
 
 cleanup:
@@ -222,7 +218,6 @@ samlReleaseAttrContext(OM_uint32 *minor,
 
     if (ctx != NULL) {
         delete ctx->resCtx;
-        gss_release_buffer(minor, &ctx->assertion);
         GSSEAP_FREE(ctx);
         *pCtx = NULL;
     }
@@ -278,11 +273,7 @@ samlCreateAttrContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = duplicateBuffer(minor, buffer, &ctx->assertion);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = samlImportAssertion(minor, &ctx->assertion, &assertion);
+    major = samlImportAssertion(minor, buffer, &assertion);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -421,17 +412,6 @@ samlSetAttribute(OM_uint32 *minor,
                  gss_buffer_t value)
 {
     return GSS_S_UNAVAILABLE;
-}
-
-OM_uint32
-samlGetAssertion(OM_uint32 *minor,
-                 struct eap_gss_saml_attr_ctx *ctx,
-                 gss_buffer_t buffer)
-{
-    if (ctx == NULL)
-        return GSS_S_UNAVAILABLE;
-
-    return duplicateBuffer(minor, &ctx->assertion, buffer);
 }
 
 OM_uint32
