@@ -6,6 +6,7 @@ LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
 
 AC_PROG_CC
+AC_PROG_CXX
 
 dnl Check if we're on Solaris and set CFLAGS accordingly
 dnl AC_CANONICAL_TARGET
@@ -28,5 +29,6 @@ AC_SUBST(TARGET_CFLAGS)
 AC_SUBST(TARGET_LDFLAGS)
 AX_CHECK_KRB5
 AX_CHECK_EAP
+AX_CHECK_SHIBSP
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

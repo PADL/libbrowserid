@@ -63,15 +63,16 @@ gss_duplicate_name(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (input_name->avps != NULL) {
-        major = radiusDuplicateAVPs(minor, input_name->avps, &name->avps);
+    if (input_name->radiusCtx != NULL) {
+        major = radiusDuplicateAttrContext(minor, input_name->radiusCtx,
+                                           &name->radiusCtx);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
-    if (input_name->assertion != NULL) {
-        major = samlDuplicateAssertion(minor, input_name->assertion,
-                                       &name->assertion);
+    if (input_name->samlCtx != NULL) {
+        major = samlDuplicateAttrContext(minor, input_name->samlCtx,
+                                         &name->samlCtx);
         if (GSS_ERROR(major))
             goto cleanup;
     }

@@ -106,8 +106,8 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     GSSEAP_KRB_INIT(&krbContext);
     krb5_free_principal(krbContext, name->krbPrincipal);
 
-    radiusReleaseAVPs(&tmpMinor, &name->avps);
-    samlReleaseAssertion(&tmpMinor, &name->assertion);
+    radiusReleaseAttrContext(&tmpMinor, &name->radiusCtx);
+    samlReleaseAttrContext(&tmpMinor, &name->samlCtx);
 
     GSSEAP_MUTEX_DESTROY(&name->mutex);
     GSSEAP_FREE(name);

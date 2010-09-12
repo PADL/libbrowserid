@@ -102,3 +102,41 @@ else
 	AC_SUBST(EAP_LIBS)
 fi
 ])dnl
+
+AC_DEFUN([AX_CHECK_SHIBSP],
+[AC_MSG_CHECKING(for Shibboleth implementation)
+SHIBSP_DIR=
+found_shibsp="no"
+AC_ARG_WITH(shibsp,
+    AC_HELP_STRING([--with-shibsp],
+       [Use shibspboleth (in specified installation directory)]),
+    [check_shibsp_dir="$withval"],
+    [check_shibsp_dir=])
+for dir in $check_shibsp_dir /usr /usr/local ; do
+   shibspdir="$dir"
+   if test -f "$dir/include/shibsp/SPConfig.h"; then
+     found_shibsp="yes";
+     SHIBSP_DIR="${shibspdir}"
+     SHIBSP_CXXFLAGS="-I$shibspdir/include";
+     break;
+   fi
+done
+AC_MSG_RESULT($found_shibsp)
+if test x_$found_shibsp != x_yes; then
+   AC_MSG_ERROR([
+----------------------------------------------------------------------
+  Cannot find Shibboleth/OpenSAML libraries.
+
+  Please install Shibboleth or specify installation directory with
+  --with-shibsp=(dir).
+----------------------------------------------------------------------
+])
+else
+	printf "Shibboleth found in $shibspdir\n";
+	SHIBSP_LIBS="-lshibspsp -lsaml -lxml-security-c -lxmltooling -lxerces-c";
+	SHIBSP_LDFLAGS="-L$shibspdir/lib";
+	AC_SUBST(SHIBSP_CXXFLAGS)
+	AC_SUBST(SHIBSP_LDFLAGS)
+	AC_SUBST(SHIBSP_LIBS)
+fi
+])dnl

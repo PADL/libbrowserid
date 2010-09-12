@@ -93,7 +93,7 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
 
     args.attrs = *attrs;
 
-    if (name->assertion != NULL) {
+    if (name->samlCtx != NULL) {
         args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_SAML_AAA_ASSERTION);
 
         major = addAttribute(minor, &args, GSS_C_NO_BUFFER);
@@ -101,14 +101,16 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
             goto cleanup;
 
         args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_SAML_ATTR);
-        major = samlGetAttributeTypes(minor, name->assertion, &args, addAttribute);
+        major = samlGetAttributeTypes(minor, name->samlCtx,
+                                      &args, addAttribute);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
-    if (name->avps != NULL) {
+    if (name->radiusCtx != NULL) {
         args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_RADIUS_AVP);
-        major = radiusGetAttributeTypes(minor, name->avps, &args, addAttribute);
+        major = radiusGetAttributeTypes(minor, name->radiusCtx,
+                                        &args, addAttribute);
         if (GSS_ERROR(major))
             goto cleanup;
     }

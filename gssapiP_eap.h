@@ -46,15 +46,15 @@
 #include "gssapi_eap.h"
 #include "util.h"
 
+/* Kerberos includes */
+#include <krb5.h>
+
 /* EAP includes */
 #include <common.h>
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>
 #include <crypto/tls.h>                     /* XXX testing implementation only */
 #include <wpabuf.h>
-
-/* Kerberos includes */
-#include <krb5.h>
 
 #define NAME_FLAG_NAI                       0x00000001
 #define NAME_FLAG_SERVICE                   0x00000002
@@ -64,15 +64,15 @@
 #define NAME_HAS_ATTRIBUTES(name)           ((name)->flags & \
                                              (NAME_FLAG_SAML | NAME_FLAG_RADIUS))
 
-struct eap_gss_saml_assertion;
-struct eap_gss_avp_list;
+struct eap_gss_saml_attr_ctx;
+struct eap_gss_radius_attr_ctx;
 
 struct gss_name_struct {
     GSSEAP_MUTEX mutex; /* mutex protecting attributes */
     OM_uint32 flags;
     krb5_principal krbPrincipal; /* this is immutable */
-    struct eap_gss_saml_assertion *assertion;
-    struct eap_gss_avp_list *avps;
+    struct eap_gss_saml_attr_ctx *samlCtx;
+    struct eap_gss_radius_attr_ctx *radiusCtx;
 };
 
 #define CRED_FLAG_INITIATE                  0x00000001

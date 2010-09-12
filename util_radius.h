@@ -30,43 +30,41 @@
  * SUCH DAMAGE.
  */
 
-#include "gssapiP_eap.h"
-
 #ifndef _UTIL_RADIUS_H_
 #define _UTIL_RADIUS_H_ 1
 
-struct eap_gss_avp_list;
+struct eap_gss_radius_attr_ctx;
 
 OM_uint32
-radiusDuplicateAVPs(OM_uint32 *minor,
-                    const struct eap_gss_avp_list *in,
-                    struct eap_gss_avp_list **out);
+radiusDuplicateAttrContext(OM_uint32 *minor,
+                           const struct eap_gss_radius_attr_ctx *in,
+                           struct eap_gss_radius_attr_ctx **out);
 
 OM_uint32
-radiusReleaseAVPs(OM_uint32 *minor,
-                  struct eap_gss_avp_list **avps);
+radiusReleaseAttrContext(OM_uint32 *minor,
+                         struct eap_gss_radius_attr_ctx **ctx);
 
 OM_uint32
 radiusGetAttributeTypes(OM_uint32 *minor,
-                        const struct eap_gss_avp_list *assertion,
+                        const struct eap_gss_radius_attr_ctx *ctx,
                         void *data,
                         OM_uint32 (*addAttribute)(OM_uint32 *, void *, gss_buffer_t));
 
 OM_uint32
-radiusGetAVP(OM_uint32 *minor,
-             const struct eap_gss_avp_list *avps,
-             gss_buffer_t attr,
-             int *authenticated,
-             int *complete,
-             gss_buffer_t value,
-             gss_buffer_t display_value,
-             int *more);
+radiusGetAttribute(OM_uint32 *minor,
+                   const struct eap_gss_radius_attr_ctx *ctx,
+                   gss_buffer_t attr,
+                   int *authenticated,
+                   int *complete,
+                   gss_buffer_t value,
+                   gss_buffer_t display_value,
+                   int *more);
 
 OM_uint32
-radiusSetAVP(OM_uint32 *minor,
-             struct eap_gss_avp_list *avps,
-             int complete,
-             gss_buffer_t attr,
-             gss_buffer_t value);
+radiusSetAttribute(OM_uint32 *minor,
+                   struct eap_gss_radius_attr_ctx *ctx,
+                   int complete,
+                   gss_buffer_t attr,
+                   gss_buffer_t value);
 
 #endif /* _UTIL_RADIUS_H_ */

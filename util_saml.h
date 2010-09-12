@@ -30,41 +30,40 @@
  * SUCH DAMAGE.
  */
 
-#include "gssapiP_eap.h"
-
 #ifndef _UTIL_SAML_H_
 #define _UTIL_SAML_H_ 1
 
-struct eap_gss_saml_assertion;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct eap_gss_saml_attr_ctx;
 
 OM_uint32
-samlDuplicateAssertion(OM_uint32 *minor,
-                       const struct eap_gss_saml_assertion *in,
-                       struct eap_gss_saml_assertion **out);
+samlDuplicateAttrContext(OM_uint32 *minor,
+                         const struct eap_gss_saml_attr_ctx *in,
+                         struct eap_gss_saml_attr_ctx **out);
 
 OM_uint32
-samlImportAssertion(OM_uint32 *minor,
-                    gss_buffer_t buffer,
-                    struct eap_gss_saml_assertion *pAssertion);
+samlCreateAttrContext(OM_uint32 *minor,
+                      gss_cred_id_t acceptorCred,
+                      gss_name_t initiatorName,
+                      gss_buffer_t buffer,
+                      struct eap_gss_saml_attr_ctx **pCtx);
 
 OM_uint32
-samlExportAssertion(OM_uint32 *minor,
-                    struct eap_gss_saml_assertion *assertion,
-                    gss_buffer_t buffer);
-
-OM_uint32
-samlReleaseAssertion(OM_uint32 *minor,
-                     struct eap_gss_saml_assertion **assertion);
+samlReleaseAttrContext(OM_uint32 *minor,
+                       struct eap_gss_saml_attr_ctx **ctx);
 
 OM_uint32
 samlGetAttributeTypes(OM_uint32 *minor,
-                      const struct eap_gss_saml_assertion *assertion,
+                      const struct eap_gss_saml_attr_ctx *ctx,
                       void *data,
                       OM_uint32 (*addAttribute)(OM_uint32 *, void *, gss_buffer_t));
 
 OM_uint32
 samlGetAttribute(OM_uint32 *minor,
-                 const struct eap_gss_saml_assertion *assertion,
+                 const struct eap_gss_saml_attr_ctx *ctx,
                  gss_buffer_t attr,
                  int *authenticated,
                  int *complete,
@@ -74,9 +73,28 @@ samlGetAttribute(OM_uint32 *minor,
 
 OM_uint32
 samlSetAttribute(OM_uint32 *minor,
-                 struct eap_gss_saml_assertion *assertion,
+                 struct eap_gss_saml_attr_ctx *ctx,
                  int complete,
                  gss_buffer_t attr,
                  gss_buffer_t value);
+
+OM_uint32
+samlGetAssertion(OM_uint32 *minor,
+                 struct eap_gss_saml_attr_ctx *ctx,
+                 gss_buffer_t buffer);
+
+OM_uint32
+samlExportAttrContext(OM_uint32 *minor,
+                      struct eap_gss_saml_attr_ctx *ctx,
+                      gss_buffer_t buffer);
+
+OM_uint32
+samlImportAttrContext(OM_uint32 *minor,
+                      gss_buffer_t buffer,
+                      struct eap_gss_saml_attr_ctx **pCtx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _UTIL_SAML_H_ */

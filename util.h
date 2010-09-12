@@ -57,7 +57,14 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_ 1
 
+#include <string.h>
+#include <errno.h>
+
 #include <krb5.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "util_saml.h"
 #include "util_radius.h"
@@ -504,4 +511,9 @@ store_oid(gss_OID oid, void *vp)
 
     return store_buffer(&buf, vp, FALSE);
 }
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* _UTIL_H_ */
