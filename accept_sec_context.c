@@ -32,7 +32,64 @@
 
 #include "gssapiP_eap.h"
 
-#define BUILTIN_EAP
+//#define BUILTIN_EAP
+
+#ifdef BUILTIN_EAP
+#define EAP_KEY_AVAILABLE(ctx)  ((ctx)->acceptorCtx.eapPolInterface->eapKeyAvailable)
+#define EAP_KEY_DATA(ctx)       ((ctx)->acceptorCtx.eapPolInterface->eapKeyData)
+#define EAP_KEY_LENGTH(ctx)     ((ctx)->acceptorCtx.eapPolInterface->eapKeyDataLen)
+#else
+#define EAP_KEY_AVAILABLE(ctx)  0
+#define EAP_KEY_DATA(ctx)       NULL
+#define EAP_KEY_LENGTH(ctx)     0
+#endif /* BUILTIN_EAP */
+
+/*
+ * Mark a context as ready for cryptographic operations
+ */
+static OM_uint32
+acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
+{
+    OM_uint32 major;
+
+    /* Cache encryption type derived from selected mechanism OID */
+    major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
+    if (GSS_ERROR(major))
+        return major;
+
+    if (ctx->encryptionType != ENCTYPE_NULL &&
+        EAP_KEY_AVAILABLE(ctx)) {
+        major = gssEapDeriveRfc3961Key(minor,
+                                       EAP_KEY_DATA(ctx),
+                                       EAP_KEY_LENGTH(ctx),
+                                       ctx->encryptionType,
+                                       &ctx->rfc3961Key);
+        if (GSS_ERROR(major))
+            return major;
+
+        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                           &ctx->checksumType);
+        if (GSS_ERROR(major))
+            return major;
+    } else {
+        /*
+         * draft-howlett-eap-gss says that integrity/confidentialty should
+         * always be advertised as available, but if we have no keying
+         * material it seems confusing to the caller to advertise this.
+         */
+        ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
+    }
+
+    major = sequenceInit(minor,
+                         &ctx->seqState, ctx->recvSeq,
+                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                         TRUE);
+    if (GSS_ERROR(major))
+        return major;
+
+    return GSS_S_COMPLETE;
+}
 
 #ifdef BUILTIN_EAP
 #define EAP_MAX_METHODS 8
@@ -215,51 +272,6 @@ serverGetEapReqIdText(void *ctx,
     *len = 0;
     return NULL;
 }
-#endif /* BUILTIN_EAP */
-
-static OM_uint32
-acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
-{
-    OM_uint32 major;
-
-    /* Cache encryption type derived from selected mechanism OID */
-    major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
-    if (GSS_ERROR(major))
-        return major;
-
-    if (ctx->encryptionType != ENCTYPE_NULL &&
-        ctx->acceptorCtx.eapPolInterface->eapKeyAvailable) {
-        major = gssEapDeriveRfc3961Key(minor,
-                                       ctx->acceptorCtx.eapPolInterface->eapKeyData,
-                                       ctx->acceptorCtx.eapPolInterface->eapKeyDataLen,
-                                       ctx->encryptionType,
-                                       &ctx->rfc3961Key);
-        if (GSS_ERROR(major))
-            return major;
-
-        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
-                                           &ctx->checksumType);
-        if (GSS_ERROR(major))
-            return major;
-    } else {
-        /*
-         * draft-howlett-eap-gss says that integrity/confidentialty should
-         * always be advertised as available, but if we have no keying
-         * material it seems confusing to the caller to advertise this.
-         */
-        ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
-    }
-
-    major = sequenceInit(minor,
-                         &ctx->seqState, ctx->recvSeq,
-                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
-                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
-                         TRUE);
-    if (GSS_ERROR(major))
-        return major;
-
-    return GSS_S_COMPLETE;
-}
 
 static OM_uint32
 eapGssSmAcceptAuthenticate(OM_uint32 *minor,
@@ -349,6 +361,21 @@ cleanup:
 
     return major;
 }
+#else
+static OM_uint32
+eapGssSmAcceptAuthenticate(OM_uint32 *minor,
+                           gss_ctx_id_t ctx,
+                           gss_cred_id_t cred,
+                           gss_buffer_t inputToken,
+                           gss_channel_bindings_t chanBindings,
+                           gss_buffer_t outputToken)
+{
+    OM_uint32 major, tmpMinor;
+
+cleanup:
+    return major;
+}
+#endif /* BUILTIN_EAP */
 
 static OM_uint32
 eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
