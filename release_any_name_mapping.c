@@ -47,7 +47,11 @@ gss_release_any_name_mapping(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
-    major = samlReleaseAnyNameMapping(minor, name->samlCtx, type_id, input);
+    if (name->samlCtx == NULL)
+        major = GSS_S_UNAVAILABLE;
+    else
+        major = samlReleaseAnyNameMapping(minor, name->samlCtx,
+                                          type_id, input);
 
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
