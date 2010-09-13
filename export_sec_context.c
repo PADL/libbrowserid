@@ -131,7 +131,10 @@ gssEapExportSecContext(OM_uint32 *minor,
     store_uint64_be(ctx->sendSeq,          &p[8]);
     store_uint64_be(ctx->recvSeq,          &p[16]);
     p += 24;
-    sequenceExternalize(ctx->seqState,     &p, &length);
+
+    major = sequenceExternalize(minor, ctx->seqState, &p, &length);
+    if (GSS_ERROR(major))
+        goto cleanup;
 
     if (partialCtx.value != NULL)
         p = store_buffer(&partialCtx, p, FALSE);

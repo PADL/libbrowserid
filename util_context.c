@@ -110,7 +110,7 @@ gssEapReleaseContext(OM_uint32 *minor,
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
     gss_release_oid(&tmpMinor, &ctx->mechanismUsed);
-    sequenceFree(&ctx->seqState);
+    sequenceFree(&tmpMinor, &ctx->seqState);
 
     GSSEAP_MUTEX_DESTROY(&ctx->mutex);
 

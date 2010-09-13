@@ -350,23 +350,29 @@ oidEqual(const gss_OID_desc *o1, const gss_OID_desc *o2)
 }
 
 /* util_ordering.c */
-int
-sequenceInternalize(void **vqueue, unsigned char **buf, size_t *lenremain);
+OM_uint32
+sequenceInternalize(OM_uint32 *minor,
+                    void **vqueue,
+                    unsigned char **buf,
+                    size_t *lenremain);
 
-int
-sequenceExternalize(void *vqueue, unsigned char **buf, size_t *lenremain);
+OM_uint32
+sequenceExternalize(OM_uint32 *minor,
+                    void *vqueue,
+                    unsigned char **buf,
+                    size_t *lenremain);
 
 size_t
 sequenceSize(void *vqueue);
 
-void
-sequenceFree(void **vqueue);
+OM_uint32
+sequenceFree(OM_uint32 *minor, void **vqueue);
 
-int
-sequenceCheck(void **vqueue, uint64_t seqnum);
+OM_uint32
+sequenceCheck(OM_uint32 *minor, void **vqueue, uint64_t seqnum);
 
-int
-sequenceInit(void **vqueue, uint64_t seqnum,
+OM_uint32
+sequenceInit(OM_uint32 *minor, void **vqueue, uint64_t seqnum,
              int do_replay, int do_sequence, int wide_nums);
 
 /* util_token.c */

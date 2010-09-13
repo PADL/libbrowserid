@@ -117,20 +117,21 @@ queue_insert(queue *q, int after, uint64_t seqnum)
     }
 }
 
-int
-sequenceInit(void **vqueue, uint64_t seqnum,
-             int do_replay, int do_sequence, int wide_nums)
+OM_uint32
+sequenceInit(OM_uint32 *minor,
+             void **vqueue,
+             uint64_t seqnum,
+             int do_replay,
+             int do_sequence,
+             int wide_nums)
 {
     queue *q;
 
-    if ((q = (queue *) GSSEAP_MALLOC(sizeof(queue))) == NULL)
-        return(ENOMEM);
-
-    /* This stops valgrind from complaining about writing uninitialized
-       data if the caller exports the context and writes it to a file.
-       We don't actually use those bytes at all, but valgrind still
-       complains.  */
-    memset(q, 0xfe, sizeof(*q));
+    q = (queue *)GSSEAP_CALLOC(1, sizeof(queue));
+    if (q == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
 
     q->do_replay = do_replay;
     q->do_sequence = do_sequence;
@@ -141,12 +142,15 @@ sequenceInit(void **vqueue, uint64_t seqnum,
     q->firstnum = seqnum;
     q->elem[q->start] = ((uint64_t)0 - 1) & q->mask;
 
-    *vqueue = (void *) q;
-    return(0);
+    *vqueue = (void *)q;
+
+    return GSS_S_COMPLETE;
 }
 
-int
-sequenceCheck(void **vqueue, uint64_t seqnum)
+OM_uint32
+sequenceCheck(OM_uint32 *minor,
+              void **vqueue,
+              uint64_t seqnum)
 {
     queue *q;
     int i;
@@ -230,8 +234,8 @@ sequenceCheck(void **vqueue, uint64_t seqnum)
     return(GSS_S_FAILURE);
 }
 
-void
-sequenceFree(void **vqueue)
+OM_uint32
+sequenceFree(OM_uint32 *minor, void **vqueue)
 {
     queue *q;
 
@@ -240,6 +244,8 @@ sequenceFree(void **vqueue)
     GSSEAP_FREE(q);
 
     *vqueue = NULL;
+
+    return GSS_S_COMPLETE;
 }
 
 /*
@@ -251,11 +257,16 @@ sequenceSize(void *vqueue)
     return sizeof(queue);
 }
 
-int
-sequenceExternalize(void *vqueue, unsigned char **buf, size_t *lenremain)
+OM_uint32
+sequenceExternalize(OM_uint32 *minor,
+                    void *vqueue,
+                    unsigned char **buf,
+                    size_t *lenremain)
 {
-    if (*lenremain < sizeof(queue))
-        return ERANGE;
+    if (*lenremain < sizeof(queue)) {
+        *minor = ERANGE;
+        return GSS_S_FAILURE;
+    }
     memcpy(*buf, vqueue, sizeof(queue));
     *buf += sizeof(queue);
     *lenremain -= sizeof(queue);
@@ -263,19 +274,30 @@ sequenceExternalize(void *vqueue, unsigned char **buf, size_t *lenremain)
     return 0;
 }
 
-int
-sequenceInternalize(void **vqueue, unsigned char **buf, size_t *lenremain)
+OM_uint32
+sequenceInternalize(OM_uint32 *minor,
+                    void **vqueue,
+                    unsigned char **buf,
+                    size_t *lenremain)
 {
     void *q;
 
-    if (*lenremain < sizeof(queue))
-        return ERANGE;
+    if (*lenremain < sizeof(queue)) {
+        *minor = ERANGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
     q = GSSEAP_MALLOC(sizeof(queue));
-    if (q == NULL)
-        return ENOMEM;
+    if (q == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
     memcpy(q, *buf, sizeof(queue));
     *buf += sizeof(queue);
     *lenremain -= sizeof(queue);
     *vqueue = q;
-    return 0;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
 }

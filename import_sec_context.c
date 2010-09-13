@@ -249,9 +249,9 @@ gssEapImportContext(OM_uint32 *minor,
     p      += 24;
     remain -= 24;
 
-    *minor = sequenceInternalize(&ctx->seqState, &p, &remain);
-    if (*minor != 0)
-        return GSS_S_FAILURE;
+    major = sequenceInternalize(minor, &ctx->seqState, &p, &remain);
+    if (GSS_ERROR(major))
+        return major;
 
     /*
      * The partial context should only be expected for unestablished

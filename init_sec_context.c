@@ -266,10 +266,14 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
         ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
     }
 
-    sequenceInit(&ctx->seqState, ctx->recvSeq,
-                 ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
-                 ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
-                 TRUE);
+    major = sequenceInit(minor,
+                         &ctx->seqState,
+                         ctx->recvSeq,
+                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                         TRUE);
+    if (GSS_ERROR(major))
+        return major;
 
     return GSS_S_COMPLETE;
 }
