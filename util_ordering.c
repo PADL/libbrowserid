@@ -270,7 +270,8 @@ sequenceInternalize(void **vqueue, unsigned char **buf, size_t *lenremain)
 
     if (*lenremain < sizeof(queue))
         return ERANGE;
-    if ((q = GSSEAP_MALLOC(sizeof(queue))) == 0)
+    q = GSSEAP_MALLOC(sizeof(queue));
+    if (q == NULL)
         return ENOMEM;
     memcpy(q, *buf, sizeof(queue));
     *buf += sizeof(queue);
