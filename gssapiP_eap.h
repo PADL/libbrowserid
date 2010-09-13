@@ -58,21 +58,16 @@
 
 #define NAME_FLAG_NAI                       0x00000001
 #define NAME_FLAG_SERVICE                   0x00000002
-#define NAME_FLAG_SAML                      0x00000010
-#define NAME_FLAG_RADIUS                    0x00000020
 
-#define NAME_HAS_ATTRIBUTES(name)           ((name)->flags & \
-                                             (NAME_FLAG_SAML | NAME_FLAG_RADIUS))
+#define NAME_HAS_ATTRIBUTES(name)           ((name)->samlCtx != NULL)
 
 struct eap_gss_saml_attr_ctx;
-struct eap_gss_radius_attr_ctx;
 
 struct gss_name_struct {
     GSSEAP_MUTEX mutex; /* mutex protecting attributes */
     OM_uint32 flags;
     krb5_principal krbPrincipal; /* this is immutable */
     struct eap_gss_saml_attr_ctx *samlCtx;
-    struct eap_gss_radius_attr_ctx *radiusCtx;
 };
 
 #define CRED_FLAG_INITIATE                  0x00000001

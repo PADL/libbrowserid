@@ -33,11 +33,9 @@
 #include "gssapiP_eap.h"
 
 OM_uint32
-gss_set_name_attribute(OM_uint32 *minor,
-                       gss_name_t name,
-                       int complete,
-                       gss_buffer_t attr,
-                       gss_buffer_t value)
+gss_delete_name_attribute(OM_uint32 *minor,
+                          gss_name_t name,
+                          gss_buffer_t attr)
 {
     OM_uint32 major;
     gss_buffer_desc prefix, suffix;
@@ -56,8 +54,7 @@ gss_set_name_attribute(OM_uint32 *minor,
 
     type = gssEapAttributePrefixToType(&prefix);
     if (type != ATTR_TYPE_SAML_AAA_ASSERTION) {
-        major = samlSetAttribute(minor, name->samlCtx, complete,
-                                 attr, value);
+        major = samlDeleteAttribute(minor, name->samlCtx, attr);
     } else {
         major = GSS_S_UNAVAILABLE;
     }

@@ -106,7 +106,6 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     GSSEAP_KRB_INIT(&krbContext);
     krb5_free_principal(krbContext, name->krbPrincipal);
 
-    radiusReleaseAttrContext(&tmpMinor, &name->radiusCtx);
     samlReleaseAttrContext(&tmpMinor, &name->samlCtx);
 
     GSSEAP_MUTEX_DESTROY(&name->mutex);
@@ -222,7 +221,6 @@ importExportedName(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     krb5_context krbContext;
     unsigned char *p;
-    int composite = 0;
     size_t len, remain;
     gss_buffer_desc buf;
     enum gss_eap_token_type tok_type;
@@ -275,14 +273,25 @@ importExportedName(OM_uint32 *minor,
     p += len;
     remain -= len;
 
-    if (composite == 0 && remain != 0)
+    if (remain != 0)
         return GSS_S_BAD_NAME;
 
     major = importUserName(minor, &buf, pName);
     if (GSS_ERROR(major))
         return major;
 
-    /* XXX TODO composite handling */
+    if (tok_type == TOK_TYPE_EXPORT_NAME_COMPOSITE) {
+        gss_buffer_desc saml;
+
+        saml.length = remain;
+        saml.value = p;
+
+        major = samlImportAttrContext(minor, &saml, &(*pName)->samlCtx);
+        if (GSS_ERROR(major)) {
+            gssEapReleaseName(&tmpMinor, pName);
+            return major;
+        }
+    }
 
     return GSS_S_COMPLETE;
 }
@@ -326,6 +335,10 @@ gssEapExportName(OM_uint32 *minor,
     char *krbName = NULL;
     size_t krbNameLen;
     unsigned char *p;
+    gss_buffer_desc saml;
+
+    saml.length = 0;
+    saml.value = NULL;
 
     exportedName->length = 0;
     exportedName->value = NULL;
@@ -340,18 +353,24 @@ gssEapExportName(OM_uint32 *minor,
         composite = 0;
 
     *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
-    if (*minor != 0)
+    if (*minor != 0) {
+        major = GSS_S_FAILURE;
         goto cleanup;
+    }
     krbNameLen = strlen(krbName);
 
     exportedName->length = 6 + GSS_EAP_MECHANISM->length + 4 + krbNameLen;
     if (composite) {
-        /* TODO: export SAML/AVP, this is pending specification */
-        
+        major = samlExportAttrContext(minor, name->samlCtx, &saml);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        exportedName->length += 4 + saml.length;
     }
 
     exportedName->value = GSSEAP_MALLOC(exportedName->length);
     if (exportedName->value == NULL) {
+        major = GSS_S_FAILURE;
         *minor = ENOMEM;
         goto cleanup;
     }
@@ -380,11 +399,18 @@ gssEapExportName(OM_uint32 *minor,
     memcpy(p, krbName, krbNameLen);
     p += krbNameLen;
 
+    store_uint32_be(saml.length, p);
+    p += 4;
+
+    memcpy(p, saml.value, saml.length);
+    p += saml.length;
+
     *minor = 0;
     major = GSS_S_COMPLETE;
 
 cleanup:
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
+    gss_release_buffer(&tmpMinor, &saml);
     if (GSS_ERROR(major))
         gss_release_buffer(&tmpMinor, exportedName);
     krb5_free_unparsed_name(krbContext, krbName);

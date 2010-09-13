@@ -63,13 +63,6 @@ gss_duplicate_name(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (input_name->radiusCtx != NULL) {
-        major = radiusDuplicateAttrContext(minor, input_name->radiusCtx,
-                                           &name->radiusCtx);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
-
     if (input_name->samlCtx != NULL) {
         major = samlDuplicateAttrContext(minor, input_name->samlCtx,
                                          &name->samlCtx);

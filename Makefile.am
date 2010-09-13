@@ -23,6 +23,7 @@ libmech_eap_la_SOURCES =    			\
 	canonicalize_name.c			\
 	compare_name.c				\
 	context_time.c				\
+	delete_name_attribute.c			\
 	delete_sec_context.c			\
 	display_name.c				\
 	display_name_ext.c			\
@@ -68,7 +69,6 @@ libmech_eap_la_SOURCES =    			\
 	util_name.c				\
 	util_oid.c				\
 	util_ordering.c				\
-	util_radius.c				\
 	util_saml.cpp				\
 	util_token.c				\
 	verify_mic.c				\

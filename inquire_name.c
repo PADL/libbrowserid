@@ -107,14 +107,6 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
             goto cleanup;
     }
 
-    if (name->radiusCtx != NULL) {
-        args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_RADIUS_AVP);
-        major = radiusGetAttributeTypes(minor, name->radiusCtx,
-                                        &args, addAttribute);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
-
 cleanup:
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 

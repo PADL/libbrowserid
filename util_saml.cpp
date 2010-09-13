@@ -54,6 +54,7 @@
 #include <shibsp/SPConfig.h>
 #include <shibsp/ServiceProvider.h>
 #include <shibsp/attribute/Attribute.h>
+#include <shibsp/attribute/SimpleAttribute.h>
 #include <shibsp/attribute/resolver/ResolutionContext.h>
 #include <shibsp/handler/AssertionConsumerService.h>
 #include <shibsp/metadata/MetadataProviderCriteria.h>
@@ -111,113 +112,354 @@ private:
     }
 };
 
-class SHIBSP_DLLLOCAL DummyContext : public ResolutionContext
-{
+struct eap_gss_saml_attr_ctx {
 public:
-    DummyContext(const vector<Attribute*>& attributes) : m_attributes(attributes) {
+    eap_gss_saml_attr_ctx();
+    eap_gss_saml_attr_ctx(const gss_buffer_t buffer);
+    eap_gss_saml_attr_ctx(const Assertion *assertion);
+
+    eap_gss_saml_attr_ctx(const vector<Attribute*>& attributes,
+                          const Assertion *assertion);
+
+    eap_gss_saml_attr_ctx(const eap_gss_saml_attr_ctx &ctx) {
+        eap_gss_saml_attr_ctx(ctx.m_attributes, ctx.m_assertion);
     }
 
-    virtual ~DummyContext() {
-        for_each(m_attributes.begin(), m_attributes.end(), xmltooling::cleanup<Attribute>());
-    }
+    ~eap_gss_saml_attr_ctx();
 
-    vector<Attribute*>& getResolvedAttributes() {
+    const vector <Attribute *> getAttributes(void) const {
         return m_attributes;
     }
-    vector<Assertion*>& getResolvedAssertions() {
-        return m_tokens;
+
+    void addAttribute(Attribute *attr, bool copy = true);
+    void setAttributes(const vector<Attribute*> attributes);
+
+    void setAttribute(int complete,
+                      const gss_buffer_t attr,
+                      const gss_buffer_t value);
+    void deleteAttribute(const gss_buffer_t attr);
+
+    int getAttributeIndex(const gss_buffer_t attr) const;
+    const Attribute *getAttribute(const gss_buffer_t attr) const;
+
+    bool getAttribute(const gss_buffer_t attr,
+                      int *authenticated,
+                      int *complete,
+                      gss_buffer_t value,
+                      gss_buffer_t display_value,
+                      int *more);
+
+    const Assertion *getAssertion(void) const {
+        return m_assertion;
     }
+
+    bool getAssertion(gss_buffer_t buffer);
+
+    DDF marshall() const;
+    static eap_gss_saml_attr_ctx *unmarshall(DDF &in);
+
+    bool marshall(gss_buffer_t buffer);
+    static eap_gss_saml_attr_ctx *unmarshall(const gss_buffer_t buffer);
 
 private:
-    vector<Attribute*> m_attributes;
-    static vector<Assertion*> m_tokens; // never any tokens, so just share an empty vector
+    mutable vector<Attribute*> m_attributes;
+    mutable Assertion *m_assertion;
+
+    bool parseAssertion(const gss_buffer_t buffer);
 };
 
-struct eap_gss_saml_attr_ctx {
-    ResolutionContext *resCtx;
-};
-
-static OM_uint32
-samlAllocAttrContext(OM_uint32 *minor,
-                     struct eap_gss_saml_attr_ctx **pCtx)
+eap_gss_saml_attr_ctx::eap_gss_saml_attr_ctx(const vector<Attribute*>& attributes,
+                                             const Assertion *assertion)
 {
-    struct eap_gss_saml_attr_ctx *ctx;
-
-    ctx = (struct eap_gss_saml_attr_ctx *)GSSEAP_CALLOC(1, sizeof(*ctx));
-    if (ctx == NULL) {
-        *minor = ENOMEM;
-        return GSS_S_FAILURE;
-    }
-
-    *pCtx = ctx;
-    *minor = 0;
-    return GSS_S_COMPLETE;
+    m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
+    setAttributes(attributes);
 }
 
-static OM_uint32
-samlImportAssertion(OM_uint32 *minor,
-                    gss_buffer_t buffer,
-                    saml2::Assertion **pAssertion)
+eap_gss_saml_attr_ctx::~eap_gss_saml_attr_ctx()
 {
-    *pAssertion = NULL;
+    for_each(m_attributes.begin(), m_attributes.end(), xmltooling::cleanup<Attribute>());
+    delete m_assertion;
+}
 
-    try {
-        DOMDocument *doc;
-        const XMLObjectBuilder *b;
-        DOMElement *elem;
-        XMLObject *xobj;
-        string samlBuf((char *)buffer->value, buffer->length);
-        istringstream samlIn(samlBuf);
+eap_gss_saml_attr_ctx::eap_gss_saml_attr_ctx(const gss_buffer_t buffer)
+{
+    parseAssertion(buffer);
+}
 
-        doc = XMLToolingConfig::getConfig().getParser().parse(samlIn);
-        b = XMLObjectBuilder::getDefaultBuilder();
-        elem = doc->getDocumentElement();
-        xobj = b->buildOneFromElement(elem, true);
+bool
+eap_gss_saml_attr_ctx::parseAssertion(const gss_buffer_t buffer)
+{
+    DOMDocument *doc;
+    const XMLObjectBuilder *b;
+    DOMElement *elem;
+    XMLObject *xobj;
+    string str((char *)buffer->value, buffer->length);
+    istringstream istream(str);
 
-        *pAssertion = dynamic_cast<saml2::Assertion *>(xobj);
-        if (*pAssertion == NULL) {
-            /* TODO minor_status */
-            return GSS_S_BAD_NAME;
+    doc = XMLToolingConfig::getConfig().getParser().parse(istream);
+    b = XMLObjectBuilder::getDefaultBuilder();
+    elem = doc->getDocumentElement();
+    xobj = b->buildOneFromElement(elem, true);
+
+    m_assertion = dynamic_cast<saml2::Assertion *>(xobj);
+
+    return (m_assertion != NULL);
+}
+
+static inline bool
+duplicateBuffer(string &str, gss_buffer_t buffer)
+{
+    gss_buffer_desc tmp;
+    OM_uint32 minor;
+
+    tmp.length = str.length();
+    tmp.value = (char *)str.c_str();
+
+    if (GSS_ERROR(duplicateBuffer(&minor, &tmp, buffer)))
+        return false;
+
+    return true;
+}
+
+DDF
+eap_gss_saml_attr_ctx::marshall() const
+{
+    DDF obj;
+    DDF attrs;
+    DDF assertion;
+
+    obj.addmember("version").integer(1);
+
+    attrs = obj.addmember("attributes").list();
+    for (vector<Attribute*>::const_iterator a = m_attributes.begin();
+         a != m_attributes.end(); ++a) {
+        DDF attr = (*a)->marshall();
+        attrs.add(attr);
+    }
+
+    ostringstream sink;
+    sink << *m_assertion;
+    assertion = obj.addmember("assertion").string(sink.str().c_str());
+
+    return obj;
+}
+
+eap_gss_saml_attr_ctx *
+eap_gss_saml_attr_ctx::unmarshall(DDF &obj)
+{
+    eap_gss_saml_attr_ctx *ctx = new eap_gss_saml_attr_ctx();
+
+    DDF version = obj["version"];
+    if (version.integer() != 1)
+        return NULL;
+
+    DDF assertion = obj["assertion"];
+    gss_buffer_desc buffer;
+
+    if (!assertion.isnull()) {
+        buffer.length = assertion.strlen();
+        buffer.value = (void *)assertion.string();
+    } else {
+        buffer.length = 0;
+    }
+
+    if (buffer.length != 0)
+        ctx->parseAssertion(&buffer);
+
+    DDF attrs = obj["attributes"];
+    DDF attr = attrs.first();
+    while (!attr.isnull()) {
+        Attribute *attribute = Attribute::unmarshall(attr);
+        ctx->addAttribute(attribute, false);
+        attr = attrs.next();
+    }
+
+    return ctx;
+}
+
+bool
+eap_gss_saml_attr_ctx::marshall(gss_buffer_t buffer)
+{
+    DDF obj;
+    ostringstream sink;
+    string str;
+
+    obj = marshall();
+    sink << obj;
+    str = sink.str();
+
+    return duplicateBuffer(str, buffer);
+}
+
+eap_gss_saml_attr_ctx *
+eap_gss_saml_attr_ctx::unmarshall(const gss_buffer_t buffer)
+{
+    DDF obj;
+    string str((const char *)buffer->value, buffer->length);
+    istringstream source(str);
+    source >> obj;
+
+    return unmarshall(obj);
+}
+
+bool
+eap_gss_saml_attr_ctx::getAssertion(gss_buffer_t buffer)
+{
+    string str;
+
+    buffer->value = NULL;
+    buffer->length = 0;
+
+    XMLHelper::serialize(m_assertion->marshall((DOMDocument *)NULL), str);
+
+    return duplicateBuffer(str, buffer);
+}
+
+void
+eap_gss_saml_attr_ctx::addAttribute(Attribute *attribute, bool copy)
+{
+    Attribute *a;
+    if (copy) {
+        DDF obj = attribute->marshall();
+        a = Attribute::unmarshall(obj);
+    } else {
+        a = attribute;
+    }
+    m_attributes.push_back(a);
+}
+
+void
+eap_gss_saml_attr_ctx::setAttributes(const vector<Attribute*> attributes)
+{
+    for (vector<Attribute *>::const_iterator a = attributes.begin();
+         a != attributes.end();
+         ++a)
+        addAttribute(*a);
+}
+
+int
+eap_gss_saml_attr_ctx::getAttributeIndex(const gss_buffer_t attr) const
+{
+    int i = 0;
+
+    for (vector<Attribute *>::const_iterator a = getAttributes().begin();
+         a != getAttributes().end();
+         ++a)
+    {
+        for (vector<string>::const_iterator s = (*a)->getAliases().begin();
+             s != (*a)->getAliases().end();
+             ++s) {
+            if (attr->length == (*s).length() &&
+                memcmp((*s).c_str(), attr->value, attr->length) == 0) {
+                return i;
+            }
         }
-    } catch (exception &e){
-        /* TODO minor_status */
-        return GSS_S_BAD_NAME;
     }
 
-    *minor = 0;
-    return GSS_S_COMPLETE;
+    return -1;
 }
 
-OM_uint32
-samlDuplicateAttrContext(OM_uint32 *minor,
-                         const struct eap_gss_saml_attr_ctx *in,
-                         struct eap_gss_saml_attr_ctx **out)
+const Attribute *
+eap_gss_saml_attr_ctx::getAttribute(const gss_buffer_t attr) const
 {
-    OM_uint32 major, tmpMinor;
-    struct eap_gss_saml_attr_ctx *ctx;
+    const Attribute *ret = NULL;
 
-    major = samlAllocAttrContext(minor, &ctx);
+    for (vector<Attribute *>::const_iterator a = getAttributes().begin();
+         a != getAttributes().end();
+         ++a)
+    {
+        for (vector<string>::const_iterator s = (*a)->getAliases().begin();
+             s != (*a)->getAliases().end();
+             ++s) {
+            if (attr->length == (*s).length() &&
+                memcmp((*s).c_str(), attr->value, attr->length) == 0) {
+                ret = *a;
+                break;
+            }
+        }
+        if (ret != NULL)
+            break;
+    }
+
+    return ret;
+}
+
+bool
+eap_gss_saml_attr_ctx::getAttribute(const gss_buffer_t attr,
+                                    int *authenticated,
+                                    int *complete,
+                                    gss_buffer_t value,
+                                    gss_buffer_t display_value,
+                                    int *more)
+{
+    OM_uint32 major, minor;
+    const Attribute *shibAttr = NULL;
+    gss_buffer_desc buf;
+
+    shibAttr = getAttribute(attr);
+    if (shibAttr == NULL)
+        return false;
+
+    if (*more == -1) {
+        *more = 0;
+    } else if (*more >= (int)shibAttr->valueCount()) {
+        *more = 0;
+        return true;
+    }
+
+    buf.value = (void *)shibAttr->getString(*more);
+    buf.length = strlen((char *)buf.value);
+
+    major = duplicateBuffer(&minor, &buf, value);
     if (GSS_ERROR(major))
-        goto cleanup;
+        return false;
+ 
+    *authenticated = TRUE;
+    *complete = FALSE;
 
-    ctx->resCtx = new DummyContext(in->resCtx->getResolvedAttributes());
+    return true;
+}
 
-cleanup:
-    if (GSS_ERROR(major))
-        samlReleaseAttrContext(&tmpMinor, &ctx);
+void
+eap_gss_saml_attr_ctx::setAttribute(int complete,
+                                    const gss_buffer_t attr,
+                                    const gss_buffer_t value)
+{
+    string attrStr((char *)attr->value, attr->length);
+    vector <string> ids(1);
+    SimpleAttribute *a;
 
-    return major;
+    ids.push_back(attrStr);
+
+    a = new SimpleAttribute(ids);
+
+    if (value->length != 0) {
+        string valStr((char *)value->value, value->length);
+
+        a->getValues().push_back(valStr);        
+    }
+
+    m_attributes.push_back(a);
+}
+
+void
+eap_gss_saml_attr_ctx::deleteAttribute(const gss_buffer_t attr)
+{
+    int i;
+
+    i = getAttributeIndex(attr);
+    if (i >= 0)
+        m_attributes.erase(m_attributes.begin() + i);
 }
 
 OM_uint32
 samlReleaseAttrContext(OM_uint32 *minor,
                        struct eap_gss_saml_attr_ctx **pCtx)
 {
-    struct eap_gss_saml_attr_ctx *ctx = *pCtx;
+    eap_gss_saml_attr_ctx *ctx = *pCtx;
 
     if (ctx != NULL) {
-        delete ctx->resCtx;
-        GSSEAP_FREE(ctx);
+        delete ctx;
         *pCtx = NULL;
     }
 
@@ -232,7 +474,7 @@ samlCreateAttrContext(OM_uint32 *minor,
                       struct eap_gss_saml_attr_ctx **pCtx)
 {
     OM_uint32 major, tmpMinor;
-    struct eap_gss_saml_attr_ctx *ctx;
+    eap_gss_saml_attr_ctx *ctx = NULL;
     SPConfig &conf = SPConfig::getConfig();
     ServiceProvider *sp;
     const Application *app;
@@ -241,6 +483,7 @@ samlCreateAttrContext(OM_uint32 *minor,
     const XMLCh *issuer = NULL;
     saml2::NameID *subjectName = NULL;
     saml2::Assertion *assertion;
+    ResolutionContext *resolverContext;
 
     nameBuf.length = 0;
     nameBuf.value = NULL;
@@ -268,20 +511,14 @@ samlCreateAttrContext(OM_uint32 *minor,
         goto cleanup;
     }
 
-    major = samlAllocAttrContext(minor, &ctx);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = samlImportAssertion(minor, buffer, &assertion);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    if (assertion->getIssuer() != NULL)
-        issuer = assertion->getIssuer()->getName();
-    if (assertion->getSubject() != NULL)
-        subjectName = assertion->getSubject()->getNameID();
-
     try {
+        ctx = new eap_gss_saml_attr_ctx(buffer);
+
+        if (assertion->getIssuer() != NULL)
+            issuer = assertion->getIssuer()->getName();
+        if (assertion->getSubject() != NULL)
+            subjectName = assertion->getSubject()->getNameID();
+
         m = app->getMetadataProvider();
         xmltooling::Locker mlocker(m);
         MetadataProviderCriteria mc(*app, issuer,
@@ -296,10 +533,11 @@ samlCreateAttrContext(OM_uint32 *minor,
         }
         vector<const Assertion*> tokens(1, assertion);
         GSSEAPResolver gssResolver(NULL, (const char *)nameBuf.value);
-        ctx->resCtx = gssResolver.resolveAttributes(*app, site.second,
-                                                    samlconstants::SAML20P_NS,
-                                                    NULL, subjectName, NULL,
-                                                    NULL, &tokens);
+        resolverContext = gssResolver.resolveAttributes(*app, site.second,
+                                                        samlconstants::SAML20P_NS,
+                                                        NULL, subjectName, NULL,
+                                                        NULL, &tokens);
+        ctx->setAttributes(resolverContext->getResolvedAttributes());
     } catch (exception &ex) {
         major = GSS_S_BAD_NAME;
         goto cleanup;
@@ -313,7 +551,7 @@ cleanup:
     conf.term();
 
     if (GSS_ERROR(major))
-        samlReleaseAttrContext(&tmpMinor, &ctx);
+        delete ctx;
     gss_release_buffer(&tmpMinor, &nameBuf);
 
     return major;
@@ -330,8 +568,8 @@ samlGetAttributeTypes(OM_uint32 *minor,
     if (ctx == NULL)
         return GSS_S_COMPLETE;
 
-    for (vector<Attribute*>::const_iterator a = ctx->resCtx->getResolvedAttributes().begin();
-        a != ctx->resCtx->getResolvedAttributes().end();
+    for (vector<Attribute*>::const_iterator a = ctx->getAttributes().begin();
+        a != ctx->getAttributes().end();
         ++a)
     {
         gss_buffer_desc attribute;
@@ -352,7 +590,7 @@ samlGetAttributeTypes(OM_uint32 *minor,
  */
 OM_uint32
 samlGetAttribute(OM_uint32 *minor,
-                 const struct eap_gss_saml_attr_ctx *ctx,
+                 struct eap_gss_saml_attr_ctx *ctx,
                  gss_buffer_t attr,
                  int *authenticated,
                  int *complete,
@@ -360,55 +598,16 @@ samlGetAttribute(OM_uint32 *minor,
                  gss_buffer_t display_value,
                  int *more)
 {
-    OM_uint32 major;
-    Attribute *shibAttr = NULL;
-    gss_buffer_desc buf;
-
     if (ctx == NULL)
         return GSS_S_UNAVAILABLE;
 
-    for (vector<Attribute *>::const_iterator a = ctx->resCtx->getResolvedAttributes().begin();
-         a != ctx->resCtx->getResolvedAttributes().end();
-         ++a) {
-        for (vector<string>::const_iterator s = (*a)->getAliases().begin();
-             s != (*a)->getAliases().end();
-             ++s) {
-            if (attr->length == strlen((*s).c_str()) &&
-                memcmp((*s).c_str(), attr->value, attr->length) == 0) {
-                shibAttr = *a;
-                break;
-            }
-        }
-        if (shibAttr != NULL)
-            break;
-    }
-
-    if (shibAttr == NULL)
+    if (!ctx->getAttribute(attr, authenticated, complete,
+                           value, display_value, more))
         return GSS_S_UNAVAILABLE;
-
-    if (*more == -1) {
-        *more = 0;
-    } else if (*more >= (int)shibAttr->valueCount()) {
-        *more = 0;
-        return GSS_S_COMPLETE;
-    }
-
-    buf.value = (void *)shibAttr->getString(*more);
-    buf.length = strlen((char *)buf.value);
-
-    major = duplicateBuffer(minor, &buf, value);
-    if (GSS_ERROR(major))
-        return major;
- 
-    *authenticated = TRUE;
-    *complete = FALSE;
 
     return GSS_S_COMPLETE;
 }
 
-/*
- * No plans to support gss_set_name_attribute at this time.
- */
 OM_uint32
 samlSetAttribute(OM_uint32 *minor,
                  struct eap_gss_saml_attr_ctx *ctx,
@@ -416,7 +615,27 @@ samlSetAttribute(OM_uint32 *minor,
                  gss_buffer_t attr,
                  gss_buffer_t value)
 {
-    return GSS_S_UNAVAILABLE;
+    try {
+        ctx->setAttribute(complete, attr, value);
+    } catch (exception &e) {
+        return GSS_S_FAILURE;
+    }
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+samlDeleteAttribute(OM_uint32 *minor,
+                    struct eap_gss_saml_attr_ctx *ctx,
+                    gss_buffer_t attr)
+{
+    try {
+        ctx->deleteAttribute(attr);
+    } catch (exception &e) {
+        return GSS_S_FAILURE;
+    }
+
+    return GSS_S_COMPLETE;
 }
 
 /*
@@ -428,7 +647,14 @@ samlExportAttrContext(OM_uint32 *minor,
                       struct eap_gss_saml_attr_ctx *ctx,
                       gss_buffer_t buffer)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    try {
+        if (!ctx->marshall(buffer))
+            return GSS_S_FAILURE;
+    } catch (exception &e) {
+        return GSS_S_FAILURE;
+    }        
+
+    return GSS_S_COMPLETE;
 }
 
 /*
@@ -438,7 +664,41 @@ samlExportAttrContext(OM_uint32 *minor,
 OM_uint32
 samlImportAttrContext(OM_uint32 *minor,
                       gss_buffer_t buffer,
-                      struct eap_gss_saml_attr_ctx **ppCtx)
+                      struct eap_gss_saml_attr_ctx **pCtx)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    try {
+        *pCtx = eap_gss_saml_attr_ctx::unmarshall(buffer);
+    } catch (exception &e) {
+        return GSS_S_FAILURE;
+    }
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+samlGetAssertion(OM_uint32 *minor,
+                 struct eap_gss_saml_attr_ctx *ctx,
+                 gss_buffer_t assertion)
+{
+    try {
+        ctx->getAssertion(assertion);
+    } catch (exception &e) {
+        return GSS_S_FAILURE;
+    }
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+samlDuplicateAttrContext(OM_uint32 *minor,
+                         const struct eap_gss_saml_attr_ctx *in,
+                         struct eap_gss_saml_attr_ctx **out)
+{
+    try {
+        *out = new eap_gss_saml_attr_ctx(*in);
+    } catch (exception &e) {
+        return GSS_S_FAILURE;
+    }
+
+    return GSS_S_COMPLETE;
 }

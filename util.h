@@ -67,7 +67,6 @@ extern "C" {
 #endif
 
 #include "util_saml.h"
-#include "util_radius.h"
 
 #define KRB_KEY_TYPE(key)       ((key)->enctype)
 #define KRB_KEY_DATA(key)       ((key)->contents)

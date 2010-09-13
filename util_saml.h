@@ -63,7 +63,7 @@ samlGetAttributeTypes(OM_uint32 *minor,
 
 OM_uint32
 samlGetAttribute(OM_uint32 *minor,
-                 const struct eap_gss_saml_attr_ctx *ctx,
+                 struct eap_gss_saml_attr_ctx *ctx,
                  gss_buffer_t attr,
                  int *authenticated,
                  int *complete,
@@ -79,6 +79,11 @@ samlSetAttribute(OM_uint32 *minor,
                  gss_buffer_t value);
 
 OM_uint32
+samlDeleteAttribute(OM_uint32 *minor,
+                    struct eap_gss_saml_attr_ctx *ctx,
+                    gss_buffer_t attr);
+
+OM_uint32
 samlExportAttrContext(OM_uint32 *minor,
                       struct eap_gss_saml_attr_ctx *ctx,
                       gss_buffer_t buffer);
@@ -88,6 +93,11 @@ samlImportAttrContext(OM_uint32 *minor,
                       gss_buffer_t buffer,
                       struct eap_gss_saml_attr_ctx **pCtx);
 
+OM_uint32
+samlGetAssertion(OM_uint32 *minor,
+                 struct eap_gss_saml_attr_ctx *ctx,
+                 gss_buffer_t assertion);
+ 
 #ifdef __cplusplus
 }
 #endif
