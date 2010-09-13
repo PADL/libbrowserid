@@ -510,7 +510,8 @@ OM_uint32
 samlCreateAttrContext(OM_uint32 *minor,
                       gss_buffer_t buffer,
                       gss_name_t acceptorName,
-                      struct eap_gss_saml_attr_ctx **pCtx)
+                      struct eap_gss_saml_attr_ctx **pCtx,
+                      time_t *pExpiryTime)
 {
     OM_uint32 major, tmpMinor;
     eap_gss_saml_attr_ctx *ctx = NULL;
@@ -557,6 +558,8 @@ samlCreateAttrContext(OM_uint32 *minor,
             issuer = assertion->getIssuer()->getName();
         if (assertion->getSubject() != NULL)
             subjectName = assertion->getSubject()->getNameID();
+        if (assertion->getConditions())
+            *pExpiryTime = assertion->getConditions()->getNotOnOrAfter()->getEpoch();
 
         m = app->getMetadataProvider();
         xmltooling::Locker mlocker(m);

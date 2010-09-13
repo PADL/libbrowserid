@@ -49,7 +49,8 @@ samlCreateAttrContext(OM_uint32 *minor,
                       gss_cred_id_t acceptorCred,
                       gss_name_t initiatorName,
                       gss_buffer_t buffer,
-                      struct eap_gss_saml_attr_ctx **pCtx);
+                      struct eap_gss_saml_attr_ctx **pCtx,
+                      time_t *pExpiryTime);
 
 OM_uint32
 samlReleaseAttrContext(OM_uint32 *minor,
