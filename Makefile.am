@@ -6,12 +6,13 @@ gss_LTLIBRARIES = libmech_eap.la
 
 libmech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB
 libmech_eap_la_CFLAGS   = -g -Wall -fno-strict-aliasing \
-                           @EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
+			  @EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
 libmech_eap_la_CXXFLAGS = -g -Wall \
-                           @EAP_CFLAGS@ @KRB5_CFLAGS@ @SHIBSP_CXXFLAGS@ \
-                           @TARGET_CFLAGS@
+			  @EAP_CFLAGS@ @KRB5_CFLAGS@ @SHIBSP_CXXFLAGS@ \
+			  @TARGET_CFLAGS@
 libmech_eap_la_LDFLAGS  = -export-symbols mech_eap.exports -version-info 0:0:0 \
-                           @EAP_LDFLAGS@ @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
+			  -no-undefined \
+			  @EAP_LDFLAGS@ @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
 libmech_eap_la_LIBADD   = @EAP_LIBS@ @KRB5_LIBS@ @SHIBSP_LIBS@
 
 libmech_eap_la_SOURCES =    			\
