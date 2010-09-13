@@ -107,6 +107,24 @@ duplicateBuffer(OM_uint32 *minor,
                 const gss_buffer_t src,
                 gss_buffer_t dst);
 
+static inline int
+bufferEqual(const gss_buffer_t b1, const gss_buffer_t b2)
+{
+    return (b1->length == b2->length &&
+            memcmp(b1->value, b2->value, b2->length) == 0);
+}
+
+static inline int
+bufferEqualString(const gss_buffer_t b1, const char *s)
+{
+    gss_buffer_desc b2;
+
+    b2.length = strlen(s);
+    b2.value = (char *)s;
+
+    return bufferEqual(b1, &b2);
+}
+
 /* util_cksum.c */
 int
 gssEapSign(krb5_context context,

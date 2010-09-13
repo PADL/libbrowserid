@@ -98,6 +98,20 @@ samlGetAssertion(OM_uint32 *minor,
                  struct eap_gss_saml_attr_ctx *ctx,
                  gss_buffer_t assertion);
  
+
+OM_uint32
+samlMapNametoAny(OM_uint32 *minor,
+                 const struct eap_gss_saml_attr_ctx *ctx,
+                 int authenticated,
+                 gss_buffer_t type_id,
+                 gss_any_t *output);
+
+OM_uint32
+samlReleaseAnyNameMapping(OM_uint32 *minor,
+                          const struct eap_gss_saml_attr_ctx *ctx,
+                          gss_buffer_t type_id,
+                          gss_any_t *input);
+
 #ifdef __cplusplus
 }
 #endif

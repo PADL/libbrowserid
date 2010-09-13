@@ -171,7 +171,7 @@ private:
 eap_gss_saml_attr_ctx::eap_gss_saml_attr_ctx(const vector<Attribute*>& attributes,
                                              const Assertion *assertion)
 {
-    m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
+    m_assertion = dynamic_cast<Assertion *>(assertion->clone());
     setAttributes(attributes);
 }
 
@@ -207,7 +207,7 @@ eap_gss_saml_attr_ctx::parseAssertion(const gss_buffer_t buffer)
     elem = doc->getDocumentElement();
     xobj = b->buildOneFromElement(elem, true);
 
-    m_assertion = dynamic_cast<saml2::Assertion *>(xobj);
+    m_assertion = dynamic_cast<Assertion *>(xobj);
 
     return (m_assertion != NULL);
 }
@@ -331,17 +331,32 @@ eap_gss_saml_attr_ctx::getAssertion(gss_buffer_t buffer)
     return true;
 }
 
+static Attribute *
+duplicateAttribute(const Attribute *src)
+{
+    DDF obj = src->marshall();
+    return Attribute::unmarshall(obj);
+}
+
+static vector <Attribute *>
+duplicateAttributes(const vector <Attribute *>src)
+{
+    vector <Attribute *> dst;
+
+    for (vector<Attribute *>::const_iterator a = src.begin();
+         a != src.end();
+         ++a)
+        dst.push_back(duplicateAttribute(*a));
+
+    return dst;
+}
+
 void
 eap_gss_saml_attr_ctx::addAttribute(Attribute *attribute, bool copy)
 {
     Attribute *a;
 
-    if (copy) {
-        DDF obj = attribute->marshall();
-        a = Attribute::unmarshall(obj);
-    } else {
-        a = attribute;
-    }
+    a = copy ? duplicateAttribute(attribute) : attribute;
 
     m_attributes.push_back(a);
 }
@@ -349,10 +364,8 @@ eap_gss_saml_attr_ctx::addAttribute(Attribute *attribute, bool copy)
 void
 eap_gss_saml_attr_ctx::setAttributes(const vector<Attribute*> attributes)
 {
-    for (vector<Attribute *>::const_iterator a = attributes.begin();
-         a != attributes.end();
-         ++a)
-        addAttribute(*a);
+    for_each(m_attributes.begin(), m_attributes.end(), xmltooling::cleanup<Attribute>());
+    m_attributes = duplicateAttributes(attributes);
 }
 
 int
@@ -714,5 +727,45 @@ samlDuplicateAttrContext(OM_uint32 *minor,
         return mapException(minor, e);
     }
 
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+samlMapNametoAny(OM_uint32 *minor,
+                 const struct eap_gss_saml_attr_ctx *ctx,
+                 int authenticated,
+                 gss_buffer_t type_id,
+                 gss_any_t *output)
+{
+    if (bufferEqualString(type_id, "shibsp::Attribute")) {
+        vector <Attribute *>v = duplicateAttributes(ctx->getAttributes());
+
+        *output = (gss_any_t)new vector <Attribute *>(v);
+    } else if (bufferEqualString(type_id, "opensaml::Assertion")) {
+        *output = (gss_any_t)ctx->getAssertion()->clone();
+    } else {
+        *output = (gss_any_t)NULL;
+        return GSS_S_UNAVAILABLE;
+    }
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+samlReleaseAnyNameMapping(OM_uint32 *minor,
+                          const struct eap_gss_saml_attr_ctx *ctx,
+                          gss_buffer_t type_id,
+                          gss_any_t *input)
+{
+    if (bufferEqualString(type_id, "vector<shibsp::Attribute>")) {
+        vector <Attribute *> *v = ((vector <Attribute *> *)*input);
+        delete v;
+    } else if (bufferEqualString(type_id, "opensaml::Assertion")) {
+        delete (Assertion *)*input;
+    } else {
+        return GSS_S_UNAVAILABLE;
+    }
+
+    *input = (gss_any_t)NULL;
     return GSS_S_COMPLETE;
 }

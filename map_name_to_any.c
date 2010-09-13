@@ -39,6 +39,21 @@ gss_map_name_to_any(OM_uint32 *minor,
                     gss_buffer_t type_id,
                     gss_any_t *output)
 {
-    *minor = 0;
-    return GSS_S_UNAVAILABLE;
+    OM_uint32 major;
+
+    *output = (gss_any_t)NULL;
+
+    if (name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
+    }
+
+    GSSEAP_MUTEX_LOCK(&name->mutex);
+
+    major = samlMapNameToAny(minor, name->samlCtx, authenticated,
+                             type_id, output);
+
+    GSSEAP_MUTEX_UNLOCK(&name->mutex);
+
+    return major;
 }

@@ -38,6 +38,18 @@ gss_release_any_name_mapping(OM_uint32 *minor,
                              gss_buffer_t type_id,
                              gss_any_t *input)
 {
-    *minor = 0;
-    return GSS_S_UNAVAILABLE;
+    OM_uint32 major;
+
+    if (name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
+    }
+
+    GSSEAP_MUTEX_LOCK(&name->mutex);
+
+    major = samlReleaseAnyNameMapping(minor, name->samlCtx, type_id, input);
+
+    GSSEAP_MUTEX_UNLOCK(&name->mutex);
+
+    return major;
 }

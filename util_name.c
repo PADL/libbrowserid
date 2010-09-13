@@ -450,12 +450,8 @@ gssEapAttributePrefixToType(const gss_buffer_t prefix)
          i < sizeof(attributePrefixes) / sizeof(attributePrefixes[0]);
          i++)
     {
-        gss_buffer_t p = &attributePrefixes[i];
-
-        if (p->length == prefix->length &&
-            memcmp(p->value, prefix->value, prefix->length) == 0) {
+        if (bufferEqual(&attributePrefixes[i], prefix))
             return i;
-        }
     }
 
     return ATTR_TYPE_NONE;
