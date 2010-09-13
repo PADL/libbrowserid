@@ -68,6 +68,10 @@ extern "C" {
 
 #include "util_saml.h"
 
+#ifndef MIN             /* Usually found in <sys/param.h>. */
+#define MIN(_a,_b)  ((_a)<(_b)?(_a):(_b))
+#endif
+
 #define KRB_KEY_TYPE(key)       ((key)->enctype)
 #define KRB_KEY_DATA(key)       ((key)->contents)
 #define KRB_KEY_LENGTH(key)     ((key)->length)

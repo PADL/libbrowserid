@@ -55,10 +55,6 @@
 
 #include "gssapiP_eap.h"
 
-#ifndef MIN             /* Usually found in <sys/param.h>. */
-#define MIN(_a,_b)  ((_a)<(_b)?(_a):(_b))
-#endif
-
 OM_uint32
 gss_pseudo_random(OM_uint32 *minor,
                   gss_ctx_id_t ctx,

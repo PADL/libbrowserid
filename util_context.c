@@ -82,8 +82,11 @@ releaseInitiatorContext(struct eap_gss_initiator_ctx *ctx)
 static void
 releaseAcceptorContext(struct eap_gss_acceptor_ctx *ctx)
 {
+#ifdef BUILTIN_EAP
     eap_server_sm_deinit(ctx->eap);
-    tls_deinit(ctx->tlsContext);
+    if (ctx->tlsContext != NULL)
+        tls_deinit(ctx->tlsContext);
+#endif
 }
 
 OM_uint32

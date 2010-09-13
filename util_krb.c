@@ -82,76 +82,89 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
  */
 OM_uint32
 gssEapDeriveRfc3961Key(OM_uint32 *minor,
-                       const unsigned char *key,
-                       size_t keyLength,
-                       krb5_enctype enctype,
+                       const unsigned char *inputKey,
+                       size_t inputKeyLength,
+                       krb5_enctype encryptionType,
                        krb5_keyblock *pKey)
 {
-    krb5_context context;
-    krb5_data data, prf;
+    krb5_context krbContext;
+    krb5_data data, ns, t, prfOut;
     krb5_keyblock kd;
     krb5_error_code code;
-    size_t keybytes, keylength, prflength;
+    size_t randomLength, keyLength, prfLength;
+    unsigned char constant[4 + sizeof("rfc4121-gss-eap") - 1], *p;
+    ssize_t i, remain;
 
     memset(pKey, 0, sizeof(*pKey));
 
-    GSSEAP_KRB_INIT(&context);
+    GSSEAP_KRB_INIT(&krbContext);
 
     KRB_KEY_INIT(&kd);
-    KRB_KEY_TYPE(&kd) = enctype;
+    KRB_KEY_TYPE(&kd) = encryptionType;
 
-    prf.data = NULL;
-    prf.length = 0;
+    t.data = NULL;
+    t.length = 0;
 
-    code = krb5_c_keylengths(context, enctype, &keybytes, &keylength);
+    code = krb5_c_keylengths(krbContext, encryptionType,
+                             &randomLength, &keyLength);
     if (code != 0)
         goto cleanup;
 
-    if (keyLength < keybytes) {
-        code = KRB5_BAD_MSIZE;
-        goto cleanup;
-    }
+    data.length = MIN(inputKeyLength, randomLength);
+    data.data = (char *)inputKey;
 
-    data.length = keybytes;
-    data.data = (char *)key;
-
-    KRB_KEY_DATA(&kd) = GSSEAP_MALLOC(keylength);
+    KRB_KEY_DATA(&kd) = GSSEAP_MALLOC(keyLength);
     if (KRB_KEY_DATA(&kd) == NULL) {
         code = ENOMEM;
         goto cleanup;
     }
-    KRB_KEY_LENGTH(&kd) = keylength;
+    KRB_KEY_LENGTH(&kd) = keyLength;
 
     /* Convert MSK into a Kerberos key */
-    code = krb5_c_random_to_key(context, enctype, &data, &kd);
+    code = krb5_c_random_to_key(krbContext, encryptionType, &data, &kd);
     if (code != 0)
         goto cleanup;
 
-    data.length = sizeof("rfc4121-gss-eap") - 1;
-    data.data = "rfc4121-gss-eap";
+    memset(&constant[0], 0, 4);
+    memcpy(&constant[4], "rfc4121-gss-eap", sizeof("rfc4121-gss-eap") - 1);
+
+    ns.length = sizeof(constant);
+    ns.data = (char *)constant;
 
     /* Plug derivation constant and key into PRF */
-    code = krb5_c_prf_length(context, enctype, &prflength);
+    code = krb5_c_prf_length(krbContext, encryptionType, &prfLength);
     if (code != 0)
         goto cleanup;
 
-    if (prflength < keybytes) {
-        code = KRB5_CRYPTO_INTERNAL;
-        goto cleanup;
-    }
-    prf.length = keybytes;
-    prf.data = GSSEAP_MALLOC(prflength);
-    if (data.data == NULL) {
+    t.length = prfLength;
+    t.data = GSSEAP_MALLOC(t.length);
+    if (t.data == NULL) {
         code = ENOMEM;
         goto cleanup;
     }
 
-    code = krb5_c_prf(context, &kd, &data, &prf);
-    if (code != 0)
+    prfOut.length = randomLength;
+    prfOut.data = GSSEAP_MALLOC(prfOut.length);
+    if (prfOut.data == NULL) {
+        code = ENOMEM;
         goto cleanup;
+    }
+
+    for (i = 0, p = (unsigned char *)prfOut.data, remain = randomLength;
+         remain > 0;
+         p += t.length, remain -= t.length, i++)
+    {
+        store_uint32_be(i, ns.data);
+
+        code = krb5_c_prf(krbContext, &kd, &ns, &t);
+        if (code != 0)
+            goto cleanup;
+
+        memcpy(p, t.data, MIN(t.length, remain));
+     }
 
     /* Finally, convert PRF output into a new key which we will return */
-    code = krb5_c_random_to_key(context, enctype, &prf, &kd);
+    code = krb5_c_random_to_key(krbContext, encryptionType, &prfOut, &kd);
     if (code != 0)
         goto cleanup;
 
@@ -163,11 +176,14 @@ cleanup:
         memset(KRB_KEY_DATA(&kd), 0, KRB_KEY_LENGTH(&kd));
         GSSEAP_FREE(KRB_KEY_DATA(&kd));
     }
-    if (prf.data != NULL) {
-        memset(prf.data, 0, prf.length);
-        GSSEAP_FREE(prf.data);
+    if (t.data != NULL) {
+        memset(t.data, 0, t.length);
+        GSSEAP_FREE(t.data);
     }
-
+    if (prfOut.data != NULL) {
+        memset(prfOut.data, 0, prfOut.length);
+        GSSEAP_FREE(prfOut.data);
+    }
     *minor = code;
     return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
