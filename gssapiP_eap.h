@@ -33,6 +33,8 @@
 #ifndef _GSSAPIP_EAP_H_
 #define _GSSAPIP_EAP_H_ 1
 
+#define BUILTIN_EAP 1
+
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
@@ -119,9 +121,11 @@ struct eap_gss_initiator_ctx {
 };
 
 struct eap_gss_acceptor_ctx {
+#ifdef BUILTIN_EAP
     struct eap_eapol_interface *eapPolInterface;
     void *tlsContext;
     struct eap_sm *eap;
+#endif
 };
 
 struct gss_ctx_id_struct {

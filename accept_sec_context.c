@@ -32,8 +32,6 @@
 
 #include "gssapiP_eap.h"
 
-//#define BUILTIN_EAP
-
 #ifdef BUILTIN_EAP
 #define EAP_KEY_AVAILABLE(ctx)  ((ctx)->acceptorCtx.eapPolInterface->eapKeyAvailable)
 #define EAP_KEY_DATA(ctx)       ((ctx)->acceptorCtx.eapPolInterface->eapKeyData)
@@ -44,52 +42,8 @@
 #define EAP_KEY_LENGTH(ctx)     0
 #endif /* BUILTIN_EAP */
 
-/*
- * Mark a context as ready for cryptographic operations
- */
 static OM_uint32
-acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
-{
-    OM_uint32 major;
-
-    /* Cache encryption type derived from selected mechanism OID */
-    major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
-    if (GSS_ERROR(major))
-        return major;
-
-    if (ctx->encryptionType != ENCTYPE_NULL &&
-        EAP_KEY_AVAILABLE(ctx)) {
-        major = gssEapDeriveRfc3961Key(minor,
-                                       EAP_KEY_DATA(ctx),
-                                       EAP_KEY_LENGTH(ctx),
-                                       ctx->encryptionType,
-                                       &ctx->rfc3961Key);
-        if (GSS_ERROR(major))
-            return major;
-
-        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
-                                           &ctx->checksumType);
-        if (GSS_ERROR(major))
-            return major;
-    } else {
-        /*
-         * draft-howlett-eap-gss says that integrity/confidentialty should
-         * always be advertised as available, but if we have no keying
-         * material it seems confusing to the caller to advertise this.
-         */
-        ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
-    }
-
-    major = sequenceInit(minor,
-                         &ctx->seqState, ctx->recvSeq,
-                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
-                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
-                         TRUE);
-    if (GSS_ERROR(major))
-        return major;
-
-    return GSS_S_COMPLETE;
-}
+acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx);
 
 #ifdef BUILTIN_EAP
 #define EAP_MAX_METHODS 8
@@ -572,4 +526,51 @@ cleanup:
     gss_release_buffer(&tmpMinor, &innerOutputToken);
 
     return major;
+}
+
+/*
+ * Mark a context as ready for cryptographic operations
+ */
+static OM_uint32
+acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
+{
+    OM_uint32 major;
+
+    /* Cache encryption type derived from selected mechanism OID */
+    major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
+    if (GSS_ERROR(major))
+        return major;
+
+    if (ctx->encryptionType != ENCTYPE_NULL &&
+        EAP_KEY_AVAILABLE(ctx)) {
+        major = gssEapDeriveRfc3961Key(minor,
+                                       EAP_KEY_DATA(ctx),
+                                       EAP_KEY_LENGTH(ctx),
+                                       ctx->encryptionType,
+                                       &ctx->rfc3961Key);
+        if (GSS_ERROR(major))
+            return major;
+
+        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                           &ctx->checksumType);
+        if (GSS_ERROR(major))
+            return major;
+    } else {
+        /*
+         * draft-howlett-eap-gss says that integrity/confidentialty should
+         * always be advertised as available, but if we have no keying
+         * material it seems confusing to the caller to advertise this.
+         */
+        ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
+    }
+
+    major = sequenceInit(minor,
+                         &ctx->seqState, ctx->recvSeq,
+                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                         TRUE);
+    if (GSS_ERROR(major))
+        return major;
+
+    return GSS_S_COMPLETE;
 }
