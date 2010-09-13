@@ -158,7 +158,7 @@ public:
     DDF marshall() const;
     static eap_gss_saml_attr_ctx *unmarshall(DDF &in);
 
-    bool marshall(gss_buffer_t buffer);
+    void marshall(gss_buffer_t buffer);
     static eap_gss_saml_attr_ctx *unmarshall(const gss_buffer_t buffer);
 
 private:
@@ -186,6 +186,12 @@ eap_gss_saml_attr_ctx::eap_gss_saml_attr_ctx(const gss_buffer_t buffer)
     parseAssertion(buffer);
 }
 
+static OM_uint32
+mapException(OM_uint32 *minor, exception &e)
+{
+    return GSS_S_FAILURE;
+}
+
 bool
 eap_gss_saml_attr_ctx::parseAssertion(const gss_buffer_t buffer)
 {
@@ -206,19 +212,24 @@ eap_gss_saml_attr_ctx::parseAssertion(const gss_buffer_t buffer)
     return (m_assertion != NULL);
 }
 
-static inline bool
+static inline void
+duplicateBuffer(gss_buffer_desc &src, gss_buffer_t dst)
+{
+    OM_uint32 minor;
+
+    if (GSS_ERROR(duplicateBuffer(&minor, &src, dst)))
+        throw new bad_alloc();
+}
+
+static inline void
 duplicateBuffer(string &str, gss_buffer_t buffer)
 {
     gss_buffer_desc tmp;
-    OM_uint32 minor;
 
     tmp.length = str.length();
     tmp.value = (char *)str.c_str();
 
-    if (GSS_ERROR(duplicateBuffer(&minor, &tmp, buffer)))
-        return false;
-
-    return true;
+    duplicateBuffer(tmp, buffer);
 }
 
 DDF
@@ -277,7 +288,7 @@ eap_gss_saml_attr_ctx::unmarshall(DDF &obj)
     return ctx;
 }
 
-bool
+void
 eap_gss_saml_attr_ctx::marshall(gss_buffer_t buffer)
 {
     DDF obj;
@@ -288,7 +299,7 @@ eap_gss_saml_attr_ctx::marshall(gss_buffer_t buffer)
     sink << obj;
     str = sink.str();
 
-    return duplicateBuffer(str, buffer);
+    duplicateBuffer(str, buffer);
 }
 
 eap_gss_saml_attr_ctx *
@@ -307,24 +318,31 @@ eap_gss_saml_attr_ctx::getAssertion(gss_buffer_t buffer)
 {
     string str;
 
+    if (m_assertion == NULL)
+        return false;
+
     buffer->value = NULL;
     buffer->length = 0;
 
     XMLHelper::serialize(m_assertion->marshall((DOMDocument *)NULL), str);
 
-    return duplicateBuffer(str, buffer);
+    duplicateBuffer(str, buffer);
+
+    return true;
 }
 
 void
 eap_gss_saml_attr_ctx::addAttribute(Attribute *attribute, bool copy)
 {
     Attribute *a;
+
     if (copy) {
         DDF obj = attribute->marshall();
         a = Attribute::unmarshall(obj);
     } else {
         a = attribute;
     }
+
     m_attributes.push_back(a);
 }
 
@@ -392,7 +410,6 @@ eap_gss_saml_attr_ctx::getAttribute(const gss_buffer_t attr,
                                     gss_buffer_t display_value,
                                     int *more)
 {
-    OM_uint32 major, minor;
     const Attribute *shibAttr = NULL;
     gss_buffer_desc buf;
 
@@ -410,9 +427,7 @@ eap_gss_saml_attr_ctx::getAttribute(const gss_buffer_t attr,
     buf.value = (void *)shibAttr->getString(*more);
     buf.length = strlen((char *)buf.value);
 
-    major = duplicateBuffer(&minor, &buf, value);
-    if (GSS_ERROR(major))
-        return false;
+    duplicateBuffer(buf, value);
  
     *authenticated = TRUE;
     *complete = FALSE;
@@ -539,7 +554,7 @@ samlCreateAttrContext(OM_uint32 *minor,
                                                         NULL, &tokens);
         ctx->setAttributes(resolverContext->getResolvedAttributes());
     } catch (exception &ex) {
-        major = GSS_S_BAD_NAME;
+        major = mapException(minor, ex);
         goto cleanup;
     }
 
@@ -618,7 +633,7 @@ samlSetAttribute(OM_uint32 *minor,
     try {
         ctx->setAttribute(complete, attr, value);
     } catch (exception &e) {
-        return GSS_S_FAILURE;
+        return mapException(minor, e);
     }
 
     return GSS_S_COMPLETE;
@@ -632,7 +647,7 @@ samlDeleteAttribute(OM_uint32 *minor,
     try {
         ctx->deleteAttribute(attr);
     } catch (exception &e) {
-        return GSS_S_FAILURE;
+        return mapException(minor, e);
     }
 
     return GSS_S_COMPLETE;
@@ -648,10 +663,9 @@ samlExportAttrContext(OM_uint32 *minor,
                       gss_buffer_t buffer)
 {
     try {
-        if (!ctx->marshall(buffer))
-            return GSS_S_FAILURE;
+        ctx->marshall(buffer);
     } catch (exception &e) {
-        return GSS_S_FAILURE;
+        return mapException(minor, e);
     }        
 
     return GSS_S_COMPLETE;
@@ -669,7 +683,7 @@ samlImportAttrContext(OM_uint32 *minor,
     try {
         *pCtx = eap_gss_saml_attr_ctx::unmarshall(buffer);
     } catch (exception &e) {
-        return GSS_S_FAILURE;
+        return mapException(minor, e);
     }
 
     return GSS_S_COMPLETE;
@@ -683,7 +697,7 @@ samlGetAssertion(OM_uint32 *minor,
     try {
         ctx->getAssertion(assertion);
     } catch (exception &e) {
-        return GSS_S_FAILURE;
+        return mapException(minor, e);
     }
 
     return GSS_S_COMPLETE;
@@ -697,7 +711,7 @@ samlDuplicateAttrContext(OM_uint32 *minor,
     try {
         *out = new eap_gss_saml_attr_ctx(*in);
     } catch (exception &e) {
-        return GSS_S_FAILURE;
+        return mapException(minor, e);
     }
 
     return GSS_S_COMPLETE;
