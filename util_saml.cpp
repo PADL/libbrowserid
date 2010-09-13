@@ -235,7 +235,7 @@ duplicateBuffer(string &str, gss_buffer_t buffer)
 DDF
 eap_gss_saml_attr_ctx::marshall() const
 {
-    DDF obj;
+    DDF obj(NULL);
     DDF attrs;
     DDF assertion;
 
@@ -291,26 +291,31 @@ eap_gss_saml_attr_ctx::unmarshall(DDF &obj)
 void
 eap_gss_saml_attr_ctx::marshall(gss_buffer_t buffer)
 {
-    DDF obj;
+    DDF obj = marshall();
     ostringstream sink;
-    string str;
-
-    obj = marshall();
     sink << obj;
-    str = sink.str();
+    string str = sink.str();
 
     duplicateBuffer(str, buffer);
+
+    obj.destroy();
 }
 
 eap_gss_saml_attr_ctx *
 eap_gss_saml_attr_ctx::unmarshall(const gss_buffer_t buffer)
 {
-    DDF obj;
+    eap_gss_saml_attr_ctx *ctx;
+
     string str((const char *)buffer->value, buffer->length);
     istringstream source(str);
+    DDF obj(NULL);
     source >> obj;
 
-    return unmarshall(obj);
+    ctx = unmarshall(obj);
+
+    obj.destroy();
+
+    return ctx;
 }
 
 bool
@@ -334,8 +339,13 @@ eap_gss_saml_attr_ctx::getAssertion(gss_buffer_t buffer)
 static Attribute *
 duplicateAttribute(const Attribute *src)
 {
+    Attribute *attribute;
+
     DDF obj = src->marshall();
-    return Attribute::unmarshall(obj);
+    attribute = Attribute::unmarshall(obj);
+    obj.destroy();
+
+    return attribute;
 }
 
 static vector <Attribute *>
