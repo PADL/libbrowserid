@@ -189,6 +189,7 @@ eap_gss_saml_attr_ctx::eap_gss_saml_attr_ctx(const gss_buffer_t buffer)
 static OM_uint32
 mapException(OM_uint32 *minor, exception &e)
 {
+    *minor = 0;
     return GSS_S_FAILURE;
 }
 
