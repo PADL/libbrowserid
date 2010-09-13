@@ -114,18 +114,30 @@ private:
 
 struct eap_gss_saml_attr_ctx {
 public:
-    eap_gss_saml_attr_ctx();
-    eap_gss_saml_attr_ctx(const gss_buffer_t buffer);
-    eap_gss_saml_attr_ctx(const Assertion *assertion);
+    eap_gss_saml_attr_ctx(const gss_buffer_t buffer) {
+        parseAssertion(buffer);
+    }
 
     eap_gss_saml_attr_ctx(const vector<Attribute*>& attributes,
-                          const Assertion *assertion);
+                          const Assertion *assertion = NULL) {
+        if (assertion != NULL)
+            m_assertion = dynamic_cast<Assertion *>(assertion->clone());
+        if (attributes.size())
+            setAttributes(attributes);
+    }
 
     eap_gss_saml_attr_ctx(const eap_gss_saml_attr_ctx &ctx) {
         eap_gss_saml_attr_ctx(ctx.m_attributes, ctx.m_assertion);
     }
 
-    ~eap_gss_saml_attr_ctx();
+    eap_gss_saml_attr_ctx() {}
+    ~eap_gss_saml_attr_ctx() {
+        for_each(m_attributes.begin(),
+                 m_attributes.end(),
+                 xmltooling::cleanup<Attribute>())
+            ;
+        delete m_assertion;
+    }
 
     const vector <Attribute *> getAttributes(void) const {
         return m_attributes;
@@ -167,24 +179,6 @@ private:
 
     bool parseAssertion(const gss_buffer_t buffer);
 };
-
-eap_gss_saml_attr_ctx::eap_gss_saml_attr_ctx(const vector<Attribute*>& attributes,
-                                             const Assertion *assertion)
-{
-    m_assertion = dynamic_cast<Assertion *>(assertion->clone());
-    setAttributes(attributes);
-}
-
-eap_gss_saml_attr_ctx::~eap_gss_saml_attr_ctx()
-{
-    for_each(m_attributes.begin(), m_attributes.end(), xmltooling::cleanup<Attribute>());
-    delete m_assertion;
-}
-
-eap_gss_saml_attr_ctx::eap_gss_saml_attr_ctx(const gss_buffer_t buffer)
-{
-    parseAssertion(buffer);
-}
 
 static OM_uint32
 mapException(OM_uint32 *minor, exception &e)
@@ -745,7 +739,7 @@ samlDuplicateAttrContext(OM_uint32 *minor,
 }
 
 OM_uint32
-samlMapNametoAny(OM_uint32 *minor,
+samlMapNameToAny(OM_uint32 *minor,
                  const struct eap_gss_saml_attr_ctx *ctx,
                  int authenticated,
                  gss_buffer_t type_id,

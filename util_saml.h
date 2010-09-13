@@ -101,7 +101,7 @@ samlGetAssertion(OM_uint32 *minor,
  
 
 OM_uint32
-samlMapNametoAny(OM_uint32 *minor,
+samlMapNameToAny(OM_uint32 *minor,
                  const struct eap_gss_saml_attr_ctx *ctx,
                  int authenticated,
                  gss_buffer_t type_id,

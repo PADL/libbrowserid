@@ -30,7 +30,7 @@ if test x_$found_krb5 != x_yes; then
 ])
 else
 	printf "Kerberos found in $krb5dir\n";
-	KRB5_LIBS="-lgssapi_krb5 -lkrb5";
+	KRB5_LIBS="-lgssapi_krb5 -lkrb5 -lk5crypto";
 	KRB5_LDFLAGS="-L$krb5dir/lib";
 	AC_SUBST(KRB5_CFLAGS)
 	AC_SUBST(KRB5_LDFLAGS)
@@ -133,7 +133,7 @@ if test x_$found_shibsp != x_yes; then
 ])
 else
 	printf "Shibboleth found in $shibspdir\n";
-	SHIBSP_LIBS="-lshibsp -lsaml -lxml-security-c -lxmltooling -lxerces-c";
+	SHIBSP_LIBS="-lshibsp -llog4shib -lsaml -lxml-security-c -lxmltooling -lxerces-c";
 	SHIBSP_LDFLAGS="-L$shibspdir/lib";
 	AC_SUBST(SHIBSP_CXXFLAGS)
 	AC_SUBST(SHIBSP_LDFLAGS)
