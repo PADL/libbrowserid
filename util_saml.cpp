@@ -489,14 +489,13 @@ OM_uint32
 samlReleaseAttrContext(OM_uint32 *minor,
                        struct eap_gss_saml_attr_ctx **pCtx)
 {
-    eap_gss_saml_attr_ctx *ctx = *pCtx;
-
-    if (ctx != NULL) {
-        delete ctx;
+    try {
+        delete *pCtx;
         *pCtx = NULL;
+    } catch (exception &e) {
+        return mapException(minor, e);
     }
 
-    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
