@@ -1,0 +1,5 @@
+eap			1.3.6.1.4.1.5322.21.1		libmech_eap.dylib
+eap-des3-cbc-sha1	1.3.6.1.4.1.5322.21.1.16	libmech_eap.dylib
+eap-aes128		1.3.6.1.4.1.5322.21.1.17	libmech_eap.dylib
+eap-aes256		1.3.6.1.4.1.5322.21.1.18	libmech_eap.dylib
+eap-rc4-hmac		1.3.6.1.4.1.5322.21.1.23	libmech_eap.dylib
