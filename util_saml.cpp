@@ -79,6 +79,9 @@ using namespace std;
 static vector <Attribute *>
 duplicateAttributes(const vector <Attribute *>src);
 
+/*
+ * Class representing the SAML compoments of a EAP GSS name.
+ */
 struct gss_eap_saml_attr_ctx
 {
 public:
@@ -158,6 +161,10 @@ private:
     static saml2::Assertion *parseAssertion(const gss_buffer_t buffer);
 };
 
+/*
+ * Map an exception to a GSS major/mechanism status code.
+ * TODO
+ */
 static OM_uint32
 mapException(OM_uint32 *minor, exception &e)
 {
@@ -165,6 +172,9 @@ mapException(OM_uint32 *minor, exception &e)
     return GSS_S_FAILURE;
 }
 
+/*
+ * Parse a GSS buffer into a SAML v2 assertion.
+ */
 saml2::Assertion *
 gss_eap_saml_attr_ctx::parseAssertion(const gss_buffer_t buffer)
 {
@@ -203,6 +213,10 @@ duplicateBuffer(string &str, gss_buffer_t buffer)
     duplicateBuffer(tmp, buffer);
 }
 
+/*
+ * Marshall SAML attribute context into a form suitable for
+ * exported names.
+ */
 DDF
 gss_eap_saml_attr_ctx::marshall() const
 {
@@ -226,6 +240,10 @@ gss_eap_saml_attr_ctx::marshall() const
     return obj;
 }
 
+/*
+ * Unmarshall SAML attribute context from a form suitable for
+ * exported names.
+ */
 gss_eap_saml_attr_ctx *
 gss_eap_saml_attr_ctx::unmarshall(DDF &obj)
 {
@@ -289,6 +307,9 @@ gss_eap_saml_attr_ctx::unmarshall(const gss_buffer_t buffer)
     return ctx;
 }
 
+/*
+ * Return the serialised assertion.
+ */
 bool
 gss_eap_saml_attr_ctx::getAssertion(gss_buffer_t buffer)
 {
@@ -484,8 +505,17 @@ samlReleaseAttrContext(OM_uint32 *minor, gss_name_t name)
 }
 
 static gss_buffer_desc
-gssEapRadiusAssertionAttr = { 3, (void *)"128" };
+gssEapRadiusAssertionAttr = { 3, (void *)"128" };   /* TODO */
 
+class gss_eap_saml_attr_args {
+public:
+    vector <Attribute *> attrs;
+    ShibbolethResolver *resolver;
+};
+
+/*
+ * Callback to add a RADIUS attribute as input to the resolver.
+ */
 static OM_uint32
 samlAddRadiusAttribute(OM_uint32 *minor,
                        gss_name_t name,
@@ -493,11 +523,12 @@ samlAddRadiusAttribute(OM_uint32 *minor,
                        void *data)
 {
     OM_uint32 major;
-    ShibbolethResolver *resolver = (ShibbolethResolver *)resolver;
+    gss_eap_saml_attr_args *args = (gss_eap_saml_attr_args *)data;
     Attribute *a;
     int authenticated, complete, more = -1;
     gss_buffer_desc value;
 
+    /* Put attributes to skip here (or in a table somewhere) */
     if (bufferEqual(attr, &gssEapRadiusAssertionAttr)) {
         return GSS_S_COMPLETE;
     }
@@ -506,30 +537,36 @@ samlAddRadiusAttribute(OM_uint32 *minor,
                                &authenticated, &complete,
                                &value, GSS_C_NO_BUFFER, &more);
     if (major == GSS_S_COMPLETE) {
-        /* Do some prefixing? */
+        /* XXX TODO prefix */
         a = samlAttributeFromGssBuffers(attr, &value);
-        /* XXX leaky */
-        resolver->addAttribute(a);
+        args->attrs.push_back(a);
+        args->resolver->addAttribute(a);
     }
 
     return GSS_S_COMPLETE;
 }
 
+/*
+ * Add attributes retrieved via RADIUS.
+ */
 static OM_uint32
 samlAddRadiusAttributes(OM_uint32 *minor,
                         gss_name_t name,
-                        ShibbolethResolver *resolver)
+                        gss_eap_saml_attr_args *args)
 {
     return radiusGetAttributeTypes(minor,
                                    name,
                                    samlAddRadiusAttribute,
-                                   (void *)resolver);
+                                   (void *)args);
 }
 
+/*
+ * Add assertion retrieved via RADIUS.
+ */
 static OM_uint32
-samlInitAttrContextFromRadius(OM_uint32 *minor,
-                              gss_name_t name,
-                              gss_eap_saml_attr_ctx *ctx)
+samlAddRadiusAssertion(OM_uint32 *minor,
+                       gss_name_t name,
+                       gss_eap_saml_attr_ctx *ctx)
 {
     OM_uint32 major;
     int authenticated, complete, more = -1;
@@ -551,6 +588,10 @@ samlInitAttrContextFromRadius(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+/*
+ * Initialise SAML attribute context in initiator name. RADIUS context
+ * must have been previously initialised.
+ */
 OM_uint32
 samlCreateAttrContext(OM_uint32 *minor,
                       gss_cred_id_t acceptorCred,
@@ -561,8 +602,12 @@ samlCreateAttrContext(OM_uint32 *minor,
     gss_buffer_desc nameBuf;
     gss_eap_saml_attr_ctx *ctx = NULL;
     ShibbolethResolver *resolver = NULL;
+    gss_eap_saml_attr_args args;
 
     assert(initiatorName != GSS_C_NO_NAME);
+
+    if (initiatorName->radiusCtx == NULL)
+        return GSS_S_UNAVAILABLE;
 
     nameBuf.length = 0;
     nameBuf.value = NULL;
@@ -570,6 +615,8 @@ samlCreateAttrContext(OM_uint32 *minor,
     resolver = ShibbolethResolver::create();
     if (resolver == NULL)
         return GSS_S_FAILURE;
+
+    args.resolver = resolver;
 
     if (acceptorCred != GSS_C_NO_CREDENTIAL) {
         major = gss_display_name(minor, acceptorCred->name, &nameBuf, NULL);
@@ -583,7 +630,7 @@ samlCreateAttrContext(OM_uint32 *minor,
 
         ctx = new gss_eap_saml_attr_ctx();
 
-        major = samlInitAttrContextFromRadius(minor, initiatorName, ctx);
+        major = samlAddRadiusAssertion(minor, initiatorName, ctx);
         if (GSS_ERROR(major))
             goto cleanup;
 
@@ -598,10 +645,8 @@ samlCreateAttrContext(OM_uint32 *minor,
             resolver->addToken(assertion);
         }
 
-        if (initiatorName->radiusCtx != NULL) {
-            samlAddRadiusAttributes(minor, initiatorName, resolver);
-        }
-
+        if (initiatorName->radiusCtx != NULL)
+            samlAddRadiusAttributes(minor, initiatorName, &args);
         resolver->resolveAttributes(attrs);
         ctx->setAttributes(attrs);
     } catch (exception &ex) {
@@ -615,6 +660,7 @@ samlCreateAttrContext(OM_uint32 *minor,
     initiatorName->samlCtx = ctx;
 
 cleanup:
+    for_each(args.attrs.begin(), args.attrs.end(), xmltooling::cleanup<Attribute>());
     gss_release_buffer(&tmpMinor, &nameBuf);
     if (GSS_ERROR(major))
         delete ctx;
