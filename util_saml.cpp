@@ -82,15 +82,12 @@ duplicateAttributes(const vector <Attribute *>src);
 struct gss_eap_saml_attr_ctx
 {
 public:
-    gss_eap_saml_attr_ctx(const gss_buffer_t buffer = GSS_C_NO_BUFFER) {
-        if (buffer != GSS_C_NO_BUFFER && buffer->length != 0)
-            parseAssertion(buffer);
-    }
+    gss_eap_saml_attr_ctx(void) {}
 
     gss_eap_saml_attr_ctx(const vector<Attribute*>& attributes,
                           const saml2::Assertion *assertion = NULL) {
         if (assertion != NULL)
-            m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
+            setAssertion(assertion);
         if (attributes.size())
             setAttributes(duplicateAttributes(attributes));
     }
@@ -133,6 +130,19 @@ public:
         return m_assertion;
     }
 
+    void setAssertion(const saml2::Assertion *assertion) {
+        delete m_assertion;
+        if (assertion != NULL)
+            m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
+        else
+            m_assertion = NULL;
+    }
+
+    void setAssertion(const gss_buffer_t buffer) {
+        delete m_assertion;
+        m_assertion = parseAssertion(buffer);
+    }
+
     bool getAssertion(gss_buffer_t buffer);
 
     DDF marshall() const;
@@ -145,7 +155,7 @@ private:
     mutable vector<Attribute*> m_attributes;
     mutable saml2::Assertion *m_assertion;
 
-    bool parseAssertion(const gss_buffer_t buffer);
+    static saml2::Assertion *parseAssertion(const gss_buffer_t buffer);
 };
 
 static OM_uint32
@@ -155,7 +165,7 @@ mapException(OM_uint32 *minor, exception &e)
     return GSS_S_FAILURE;
 }
 
-bool
+saml2::Assertion *
 gss_eap_saml_attr_ctx::parseAssertion(const gss_buffer_t buffer)
 {
     DOMDocument *doc;
@@ -170,9 +180,7 @@ gss_eap_saml_attr_ctx::parseAssertion(const gss_buffer_t buffer)
     elem = doc->getDocumentElement();
     xobj = b->buildOneFromElement(elem, true);
 
-    m_assertion = dynamic_cast<saml2::Assertion *>(xobj);
-
-    return (m_assertion != NULL);
+    return dynamic_cast<saml2::Assertion *>(xobj);
 }
 
 static inline void
@@ -521,7 +529,7 @@ samlAddRadiusAttributes(OM_uint32 *minor,
 static OM_uint32
 samlInitAttrContextFromRadius(OM_uint32 *minor,
                               gss_name_t name,
-                              gss_eap_saml_attr_ctx **pSamlCtx)
+                              gss_eap_saml_attr_ctx *ctx)
 {
     OM_uint32 major;
     int authenticated, complete, more = -1;
@@ -533,16 +541,10 @@ samlInitAttrContextFromRadius(OM_uint32 *minor,
     major = radiusGetAttribute(minor, name, &gssEapRadiusAssertionAttr,
                                &authenticated, &complete,
                                &value, GSS_C_NO_BUFFER, &more);
-    if (major == GSS_S_UNAVAILABLE) {
-        /* No assertion provided via RADIUS. */
-        value.length = 0;
-        value.value = NULL;
-    } else if (GSS_ERROR(major)) {
-        /* Some other error */
+    if (GSS_ERROR(major) && major != GSS_S_UNAVAILABLE)
         return major;
-    }
 
-    *pSamlCtx = new gss_eap_saml_attr_ctx(&value);
+    ctx->setAssertion(&value);
 
     gss_release_buffer(minor, &value);
 
@@ -579,7 +581,9 @@ samlCreateAttrContext(OM_uint32 *minor,
         const saml2::Assertion *assertion;
         vector <Attribute *> attrs;
 
-        major = samlInitAttrContextFromRadius(minor, initiatorName, &ctx);
+        ctx = new gss_eap_saml_attr_ctx();
+
+        major = samlInitAttrContextFromRadius(minor, initiatorName, ctx);
         if (GSS_ERROR(major))
             goto cleanup;
 
