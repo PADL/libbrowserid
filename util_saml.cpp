@@ -645,6 +645,7 @@ samlCreateAttrContext(OM_uint32 *minor,
             resolver->addToken(assertion);
         }
 
+        resolver->setApplicationID((const char *)nameBuf.value);
         if (initiatorName->radiusCtx != NULL)
             samlAddRadiusAttributes(minor, initiatorName, &args);
         resolver->resolveAttributes(attrs);
