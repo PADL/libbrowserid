@@ -178,19 +178,15 @@ mapException(OM_uint32 *minor, exception &e)
 saml2::Assertion *
 gss_eap_saml_attr_ctx::parseAssertion(const gss_buffer_t buffer)
 {
-    DOMDocument *doc;
-    const XMLObjectBuilder *b;
-    DOMElement *elem;
-    XMLObject *xobj;
     string str((char *)buffer->value, buffer->length);
     istringstream istream(str);
+    DOMDocument *doc;
+    const XMLObjectBuilder *b;
 
     doc = XMLToolingConfig::getConfig().getParser().parse(istream);
-    b = XMLObjectBuilder::getDefaultBuilder();
-    elem = doc->getDocumentElement();
-    xobj = b->buildOneFromElement(elem, true);
+    b =XMLObjectBuilder::getBuilder(doc->getDocumentElement());
 
-    return dynamic_cast<saml2::Assertion *>(xobj);
+    return dynamic_cast<saml2::Assertion *>(b->buildFromDocument(doc));
 }
 
 static inline void
