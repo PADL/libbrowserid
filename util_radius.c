@@ -32,40 +32,36 @@
 
 #include "gssapiP_eap.h"
 
-struct eap_gss_radius_attr_ctx {
+struct gss_eap_radius_attr_ctx {
 };
 
 OM_uint32
 radiusDuplicateAttrContext(OM_uint32 *minor,
-                           const struct eap_gss_radius_attr_ctx *in,
-                           struct eap_gss_radius_attr_ctx **out)
+                           const gss_name_t in,
+                           gss_name_t out)
 {
     GSSEAP_NOT_IMPLEMENTED;
 }
 
 OM_uint32
 radiusReleaseAttrContext(OM_uint32 *minor,
-                         struct eap_gss_radius_attr_ctx **pCtx)
+                         gss_name_t in)
 {
-    if (*pCtx != NULL) {
-        GSSEAP_NOT_IMPLEMENTED;
-        *pCtx = NULL;
-    }
+    GSSEAP_NOT_IMPLEMENTED;
 }
 
 OM_uint32
 radiusGetAttributeTypes(OM_uint32 *minor,
-                        const struct eap_gss_radius_attr_ctx *ctx,
-                        void *data,
-                        OM_uint32 (*addAttribute)(OM_uint32 *,
-                                                  void *, gss_buffer_t))
+                        gss_name_t name,
+                        gss_eap_add_attr_cb addAttribute,
+                        void *data)
 {
     GSSEAP_NOT_IMPLEMENTED;
 }
 
 OM_uint32
 radiusGetAttribute(OM_uint32 *minor,
-                   const struct eap_gss_radius_attr_ctx *ctx,
+                   gss_name_t name,
                    gss_buffer_t attr,
                    int *authenticated,
                    int *complete,
@@ -76,12 +72,38 @@ radiusGetAttribute(OM_uint32 *minor,
     GSSEAP_NOT_IMPLEMENTED;
 }
 
+#if 0
 OM_uint32
 radiusSetAttribute(OM_uint32 *minor,
-                   struct eap_gss_radius_attr_ctx *ctx,
+                   gss_name_t name,
                    int complete,
                    gss_buffer_t attr,
                    gss_buffer_t value)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+OM_uint32
+radiusDeleteAttribute(OM_uint32 *minor,
+                      gss_name_t name,
+                      gss_buffer_t attr)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+#endif
+
+OM_uint32
+radiusExportAttrContext(OM_uint32 *minor,
+                        gss_name_t name,
+                        gss_buffer_t buffer)
+{
+    GSSEAP_NOT_IMPLEMENTED;
+}
+
+OM_uint32
+radiusImportAttrContext(OM_uint32 *minor,
+                        gss_buffer_t buffer,
+                        gss_name_t name)
 {
     GSSEAP_NOT_IMPLEMENTED;
 }

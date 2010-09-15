@@ -53,8 +53,8 @@ gss_delete_name_attribute(OM_uint32 *minor,
         goto cleanup;
 
     type = gssEapAttributePrefixToType(&prefix);
-    if (type != ATTR_TYPE_SAML_AAA_ASSERTION) {
-        major = samlDeleteAttribute(minor, name->samlCtx, attr);
+    if (type == ATTR_TYPE_NONE) {
+        major = samlDeleteAttribute(minor, name, attr);
     } else {
         major = GSS_S_UNAVAILABLE;
     }

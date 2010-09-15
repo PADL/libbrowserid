@@ -66,8 +66,6 @@
 extern "C" {
 #endif
 
-#include "util_saml.h"
-
 #ifndef MIN             /* Usually found in <sys/param.h>. */
 #define MIN(_a,_b)  ((_a)<(_b)?(_a):(_b))
 #endif
@@ -290,6 +288,11 @@ enum gss_eap_attribute_type {
     ATTR_TYPE_RADIUS_AVP            = 3
 };
 
+typedef OM_uint32 (*gss_eap_add_attr_cb)(OM_uint32 *minor,
+                                         gss_name_t name,
+                                         gss_buffer_t attribute,
+                                         void *data);
+
 OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapExportName(OM_uint32 *minor,
@@ -427,6 +430,9 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_THREAD_ONCE              pthread_once_t
 #define GSSEAP_ONCE(o, i)               pthread_once((o), (i))
 #define GSSEAP_ONCE_INITIALIZER         PTHREAD_ONCE_INIT
+
+#include "util_radius.h"
+#include "util_saml.h"
 
 /* Helper functions */
 static inline void

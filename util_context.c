@@ -74,13 +74,13 @@ gssEapAllocContext(OM_uint32 *minor,
 }
 
 static void
-releaseInitiatorContext(struct eap_gss_initiator_ctx *ctx)
+releaseInitiatorContext(struct gss_eap_initiator_ctx *ctx)
 {
     eap_peer_sm_deinit(ctx->eap);
 }
 
 static void
-releaseAcceptorContext(struct eap_gss_acceptor_ctx *ctx)
+releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
 {
 #ifdef BUILTIN_EAP
     eap_server_sm_deinit(ctx->eap);

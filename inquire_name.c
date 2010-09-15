@@ -32,8 +32,8 @@
 
 #include "gssapiP_eap.h"
 
-struct eap_gss_attribute_args {
-    gss_buffer_t prefix;
+struct gss_eap_attribute_args {
+    enum gss_eap_attribute_type type;
     gss_buffer_set_t attrs;
 };
 
@@ -43,23 +43,30 @@ struct eap_gss_attribute_args {
  */
 static OM_uint32
 addAttribute(OM_uint32 *minor,
-             void *data,
-             gss_buffer_t attribute)
+             gss_name_t name,
+             gss_buffer_t attribute,
+             void *data)
 {
-    struct eap_gss_attribute_args *args = (struct eap_gss_attribute_args *)data;
+    struct gss_eap_attribute_args *args = (struct gss_eap_attribute_args *)data;
     OM_uint32 major, tmpMinor;
     gss_buffer_desc qualifiedAttr;
+    gss_buffer_t prefix;
 
-    if (attribute != GSS_C_NO_BUFFER) {
-        major = composeAttributeName(minor, args->prefix, attribute, &qualifiedAttr);
+    if (args->type != ATTR_TYPE_NONE)
+        prefix = gssEapAttributeTypeToPrefix(args->type);
+    else
+        prefix = GSS_C_NO_BUFFER;
+
+    if (prefix != GSS_C_NO_BUFFER && attribute != GSS_C_NO_BUFFER) {
+        major = composeAttributeName(minor, prefix, attribute, &qualifiedAttr);
         if (GSS_ERROR(major))
             return major;
-
         major = gss_add_buffer_set_member(minor, &qualifiedAttr, &args->attrs);
 
         gss_release_buffer(&tmpMinor, &qualifiedAttr);
     } else {
-        major = gss_add_buffer_set_member(minor, args->prefix, &args->attrs);
+        assert(prefix != GSS_C_NO_BUFFER);
+        major = gss_add_buffer_set_member(minor, prefix, &args->attrs);
     }
 
     return major;
@@ -73,7 +80,7 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     krb5_context krbContext;
-    struct eap_gss_attribute_args args;
+    struct gss_eap_attribute_args args;
 
     *name_is_MN = 1;
     *MN_mech = GSS_EAP_MECHANISM;
@@ -93,16 +100,36 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
 
     args.attrs = *attrs;
 
-    if (name->samlCtx != NULL) {
-        args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_SAML_AAA_ASSERTION);
+    if (name->flags & NAME_FLAG_SAML_ATTRIBUTES) {
+        /* The assertion itself */
+        args.type = ATTR_TYPE_SAML_AAA_ASSERTION;
 
-        major = addAttribute(minor, &args, GSS_C_NO_BUFFER);
+        major = addAttribute(minor, name, GSS_C_NO_BUFFER, &args);
         if (GSS_ERROR(major))
             goto cleanup;
 
-        args.prefix = gssEapAttributeTypeToPrefix(ATTR_TYPE_SAML_ATTR);
-        major = samlGetAttributeTypes(minor, name->samlCtx,
-                                      &args, addAttribute);
+        /* Raw SAML attributes */
+#if 0
+        args.type = ATTR_TYPE_SAML_ATTR;
+        major = samlGetAttributeTypes(minor, args.type,
+                                      name, addAttribute, &args);
+        if (GSS_ERROR(major))
+            goto cleanup;
+#endif
+
+        /* Cooked local attributes */
+        args.type = ATTR_TYPE_NONE;
+        major = samlGetAttributeTypes(minor, name, args.type,
+                                      addAttribute, &args);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if (name->flags & NAME_FLAG_RADIUS_ATTRIBUTES) {
+        /* Raw RADIUS attributes */
+        args.type = ATTR_TYPE_RADIUS_AVP;
+        major = radiusGetAttributeTypes(minor, name,
+                                        addAttribute, &args);
         if (GSS_ERROR(major))
             goto cleanup;
     }

@@ -503,7 +503,7 @@ eapGssSmInitEstablished(OM_uint32 *minor,
     return GSS_S_BAD_STATUS;
 }
 
-static struct eap_gss_initiator_sm {
+static struct gss_eap_initiator_sm {
     enum gss_eap_token_type inputTokenType;
     enum gss_eap_token_type outputTokenType;
     OM_uint32 (*processToken)(OM_uint32 *,
@@ -544,7 +544,7 @@ gss_init_sec_context(OM_uint32 *minor,
     OM_uint32 major;
     OM_uint32 tmpMajor, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
-    struct eap_gss_initiator_sm *sm = NULL;
+    struct gss_eap_initiator_sm *sm = NULL;
     gss_buffer_desc innerInputToken, innerOutputToken;
 
     *minor = 0;

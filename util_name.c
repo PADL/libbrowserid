@@ -106,7 +106,8 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     GSSEAP_KRB_INIT(&krbContext);
     krb5_free_principal(krbContext, name->krbPrincipal);
 
-    samlReleaseAttrContext(&tmpMinor, &name->samlCtx);
+    samlReleaseAttrContext(&tmpMinor, name);
+    radiusReleaseAttrContext(&tmpMinor, name);
 
     GSSEAP_MUTEX_DESTROY(&name->mutex);
     GSSEAP_FREE(name);
@@ -224,6 +225,7 @@ importExportedName(OM_uint32 *minor,
     size_t len, remain;
     gss_buffer_desc buf;
     enum gss_eap_token_type tok_type;
+    gss_name_t name = GSS_C_NO_NAME;
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -233,20 +235,23 @@ importExportedName(OM_uint32 *minor,
     if (remain < 6 + GSS_EAP_MECHANISM->length + 4)
         return GSS_S_BAD_NAME;
 
+#define UPDATE_REMAIN(n)    do {            \
+        p += (n);                           \
+        remain -= (n);                      \
+    } while (0)
+
     /* TOK_ID */
     tok_type = load_uint16_be(p);
     if (tok_type != TOK_TYPE_EXPORT_NAME &&
         tok_type != TOK_TYPE_EXPORT_NAME_COMPOSITE)
         return GSS_S_BAD_NAME;
-    p += 2;
-    remain -= 2;
+    UPDATE_REMAIN(2);
 
     /* MECH_OID_LEN */
     len = load_uint16_be(p);
     if (len != 2 + GSS_EAP_MECHANISM->length)
         return GSS_S_BAD_NAME;
-    p += 2;
-    remain -= 2;
+    UPDATE_REMAIN(2);
 
     /* MECH_OID */
     if (p[0] != 0x06)
@@ -255,45 +260,75 @@ importExportedName(OM_uint32 *minor,
         return GSS_S_BAD_MECH;
     if (memcmp(&p[2], GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length))
         return GSS_S_BAD_MECH;
-    p += 2 + GSS_EAP_MECHANISM->length;
-    remain -= 2 + GSS_EAP_MECHANISM->length;
+    UPDATE_REMAIN(2 + GSS_EAP_MECHANISM->length);
 
     /* NAME_LEN */
     len = load_uint32_be(p);
-    p += 4;
-    remain -= 4;
+    UPDATE_REMAIN(4);
 
-    if (remain < len)
-        return GSS_S_BAD_NAME;
+#define CHECK_REMAIN(n)     do {        \
+        if (remain < (n)) {             \
+            *minor = ERANGE;            \
+            major = GSS_S_BAD_NAME;     \
+            goto cleanup;               \
+        }                               \
+    } while (0)
 
     /* NAME */
+    CHECK_REMAIN(len);
     buf.length = len;
     buf.value = p;
+    UPDATE_REMAIN(len);
 
-    p += len;
-    remain -= len;
-
-    if (remain != 0)
-        return GSS_S_BAD_NAME;
-
-    major = importUserName(minor, &buf, pName);
+    major = importUserName(minor, &buf, &name);
     if (GSS_ERROR(major))
-        return major;
+        goto cleanup;
 
     if (tok_type == TOK_TYPE_EXPORT_NAME_COMPOSITE) {
-        gss_buffer_desc saml;
+        gss_buffer_desc buf;
 
-        saml.length = remain;
-        saml.value = p;
+        CHECK_REMAIN(4);
+        name->flags = load_uint32_be(p);
+        UPDATE_REMAIN(4);
 
-        major = samlImportAttrContext(minor, &saml, &(*pName)->samlCtx);
-        if (GSS_ERROR(major)) {
-            gssEapReleaseName(&tmpMinor, pName);
-            return major;
+        if (name->flags & NAME_FLAG_RADIUS_ATTRIBUTES) {
+            CHECK_REMAIN(4);
+            buf.length = load_uint32_be(p);
+            UPDATE_REMAIN(4);
+
+            CHECK_REMAIN(buf.length);
+            buf.value = p;
+            UPDATE_REMAIN(buf.length);
+
+            major = radiusImportAttrContext(minor, &buf, name);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+
+        if (name->flags & NAME_FLAG_SAML_ATTRIBUTES) {
+            CHECK_REMAIN(4);
+            buf.length = load_uint32_be(p);
+            UPDATE_REMAIN(4);
+
+            CHECK_REMAIN(buf.length);
+            buf.value = p;
+            UPDATE_REMAIN(buf.length);
+
+            major = samlImportAttrContext(minor, &buf, name);
+            if (GSS_ERROR(major))
+                goto cleanup;
         }
     }
 
-    return GSS_S_COMPLETE;
+    major = GSS_S_COMPLETE;
+
+cleanup:
+    if (GSS_ERROR(major))
+        gssEapReleaseName(&tmpMinor, &name);
+    else
+        *pName = name;
+
+    return major;
 }
 
 OM_uint32
@@ -335,7 +370,10 @@ gssEapExportName(OM_uint32 *minor,
     char *krbName = NULL;
     size_t krbNameLen;
     unsigned char *p;
-    gss_buffer_desc saml;
+    gss_buffer_desc radius, saml;
+
+    radius.length = 0;
+    radius.value = NULL;
 
     saml.length = 0;
     saml.value = NULL;
@@ -361,11 +399,20 @@ gssEapExportName(OM_uint32 *minor,
 
     exportedName->length = 6 + GSS_EAP_MECHANISM->length + 4 + krbNameLen;
     if (composite) {
-        major = samlExportAttrContext(minor, name->samlCtx, &saml);
-        if (GSS_ERROR(major))
-            goto cleanup;
+        exportedName->length += 4;
 
-        exportedName->length += 4 + saml.length;
+        if (name->flags & NAME_FLAG_RADIUS_ATTRIBUTES) {
+            major = radiusExportAttrContext(minor, name, &radius);
+            if (GSS_ERROR(major))
+                goto cleanup;
+            exportedName->length += 4 + radius.length;
+        }
+        if (name->flags & NAME_FLAG_SAML_ATTRIBUTES) {
+            major = samlExportAttrContext(minor, name, &saml);
+            if (GSS_ERROR(major))
+                goto cleanup;
+            exportedName->length += 4 + saml.length;
+        }
     }
 
     exportedName->value = GSSEAP_MALLOC(exportedName->length);
@@ -399,11 +446,21 @@ gssEapExportName(OM_uint32 *minor,
     memcpy(p, krbName, krbNameLen);
     p += krbNameLen;
 
-    store_uint32_be(saml.length, p);
-    p += 4;
+    if (composite) {
+        store_uint32_be(name->flags, p);
+        p += 4;
 
-    memcpy(p, saml.value, saml.length);
-    p += saml.length;
+        if (name->flags & NAME_FLAG_RADIUS_ATTRIBUTES) {
+            store_uint32_be(radius.length, p);
+            memcpy(&p[4], radius.value, radius.length);
+            p += 4 + radius.length;
+        }
+        if (name->flags & NAME_FLAG_SAML_ATTRIBUTES) {
+            store_uint32_be(saml.length, p);
+            memcpy(&p[4], saml.value, saml.length);
+            p += 4 + saml.length;
+        }
+    }
 
     *minor = 0;
     major = GSS_S_COMPLETE;
@@ -411,6 +468,7 @@ gssEapExportName(OM_uint32 *minor,
 cleanup:
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
     gss_release_buffer(&tmpMinor, &saml);
+    gss_release_buffer(&tmpMinor, &radius);
     if (GSS_ERROR(major))
         gss_release_buffer(&tmpMinor, exportedName);
     krb5_free_unparsed_name(krbContext, krbName);

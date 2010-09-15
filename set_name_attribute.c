@@ -55,9 +55,8 @@ gss_set_name_attribute(OM_uint32 *minor,
         goto cleanup;
 
     type = gssEapAttributePrefixToType(&prefix);
-    if (type != ATTR_TYPE_SAML_AAA_ASSERTION) {
-        major = samlSetAttribute(minor, name->samlCtx, complete,
-                                 attr, value);
+    if (type == ATTR_TYPE_NONE) {
+        major = samlSetAttribute(minor, name, complete, attr, value);
     } else {
         major = GSS_S_UNAVAILABLE;
     }

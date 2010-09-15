@@ -52,24 +52,31 @@
 #include <krb5.h>
 
 /* EAP includes */
+#ifndef __cplusplus
 #include <common.h>
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>
 #include <crypto/tls.h>                     /* XXX testing implementation only */
 #include <wpabuf.h>
+#endif
 
 #define NAME_FLAG_NAI                       0x00000001
 #define NAME_FLAG_SERVICE                   0x00000002
+#define NAME_FLAG_RADIUS_ATTRIBUTES         0x00000004
+#define NAME_FLAG_SAML_ATTRIBUTES           0x00000008
 
-#define NAME_HAS_ATTRIBUTES(name)           ((name)->samlCtx != NULL)
+#define NAME_HAS_ATTRIBUTES(name)           \
+                (((name)->flags & (NAME_FLAG_RADIUS_ATTRIBUTES | \
+                                   NAME_FLAG_SAML_ATTRIBUTES)) != 0)
 
-struct eap_gss_saml_attr_ctx;
+struct gss_eap_saml_attr_ctx;
 
 struct gss_name_struct {
     GSSEAP_MUTEX mutex; /* mutex protecting attributes */
     OM_uint32 flags;
     krb5_principal krbPrincipal; /* this is immutable */
-    struct eap_gss_saml_attr_ctx *samlCtx;
+    struct gss_eap_radius_attr_ctx *radiusCtx;
+    struct gss_eap_saml_attr_ctx *samlCtx;
 };
 
 #define CRED_FLAG_INITIATE                  0x00000001
@@ -90,7 +97,7 @@ struct gss_cred_id_struct {
 
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
-enum eap_gss_state {
+enum gss_eap_state {
     EAP_STATE_AUTHENTICATE = 0,
 #if 0
     EAP_STATE_KEY_TRANSPORT,
@@ -113,15 +120,17 @@ enum eap_gss_state {
 #define CTX_FLAG_EAP_ALT_ACCEPT             0x00800000
 #define CTX_FLAG_EAP_ALT_REJECT             0x01000000
 
-struct eap_gss_initiator_ctx {
+struct gss_eap_initiator_ctx {
     unsigned int idleWhile;
+#ifndef __cplusplus
     struct eap_peer_config eapPeerConfig;
     struct eap_sm *eap;
     struct wpabuf reqData;
+#endif
 };
 
-struct eap_gss_acceptor_ctx {
-#ifdef BUILTIN_EAP
+struct gss_eap_acceptor_ctx {
+#if defined(BUILTIN_EAP) && !defined(__cplusplus)
     struct eap_eapol_interface *eapPolInterface;
     void *tlsContext;
     struct eap_sm *eap;
@@ -130,7 +139,7 @@ struct eap_gss_acceptor_ctx {
 
 struct gss_ctx_id_struct {
     GSSEAP_MUTEX mutex;
-    enum eap_gss_state state;
+    enum gss_eap_state state;
     OM_uint32 flags;
     OM_uint32 gssFlags;
     gss_OID mechanismUsed;
@@ -143,9 +152,9 @@ struct gss_ctx_id_struct {
     uint64_t sendSeq, recvSeq;
     void *seqState;
     union {
-        struct eap_gss_initiator_ctx initiator;
+        struct gss_eap_initiator_ctx initiator;
         #define initiatorCtx         ctxU.initiator
-        struct eap_gss_acceptor_ctx  acceptor;
+        struct gss_eap_acceptor_ctx  acceptor;
         #define acceptorCtx          ctxU.acceptor
     } ctxU;
 };

@@ -37,34 +37,34 @@
 extern "C" {
 #endif
 
-struct eap_gss_saml_attr_ctx;
+struct gss_eap_saml_attr_ctx;
 
 OM_uint32
 samlDuplicateAttrContext(OM_uint32 *minor,
-                         const struct eap_gss_saml_attr_ctx *in,
-                         struct eap_gss_saml_attr_ctx **out);
+                         gss_name_t in,
+                         gss_name_t out);
 
 OM_uint32
 samlCreateAttrContext(OM_uint32 *minor,
                       gss_cred_id_t acceptorCred,
                       gss_name_t initiatorName,
-                      gss_buffer_t buffer,
-                      struct eap_gss_saml_attr_ctx **pCtx,
                       time_t *pExpiryTime);
 
 OM_uint32
 samlReleaseAttrContext(OM_uint32 *minor,
-                       struct eap_gss_saml_attr_ctx **ctx);
+                       gss_name_t name);
 
 OM_uint32
 samlGetAttributeTypes(OM_uint32 *minor,
-                      const struct eap_gss_saml_attr_ctx *ctx,
-                      void *data,
-                      OM_uint32 (*addAttribute)(OM_uint32 *, void *, gss_buffer_t));
+                      gss_name_t name,
+                      enum gss_eap_attribute_type type,
+                      gss_eap_add_attr_cb cb,
+                      void *data);
 
 OM_uint32
 samlGetAttribute(OM_uint32 *minor,
-                 struct eap_gss_saml_attr_ctx *ctx,
+                 enum gss_eap_attribute_type type,
+                 gss_name_t name,
                  gss_buffer_t attr,
                  int *authenticated,
                  int *complete,
@@ -74,44 +74,51 @@ samlGetAttribute(OM_uint32 *minor,
 
 OM_uint32
 samlSetAttribute(OM_uint32 *minor,
-                 struct eap_gss_saml_attr_ctx *ctx,
+                 gss_name_t name,
                  int complete,
                  gss_buffer_t attr,
                  gss_buffer_t value);
 
 OM_uint32
 samlDeleteAttribute(OM_uint32 *minor,
-                    struct eap_gss_saml_attr_ctx *ctx,
+                    gss_name_t name,
                     gss_buffer_t attr);
 
 OM_uint32
 samlExportAttrContext(OM_uint32 *minor,
-                      struct eap_gss_saml_attr_ctx *ctx,
+                      gss_name_t name,
                       gss_buffer_t buffer);
 
 OM_uint32
 samlImportAttrContext(OM_uint32 *minor,
                       gss_buffer_t buffer,
-                      struct eap_gss_saml_attr_ctx **pCtx);
+                      gss_name_t name);
 
 OM_uint32
 samlGetAssertion(OM_uint32 *minor,
-                 struct eap_gss_saml_attr_ctx *ctx,
+                 gss_name_t name,
                  gss_buffer_t assertion);
  
 
 OM_uint32
 samlMapNameToAny(OM_uint32 *minor,
-                 const struct eap_gss_saml_attr_ctx *ctx,
+                 gss_name_t name,
                  int authenticated,
                  gss_buffer_t type_id,
                  gss_any_t *output);
 
 OM_uint32
 samlReleaseAnyNameMapping(OM_uint32 *minor,
-                          const struct eap_gss_saml_attr_ctx *ctx,
+                          gss_name_t name,
                           gss_buffer_t type_id,
                           gss_any_t *input);
+
+OM_uint32
+samlInit(OM_uint32 *minor);
+
+OM_uint32
+samlFinalize(OM_uint32 *minor);
+
 
 #ifdef __cplusplus
 }

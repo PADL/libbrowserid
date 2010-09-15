@@ -32,10 +32,10 @@
 
 #include "gssapiP_eap.h"
 
-static int
-eapPeerRegisterMethods(void)
+static OM_uint32
+eapPeerRegisterMethods(OM_uint32 *minor)
 {
-    int ret = 0;
+    OM_uint32 ret = 0;
 
 #ifdef EAP_MD5
     if (ret == 0)
@@ -137,13 +137,13 @@ eapPeerRegisterMethods(void)
         ret = eap_peer_tnc_register();
 #endif /* EAP_TNC */
 
-    return ret;
+    return ret ? GSS_S_FAILURE : GSS_S_COMPLETE;
 }
 
-static int
-eapServerRegisterMethods(void)
+static OM_uint32
+eapServerRegisterMethods(OM_uint32 *minor)
 {
-    int ret = 0;
+    OM_uint32 ret = 0;
 
 #ifdef EAP_SERVER_IDENTITY
     if (ret == 0)
@@ -244,19 +244,19 @@ eapServerRegisterMethods(void)
         ret = eap_server_tnc_register();
 #endif /* EAP_SERVER_TNC */
 
-    return ret;
+    return ret ? GSS_S_FAILURE : GSS_S_COMPLETE;
 }
 
-static int
-gssEapInitLibEap(void)
+static OM_uint32
+gssEapInitLibEap(OM_uint32 *minor)
 {
-    return eapPeerRegisterMethods();
+    return eapPeerRegisterMethods(minor);
 }
 
-static int
-gssEapInitLibRadSec(void)
+static OM_uint32
+gssEapInitLibRadSec(OM_uint32 *minor)
 {
-    return 0;
+    return GSS_S_COMPLETE;
 }
 
 static void gssEapInit(void) __attribute__((constructor));
@@ -265,23 +265,24 @@ static void gssEapFinalize(void) __attribute__((destructor));
 static void
 gssEapInit(void)
 {
-    int ret;
+    OM_uint32 major, minor;
 
-    ret = gssEapInitLibEap();
-    if (ret == 0)
-#if 0
-        ret = gssEapInitLibRadSec();
-#else
-        ret = eapServerRegisterMethods();
-#endif
+    gssEapInitLibEap(&minor);
+    gssEapInitLibRadSec(&minor);
+    eapServerRegisterMethods(&minor);
+
+    samlInit(&minor);
 }
 
 static void
 gssEapFinalize(void)
 {
+    OM_uint32 major, minor;
+
     eap_peer_unregister_methods();
 #if 1
     eap_server_unregister_methods();
 #endif
+    samlFinalize(&minor);
 }
 

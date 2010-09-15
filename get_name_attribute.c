@@ -66,12 +66,25 @@ gss_get_name_attribute(OM_uint32 *minor,
         goto cleanup;
 
     type = gssEapAttributePrefixToType(&prefix);
-    if (type == ATTR_TYPE_SAML_AAA_ASSERTION) {
-        major = samlGetAssertion(minor, name->samlCtx, value);
-    } else {
-        major = samlGetAttribute(minor, name->samlCtx, &suffix,
+    switch (type) {
+    case ATTR_TYPE_NONE:
+    case ATTR_TYPE_SAML_ATTR:
+        major = samlGetAttribute(minor, type, name,
+                                 (type == ATTR_TYPE_NONE) ? attr : &suffix,
                                  authenticated, complete,
                                  value, display_value, more);
+        break;
+    case ATTR_TYPE_SAML_AAA_ASSERTION:
+        major = samlGetAssertion(minor, name, value);
+        break;
+    case ATTR_TYPE_RADIUS_AVP:
+        major = radiusGetAttribute(minor, name, &suffix,
+                                   authenticated, complete,
+                                   value, display_value, more);
+        break;
+    default:
+        major = GSS_S_UNAVAILABLE;
+        break;
     }
 
 cleanup:

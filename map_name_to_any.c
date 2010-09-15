@@ -50,11 +50,11 @@ gss_map_name_to_any(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
-    if (name->samlCtx == NULL)
-        major = GSS_S_UNAVAILABLE;
-    else
-        major = samlMapNameToAny(minor, name->samlCtx, authenticated,
+    if (name->flags & NAME_FLAG_SAML_ATTRIBUTES)
+        major = samlMapNameToAny(minor, name, authenticated,
                                  type_id, output);
+    else
+        major = GSS_S_UNAVAILABLE;
 
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
