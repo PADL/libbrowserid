@@ -74,33 +74,36 @@ class auto_ptr_gss_buffer {
  * gss_eap_saml_assertion_provider is for retrieving the underlying
  * assertion.
  */
+gss_eap_saml_assertion_provider::gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *
+ctx)
+    : gss_eap_attr_provider(ctx)
+{
+    /* Then we may be creating from an existing attribute context */
+    gss_eap_saml_assertion_provider *saml;
+
+    saml = dynamic_cast<gss_eap_saml_assertion_provider *>
+        (ctx->getProvider(ATTR_TYPE_SAML_ASSERTION));
+    if (saml != NULL)
+        setAssertion(saml->getAssertion());
+}
+
 gss_eap_saml_assertion_provider::gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *ctx,
                                                                  gss_cred_id_t gssCred,
                                                                  gss_ctx_id_t gssCtx)
-    : gss_eap_attr_provider(ctx, gssCred, gssCtx)
+    : gss_eap_attr_provider(ctx)
 {
-    if (gssCtx == GSS_C_NO_CONTEXT) {
-        /* Then we are creating from an existing attribute context */
-        gss_eap_saml_assertion_provider *saml;
+    gss_eap_radius_attr_provider *radius;
+    gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
+    int authenticated, complete, more = -1;
+    OM_uint32 minor;
 
-        saml = dynamic_cast<gss_eap_saml_assertion_provider *>
-            (ctx->getProvider(ATTR_TYPE_SAML_ASSERTION));
-        if (saml != NULL)
-            setAssertion(saml->getAssertion());
-    } else { 
-        gss_eap_radius_attr_provider *radius;
-        gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
-        int authenticated, complete, more = -1;
-        OM_uint32 minor;
-
-        radius = dynamic_cast<gss_eap_radius_attr_provider *>
-            (ctx->getProvider(ATTR_TYPE_RADIUS));
-        if (radius != NULL &&
-            radius->getAttribute(512, &authenticated, &complete,
-                                 &value, NULL, &more)) {
-            m_assertion = parseAssertion(&value);
-            gss_release_buffer(&minor, &value);
-        }
+    radius = dynamic_cast<gss_eap_radius_attr_provider *>
+        (ctx->getProvider(ATTR_TYPE_RADIUS));
+    if (radius != NULL &&
+        radius->getAttribute(512, &authenticated, &complete,
+                             &value, NULL, &more)) {
+        m_assertion = parseAssertion(&value);
+        gss_release_buffer(&minor, &value);
     }
 }
 
@@ -134,7 +137,7 @@ gss_eap_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
 bool
 gss_eap_saml_assertion_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute, void *data) const
 {
-    addAttribute(this, GSS_C_NO_BUFFER, data);
+    return addAttribute(this, GSS_C_NO_BUFFER, data);
 }
 
 void
@@ -214,16 +217,21 @@ gss_eap_saml_assertion_provider::marshall(gss_buffer_t buffer) const
     duplicateBuffer(str, buffer);
 }
 
-gss_eap_attr_provider *
+bool
 gss_eap_saml_assertion_provider::unmarshall(const gss_eap_attr_ctx *ctx,
                                             const gss_buffer_t buffer)
 {
-   return new gss_eap_saml_assertion_provider(ctx, buffer);
+    assert(m_assertion == NULL);
+
+    m_assertion = parseAssertion(buffer);
+
+    return (m_assertion != NULL);
 }
 
 bool
 gss_eap_saml_assertion_provider::init(void)
 {
+    return true;
 }
 
 void
@@ -395,11 +403,11 @@ gss_eap_saml_attr_provider::marshall(gss_buffer_t buffer) const
 {
 }
 
-gss_eap_attr_provider *
+bool
 gss_eap_saml_attr_provider::unmarshall(const gss_eap_attr_ctx *ctx,
                                        const gss_buffer_t buffer)
 {
-    return new gss_eap_saml_attr_provider(ctx);
+    return false;
 }
 
 bool
@@ -418,5 +426,8 @@ gss_eap_saml_attr_provider::createAttrContext(const gss_eap_attr_ctx *ctx,
                                               gss_cred_id_t gssCred,
                                               gss_ctx_id_t gssCtx)
 {
-    return new gss_eap_saml_attr_provider(ctx, gssCred, gssCtx);
+    if (gssCtx != GSS_C_NO_CONTEXT)
+        return new gss_eap_saml_attr_provider(ctx, gssCred, gssCtx);
+    else
+        return new gss_eap_saml_attr_provider(ctx);
 }

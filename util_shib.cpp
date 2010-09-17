@@ -285,11 +285,11 @@ gss_eap_shib_attr_provider::marshall(gss_buffer_t buffer) const
 {
 }
 
-gss_eap_attr_provider *
+bool
 gss_eap_shib_attr_provider::unmarshall(const gss_eap_attr_ctx *ctx,
                                        const gss_buffer_t buffer)
 {
-    return NULL;
+    return false;
 }
 
 bool

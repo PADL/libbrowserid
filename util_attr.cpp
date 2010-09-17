@@ -108,7 +108,8 @@ gss_eap_attr_ctx::gss_eap_attr_ctx(const gss_eap_attr_ctx &ctx)
 {
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         if (ctx.m_providers[i] != NULL) {
-            m_providers[i] = (gss_eap_attr_factories[i])(&ctx, GSS_C_NO_CREDENTIAL,
+            m_providers[i] = (gss_eap_attr_factories[i])(&ctx,
+                                                         GSS_C_NO_CREDENTIAL,
                                                          GSS_C_NO_CONTEXT);
         }
     }
@@ -277,7 +278,21 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_attr_ctx::marshall(gss_buffer_t buffer) const
 {
+    /* For now, just marshall the RADIUS context. */
 }
+
+bool
+gss_eap_attr_ctx::unmarshall(const gss_eap_attr_ctx *ctx,
+                             const gss_buffer_t buffer)
+{
+    int i;
+
+    for (i = 0; i < ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider = m_providers[i];
+
+    }
+}
+
 
 /*
  * C wrappers
@@ -423,11 +438,6 @@ gssEapInquireName(OM_uint32 *minor,
                   gss_OID *MN_mech,
                   gss_buffer_set_t *attrs)
 {
-    *minor = 0;
-    *name_is_MN = false;
-    *MN_mech = GSS_EAP_MECHANISM;
-    *attrs = GSS_C_NO_BUFFER_SET;
-
     if (name->attrCtx == NULL)
         return GSS_S_UNAVAILABLE;
 

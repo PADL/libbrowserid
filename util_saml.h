@@ -43,13 +43,7 @@ namespace opensaml {
 
 struct gss_eap_saml_assertion_provider : gss_eap_attr_provider {
 public:
-    gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *ctx,
-                                    const gss_buffer_t buffer)
-        : gss_eap_attr_provider(ctx)
-    {
-        m_assertion = parseAssertion(buffer);
-    }
-
+    gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *ctx);
     gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *ctx,
                                     gss_cred_id_t acceptorCred,
                                     gss_ctx_id_t acceptorCtx);
@@ -73,8 +67,8 @@ public:
                                gss_any_t input) const;
 
     void marshall(gss_buffer_t buffer) const;
-    static gss_eap_attr_provider *unmarshall(const gss_eap_attr_ctx *ctx,
-                                             const gss_buffer_t buffer);
+    bool unmarshall(const gss_eap_attr_ctx *ctx,
+                    const gss_buffer_t buffer);
 
     void setAssertion(const opensaml::saml2::Assertion *assertion);
 
@@ -124,8 +118,8 @@ public:
                                gss_any_t input) const;
 
     void marshall(gss_buffer_t buffer) const;
-    static gss_eap_attr_provider *unmarshall(const gss_eap_attr_ctx *ctx,
-                                             const gss_buffer_t buffer);
+    bool unmarshall(const gss_eap_attr_ctx *ctx,
+                    const gss_buffer_t buffer);
 
     const opensaml::saml2::Attribute *
         getAttribute(const gss_buffer_t attr) const;

@@ -58,8 +58,8 @@ public:
                                gss_any_t input) const;
 
     void marshall(gss_buffer_t buffer) const;
-    static gss_eap_attr_provider *unmarshall(const gss_eap_attr_ctx *ctx,
-                                             const gss_buffer_t buffer);
+    bool unmarshall(const gss_eap_attr_ctx *ctx,
+                    const gss_buffer_t buffer);
 
     bool getAttribute(unsigned int attribute,
                       int *authenticated,

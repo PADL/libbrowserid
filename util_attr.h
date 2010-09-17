@@ -83,9 +83,8 @@ public:
                                        gss_any_t input) const {}
 
     virtual void marshall(gss_buffer_t buffer) const {}
-    static gss_eap_attr_provider *unmarshall(const gss_eap_attr_ctx *ctx,
-                                             const gss_buffer_t buffer)
-    { return NULL; }
+    virtual bool unmarshall(const gss_eap_attr_ctx *ctx,
+                            const gss_buffer_t buffer) { return false; }
 
     static bool init() { return true; }
     static void finalize() {}
@@ -138,8 +137,8 @@ public:
                                gss_any_t input) const;
 
     void marshall(gss_buffer_t buffer) const;
-    gss_eap_attr_provider *unmarshall(const gss_eap_attr_ctx *ctx,
-                                      const gss_buffer_t buffer);
+    bool unmarshall(const gss_eap_attr_ctx *ctx,
+                    const gss_buffer_t buffer);
     static bool init();
     static void finalize();
 
