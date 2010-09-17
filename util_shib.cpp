@@ -79,48 +79,60 @@ using namespace std;
 static vector <Attribute *>
 duplicateAttributes(const vector <Attribute *>src);
 
-gss_eap_shib_attr_provider::gss_eap_shib_attr_provider(const gss_eap_attr_ctx *ctx,
-                                                       gss_cred_id_t gssCred,
-                                                       gss_ctx_id_t gssCtx)
-    : gss_eap_attr_provider(ctx, gssCred, gssCtx)
+bool
+gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *source,
+                                                    const gss_eap_attr_provider *ctx)
 {
-    if (gssCtx == GSS_C_NO_CONTEXT) {
-        gss_eap_shib_attr_provider *shib;
+    const gss_eap_shib_attr_provider *shib;
 
-        shib = dynamic_cast<gss_eap_shib_attr_provider *>
-            (ctx->getProvider(ATTR_TYPE_LOCAL));
-        if (shib != NULL)
-            m_attributes = duplicateAttributes(shib->m_attributes);
-    } else {
-        gss_eap_saml_assertion_provider *saml;
-        gss_eap_radius_attr_provider *radius;
-        gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-        ShibbolethResolver *resolver = NULL;
-        OM_uint32 minor;
+    if (!gss_eap_attr_provider::initFromExistingContext(source, ctx))
+        return false;
 
-        saml = dynamic_cast<gss_eap_saml_assertion_provider *>
-            (ctx->getProvider(ATTR_TYPE_SAML_ASSERTION));
-        radius = dynamic_cast<gss_eap_radius_attr_provider *>
-            (ctx->getProvider(ATTR_TYPE_RADIUS));
+    shib = dynamic_cast<const gss_eap_shib_attr_provider *>(ctx);
+    if (shib != NULL)
+        m_attributes = duplicateAttributes(shib->m_attributes);
 
-        if (radius == NULL)
-            return;
+    return true;
+}
 
-        if (gssCred != GSS_C_NO_CREDENTIAL &&
-            gss_display_name(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
-            resolver->setApplicationID((const char *)nameBuf.value);
+bool
+gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *source,
+                                               const gss_cred_id_t gssCred,
+                                               const gss_ctx_id_t gssCtx)
+{
+    const gss_eap_saml_assertion_provider *saml;
+    const gss_eap_radius_attr_provider *radius;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+    ShibbolethResolver *resolver = NULL;
+    OM_uint32 minor;
 
-        if (saml != NULL && saml->getAssertion() != NULL)
-            resolver->addToken(saml->getAssertion());
+    if (!gss_eap_attr_provider::initFromGssContext(source, gssCred, gssCtx))
+        return false;
 
-        /* TODO inject RADIUS attribute types */
+    saml = dynamic_cast<const gss_eap_saml_assertion_provider *>
+        (source->getProvider(ATTR_TYPE_SAML_ASSERTION));
+    radius = dynamic_cast<const gss_eap_radius_attr_provider *>
+        (source->getProvider(ATTR_TYPE_RADIUS));
 
-        resolver->resolveAttributes(m_attributes);
+    if (radius == NULL)
+        return true;
 
-        gss_release_buffer(&minor, &nameBuf);
+    if (gssCred != GSS_C_NO_CREDENTIAL &&
+        gss_display_name(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
+        resolver->setApplicationID((const char *)nameBuf.value);
 
-        delete resolver;
-    }
+    if (saml != NULL && saml->getAssertion() != NULL)
+        resolver->addToken(saml->getAssertion());
+
+    /* TODO inject RADIUS attribute types */
+
+    resolver->resolveAttributes(m_attributes);
+
+    gss_release_buffer(&minor, &nameBuf);
+
+    delete resolver;
+
+    return true;
 }
 
 gss_eap_shib_attr_provider::~gss_eap_shib_attr_provider(void)
@@ -305,11 +317,9 @@ gss_eap_shib_attr_provider::finalize(void)
 }
 
 gss_eap_attr_provider *
-gss_eap_shib_attr_provider::createAttrContext(const gss_eap_attr_ctx *ctx,
-                                              gss_cred_id_t gssCred,
-                                              gss_ctx_id_t gssCtx)
+gss_eap_shib_attr_provider::createAttrContext(void)
 {
-    return new gss_eap_shib_attr_provider(ctx, gssCred, gssCtx);
+    return new gss_eap_shib_attr_provider;
 }
 
 static Attribute *

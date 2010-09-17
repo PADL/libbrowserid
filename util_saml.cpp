@@ -74,31 +74,35 @@ class auto_ptr_gss_buffer {
  * gss_eap_saml_assertion_provider is for retrieving the underlying
  * assertion.
  */
-gss_eap_saml_assertion_provider::gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *
-ctx)
-    : gss_eap_attr_provider(ctx)
+bool
+gss_eap_saml_assertion_provider::initFromExistingContext(const gss_eap_attr_ctx *source,
+                                                         const gss_eap_attr_provider *ctx)
 {
     /* Then we may be creating from an existing attribute context */
-    gss_eap_saml_assertion_provider *saml;
+    const gss_eap_saml_assertion_provider *saml;
 
-    saml = dynamic_cast<gss_eap_saml_assertion_provider *>
-        (ctx->getProvider(ATTR_TYPE_SAML_ASSERTION));
-    if (saml != NULL)
-        setAssertion(saml->getAssertion());
+    if (!gss_eap_attr_provider::initFromExistingContext(source, ctx))
+        return false;
+
+    saml = dynamic_cast<const gss_eap_saml_assertion_provider *>(ctx);
+    setAssertion(saml->getAssertion());
 }
 
-gss_eap_saml_assertion_provider::gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *ctx,
-                                                                 gss_cred_id_t gssCred,
-                                                                 gss_ctx_id_t gssCtx)
-    : gss_eap_attr_provider(ctx)
+bool
+gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *source,
+                                                    const gss_cred_id_t gssCred,
+                                                    const gss_ctx_id_t gssCtx)
 {
-    gss_eap_radius_attr_provider *radius;
+    const gss_eap_radius_attr_provider *radius;
     gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
     int authenticated, complete, more = -1;
     OM_uint32 minor;
 
-    radius = dynamic_cast<gss_eap_radius_attr_provider *>
-        (ctx->getProvider(ATTR_TYPE_RADIUS));
+    if (!gss_eap_attr_provider::initFromGssContext(source, gssCred, gssCtx))
+        return false;
+
+    radius = dynamic_cast<const gss_eap_radius_attr_provider *>
+        (source->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
         radius->getAttribute(512, &authenticated, &complete,
                              &value, NULL, &more)) {
@@ -240,11 +244,9 @@ gss_eap_saml_assertion_provider::finalize(void)
 }
 
 gss_eap_attr_provider *
-gss_eap_saml_assertion_provider::createAttrContext(const gss_eap_attr_ctx *ctx,
-                                                   gss_cred_id_t gssCred,
-                                                   gss_ctx_id_t gssCtx)
+gss_eap_saml_assertion_provider::createAttrContext(void)
 {
-    return new gss_eap_saml_assertion_provider(ctx, gssCred, gssCtx);
+    return new gss_eap_saml_assertion_provider;
 }
 
 /*
@@ -253,20 +255,14 @@ gss_eap_saml_assertion_provider::createAttrContext(const gss_eap_attr_ctx *ctx,
 const saml2::Assertion *
 gss_eap_saml_attr_provider::getAssertion(void) const
 {
-    gss_eap_saml_assertion_provider *saml;
+    const gss_eap_saml_assertion_provider *saml;
     
-    saml = dynamic_cast<gss_eap_saml_assertion_provider *>(m_source->getProvider(ATTR_TYPE_SAML_ASSERTION));
-    assert(saml != NULL);
+    saml = dynamic_cast<const gss_eap_saml_assertion_provider *>
+        (m_source->getProvider(ATTR_TYPE_SAML_ASSERTION));
+    if (saml != NULL)
+        return saml->getAssertion();
 
-    return saml->getAssertion();
-}
-
-gss_eap_saml_attr_provider::gss_eap_saml_attr_provider(const gss_eap_attr_ctx *ctx,
-                                                       gss_cred_id_t gssCred,
-                                                       gss_ctx_id_t gssCtx)
-    : gss_eap_attr_provider(ctx, gssCred, gssCtx)
-{
-    /* Nothing to do, we're just a wrapper around the assertion provider. */
+    return NULL;
 }
 
 gss_eap_saml_attr_provider::~gss_eap_saml_attr_provider(void)
@@ -422,12 +418,7 @@ gss_eap_saml_attr_provider::finalize(void)
 }
 
 gss_eap_attr_provider *
-gss_eap_saml_attr_provider::createAttrContext(const gss_eap_attr_ctx *ctx,
-                                              gss_cred_id_t gssCred,
-                                              gss_ctx_id_t gssCtx)
+gss_eap_saml_attr_provider::createAttrContext(void)
 {
-    if (gssCtx != GSS_C_NO_CONTEXT)
-        return new gss_eap_saml_attr_provider(ctx, gssCred, gssCtx);
-    else
-        return new gss_eap_saml_attr_provider(ctx);
+    return new gss_eap_saml_attr_provider;
 }

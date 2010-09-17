@@ -32,17 +32,25 @@
 
 #include "gssapiP_eap.h"
 
-gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(const gss_eap_attr_ctx *ctx,
-                                                           gss_cred_id_t gssCred,
-                                                           gss_ctx_id_t gssCtx)
-    : gss_eap_attr_provider(ctx, gssCred, gssCtx)
+bool
+gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *source,
+                                                      const gss_eap_attr_provider *ctx)
 {
+    if (!gss_eap_attr_provider::initFromExistingContext(source, ctx))
+        return false;
+
+    return true;
 }
 
-gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(
-    const gss_eap_radius_attr_provider &src)
-    : gss_eap_attr_provider(src)
+bool
+gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *source,
+                                                 const gss_cred_id_t gssCred,
+                                                 const gss_ctx_id_t gssCtx)
 {
+    if (!gss_eap_attr_provider::initFromGssContext(source, gssCred, gssCtx))
+        return false;
+
+    return true;
 }
 
 gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
@@ -124,9 +132,7 @@ gss_eap_radius_attr_provider::finalize(void)
 }
 
 gss_eap_attr_provider *
-gss_eap_radius_attr_provider::createAttrContext(const gss_eap_attr_ctx *ctx,
-                                                gss_cred_id_t gssCred,
-                                                gss_ctx_id_t gssCtx)
+gss_eap_radius_attr_provider::createAttrContext(void)
 {
-    return new gss_eap_radius_attr_provider(ctx, gssCred, gssCtx);
+    return new gss_eap_radius_attr_provider;
 }

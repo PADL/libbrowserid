@@ -45,22 +45,62 @@ gss_eap_attr_factories[ATTR_TYPE_MAX] = {
 };
 
 gss_eap_attr_ctx *
-gss_eap_attr_ctx::createAttrContext(gss_cred_id_t gssCred,
-                                    gss_ctx_id_t gssCtx)
+gss_eap_attr_ctx::createAttrContext(void)
 {
     gss_eap_attr_ctx *ctx;
 
-    ctx = new gss_eap_attr_ctx(NULL, gssCred, gssCtx);
+    ctx = new gss_eap_attr_ctx;
 
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
 
-        provider = (gss_eap_attr_factories[i])(ctx, gssCred, gssCtx);
+        provider = (gss_eap_attr_factories[i])();
         if (provider != NULL)
             ctx->m_providers[i] = provider;
     }
 
     return ctx;
+}
+
+bool
+gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *source,
+                                          const gss_eap_attr_provider *ctx)
+{
+    if (!gss_eap_attr_provider::initFromExistingContext(this, ctx))
+        return false;
+
+    for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider;
+
+        provider = m_providers[i];
+        if (provider != NULL) {
+            if (!provider->initFromExistingContext(this, provider))
+                return false;
+        }
+    }
+
+    return true;
+}
+
+bool
+gss_eap_attr_ctx::initFromGssContext(const gss_eap_attr_ctx *source,
+                                     const gss_cred_id_t cred,
+                                     const gss_ctx_id_t ctx)
+{
+    if (!gss_eap_attr_provider::initFromGssContext(this, cred, ctx))
+        return false;
+
+    for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider;
+
+        provider = m_providers[i];
+        if (provider != NULL) {
+            if (!provider->initFromGssContext(this, cred, ctx))
+                return false;
+        }
+    }
+
+    return true;
 }
 
 gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
@@ -101,18 +141,6 @@ gss_eap_attr_ctx::getProvider(const gss_buffer_t prefix) const
     type = attributePrefixToType(prefix);
 
     return m_providers[type];
-}
-
-gss_eap_attr_ctx::gss_eap_attr_ctx(const gss_eap_attr_ctx &ctx)
-    : gss_eap_attr_provider(ctx)
-{
-    for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
-        if (ctx.m_providers[i] != NULL) {
-            m_providers[i] = (gss_eap_attr_factories[i])(&ctx,
-                                                         GSS_C_NO_CREDENTIAL,
-                                                         GSS_C_NO_CONTEXT);
-        }
-    }
 }
 
 void
@@ -285,11 +313,10 @@ bool
 gss_eap_attr_ctx::unmarshall(const gss_eap_attr_ctx *ctx,
                              const gss_buffer_t buffer)
 {
-    int i;
+    unsigned int i;
 
     for (i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider = m_providers[i];
-
     }
 }
 
@@ -555,9 +582,16 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
                            gss_name_t out)
 {
     try {
-        if (in->attrCtx != NULL)
-            out->attrCtx = new gss_eap_attr_ctx(*(in->attrCtx));
-        else
+        if (in->attrCtx != NULL) {
+            gss_eap_attr_ctx *ctx = new gss_eap_attr_ctx;
+
+            out->attrCtx = new gss_eap_attr_ctx;
+            if (!ctx->initFromExistingContext(NULL, in->attrCtx)) {
+                delete ctx;
+                return GSS_S_FAILURE;
+            }
+            out->attrCtx = ctx;
+        } else
             out->attrCtx = NULL;
     } catch (std::exception &e) {
         return mapException(minor, e);
@@ -637,9 +671,16 @@ gssEapAttrProvidersFinalize(OM_uint32 *minor)
 }
 
 struct gss_eap_attr_ctx *
-gssEapCreateAttrContext(gss_cred_id_t cred,
-                        gss_ctx_id_t ctx)
+gssEapCreateAttrContext(gss_cred_id_t gssCred,
+                        gss_ctx_id_t gssCtx)
 {
-    assert(ctx != GSS_C_NO_CONTEXT);
-    return gss_eap_attr_ctx::createAttrContext(cred, ctx);
+    gss_eap_attr_ctx *ctx;
+
+    ctx = gss_eap_attr_ctx::createAttrContext();
+    if (!ctx->initFromGssContext(NULL, gssCred, gssCtx)) {
+        delete ctx;
+        return NULL;
+    }
+
+    return ctx;
 }

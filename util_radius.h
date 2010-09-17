@@ -35,11 +35,14 @@
 
 struct gss_eap_radius_attr_provider : gss_eap_attr_provider {
 public:
-    gss_eap_radius_attr_provider(const gss_eap_attr_ctx *ctx,
-                                 gss_cred_id_t acceptorCred,
-                                 gss_ctx_id_t acceptorCtx);
-    gss_eap_radius_attr_provider(const gss_eap_radius_attr_provider &ctx);
+    gss_eap_radius_attr_provider(void) {}
     ~gss_eap_radius_attr_provider(void);
+
+    bool initFromExistingContext(const gss_eap_attr_ctx *source,
+                                 const gss_eap_attr_provider *ctx);
+    bool initFromGssContext(const gss_eap_attr_ctx *source,
+                            const gss_cred_id_t cred,
+                            const gss_ctx_id_t ctx);
 
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
     void setAttribute(int complete,
@@ -71,10 +74,8 @@ public:
     static bool init();
     static void finalize();
 
-    static gss_eap_attr_provider *
-    createAttrContext(const gss_eap_attr_ctx *ctx,
-                      gss_cred_id_t acceptorCred,
-                      gss_ctx_id_t acceptorCtx);
+    static gss_eap_attr_provider *createAttrContext(void);
+
 private:
 };
 
