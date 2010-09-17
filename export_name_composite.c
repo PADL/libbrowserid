@@ -32,6 +32,11 @@
 
 #include "gssapiP_eap.h"
 
+/*
+ * Not sure about this. If we have a generalised representation of composite
+ * names, it should be (a) defined in the naming extensions specification
+ * and (b) implemented by the mechanism glue.
+ */
 OM_uint32
 gss_export_name_composite(OM_uint32 *minor,
                           gss_name_t input_name,

@@ -384,12 +384,6 @@ gssEapExportName(OM_uint32 *minor,
     GSSEAP_KRB_INIT(&krbContext);
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
-    /*
-     * Don't export a composite name if we don't have any attributes.
-     */
-    if (composite && !NAME_HAS_ATTRIBUTES(name))
-        composite = 0;
-
     *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
     if (*minor != 0) {
         major = GSS_S_FAILURE;
