@@ -556,8 +556,12 @@ gssEapExportAttrContext(OM_uint32 *minor,
                         gss_name_t name,
                         gss_buffer_t buffer)
 {
-    if (name->attrCtx == NULL)
-        return GSS_S_UNAVAILABLE;
+    if (name->attrCtx == NULL) {
+        buffer->length = 0;
+        buffer->value = NULL;
+
+        return GSS_S_COMPLETE;
+    };
 
     try {
         name->attrCtx->marshall(buffer);
@@ -573,7 +577,8 @@ gssEapImportAttrContext(OM_uint32 *minor,
                         gss_buffer_t buffer,
                         gss_name_t name)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    if (buffer->length)
+        GSSEAP_NOT_IMPLEMENTED;
 }
 
 OM_uint32

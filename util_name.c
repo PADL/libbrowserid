@@ -287,10 +287,6 @@ importExportedName(OM_uint32 *minor,
         gss_buffer_desc buf;
 
         CHECK_REMAIN(4);
-        name->flags = load_uint32_be(p);
-        UPDATE_REMAIN(4);
-
-        CHECK_REMAIN(4);
         buf.length = load_uint32_be(p);
         UPDATE_REMAIN(4);
 
@@ -370,8 +366,6 @@ gssEapExportName(OM_uint32 *minor,
 
     exportedName->length = 6 + GSS_EAP_MECHANISM->length + 4 + krbNameLen;
     if (composite) {
-        exportedName->length += 4;
-
         major = gssEapExportAttrContext(minor, name, &attrs);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -410,9 +404,6 @@ gssEapExportName(OM_uint32 *minor,
     p += krbNameLen;
 
     if (composite) {
-        store_uint32_be(name->flags, p);
-        p += 4;
-
         store_uint32_be(attrs.length, p);
         memcpy(&p[4], attrs.value, attrs.length);
         p += 4 + attrs.length;

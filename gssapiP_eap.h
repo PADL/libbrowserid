@@ -62,8 +62,6 @@
 
 #define NAME_FLAG_NAI                       0x00000001
 #define NAME_FLAG_SERVICE                   0x00000002
-#define NAME_FLAG_RADIUS_ATTRIBUTES         0x00000004
-#define NAME_FLAG_SAML_ATTRIBUTES           0x00000008
 
 #define NAME_HAS_ATTRIBUTES(name)           ((name)->attrCtx != NULL)
 
