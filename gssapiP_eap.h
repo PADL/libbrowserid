@@ -65,18 +65,16 @@
 #define NAME_FLAG_RADIUS_ATTRIBUTES         0x00000004
 #define NAME_FLAG_SAML_ATTRIBUTES           0x00000008
 
-#define NAME_HAS_ATTRIBUTES(name)           \
-                (((name)->flags & (NAME_FLAG_RADIUS_ATTRIBUTES | \
-                                   NAME_FLAG_SAML_ATTRIBUTES)) != 0)
+#define NAME_HAS_ATTRIBUTES(name)           ((name)->attrCtx != NULL)
 
 struct gss_eap_saml_attr_ctx;
+struct gss_eap_attr_ctx;
 
 struct gss_name_struct {
     GSSEAP_MUTEX mutex; /* mutex protecting attributes */
     OM_uint32 flags;
     krb5_principal krbPrincipal; /* this is immutable */
-    struct gss_eap_radius_attr_ctx *radiusCtx;
-    struct gss_eap_saml_attr_ctx *samlCtx;
+    struct gss_eap_attr_ctx *attrCtx;
 };
 
 #define CRED_FLAG_INITIATE                  0x00000001
@@ -119,6 +117,7 @@ enum gss_eap_state {
 #define CTX_FLAG_EAP_PORT_ENABLED           0x00400000
 #define CTX_FLAG_EAP_ALT_ACCEPT             0x00800000
 #define CTX_FLAG_EAP_ALT_REJECT             0x01000000
+#define CTX_FLAG_EAP_MASK                   0xFFFF0000
 
 struct gss_eap_initiator_ctx {
     unsigned int idleWhile;

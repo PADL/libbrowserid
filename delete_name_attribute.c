@@ -39,7 +39,6 @@ gss_delete_name_attribute(OM_uint32 *minor,
 {
     OM_uint32 major;
     gss_buffer_desc prefix, suffix;
-    enum gss_eap_attribute_type type;
 
     if (name == GSS_C_NO_NAME) {
         *minor = EINVAL;
@@ -48,18 +47,8 @@ gss_delete_name_attribute(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
-    major = decomposeAttributeName(minor, attr, &prefix, &suffix);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    major = gssEapDeleteNameAttribute(minor, name, attr);
 
-    type = gssEapAttributePrefixToType(&prefix);
-    if (type == ATTR_TYPE_NONE) {
-        major = samlDeleteAttribute(minor, name, attr);
-    } else {
-        major = GSS_S_UNAVAILABLE;
-    }
-
-cleanup:
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
     return major;

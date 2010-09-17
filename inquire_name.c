@@ -32,46 +32,6 @@
 
 #include "gssapiP_eap.h"
 
-struct gss_eap_attribute_args {
-    enum gss_eap_attribute_type type;
-    gss_buffer_set_t attrs;
-};
-
-/*
- * The purpose of this callback interface is to not expose the attribute
- * prefixes to the attribute providers themselves.
- */
-static OM_uint32
-addAttribute(OM_uint32 *minor,
-             gss_name_t name,
-             gss_buffer_t attribute,
-             void *data)
-{
-    struct gss_eap_attribute_args *args = (struct gss_eap_attribute_args *)data;
-    OM_uint32 major, tmpMinor;
-    gss_buffer_desc qualifiedAttr;
-    gss_buffer_t prefix;
-
-    if (args->type != ATTR_TYPE_NONE)
-        prefix = gssEapAttributeTypeToPrefix(args->type);
-    else
-        prefix = GSS_C_NO_BUFFER;
-
-    if (prefix != GSS_C_NO_BUFFER && attribute != GSS_C_NO_BUFFER) {
-        major = composeAttributeName(minor, prefix, attribute, &qualifiedAttr);
-        if (GSS_ERROR(major))
-            return major;
-        major = gss_add_buffer_set_member(minor, &qualifiedAttr, &args->attrs);
-
-        gss_release_buffer(&tmpMinor, &qualifiedAttr);
-    } else {
-        assert(prefix != GSS_C_NO_BUFFER);
-        major = gss_add_buffer_set_member(minor, prefix, &args->attrs);
-    }
-
-    return major;
-}
-
 OM_uint32 gss_inquire_name(OM_uint32 *minor,
                            gss_name_t name,
                            int *name_is_MN,
@@ -79,8 +39,6 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
                            gss_buffer_set_t *attrs)
 {
     OM_uint32 major, tmpMinor;
-    krb5_context krbContext;
-    struct gss_eap_attribute_args args;
 
     *name_is_MN = 1;
     *MN_mech = GSS_EAP_MECHANISM;
@@ -91,50 +49,10 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
     }
 
-    GSSEAP_KRB_INIT(&krbContext);
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
-    major = gss_create_empty_buffer_set(minor, attrs);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    major = gssEapInquireName(minor, name, name_is_MN, MN_mech, attrs);
 
-    args.attrs = *attrs;
-
-    if (name->flags & NAME_FLAG_SAML_ATTRIBUTES) {
-        /* The assertion itself */
-        args.type = ATTR_TYPE_SAML_AAA_ASSERTION;
-
-        major = addAttribute(minor, name, GSS_C_NO_BUFFER, &args);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        /* Raw SAML attributes */
-#if 0
-        args.type = ATTR_TYPE_SAML_ATTR;
-        major = samlGetAttributeTypes(minor, args.type,
-                                      name, addAttribute, &args);
-        if (GSS_ERROR(major))
-            goto cleanup;
-#endif
-
-        /* Cooked local attributes */
-        args.type = ATTR_TYPE_NONE;
-        major = samlGetAttributeTypes(minor, name, args.type,
-                                      addAttribute, &args);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
-
-    if (name->flags & NAME_FLAG_RADIUS_ATTRIBUTES) {
-        /* Raw RADIUS attributes */
-        args.type = ATTR_TYPE_RADIUS_AVP;
-        major = radiusGetAttributeTypes(minor, name,
-                                        addAttribute, &args);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
-
-cleanup:
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
     if (GSS_ERROR(major))

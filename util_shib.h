@@ -30,22 +30,27 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _UTIL_RADIUS_H_
-#define _UTIL_RADIUS_H_ 1
+#ifndef _UTIL_SHIB_H_
+#define _UTIL_SHIB_H_ 1
 
-struct gss_eap_radius_attr_provider : gss_eap_attr_provider {
+#include <vector>
+
+namespace shibsp {
+    class Attribute;
+};
+
+struct gss_eap_shib_attr_provider : gss_eap_attr_provider {
 public:
-    gss_eap_radius_attr_provider(const gss_eap_attr_ctx *ctx,
-                                 gss_cred_id_t acceptorCred,
-                                 gss_ctx_id_t acceptorCtx);
-    gss_eap_radius_attr_provider(const gss_eap_radius_attr_provider &ctx);
-    ~gss_eap_radius_attr_provider(void);
+    gss_eap_shib_attr_provider(const gss_eap_attr_ctx *ctx,
+                               gss_cred_id_t acceptorCred,
+                               gss_ctx_id_t acceptorCtx);
+    ~gss_eap_shib_attr_provider(void);
 
-    bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
     void setAttribute(int complete,
                       const gss_buffer_t attr,
                       const gss_buffer_t value);
     void deleteAttribute(const gss_buffer_t value);
+    bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
     bool getAttribute(const gss_buffer_t attr,
                       int *authenticated,
                       int *complete,
@@ -61,21 +66,22 @@ public:
     static gss_eap_attr_provider *unmarshall(const gss_eap_attr_ctx *ctx,
                                              const gss_buffer_t buffer);
 
-    bool getAttribute(unsigned int attribute,
-                      int *authenticated,
-                      int *complete,
-                      gss_buffer_t value,
-                      gss_buffer_t display_value,
-                      int *more) const;
-
     static bool init();
     static void finalize();
 
     static gss_eap_attr_provider *
     createAttrContext(const gss_eap_attr_ctx *ctx,
                       gss_cred_id_t acceptorCred,
-                      gss_ctx_id_t acceptorCtx);
+                           gss_ctx_id_t acceptorCtx);
 private:
+    int getAttributeIndex(const gss_buffer_t attr) const;
+    const shibsp::Attribute *getAttribute(const gss_buffer_t attr) const;
+
+    const std::vector<shibsp::Attribute *> getAttributes(void) const {
+        return m_attributes;
+    }
+
+    std::vector<shibsp::Attribute *> m_attributes;
 };
 
-#endif /* _UTIL_RADIUS_H_ */
+#endif /* _UTIL_SHIB_H_ */

@@ -270,8 +270,7 @@ gssEapInit(void)
     gssEapInitLibEap(&minor);
     gssEapInitLibRadSec(&minor);
     eapServerRegisterMethods(&minor);
-
-    samlInit(&minor);
+    gssEapAttrProvidersInit(&minor);
 }
 
 static void
@@ -283,6 +282,6 @@ gssEapFinalize(void)
 #if 1
     eap_server_unregister_methods();
 #endif
-    samlFinalize(&minor);
+    gssEapAttrProvidersFinalize(&minor);
 }
 

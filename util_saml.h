@@ -33,95 +33,112 @@
 #ifndef _UTIL_SAML_H_
 #define _UTIL_SAML_H_ 1
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace opensaml {
+    namespace saml2 {
+        class Attribute;
+        class Assertion;
+        class NameID;
+    };
+};
 
-struct gss_eap_saml_attr_ctx;
+struct gss_eap_saml_assertion_provider : gss_eap_attr_provider {
+public:
+    gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *ctx,
+                                    const gss_buffer_t buffer)
+        : gss_eap_attr_provider(ctx)
+    {
+        m_assertion = parseAssertion(buffer);
+    }
 
-OM_uint32
-samlDuplicateAttrContext(OM_uint32 *minor,
-                         gss_name_t in,
-                         gss_name_t out);
+    gss_eap_saml_assertion_provider(const gss_eap_attr_ctx *ctx,
+                                    gss_cred_id_t acceptorCred,
+                                    gss_ctx_id_t acceptorCtx);
 
-OM_uint32
-samlCreateAttrContext(OM_uint32 *minor,
-                      gss_cred_id_t acceptorCred,
-                      gss_name_t initiatorName,
-                      time_t *pExpiryTime);
+    ~gss_eap_saml_assertion_provider(void);
 
-OM_uint32
-samlReleaseAttrContext(OM_uint32 *minor,
-                       gss_name_t name);
+    bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
+    void setAttribute(int complete,
+                      const gss_buffer_t attr,
+                      const gss_buffer_t value);
+    void deleteAttribute(const gss_buffer_t value);
+    bool getAttribute(const gss_buffer_t attr,
+                      int *authenticated,
+                      int *complete,
+                      gss_buffer_t value,
+                      gss_buffer_t display_value,
+                      int *more) const;
+    gss_any_t mapToAny(int authenticated,
+                       gss_buffer_t type_id) const;
+    void releaseAnyNameMapping(gss_buffer_t type_id,
+                               gss_any_t input) const;
 
-OM_uint32
-samlGetAttributeTypes(OM_uint32 *minor,
-                      gss_name_t name,
-                      enum gss_eap_attribute_type type,
-                      gss_eap_add_attr_cb cb,
-                      void *data);
+    void marshall(gss_buffer_t buffer) const;
+    static gss_eap_attr_provider *unmarshall(const gss_eap_attr_ctx *ctx,
+                                             const gss_buffer_t buffer);
 
-OM_uint32
-samlGetAttribute(OM_uint32 *minor,
-                 enum gss_eap_attribute_type type,
-                 gss_name_t name,
-                 gss_buffer_t attr,
-                 int *authenticated,
-                 int *complete,
-                 gss_buffer_t value,
-                 gss_buffer_t display_value,
-                 int *more);
+    void setAssertion(const opensaml::saml2::Assertion *assertion);
 
-OM_uint32
-samlSetAttribute(OM_uint32 *minor,
-                 gss_name_t name,
-                 int complete,
-                 gss_buffer_t attr,
-                 gss_buffer_t value);
+    const opensaml::saml2::Assertion *getAssertion(void) const {
+        return m_assertion;
+    }
 
-OM_uint32
-samlDeleteAttribute(OM_uint32 *minor,
-                    gss_name_t name,
-                    gss_buffer_t attr);
+    static bool init();
+    static void finalize();
 
-OM_uint32
-samlExportAttrContext(OM_uint32 *minor,
-                      gss_name_t name,
-                      gss_buffer_t buffer);
+    static gss_eap_attr_provider *
+    createAttrContext(const gss_eap_attr_ctx *ctx,
+                           gss_cred_id_t acceptorCred,
+                           gss_ctx_id_t acceptorCtx);
+private:
+    static opensaml::saml2::Assertion *
+        parseAssertion(const gss_buffer_t buffer);
 
-OM_uint32
-samlImportAttrContext(OM_uint32 *minor,
-                      gss_buffer_t buffer,
-                      gss_name_t name);
+    opensaml::saml2::Assertion *m_assertion;
+};
 
-OM_uint32
-samlGetAssertion(OM_uint32 *minor,
-                 gss_name_t name,
-                 gss_buffer_t assertion);
- 
+struct gss_eap_saml_attr_provider : gss_eap_attr_provider {
+public:
+    gss_eap_saml_attr_provider(const gss_eap_attr_ctx *ctx)
+        : gss_eap_attr_provider(ctx) {}
 
-OM_uint32
-samlMapNameToAny(OM_uint32 *minor,
-                 gss_name_t name,
-                 int authenticated,
-                 gss_buffer_t type_id,
-                 gss_any_t *output);
+    gss_eap_saml_attr_provider(const gss_eap_attr_ctx *ctx,
+                               gss_cred_id_t acceptorCred,
+                               gss_ctx_id_t acceptorCtx);
 
-OM_uint32
-samlReleaseAnyNameMapping(OM_uint32 *minor,
-                          gss_name_t name,
-                          gss_buffer_t type_id,
-                          gss_any_t *input);
+    ~gss_eap_saml_attr_provider(void);
 
-OM_uint32
-samlInit(OM_uint32 *minor);
+    bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
+    void setAttribute(int complete,
+                      const gss_buffer_t attr,
+                      const gss_buffer_t value);
+    void deleteAttribute(const gss_buffer_t value);
+    bool getAttribute(const gss_buffer_t attr,
+                      int *authenticated,
+                      int *complete,
+                      gss_buffer_t value,
+                      gss_buffer_t display_value,
+                      int *more) const;
+    gss_any_t mapToAny(int authenticated,
+                       gss_buffer_t type_id) const;
+    void releaseAnyNameMapping(gss_buffer_t type_id,
+                               gss_any_t input) const;
 
-OM_uint32
-samlFinalize(OM_uint32 *minor);
+    void marshall(gss_buffer_t buffer) const;
+    static gss_eap_attr_provider *unmarshall(const gss_eap_attr_ctx *ctx,
+                                             const gss_buffer_t buffer);
 
+    const opensaml::saml2::Attribute *
+        getAttribute(const gss_buffer_t attr) const;
 
-#ifdef __cplusplus
-}
-#endif
+    const opensaml::saml2::Assertion *getAssertion(void) const;
+
+    static bool init();
+    static void finalize();
+
+    static gss_eap_attr_provider *
+    createAttrContext(const gss_eap_attr_ctx *ctx,
+                           gss_cred_id_t acceptorCred,
+                           gss_ctx_id_t acceptorCtx);
+};
 
 #endif /* _UTIL_SAML_H_ */

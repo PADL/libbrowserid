@@ -281,18 +281,6 @@ gssEapValidateMechs(OM_uint32 *minor,
                    const gss_OID_set mechs);
 
 /* util_name.c */
-enum gss_eap_attribute_type {
-    ATTR_TYPE_NONE                  = 0,
-    ATTR_TYPE_SAML_AAA_ASSERTION    = 1,
-    ATTR_TYPE_SAML_ATTR             = 2,
-    ATTR_TYPE_RADIUS_AVP            = 3
-};
-
-typedef OM_uint32 (*gss_eap_add_attr_cb)(OM_uint32 *minor,
-                                         gss_name_t name,
-                                         gss_buffer_t attribute,
-                                         void *data);
-
 OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapExportName(OM_uint32 *minor,
@@ -303,21 +291,6 @@ OM_uint32 gssEapImportName(OM_uint32 *minor,
                            const gss_buffer_t input_name_buffer,
                            gss_OID input_name_type,
                            gss_name_t *output_name);
-
-enum gss_eap_attribute_type
-gssEapAttributePrefixToType(const gss_buffer_t prefix);
-gss_buffer_t
-gssEapAttributeTypeToPrefix(enum gss_eap_attribute_type type);
-OM_uint32
-decomposeAttributeName(OM_uint32 *minor,
-                       const gss_buffer_t attribute,
-                       gss_buffer_t prefix,
-                       gss_buffer_t suffix);
-OM_uint32
-composeAttributeName(OM_uint32 *minor,
-                     const gss_buffer_t prefix,
-                     const gss_buffer_t suffix,
-                     gss_buffer_t attribute);
 
 /* util_oid.c */
 OM_uint32
@@ -430,9 +403,6 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_THREAD_ONCE              pthread_once_t
 #define GSSEAP_ONCE(o, i)               pthread_once((o), (i))
 #define GSSEAP_ONCE_INITIALIZER         PTHREAD_ONCE_INIT
-
-#include "util_radius.h"
-#include "util_saml.h"
 
 /* Helper functions */
 static inline void
@@ -548,5 +518,7 @@ store_oid(gss_OID oid, void *vp)
 #ifdef __cplusplus
 }
 #endif
+
+#include "util_attr.h"
 
 #endif /* _UTIL_H_ */

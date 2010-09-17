@@ -60,6 +60,7 @@ libmech_eap_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
+	util_attr.cpp				\
 	util_buffer.c				\
 	util_context.c				\
 	util_cksum.c				\
@@ -70,8 +71,9 @@ libmech_eap_la_SOURCES =    			\
 	util_name.c				\
 	util_oid.c				\
 	util_ordering.c				\
-	util_radius.c				\
+	util_radius.cpp				\
 	util_saml.cpp				\
+	util_shib.cpp				\
 	util_token.c				\
 	verify_mic.c				\
 	wrap.c					\
