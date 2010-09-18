@@ -110,6 +110,11 @@ public:
 
 protected:
     const gss_eap_attr_ctx *m_manager;
+
+private:
+    /* make non-copyable */
+    gss_eap_attr_source(const gss_eap_attr_source&);
+    gss_eap_attr_source& operator=(const gss_eap_attr_source&);
 };
 
 typedef gss_eap_attr_source *(*gss_eap_attr_create_factory)(void);
@@ -184,6 +189,10 @@ public:
     gss_eap_attr_source *getProvider(const gss_buffer_t prefix) const;
 
 private:
+    /* make non-copyable */
+    gss_eap_attr_ctx(const gss_eap_attr_ctx&);
+    gss_eap_attr_ctx& operator=(const gss_eap_attr_ctx&);
+
     gss_eap_attr_source *m_sources[ATTR_TYPE_MAX];
 };
 
