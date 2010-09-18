@@ -225,7 +225,7 @@ gss_eap_saml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id,
 }
 
 void
-gss_eap_saml_assertion_provider::marshall(gss_buffer_t buffer) const
+gss_eap_saml_assertion_provider::exportToBuffer(gss_buffer_t buffer) const
 {
     ostringstream sink;
     string str;
@@ -243,8 +243,8 @@ gss_eap_saml_assertion_provider::marshall(gss_buffer_t buffer) const
 }
 
 bool
-gss_eap_saml_assertion_provider::unmarshall(const gss_eap_attr_ctx *ctx,
-                                            const gss_buffer_t buffer)
+gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
+                                                const gss_buffer_t buffer)
 {
     assert(m_assertion == NULL);
 
@@ -418,15 +418,15 @@ gss_eap_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
 }
 
 void
-gss_eap_saml_attr_provider::marshall(gss_buffer_t buffer) const
+gss_eap_saml_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 {
     buffer->length = 0;
     buffer->value = NULL;
 }
 
 bool
-gss_eap_saml_attr_provider::unmarshall(const gss_eap_attr_ctx *ctx,
-                                       const gss_buffer_t buffer)
+gss_eap_saml_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
+                                           const gss_buffer_t buffer)
 {
     return true;
 }

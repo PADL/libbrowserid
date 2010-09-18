@@ -92,9 +92,9 @@ public:
     virtual void releaseAnyNameMapping(gss_buffer_t type_id,
                                        gss_any_t input) const {}
 
-    virtual void marshall(gss_buffer_t buffer) const {}
-    virtual bool unmarshall(const gss_eap_attr_ctx *ctx,
-                            const gss_buffer_t buffer) { return false; }
+    virtual void exportToBuffer(gss_buffer_t buffer) const {}
+    virtual bool initFromBuffer(const gss_eap_attr_ctx *ctx,
+                                const gss_buffer_t buffer) { return false; }
 
     static bool init() { return true; }
     static void finalize() {}
@@ -110,7 +110,7 @@ typedef gss_eap_attr_provider *(*gss_eap_attr_create_factory)(void);
 struct gss_eap_attr_ctx : gss_eap_attr_provider
 {
 public:
-    gss_eap_attr_ctx(void) {}
+    gss_eap_attr_ctx(void);
     ~gss_eap_attr_ctx(void);
 
     bool initFromExistingContext(const gss_eap_attr_ctx *source,
@@ -118,8 +118,6 @@ public:
     bool initFromGssContext(const gss_eap_attr_ctx *source,
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
-
-    static gss_eap_attr_ctx *createAttrContext(void);
 
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
     bool getAttributeTypes(gss_buffer_set_t *attrs);
@@ -139,9 +137,9 @@ public:
     void releaseAnyNameMapping(gss_buffer_t type_id,
                                gss_any_t input) const;
 
-    void marshall(gss_buffer_t buffer) const;
-    bool unmarshall(const gss_eap_attr_ctx *ctx,
-                    const gss_buffer_t buffer);
+    void exportToBuffer(gss_buffer_t buffer) const;
+    bool initFromBuffer(const gss_eap_attr_ctx *ctx,
+                        const gss_buffer_t buffer);
     static bool init();
     static void finalize();
 

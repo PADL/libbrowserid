@@ -68,9 +68,9 @@ public:
     void releaseAnyNameMapping(gss_buffer_t type_id,
                                gss_any_t input) const;
 
-    void marshall(gss_buffer_t buffer) const;
-    bool unmarshall(const gss_eap_attr_ctx *ctx,
-                    const gss_buffer_t buffer);
+    void exportToBuffer(gss_buffer_t buffer) const;
+    bool initFromBuffer(const gss_eap_attr_ctx *ctx,
+                        const gss_buffer_t buffer);
 
     void setAssertion(const opensaml::saml2::Assertion *assertion);
 
@@ -111,9 +111,9 @@ public:
     void releaseAnyNameMapping(gss_buffer_t type_id,
                                gss_any_t input) const;
 
-    void marshall(gss_buffer_t buffer) const;
-    bool unmarshall(const gss_eap_attr_ctx *ctx,
-                    const gss_buffer_t buffer);
+    void exportToBuffer(gss_buffer_t buffer) const;
+    bool initFromBuffer(const gss_eap_attr_ctx *ctx,
+                        const gss_buffer_t buffer);
 
     const opensaml::saml2::Attribute *
         getAttribute(const gss_buffer_t attr) const;

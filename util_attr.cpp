@@ -44,22 +44,15 @@ gss_eap_attr_factories[ATTR_TYPE_MAX] = {
     gss_eap_shib_attr_provider::createAttrContext
 };
 
-gss_eap_attr_ctx *
-gss_eap_attr_ctx::createAttrContext(void)
+gss_eap_attr_ctx::gss_eap_attr_ctx(void)
 {
-    gss_eap_attr_ctx *ctx;
-
-    ctx = new gss_eap_attr_ctx;
-
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
 
         provider = (gss_eap_attr_factories[i])();
         if (provider != NULL)
-            ctx->m_providers[i] = provider;
+            m_providers[i] = provider;
     }
-
-    return ctx;
 }
 
 bool
@@ -304,22 +297,32 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
 }
 
 void
-gss_eap_attr_ctx::marshall(gss_buffer_t buffer) const
+gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
-    /* For now, just marshall the RADIUS context. */
+    m_providers[ATTR_TYPE_RADIUS]->exportToBuffer(buffer);
 }
 
 bool
-gss_eap_attr_ctx::unmarshall(const gss_eap_attr_ctx *ctx,
-                             const gss_buffer_t buffer)
+gss_eap_attr_ctx::initFromBuffer(const gss_eap_attr_ctx *ctx,
+                                 const gss_buffer_t buffer)
 {
     unsigned int i;
+    bool ret;
 
-    for (i = 0; i < ATTR_TYPE_MAX; i++) {
+    ret = m_providers[ATTR_TYPE_RADIUS]->initFromBuffer(this, buffer);
+    if (!ret)
+        return false;
+
+    for (i = ATTR_TYPE_RADIUS + 1; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider = m_providers[i];
+
+        ret = provider->initFromGssContext(
+            this, GSS_C_NO_CREDENTIAL, GSS_C_NO_CONTEXT);
+        if (!ret)
+            break;
     }
 
-    return false;
+    return ret;
 }
 
 
@@ -574,7 +577,7 @@ gssEapExportAttrContext(OM_uint32 *minor,
     };
 
     try {
-        name->attrCtx->marshall(buffer);
+        name->attrCtx->exportToBuffer(buffer);
     } catch (std::exception &e) {
         return mapException(minor, e);
     }
@@ -587,8 +590,20 @@ gssEapImportAttrContext(OM_uint32 *minor,
                         gss_buffer_t buffer,
                         gss_name_t name)
 {
-    if (buffer->length)
-        GSSEAP_NOT_IMPLEMENTED;
+    if (buffer->length != 0) {
+        gss_eap_attr_ctx *ctx = new gss_eap_attr_ctx;
+
+        try {
+            if (!ctx->initFromBuffer(NULL, buffer)) {
+                delete ctx;
+                return GSS_S_DEFECTIVE_TOKEN;
+            }
+            name->attrCtx = ctx;
+        } catch (std::exception &e) {
+            delete ctx;
+            return mapException(minor, e);
+        }
+    }
 
     return GSS_S_COMPLETE;
 }
@@ -598,19 +613,20 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
                            gss_name_t in,
                            gss_name_t out)
 {
+    gss_eap_attr_ctx *ctx = NULL;
+
+    assert(out->attrCtx == NULL);
+
     try {
         if (in->attrCtx != NULL) {
-            gss_eap_attr_ctx *ctx = new gss_eap_attr_ctx;
-
-            out->attrCtx = new gss_eap_attr_ctx;
             if (!ctx->initFromExistingContext(NULL, in->attrCtx)) {
                 delete ctx;
                 return GSS_S_FAILURE;
             }
             out->attrCtx = ctx;
-        } else
-            out->attrCtx = NULL;
+        }
     } catch (std::exception &e) {
+        delete ctx;
         return mapException(minor, e);
     }
 
@@ -693,7 +709,7 @@ gssEapCreateAttrContext(gss_cred_id_t gssCred,
 {
     gss_eap_attr_ctx *ctx;
 
-    ctx = gss_eap_attr_ctx::createAttrContext();
+    ctx = new gss_eap_attr_ctx;
     if (!ctx->initFromGssContext(NULL, gssCred, gssCtx)) {
         delete ctx;
         return NULL;
