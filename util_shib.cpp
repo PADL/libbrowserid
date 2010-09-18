@@ -309,6 +309,9 @@ gss_eap_shib_attr_source::getAttribute(const gss_buffer_t attr,
     buf.length = strlen((char *)buf.value);
 
     duplicateBuffer(buf, value);
+
+    if (display_value != NULL)
+        duplicateBuffer(buf, display_value);
  
     *authenticated = TRUE;
     *complete = FALSE;
