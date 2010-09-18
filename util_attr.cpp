@@ -560,10 +560,12 @@ gssEapExportAttrContext(OM_uint32 *minor,
         buffer->value = NULL;
 
         return GSS_S_COMPLETE;
-    };
+    }
 
     try {
         name->attrCtx->exportToBuffer(buffer);
+        if (buffer->length == 0)
+            return GSS_S_FAILURE;
     } catch (std::exception &e) {
         return mapException(minor, e);
     }
@@ -582,7 +584,7 @@ gssEapImportAttrContext(OM_uint32 *minor,
 
     if (buffer->length != 0) {
         try {
-            ctx = new gss_eap_attr_ctx;
+            ctx = new gss_eap_attr_ctx();
 
             if (!ctx->initFromBuffer(NULL, buffer)) {
                 delete ctx;
@@ -609,6 +611,7 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
 
     try {
         if (in->attrCtx != NULL) {
+            ctx = new gss_eap_attr_ctx();
             if (!ctx->initFromExistingContext(NULL, in->attrCtx)) {
                 delete ctx;
                 return GSS_S_FAILURE;
@@ -706,7 +709,7 @@ gssEapCreateAttrContext(gss_cred_id_t gssCred,
 {
     gss_eap_attr_ctx *ctx;
 
-    ctx = new gss_eap_attr_ctx;
+    ctx = new gss_eap_attr_ctx();
     if (!ctx->initFromGssContext(NULL, gssCred, gssCtx)) {
         delete ctx;
         return NULL;
