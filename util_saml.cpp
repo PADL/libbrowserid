@@ -75,7 +75,7 @@ class auto_ptr_gss_buffer {
  * assertion.
  */
 bool
-gss_eap_saml_assertion_source::initFromExistingContext(const gss_eap_attr_ctx *source,
+gss_eap_saml_assertion_source::initFromExistingContext(const gss_eap_attr_ctx *manager,
                                                        const gss_eap_attr_source *ctx)
 {
     /* Then we may be creating from an existing attribute context */
@@ -83,7 +83,7 @@ gss_eap_saml_assertion_source::initFromExistingContext(const gss_eap_attr_ctx *s
 
     assert(m_assertion == NULL);
 
-    if (!gss_eap_attr_source::initFromExistingContext(source, ctx))
+    if (!gss_eap_attr_source::initFromExistingContext(manager, ctx))
         return false;
 
     saml = dynamic_cast<const gss_eap_saml_assertion_source *>(ctx);
@@ -93,7 +93,7 @@ gss_eap_saml_assertion_source::initFromExistingContext(const gss_eap_attr_ctx *s
 }
 
 bool
-gss_eap_saml_assertion_source::initFromGssContext(const gss_eap_attr_ctx *source,
+gss_eap_saml_assertion_source::initFromGssContext(const gss_eap_attr_ctx *manager,
                                                   const gss_cred_id_t gssCred,
                                                   const gss_ctx_id_t gssCtx)
 {
@@ -104,7 +104,7 @@ gss_eap_saml_assertion_source::initFromGssContext(const gss_eap_attr_ctx *source
 
     assert(m_assertion == NULL);
 
-    if (!gss_eap_attr_source::initFromGssContext(source, gssCred, gssCtx))
+    if (!gss_eap_attr_source::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
     radius = dynamic_cast<const gss_eap_radius_attr_source *>

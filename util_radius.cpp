@@ -33,21 +33,21 @@
 #include "gssapiP_eap.h"
 
 bool
-gss_eap_radius_attr_source::initFromExistingContext(const gss_eap_attr_ctx *source,
+gss_eap_radius_attr_source::initFromExistingContext(const gss_eap_attr_ctx *manager,
                                                     const gss_eap_attr_source *ctx)
 {
-    if (!gss_eap_attr_source::initFromExistingContext(source, ctx))
+    if (!gss_eap_attr_source::initFromExistingContext(manager, ctx))
         return false;
 
     return true;
 }
 
 bool
-gss_eap_radius_attr_source::initFromGssContext(const gss_eap_attr_ctx *source,
+gss_eap_radius_attr_source::initFromGssContext(const gss_eap_attr_ctx *manager,
                                                const gss_cred_id_t gssCred,
                                                const gss_ctx_id_t gssCtx)
 {
-    if (!gss_eap_attr_source::initFromGssContext(source, gssCred, gssCtx))
+    if (!gss_eap_attr_source::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
     return true;

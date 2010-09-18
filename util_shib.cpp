@@ -77,12 +77,12 @@ using namespace xercesc;
 using namespace std;
 
 bool
-gss_eap_shib_attr_source::initFromExistingContext(const gss_eap_attr_ctx *source,
+gss_eap_shib_attr_source::initFromExistingContext(const gss_eap_attr_ctx *manager,
                                                   const gss_eap_attr_source *ctx)
 {
     const gss_eap_shib_attr_source *shib;
 
-    if (!gss_eap_attr_source::initFromExistingContext(source, ctx))
+    if (!gss_eap_attr_source::initFromExistingContext(manager, ctx))
         return false;
 
     shib = dynamic_cast<const gss_eap_shib_attr_source *>(ctx);
@@ -140,7 +140,7 @@ addRadiusAttribute(const gss_eap_attr_source *provider,
 }
 
 bool
-gss_eap_shib_attr_source::initFromGssContext(const gss_eap_attr_ctx *source,
+gss_eap_shib_attr_source::initFromGssContext(const gss_eap_attr_ctx *manager,
                                              const gss_cred_id_t gssCred,
                                              const gss_ctx_id_t gssCtx)
 {
@@ -150,13 +150,13 @@ gss_eap_shib_attr_source::initFromGssContext(const gss_eap_attr_ctx *source,
     ShibbolethResolver *resolver = NULL;
     OM_uint32 minor;
 
-    if (!gss_eap_attr_source::initFromGssContext(source, gssCred, gssCtx))
+    if (!gss_eap_attr_source::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
     saml = dynamic_cast<const gss_eap_saml_assertion_source *>
-        (source->getProvider(ATTR_TYPE_SAML_ASSERTION));
+        (manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     radius = dynamic_cast<const gss_eap_radius_attr_source *>
-        (source->getProvider(ATTR_TYPE_RADIUS));
+        (manager->getProvider(ATTR_TYPE_RADIUS));
 
     if (gssCred != GSS_C_NO_CREDENTIAL &&
         gss_display_name(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
