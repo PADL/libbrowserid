@@ -343,8 +343,24 @@ gss_eap_shib_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_shib_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 {
+    DDF attrs(NULL);
+
     buffer->length = 0;
     buffer->value = NULL;
+
+    for (vector<Attribute*>::const_iterator a = m_attributes.begin();
+         a != m_attributes.end(); ++a) {
+        DDF attr = (*a)->marshall();
+        attrs.add(attr);
+    }
+
+    ostringstream sink;
+    sink << attrs;
+    string str = sink.str();
+
+    duplicateBuffer(str, buffer);
+
+    attrs.destroy();
 }
 
 bool
@@ -353,6 +369,24 @@ gss_eap_shib_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 {
     if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
         return false;
+
+    if (buffer->length == 0)
+        return false;
+
+    DDF attrs(NULL);
+    string str((const char *)buffer->value, buffer->length);
+    istringstream source(str);
+
+    source >> attrs;
+
+    DDF attr = attrs.first();
+    while (!attr.isnull()) {
+        Attribute *attribute = Attribute::unmarshall(attr);
+        m_attributes.push_back(attribute);
+        attr = attrs.next();
+    }
+
+    attrs.destroy();
 
     return true;
 }
