@@ -249,13 +249,16 @@ gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
     if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
         return false;
 
-    assert(m_assertion == NULL);
-
     if (buffer->length == 0)
         return true;
 
+    assert(m_assertion == NULL);
+
     m_assertion = parseAssertion(buffer);
-    return (m_assertion != NULL);
+    if (m_assertion == NULL)
+        return false;
+
+    return true;
 }
 
 bool
@@ -435,7 +438,7 @@ bool
 gss_eap_saml_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
                                            const gss_buffer_t buffer)
 {
-    return true;
+    return gss_eap_attr_provider::initFromBuffer(ctx, buffer);
 }
 
 bool

@@ -371,7 +371,9 @@ gss_eap_shib_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
         return false;
 
     if (buffer->length == 0)
-        return false;
+        return true;
+
+    assert(m_attributes.size() == 0);
 
     DDF attrs(NULL);
     string str((const char *)buffer->value, buffer->length);
