@@ -85,7 +85,7 @@ gss_eap_shib_attr_source::initFromExistingContext(const gss_eap_attr_ctx *manage
     if (!gss_eap_attr_source::initFromExistingContext(manager, ctx))
         return false;
 
-    shib = dynamic_cast<const gss_eap_shib_attr_source *>(ctx);
+    shib = static_cast<const gss_eap_shib_attr_source *>(ctx);
     if (shib != NULL)
         m_attributes = duplicateAttributes(shib->getAttributes());
 
@@ -103,7 +103,7 @@ addRadiusAttribute(const gss_eap_attr_source *provider,
     vector <string> attributeIds(1);
     SimpleAttribute *a;
 
-    radius = dynamic_cast<const gss_eap_radius_attr_source *>(provider);
+    radius = static_cast<const gss_eap_radius_attr_source *>(provider);
     shib = static_cast<const gss_eap_shib_attr_source *>(data);
 
     assert(radius != NULL && shib != NULL);
@@ -153,9 +153,9 @@ gss_eap_shib_attr_source::initFromGssContext(const gss_eap_attr_ctx *manager,
     if (!gss_eap_attr_source::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
-    saml = dynamic_cast<const gss_eap_saml_assertion_source *>
+    saml = static_cast<const gss_eap_saml_assertion_source *>
         (manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
-    radius = dynamic_cast<const gss_eap_radius_attr_source *>
+    radius = static_cast<const gss_eap_radius_attr_source *>
         (manager->getProvider(ATTR_TYPE_RADIUS));
 
     if (gssCred != GSS_C_NO_CREDENTIAL &&

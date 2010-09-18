@@ -86,7 +86,7 @@ gss_eap_saml_assertion_source::initFromExistingContext(const gss_eap_attr_ctx *m
     if (!gss_eap_attr_source::initFromExistingContext(manager, ctx))
         return false;
 
-    saml = dynamic_cast<const gss_eap_saml_assertion_source *>(ctx);
+    saml = static_cast<const gss_eap_saml_assertion_source *>(ctx);
     setAssertion(saml->getAssertion());
 
     return true;
@@ -107,7 +107,7 @@ gss_eap_saml_assertion_source::initFromGssContext(const gss_eap_attr_ctx *manage
     if (!gss_eap_attr_source::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
-    radius = dynamic_cast<const gss_eap_radius_attr_source *>
+    radius = static_cast<const gss_eap_radius_attr_source *>
         (m_manager->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
         radius->getAttribute(512 /* XXX */, &authenticated, &complete,
@@ -283,7 +283,7 @@ gss_eap_saml_attr_source::getAssertion(void) const
 {
     const gss_eap_saml_assertion_source *saml;
     
-    saml = dynamic_cast<const gss_eap_saml_assertion_source *>
+    saml = static_cast<const gss_eap_saml_assertion_source *>
         (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     if (saml != NULL)
         return saml->getAssertion();
