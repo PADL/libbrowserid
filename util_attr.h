@@ -71,7 +71,7 @@ public:
     }
 
     typedef bool
-    gss_eap_attr_enumeration_cb(const gss_eap_attr_source *provider,
+    gss_eap_attr_enumeration_cb(const gss_eap_attr_source *source,
                                 const gss_buffer_t attribute,
                                 void *data);
 
@@ -184,7 +184,7 @@ public:
     gss_eap_attr_source *getProvider(const gss_buffer_t prefix) const;
 
 private:
-    gss_eap_attr_source *m_providers[ATTR_TYPE_MAX];
+    gss_eap_attr_source *m_sources[ATTR_TYPE_MAX];
 };
 
 #include "util_radius.h"

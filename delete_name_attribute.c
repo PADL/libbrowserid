@@ -38,7 +38,6 @@ gss_delete_name_attribute(OM_uint32 *minor,
                           gss_buffer_t attr)
 {
     OM_uint32 major;
-    gss_buffer_desc prefix, suffix;
 
     if (name == GSS_C_NO_NAME) {
         *minor = EINVAL;

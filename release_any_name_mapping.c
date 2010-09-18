@@ -49,6 +49,8 @@ gss_release_any_name_mapping(OM_uint32 *minor,
 
     major = gssEapReleaseAnyNameMapping(minor, name, type_id, input);
 
+    *input = NULL;
+
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
     return major;

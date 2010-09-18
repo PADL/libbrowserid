@@ -43,7 +43,6 @@ gss_get_name_attribute(OM_uint32 *minor,
                        int *more)
 {
     OM_uint32 major;
-    gss_buffer_desc prefix, suffix;
 
     if (name == GSS_C_NO_NAME) {
         *minor = EINVAL;
