@@ -43,13 +43,13 @@ namespace shibresolver {
     class ShibbolethResolver;
 };
 
-struct gss_eap_shib_attr_source : gss_eap_attr_source {
+struct gss_eap_shib_attr_provider : gss_eap_attr_provider {
 public:
-    gss_eap_shib_attr_source(void) {}
-    ~gss_eap_shib_attr_source(void);
+    gss_eap_shib_attr_provider(void) {}
+    ~gss_eap_shib_attr_provider(void);
 
     bool initFromExistingContext(const gss_eap_attr_ctx *source,
-                                 const gss_eap_attr_source *ctx);
+                                 const gss_eap_attr_provider *ctx);
     bool initFromGssContext(const gss_eap_attr_ctx *source,
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
@@ -78,7 +78,7 @@ public:
     static bool init();
     static void finalize();
 
-    static gss_eap_attr_source *createAttrContext(void);
+    static gss_eap_attr_provider *createAttrContext(void);
 
 private:
     static shibsp::Attribute *
@@ -94,7 +94,7 @@ private:
     }
 
     friend bool
-    addRadiusAttribute(const gss_eap_attr_source *provider,
+    addRadiusAttribute(const gss_eap_attr_provider *source,
                        const gss_buffer_t attribute,
                        void *data);
 

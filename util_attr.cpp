@@ -37,37 +37,39 @@
 #include <new>
 
 static gss_eap_attr_create_factory
-gss_eap_attr_factories[ATTR_TYPE_MAX] = {
-    gss_eap_radius_attr_source::createAttrContext,
-    gss_eap_saml_assertion_source::createAttrContext,
-    gss_eap_saml_attr_source::createAttrContext,
-    gss_eap_shib_attr_source::createAttrContext
-};
+gss_eap_attr_factories[ATTR_TYPE_MAX];
+
+void
+gss_eap_attr_ctx::registerProvider(unsigned int type,
+                                   gss_eap_attr_create_factory factory)
+{
+    gss_eap_attr_factories[type] = factory;
+}
 
 gss_eap_attr_ctx::gss_eap_attr_ctx(void)
 {
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_source *source;
+        gss_eap_attr_provider *provider;
 
-        source = (gss_eap_attr_factories[i])();
+        provider = (gss_eap_attr_factories[i])();
 
-        m_sources[i] = source;
+        m_providers[i] = provider;
     }
 }
 
 bool
 gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager,
-                                          const gss_eap_attr_source *source)
+                                          const gss_eap_attr_provider *provider)
 {
-    if (!gss_eap_attr_source::initFromExistingContext(this, source))
+    if (!gss_eap_attr_provider::initFromExistingContext(this, provider))
         return false;
 
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_source *source;
+        gss_eap_attr_provider *provider;
 
-        source = m_sources[i];
-        if (source != NULL) {
-            if (!source->initFromExistingContext(this, source))
+        provider = m_providers[i];
+        if (provider != NULL) {
+            if (!provider->initFromExistingContext(this, provider))
                 return false;
         }
     }
@@ -80,15 +82,15 @@ gss_eap_attr_ctx::initFromGssContext(const gss_eap_attr_ctx *manager,
                                      const gss_cred_id_t cred,
                                      const gss_ctx_id_t ctx)
 {
-    if (!gss_eap_attr_source::initFromGssContext(this, cred, ctx))
+    if (!gss_eap_attr_provider::initFromGssContext(this, cred, ctx))
         return false;
 
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_source *source;
+        gss_eap_attr_provider *provider;
 
-        source = m_sources[i];
-        if (source != NULL) {
-            if (!source->initFromGssContext(this, cred, ctx))
+        provider = m_providers[i];
+        if (provider != NULL) {
+            if (!provider->initFromGssContext(this, cred, ctx))
                 return false;
         }
     }
@@ -99,41 +101,41 @@ gss_eap_attr_ctx::initFromGssContext(const gss_eap_attr_ctx *manager,
 gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
 {
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++)
-        delete m_sources[i];
+        delete m_providers[i];
 }
 
 bool
 gss_eap_attr_ctx::init(void)
 {
-    return gss_eap_radius_attr_source::init() &&
-           gss_eap_saml_assertion_source::init() &&
-           gss_eap_saml_attr_source::init() &&
-           gss_eap_shib_attr_source::init();
+    return gss_eap_radius_attr_provider::init() &&
+           gss_eap_saml_assertion_provider::init() &&
+           gss_eap_saml_attr_provider::init() &&
+           gss_eap_shib_attr_provider::init();
 }
 
 void
 gss_eap_attr_ctx::finalize(void)
 {
-    gss_eap_shib_attr_source::finalize();
-    gss_eap_saml_attr_source::finalize();
-    gss_eap_saml_assertion_source::finalize();
-    gss_eap_radius_attr_source::finalize();
+    gss_eap_shib_attr_provider::finalize();
+    gss_eap_saml_attr_provider::finalize();
+    gss_eap_saml_assertion_provider::finalize();
+    gss_eap_radius_attr_provider::finalize();
 }
 
-gss_eap_attr_source *
+gss_eap_attr_provider *
 gss_eap_attr_ctx::getProvider(unsigned int type) const
 {
-    return m_sources[type];
+    return m_providers[type];
 }
 
-gss_eap_attr_source *
+gss_eap_attr_provider *
 gss_eap_attr_ctx::getProvider(const gss_buffer_t prefix) const
 {
     unsigned int type;
 
     type = attributePrefixToType(prefix);
 
-    return m_sources[type];
+    return m_providers[type];
 }
 
 void
@@ -143,13 +145,13 @@ gss_eap_attr_ctx::setAttribute(int complete,
 {
     gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
     unsigned int type;
-    gss_eap_attr_source *source;
+    gss_eap_attr_provider *provider;
 
     decomposeAttributeName(attr, &type, &suffix);
 
-    source = m_sources[type];
-    if (source != NULL) {
-        source->setAttribute(complete,
+    provider = m_providers[type];
+    if (provider != NULL) {
+        provider->setAttribute(complete,
                                (type == ATTR_TYPE_LOCAL) ? attr : &suffix,
                                value);
                                
@@ -161,13 +163,13 @@ gss_eap_attr_ctx::deleteAttribute(const gss_buffer_t attr)
 {
     gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
     unsigned int type;
-    gss_eap_attr_source *source;
+    gss_eap_attr_provider *provider;
 
     decomposeAttributeName(attr, &type, &suffix);
 
-    source = m_sources[type];
-    if (source != NULL) {
-        source->deleteAttribute(type == ATTR_TYPE_LOCAL ? attr : &suffix);
+    provider = m_providers[type];
+    if (provider != NULL) {
+        provider->deleteAttribute(type == ATTR_TYPE_LOCAL ? attr : &suffix);
     }
 }
 
@@ -178,13 +180,13 @@ gss_eap_attr_ctx::getAttributeTypes(gss_eap_attr_enumeration_cb cb, void *data) 
     size_t i;
 
     for (i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_source *source;
+        gss_eap_attr_provider *provider;
 
-        source = m_sources[i];
-        if (source == NULL)
+        provider = m_providers[i];
+        if (provider == NULL)
             continue;
 
-        ret = source->getAttributeTypes(cb, data);
+        ret = provider->getAttributeTypes(cb, data);
         if (ret == false)
             break;
     }
@@ -198,7 +200,7 @@ struct eap_gss_get_attr_types_args {
 };
 
 static bool
-addAttribute(const gss_eap_attr_source *source,
+addAttribute(const gss_eap_attr_provider *provider,
              const gss_buffer_t attribute,
              void *data)
 {
@@ -235,15 +237,15 @@ gss_eap_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
     args.attrs = *attrs;
 
     for (i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_source *source;
+        gss_eap_attr_provider *provider;
 
         args.type = i;
 
-        source = m_sources[i];
-        if (source == NULL)
+        provider = m_providers[i];
+        if (provider == NULL)
             continue;
 
-        ret = source->getAttributeTypes(addAttribute, (void *)&args);
+        ret = provider->getAttributeTypes(addAttribute, (void *)&args);
         if (ret == false)
             break;
     }
@@ -265,20 +267,20 @@ gss_eap_attr_ctx::getAttribute(const gss_buffer_t attr,
 {
     gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
     unsigned int type;
-    gss_eap_attr_source *source;
+    gss_eap_attr_provider *provider;
     bool ret;
 
     decomposeAttributeName(attr, &type, &suffix);
 
-    source = m_sources[type];
-    if (source == NULL) {
+    provider = m_providers[type];
+    if (provider == NULL) {
         *more = 0;
         return false;
     }
 
-    ret = source->getAttribute(type == ATTR_TYPE_LOCAL ? attr : &suffix,
-                               authenticated, complete,
-                               value, display_value, more);
+    ret = provider->getAttribute(type == ATTR_TYPE_LOCAL ? attr : &suffix,
+                                 authenticated, complete,
+                                 value, display_value, more);
 
     return ret;
 }
@@ -299,7 +301,7 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
-    m_sources[ATTR_TYPE_RADIUS]->exportToBuffer(buffer);
+    m_providers[ATTR_TYPE_RADIUS]->exportToBuffer(buffer);
 }
 
 bool
@@ -309,16 +311,16 @@ gss_eap_attr_ctx::initFromBuffer(const gss_eap_attr_ctx *manager,
     unsigned int i;
     bool ret;
 
-    ret = m_sources[ATTR_TYPE_RADIUS]->initFromBuffer(this, buffer);
+    ret = m_providers[ATTR_TYPE_RADIUS]->initFromBuffer(this, buffer);
     if (!ret)
         return false;
 
     for (i = ATTR_TYPE_RADIUS + 1; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_source *source = m_sources[i];
+        gss_eap_attr_provider *provider = m_providers[i];
 
-        ret = source->initFromGssContext(this,
-                                         GSS_C_NO_CREDENTIAL,
-                                         GSS_C_NO_CONTEXT);
+        ret = provider->initFromGssContext(this,
+                                           GSS_C_NO_CREDENTIAL,
+                                           GSS_C_NO_CONTEXT);
         if (!ret)
             break;
     }
