@@ -433,12 +433,10 @@ gss_accept_sec_context(OM_uint32 *minor,
     OM_uint32 tmpMajor, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
     struct gss_eap_acceptor_sm *sm = NULL;
-    gss_buffer_desc innerInputToken, innerOutputToken;
+    gss_buffer_desc innerInputToken = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
 
     *minor = 0;
-
-    innerOutputToken.length = 0;
-    innerOutputToken.value = NULL;
 
     output_token->length = 0;
     output_token->value = NULL;

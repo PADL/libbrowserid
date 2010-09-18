@@ -294,10 +294,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
     OM_uint32 tmpMajor, tmpMinor;
     time_t now;
     int initialContextToken = 0, code;
-    gss_buffer_desc respBuf;
-
-    respBuf.length = 0;
-    respBuf.value = NULL;
+    gss_buffer_desc respBuf = GSS_C_EMPTY_BUFFER;
 
     initialContextToken = (inputToken == GSS_C_NO_BUFFER ||
                            inputToken->length == 0);
@@ -545,12 +542,10 @@ gss_init_sec_context(OM_uint32 *minor,
     OM_uint32 tmpMajor, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
     struct gss_eap_initiator_sm *sm = NULL;
-    gss_buffer_desc innerInputToken, innerOutputToken;
+    gss_buffer_desc innerInputToken;
+    gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
 
     *minor = 0;
-
-    innerOutputToken.length = 0;
-    innerOutputToken.value = NULL;
 
     output_token->length = 0;
     output_token->value = NULL;

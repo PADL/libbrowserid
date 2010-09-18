@@ -53,18 +53,11 @@ gssEapExportSecContext(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     size_t length;
-    gss_buffer_desc initiatorName, acceptorName;
-    gss_buffer_desc partialCtx, key;
+    gss_buffer_desc initiatorName = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc acceptorName = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc partialCtx = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc key;
     unsigned char *p;
-
-    initiatorName.length = 0;
-    initiatorName.value = NULL;
-
-    acceptorName.length = 0;
-    acceptorName.value = NULL;
-
-    partialCtx.length = 0;
-    partialCtx.value = NULL;
 
     if ((CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) ||
         ctx->mechanismUsed == GSS_C_NO_OID)
