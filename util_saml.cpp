@@ -48,28 +48,6 @@ using namespace opensaml;
 using namespace xercesc;
 using namespace std;
 
-class auto_ptr_gss_buffer {
-    MAKE_NONCOPYABLE(auto_ptr_gss_buffer);
-    public:
-        auto_ptr_gss_buffer() : m_buf(NULL) {
-        }
-        auto_ptr_gss_buffer(const gss_buffer_t src) {
-            m_buf = new XMLCh[src->length + 1];
-            XMLString::transcode((const char *)src->value, m_buf, src->length);
-        }
-        ~auto_ptr_gss_buffer() {
-            xercesc::XMLString::release(&m_buf);
-        }
-        const XMLCh* get() const {
-            return m_buf;
-        }
-        XMLCh* release() {
-            XMLCh *temp = m_buf; m_buf = NULL; return temp;
-        }
-    private:
-        XMLCh *m_buf;
-};
-
 /*
  * gss_eap_saml_assertion_provider is for retrieving the underlying
  * assertion.
