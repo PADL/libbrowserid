@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2010, JANET(UK)
  * All rights reserved.
  *
@@ -44,29 +44,22 @@ gss_eap_attr_factories[ATTR_TYPE_MAX] = {
     gss_eap_shib_attr_source::createAttrContext
 };
 
-gss_eap_attr_ctx *
-gss_eap_attr_ctx::createAttrContext(void)
+gss_eap_attr_ctx::gss_eap_attr_ctx(void)
 {
-    gss_eap_attr_ctx *ctx;
-
-    ctx = new gss_eap_attr_ctx;
-
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_source *provider;
 
         provider = (gss_eap_attr_factories[i])();
         if (provider != NULL)
-            ctx->m_providers[i] = provider;
+            m_providers[i] = provider;
     }
-
-    return ctx;
 }
 
 bool
-gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *source,
-                                          const gss_eap_attr_source *ctx)
+gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager,
+                                          const gss_eap_attr_source *source)
 {
-    if (!gss_eap_attr_source::initFromExistingContext(this, ctx))
+    if (!gss_eap_attr_source::initFromExistingContext(this, source))
         return false;
 
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
@@ -74,7 +67,7 @@ gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *source,
 
         provider = m_providers[i];
         if (provider != NULL) {
-            if (!provider->initFromExistingContext(this, provider))
+            if (!provider->initFromExistingContext(this, source))
                 return false;
         }
     }
@@ -83,7 +76,7 @@ gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *source,
 }
 
 bool
-gss_eap_attr_ctx::initFromGssContext(const gss_eap_attr_ctx *source,
+gss_eap_attr_ctx::initFromGssContext(const gss_eap_attr_ctx *manager,
                                      const gss_cred_id_t cred,
                                      const gss_ctx_id_t ctx)
 {
@@ -304,20 +297,32 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
 }
 
 void
-gss_eap_attr_ctx::marshall(gss_buffer_t buffer) const
+gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
-    /* For now, just marshall the RADIUS context. */
+    m_providers[ATTR_TYPE_RADIUS]->exportToBuffer(buffer);
 }
 
 bool
-gss_eap_attr_ctx::unmarshall(const gss_eap_attr_ctx *ctx,
-                             const gss_buffer_t buffer)
+gss_eap_attr_ctx::initFromBuffer(const gss_eap_attr_ctx *manager,
+                                 const gss_buffer_t buffer)
 {
     unsigned int i;
+    bool ret;
 
-    for (i = 0; i < ATTR_TYPE_MAX; i++) {
+    ret = m_providers[ATTR_TYPE_RADIUS]->initFromBuffer(this, buffer);
+    if (!ret)
+        return false;
+
+    for (i = ATTR_TYPE_RADIUS + 1; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_source *provider = m_providers[i];
+
+        ret = provider->initFromGssContext(
+            this, GSS_C_NO_CREDENTIAL, GSS_C_NO_CONTEXT);
+        if (!ret)
+            break;
     }
+
+    return ret;
 }
 
 
@@ -366,7 +371,7 @@ gss_eap_attr_ctx::attributePrefixToType(const gss_buffer_t prefix)
     return ATTR_TYPE_LOCAL;
 }
 
-gss_buffer_t
+const gss_buffer_t
 gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
 {
     if (type < ATTR_TYPE_MIN || type >= ATTR_TYPE_LOCAL)
@@ -402,44 +407,52 @@ gss_eap_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
     }
 }
 
+std::string
+gss_eap_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
+                                       const gss_buffer_t suffix)
+{
+    std::string str;
+
+    if (prefix == GSS_C_NO_BUFFER || prefix->length == 0)
+        return str;
+
+    str.append((const char *)prefix->value, prefix->length);
+
+    if (suffix != GSS_C_NO_BUFFER) {
+        str.append(" ");
+        str.append((const char *)suffix->value, suffix->length);
+    }
+
+    return str;
+}
+
+std::string
+gss_eap_attr_ctx::composeAttributeName(unsigned int type,
+                                       const gss_buffer_t suffix)
+{
+    const gss_buffer_t prefix = attributeTypeToPrefix(type);
+
+    return composeAttributeName(prefix, suffix);
+}
+
 void
 gss_eap_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
                                        const gss_buffer_t suffix,
                                        gss_buffer_t attribute)
 {
-    size_t len = 0;
-    char *p;
+    std::string str = composeAttributeName(prefix, suffix);
 
-    attribute->length = 0;
-    attribute->value = NULL;
-
-    if (prefix == GSS_C_NO_BUFFER || prefix->length == 0)
-        return;
-
-    len = prefix->length;
-    if (suffix != GSS_C_NO_BUFFER) {
-        len += 1 + suffix->length;
+    if (str.length() != 0) {
+        return duplicateBuffer(str, attribute);
+    } else {
+        attribute->length = 0;
+        attribute->value = NULL;
     }
-
-    attribute->value = GSSEAP_MALLOC(len + 1);
-    if (attribute->value == NULL) {
-        throw new std::bad_alloc;
-    }
-    attribute->length = len;
-
-    p = (char *)attribute->value;
-    memcpy(p, prefix->value, prefix->length);
-    if (suffix != NULL) {
-        p[prefix->length] = ' ';
-        memcpy(p + prefix->length + 1, suffix->value, suffix->length);
-    }
-
-    p[attribute->length] = '\0';
 }
 
 void
 gss_eap_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
-                                         unsigned int*type,
+                                         unsigned int *type,
                                          gss_buffer_t suffix)
 {
     gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
@@ -455,7 +468,7 @@ gss_eap_attr_ctx::composeAttributeName(unsigned int type,
 {
     gss_buffer_t prefix = attributeTypeToPrefix(type);
 
-    composeAttributeName(prefix, suffix, attribute);
+    return composeAttributeName(prefix, suffix, attribute);
 }
 
 OM_uint32
@@ -556,11 +569,15 @@ gssEapExportAttrContext(OM_uint32 *minor,
                         gss_name_t name,
                         gss_buffer_t buffer)
 {
-    if (name->attrCtx == NULL)
-        return GSS_S_UNAVAILABLE;
+    if (name->attrCtx == NULL) {
+        buffer->length = 0;
+        buffer->value = NULL;
+
+        return GSS_S_COMPLETE;
+    };
 
     try {
-        name->attrCtx->marshall(buffer);
+        name->attrCtx->exportToBuffer(buffer);
     } catch (std::exception &e) {
         return mapException(minor, e);
     }
@@ -573,7 +590,22 @@ gssEapImportAttrContext(OM_uint32 *minor,
                         gss_buffer_t buffer,
                         gss_name_t name)
 {
-    GSSEAP_NOT_IMPLEMENTED;
+    if (buffer->length != 0) {
+        gss_eap_attr_ctx *ctx = new gss_eap_attr_ctx;
+
+        try {
+            if (!ctx->initFromBuffer(NULL, buffer)) {
+                delete ctx;
+                return GSS_S_DEFECTIVE_TOKEN;
+            }
+            name->attrCtx = ctx;
+        } catch (std::exception &e) {
+            delete ctx;
+            return mapException(minor, e);
+        }
+    }
+
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32
@@ -581,19 +613,20 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
                            gss_name_t in,
                            gss_name_t out)
 {
+    gss_eap_attr_ctx *ctx = NULL;
+
+    assert(out->attrCtx == NULL);
+
     try {
         if (in->attrCtx != NULL) {
-            gss_eap_attr_ctx *ctx = new gss_eap_attr_ctx;
-
-            out->attrCtx = new gss_eap_attr_ctx;
             if (!ctx->initFromExistingContext(NULL, in->attrCtx)) {
                 delete ctx;
                 return GSS_S_FAILURE;
             }
             out->attrCtx = ctx;
-        } else
-            out->attrCtx = NULL;
+        }
     } catch (std::exception &e) {
+        delete ctx;
         return mapException(minor, e);
     }
 
@@ -676,7 +709,7 @@ gssEapCreateAttrContext(gss_cred_id_t gssCred,
 {
     gss_eap_attr_ctx *ctx;
 
-    ctx = gss_eap_attr_ctx::createAttrContext();
+    ctx = new gss_eap_attr_ctx;
     if (!ctx->initFromGssContext(NULL, gssCred, gssCtx)) {
         delete ctx;
         return NULL;

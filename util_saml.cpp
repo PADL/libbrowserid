@@ -326,9 +326,9 @@ gss_eap_saml_attr_source::getAttributeTypes(gss_eap_attr_enumeration_cb addAttri
 }
 
 void
-gss_eap_saml_attr_rovider::setAttribute(int complete,
-                                        const gss_buffer_t attr,
-                                        const gss_buffer_t value)
+gss_eap_saml_attr_source::setAttribute(int complete,
+                                       const gss_buffer_t attr,
+                                       const gss_buffer_t value)
 {
 }
 
