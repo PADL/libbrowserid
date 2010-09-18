@@ -100,7 +100,7 @@ private:
                        const gss_buffer_t attribute,
                        void *data);
 
-    mutable std::vector<shibsp::Attribute *> m_attributes;
+    std::vector<shibsp::Attribute *> m_attributes;
     int m_authenticated;
 };
 
