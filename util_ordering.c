@@ -97,7 +97,7 @@ queue_insert(queue *q, int after, uint64_t seqnum)
 
     /* move all the elements (after,last] up one slot */
 
-    for (i=q->start+q->length-1; i>after; i--)
+    for (i = q->start + q->length - 1; i > after; i--)
         QELEM(q,i+1) = QELEM(q,i);
 
     /* fill in slot after+1 */
@@ -159,7 +159,7 @@ sequenceCheck(OM_uint32 *minor,
     q = (queue *) (*vqueue);
 
     if (!q->do_replay && !q->do_sequence)
-        return(GSS_S_COMPLETE);
+        return GSS_S_COMPLETE;
 
     /* All checks are done relative to the initial sequence number, to
        avoid (or at least put off) the pain of wrapping.  */
@@ -175,7 +175,7 @@ sequenceCheck(OM_uint32 *minor,
     expected = (QELEM(q,q->start+q->length-1)+1) & q->mask;
     if (seqnum == expected) {
         queue_insert(q, q->start+q->length-1, seqnum);
-        return(GSS_S_COMPLETE);
+        return GSS_S_COMPLETE;
     }
 
     /* rule 2: > expected sequence number */
@@ -183,9 +183,9 @@ sequenceCheck(OM_uint32 *minor,
     if ((seqnum > expected)) {
         queue_insert(q, q->start+q->length-1, seqnum);
         if (q->do_replay && !q->do_sequence)
-            return(GSS_S_COMPLETE);
+            return GSS_S_COMPLETE;
         else
-            return(GSS_S_GAP_TOKEN);
+            return GSS_S_GAP_TOKEN;
     }
 
     /* rule 3: seqnum < seqnum(first) */
@@ -206,32 +206,32 @@ sequenceCheck(OM_uint32 *minor,
         (seqnum & (1 + (q->mask >> 1)))
     ) {
         if (q->do_replay && !q->do_sequence)
-            return(GSS_S_OLD_TOKEN);
+            return GSS_S_OLD_TOKEN;
         else
-            return(GSS_S_UNSEQ_TOKEN);
+            return GSS_S_UNSEQ_TOKEN;
     }
 
     /* rule 4+5: seqnum in [seqnum(first),seqnum(last)]  */
 
     else {
-        if (seqnum == QELEM(q,q->start+q->length-1))
-            return(GSS_S_DUPLICATE_TOKEN);
+        if (seqnum == QELEM(q,q->start+q->length - 1))
+            return GSS_S_DUPLICATE_TOKEN;
 
-        for (i=q->start; i<q->start+q->length-1; i++) {
+        for (i = q->start; i < q->start + q->length - 1; i++) {
             if (seqnum == QELEM(q,i))
-                return(GSS_S_DUPLICATE_TOKEN);
+                return GSS_S_DUPLICATE_TOKEN;
             if ((seqnum > QELEM(q,i)) && (seqnum < QELEM(q,i+1))) {
                 queue_insert(q, i, seqnum);
                 if (q->do_replay && !q->do_sequence)
-                    return(GSS_S_COMPLETE);
+                    return GSS_S_COMPLETE;
                 else
-                    return(GSS_S_UNSEQ_TOKEN);
+                    return GSS_S_UNSEQ_TOKEN;
             }
         }
     }
 
     /* this should never happen */
-    return(GSS_S_FAILURE);
+    return GSS_S_FAILURE;
 }
 
 OM_uint32
