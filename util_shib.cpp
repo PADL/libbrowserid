@@ -348,6 +348,9 @@ bool
 gss_eap_shib_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
                                            const gss_buffer_t buffer)
 {
+    if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
+        return false;
+
     return true;
 }
 

@@ -246,6 +246,9 @@ bool
 gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
                                                 const gss_buffer_t buffer)
 {
+    if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
+        return false;
+
     assert(m_assertion == NULL);
 
     if (buffer->length == 0)

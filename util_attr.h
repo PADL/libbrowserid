@@ -51,19 +51,23 @@ public:
     gss_eap_attr_provider(void) {}
     virtual ~gss_eap_attr_provider(void) {}
 
-    virtual bool initFromExistingContext(const gss_eap_attr_ctx *source,
-                                         const gss_eap_attr_provider *ctx)
+    bool initWithSource(const gss_eap_attr_ctx *source)
     {
         m_source = source;
         return true;
+    }
+
+    virtual bool initFromExistingContext(const gss_eap_attr_ctx *source,
+                                         const gss_eap_attr_provider *ctx)
+    {
+        return initWithSource(source);
     }
 
     virtual bool initFromGssContext(const gss_eap_attr_ctx *source,
                                     const gss_cred_id_t cred,
                                     const gss_ctx_id_t ctx)
     {
-        m_source = source;
-        return true;
+        return initWithSource(source);
     }
 
     typedef bool
@@ -93,8 +97,11 @@ public:
                                        gss_any_t input) const {}
 
     virtual void exportToBuffer(gss_buffer_t buffer) const {}
-    virtual bool initFromBuffer(const gss_eap_attr_ctx *ctx,
-                                const gss_buffer_t buffer) { return false; }
+    virtual bool initFromBuffer(const gss_eap_attr_ctx *source,
+                                const gss_buffer_t buffer)
+    {
+        return initWithSource(source);
+    }
 
     static bool init() { return true; }
     static void finalize() {}
