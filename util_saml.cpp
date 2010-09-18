@@ -348,7 +348,6 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
         ret = addAttribute(this, &utf8, data);
 
         delete qualifiedName;
-        delete qualifiedName;
 
         if (!ret)
             break;
