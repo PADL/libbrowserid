@@ -101,6 +101,7 @@ gss_any_t
 gss_eap_radius_attr_provider::mapToAny(int authenticated,
                                        gss_buffer_t type_id) const
 {
+    return (gss_any_t)NULL;
 }
 
 void
@@ -124,6 +125,7 @@ gss_eap_radius_attr_provider::unmarshall(const gss_eap_attr_ctx *ctx,
 bool
 gss_eap_radius_attr_provider::init(void)
 {
+    return true;
 }
 
 void

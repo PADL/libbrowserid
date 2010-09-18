@@ -39,6 +39,10 @@ namespace shibsp {
     class Attribute;
 };
 
+namespace shibresolver {
+    class ShibbolethResolver;
+};
+
 struct gss_eap_shib_attr_provider : gss_eap_attr_provider {
 public:
     gss_eap_shib_attr_provider(void) {}
@@ -77,14 +81,24 @@ public:
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:
+    static shibsp::Attribute *
+        duplicateAttribute(const shibsp::Attribute *src);
+    static std::vector <shibsp::Attribute *>
+        duplicateAttributes(const std::vector <shibsp::Attribute *>src);
+
     int getAttributeIndex(const gss_buffer_t attr) const;
     const shibsp::Attribute *getAttribute(const gss_buffer_t attr) const;
 
-    const std::vector<shibsp::Attribute *> getAttributes(void) const {
+    std::vector<shibsp::Attribute *> getAttributes(void) const {
         return m_attributes;
     }
 
-    std::vector<shibsp::Attribute *> m_attributes;
+    friend bool
+    addRadiusAttribute(const gss_eap_attr_provider *provider,
+                       const gss_buffer_t attribute,
+                       void *data);
+
+    mutable std::vector<shibsp::Attribute *> m_attributes;
 };
 
 #endif /* _UTIL_SHIB_H_ */

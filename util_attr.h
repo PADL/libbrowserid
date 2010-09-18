@@ -41,6 +41,8 @@
 #define ATTR_TYPE_MAX               (ATTR_TYPE_LOCAL + 1U)
 
 #ifdef __cplusplus
+#include <string>
+
 struct gss_eap_attr_ctx;
 
 struct gss_eap_attr_provider
@@ -103,7 +105,7 @@ protected:
     const gss_eap_attr_ctx *m_source;
 };
 
-typedef gss_eap_attr_provider *(*gss_eap_attr_create_cb)(void);
+typedef gss_eap_attr_provider *(*gss_eap_attr_create_factory)(void);
 
 struct gss_eap_attr_ctx : gss_eap_attr_provider
 {
@@ -146,7 +148,7 @@ public:
     static unsigned int
     attributePrefixToType(const gss_buffer_t prefix);
 
-    static gss_buffer_t
+    static const gss_buffer_t
     attributeTypeToPrefix(unsigned int type);
 
     static void
@@ -165,6 +167,13 @@ public:
     composeAttributeName(unsigned int type,
                          const gss_buffer_t suffix,
                          gss_buffer_t attribute);
+
+    static std::string
+    composeAttributeName(const gss_buffer_t prefix,
+                         const gss_buffer_t suffix);
+    static std::string
+    composeAttributeName(unsigned int type,
+                         const gss_buffer_t suffix);
 
     gss_eap_attr_provider *getProvider(unsigned int type) const;
     gss_eap_attr_provider *getProvider(const gss_buffer_t prefix) const;

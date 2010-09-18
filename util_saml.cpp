@@ -81,11 +81,15 @@ gss_eap_saml_assertion_provider::initFromExistingContext(const gss_eap_attr_ctx 
     /* Then we may be creating from an existing attribute context */
     const gss_eap_saml_assertion_provider *saml;
 
+    assert(m_assertion == NULL);
+
     if (!gss_eap_attr_provider::initFromExistingContext(source, ctx))
         return false;
 
     saml = dynamic_cast<const gss_eap_saml_assertion_provider *>(ctx);
     setAssertion(saml->getAssertion());
+
+    return true;
 }
 
 bool
@@ -98,17 +102,23 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *sour
     int authenticated, complete, more = -1;
     OM_uint32 minor;
 
+    assert(m_assertion == NULL);
+
     if (!gss_eap_attr_provider::initFromGssContext(source, gssCred, gssCtx))
         return false;
 
     radius = dynamic_cast<const gss_eap_radius_attr_provider *>
-        (source->getProvider(ATTR_TYPE_RADIUS));
+        (m_source->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
-        radius->getAttribute(512, &authenticated, &complete,
+        radius->getAttribute(512 /* XXX */, &authenticated, &complete,
                              &value, NULL, &more)) {
         m_assertion = parseAssertion(&value);
         gss_release_buffer(&minor, &value);
+    } else {
+        m_assertion = NULL;
     }
+
+    return true;
 }
 
 gss_eap_saml_assertion_provider::~gss_eap_saml_assertion_provider(void)
@@ -121,7 +131,11 @@ gss_eap_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion)
 {
 
     delete m_assertion;
-    m_assertion = dynamic_cast<saml2::Assertion*>(assertion->clone());
+
+    if (assertion != NULL)
+        m_assertion = dynamic_cast<saml2::Assertion*>(assertion->clone());
+    else
+        m_assertion = NULL;
 }
 
 saml2::Assertion *
@@ -139,8 +153,10 @@ gss_eap_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
 }
 
 bool
-gss_eap_saml_assertion_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute, void *data) const
+gss_eap_saml_assertion_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
+                                                   void *data) const
 {
+    /* just add the prefix */
     return addAttribute(this, GSS_C_NO_BUFFER, data);
 }
 
@@ -149,9 +165,12 @@ gss_eap_saml_assertion_provider::setAttribute(int complete,
                                               const gss_buffer_t attr,
                                               const gss_buffer_t value)
 {
-    saml2::Assertion *assertion = parseAssertion(value);
+    if (attr == GSS_C_NO_BUFFER || attr->length == 0) {
+        saml2::Assertion *assertion = parseAssertion(value);
 
-    m_assertion = assertion;
+        delete m_assertion;
+        m_assertion = assertion;
+    }
 }
 
 void
@@ -171,20 +190,22 @@ gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
 {
     string str;
 
-    if (attr->length != 0 || m_assertion == NULL)
+    if (attr != GSS_C_NO_BUFFER || attr->length != 0)
         return false;
 
-    if (*more == -1)
-        *more = 0;
+    if (m_assertion == NULL)
+        return false;
 
-    if (*more == 0) {
-        *authenticated = true;
-        *complete = false;
+    if (*more != -1)
+        return false;
 
-        XMLHelper::serialize(m_assertion->marshall((DOMDocument *)NULL), str);
+    *authenticated = true;
+    *complete = false;
 
-        duplicateBuffer(str, value);
-    }
+    XMLHelper::serialize(m_assertion->marshall((DOMDocument *)NULL), str);
+
+    duplicateBuffer(str, value);
+    *more = 0;
 
     return true;
 }
@@ -227,8 +248,10 @@ gss_eap_saml_assertion_provider::unmarshall(const gss_eap_attr_ctx *ctx,
 {
     assert(m_assertion == NULL);
 
-    m_assertion = parseAssertion(buffer);
+    if (buffer->length == 0)
+        return true;
 
+    m_assertion = parseAssertion(buffer);
     return (m_assertion != NULL);
 }
 
@@ -383,9 +406,9 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 
 gss_any_t
 gss_eap_saml_attr_provider::mapToAny(int authenticated,
-                                          gss_buffer_t type_id) const
+                                     gss_buffer_t type_id) const
 {
-    return (gss_any_t)0;
+    return (gss_any_t)NULL;
 }
 
 void
@@ -397,13 +420,15 @@ gss_eap_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_saml_attr_provider::marshall(gss_buffer_t buffer) const
 {
+    buffer->length = 0;
+    buffer->value = NULL;
 }
 
 bool
 gss_eap_saml_attr_provider::unmarshall(const gss_eap_attr_ctx *ctx,
                                        const gss_buffer_t buffer)
 {
-    return false;
+    return true;
 }
 
 bool

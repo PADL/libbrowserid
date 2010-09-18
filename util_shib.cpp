@@ -76,9 +76,6 @@ using namespace xmltooling;
 using namespace xercesc;
 using namespace std;
 
-static vector <Attribute *>
-duplicateAttributes(const vector <Attribute *>src);
-
 bool
 gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *source,
                                                     const gss_eap_attr_provider *ctx)
@@ -90,7 +87,54 @@ gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *sour
 
     shib = dynamic_cast<const gss_eap_shib_attr_provider *>(ctx);
     if (shib != NULL)
-        m_attributes = duplicateAttributes(shib->m_attributes);
+        m_attributes = duplicateAttributes(shib->getAttributes());
+
+    return true;
+}
+
+bool
+addRadiusAttribute(const gss_eap_attr_provider *provider,
+                   const gss_buffer_t attribute,
+                   void *data)
+{
+    const gss_eap_shib_attr_provider *shib;
+    const gss_eap_radius_attr_provider *radius;
+    int authenticated, complete, more = -1;
+    vector <string> attributeIds(1);
+    SimpleAttribute *a;
+
+    radius = dynamic_cast<const gss_eap_radius_attr_provider *>(provider);
+    shib = static_cast<const gss_eap_shib_attr_provider *>(data);
+
+    assert(radius != NULL && shib != NULL);
+
+    string attributeName =
+        gss_eap_attr_ctx::composeAttributeName(ATTR_TYPE_RADIUS, attribute);
+
+    attributeIds.push_back(attributeName);
+    a = new SimpleAttribute(attributeIds);
+    if (a == NULL)
+        return false;
+
+    while (more != 0) {
+        gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
+        OM_uint32 minor;
+
+        if (!radius->getAttribute(attribute,
+                                  &authenticated,
+                                  &complete,
+                                  &value,
+                                  NULL,
+                                  &more))
+            return false;
+
+        string attributeValue((char *)value.value, value.length);
+        a->getValues().push_back(attributeValue);
+
+        gss_release_buffer(&minor, &value);
+    }
+
+    shib->getAttributes().push_back(a);
 
     return true;
 }
@@ -114,9 +158,6 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *source,
     radius = dynamic_cast<const gss_eap_radius_attr_provider *>
         (source->getProvider(ATTR_TYPE_RADIUS));
 
-    if (radius == NULL)
-        return true;
-
     if (gssCred != GSS_C_NO_CREDENTIAL &&
         gss_display_name(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
         resolver->setApplicationID((const char *)nameBuf.value);
@@ -124,7 +165,8 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *source,
     if (saml != NULL && saml->getAssertion() != NULL)
         resolver->addToken(saml->getAssertion());
 
-    /* TODO inject RADIUS attribute types */
+    if (radius != NULL)
+        radius->getAttributeTypes(addRadiusAttribute, (void *)this);
 
     resolver->resolveAttributes(m_attributes);
 
@@ -137,7 +179,10 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *source,
 
 gss_eap_shib_attr_provider::~gss_eap_shib_attr_provider(void)
 {
-    for_each(m_attributes.begin(), m_attributes.end(), xmltooling::cleanup<Attribute>());
+    for_each(m_attributes.begin(),
+             m_attributes.end(),
+             xmltooling::cleanup<Attribute>())
+        ;
 }
 
 int
@@ -175,9 +220,9 @@ gss_eap_shib_attr_provider::setAttribute(int complete,
     SimpleAttribute *a = new SimpleAttribute(ids);
 
     if (value->length != 0) {
-        string valStr((char *)value->value, value->length);
+        string valueStr((char *)value->value, value->length);
 
-        a->getValues().push_back(valStr);        
+        a->getValues().push_back(valueStr);        
     }
 
     m_attributes.push_back(a);
@@ -295,13 +340,15 @@ gss_eap_shib_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_shib_attr_provider::marshall(gss_buffer_t buffer) const
 {
+    buffer->length = 0;
+    buffer->value = NULL;
 }
 
 bool
 gss_eap_shib_attr_provider::unmarshall(const gss_eap_attr_ctx *ctx,
                                        const gss_buffer_t buffer)
 {
-    return false;
+    return true;
 }
 
 bool
@@ -322,8 +369,8 @@ gss_eap_shib_attr_provider::createAttrContext(void)
     return new gss_eap_shib_attr_provider;
 }
 
-static Attribute *
-duplicateAttribute(const Attribute *src)
+Attribute *
+gss_eap_shib_attr_provider::duplicateAttribute(const Attribute *src)
 {
     Attribute *attribute;
 
@@ -334,8 +381,8 @@ duplicateAttribute(const Attribute *src)
     return attribute;
 }
 
-static vector <Attribute *>
-duplicateAttributes(const vector <Attribute *>src)
+vector <Attribute *>
+gss_eap_shib_attr_provider::duplicateAttributes(const vector <Attribute *>src)
 {
     vector <Attribute *> dst;
 
