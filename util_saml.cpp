@@ -262,6 +262,7 @@ bool
 gss_eap_saml_assertion_provider::init(void)
 {
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML_ASSERTION,
+                                       "urn:ietf:params:gss-eap:saml-aaa-assertion",
                                        gss_eap_saml_assertion_provider::createAttrContext);
     return true;
 }
@@ -269,7 +270,7 @@ gss_eap_saml_assertion_provider::init(void)
 void
 gss_eap_saml_assertion_provider::finalize(void)
 {
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML_ASSERTION, NULL);
+    gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_SAML_ASSERTION);
 }
 
 gss_eap_attr_provider *
@@ -441,14 +442,15 @@ bool
 gss_eap_saml_attr_provider::init(void)
 {
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML,
-                                         gss_eap_saml_attr_provider::createAttrContext);
+                                       "urn:ietf:params:gss-eap:saml-attr",
+                                       gss_eap_saml_attr_provider::createAttrContext);
     return true;
 }
 
 void
 gss_eap_saml_attr_provider::finalize(void)
 {
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML, NULL);
+    gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_SAML);
 }
 
 gss_eap_attr_provider *

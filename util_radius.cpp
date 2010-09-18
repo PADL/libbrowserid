@@ -129,6 +129,7 @@ bool
 gss_eap_radius_attr_provider::init(void)
 {
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_RADIUS,
+                                       "urn:ietf:params:gss-eap:radius-avp",
                                        gss_eap_radius_attr_provider::createAttrContext);
     return true;
 }
@@ -136,7 +137,7 @@ gss_eap_radius_attr_provider::init(void)
 void
 gss_eap_radius_attr_provider::finalize(void)
 {
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_RADIUS, NULL);
+    gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_RADIUS);
 }
 
 gss_eap_attr_provider *

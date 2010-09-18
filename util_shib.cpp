@@ -364,6 +364,7 @@ gss_eap_shib_attr_provider::init(void)
         return false;
 
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_LOCAL,
+                                       NULL,
                                        gss_eap_shib_attr_provider::createAttrContext);
 
     return true;
@@ -373,7 +374,7 @@ void
 gss_eap_shib_attr_provider::finalize(void)
 {
     ShibbolethResolver::term();
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_LOCAL, NULL);
+    gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_LOCAL);
 }
 
 gss_eap_attr_provider *

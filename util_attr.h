@@ -117,7 +117,7 @@ private:
     gss_eap_attr_provider& operator=(const gss_eap_attr_provider&);
 };
 
-typedef gss_eap_attr_provider *(*gss_eap_attr_create_factory)(void);
+typedef gss_eap_attr_provider *(*gss_eap_attr_create_provider)(void);
 
 struct gss_eap_attr_ctx : gss_eap_attr_provider
 {
@@ -152,8 +152,6 @@ public:
     void exportToBuffer(gss_buffer_t buffer) const;
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
-    static bool init();
-    static void finalize();
 
     static unsigned int
     attributePrefixToType(const gss_buffer_t prefix);
@@ -189,7 +187,11 @@ public:
     gss_eap_attr_provider *getProvider(const gss_buffer_t prefix) const;
 
     static void
-    registerProvider(unsigned int type, gss_eap_attr_create_factory factory);
+    registerProvider(unsigned int type,
+                     const char *prefix,
+                     gss_eap_attr_create_provider factory);
+    static void
+    unregisterProvider(unsigned int type);
 
 private:
     /* make non-copyable */

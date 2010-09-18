@@ -36,14 +36,36 @@
 #include <exception>
 #include <new>
 
-static gss_eap_attr_create_factory
-gss_eap_attr_factories[ATTR_TYPE_MAX];
+static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX];
+static gss_buffer_desc gssEapAttrPrefixes[ATTR_TYPE_MAX];
 
 void
 gss_eap_attr_ctx::registerProvider(unsigned int type,
-                                   gss_eap_attr_create_factory factory)
+                                   const char *prefix,
+                                   gss_eap_attr_create_provider factory)
 {
-    gss_eap_attr_factories[type] = factory;
+    assert(type < ATTR_TYPE_MAX);
+
+    assert(gssEapAttrFactories[type] == NULL);
+
+    gssEapAttrFactories[type] = factory;
+    if (prefix != NULL) {
+        gssEapAttrPrefixes[type].value = (void *)prefix;
+        gssEapAttrPrefixes[type].length = strlen(prefix);
+    } else {
+        gssEapAttrPrefixes[type].value = NULL;
+        gssEapAttrPrefixes[type].length = 0;
+    }
+}
+
+void
+gss_eap_attr_ctx::unregisterProvider(unsigned int type)
+{
+    assert(type < ATTR_TYPE_MAX);
+
+    gssEapAttrFactories[type] = NULL;
+    gssEapAttrPrefixes[type].value = NULL;
+    gssEapAttrPrefixes[type].length = 0;
 }
 
 gss_eap_attr_ctx::gss_eap_attr_ctx(void)
@@ -51,10 +73,32 @@ gss_eap_attr_ctx::gss_eap_attr_ctx(void)
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
 
-        provider = (gss_eap_attr_factories[i])();
+        provider = (gssEapAttrFactories[i])();
 
         m_providers[i] = provider;
     }
+}
+
+unsigned int
+gss_eap_attr_ctx::attributePrefixToType(const gss_buffer_t prefix)
+{
+    unsigned int i;
+
+    for (i = ATTR_TYPE_MIN; i < ATTR_TYPE_LOCAL; i++) {
+        if (bufferEqual(&gssEapAttrPrefixes[i], prefix))
+            return i;
+    }
+
+    return ATTR_TYPE_LOCAL;
+}
+
+const gss_buffer_t
+gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
+{
+    if (type < ATTR_TYPE_MIN || type >= ATTR_TYPE_LOCAL)
+        return GSS_C_NO_BUFFER;
+
+    return &gssEapAttrPrefixes[type];
 }
 
 bool
@@ -102,24 +146,6 @@ gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
 {
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++)
         delete m_providers[i];
-}
-
-bool
-gss_eap_attr_ctx::init(void)
-{
-    return gss_eap_radius_attr_provider::init() &&
-           gss_eap_saml_assertion_provider::init() &&
-           gss_eap_saml_attr_provider::init() &&
-           gss_eap_shib_attr_provider::init();
-}
-
-void
-gss_eap_attr_ctx::finalize(void)
-{
-    gss_eap_shib_attr_provider::finalize();
-    gss_eap_saml_attr_provider::finalize();
-    gss_eap_saml_assertion_provider::finalize();
-    gss_eap_radius_attr_provider::finalize();
 }
 
 gss_eap_attr_provider *
@@ -338,49 +364,6 @@ mapException(OM_uint32 *minor, std::exception &e)
 {
     *minor = 0;
     return GSS_S_FAILURE;
-}
-
-static gss_buffer_desc attributePrefixes[] = {
-    {
-        /* ATTR_TYPE_RADIUS_AVP */
-        sizeof("urn:ietf:params:gss-eap:radius-avp"),
-        (void *)"urn:ietf:params:gss-eap:radius-avp",
-    },
-    {
-        /* ATTR_TYPE_SAML_AAA_ASSERTION */
-        sizeof("urn:ietf:params:gss-eap:saml-aaa-assertion"),
-        (void *)"urn:ietf:params:gss-eap:saml-aaa-assertion"
-    },
-    {
-        /* ATTR_TYPE_SAML_ATTR */
-        sizeof("urn:ietf:params:gss-eap:saml-attr"),
-        (void *)"urn:ietf:params:gss-eap:saml-attr"
-    },
-};
-
-unsigned int
-gss_eap_attr_ctx::attributePrefixToType(const gss_buffer_t prefix)
-{
-    unsigned int i;
-
-    for (i = ATTR_TYPE_MIN;
-         i < sizeof(attributePrefixes) / sizeof(attributePrefixes[0]);
-         i++)
-    {
-        if (bufferEqual(&attributePrefixes[i], prefix))
-            return i;
-    }
-
-    return ATTR_TYPE_LOCAL;
-}
-
-const gss_buffer_t
-gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
-{
-    if (type < ATTR_TYPE_MIN || type >= ATTR_TYPE_LOCAL)
-        return GSS_C_NO_BUFFER;
-
-    return &attributePrefixes[type];
 }
 
 void
@@ -690,19 +673,26 @@ OM_uint32
 gssEapAttrProvidersInit(OM_uint32 *minor)
 {
     try {
-        gss_eap_attr_ctx::init();
+        if (gss_eap_radius_attr_provider::init()    &&
+            gss_eap_saml_assertion_provider::init() &&
+            gss_eap_saml_attr_provider::init()      &&
+            gss_eap_shib_attr_provider::init())
+            return GSS_S_COMPLETE;
     } catch (std::exception &e) {
         return mapException(minor, e);
     }
 
-    return GSS_S_COMPLETE;
+    return GSS_S_FAILURE;
 }
 
 OM_uint32
 gssEapAttrProvidersFinalize(OM_uint32 *minor)
 {
     try {
-        gss_eap_attr_ctx::finalize();
+        gss_eap_shib_attr_provider::finalize();
+        gss_eap_saml_attr_provider::finalize();
+        gss_eap_saml_assertion_provider::finalize();
+        gss_eap_radius_attr_provider::finalize();
     } catch (std::exception &e) {
         return mapException(minor, e);
     }
