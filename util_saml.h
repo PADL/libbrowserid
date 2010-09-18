@@ -41,13 +41,13 @@ namespace opensaml {
     };
 };
 
-struct gss_eap_saml_assertion_provider : gss_eap_attr_provider {
+struct gss_eap_saml_assertion_source : gss_eap_attr_source {
 public:
-    gss_eap_saml_assertion_provider(void) {}
-    ~gss_eap_saml_assertion_provider(void);
+    gss_eap_saml_assertion_source(void) {}
+    ~gss_eap_saml_assertion_source(void);
 
     bool initFromExistingContext(const gss_eap_attr_ctx *source,
-                                 const gss_eap_attr_provider *ctx);
+                                 const gss_eap_attr_source *ctx);
     bool initFromGssContext(const gss_eap_attr_ctx *source,
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
@@ -81,7 +81,7 @@ public:
     static bool init();
     static void finalize();
 
-    static gss_eap_attr_provider *createAttrContext(void);
+    static gss_eap_attr_source *createAttrContext(void);
 
 private:
     static opensaml::saml2::Assertion *
@@ -90,10 +90,10 @@ private:
     opensaml::saml2::Assertion *m_assertion;
 };
 
-struct gss_eap_saml_attr_provider : gss_eap_attr_provider {
+struct gss_eap_saml_attr_source : gss_eap_attr_source {
 public:
-    gss_eap_saml_attr_provider(void) {}
-    ~gss_eap_saml_attr_provider(void);
+    gss_eap_saml_attr_source(void) {}
+    ~gss_eap_saml_attr_source(void);
 
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
     void setAttribute(int complete,
@@ -123,7 +123,7 @@ public:
     static bool init();
     static void finalize();
 
-    static gss_eap_attr_provider *createAttrContext(void);
+    static gss_eap_attr_source *createAttrContext(void);
 
 private:
 };

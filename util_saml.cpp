@@ -71,44 +71,44 @@ class auto_ptr_gss_buffer {
 };
 
 /*
- * gss_eap_saml_assertion_provider is for retrieving the underlying
+ * gss_eap_saml_assertion_source is for retrieving the underlying
  * assertion.
  */
 bool
-gss_eap_saml_assertion_provider::initFromExistingContext(const gss_eap_attr_ctx *source,
-                                                         const gss_eap_attr_provider *ctx)
+gss_eap_saml_assertion_source::initFromExistingContext(const gss_eap_attr_ctx *source,
+                                                       const gss_eap_attr_source *ctx)
 {
     /* Then we may be creating from an existing attribute context */
-    const gss_eap_saml_assertion_provider *saml;
+    const gss_eap_saml_assertion_source *saml;
 
     assert(m_assertion == NULL);
 
-    if (!gss_eap_attr_provider::initFromExistingContext(source, ctx))
+    if (!gss_eap_attr_source::initFromExistingContext(source, ctx))
         return false;
 
-    saml = dynamic_cast<const gss_eap_saml_assertion_provider *>(ctx);
+    saml = dynamic_cast<const gss_eap_saml_assertion_source *>(ctx);
     setAssertion(saml->getAssertion());
 
     return true;
 }
 
 bool
-gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *source,
-                                                    const gss_cred_id_t gssCred,
-                                                    const gss_ctx_id_t gssCtx)
+gss_eap_saml_assertion_source::initFromGssContext(const gss_eap_attr_ctx *source,
+                                                  const gss_cred_id_t gssCred,
+                                                  const gss_ctx_id_t gssCtx)
 {
-    const gss_eap_radius_attr_provider *radius;
+    const gss_eap_radius_attr_source *radius;
     gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
     int authenticated, complete, more = -1;
     OM_uint32 minor;
 
     assert(m_assertion == NULL);
 
-    if (!gss_eap_attr_provider::initFromGssContext(source, gssCred, gssCtx))
+    if (!gss_eap_attr_source::initFromGssContext(source, gssCred, gssCtx))
         return false;
 
-    radius = dynamic_cast<const gss_eap_radius_attr_provider *>
-        (m_source->getProvider(ATTR_TYPE_RADIUS));
+    radius = dynamic_cast<const gss_eap_radius_attr_source *>
+        (m_manager->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
         radius->getAttribute(512 /* XXX */, &authenticated, &complete,
                              &value, NULL, &more)) {
@@ -121,13 +121,13 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *sour
     return true;
 }
 
-gss_eap_saml_assertion_provider::~gss_eap_saml_assertion_provider(void)
+gss_eap_saml_assertion_source::~gss_eap_saml_assertion_source(void)
 {
     delete m_assertion;
 }
 
 void
-gss_eap_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion)
+gss_eap_saml_assertion_source::setAssertion(const saml2::Assertion *assertion)
 {
 
     delete m_assertion;
@@ -139,7 +139,7 @@ gss_eap_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion)
 }
 
 saml2::Assertion *
-gss_eap_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
+gss_eap_saml_assertion_source::parseAssertion(const gss_buffer_t buffer)
 {
     string str((char *)buffer->value, buffer->length);
     istringstream istream(str);
@@ -153,17 +153,17 @@ gss_eap_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
 }
 
 bool
-gss_eap_saml_assertion_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
-                                                   void *data) const
+gss_eap_saml_assertion_source::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
+                                                 void *data) const
 {
     /* just add the prefix */
     return addAttribute(this, GSS_C_NO_BUFFER, data);
 }
 
 void
-gss_eap_saml_assertion_provider::setAttribute(int complete,
-                                              const gss_buffer_t attr,
-                                              const gss_buffer_t value)
+gss_eap_saml_assertion_source::setAttribute(int complete,
+                                            const gss_buffer_t attr,
+                                            const gss_buffer_t value)
 {
     if (attr == GSS_C_NO_BUFFER || attr->length == 0) {
         saml2::Assertion *assertion = parseAssertion(value);
@@ -174,19 +174,19 @@ gss_eap_saml_assertion_provider::setAttribute(int complete,
 }
 
 void
-gss_eap_saml_assertion_provider::deleteAttribute(const gss_buffer_t value)
+gss_eap_saml_assertion_source::deleteAttribute(const gss_buffer_t value)
 {
     delete m_assertion;
     m_assertion = NULL;
 }
 
 bool
-gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
-                                              int *authenticated,
-                                              int *complete,
-                                              gss_buffer_t value,
-                                              gss_buffer_t display_value,
-                                              int *more) const
+gss_eap_saml_assertion_source::getAttribute(const gss_buffer_t attr,
+                                            int *authenticated,
+                                            int *complete,
+                                            gss_buffer_t value,
+                                            gss_buffer_t display_value,
+                                            int *more) const
 {
     string str;
 
@@ -211,21 +211,21 @@ gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
 }
 
 gss_any_t
-gss_eap_saml_assertion_provider::mapToAny(int authenticated,
-                                          gss_buffer_t type_id) const
+gss_eap_saml_assertion_source::mapToAny(int authenticated,
+                                        gss_buffer_t type_id) const
 {
     return (gss_any_t)m_assertion;
 }
 
 void
-gss_eap_saml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id,
-                                                       gss_any_t input) const
+gss_eap_saml_assertion_source::releaseAnyNameMapping(gss_buffer_t type_id,
+                                                     gss_any_t input) const
 {
     delete ((saml2::Assertion *)input);
 }
 
 void
-gss_eap_saml_assertion_provider::exportToBuffer(gss_buffer_t buffer) const
+gss_eap_saml_assertion_source::exportToBuffer(gss_buffer_t buffer) const
 {
     ostringstream sink;
     string str;
@@ -243,10 +243,10 @@ gss_eap_saml_assertion_provider::exportToBuffer(gss_buffer_t buffer) const
 }
 
 bool
-gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
-                                                const gss_buffer_t buffer)
+gss_eap_saml_assertion_source::initFromBuffer(const gss_eap_attr_ctx *ctx,
+                                              const gss_buffer_t buffer)
 {
-    if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
+    if (!gss_eap_attr_source::initFromBuffer(ctx, buffer))
         return false;
 
     assert(m_assertion == NULL);
@@ -259,46 +259,46 @@ gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 }
 
 bool
-gss_eap_saml_assertion_provider::init(void)
+gss_eap_saml_assertion_source::init(void)
 {
     return true;
 }
 
 void
-gss_eap_saml_assertion_provider::finalize(void)
+gss_eap_saml_assertion_source::finalize(void)
 {
 }
 
-gss_eap_attr_provider *
-gss_eap_saml_assertion_provider::createAttrContext(void)
+gss_eap_attr_source *
+gss_eap_saml_assertion_source::createAttrContext(void)
 {
-    return new gss_eap_saml_assertion_provider;
+    return new gss_eap_saml_assertion_source;
 }
 
 /*
- * gss_eap_saml_attr_provider is for retrieving the underlying attributes.
+ * gss_eap_saml_attr_source is for retrieving the underlying attributes.
  */
 const saml2::Assertion *
-gss_eap_saml_attr_provider::getAssertion(void) const
+gss_eap_saml_attr_source::getAssertion(void) const
 {
-    const gss_eap_saml_assertion_provider *saml;
+    const gss_eap_saml_assertion_source *saml;
     
-    saml = dynamic_cast<const gss_eap_saml_assertion_provider *>
-        (m_source->getProvider(ATTR_TYPE_SAML_ASSERTION));
+    saml = dynamic_cast<const gss_eap_saml_assertion_source *>
+        (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     if (saml != NULL)
         return saml->getAssertion();
 
     return NULL;
 }
 
-gss_eap_saml_attr_provider::~gss_eap_saml_attr_provider(void)
+gss_eap_saml_attr_source::~gss_eap_saml_attr_source(void)
 {
     /* Nothing to do, we're just a wrapper around the assertion provider. */
 }
 
 bool
-gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
-                                              void *data) const
+gss_eap_saml_attr_source::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
+                                            void *data) const
 {
     const saml2::Assertion *assertion = getAssertion();
 
@@ -326,19 +326,19 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
 }
 
 void
-gss_eap_saml_attr_provider::setAttribute(int complete,
-                                         const gss_buffer_t attr,
-                                         const gss_buffer_t value)
+gss_eap_saml_attr_rovider::setAttribute(int complete,
+                                        const gss_buffer_t attr,
+                                        const gss_buffer_t value)
 {
 }
 
 void
-gss_eap_saml_attr_provider::deleteAttribute(const gss_buffer_t value)
+gss_eap_saml_attr_source::deleteAttribute(const gss_buffer_t value)
 {
 }
 
 const saml2::Attribute *
-gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr) const
+gss_eap_saml_attr_source::getAttribute(const gss_buffer_t attr) const
 {
     const saml2::Assertion *assertion = getAssertion();
     saml2::AttributeStatement *statement;
@@ -367,12 +367,12 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr) const
 }
 
 bool
-gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
-                                         int *authenticated,
-                                         int *complete,
-                                         gss_buffer_t value,
-                                         gss_buffer_t display_value,
-                                         int *more) const
+gss_eap_saml_attr_source::getAttribute(const gss_buffer_t attr,
+                                       int *authenticated,
+                                       int *complete,
+                                       gss_buffer_t value,
+                                       gss_buffer_t display_value,
+                                       int *more) const
 {
     const saml2::Attribute *a;
     const saml2::AttributeValue *av;
@@ -408,45 +408,45 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 }
 
 gss_any_t
-gss_eap_saml_attr_provider::mapToAny(int authenticated,
-                                     gss_buffer_t type_id) const
+gss_eap_saml_attr_source::mapToAny(int authenticated,
+                                   gss_buffer_t type_id) const
 {
     return (gss_any_t)NULL;
 }
 
 void
-gss_eap_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
-                                                  gss_any_t input) const
+gss_eap_saml_attr_source::releaseAnyNameMapping(gss_buffer_t type_id,
+                                                gss_any_t input) const
 {
 }
 
 void
-gss_eap_saml_attr_provider::exportToBuffer(gss_buffer_t buffer) const
+gss_eap_saml_attr_source::exportToBuffer(gss_buffer_t buffer) const
 {
     buffer->length = 0;
     buffer->value = NULL;
 }
 
 bool
-gss_eap_saml_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
-                                           const gss_buffer_t buffer)
+gss_eap_saml_attr_source::initFromBuffer(const gss_eap_attr_ctx *ctx,
+                                         const gss_buffer_t buffer)
 {
     return true;
 }
 
 bool
-gss_eap_saml_attr_provider::init(void)
+gss_eap_saml_attr_source::init(void)
 {
     return true;
 }
 
 void
-gss_eap_saml_attr_provider::finalize(void)
+gss_eap_saml_attr_source::finalize(void)
 {
 }
 
-gss_eap_attr_provider *
-gss_eap_saml_attr_provider::createAttrContext(void)
+gss_eap_attr_source *
+gss_eap_saml_attr_source::createAttrContext(void)
 {
-    return new gss_eap_saml_attr_provider;
+    return new gss_eap_saml_attr_source;
 }

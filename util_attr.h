@@ -45,33 +45,33 @@
 
 struct gss_eap_attr_ctx;
 
-struct gss_eap_attr_provider
+struct gss_eap_attr_source
 {
 public:
-    gss_eap_attr_provider(void) {}
-    virtual ~gss_eap_attr_provider(void) {}
+    gss_eap_attr_source(void) {}
+    virtual ~gss_eap_attr_source(void) {}
 
-    bool initWithSource(const gss_eap_attr_ctx *source)
+    bool initWithManager(const gss_eap_attr_ctx *manager)
     {
-        m_source = source;
+        m_manager = manager;
         return true;
     }
 
-    virtual bool initFromExistingContext(const gss_eap_attr_ctx *source,
-                                         const gss_eap_attr_provider *ctx)
+    virtual bool initFromExistingContext(const gss_eap_attr_ctx *manager,
+                                         const gss_eap_attr_source *ctx)
     {
-        return initWithSource(source);
+        return initWithManager(manager);
     }
 
-    virtual bool initFromGssContext(const gss_eap_attr_ctx *source,
+    virtual bool initFromGssContext(const gss_eap_attr_ctx *manager,
                                     const gss_cred_id_t cred,
                                     const gss_ctx_id_t ctx)
     {
-        return initWithSource(source);
+        return initWithManager(manager);
     }
 
     typedef bool
-    gss_eap_attr_enumeration_cb(const gss_eap_attr_provider *provider,
+    gss_eap_attr_enumeration_cb(const gss_eap_attr_source *provider,
                                 const gss_buffer_t attribute,
                                 void *data);
 
@@ -97,32 +97,32 @@ public:
                                        gss_any_t input) const {}
 
     virtual void exportToBuffer(gss_buffer_t buffer) const {}
-    virtual bool initFromBuffer(const gss_eap_attr_ctx *source,
+    virtual bool initFromBuffer(const gss_eap_attr_ctx *manager,
                                 const gss_buffer_t buffer)
     {
-        return initWithSource(source);
+        return initWithManager(manager);
     }
 
     static bool init() { return true; }
     static void finalize() {}
 
-    static gss_eap_attr_provider *createAttrContext(void) { return NULL; }
+    static gss_eap_attr_source *createAttrContext(void) { return NULL; }
 
 protected:
-    const gss_eap_attr_ctx *m_source;
+    const gss_eap_attr_ctx *m_manager;
 };
 
-typedef gss_eap_attr_provider *(*gss_eap_attr_create_factory)(void);
+typedef gss_eap_attr_source *(*gss_eap_attr_create_factory)(void);
 
-struct gss_eap_attr_ctx : gss_eap_attr_provider
+struct gss_eap_attr_ctx : gss_eap_attr_source
 {
 public:
     gss_eap_attr_ctx(void);
     ~gss_eap_attr_ctx(void);
 
-    bool initFromExistingContext(const gss_eap_attr_ctx *source,
-                                 const gss_eap_attr_provider *ctx);
-    bool initFromGssContext(const gss_eap_attr_ctx *source,
+    bool initFromExistingContext(const gss_eap_attr_ctx *manager,
+                                 const gss_eap_attr_source *ctx);
+    bool initFromGssContext(const gss_eap_attr_ctx *manager,
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
@@ -180,11 +180,11 @@ public:
     composeAttributeName(unsigned int type,
                          const gss_buffer_t suffix);
 
-    gss_eap_attr_provider *getProvider(unsigned int type) const;
-    gss_eap_attr_provider *getProvider(const gss_buffer_t prefix) const;
+    gss_eap_attr_source *getProvider(unsigned int type) const;
+    gss_eap_attr_source *getProvider(const gss_buffer_t prefix) const;
 
 private:
-    gss_eap_attr_provider *m_providers[ATTR_TYPE_MAX];
+    gss_eap_attr_source *m_providers[ATTR_TYPE_MAX];
 };
 
 #include "util_radius.h"

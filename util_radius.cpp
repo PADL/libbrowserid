@@ -33,111 +33,111 @@
 #include "gssapiP_eap.h"
 
 bool
-gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *source,
-                                                      const gss_eap_attr_provider *ctx)
+gss_eap_radius_attr_source::initFromExistingContext(const gss_eap_attr_ctx *source,
+                                                    const gss_eap_attr_source *ctx)
 {
-    if (!gss_eap_attr_provider::initFromExistingContext(source, ctx))
+    if (!gss_eap_attr_source::initFromExistingContext(source, ctx))
         return false;
 
     return true;
 }
 
 bool
-gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *source,
-                                                 const gss_cred_id_t gssCred,
-                                                 const gss_ctx_id_t gssCtx)
+gss_eap_radius_attr_source::initFromGssContext(const gss_eap_attr_ctx *source,
+                                               const gss_cred_id_t gssCred,
+                                               const gss_ctx_id_t gssCtx)
 {
-    if (!gss_eap_attr_provider::initFromGssContext(source, gssCred, gssCtx))
+    if (!gss_eap_attr_source::initFromGssContext(source, gssCred, gssCtx))
         return false;
 
     return true;
 }
 
-gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
+gss_eap_radius_attr_source::~gss_eap_radius_attr_source(void)
 {
 }
 
 bool
-gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute, void *data) const
+gss_eap_radius_attr_source::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute, void *data) const
 {
     return true;
 }
 
 void
-gss_eap_radius_attr_provider::setAttribute(int complete,
-                                           const gss_buffer_t attr,
-                                           const gss_buffer_t value)
+gss_eap_radius_attr_source::setAttribute(int complete,
+                                         const gss_buffer_t attr,
+                                         const gss_buffer_t value)
 {
 }
 
 void
-gss_eap_radius_attr_provider::deleteAttribute(const gss_buffer_t value)
+gss_eap_radius_attr_source::deleteAttribute(const gss_buffer_t value)
 {
 }
 
 bool
-gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
-                                           int *authenticated,
-                                           int *complete,
-                                           gss_buffer_t value,
-                                           gss_buffer_t display_value,
-                                           int *more) const
+gss_eap_radius_attr_source::getAttribute(const gss_buffer_t attr,
+                                         int *authenticated,
+                                         int *complete,
+                                         gss_buffer_t value,
+                                         gss_buffer_t display_value,
+                                         int *more) const
 {
     return false;
 }
 
 bool
-gss_eap_radius_attr_provider::getAttribute(unsigned int attr,
-                                           int *authenticated,
-                                           int *complete,
-                                           gss_buffer_t value,
-                                           gss_buffer_t display_value,
-                                           int *more) const
+gss_eap_radius_attr_source::getAttribute(unsigned int attr,
+                                         int *authenticated,
+                                         int *complete,
+                                         gss_buffer_t value,
+                                         gss_buffer_t display_value,
+                                         int *more) const
 {
     return false;
 }
 
 gss_any_t
-gss_eap_radius_attr_provider::mapToAny(int authenticated,
+gss_eap_radius_attr_source::mapToAny(int authenticated,
                                        gss_buffer_t type_id) const
 {
     return (gss_any_t)NULL;
 }
 
 void
-gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
-                                                    gss_any_t input) const
+gss_eap_radius_attr_source::releaseAnyNameMapping(gss_buffer_t type_id,
+                                                  gss_any_t input) const
 {
 }
 
 void
-gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
+gss_eap_radius_attr_source::exportToBuffer(gss_buffer_t buffer) const
 {
 }
 
 bool
-gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
-                                             const gss_buffer_t buffer)
+gss_eap_radius_attr_source::initFromBuffer(const gss_eap_attr_ctx *ctx,
+                                           const gss_buffer_t buffer)
 {
-    if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
+    if (!gss_eap_attr_source::initFromBuffer(ctx, buffer))
         return false;
 
     return false;
 }
 
 bool
-gss_eap_radius_attr_provider::init(void)
+gss_eap_radius_attr_source::init(void)
 {
     return true;
 }
 
 void
-gss_eap_radius_attr_provider::finalize(void)
+gss_eap_radius_attr_source::finalize(void)
 {
 }
 
-gss_eap_attr_provider *
-gss_eap_radius_attr_provider::createAttrContext(void)
+gss_eap_attr_source *
+gss_eap_radius_attr_source::createAttrContext(void)
 {
-    return new gss_eap_radius_attr_provider;
+    return new gss_eap_radius_attr_source;
 }
