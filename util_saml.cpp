@@ -308,6 +308,7 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
                                               void *data) const
 {
     const saml2::Assertion *assertion = getAssertion();
+    bool ret = true;
 
     if (assertion == NULL)
         return true;
@@ -318,18 +319,31 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
         a != attrs2.end();
         ++a)
     {
-        gss_buffer_desc attribute;
+        const XMLCh *attributeName = (*a)->getName();
+        const XMLCh *attributeNameFormat = (*a)->getNameFormat();
+        XMLCh *qualifiedName;
+        XMLCh space[2] = { ' ', 0 };
+        gss_buffer_desc utf8;
 
-        attribute.value = (void *)toUTF8((*a)->getName(), true);
-        attribute.length = strlen((char *)attribute.value);
+        qualifiedName = new XMLCh[XMLString::stringLen(attributeName) + 1 +
+                                  XMLString::stringLen(attributeNameFormat) + 1];
+        XMLString::copyString(qualifiedName, attributeName);
+        XMLString::catString(qualifiedName, space);
+        XMLString::catString(qualifiedName, attributeNameFormat);
 
-        if (!addAttribute(this, &attribute, data))
-            return false;
+        utf8.value = (void *)toUTF8(qualifiedName);
+        utf8.length = strlen((char *)utf8.value);
 
-        delete (char *)attribute.value;
+        ret = addAttribute(this, &utf8, data);
+
+        delete qualifiedName;
+        delete qualifiedName;
+
+        if (!ret)
+            break;
     }
 
-    return true;
+    return ret;
 }
 
 void
@@ -344,33 +358,61 @@ gss_eap_saml_attr_provider::deleteAttribute(const gss_buffer_t value)
 {
 }
 
+static BaseRefVectorOf<XMLCh> *
+decomposeAttributeName(const gss_buffer_t attr)
+{
+    XMLCh *qualifiedAttr = new XMLCh[attr->length + 1];
+    XMLString::transcode((const char *)attr->value, qualifiedAttr, attr->length);
+
+    BaseRefVectorOf<XMLCh> *components = XMLString::tokenizeString(qualifiedAttr);
+
+    delete qualifiedAttr;
+
+    return components;
+}
+
 const saml2::Attribute *
 gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr) const
 {
+    /* Check we have an assertion */
     const saml2::Assertion *assertion = getAssertion();
-    saml2::AttributeStatement *statement;
-
-    if (assertion == NULL)
+    if (assertion == NULL ||
+        assertion->getAttributeStatements().size() == 0)
         return NULL;
 
-    if (assertion->getAttributeStatements().size() == 0)
+    /* Check the attribute name consists of name format | whsp | name */
+    BaseRefVectorOf<XMLCh> *components = decomposeAttributeName(attr);
+    if (components == NULL || components->size() != 2) {
+        delete components;
         return NULL;
-
-    statement = assertion->getAttributeStatements().front();
-
-    auto_ptr_gss_buffer attrname(attr);
-
-    const vector<saml2::Attribute*>& attrs2 =
-        const_cast<const saml2::AttributeStatement*>(statement)->getAttributes();
-
-    for (vector<saml2::Attribute*>::const_iterator a = attrs2.begin();
-        a != attrs2.end();
-        ++a) {
-        if (XMLString::equals((*a)->getName(), attrname.get()))
-            return *a;
     }
 
-    return NULL;
+    /* For each attribute statement, look for an attribute match */
+    const vector <saml2::AttributeStatement *>&statements =
+        assertion->getAttributeStatements();
+    const saml2::Attribute *ret = NULL;
+
+    for (vector<saml2::AttributeStatement *>::const_iterator s = statements.begin();
+        s != statements.end();
+        ++s) {
+        const vector<saml2::Attribute*>& attrs =
+            const_cast<const saml2::AttributeStatement*>(*s)->getAttributes();
+
+        for (vector<saml2::Attribute*>::const_iterator a = attrs.begin(); a != attrs.end(); ++a) {
+            if (XMLString::equals((*a)->getNameFormat(), components->elementAt(0)) &&
+                XMLString::equals((*a)->getName(), components->elementAt(1))) {
+                ret = *a;
+                break;
+            }
+        }
+
+        if (ret != NULL)
+            break;
+    }
+
+    delete components;
+
+    return ret;
 }
 
 bool
@@ -407,6 +449,9 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 
     value->value = toUTF8(av->getTextContent(), true);
     value->length = strlen((char *)value->value);
+
+    if (display_value != NULL)
+        duplicateBuffer(*value, display_value);
 
     if (nvalues > ++i)
         *more = i;
