@@ -71,12 +71,15 @@ public:
                       gss_buffer_t display_value,
                       int *more) const;
 
+    bool authenticated() const { return m_authenticated; }
+
     static bool init();
     static void finalize();
 
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:
+    bool m_authenticated;
 };
 
 #endif /* _UTIL_RADIUS_H_ */

@@ -93,12 +93,15 @@ private:
         return m_attributes;
     }
 
+    bool authenticated() const { return m_authenticated; }
+
     friend bool
     addRadiusAttribute(const gss_eap_attr_provider *source,
                        const gss_buffer_t attribute,
                        void *data);
 
     mutable std::vector<shibsp::Attribute *> m_attributes;
+    int m_authenticated;
 };
 
 #endif /* _UTIL_SHIB_H_ */

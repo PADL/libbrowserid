@@ -82,12 +82,17 @@ gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *mana
 {
     const gss_eap_shib_attr_provider *shib;
 
-    if (!gss_eap_attr_provider::initFromExistingContext(manager, ctx))
+    if (!gss_eap_attr_provider::initFromExistingContext(manager, ctx)) {
         return false;
+    }
+
+    m_authenticated = false;
 
     shib = static_cast<const gss_eap_shib_attr_provider *>(ctx);
-    if (shib != NULL)
+    if (shib != NULL) {
         m_attributes = duplicateAttributes(shib->getAttributes());
+        m_authenticated = shib->authenticated();
+    }
 
     return true;
 }
@@ -162,11 +167,18 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
         gss_display_name(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
         resolver->setApplicationID((const char *)nameBuf.value);
 
-    if (saml != NULL && saml->getAssertion() != NULL)
-        resolver->addToken(saml->getAssertion());
+    m_authenticated = false;
 
-    if (radius != NULL)
+    if (radius != NULL) {
         radius->getAttributeTypes(addRadiusAttribute, (void *)this);
+        m_authenticated = radius->authenticated();
+    }
+
+    if (saml != NULL && saml->getAssertion() != NULL) {
+        resolver->addToken(saml->getAssertion());
+        if (m_authenticated)
+            m_authenticated = saml->authenticated();
+    }
 
     resolver->resolveAttributes(m_attributes);
 
@@ -226,6 +238,7 @@ gss_eap_shib_attr_provider::setAttribute(int complete,
     }
 
     m_attributes.push_back(a);
+    m_authenticated = false;
 }
 
 void
@@ -236,6 +249,8 @@ gss_eap_shib_attr_provider::deleteAttribute(const gss_buffer_t attr)
     i = getAttributeIndex(attr);
     if (i >= 0)
         m_attributes.erase(m_attributes.begin() + i);
+
+    m_authenticated = false;
 }
 
 bool
@@ -313,8 +328,8 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
     if (display_value != NULL)
         duplicateBuffer(buf, display_value);
  
-    *authenticated = TRUE;
-    *complete = FALSE;
+    *authenticated = m_authenticated;
+    *complete = false;
 
     return true;
 }
@@ -343,11 +358,16 @@ gss_eap_shib_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_shib_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 {
+    DDF obj(NULL);
     DDF attrs(NULL);
 
     buffer->length = 0;
     buffer->value = NULL;
 
+    obj.addmember("version").integer(1);
+    obj.addmember("authenticated").integer(m_authenticated);
+
+    attrs = obj.addmember("attributes").list();
     for (vector<Attribute*>::const_iterator a = m_attributes.begin();
          a != m_attributes.end(); ++a) {
         DDF attr = (*a)->marshall();
@@ -373,14 +393,21 @@ gss_eap_shib_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
     if (buffer->length == 0)
         return true;
 
+    assert(m_authenticated == false);
     assert(m_attributes.size() == 0);
 
-    DDF attrs(NULL);
+    DDF obj(NULL);
     string str((const char *)buffer->value, buffer->length);
     istringstream source(str);
 
-    source >> attrs;
+    source >> obj;
 
+    if (obj["version"].integer() != 1)
+        return false;
+
+    m_authenticated = (obj["authenticated"].integer() != 0);
+
+    DDF attrs = obj["attributes"];
     DDF attr = attrs.first();
     while (!attr.isnull()) {
         Attribute *attribute = Attribute::unmarshall(attr);

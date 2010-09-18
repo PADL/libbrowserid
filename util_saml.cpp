@@ -35,10 +35,10 @@
 #include <sstream>
 
 #include <xercesc/util/XMLUniDefs.hpp>
-#include <xmltooling/XMLToolingConfig.h> 
+#include <xmltooling/XMLToolingConfig.h>
 #include <xmltooling/util/XMLHelper.h>
 
-#include <saml/saml1/core/Assertions.h> 
+#include <saml/saml1/core/Assertions.h>
 #include <saml/saml2/core/Assertions.h>
 #include <saml/saml2/metadata/Metadata.h>
 
@@ -65,7 +65,7 @@ gss_eap_saml_assertion_provider::initFromExistingContext(const gss_eap_attr_ctx 
         return false;
 
     saml = static_cast<const gss_eap_saml_assertion_provider *>(ctx);
-    setAssertion(saml->getAssertion());
+    setAssertion(saml->getAssertion(), saml->authenticated());
 
     return true;
 }
@@ -90,7 +90,7 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *mana
     if (radius != NULL &&
         radius->getAttribute(512 /* XXX */, &authenticated, &complete,
                              &value, NULL, &more)) {
-        m_assertion = parseAssertion(&value);
+        setAssertion(&value, authenticated);
         gss_release_buffer(&minor, &value);
     } else {
         m_assertion = NULL;
@@ -105,15 +105,29 @@ gss_eap_saml_assertion_provider::~gss_eap_saml_assertion_provider(void)
 }
 
 void
-gss_eap_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion)
+gss_eap_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion,
+                                              bool authenticated)
 {
 
     delete m_assertion;
 
-    if (assertion != NULL)
-        m_assertion = dynamic_cast<saml2::Assertion*>(assertion->clone());
-    else
+    if (assertion != NULL) {
+        m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
+        m_authenticated = authenticated;
+    } else {
         m_assertion = NULL;
+        m_authenticated = false;
+    }
+}
+
+void
+gss_eap_saml_assertion_provider::setAssertion(const gss_buffer_t buffer,
+                                              bool authenticated)
+{
+    delete m_assertion;
+
+    m_assertion = parseAssertion(buffer);
+    m_authenticated = (m_assertion != NULL && authenticated);
 }
 
 saml2::Assertion *
@@ -144,10 +158,7 @@ gss_eap_saml_assertion_provider::setAttribute(int complete,
                                               const gss_buffer_t value)
 {
     if (attr == GSS_C_NO_BUFFER || attr->length == 0) {
-        saml2::Assertion *assertion = parseAssertion(value);
-
-        delete m_assertion;
-        m_assertion = assertion;
+        setAssertion(value);
     }
 }
 
@@ -156,6 +167,7 @@ gss_eap_saml_assertion_provider::deleteAttribute(const gss_buffer_t value)
 {
     delete m_assertion;
     m_assertion = NULL;
+    m_authenticated = false;
 }
 
 bool
@@ -177,7 +189,7 @@ gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
     if (*more != -1)
         return false;
 
-    *authenticated = true;
+    *authenticated = m_authenticated;
     *complete = false;
 
     XMLHelper::serialize(m_assertion->marshall((DOMDocument *)NULL), str);
@@ -232,9 +244,8 @@ gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 
     assert(m_assertion == NULL);
 
-    m_assertion = parseAssertion(buffer);
-    if (m_assertion == NULL)
-        return false;
+    setAssertion(buffer);
+    /* TODO XXX how to propagate authenticated flag? */
 
     return true;
 }
@@ -263,17 +274,24 @@ gss_eap_saml_assertion_provider::createAttrContext(void)
 /*
  * gss_eap_saml_attr_provider is for retrieving the underlying attributes.
  */
-const saml2::Assertion *
-gss_eap_saml_attr_provider::getAssertion(void) const
+bool
+gss_eap_saml_attr_provider::getAssertion(int *authenticated,
+                                         const saml2::Assertion **pAssertion) const
 {
     const gss_eap_saml_assertion_provider *saml;
-    
+
+    *authenticated = false;
+    *pAssertion = NULL;
+
     saml = static_cast<const gss_eap_saml_assertion_provider *>
         (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
-    if (saml != NULL)
-        return saml->getAssertion();
+    if (saml == NULL)
+        return false;
 
-    return NULL;
+    *authenticated = saml->authenticated();
+    *pAssertion = saml->getAssertion();
+
+    return (*pAssertion != NULL);
 }
 
 gss_eap_saml_attr_provider::~gss_eap_saml_attr_provider(void)
@@ -285,12 +303,27 @@ bool
 gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
                                               void *data) const
 {
-    const saml2::Assertion *assertion = getAssertion();
+    const saml2::Assertion *assertion;
     bool ret = true;
+    int authenticated;
 
-    if (assertion == NULL)
+    if (!getAssertion(&authenticated, &assertion))
         return true;
 
+    /*
+     * Note: the first prefix is added by the attribute provider manager
+     *
+     * From draft-hartman-gss-eap-naming-00:
+     *
+     *   Each attribute carried in the assertion SHOULD also be a GSS name
+     *   attribute.  The name of this attribute has three parts, all separated
+     *   by an ASCII space character.  The first part is
+     *   urn:ietf:params:gss-eap:saml-attr.  The second part is the URI for
+     *   the SAML attribute name format.  The final part is the name of the
+     *   SAML attribute.  If the mechanism performs an additional attribute
+     *   query, the retrieved attributes SHOULD be GSS-API name attributes
+     *   using the same name syntax.
+     */
     const vector<saml2::Attribute*>& attrs2 =
         const_cast<const saml2::AttributeStatement*>(assertion->getAttributeStatements().front())->getAttributes();
     for (vector<saml2::Attribute*>::const_iterator a = attrs2.begin();
@@ -349,20 +382,27 @@ decomposeAttributeName(const gss_buffer_t attr)
     return components;
 }
 
-const saml2::Attribute *
-gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr) const
+bool
+gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
+                                         int *authenticated,
+                                         int *complete,
+                                         const saml2::Attribute **pAttribute) const
 {
-    /* Check we have an assertion */
-    const saml2::Assertion *assertion = getAssertion();
-    if (assertion == NULL ||
+    const saml2::Assertion *assertion;
+
+    *authenticated = false;
+    *complete = true;
+    *pAttribute = NULL;
+
+    if (!getAssertion(authenticated, &assertion) ||
         assertion->getAttributeStatements().size() == 0)
-        return NULL;
+        return false;
 
     /* Check the attribute name consists of name format | whsp | name */
     BaseRefVectorOf<XMLCh> *components = decomposeAttributeName(attr);
     if (components == NULL || components->size() != 2) {
         delete components;
-        return NULL;
+        return false;
     }
 
     /* For each attribute statement, look for an attribute match */
@@ -390,7 +430,9 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr) const
 
     delete components;
 
-    return ret;
+    *pAttribute = ret;
+
+    return (ret != NULL);
 }
 
 bool
@@ -407,8 +449,7 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 
     *more = 0;
 
-    a = getAttribute(attr);
-    if (a == NULL)
+    if (!getAttribute(attr, authenticated, complete, &a))
         return false;
 
     nvalues = a->getAttributeValues().size();
@@ -419,20 +460,16 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
         return false;
     av = dynamic_cast<const saml2::AttributeValue *>(a->getAttributeValues().at(i)
 );
-    if (av == NULL)
-        return false;
+    if (av != NULL) {
+        value->value = toUTF8(av->getTextContent(), true);
+        value->length = strlen((char *)value->value);
 
-    *authenticated = TRUE;
-    *complete = FALSE;
+        if (display_value != NULL)
+            duplicateBuffer(*value, display_value);
 
-    value->value = toUTF8(av->getTextContent(), true);
-    value->length = strlen((char *)value->value);
-
-    if (display_value != NULL)
-        duplicateBuffer(*value, display_value);
-
-    if (nvalues > ++i)
-        *more = i;
+        if (nvalues > ++i)
+            *more = i;
+    }
 
     return true;
 }

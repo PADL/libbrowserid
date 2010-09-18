@@ -72,10 +72,11 @@ public:
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
 
-    void setAssertion(const opensaml::saml2::Assertion *assertion);
-
     const opensaml::saml2::Assertion *getAssertion(void) const {
         return m_assertion;
+    }
+    bool authenticated(void) const {
+        return m_authenticated;
     }
 
     static bool init();
@@ -87,7 +88,13 @@ private:
     static opensaml::saml2::Assertion *
         parseAssertion(const gss_buffer_t buffer);
 
+    void setAssertion(const opensaml::saml2::Assertion *assertion,
+                      bool authenticated = false);
+    void setAssertion(const gss_buffer_t buffer,
+                      bool authenticated = false);
+
     opensaml::saml2::Assertion *m_assertion;
+    bool m_authenticated;
 };
 
 struct gss_eap_saml_attr_provider : gss_eap_attr_provider {
@@ -115,10 +122,12 @@ public:
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
 
-    const opensaml::saml2::Attribute *
-        getAttribute(const gss_buffer_t attr) const;
-
-    const opensaml::saml2::Assertion *getAssertion(void) const;
+    bool getAttribute(const gss_buffer_t attr,
+                      int *authenticated,
+                      int *complete,
+                      const opensaml::saml2::Attribute **pAttribute) const;
+    bool getAssertion(int *authenticated,
+                      const opensaml::saml2::Assertion **pAssertion) const;
 
     static bool init();
     static void finalize();
