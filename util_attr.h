@@ -43,7 +43,13 @@
 #ifdef __cplusplus
 #include <string>
 
+struct gss_eap_attr_provider;
 struct gss_eap_attr_ctx;
+
+typedef bool
+(*gss_eap_attr_enumeration_cb)(const gss_eap_attr_provider *source,
+                               const gss_buffer_t attribute,
+                               void *data);
 
 struct gss_eap_attr_provider
 {
@@ -69,11 +75,6 @@ public:
     {
         return initWithManager(manager);
     }
-
-    typedef bool
-    gss_eap_attr_enumeration_cb(const gss_eap_attr_provider *source,
-                                const gss_buffer_t attribute,
-                                void *data);
 
     virtual bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const
     {
@@ -119,16 +120,14 @@ private:
 
 typedef gss_eap_attr_provider *(*gss_eap_attr_create_provider)(void);
 
-struct gss_eap_attr_ctx : gss_eap_attr_provider
+struct gss_eap_attr_ctx
 {
 public:
     gss_eap_attr_ctx(void);
     ~gss_eap_attr_ctx(void);
 
-    bool initFromExistingContext(const gss_eap_attr_ctx *manager,
-                                 const gss_eap_attr_provider *ctx);
-    bool initFromGssContext(const gss_eap_attr_ctx *manager,
-                            const gss_cred_id_t cred,
+    bool initFromExistingContext(const gss_eap_attr_ctx *manager);
+    bool initFromGssContext(const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
@@ -150,8 +149,7 @@ public:
                                gss_any_t input) const;
 
     void exportToBuffer(gss_buffer_t buffer) const;
-    bool initFromBuffer(const gss_eap_attr_ctx *ctx,
-                        const gss_buffer_t buffer);
+    bool initFromBuffer(const gss_buffer_t buffer);
 
     static unsigned int
     attributePrefixToType(const gss_buffer_t prefix);

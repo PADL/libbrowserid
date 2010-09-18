@@ -102,18 +102,14 @@ gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
 }
 
 bool
-gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager,
-                                          const gss_eap_attr_provider *provider)
+gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
 {
-    if (!gss_eap_attr_provider::initFromExistingContext(this, provider))
-        return false;
-
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
 
         provider = m_providers[i];
         if (provider != NULL) {
-            if (!provider->initFromExistingContext(this, provider))
+            if (!provider->initFromExistingContext(this, manager->m_providers[i]))
                 return false;
         }
     }
@@ -122,13 +118,9 @@ gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager,
 }
 
 bool
-gss_eap_attr_ctx::initFromGssContext(const gss_eap_attr_ctx *manager,
-                                     const gss_cred_id_t cred,
+gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
                                      const gss_ctx_id_t ctx)
 {
-    if (!gss_eap_attr_provider::initFromGssContext(this, cred, ctx))
-        return false;
-
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
 
@@ -331,8 +323,7 @@ gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 }
 
 bool
-gss_eap_attr_ctx::initFromBuffer(const gss_eap_attr_ctx *manager,
-                                 const gss_buffer_t buffer)
+gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
 {
     unsigned int i;
     bool ret;
@@ -353,7 +344,6 @@ gss_eap_attr_ctx::initFromBuffer(const gss_eap_attr_ctx *manager,
 
     return ret;
 }
-
 
 /*
  * C wrappers
@@ -586,7 +576,7 @@ gssEapImportAttrContext(OM_uint32 *minor,
         try {
             ctx = new gss_eap_attr_ctx();
 
-            if (!ctx->initFromBuffer(NULL, buffer)) {
+            if (!ctx->initFromBuffer(buffer)) {
                 delete ctx;
                 return GSS_S_DEFECTIVE_TOKEN;
             }
@@ -612,7 +602,7 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
     try {
         if (in->attrCtx != NULL) {
             ctx = new gss_eap_attr_ctx();
-            if (!ctx->initFromExistingContext(NULL, in->attrCtx)) {
+            if (!ctx->initFromExistingContext(in->attrCtx)) {
                 delete ctx;
                 return GSS_S_FAILURE;
             }
@@ -709,8 +699,10 @@ gssEapCreateAttrContext(gss_cred_id_t gssCred,
 {
     gss_eap_attr_ctx *ctx;
 
+    assert(gssCtx != GSS_C_NO_CONTEXT);
+
     ctx = new gss_eap_attr_ctx();
-    if (!ctx->initFromGssContext(NULL, gssCred, gssCtx)) {
+    if (!ctx->initFromGssContext(gssCred, gssCtx)) {
         delete ctx;
         return NULL;
     }
