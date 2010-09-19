@@ -199,6 +199,14 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
 
     delete resolver;
 
+#ifdef GSSEAP_DEBUG
+    gss_buffer_desc testattr = {
+        sizeof("urn:greet:greeting") - 1, (void *)"urn:greet:greeting" };
+    gss_buffer_desc testval =
+        { sizeof("Hello, GSS EAP.") - 1, (void *)"Hello, GSS EAP." };
+    setAttribute(true, &testattr, &testval);
+#endif /* GSSEAP_DEBUG */
+
     return true;
 }
 
@@ -230,10 +238,7 @@ gss_eap_shib_attr_provider::setAttribute(int complete,
                                          const gss_buffer_t value)
 {
     string attrStr((char *)attr->value, attr->length);
-    vector <string> ids(1);
-
-    ids.push_back(attrStr);
-
+    vector <string> ids(1, attrStr);
     SimpleAttribute *a = new SimpleAttribute(ids);
 
     if (value->length != 0) {
@@ -439,8 +444,25 @@ gss_eap_shib_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 bool
 gss_eap_shib_attr_provider::init(void)
 {
+#if 1
+    SPConfig& conf=SPConfig::getConfig();
+    conf.setFeatures(
+        SPConfig::Metadata |
+        SPConfig::Trust |
+        SPConfig::AttributeResolution |
+        SPConfig::Credentials |
+        SPConfig::OutOfProcess
+        );
+    if (!conf.init())
+        return false;
+    if (!conf.instantiate()) {
+        conf.term();
+        return false;
+    }
+#else
     if (!ShibbolethResolver::init())
         return false;
+#endif
 
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_LOCAL,
                                        NULL,
@@ -465,10 +487,8 @@ gss_eap_shib_attr_provider::createAttrContext(void)
 Attribute *
 gss_eap_shib_attr_provider::duplicateAttribute(const Attribute *src)
 {
-    Attribute *attribute;
-
     DDF obj = src->marshall();
-    attribute = Attribute::unmarshall(obj);
+    Attribute *attribute = Attribute::unmarshall(obj);
     obj.destroy();
 
     return attribute;

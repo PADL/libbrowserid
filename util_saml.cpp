@@ -154,8 +154,15 @@ bool
 gss_eap_saml_assertion_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
                                                    void *data) const
 {
+    bool ret;
+
     /* just add the prefix */
-    return addAttribute(this, GSS_C_NO_BUFFER, data);
+    if (m_assertion != NULL)
+        ret = addAttribute(this, GSS_C_NO_BUFFER, data);
+    else
+        ret = true;
+
+    return ret;
 }
 
 void

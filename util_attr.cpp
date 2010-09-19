@@ -262,7 +262,6 @@ addAttribute(const gss_eap_attr_provider *provider,
              void *data)
 {
     eap_gss_get_attr_types_args *args = (eap_gss_get_attr_types_args *)data;
-    gss_buffer_t prefix = GSS_C_NO_BUFFER;
     gss_buffer_desc qualified;
     OM_uint32 major, minor;
 
@@ -271,7 +270,7 @@ addAttribute(const gss_eap_attr_provider *provider,
         major = gss_add_buffer_set_member(&minor, &qualified, &args->attrs);
         gss_release_buffer(&minor, &qualified);
     } else {
-        major = gss_add_buffer_set_member(&minor, prefix, &args->attrs);
+        major = gss_add_buffer_set_member(&minor, attribute, &args->attrs);
     }
 
     return GSS_ERROR(major) == false;
