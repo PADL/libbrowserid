@@ -40,14 +40,20 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
 
-    *name_is_MN = 1;
-    *MN_mech = GSS_EAP_MECHANISM;
-    *attrs = GSS_C_NO_BUFFER_SET;
+    if (name_is_MN != NULL)
+        *name_is_MN = 1;
+    if (MN_mech != NULL)
+        *MN_mech = GSS_EAP_MECHANISM;
+    if (attrs != NULL)
+        *attrs = GSS_C_NO_BUFFER_SET;
 
     if (name == GSS_C_NO_NAME) {
         *minor = EINVAL;
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
     }
+
+    if (attrs == NULL)
+        return GSS_S_COMPLETE;
 
     GSSEAP_MUTEX_LOCK(&name->mutex);
 

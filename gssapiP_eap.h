@@ -56,10 +56,11 @@
 #include <common.h>
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>
-#include <crypto/tls.h>                     /* XXX testing implementation only */
+#include <crypto/tls.h>
 #include <wpabuf.h>
 #endif
 
+/* These name flags are informative and not actually used by anything yet */
 #define NAME_FLAG_NAI                       0x00000001
 #define NAME_FLAG_SERVICE                   0x00000002
 #define NAME_FLAG_COMPOSITE                 0x00000004
@@ -68,7 +69,7 @@ struct gss_eap_saml_attr_ctx;
 struct gss_eap_attr_ctx;
 
 struct gss_name_struct {
-    GSSEAP_MUTEX mutex; /* mutex protecting attributes */
+    GSSEAP_MUTEX mutex; /* mutex protects attrCtx */
     OM_uint32 flags;
     krb5_principal krbPrincipal; /* this is immutable */
     struct gss_eap_attr_ctx *attrCtx;
