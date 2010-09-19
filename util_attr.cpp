@@ -307,13 +307,28 @@ gss_any_t
 gss_eap_attr_ctx::mapToAny(int authenticated,
                            gss_buffer_t type_id) const
 {
-    return NULL;
+    unsigned int type;
+    gss_eap_attr_provider *provider;
+
+    type = attributePrefixToType(type_id);
+
+    provider = m_providers[type];
+
+    return provider->mapToAny(authenticated, type_id);
 }
 
 void
 gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
                                         gss_any_t input) const
 {
+    unsigned int type;
+    gss_eap_attr_provider *provider;
+
+    type = attributePrefixToType(type_id);
+
+    provider = m_providers[type];
+
+    provider->releaseAnyNameMapping(type_id, input);
 }
 
 void
