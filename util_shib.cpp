@@ -333,9 +333,11 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
         if (display_value != NULL)
             duplicateBuffer(buf, display_value);
     }
- 
-    *authenticated = m_authenticated;
-    *complete = false;
+
+    if (authenticated != NULL) 
+        *authenticated = m_authenticated;
+    if (complete != NULL)
+        *complete = false;
 
     if (nvalues > ++i)
         *more = i;

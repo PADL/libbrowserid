@@ -189,8 +189,10 @@ gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
     if (*more != -1)
         return false;
 
-    *authenticated = m_authenticated;
-    *complete = false;
+    if (authenticated != NULL)
+        *authenticated = m_authenticated;
+    if (complete != NULL)
+        *complete = true;
 
     XMLHelper::serialize(m_assertion->marshall((DOMDocument *)NULL), str);
 
@@ -280,18 +282,22 @@ gss_eap_saml_attr_provider::getAssertion(int *authenticated,
 {
     const gss_eap_saml_assertion_provider *saml;
 
-    *authenticated = false;
-    *pAssertion = NULL;
+    if (authenticated != NULL)
+        *authenticated = false;
+    if (pAssertion != NULL)
+        *pAssertion = NULL;
 
     saml = static_cast<const gss_eap_saml_assertion_provider *>
         (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     if (saml == NULL)
         return false;
 
-    *authenticated = saml->authenticated();
-    *pAssertion = saml->getAssertion();
+    if (authenticated != NULL)
+        *authenticated = saml->authenticated();
+    if (pAssertion != NULL)
+        *pAssertion = saml->getAssertion();
 
-    return (*pAssertion != NULL);
+    return (saml->getAssertion() != NULL);
 }
 
 gss_eap_saml_attr_provider::~gss_eap_saml_attr_provider(void)
@@ -389,8 +395,10 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 {
     const saml2::Assertion *assertion;
 
-    *authenticated = false;
-    *complete = true;
+    if (authenticated != NULL)
+        *authenticated = false;
+    if (complete != NULL)
+        *complete = true;
     *pAttribute = NULL;
 
     if (!getAssertion(authenticated, &assertion) ||
