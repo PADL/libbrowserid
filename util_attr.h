@@ -192,6 +192,8 @@ public:
     unregisterProvider(unsigned int type);
 
 private:
+    gss_eap_attr_provider *getPrimaryProvider(void) const;
+
     /* make non-copyable */
     gss_eap_attr_ctx(const gss_eap_attr_ctx&);
     gss_eap_attr_ctx& operator=(const gss_eap_attr_ctx&);

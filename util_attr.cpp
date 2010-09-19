@@ -331,10 +331,16 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
     provider->releaseAnyNameMapping(type_id, input);
 }
 
+gss_eap_attr_provider *
+gss_eap_attr_ctx::getPrimaryProvider(void) const
+{
+    return m_providers[ATTR_TYPE_RADIUS];
+}
+
 void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
-    m_providers[ATTR_TYPE_RADIUS]->exportToBuffer(buffer);
+    getPrimaryProvider()->exportToBuffer(buffer);
 }
 
 bool
@@ -342,18 +348,24 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
 {
     unsigned int i;
     bool ret;
+    gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
 
-    ret = m_providers[ATTR_TYPE_RADIUS]->initFromBuffer(this, buffer);
-    if (!ret)
+    assert(primaryProvider != NULL);
+
+    ret = primaryProvider->initFromBuffer(this, buffer);
+    if (ret == false)
         return false;
 
-    for (i = ATTR_TYPE_RADIUS + 1; i < ATTR_TYPE_MAX; i++) {
+    for (i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider = m_providers[i];
+
+        if (provider == primaryProvider)
+            continue;
 
         ret = provider->initFromGssContext(this,
                                            GSS_C_NO_CREDENTIAL,
                                            GSS_C_NO_CONTEXT);
-        if (!ret)
+        if (ret == false)
             break;
     }
 
