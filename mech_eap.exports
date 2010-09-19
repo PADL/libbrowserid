@@ -11,7 +11,6 @@ gss_display_name_ext
 gss_display_status
 gss_duplicate_name
 gss_export_name
-gss_export_name_composite
 gss_export_sec_context
 gss_get_mic
 gss_get_name_attribute
