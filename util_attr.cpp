@@ -76,6 +76,9 @@ gss_eap_attr_ctx::gss_eap_attr_ctx(void)
         provider = (gssEapAttrFactories[i])();
 
         m_providers[i] = provider;
+
+        /* providers should fail in constructor */
+        assert(m_providers[i] != NULL);
     }
 }
 
@@ -108,18 +111,17 @@ gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
 bool
 gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
 {
+    bool ret = true;
+
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider;
+        gss_eap_attr_provider *provider = m_providers[i];
 
-        if (manager->m_providers[i] == NULL)
-            continue;
-
-        provider = m_providers[i];
-        if (!provider->initFromExistingContext(this, manager->m_providers[i]))
-            return false;
+        ret = provider->initFromExistingContext(this, manager->m_providers[i]);
+        if (ret == false)
+            break;
     }
 
-    return true;
+    return ret;
 }
 
 /*
@@ -129,14 +131,17 @@ bool
 gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
                                      const gss_ctx_id_t ctx)
 {
+    bool ret = true;
+
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider = m_providers[i];
 
-        if (!provider->initFromGssContext(this, cred, ctx))
-            return false;
+        ret = provider->initFromGssContext(this, cred, ctx);
+        if (ret == false)
+            break;
     }
 
-    return true;
+    return ret;
 }
 
 /*
@@ -145,27 +150,27 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
 bool
 gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
 {
-    unsigned int i;
+    bool ret;
     gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
 
-    assert(primaryProvider != NULL);
+    ret = primaryProvider->initFromBuffer(this, buffer);
+    if (ret == false)
+        return ret;
 
-    if (!primaryProvider->initFromBuffer(this, buffer))
-        return false;
-
-    for (i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
+    for (unsigned int i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider = m_providers[i];
 
         if (provider == primaryProvider)
             continue;
 
-        if (!provider->initFromGssContext(this,
-                                          GSS_C_NO_CREDENTIAL,
-                                          GSS_C_NO_CONTEXT))
-            return false;
+        ret = provider->initFromGssContext(this,
+                                           GSS_C_NO_CREDENTIAL,
+                                           GSS_C_NO_CONTEXT);
+        if (ret == false)
+            break;
     }
 
-    return true;
+    return ret;
 }
 
 gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
@@ -232,13 +237,7 @@ gss_eap_attr_ctx::getAttributeTypes(gss_eap_attr_enumeration_cb cb, void *data) 
     size_t i;
 
     for (i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider;
-
-        provider = m_providers[i];
-        if (provider == NULL)
-            continue;
-
-        ret = provider->getAttributeTypes(cb, data);
+        ret = m_providers[i]->getAttributeTypes(cb, data);
         if (ret == false)
             break;
     }
@@ -289,22 +288,15 @@ gss_eap_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
     args.attrs = *attrs;
 
     for (i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider;
-
         args.type = i;
 
-        provider = m_providers[i];
-        if (provider == NULL)
-            continue;
-
-        ret = provider->getAttributeTypes(addAttribute, (void *)&args);
+        ret = m_providers[i]->getAttributeTypes(addAttribute, (void *)&args);
         if (ret == false)
             break;
     }
 
-    if (ret == false) {
+    if (ret == false)
         gss_release_buffer_set(&minor, attrs);
-    }
 
     return ret;
 }
@@ -325,10 +317,6 @@ gss_eap_attr_ctx::getAttribute(const gss_buffer_t attr,
     decomposeAttributeName(attr, &type, &suffix);
 
     provider = m_providers[type];
-    if (provider == NULL) {
-        *more = 0;
-        return false;
-    }
 
     ret = provider->getAttribute(type == ATTR_TYPE_LOCAL ? attr : &suffix,
                                  authenticated, complete,

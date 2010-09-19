@@ -62,8 +62,7 @@
 
 #define NAME_FLAG_NAI                       0x00000001
 #define NAME_FLAG_SERVICE                   0x00000002
-
-#define NAME_HAS_ATTRIBUTES(name)           ((name)->attrCtx != NULL)
+#define NAME_FLAG_COMPOSITE                 0x00000004
 
 struct gss_eap_saml_attr_ctx;
 struct gss_eap_attr_ctx;
