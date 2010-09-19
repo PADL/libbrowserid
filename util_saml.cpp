@@ -170,6 +170,23 @@ gss_eap_saml_assertion_provider::deleteAttribute(const gss_buffer_t value)
     m_authenticated = false;
 }
 
+time_t
+gss_eap_saml_assertion_provider::getExpiryTime(void) const
+{
+    saml2::Conditions *conditions;
+    time_t expiryTime = 0;
+
+    if (m_assertion == NULL)
+        return 0;
+
+    conditions = m_assertion->getConditions();
+
+    if (conditions != NULL && conditions->getNotOnOrAfter() != NULL)
+        expiryTime = conditions->getNotOnOrAfter()->getEpoch();
+
+    return expiryTime;
+}
+
 bool
 gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
                                               int *authenticated,

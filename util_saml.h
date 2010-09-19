@@ -79,6 +79,8 @@ public:
         return m_authenticated;
     }
 
+    time_t getExpiryTime(void) const;
+
     static bool init();
     static void finalize();
 

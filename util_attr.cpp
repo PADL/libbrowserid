@@ -372,6 +372,25 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
     return ret;
 }
 
+time_t
+gss_eap_attr_ctx::getExpiryTime(void) const
+{
+    unsigned int i;
+    time_t expiryTime = 0;
+
+    for (i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
+        time_t providerExpiryTime = m_providers[i]->getExpiryTime();
+
+        if (providerExpiryTime == 0)
+            continue;
+
+        if (expiryTime == 0 || providerExpiryTime < expiryTime)
+            expiryTime = providerExpiryTime;
+    }
+
+    return expiryTime;
+}
+
 /*
  * C wrappers
  */
@@ -733,6 +752,8 @@ gssEapCreateAttrContext(gss_cred_id_t gssCred,
         delete ctx;
         return NULL;
     }
+
+    gssCtx->expiryTime = ctx->getExpiryTime();
 
     return ctx;
 }

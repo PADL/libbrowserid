@@ -104,6 +104,8 @@ public:
         return initWithManager(manager);
     }
 
+    virtual time_t getExpiryTime(void) const { return 0; }
+
     static bool init() { return true; }
     static void finalize() {}
 
@@ -190,6 +192,8 @@ public:
                      gss_eap_attr_create_provider factory);
     static void
     unregisterProvider(unsigned int type);
+
+    time_t getExpiryTime(void) const;
 
 private:
     gss_eap_attr_provider *getPrimaryProvider(void) const;
