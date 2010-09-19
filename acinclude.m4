@@ -35,6 +35,7 @@ else
 	AC_SUBST(KRB5_CFLAGS)
 	AC_SUBST(KRB5_LDFLAGS)
 	AC_SUBST(KRB5_LIBS)
+	AC_CHECK_LIB(gssapi_krb5, GSS_C_NT_COMPOSITE_EXPORT, [AC_DEFINE_UNQUOTED([HAVE_GSS_C_NT_COMPOSITE_EXPORT], 1, [Define if GSS-API library supports recent naming extensions draft])], [], "$KRB5_LDFLAGS")
 fi
 ])dnl
 

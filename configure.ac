@@ -7,6 +7,7 @@ LT_INIT([dlopen disable-static])
 
 AC_PROG_CC
 AC_PROG_CXX
+AC_CONFIG_HEADERS([config.h])
 
 dnl Check if we're on Solaris and set CFLAGS accordingly
 dnl AC_CANONICAL_TARGET

@@ -60,6 +60,12 @@ gss_inquire_names_for_mech(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+#ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
+    major = gss_add_oid_set_member(minor, GSS_C_NT_COMPOSITE_EXPORT, name_types);
+    if (GSS_ERROR(major))
+        goto cleanup;
+#endif
+
     major = gss_add_oid_set_member(minor, GSS_EAP_NT_PRINCIPAL_NAME, name_types);
     if (GSS_ERROR(major))
         goto cleanup;

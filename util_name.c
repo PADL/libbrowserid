@@ -237,7 +237,7 @@ gssEapImportNameInternal(OM_uint32 *minor,
     unsigned char *p;
     size_t len, remain;
     gss_buffer_desc buf;
-    enum gss_eap_token_type tok_type;
+    enum gss_eap_token_type tokType;
     gss_name_t name = GSS_C_NO_NAME;
 
     GSSEAP_KRB_INIT(&krbContext);
@@ -249,15 +249,15 @@ gssEapImportNameInternal(OM_uint32 *minor,
         if (remain < 6 + GSS_EAP_MECHANISM->length + 4)
             return GSS_S_BAD_NAME;
 
+        if (flags & EXPORT_NAME_FLAG_ATTRS)
+            tokType = TOK_TYPE_EXPORT_NAME_COMPOSITE;
+        else
+            tokType = TOK_TYPE_EXPORT_NAME;
+
         /* TOK_ID */
-        tok_type = load_uint16_be(p);
-        if (tok_type != TOK_TYPE_EXPORT_NAME &&
-            tok_type != TOK_TYPE_EXPORT_NAME_COMPOSITE)
+        if (load_uint16_be(p) != tokType)
             return GSS_S_BAD_NAME;
         UPDATE_REMAIN(2);
-
-        if (tok_type == TOK_TYPE_EXPORT_NAME_COMPOSITE)
-            flags |= EXPORT_NAME_FLAG_ATTRS;
 
         /* MECH_OID_LEN */
         len = load_uint16_be(p);
@@ -336,6 +336,12 @@ gssEapImportName(OM_uint32 *minor,
     else if (oidEqual(nameType, GSS_C_NT_EXPORT_NAME))
         major = gssEapImportNameInternal(minor, nameBuffer, name,
                                          EXPORT_NAME_FLAG_OID);
+#ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
+    else if (oidEqual(nameType, GSS_C_NT_COMPOSITE_EXPORT))
+        major = gssEapImportNameInternal(minor, nameBuffer, name,
+                                         EXPORT_NAME_FLAG_OID |
+                                         EXPORT_NAME_FLAG_ATTRS);
+#endif
     else
         major = GSS_S_BAD_NAMETYPE;
 
@@ -443,4 +449,3 @@ cleanup:
 
     return major;
 }
-
