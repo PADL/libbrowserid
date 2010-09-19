@@ -43,5 +43,6 @@ gss_export_name_composite(OM_uint32 *minor,
     }
 
     return gssEapExportNameInternal(minor, input_name, exported_name,
-                                    EXPORT_NAME_FLAG_OID | EXPORT_NAME_FLAG_ATTRS);
+                                    EXPORT_NAME_FLAG_OID |
+                                    EXPORT_NAME_FLAG_COMPOSITE);
 }

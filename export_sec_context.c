@@ -69,14 +69,14 @@ gssEapExportSecContext(OM_uint32 *minor,
     if (ctx->initiatorName != GSS_C_NO_NAME) {
         major = gssEapExportNameInternal(minor, ctx->initiatorName,
                                          &initiatorName,
-                                         EXPORT_NAME_FLAG_ATTRS);
+                                         EXPORT_NAME_FLAG_COMPOSITE);
         if (GSS_ERROR(major))
             goto cleanup;
     }
     if (ctx->acceptorName != GSS_C_NO_NAME) {
         major = gssEapExportNameInternal(minor, ctx->acceptorName,
                                          &acceptorName,
-                                         EXPORT_NAME_FLAG_ATTRS);
+                                         EXPORT_NAME_FLAG_COMPOSITE);
         if (GSS_ERROR(major))
             goto cleanup;
     }

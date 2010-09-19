@@ -249,7 +249,7 @@ gssEapImportNameInternal(OM_uint32 *minor,
         if (remain < 6 + GSS_EAP_MECHANISM->length + 4)
             return GSS_S_BAD_NAME;
 
-        if (flags & EXPORT_NAME_FLAG_ATTRS)
+        if (flags & EXPORT_NAME_FLAG_COMPOSITE)
             tokType = TOK_TYPE_EXPORT_NAME_COMPOSITE;
         else
             tokType = TOK_TYPE_EXPORT_NAME;
@@ -289,7 +289,7 @@ gssEapImportNameInternal(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    if (flags & EXPORT_NAME_FLAG_ATTRS) {
+    if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
         gss_buffer_desc buf;
 
         CHECK_REMAIN(4);
@@ -340,7 +340,7 @@ gssEapImportName(OM_uint32 *minor,
     else if (oidEqual(nameType, GSS_C_NT_COMPOSITE_EXPORT))
         major = gssEapImportNameInternal(minor, nameBuffer, name,
                                          EXPORT_NAME_FLAG_OID |
-                                         EXPORT_NAME_FLAG_ATTRS);
+                                         EXPORT_NAME_FLAG_COMPOSITE);
 #endif
     else
         major = GSS_S_BAD_NAMETYPE;
@@ -391,7 +391,7 @@ gssEapExportNameInternal(OM_uint32 *minor,
         exportedName->length += 6 + GSS_EAP_MECHANISM->length;
     }
     exportedName->length += 4 + krbNameLen;
-    if (flags & EXPORT_NAME_FLAG_ATTRS) {
+    if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
         major = gssEapExportAttrContext(minor, name, &attrs);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -408,7 +408,7 @@ gssEapExportNameInternal(OM_uint32 *minor,
 
     if (flags & EXPORT_NAME_FLAG_OID) {
         /* TOK | MECH_OID_LEN */
-        store_uint16_be((flags & EXPORT_NAME_FLAG_ATTRS)
+        store_uint16_be((flags & EXPORT_NAME_FLAG_COMPOSITE)
                         ? TOK_TYPE_EXPORT_NAME_COMPOSITE
                         : TOK_TYPE_EXPORT_NAME,
                         p);
@@ -431,7 +431,7 @@ gssEapExportNameInternal(OM_uint32 *minor,
     memcpy(p, krbName, krbNameLen);
     p += krbNameLen;
 
-    if (flags & EXPORT_NAME_FLAG_ATTRS) {
+    if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
         store_uint32_be(attrs.length, p);
         memcpy(&p[4], attrs.value, attrs.length);
         p += 4 + attrs.length;

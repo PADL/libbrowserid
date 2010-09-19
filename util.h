@@ -282,7 +282,7 @@ gssEapValidateMechs(OM_uint32 *minor,
 
 /* util_name.c */
 #define EXPORT_NAME_FLAG_OID        0x1
-#define EXPORT_NAME_FLAG_ATTRS      0x2
+#define EXPORT_NAME_FLAG_COMPOSITE  0x2
 
 OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);

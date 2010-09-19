@@ -105,8 +105,7 @@ gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
 }
 
 /*
- * Initialize a context from an existing context. All non-NULL providers
- * in the existing context are duplicated, otherwise FALSE is returned.
+ * Initialize a context from an existing context.
  */
 bool
 gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
@@ -175,7 +174,7 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
 
 gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
 {
-    for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++)
+    for (unsigned int i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++)
         delete m_providers[i];
 }
 
@@ -193,6 +192,12 @@ gss_eap_attr_ctx::getProvider(const gss_buffer_t prefix) const
     type = attributePrefixToType(prefix);
 
     return m_providers[type];
+}
+
+gss_eap_attr_provider *
+gss_eap_attr_ctx::getPrimaryProvider(void) const
+{
+    return m_providers[ATTR_TYPE_RADIUS];
 }
 
 void
@@ -268,7 +273,7 @@ addAttribute(const gss_eap_attr_provider *provider,
         major = gss_add_buffer_set_member(&minor, prefix, &args->attrs);
     }
 
-    return GSS_ERROR(major) ? false : true;
+    return GSS_ERROR(major) == false;
 }
 
 bool
@@ -351,12 +356,6 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
     provider = m_providers[type];
 
     provider->releaseAnyNameMapping(type_id, input);
-}
-
-gss_eap_attr_provider *
-gss_eap_attr_ctx::getPrimaryProvider(void) const
-{
-    return m_providers[ATTR_TYPE_RADIUS];
 }
 
 void
