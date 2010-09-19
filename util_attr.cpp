@@ -101,34 +101,68 @@ gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
     return &gssEapAttrPrefixes[type];
 }
 
+/*
+ * Initialize a context from an existing context. All non-NULL providers
+ * in the existing context are duplicated, otherwise FALSE is returned.
+ */
 bool
 gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
 {
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
 
+        if (manager->m_providers[i] == NULL)
+            continue;
+
         provider = m_providers[i];
-        if (provider != NULL) {
-            if (!provider->initFromExistingContext(this, manager->m_providers[i]))
-                return false;
-        }
+        if (!provider->initFromExistingContext(this, manager->m_providers[i]))
+            return false;
     }
 
     return true;
 }
 
+/*
+ * Initialize a context from a GSS credential and context.
+ */
 bool
 gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
                                      const gss_ctx_id_t ctx)
 {
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider;
+        gss_eap_attr_provider *provider = m_providers[i];
 
-        provider = m_providers[i];
-        if (provider != NULL) {
-            if (!provider->initFromGssContext(this, cred, ctx))
-                return false;
-        }
+        if (!provider->initFromGssContext(this, cred, ctx))
+            return false;
+    }
+
+    return true;
+}
+
+/*
+ * Initialize a context from an exported context or name token
+ */
+bool
+gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
+{
+    unsigned int i;
+    gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
+
+    assert(primaryProvider != NULL);
+
+    if (!primaryProvider->initFromBuffer(this, buffer))
+        return false;
+
+    for (i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider = m_providers[i];
+
+        if (provider == primaryProvider)
+            continue;
+
+        if (!provider->initFromGssContext(this,
+                                          GSS_C_NO_CREDENTIAL,
+                                          GSS_C_NO_CONTEXT))
+            return false;
     }
 
     return true;
@@ -341,35 +375,6 @@ void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
     getPrimaryProvider()->exportToBuffer(buffer);
-}
-
-bool
-gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
-{
-    unsigned int i;
-    bool ret;
-    gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
-
-    assert(primaryProvider != NULL);
-
-    ret = primaryProvider->initFromBuffer(this, buffer);
-    if (ret == false)
-        return false;
-
-    for (i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider = m_providers[i];
-
-        if (provider == primaryProvider)
-            continue;
-
-        ret = provider->initFromGssContext(this,
-                                           GSS_C_NO_CREDENTIAL,
-                                           GSS_C_NO_CONTEXT);
-        if (ret == false)
-            break;
-    }
-
-    return ret;
 }
 
 time_t
