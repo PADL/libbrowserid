@@ -254,7 +254,7 @@ gssEapInitLibEap(OM_uint32 *minor)
 }
 
 static OM_uint32
-gssEapInitLibRadSec(OM_uint32 *minor)
+gssEapInitLibRadius(OM_uint32 *minor)
 {
     return GSS_S_COMPLETE;
 }
@@ -267,21 +267,25 @@ gssEapInit(void)
 {
     OM_uint32 major, minor;
 
-    gssEapInitLibEap(&minor);
-    gssEapInitLibRadSec(&minor);
-    eapServerRegisterMethods(&minor);
-    gssEapAttrProvidersInit(&minor);
+    major = gssEapInitLibEap(&minor);
+    assert(major == GSS_S_COMPLETE);
+
+    major = gssEapInitLibRadius(&minor);
+    assert(major == GSS_S_COMPLETE);
+
+    major = eapServerRegisterMethods(&minor);
+    assert(major == GSS_S_COMPLETE);
+
+    major = gssEapAttrProvidersInit(&minor);
+    assert(major == GSS_S_COMPLETE);
 }
 
 static void
 gssEapFinalize(void)
 {
-    OM_uint32 major, minor;
+    OM_uint32 minor;
 
     eap_peer_unregister_methods();
-#if 1
     eap_server_unregister_methods();
-#endif
     gssEapAttrProvidersFinalize(&minor);
 }
-
