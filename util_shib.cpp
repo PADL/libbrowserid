@@ -308,28 +308,37 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
 {
     const Attribute *shibAttr = NULL;
     gss_buffer_desc buf;
+    int nvalues, i = *more;
+
+    *more = 0;
 
     shibAttr = getAttribute(attr);
     if (shibAttr == NULL)
         return false;
 
-    if (*more == -1) {
-        *more = 0;
-    } else if (*more >= (int)shibAttr->valueCount()) {
-        *more = 0;
-        return true;
-    }
+    nvalues = shibAttr->valueCount();
+
+    if (i == -1)
+        i = 0;
+    else if (i >= nvalues)
+        return false;
 
     buf.value = (void *)shibAttr->getString(*more);
     buf.length = strlen((char *)buf.value);
 
-    duplicateBuffer(buf, value);
+    if (buf.length != 0) {
+        if (value != NULL)
+            duplicateBuffer(buf, value);
 
-    if (display_value != NULL)
-        duplicateBuffer(buf, display_value);
+        if (display_value != NULL)
+            duplicateBuffer(buf, display_value);
+    }
  
     *authenticated = m_authenticated;
     *complete = false;
+
+    if (nvalues > ++i)
+        *more = i;
 
     return true;
 }

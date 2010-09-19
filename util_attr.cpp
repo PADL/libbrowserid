@@ -480,15 +480,15 @@ gssEapGetNameAttribute(OM_uint32 *minor,
     *authenticated = 0;
     *complete = 0;
 
-    value->length = 0;
-    value->value = NULL;
+    if (value != NULL) {
+        value->length = 0;
+        value->value = NULL;
+    }
 
     if (display_value != NULL) {
         display_value->length = 0;
         display_value->value = NULL;
     }
-
-    *more = -1;
 
     if (name->attrCtx == NULL)
         return GSS_S_UNAVAILABLE;

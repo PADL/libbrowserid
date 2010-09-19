@@ -169,7 +169,8 @@ importName(OM_uint32 *minor,
 
         tmp.value = p + 4;
 
-        major = gssEapImportName(minor, &tmp, GSS_C_NT_EXPORT_NAME, pName);
+        major = gssEapImportNameInternal(minor, &tmp, pName,
+                                         EXPORT_NAME_FLAG_ATTRS);
         if (GSS_ERROR(major))
             return major;
     }

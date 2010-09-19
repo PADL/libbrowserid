@@ -82,4 +82,7 @@ private:
     bool m_authenticated;
 };
 
+/* For now */
+#define PW_SAML_ASSERTION           1936
+
 #endif /* _UTIL_RADIUS_H_ */

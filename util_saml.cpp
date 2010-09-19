@@ -88,7 +88,7 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *mana
     radius = static_cast<const gss_eap_radius_attr_provider *>
         (m_manager->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
-        radius->getAttribute(512 /* XXX */, &authenticated, &complete,
+        radius->getAttribute(PW_SAML_ASSERTION, &authenticated, &complete,
                              &value, NULL, &more)) {
         setAssertion(&value, authenticated);
         gss_release_buffer(&minor, &value);
@@ -460,15 +460,18 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
     av = dynamic_cast<const saml2::AttributeValue *>(a->getAttributeValues().at(i)
 );
     if (av != NULL) {
-        value->value = toUTF8(av->getTextContent(), true);
-        value->length = strlen((char *)value->value);
-
-        if (display_value != NULL)
-            duplicateBuffer(*value, display_value);
-
-        if (nvalues > ++i)
-            *more = i;
+        if (value != NULL) {
+            value->value = toUTF8(av->getTextContent(), true);
+            value->length = strlen((char *)value->value);
+        }
+        if (display_value != NULL) {
+            display_value->value = toUTF8(av->getTextContent(), true);
+            display_value->length = strlen((char *)value->value);
+        }
     }
+
+    if (nvalues > ++i)
+        *more = i;
 
     return true;
 }

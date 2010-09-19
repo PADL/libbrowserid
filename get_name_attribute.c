@@ -49,14 +49,6 @@ gss_get_name_attribute(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
     }
 
-    *authenticated = 0;
-    *complete = 0;
-    value->length = 0;
-    value->value = NULL;
-    display_value->length = 0;
-    display_value->value = NULL;
-    *more = -1;
-
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
     major = gssEapGetNameAttribute(minor, name, attr,

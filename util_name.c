@@ -213,10 +213,24 @@ importUserName(OM_uint32 *minor,
     return major;
 }
 
-static OM_uint32
-importExportedName(OM_uint32 *minor,
-                   const gss_buffer_t nameBuffer,
-                   gss_name_t *pName)
+#define UPDATE_REMAIN(n)    do {            \
+        p += (n);                           \
+        remain -= (n);                      \
+    } while (0)
+
+#define CHECK_REMAIN(n)     do {        \
+        if (remain < (n)) {             \
+            *minor = ERANGE;            \
+            major = GSS_S_BAD_NAME;     \
+            goto cleanup;               \
+        }                               \
+    } while (0)
+
+OM_uint32
+gssEapImportNameInternal(OM_uint32 *minor,
+                         const gss_buffer_t nameBuffer,
+                         gss_name_t *pName,
+                         unsigned int flags)
 {
     OM_uint32 major, tmpMinor;
     krb5_context krbContext;
@@ -231,47 +245,39 @@ importExportedName(OM_uint32 *minor,
     p = (unsigned char *)nameBuffer->value;
     remain = nameBuffer->length;
 
-    if (remain < 6 + GSS_EAP_MECHANISM->length + 4)
-        return GSS_S_BAD_NAME;
+    if (flags & EXPORT_NAME_FLAG_OID) {
+        if (remain < 6 + GSS_EAP_MECHANISM->length + 4)
+            return GSS_S_BAD_NAME;
 
-#define UPDATE_REMAIN(n)    do {            \
-        p += (n);                           \
-        remain -= (n);                      \
-    } while (0)
+        /* TOK_ID */
+        tok_type = load_uint16_be(p);
+        if (tok_type != TOK_TYPE_EXPORT_NAME &&
+            tok_type != TOK_TYPE_EXPORT_NAME_COMPOSITE)
+            return GSS_S_BAD_NAME;
+        UPDATE_REMAIN(2);
 
-    /* TOK_ID */
-    tok_type = load_uint16_be(p);
-    if (tok_type != TOK_TYPE_EXPORT_NAME &&
-        tok_type != TOK_TYPE_EXPORT_NAME_COMPOSITE)
-        return GSS_S_BAD_NAME;
-    UPDATE_REMAIN(2);
+        if (tok_type == TOK_TYPE_EXPORT_NAME_COMPOSITE)
+            flags |= EXPORT_NAME_FLAG_ATTRS;
 
-    /* MECH_OID_LEN */
-    len = load_uint16_be(p);
-    if (len != 2 + GSS_EAP_MECHANISM->length)
-        return GSS_S_BAD_NAME;
-    UPDATE_REMAIN(2);
+        /* MECH_OID_LEN */
+        len = load_uint16_be(p);
+        if (len != 2 + GSS_EAP_MECHANISM->length)
+            return GSS_S_BAD_NAME;
+        UPDATE_REMAIN(2);
 
-    /* MECH_OID */
-    if (p[0] != 0x06)
-        return GSS_S_BAD_NAME;
-    if (p[1] != GSS_EAP_MECHANISM->length)
-        return GSS_S_BAD_MECH;
-    if (memcmp(&p[2], GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length))
-        return GSS_S_BAD_MECH;
-    UPDATE_REMAIN(2 + GSS_EAP_MECHANISM->length);
+        /* MECH_OID */
+        if (p[0] != 0x06)
+            return GSS_S_BAD_NAME;
+        if (p[1] != GSS_EAP_MECHANISM->length)
+            return GSS_S_BAD_MECH;
+        if (memcmp(&p[2], GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length))
+            return GSS_S_BAD_MECH;
+        UPDATE_REMAIN(2 + GSS_EAP_MECHANISM->length);
+    }
 
     /* NAME_LEN */
     len = load_uint32_be(p);
     UPDATE_REMAIN(4);
-
-#define CHECK_REMAIN(n)     do {        \
-        if (remain < (n)) {             \
-            *minor = ERANGE;            \
-            major = GSS_S_BAD_NAME;     \
-            goto cleanup;               \
-        }                               \
-    } while (0)
 
     /* NAME */
     CHECK_REMAIN(len);
@@ -283,7 +289,7 @@ importExportedName(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    if (tok_type == TOK_TYPE_EXPORT_NAME_COMPOSITE) {
+    if (flags & EXPORT_NAME_FLAG_ATTRS) {
         gss_buffer_desc buf;
 
         CHECK_REMAIN(4);
@@ -328,7 +334,8 @@ gssEapImportName(OM_uint32 *minor,
                oidEqual(nameType, GSS_C_NT_HOSTBASED_SERVICE_X))
         major = importServiceName(minor, nameBuffer, name);
     else if (oidEqual(nameType, GSS_C_NT_EXPORT_NAME))
-        major = importExportedName(minor, nameBuffer, name);
+        major = gssEapImportNameInternal(minor, nameBuffer, name,
+                                         EXPORT_NAME_FLAG_OID);
     else
         major = GSS_S_BAD_NAMETYPE;
 
@@ -341,8 +348,17 @@ gssEapImportName(OM_uint32 *minor,
 OM_uint32
 gssEapExportName(OM_uint32 *minor,
                  const gss_name_t name,
-                 gss_buffer_t exportedName,
-                 int composite)
+                 gss_buffer_t exportedName)
+{
+    return gssEapExportNameInternal(minor, name, exportedName,
+                                    EXPORT_NAME_FLAG_OID);
+}
+
+OM_uint32
+gssEapExportNameInternal(OM_uint32 *minor,
+                         const gss_name_t name,
+                         gss_buffer_t exportedName,
+                         unsigned int flags)
 {
     OM_uint32 major = GSS_S_FAILURE, tmpMinor;
     krb5_context krbContext;
@@ -364,8 +380,12 @@ gssEapExportName(OM_uint32 *minor,
     }
     krbNameLen = strlen(krbName);
 
-    exportedName->length = 6 + GSS_EAP_MECHANISM->length + 4 + krbNameLen;
-    if (composite) {
+    exportedName->length = 0;
+    if (flags & EXPORT_NAME_FLAG_OID) {
+        exportedName->length += 6 + GSS_EAP_MECHANISM->length;
+    }
+    exportedName->length += 4 + krbNameLen;
+    if (flags & EXPORT_NAME_FLAG_ATTRS) {
         major = gssEapExportAttrContext(minor, name, &attrs);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -378,22 +398,24 @@ gssEapExportName(OM_uint32 *minor,
         *minor = ENOMEM;
         goto cleanup;
     }
-
-    /* TOK | MECH_OID_LEN */
     p = (unsigned char *)exportedName->value;
-    store_uint16_be(composite
+
+    if (flags & EXPORT_NAME_FLAG_OID) {
+        /* TOK | MECH_OID_LEN */
+        store_uint16_be((flags & EXPORT_NAME_FLAG_ATTRS)
                         ? TOK_TYPE_EXPORT_NAME_COMPOSITE
                         : TOK_TYPE_EXPORT_NAME,
-                    p);
-    p += 2;
-    store_uint16_be(GSS_EAP_MECHANISM->length + 2, p);
-    p += 2;
+                        p);
+        p += 2;
+        store_uint16_be(GSS_EAP_MECHANISM->length + 2, p);
+        p += 2;
 
-    /* MECH_OID */
-    *p++ = 0x06;
-    *p++ = GSS_EAP_MECHANISM->length & 0xff;
-    memcpy(p, GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length);
-    p += GSS_EAP_MECHANISM->length;
+        /* MECH_OID */
+        *p++ = 0x06;
+        *p++ = GSS_EAP_MECHANISM->length & 0xff;
+        memcpy(p, GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length);
+        p += GSS_EAP_MECHANISM->length;
+    }
 
     /* NAME_LEN */
     store_uint32_be(krbNameLen, p);
@@ -403,7 +425,7 @@ gssEapExportName(OM_uint32 *minor,
     memcpy(p, krbName, krbNameLen);
     p += krbNameLen;
 
-    if (composite) {
+    if (flags & EXPORT_NAME_FLAG_ATTRS) {
         store_uint32_be(attrs.length, p);
         memcpy(&p[4], attrs.value, attrs.length);
         p += 4 + attrs.length;

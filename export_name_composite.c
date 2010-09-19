@@ -47,5 +47,6 @@ gss_export_name_composite(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
     }
 
-    return gssEapExportName(minor, input_name, exported_name, 1);
+    return gssEapExportNameInternal(minor, input_name, exported_name,
+                                    EXPORT_NAME_FLAG_OID | EXPORT_NAME_FLAG_ATTRS);
 }
