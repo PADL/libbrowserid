@@ -32,6 +32,15 @@
 
 #include "gssapiP_eap.h"
 
+gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(void)
+{
+    m_authenticated = false;
+}
+
+gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
+{
+}
+
 bool
 gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *manager,
                                                       const gss_eap_attr_provider *ctx)
@@ -51,10 +60,6 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
         return false;
 
     return true;
-}
-
-gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
-{
 }
 
 bool
@@ -113,6 +118,8 @@ gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 {
+    buffer->length = 0;
+    buffer->value = NULL;
 }
 
 bool
@@ -122,7 +129,7 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
     if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
         return false;
 
-    return false;
+    return true;
 }
 
 bool

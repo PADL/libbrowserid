@@ -43,7 +43,7 @@ namespace opensaml {
 
 struct gss_eap_saml_assertion_provider : gss_eap_attr_provider {
 public:
-    gss_eap_saml_assertion_provider(void) {}
+    gss_eap_saml_assertion_provider(void);
     ~gss_eap_saml_assertion_provider(void);
 
     bool initFromExistingContext(const gss_eap_attr_ctx *source,
@@ -102,7 +102,7 @@ private:
 struct gss_eap_saml_attr_provider : gss_eap_attr_provider {
 public:
     gss_eap_saml_attr_provider(void) {}
-    ~gss_eap_saml_attr_provider(void);
+    ~gss_eap_saml_attr_provider(void) {}
 
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
     void setAttribute(int complete,

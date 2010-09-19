@@ -41,7 +41,7 @@ gssEapExportPartialContext(OM_uint32 *minor,
     token->value = NULL;
 
     /*
-     * The format of this token awaits definition by libradsec.
+     * The format of this token awaits definition by libradius.
      */
     return GSS_S_COMPLETE;
 }
@@ -158,6 +158,9 @@ gss_export_sec_context(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
+
+    interprocess_token->length = 0;
+    interprocess_token->value = NULL;
 
     if (ctx == GSS_C_NO_CONTEXT)
         return GSS_S_NO_CONTEXT;

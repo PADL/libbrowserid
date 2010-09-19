@@ -52,6 +52,17 @@ using namespace std;
  * gss_eap_saml_assertion_provider is for retrieving the underlying
  * assertion.
  */
+gss_eap_saml_assertion_provider::gss_eap_saml_assertion_provider(void)
+{
+    m_assertion = NULL;
+    m_authenticated = false;
+}
+
+gss_eap_saml_assertion_provider::~gss_eap_saml_assertion_provider(void)
+{
+    delete m_assertion;
+}
+
 bool
 gss_eap_saml_assertion_provider::initFromExistingContext(const gss_eap_attr_ctx *manager,
                                                          const gss_eap_attr_provider *ctx)
@@ -97,11 +108,6 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *mana
     }
 
     return true;
-}
-
-gss_eap_saml_assertion_provider::~gss_eap_saml_assertion_provider(void)
-{
-    delete m_assertion;
 }
 
 void
@@ -315,11 +321,6 @@ gss_eap_saml_attr_provider::getAssertion(int *authenticated,
         *pAssertion = saml->getAssertion();
 
     return (saml->getAssertion() != NULL);
-}
-
-gss_eap_saml_attr_provider::~gss_eap_saml_attr_provider(void)
-{
-    /* Nothing to do, we're just a wrapper around the assertion provider. */
 }
 
 bool

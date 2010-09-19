@@ -32,6 +32,7 @@
 
 #include "gssapiP_eap.h"
 
+#include <typeinfo>
 #include <string>
 #include <exception>
 #include <new>
@@ -390,8 +391,20 @@ gss_eap_attr_ctx::getExpiryTime(void) const
 static OM_uint32
 mapException(OM_uint32 *minor, std::exception &e)
 {
-    *minor = 0;
-    return GSS_S_FAILURE;
+    OM_uint32 major = GSS_S_FAILURE;
+
+    /* XXX TODO implement other mappings */
+    if (typeid(e) == typeid(std::bad_alloc))
+        *minor = ENOMEM;
+    else
+        *minor = 0;
+
+#ifdef GSSEAP_DEBUG
+    /* rethrow for now for debugging */
+    throw e;
+#endif
+
+    return major;
 }
 
 void
@@ -592,8 +605,6 @@ gssEapExportAttrContext(OM_uint32 *minor,
 
     try {
         name->attrCtx->exportToBuffer(buffer);
-        if (buffer->length == 0)
-            return GSS_S_FAILURE;
     } catch (std::exception &e) {
         return mapException(minor, e);
     }
@@ -661,6 +672,9 @@ gssEapMapNameToAny(OM_uint32 *minor,
                    gss_buffer_t type_id,
                    gss_any_t *output)
 {
+    if (name->attrCtx == NULL)
+        return GSS_S_UNAVAILABLE;
+
     try {
         *output = name->attrCtx->mapToAny(authenticated, type_id);
     } catch (std::exception &e) {

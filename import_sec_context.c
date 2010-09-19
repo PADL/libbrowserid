@@ -264,7 +264,9 @@ gssEapImportContext(OM_uint32 *minor,
             return major;
     }
 
+#ifdef GSSEAP_DEBUG
     assert(remain == 0);
+#endif
 
     *minor = 0;
     major = GSS_S_COMPLETE;

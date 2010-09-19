@@ -35,7 +35,7 @@
 
 struct gss_eap_radius_attr_provider : gss_eap_attr_provider {
 public:
-    gss_eap_radius_attr_provider(void) {}
+    gss_eap_radius_attr_provider(void);
     ~gss_eap_radius_attr_provider(void);
 
     bool initFromExistingContext(const gss_eap_attr_ctx *source,

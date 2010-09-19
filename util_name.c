@@ -148,7 +148,7 @@ importServiceName(OM_uint32 *minor,
                   const gss_buffer_t nameBuffer,
                   gss_name_t *pName)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     krb5_context krbContext;
     krb5_principal krbPrinc;
     char *service, *host;
@@ -187,7 +187,7 @@ importUserName(OM_uint32 *minor,
                const gss_buffer_t nameBuffer,
                gss_name_t *pName)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     krb5_context krbContext;
     krb5_principal krbPrinc;
     char *nameString;
@@ -369,7 +369,7 @@ gssEapExportNameInternal(OM_uint32 *minor,
     OM_uint32 major = GSS_S_FAILURE, tmpMinor;
     krb5_context krbContext;
     char *krbName = NULL;
-    size_t krbNameLen;
+    size_t krbNameLen, exportedNameLen;
     unsigned char *p;
     gss_buffer_desc attrs = GSS_C_EMPTY_BUFFER;
 
@@ -386,24 +386,26 @@ gssEapExportNameInternal(OM_uint32 *minor,
     }
     krbNameLen = strlen(krbName);
 
-    exportedName->length = 0;
+    exportedNameLen = 0;
     if (flags & EXPORT_NAME_FLAG_OID) {
-        exportedName->length += 6 + GSS_EAP_MECHANISM->length;
+        exportedNameLen += 6 + GSS_EAP_MECHANISM->length;
     }
-    exportedName->length += 4 + krbNameLen;
+    exportedNameLen += 4 + krbNameLen;
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
         major = gssEapExportAttrContext(minor, name, &attrs);
         if (GSS_ERROR(major))
             goto cleanup;
-        exportedName->length += 4 + attrs.length;
+        exportedNameLen += 4 + attrs.length;
     }
 
-    exportedName->value = GSSEAP_MALLOC(exportedName->length);
+    exportedName->value = GSSEAP_MALLOC(exportedNameLen);
     if (exportedName->value == NULL) {
         major = GSS_S_FAILURE;
         *minor = ENOMEM;
         goto cleanup;
     }
+    exportedName->length = exportedNameLen;
+
     p = (unsigned char *)exportedName->value;
 
     if (flags & EXPORT_NAME_FLAG_OID) {

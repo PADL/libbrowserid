@@ -209,12 +209,16 @@ serverGetEapUser(void *ctx,
     /*
      * OK, obviously there is no real security here, this is simply
      * for testing the token exchange; this code will be completely
-     * replaced with libradsec once that library is available.
+     * replaced with libradius once that library is available.
      */
     user->methods[0].vendor = EAP_VENDOR_IETF;
     user->methods[0].method = EAP_TYPE_MSCHAPV2;
     user->password = (unsigned char *)strdup(" ");
     user->password_len = 1;
+
+    gssCtx->initiatorName->attrCtx = gssEapCreateAttrContext(NULL, gssCtx);
+    if (gssCtx->initiatorName->attrCtx != NULL)
+        gssCtx->initiatorName->flags |= NAME_FLAG_COMPOSITE;
 
     return 0;
 }

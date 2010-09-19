@@ -76,6 +76,19 @@ using namespace xmltooling;
 using namespace xercesc;
 using namespace std;
 
+gss_eap_shib_attr_provider::gss_eap_shib_attr_provider(void)
+{
+    m_authenticated = false;
+}
+
+gss_eap_shib_attr_provider::~gss_eap_shib_attr_provider(void)
+{
+    for_each(m_attributes.begin(),
+             m_attributes.end(),
+             xmltooling::cleanup<Attribute>())
+        ;
+}
+
 bool
 gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *manager,
                                                     const gss_eap_attr_provider *ctx)
@@ -187,14 +200,6 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     delete resolver;
 
     return true;
-}
-
-gss_eap_shib_attr_provider::~gss_eap_shib_attr_provider(void)
-{
-    for_each(m_attributes.begin(),
-             m_attributes.end(),
-             xmltooling::cleanup<Attribute>())
-        ;
 }
 
 int
