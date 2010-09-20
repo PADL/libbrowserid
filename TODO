@@ -1,4 +1,3 @@
-- hook up SAML library
-- hook up libradsec, AVP parsing logic
+- hook up libradius, AVP parsing logic
 - better handling of mechanism-specific error namespace
 - better interfaces for initiator EAP configuration/credential management
