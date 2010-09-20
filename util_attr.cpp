@@ -232,7 +232,7 @@ gss_eap_attr_ctx::getProvider(const gss_buffer_t prefix) const
 gss_eap_attr_provider *
 gss_eap_attr_ctx::getPrimaryProvider(void) const
 {
-    return m_providers[ATTR_TYPE_RADIUS];
+    return m_providers[ATTR_TYPE_MIN];
 }
 
 /*
