@@ -206,7 +206,7 @@ gssEapImportContext(OM_uint32 *minor,
     remain -= 16;
 
     /* Validate state */
-    if (ctx->state < EAP_STATE_AUTHENTICATE ||
+    if (ctx->state < EAP_STATE_IDENTITY ||
         ctx->state > EAP_STATE_ESTABLISHED)
         return GSS_S_DEFECTIVE_TOKEN;
 

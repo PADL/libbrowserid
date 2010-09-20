@@ -53,7 +53,7 @@ gssEapAllocContext(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    ctx->state = EAP_STATE_AUTHENTICATE;
+    ctx->state = EAP_STATE_IDENTITY;
 
     /*
      * Integrity, confidentiality, sequencing and replay detection are

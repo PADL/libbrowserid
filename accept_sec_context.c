@@ -98,6 +98,67 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
 }
 
 static OM_uint32
+eapGssSmAcceptIdentity(OM_uint32 *minor,
+                       gss_ctx_id_t ctx,
+                       gss_cred_id_t cred,
+                       gss_buffer_t inputToken,
+                       gss_channel_bindings_t chanBindings,
+                       gss_buffer_t outputToken)
+{
+    OM_uint32 major;
+    rc_handle *rh;
+    union {
+        struct eap_hdr eap;
+        unsigned char data[5];
+    } pdu;
+    gss_buffer_desc pduBuffer;
+    char *config = RC_CONFIG_FILE;
+
+    if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0)
+        return GSS_S_DEFECTIVE_TOKEN;
+
+    assert(ctx->acceptorCtx.radHandle == NULL);
+
+    if (cred != GSS_C_NO_CREDENTIAL && cred->radiusConfigFile != NULL)
+        config = cred->radiusConfigFile;
+
+    rh = ctx->acceptorCtx.radHandle = rc_read_config(config);
+    if (rh == NULL) {
+        *minor = errno;
+        return GSS_S_FAILURE;
+    }
+
+    if (rc_read_dictionary(rh, rc_conf_str(rh, "dictionary")) != 0) {
+        *minor = errno;
+        return GSS_S_FAILURE;
+    }
+
+    if (ctx->acceptorName == GSS_C_NO_NAME &&
+        cred != GSS_C_NO_CREDENTIAL &&
+        cred->name != GSS_C_NO_NAME) {
+        major = gss_duplicate_name(minor, cred->name, &ctx->acceptorName);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    pdu.eap.code = EAP_CODE_REQUEST;
+    pdu.eap.identifier = 0;
+    pdu.eap.length = htons(sizeof(pdu.data));
+    pdu.data[4] = EAP_TYPE_IDENTITY;
+
+    pduBuffer.length = sizeof(pdu.data);
+    pduBuffer.value = pdu.data;
+
+    major = duplicateBuffer(minor, &pduBuffer, outputToken);
+    if (GSS_ERROR(major))
+        return major;
+
+    ctx->state = EAP_STATE_AUTHENTICATE;
+
+    return GSS_S_CONTINUE_NEEDED;
+}
+
+static OM_uint32
 eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
                            gss_cred_id_t cred,
@@ -112,29 +173,6 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     VALUE_PAIR *received = NULL;
     rc_handle *rh = ctx->acceptorCtx.radHandle;
     char msgBuffer[4096];
-
-    if (rh == NULL) {
-        rh = ctx->acceptorCtx.radHandle = rc_read_config(RC_CONFIG_FILE);
-        if (rh == NULL) {
-            *minor = errno;
-            major = GSS_S_FAILURE;
-            goto cleanup;
-        }
-
-        if (rc_read_dictionary(rh, rc_conf_str(rh, "dictionary")) != 0) {
-            *minor = errno;
-            major = GSS_S_FAILURE;
-            goto cleanup;
-        }
-    }
-
-    if (ctx->acceptorName == GSS_C_NO_NAME &&
-        cred != GSS_C_NO_CREDENTIAL &&
-        cred->name != GSS_C_NO_NAME) {
-        major = gss_duplicate_name(minor, cred->name, &ctx->acceptorName);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
 
     if (rc_avpair_add(rh, &send, PW_EAP_MESSAGE,
                       inputToken->value, inputToken->length, 0) == NULL) {
@@ -203,7 +241,7 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
                                  gss_channel_bindings_t chanBindings,
                                  gss_buffer_t outputToken)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     gss_iov_buffer_desc iov[2];
 
     outputToken->length = 0;
@@ -271,11 +309,8 @@ static struct gss_eap_acceptor_sm {
                               gss_channel_bindings_t,
                               gss_buffer_t);
 } eapGssAcceptorSm[] = {
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptIdentity           },
     { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptAuthenticate       },
-#if 0
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  NULL                             },
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  NULL                             },
-#endif
     { TOK_TYPE_GSS_CB,      TOK_TYPE_NONE,     eapGssSmAcceptGssChannelBindings },
     { TOK_TYPE_NONE,        TOK_TYPE_NONE,     eapGssSmAcceptEstablished        },
 };

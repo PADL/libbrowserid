@@ -96,6 +96,7 @@ struct gss_cred_id_struct {
     gss_buffer_desc password;
     gss_OID_set mechanisms;
     time_t expiryTime;
+    char *radiusConfigFile;
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
@@ -103,11 +104,8 @@ struct gss_cred_id_struct {
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
 enum gss_eap_state {
-    EAP_STATE_AUTHENTICATE = 0,
-#if 0
-    EAP_STATE_KEY_TRANSPORT,
-    EAP_STATE_SECURE_ASSOCIATION,
-#endif
+    EAP_STATE_IDENTITY = 0,
+    EAP_STATE_AUTHENTICATE,
     EAP_STATE_GSS_CHANNEL_BINDINGS,
     EAP_STATE_ESTABLISHED
 };

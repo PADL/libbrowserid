@@ -32,12 +32,43 @@
 
 #include "gssapiP_eap.h"
 
+static OM_uint32
+setCredRadiusConfigFile(OM_uint32 *minor,
+                        gss_cred_id_t cred,
+                        const gss_OID oid,
+                        const gss_buffer_t buffer)
+{
+    OM_uint32 major;
+    gss_buffer_desc configFileBuffer = GSS_C_EMPTY_BUFFER;
+
+    if (buffer != GSS_C_NO_BUFFER && buffer->length != 0) {
+        major = duplicateBuffer(minor, buffer, &configFileBuffer);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    if (cred->radiusConfigFile != NULL)
+        free(cred->radiusConfigFile);
+
+    cred->radiusConfigFile = (char *)configFileBuffer.value;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
 static struct {
     gss_OID_desc oid;
-    OM_uint32 (*setOption)(OM_uint32 *, gss_cred_id_t *pCred,
+    OM_uint32 (*setOption)(OM_uint32 *, gss_cred_id_t cred,
                            const gss_OID, const gss_buffer_t);
 } setCredOps[] = {
+    /* 1.3.6.1.4.1.5322.21.3.3.1 */
+    {
+        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x03\x03\x01" },
+        setCredRadiusConfigFile,
+    },
 };
+
+gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE = &setCredOps[0].oid;
 
 OM_uint32
 gssspi_set_cred_option(OM_uint32 *minor,
@@ -50,7 +81,7 @@ gssspi_set_cred_option(OM_uint32 *minor,
 
     for (i = 0; i < sizeof(setCredOps) / sizeof(setCredOps[0]); i++) {
         if (oidEqual(&setCredOps[i].oid, desired_object)) {
-            major = (*setCredOps[i].setOption)(minor, &cred,
+            major = (*setCredOps[i].setOption)(minor, cred,
                                               desired_object, value);
             break;
         }

@@ -46,6 +46,9 @@ extern gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM;
 /* name type */
 extern gss_OID GSS_EAP_NT_PRINCIPAL_NAME;
 
+/* set credential option for acceptor configuration file */
+extern gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE;
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
