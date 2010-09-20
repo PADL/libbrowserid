@@ -375,7 +375,9 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
         major = GSS_S_CONTINUE_NEEDED;
         ctx->state = EAP_STATE_GSS_CHANNEL_BINDINGS;
-    } else if ((ctx->flags & CTX_FLAG_EAP_FAIL) || code == 0) {
+    } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
+        major = GSS_S_DEFECTIVE_CREDENTIAL;
+    } else if (code == 0) {
         major = GSS_S_FAILURE;
     }
 

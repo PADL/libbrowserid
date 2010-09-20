@@ -33,8 +33,6 @@
 #ifndef _GSSAPIP_EAP_H_
 #define _GSSAPIP_EAP_H_ 1
 
-#define BUILTIN_EAP 1
-
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
@@ -58,6 +56,17 @@
 #include <eap_peer/eap_config.h>
 #include <crypto/tls.h>
 #include <wpabuf.h>
+#endif
+
+#ifdef __cplusplus
+struct rc_conf;
+typedef struct rc_conf rc_handle;
+
+struct value_pair;
+typedef struct value_pair VALUE_PAIR;
+#else
+#include <freeradius-client.h>
+#include <freeradius/radius.h>
 #endif
 
 /* These name flags are informative and not actually used by anything yet */
@@ -127,11 +136,8 @@ struct gss_eap_initiator_ctx {
 };
 
 struct gss_eap_acceptor_ctx {
-#if defined(BUILTIN_EAP) && !defined(__cplusplus)
-    struct eap_eapol_interface *eapPolInterface;
-    void *tlsContext;
-    struct eap_sm *eap;
-#endif
+    rc_handle *radHandle;
+    VALUE_PAIR *avps;
 };
 
 struct gss_ctx_id_struct {

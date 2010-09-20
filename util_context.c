@@ -82,11 +82,10 @@ releaseInitiatorContext(struct gss_eap_initiator_ctx *ctx)
 static void
 releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
 {
-#ifdef BUILTIN_EAP
-    eap_server_sm_deinit(ctx->eap);
-    if (ctx->tlsContext != NULL)
-        tls_deinit(ctx->tlsContext);
-#endif
+    if (ctx->avps != NULL)
+        rc_avpair_free(ctx->avps);
+    if (ctx->radHandle != NULL)
+        rc_config_free(ctx->radHandle);
 }
 
 OM_uint32
