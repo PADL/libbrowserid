@@ -474,8 +474,8 @@ gss_eap_shib_attr_provider::init(void)
 void
 gss_eap_shib_attr_provider::finalize(void)
 {
-    ShibbolethResolver::term();
     gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_LOCAL);
+    ShibbolethResolver::term();
 }
 
 gss_eap_attr_provider *
@@ -505,4 +505,18 @@ gss_eap_shib_attr_provider::duplicateAttributes(const vector <Attribute *>src)
         dst.push_back(duplicateAttribute(*a));
 
     return dst;
+}
+
+OM_uint32
+gssEapLocalAttrProviderInit(OM_uint32 *minor)
+{
+    return gss_eap_shib_attr_provider::init()
+        ? GSS_S_COMPLETE : GSS_S_FAILURE;
+}
+
+OM_uint32
+gssEapLocalAttrProviderFinalize(OM_uint32 *minor)
+{
+    gss_eap_shib_attr_provider::finalize();
+    return GSS_S_COMPLETE;
 }

@@ -33,6 +33,8 @@
 #ifndef _UTIL_SAML_H_
 #define _UTIL_SAML_H_ 1
 
+#ifdef __cplusplus
+
 namespace opensaml {
     namespace saml2 {
         class Attribute;
@@ -138,5 +140,15 @@ public:
 
 private:
 };
+
+extern "C" {
+#endif
+
+OM_uint32 gssEapSamlAttrProvidersInit(OM_uint32 *minor);
+OM_uint32 gssEapSamlAttrProvidersFinalize(OM_uint32 *minor);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _UTIL_SAML_H_ */

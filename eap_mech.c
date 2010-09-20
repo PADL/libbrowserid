@@ -276,7 +276,13 @@ gssEapInit(void)
     major = eapServerRegisterMethods(&minor);
     assert(major == GSS_S_COMPLETE);
 
-    major = gssEapAttrProvidersInit(&minor);
+    major = gssEapRadiusAttrProviderInit(&minor);
+    assert(major == GSS_S_COMPLETE);
+
+    major = gssEapSamlAttrProvidersInit(&minor);
+    assert(major == GSS_S_COMPLETE);
+
+    major = gssEapLocalAttrProviderInit(&minor);
     assert(major == GSS_S_COMPLETE);
 }
 
@@ -285,7 +291,10 @@ gssEapFinalize(void)
 {
     OM_uint32 minor;
 
+    gssEapLocalAttrProviderFinalize(&minor);
+    gssEapSamlAttrProvidersFinalize(&minor);
+    gssEapRadiusAttrProviderFinalize(&minor);
+
     eap_peer_unregister_methods();
     eap_server_unregister_methods();
-    gssEapAttrProvidersFinalize(&minor);
 }

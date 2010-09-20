@@ -556,3 +556,21 @@ gss_eap_saml_attr_provider::createAttrContext(void)
 {
     return new gss_eap_saml_attr_provider;
 }
+
+OM_uint32
+gssEapSamlAttrProvidersInit(OM_uint32 *minor)
+{
+    if (gss_eap_saml_assertion_provider::init() &&
+        gss_eap_saml_attr_provider::init())
+        return GSS_S_COMPLETE;
+
+    return GSS_S_FAILURE;
+}
+
+OM_uint32
+gssEapSamlAttrProvidersFinalize(OM_uint32 *minor)
+{
+    gss_eap_saml_attr_provider::finalize();
+    gss_eap_saml_assertion_provider::finalize();
+    return GSS_S_COMPLETE;
+}

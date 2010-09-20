@@ -152,3 +152,17 @@ gss_eap_radius_attr_provider::createAttrContext(void)
 {
     return new gss_eap_radius_attr_provider;
 }
+
+OM_uint32
+gssEapRadiusAttrProviderInit(OM_uint32 *minor)
+{
+    return gss_eap_radius_attr_provider::init()
+        ? GSS_S_COMPLETE : GSS_S_FAILURE;
+}
+
+OM_uint32
+gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
+{
+    gss_eap_radius_attr_provider::finalize();
+    return GSS_S_COMPLETE;
+}

@@ -213,9 +213,13 @@ private:
     gss_eap_attr_provider *m_providers[ATTR_TYPE_MAX + 1];
 };
 
+#endif /* __cplusplus */
+
 #include "util_radius.h"
 #include "util_saml.h"
 #include "util_shib.h"
+
+#ifdef __cplusplus
 
 #include <string>
 #include <new>

@@ -33,6 +33,8 @@
 #ifndef _UTIL_RADIUS_H_
 #define _UTIL_RADIUS_H_ 1
 
+#ifdef __cplusplus
+
 struct gss_eap_radius_attr_provider : gss_eap_attr_provider {
 public:
     gss_eap_radius_attr_provider(void);
@@ -84,5 +86,15 @@ private:
 
 /* For now */
 #define PW_SAML_ASSERTION           1936
+
+extern "C" {
+#endif
+
+OM_uint32 gssEapRadiusAttrProviderInit(OM_uint32 *minor);
+OM_uint32 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _UTIL_RADIUS_H_ */

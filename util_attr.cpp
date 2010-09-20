@@ -815,37 +815,6 @@ gssEapReleaseAttrContext(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
-OM_uint32
-gssEapAttrProvidersInit(OM_uint32 *minor)
-{
-    try {
-        if (gss_eap_radius_attr_provider::init()    &&
-            gss_eap_saml_assertion_provider::init() &&
-            gss_eap_saml_attr_provider::init()      &&
-            gss_eap_shib_attr_provider::init())
-            return GSS_S_COMPLETE;
-    } catch (std::exception &e) {
-        return mapException(minor, e);
-    }
-
-    return GSS_S_FAILURE;
-}
-
-OM_uint32
-gssEapAttrProvidersFinalize(OM_uint32 *minor)
-{
-    try {
-        gss_eap_shib_attr_provider::finalize();
-        gss_eap_saml_attr_provider::finalize();
-        gss_eap_saml_assertion_provider::finalize();
-        gss_eap_radius_attr_provider::finalize();
-    } catch (std::exception &e) {
-        return mapException(minor, e);
-    }
-
-    return GSS_S_COMPLETE;
-}
-
 /*
  * Public accessor for initialisng a context from a GSS context. Also
  * sets expiry time on GSS context as a side-effect.

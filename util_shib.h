@@ -33,6 +33,8 @@
 #ifndef _UTIL_SHIB_H_
 #define _UTIL_SHIB_H_ 1
 
+#ifdef __cplusplus
+
 #include <vector>
 
 namespace shibsp {
@@ -103,5 +105,16 @@ private:
     std::vector<shibsp::Attribute *> m_attributes;
     int m_authenticated;
 };
+
+
+extern "C" {
+#endif
+
+OM_uint32 gssEapLocalAttrProviderInit(OM_uint32 *minor);
+OM_uint32 gssEapLocalAttrProviderFinalize(OM_uint32 *minor);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _UTIL_SHIB_H_ */
