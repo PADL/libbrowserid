@@ -90,13 +90,12 @@ private:
 extern "C" {
 #endif
 
-#ifndef __cplusplus
 static inline OM_uint32
-addRadiusAttributeFromBuffer(OM_uint32 *minor,
-                             rc_handle *rh,
-                             VALUE_PAIR **vp,
-                             int type,
-                             gss_buffer_t buffer)
+addAvpFromBuffer(OM_uint32 *minor,
+                 rc_handle *rh,
+                 VALUE_PAIR **vp,
+                 int type,
+                 gss_buffer_t buffer)
 {
     if (rc_avpair_add(rh, vp, type, buffer->value, buffer->length, 0) == NULL) {
         *minor = ENOMEM;
@@ -107,10 +106,10 @@ addRadiusAttributeFromBuffer(OM_uint32 *minor,
 }
 
 static inline OM_uint32
-getBufferFromRadiusAttributes(OM_uint32 *minor,
-                              VALUE_PAIR *vps,
-                              int type,
-                              gss_buffer_t buffer)
+getBufferFromAvps(OM_uint32 *minor,
+                  VALUE_PAIR *vps,
+                  int type,
+                  gss_buffer_t buffer)
 {
     VALUE_PAIR *vp;
     gss_buffer_desc tmp = GSS_C_EMPTY_BUFFER;
@@ -123,7 +122,6 @@ getBufferFromRadiusAttributes(OM_uint32 *minor,
 
     return duplicateBuffer(minor, &tmp, buffer);
 }
-#endif
 
 OM_uint32 gssEapRadiusAttrProviderInit(OM_uint32 *minor);
 OM_uint32 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor);

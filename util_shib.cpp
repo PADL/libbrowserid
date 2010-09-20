@@ -45,13 +45,13 @@
  * limitations under the License.
  */
 
-#include "gssapiP_eap.h"
-
 #include <shibsp/exceptions.h>
 #include <shibsp/attribute/SimpleAttribute.h>
 #include <shibsp/handler/AssertionConsumerService.h>
 
 #include <shibresolver/resolver.h>
+
+#include "gssapiP_eap.h"
 
 using namespace shibsp;
 using namespace shibresolver;

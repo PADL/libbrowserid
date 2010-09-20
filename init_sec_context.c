@@ -274,8 +274,6 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
     return GSS_S_COMPLETE;
 }
 
-static gss_buffer_desc emptyBuffer = GSS_C_EMPTY_BUFFER;
-
 static OM_uint32
 eapGssSmInitIdentity(OM_uint32 *minor,
                      gss_cred_id_t cred,
@@ -288,9 +286,9 @@ eapGssSmInitIdentity(OM_uint32 *minor,
                      gss_buffer_t inputToken,
                      gss_buffer_t outputToken)
 {
-    int initialContextToken;
     time_t now;
     OM_uint32 major;
+    int initialContextToken;
 
     initialContextToken = (inputToken == GSS_C_NO_BUFFER ||
                            inputToken->length == 0);
@@ -326,14 +324,12 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     if (!gssEapCredAvailable(cred, ctx->mechanismUsed))
         return GSS_S_BAD_MECH;
 
-    major = duplicateBuffer(minor, &emptyBuffer, outputToken);
-    if (GSS_ERROR(major))
-        return major;
-
     ctx->state = EAP_STATE_AUTHENTICATE;
 
     return GSS_S_CONTINUE_NEEDED;
 }
+
+static struct wpabuf emptyWpaBuffer;
 
 static OM_uint32
 eapGssSmInitAuthenticate(OM_uint32 *minor,
@@ -351,6 +347,10 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
     OM_uint32 tmpMinor;
     int code;
     struct wpabuf *resp = NULL;
+    int initialContextToken;
+
+    initialContextToken = (inputToken == GSS_C_NO_BUFFER ||
+                           inputToken->length == 0);
 
     major = peerConfigInit(minor, cred, ctx);
     if (GSS_ERROR(major))
@@ -360,7 +360,6 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         struct eap_config eapConfig;
 
         memset(&eapConfig, 0, sizeof(eapConfig));
-        ctx->flags |= CTX_FLAG_EAP_PORT_ENABLED;
 
         ctx->initiatorCtx.eap = eap_peer_sm_init(ctx,
                                                  &gssEapPolicyCallbacks,
@@ -370,6 +369,8 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
             major = GSS_S_FAILURE;
             goto cleanup;
         }
+
+        ctx->flags |= CTX_FLAG_EAP_RESTART | CTX_FLAG_EAP_PORT_ENABLED;
     }
 
     ctx->flags |= CTX_FLAG_EAP_REQ; /* we have a Request from the acceptor */
@@ -381,12 +382,9 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
     code = eap_peer_sm_step(ctx->initiatorCtx.eap);
     if (ctx->flags & CTX_FLAG_EAP_RESP) {
-
         ctx->flags &= ~(CTX_FLAG_EAP_RESP);
 
         resp = eap_get_eapRespData(ctx->initiatorCtx.eap);
-        if (resp != NULL) {
-        }
     } else if (ctx->flags & CTX_FLAG_EAP_SUCCESS) {
         major = initReady(minor, ctx);
         if (GSS_ERROR(major))
@@ -397,7 +395,10 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         ctx->state = EAP_STATE_GSS_CHANNEL_BINDINGS;
     } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
         major = GSS_S_DEFECTIVE_CREDENTIAL;
-    } else if (code == 0) {
+    } else if (code == 0 && initialContextToken) {
+        resp = &emptyWpaBuffer;
+        major = GSS_S_CONTINUE_NEEDED;
+    } else {
         major = GSS_S_FAILURE;
     }
 

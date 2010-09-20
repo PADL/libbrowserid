@@ -215,20 +215,18 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        major = addRadiusAttributeFromBuffer(minor, rh, &send,
-                                             PW_USER_NAME, &nameBuf);
+        major = addAvpFromBuffer(minor, rh, &send, PW_USER_NAME, &nameBuf);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
-    major = addRadiusAttributeFromBuffer(minor, rh, &send, PW_EAP_MESSAGE,
-                                         inputToken);
+    major = addAvpFromBuffer(minor, rh, &send, PW_EAP_MESSAGE, inputToken);
     if (GSS_ERROR(major))
         goto cleanup;
 
     if (ctx->acceptorCtx.lastStatus == PW_ACCESS_CHALLENGE) {
-        major = addRadiusAttributeFromBuffer(minor, rh, &send, PW_STATE,
-                                             &ctx->acceptorCtx.state);
+        major = addAvpFromBuffer(minor, rh, &send, PW_STATE,
+                                 &ctx->acceptorCtx.state);
         if (GSS_ERROR(major))
             goto cleanup;
 
@@ -245,14 +243,13 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     ctx->acceptorCtx.lastStatus = code;
 
     if (code == OK_RC || code == PW_ACCESS_CHALLENGE) {
-        major = getBufferFromRadiusAttributes(minor, received, PW_EAP_MESSAGE,
-                                              outputToken);
+        major = getBufferFromAvps(minor, received, PW_EAP_MESSAGE, outputToken);
         if (GSS_ERROR(major))
             goto cleanup;
 
         if (code == PW_ACCESS_CHALLENGE) {
-            major = getBufferFromRadiusAttributes(minor, received, PW_STATE,
-                                                  &ctx->acceptorCtx.state);
+            major = getBufferFromAvps(minor, received, PW_STATE,
+                                      &ctx->acceptorCtx.state);
             if (GSS_ERROR(major))
                 goto cleanup;
         }

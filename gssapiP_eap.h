@@ -57,16 +57,8 @@
 #include <wpabuf.h>
 #endif
 
-#ifdef __cplusplus
-struct rc_conf;
-typedef struct rc_conf rc_handle;
-
-struct value_pair;
-typedef struct value_pair VALUE_PAIR;
-#else
 #include <freeradius-client.h>
 #include <freeradius/radius.h>
-#endif
 
 #include "util.h"
 
