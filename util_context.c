@@ -82,10 +82,14 @@ releaseInitiatorContext(struct gss_eap_initiator_ctx *ctx)
 static void
 releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
 {
+    OM_uint32 tmpMinor;
+
     if (ctx->avps != NULL)
         rc_avpair_free(ctx->avps);
     if (ctx->radHandle != NULL)
         rc_config_free(ctx->radHandle);
+
+    gss_release_buffer(&tmpMinor, &ctx->state);
 }
 
 OM_uint32

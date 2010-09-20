@@ -44,7 +44,6 @@
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
 #include "gssapi_eap.h"
-#include "util.h"
 
 /* Kerberos includes */
 #include <krb5.h>
@@ -68,6 +67,8 @@ typedef struct value_pair VALUE_PAIR;
 #include <freeradius-client.h>
 #include <freeradius/radius.h>
 #endif
+
+#include "util.h"
 
 /* These name flags are informative and not actually used by anything yet */
 #define NAME_FLAG_NAI                       0x00000001
@@ -135,7 +136,9 @@ struct gss_eap_initiator_ctx {
 
 struct gss_eap_acceptor_ctx {
     rc_handle *radHandle;
+    int lastStatus;
     VALUE_PAIR *avps;
+    gss_buffer_desc state;
 };
 
 struct gss_ctx_id_struct {

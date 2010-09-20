@@ -54,14 +54,16 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
     if (vp != NULL) {
         nameBuf.length = vp->lvalue;
         nameBuf.value = vp->strvalue;
-    } else {
+    } else if (ctx->initiatorName == GSS_C_NO_NAME) {
         ctx->gssFlags |= GSS_C_ANON_FLAG;
     }
 
-    major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
-                             &ctx->initiatorName);
-    if (GSS_ERROR(major))
-        return major;
+    if (nameBuf.length != 0 || ctx->initiatorName == GSS_C_NO_NAME) {
+        major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
+                                 &ctx->initiatorName);
+        if (GSS_ERROR(major))
+            return major;
+    }
 
     vp = rc_avpair_get(ctx->acceptorCtx.avps, PW_MSCHAP2_SUCCESS, 0);
     if (ctx->encryptionType != ENCTYPE_NULL && vp != NULL) {
@@ -108,10 +110,10 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     OM_uint32 major;
     rc_handle *rh;
     union {
-        struct eap_hdr eap;
+        struct eap_hdr pdu;
         unsigned char data[5];
-    } pdu;
-    gss_buffer_desc pduBuffer;
+    } pkt;
+    gss_buffer_desc pktBuffer;
     char *config = RC_CONFIG_FILE;
 
     if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0)
@@ -141,21 +143,48 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
             return major;
     }
 
-    pdu.eap.code = EAP_CODE_REQUEST;
-    pdu.eap.identifier = 0;
-    pdu.eap.length = htons(sizeof(pdu.data));
-    pdu.data[4] = EAP_TYPE_IDENTITY;
+    pkt.pdu.code = EAP_CODE_REQUEST;
+    pkt.pdu.identifier = 0;
+    pkt.pdu.length = htons(sizeof(pkt.data));
+    pkt.data[4] = EAP_TYPE_IDENTITY;
 
-    pduBuffer.length = sizeof(pdu.data);
-    pduBuffer.value = pdu.data;
+    pktBuffer.length = sizeof(pkt.data);
+    pktBuffer.value = pkt.data;
 
-    major = duplicateBuffer(minor, &pduBuffer, outputToken);
+    major = duplicateBuffer(minor, &pktBuffer, outputToken);
     if (GSS_ERROR(major))
         return major;
 
     ctx->state = EAP_STATE_AUTHENTICATE;
 
     return GSS_S_CONTINUE_NEEDED;
+}
+
+static OM_uint32
+importInitiatorIdentity(OM_uint32 *minor,
+                        gss_ctx_id_t ctx,
+                        gss_buffer_t inputToken,
+                        gss_buffer_t nameBuf)
+{
+    OM_uint32 major, tmpMinor;
+    struct eap_hdr *pdu = (struct eap_hdr *)inputToken->value;
+    unsigned char *pos = (unsigned char *)(pdu + 1);
+    gss_name_t name;
+
+    assert(pdu->code == EAP_CODE_RESPONSE);
+    assert(pos[0] == EAP_TYPE_IDENTITY);
+
+    nameBuf->value = pos + 1;
+    nameBuf->length = inputToken->length - sizeof(*pdu) - 1;
+
+    major = gssEapImportName(minor, nameBuf, GSS_C_NT_USER_NAME, &name);
+    if (GSS_ERROR(major))
+        return major;
+
+    gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
+    ctx->initiatorName = name;
+
+    return GSS_S_COMPLETE;
 }
 
 static OM_uint32
@@ -166,25 +195,44 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_channel_bindings_t chanBindings,
                            gss_buffer_t outputToken)
 {
-    OM_uint32 major;
-    OM_uint32 service = PW_AUTHENTICATE_ONLY;
+    OM_uint32 major, tmpMinor;
     int code;
     VALUE_PAIR *send = NULL;
     VALUE_PAIR *received = NULL;
     rc_handle *rh = ctx->acceptorCtx.radHandle;
     char msgBuffer[4096];
+    struct eap_hdr *pdu;
+    unsigned char *pos;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
 
-    if (rc_avpair_add(rh, &send, PW_EAP_MESSAGE,
-                      inputToken->value, inputToken->length, 0) == NULL) {
-        *minor = ENOMEM;
-        major = GSS_S_FAILURE;
-        goto cleanup;
+    pdu = (struct eap_hdr *)inputToken->value;
+    pos = (unsigned char *)(pdu + 1);
+
+    if (inputToken->length > sizeof(*pdu) &&
+        pdu->code == EAP_CODE_RESPONSE &&
+        pos[0] == EAP_TYPE_IDENTITY) {
+        major = importInitiatorIdentity(minor, ctx, inputToken, &nameBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = addRadiusAttributeFromBuffer(minor, rh, &send,
+                                             PW_USER_NAME, &nameBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
 
-    if (rc_avpair_add(rh, &send, PW_SERVICE_TYPE, &service, -1, 0) == NULL) {
-        *minor = ENOMEM;
-        major = GSS_S_FAILURE;
+    major = addRadiusAttributeFromBuffer(minor, rh, &send, PW_EAP_MESSAGE,
+                                         inputToken);
+    if (GSS_ERROR(major))
         goto cleanup;
+
+    if (ctx->acceptorCtx.lastStatus == PW_ACCESS_CHALLENGE) {
+        major = addRadiusAttributeFromBuffer(minor, rh, &send, PW_STATE,
+                                             &ctx->acceptorCtx.state);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        gss_release_buffer(&tmpMinor, &ctx->acceptorCtx.state);
     }
 
     code = rc_auth(rh, 0, send, &received, msgBuffer);
@@ -194,19 +242,20 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         goto cleanup;
     }
 
+    ctx->acceptorCtx.lastStatus = code;
+
     if (code == OK_RC || code == PW_ACCESS_CHALLENGE) {
-        VALUE_PAIR *eapResponse;
-        gss_buffer_desc eapBuf = GSS_C_EMPTY_BUFFER;
-
-        eapResponse = rc_avpair_get(received, PW_EAP_MESSAGE, 0);
-        if (eapResponse != NULL) {
-            eapBuf.length = eapResponse->lvalue;
-            eapBuf.value = eapResponse->strvalue;
-        }
-
-        major = duplicateBuffer(minor, &eapBuf, outputToken);
+        major = getBufferFromRadiusAttributes(minor, received, PW_EAP_MESSAGE,
+                                              outputToken);
         if (GSS_ERROR(major))
             goto cleanup;
+
+        if (code == PW_ACCESS_CHALLENGE) {
+            major = getBufferFromRadiusAttributes(minor, received, PW_STATE,
+                                                  &ctx->acceptorCtx.state);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
 
         major = GSS_S_CONTINUE_NEEDED;
     } else {

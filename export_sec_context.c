@@ -37,13 +37,7 @@ gssEapExportPartialContext(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
                            gss_buffer_t token)
 {
-    token->length = 0;
-    token->value = NULL;
-
-    /*
-     * The format of this token awaits definition by libradius.
-     */
-    return GSS_S_COMPLETE;
+    return duplicateBuffer(minor, &ctx->acceptorCtx.state, token);
 }
 
 static OM_uint32
