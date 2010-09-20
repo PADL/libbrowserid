@@ -213,8 +213,8 @@ serverGetEapUser(void *ctx,
      */
     user->methods[0].vendor = EAP_VENDOR_IETF;
     user->methods[0].method = EAP_TYPE_MSCHAPV2;
-    user->password = (unsigned char *)strdup(" ");
-    user->password_len = 1;
+    user->password = (unsigned char *)strdup("foo");
+    user->password_len = 3;
 
     gssCtx->initiatorName->attrCtx = gssEapCreateAttrContext(NULL, gssCtx);
     if (gssCtx->initiatorName->attrCtx != NULL)
