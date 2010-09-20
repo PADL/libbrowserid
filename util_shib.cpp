@@ -47,16 +47,9 @@
 
 #include "gssapiP_eap.h"
 
-#include <shibsp/Application.h>
 #include <shibsp/exceptions.h>
-#include <shibsp/SPConfig.h>
-#include <shibsp/ServiceProvider.h>
-#include <shibsp/attribute/Attribute.h>
 #include <shibsp/attribute/SimpleAttribute.h>
-#include <shibsp/attribute/resolver/ResolutionContext.h>
 #include <shibsp/handler/AssertionConsumerService.h>
-#include <shibsp/metadata/MetadataProviderCriteria.h>
-#include <shibsp/util/SPConstants.h>
 
 #include <shibresolver/resolver.h>
 
