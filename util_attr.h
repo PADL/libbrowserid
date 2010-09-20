@@ -33,13 +33,6 @@
 #ifndef _UTIL_ATTR_H_
 #define _UTIL_ATTR_H_ 1
 
-#define ATTR_TYPE_RADIUS            0U
-#define ATTR_TYPE_SAML_ASSERTION    1U
-#define ATTR_TYPE_SAML              2U
-#define ATTR_TYPE_LOCAL             3U
-#define ATTR_TYPE_MIN               ATTR_TYPE_RADIUS
-#define ATTR_TYPE_MAX               ATTR_TYPE_LOCAL
-
 #ifdef __cplusplus
 #include <string>
 
@@ -50,6 +43,13 @@ typedef bool
 (*gss_eap_attr_enumeration_cb)(const gss_eap_attr_provider *source,
                                const gss_buffer_t attribute,
                                void *data);
+
+#define ATTR_TYPE_RADIUS            0U
+#define ATTR_TYPE_SAML_ASSERTION    1U
+#define ATTR_TYPE_SAML              2U
+#define ATTR_TYPE_LOCAL             3U
+#define ATTR_TYPE_MIN               ATTR_TYPE_RADIUS
+#define ATTR_TYPE_MAX               ATTR_TYPE_LOCAL
 
 /*
  * Attribute provider: this represents a source of attributes derived
