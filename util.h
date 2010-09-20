@@ -140,7 +140,7 @@ gssEapSign(krb5_context context,
 int
 gssEapVerify(krb5_context context,
              krb5_cksumtype type,
-             size_t rrc,  
+             size_t rrc,
              krb5_keyblock *key,
              krb5_keyusage sign_usage,
              gss_iov_buffer_desc *iov,
@@ -307,7 +307,7 @@ OM_uint32
 composeOid(OM_uint32 *minor_status,
            const char *prefix,
            size_t prefix_len,
-           int suffix,  
+           int suffix,
            gss_OID_desc *oid);
 
 OM_uint32

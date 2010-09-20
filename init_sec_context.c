@@ -68,7 +68,6 @@ policyVariableToFlag(enum eapol_bool_var variable)
     }
 
     return flag;
-        
 }
 
 static struct eap_peer_config *

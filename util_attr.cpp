@@ -88,7 +88,7 @@ gss_eap_attr_ctx::gss_eap_attr_ctx(void)
         } else {
             provider = NULL;
         }
- 
+
         m_providers[i] = provider;
     }
 }

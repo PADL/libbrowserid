@@ -163,7 +163,7 @@ importServiceName(OM_uint32 *minor,
     if (host != NULL) {
         *host = '\0';
         host++;
-    }    
+    }
 
     /* XXX this is probably NOT what we want to be doing */
     *minor = krb5_sname_to_principal(krbContext, host, service,

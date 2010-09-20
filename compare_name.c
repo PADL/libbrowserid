@@ -49,7 +49,7 @@ gss_compare_name(OM_uint32 *minor,
     }
 
     *name_equal = krb5_principal_compare(krbContext,
-                                        name1->krbPrincipal, 
+                                        name1->krbPrincipal,
                                         name2->krbPrincipal);
 
     return major;

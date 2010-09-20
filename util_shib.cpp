@@ -31,7 +31,7 @@
  */
 /*
  * Copyright 2001-2009 Internet2
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -244,7 +244,7 @@ gss_eap_shib_attr_provider::setAttribute(int complete,
     if (value->length != 0) {
         string valueStr((char *)value->value, value->length);
 
-        a->getValues().push_back(valueStr);        
+        a->getValues().push_back(valueStr);
     }
 
     m_attributes.push_back(a);
@@ -344,7 +344,7 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
             duplicateBuffer(buf, display_value);
     }
 
-    if (authenticated != NULL) 
+    if (authenticated != NULL)
         *authenticated = m_authenticated;
     if (complete != NULL)
         *complete = false;
