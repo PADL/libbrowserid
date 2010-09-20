@@ -141,3 +141,41 @@ else
 	AC_SUBST(SHIBSP_LIBS)
 fi
 ])dnl
+
+AC_DEFUN([AX_CHECK_SHIBRESOLVER],
+[AC_MSG_CHECKING(for Shibboleth resolver implementation)
+SHIBRESOLVER_DIR=
+found_shibresolver="no"
+AC_ARG_WITH(shibresolver,
+    AC_HELP_STRING([--with-shibresolver],
+       [Use Shibboleth resolver (in specified installation directory)]),
+    [check_shibresolver_dir="$withval"],
+    [check_shibresolver_dir=])
+for dir in $check_shibresolver_dir /usr /usr/local ; do
+   shibresolverdir="$dir"
+   if test -f "$dir/include/shibresolver/resolver.h"; then
+     found_shibresolver="yes";
+     SHIBRESOLVER_DIR="${shibresolverdir}"
+     SHIBRESOLVER_CXXFLAGS="-I$shibresolverdir/include";
+     break;
+   fi
+done
+AC_MSG_RESULT($found_shibresolver)
+if test x_$found_shibresolver != x_yes; then
+   AC_MSG_ERROR([
+----------------------------------------------------------------------
+  Cannot find Shibboleth resolver libraries.
+
+  Please install Shibboleth or specify installation directory with
+  --with-shibresolver=(dir).
+----------------------------------------------------------------------
+])
+else
+	printf "Shibboleth resolver found in $shibresolverdir\n";
+	SHIBRESOLVER_LIBS="-lshibresolver";
+	SHIBRESOLVER_LDFLAGS="-L$shibresolverdir/lib";
+	AC_SUBST(SHIBRESOLVER_CXXFLAGS)
+	AC_SUBST(SHIBRESOLVER_LDFLAGS)
+	AC_SUBST(SHIBRESOLVER_LIBS)
+fi
+])dnl

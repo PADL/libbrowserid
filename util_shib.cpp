@@ -58,14 +58,7 @@
 #include <shibsp/metadata/MetadataProviderCriteria.h>
 #include <shibsp/util/SPConstants.h>
 
-#include <saml/saml1/core/Assertions.h>
-#include <saml/saml2/core/Assertions.h>
-#include <saml/saml2/metadata/Metadata.h>
-#include <xercesc/util/XMLUniDefs.hpp>
-#include <xmltooling/XMLToolingConfig.h>
-#include <xmltooling/util/XMLHelper.h>
-
-#include "resolver.h"
+#include <shibresolver/resolver.h>
 
 using namespace shibsp;
 using namespace shibresolver;
@@ -165,7 +158,7 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     const gss_eap_saml_assertion_provider *saml;
     const gss_eap_radius_attr_provider *radius;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-    ShibbolethResolver *resolver = NULL;
+    ShibbolethResolver *resolver;
     OM_uint32 minor;
 
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
@@ -175,6 +168,8 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
         (manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     radius = static_cast<const gss_eap_radius_attr_provider *>
         (manager->getProvider(ATTR_TYPE_RADIUS));
+
+    resolver = ShibbolethResolver::create();
 
     if (gssCred != GSS_C_NO_CREDENTIAL &&
         gss_display_name(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
@@ -193,7 +188,10 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
             m_authenticated = saml->authenticated();
     }
 
-    resolver->resolveAttributes(m_attributes);
+    resolver->resolve();
+
+    m_attributes = resolver->getResolvedAttributes();
+    resolver->getResolvedAttributes().clear();
 
     gss_release_buffer(&minor, &nameBuf);
 
@@ -475,7 +473,7 @@ void
 gss_eap_shib_attr_provider::finalize(void)
 {
     gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_LOCAL);
-    ShibbolethResolver::term();
+//    ShibbolethResolver::term();
 }
 
 gss_eap_attr_provider *
