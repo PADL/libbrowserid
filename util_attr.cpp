@@ -40,6 +40,9 @@
 static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX];
 static gss_buffer_desc gssEapAttrPrefixes[ATTR_TYPE_MAX];
 
+/*
+ * Register a provider for a particular type and prefix
+ */
 void
 gss_eap_attr_ctx::registerProvider(unsigned int type,
                                    const char *prefix,
@@ -59,6 +62,9 @@ gss_eap_attr_ctx::registerProvider(unsigned int type,
     }
 }
 
+/*
+ * Unregister a provider
+ */
 void
 gss_eap_attr_ctx::unregisterProvider(unsigned int type)
 {
@@ -69,6 +75,9 @@ gss_eap_attr_ctx::unregisterProvider(unsigned int type)
     gssEapAttrPrefixes[type].length = 0;
 }
 
+/*
+ * Create an attribute context, that manages instances of providers
+ */
 gss_eap_attr_ctx::gss_eap_attr_ctx(void)
 {
     for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
@@ -83,6 +92,9 @@ gss_eap_attr_ctx::gss_eap_attr_ctx(void)
     }
 }
 
+/*
+ * Convert an attribute prefix to a type
+ */
 unsigned int
 gss_eap_attr_ctx::attributePrefixToType(const gss_buffer_t prefix)
 {
@@ -96,6 +108,9 @@ gss_eap_attr_ctx::attributePrefixToType(const gss_buffer_t prefix)
     return ATTR_TYPE_LOCAL;
 }
 
+/*
+ * Convert a type to an attribute prefix
+ */
 const gss_buffer_t
 gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
 {
@@ -179,12 +194,19 @@ gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
         delete m_providers[i];
 }
 
+/*
+ * Locate provider for a given type
+ */
 gss_eap_attr_provider *
 gss_eap_attr_ctx::getProvider(unsigned int type) const
 {
+    assert(type >= ATTR_TYPE_MIN && type < ATTR_TYPE_MAX);
     return m_providers[type];
 }
 
+/*
+ * Locate provider for a given prefix
+ */
 gss_eap_attr_provider *
 gss_eap_attr_ctx::getProvider(const gss_buffer_t prefix) const
 {
@@ -195,12 +217,19 @@ gss_eap_attr_ctx::getProvider(const gss_buffer_t prefix) const
     return m_providers[type];
 }
 
+/*
+ * Get primary provider. Only the primary provider is serialised when
+ * gss_export_sec_context() or gss_export_name_composite() is called.
+ */
 gss_eap_attr_provider *
 gss_eap_attr_ctx::getPrimaryProvider(void) const
 {
     return m_providers[ATTR_TYPE_RADIUS];
 }
 
+/*
+ * Set an attribute
+ */
 void
 gss_eap_attr_ctx::setAttribute(int complete,
                                const gss_buffer_t attr,
@@ -213,14 +242,15 @@ gss_eap_attr_ctx::setAttribute(int complete,
     decomposeAttributeName(attr, &type, &suffix);
 
     provider = m_providers[type];
-    if (provider != NULL) {
-        provider->setAttribute(complete,
-                               (type == ATTR_TYPE_LOCAL) ? attr : &suffix,
-                               value);
-                               
-    }
+
+    provider->setAttribute(complete,
+                           (type == ATTR_TYPE_LOCAL) ? attr : &suffix,
+                           value);
 }
 
+/*
+ * Delete an attrbiute
+ */
 void
 gss_eap_attr_ctx::deleteAttribute(const gss_buffer_t attr)
 {
@@ -236,6 +266,9 @@ gss_eap_attr_ctx::deleteAttribute(const gss_buffer_t attr)
     }
 }
 
+/*
+ * Enumerate attribute types with callback
+ */
 bool
 gss_eap_attr_ctx::getAttributeTypes(gss_eap_attr_enumeration_cb cb, void *data) const
 {
@@ -276,6 +309,9 @@ addAttribute(const gss_eap_attr_provider *provider,
     return GSS_ERROR(major) == false;
 }
 
+/*
+ * Enumerate attribute types, output is buffer set
+ */
 bool
 gss_eap_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
 {
@@ -306,6 +342,9 @@ gss_eap_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
     return ret;
 }
 
+/*
+ * Get attribute with given name
+ */
 bool
 gss_eap_attr_ctx::getAttribute(const gss_buffer_t attr,
                                int *authenticated,
@@ -330,40 +369,54 @@ gss_eap_attr_ctx::getAttribute(const gss_buffer_t attr,
     return ret;
 }
 
+/*
+ * Map attribute context to C++ object
+ */
 gss_any_t
 gss_eap_attr_ctx::mapToAny(int authenticated,
                            gss_buffer_t type_id) const
 {
     unsigned int type;
     gss_eap_attr_provider *provider;
+    gss_buffer_desc suffix;
 
-    type = attributePrefixToType(type_id);
+    decomposeAttributeName(type_id, &type, &suffix);
 
     provider = m_providers[type];
 
-    return provider->mapToAny(authenticated, type_id);
+    return provider->mapToAny(authenticated, &suffix);
 }
 
+/*
+ * Release mapped context
+ */
 void
 gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
                                         gss_any_t input) const
 {
     unsigned int type;
     gss_eap_attr_provider *provider;
+    gss_buffer_desc suffix;
 
-    type = attributePrefixToType(type_id);
+    decomposeAttributeName(type_id, &type, &suffix);
 
     provider = m_providers[type];
 
-    provider->releaseAnyNameMapping(type_id, input);
+    provider->releaseAnyNameMapping(&suffix, input);
 }
 
+/*
+ * Export attribute context to buffer
+ */
 void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
     getPrimaryProvider()->exportToBuffer(buffer);
 }
 
+/*
+ * Return soonest expiry time of providers
+ */
 time_t
 gss_eap_attr_ctx::getExpiryTime(void) const
 {
@@ -384,9 +437,8 @@ gss_eap_attr_ctx::getExpiryTime(void) const
 }
 
 /*
- * C wrappers
+ * Map C++ exception to GSS status
  */
-
 static OM_uint32
 mapException(OM_uint32 *minor, std::exception &e)
 {
@@ -406,6 +458,9 @@ mapException(OM_uint32 *minor, std::exception &e)
     return major;
 }
 
+/*
+ * Decompose attribute name into prefix and suffix
+ */
 void
 gss_eap_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
                                          gss_buffer_t prefix,
@@ -433,6 +488,23 @@ gss_eap_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
     }
 }
 
+/*
+ * Decompose attribute name into type and suffix
+ */
+void
+gss_eap_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
+                                         unsigned int *type,
+                                         gss_buffer_t suffix)
+{
+    gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
+
+    decomposeAttributeName(attribute, &prefix, suffix);
+    *type = attributePrefixToType(&prefix);
+}
+
+/*
+ * Compose attribute name from prefix, suffix; returns C++ string
+ */
 std::string
 gss_eap_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
                                        const gss_buffer_t suffix)
@@ -452,6 +524,9 @@ gss_eap_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
     return str;
 }
 
+/*
+ * Compose attribute name from type, suffix; returns C++ string
+ */
 std::string
 gss_eap_attr_ctx::composeAttributeName(unsigned int type,
                                        const gss_buffer_t suffix)
@@ -461,6 +536,9 @@ gss_eap_attr_ctx::composeAttributeName(unsigned int type,
     return composeAttributeName(prefix, suffix);
 }
 
+/*
+ * Compose attribute name from prefix, suffix; returns GSS buffer
+ */
 void
 gss_eap_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
                                        const gss_buffer_t suffix,
@@ -476,17 +554,9 @@ gss_eap_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
     }
 }
 
-void
-gss_eap_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
-                                         unsigned int *type,
-                                         gss_buffer_t suffix)
-{
-    gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
-
-    decomposeAttributeName(attribute, &prefix, suffix);
-    *type = attributePrefixToType(&prefix);
-}
-
+/*
+ * Compose attribute name from type, suffix; returns GSS buffer
+ */
 void
 gss_eap_attr_ctx::composeAttributeName(unsigned int type,
                                        const gss_buffer_t suffix,
@@ -497,6 +567,9 @@ gss_eap_attr_ctx::composeAttributeName(unsigned int type,
     return composeAttributeName(prefix, suffix, attribute);
 }
 
+/*
+ * C wrappers
+ */
 OM_uint32
 gssEapInquireName(OM_uint32 *minor,
                   gss_name_t name,
@@ -744,6 +817,10 @@ gssEapAttrProvidersFinalize(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
+/*
+ * Public accessor for initialisng a context from a GSS context. Also
+ * sets expiry time on GSS context as a side-effect.
+ */
 struct gss_eap_attr_ctx *
 gssEapCreateAttrContext(gss_cred_id_t gssCred,
                         gss_ctx_id_t gssCtx)
