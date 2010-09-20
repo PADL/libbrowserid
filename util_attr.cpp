@@ -137,8 +137,11 @@ gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
 
         ret = provider->initFromExistingContext(this,
                                                 manager->m_providers[i]);
-        if (ret == false)
+        if (ret == false) {
+            delete provider;
+            m_providers[i] = NULL;
             break;
+        }
     }
 
     return ret;
@@ -160,8 +163,11 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
             continue;
 
         ret = provider->initFromGssContext(this, cred, ctx);
-        if (ret == false)
+        if (ret == false) {
+            delete provider;
+            m_providers[i] = NULL;
             break;
+        }
     }
 
     return ret;
@@ -189,8 +195,11 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
         ret = provider->initFromGssContext(this,
                                            GSS_C_NO_CREDENTIAL,
                                            GSS_C_NO_CONTEXT);
-        if (ret == false)
+        if (ret == false) {
+            delete provider;
+            m_providers[i] = NULL;
             break;
+        }
     }
 
     return ret;
