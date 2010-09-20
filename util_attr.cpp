@@ -37,8 +37,8 @@
 #include <exception>
 #include <new>
 
-static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX];
-static gss_buffer_desc gssEapAttrPrefixes[ATTR_TYPE_MAX];
+static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX + 1];
+static gss_buffer_desc gssEapAttrPrefixes[ATTR_TYPE_MAX + 1];
 
 /*
  * Register a provider for a particular type and prefix
@@ -48,7 +48,7 @@ gss_eap_attr_ctx::registerProvider(unsigned int type,
                                    const char *prefix,
                                    gss_eap_attr_create_provider factory)
 {
-    assert(type < ATTR_TYPE_MAX);
+    assert(type <= ATTR_TYPE_MAX);
 
     assert(gssEapAttrFactories[type] == NULL);
 
@@ -68,7 +68,7 @@ gss_eap_attr_ctx::registerProvider(unsigned int type,
 void
 gss_eap_attr_ctx::unregisterProvider(unsigned int type)
 {
-    assert(type < ATTR_TYPE_MAX);
+    assert(type <= ATTR_TYPE_MAX);
 
     gssEapAttrFactories[type] = NULL;
     gssEapAttrPrefixes[type].value = NULL;
@@ -80,7 +80,7 @@ gss_eap_attr_ctx::unregisterProvider(unsigned int type)
  */
 gss_eap_attr_ctx::gss_eap_attr_ctx(void)
 {
-    for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
+    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
 
         provider = (gssEapAttrFactories[i])();
@@ -128,7 +128,7 @@ gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
 {
     bool ret = true;
 
-    for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
+    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider = m_providers[i];
 
         ret = provider->initFromExistingContext(this, manager->m_providers[i]);
@@ -148,7 +148,7 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
 {
     bool ret = true;
 
-    for (unsigned int i = 0; i < ATTR_TYPE_MAX; i++) {
+    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider = m_providers[i];
 
         ret = provider->initFromGssContext(this, cred, ctx);
@@ -172,7 +172,7 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
     if (ret == false)
         return ret;
 
-    for (unsigned int i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
+    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider = m_providers[i];
 
         if (provider == primaryProvider)
@@ -190,7 +190,7 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
 
 gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
 {
-    for (unsigned int i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++)
+    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++)
         delete m_providers[i];
 }
 
@@ -200,7 +200,7 @@ gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
 gss_eap_attr_provider *
 gss_eap_attr_ctx::getProvider(unsigned int type) const
 {
-    assert(type >= ATTR_TYPE_MIN && type < ATTR_TYPE_MAX);
+    assert(type >= ATTR_TYPE_MIN && type <= ATTR_TYPE_MAX);
     return m_providers[type];
 }
 
@@ -275,7 +275,7 @@ gss_eap_attr_ctx::getAttributeTypes(gss_eap_attr_enumeration_cb cb, void *data) 
     bool ret = false;
     size_t i;
 
-    for (i = 0; i < ATTR_TYPE_MAX; i++) {
+    for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         ret = m_providers[i]->getAttributeTypes(cb, data);
         if (ret == false)
             break;
@@ -328,7 +328,7 @@ gss_eap_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
 
     args.attrs = *attrs;
 
-    for (i = 0; i < ATTR_TYPE_MAX; i++) {
+    for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         args.type = i;
 
         ret = m_providers[i]->getAttributeTypes(addAttribute, (void *)&args);
@@ -423,7 +423,7 @@ gss_eap_attr_ctx::getExpiryTime(void) const
     unsigned int i;
     time_t expiryTime = 0;
 
-    for (i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
+    for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         time_t providerExpiryTime = m_providers[i]->getExpiryTime();
 
         if (providerExpiryTime == 0)

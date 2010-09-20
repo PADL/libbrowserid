@@ -38,7 +38,7 @@
 #define ATTR_TYPE_SAML              2U
 #define ATTR_TYPE_LOCAL             3U
 #define ATTR_TYPE_MIN               ATTR_TYPE_RADIUS
-#define ATTR_TYPE_MAX               (ATTR_TYPE_LOCAL + 1U)
+#define ATTR_TYPE_MAX               ATTR_TYPE_LOCAL
 
 #ifdef __cplusplus
 #include <string>
@@ -51,6 +51,10 @@ typedef bool
                                const gss_buffer_t attribute,
                                void *data);
 
+/*
+ * Attribute provider: this represents a source of attributes derived
+ * from the security context.
+ */
 struct gss_eap_attr_provider
 {
 public:
@@ -122,6 +126,10 @@ private:
 
 typedef gss_eap_attr_provider *(*gss_eap_attr_create_provider)(void);
 
+/*
+ * Attribute context: this manages a set of providers for a given
+ * security context.
+ */
 struct gss_eap_attr_ctx
 {
 public:
@@ -202,7 +210,7 @@ private:
     gss_eap_attr_ctx(const gss_eap_attr_ctx&);
     gss_eap_attr_ctx& operator=(const gss_eap_attr_ctx&);
 
-    gss_eap_attr_provider *m_providers[ATTR_TYPE_MAX];
+    gss_eap_attr_provider *m_providers[ATTR_TYPE_MAX + 1];
 };
 
 #include "util_radius.h"
@@ -239,6 +247,12 @@ struct gss_eap_attr_ctx;
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*
+ * C wrappers for attribute context functions. These match their
+ * GSS naming extension equivalents. The caller is required to
+ * obtain the name mutex.
+ */
 
 struct gss_eap_attr_ctx *
 gssEapCreateAttrContext(gss_cred_id_t acceptorCred,
