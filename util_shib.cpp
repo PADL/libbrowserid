@@ -435,25 +435,8 @@ gss_eap_shib_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 bool
 gss_eap_shib_attr_provider::init(void)
 {
-#if 1
-    SPConfig& conf=SPConfig::getConfig();
-    conf.setFeatures(
-        SPConfig::Metadata |
-        SPConfig::Trust |
-        SPConfig::AttributeResolution |
-        SPConfig::Credentials |
-        SPConfig::OutOfProcess
-        );
-    if (!conf.init())
-        return false;
-    if (!conf.instantiate()) {
-        conf.term();
-        return false;
-    }
-#else
     if (!ShibbolethResolver::init())
         return false;
-#endif
 
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_LOCAL,
                                        NULL,
@@ -466,7 +449,7 @@ void
 gss_eap_shib_attr_provider::finalize(void)
 {
     gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_LOCAL);
-//    ShibbolethResolver::term();
+    ShibbolethResolver::term();
 }
 
 gss_eap_attr_provider *
