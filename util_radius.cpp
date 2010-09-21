@@ -234,10 +234,17 @@ static bool
 isPrintableAttributeP(VALUE_PAIR *vp)
 {
     size_t i;
+    int gotChar = 0;
 
     for (i = 0; i < sizeof(vp->strvalue); i++) {
+        if (gotChar && vp->strvalue[i] == '\0')
+            return true;
+
         if (!isprint(vp->strvalue[i]))
             return false;
+
+        if (!gotChar)
+            gotChar++;
     }
 
     return true;
