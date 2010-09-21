@@ -166,15 +166,24 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
 
     for (vp = m_avps; vp != NULL; vp = vp->next) {
         gss_buffer_desc attribute;
-
+#ifndef RADIUS_STRING_ATTRS
+        char attrid[64];
+#endif
         if (isHiddenAttributeP(ATTRID(vp->attribute), VENDOR(vp->attribute)))
             continue;
 
         if (alreadyAddedAttributeP(seen, vp))
             continue;
 
+#ifdef RADIUS_STRING_ATTRS
         attribute.value = (void *)vp->name;
         attribute.length = strlen(vp->name);
+#else
+        snprintf(attrid, sizeof(attrid), "%d", vp->attribute);
+
+        attribute.value = attrid;
+        attribute.length = strlen(attrid);
+#endif /* RADIUS_STRING_ATTRS */
 
         if (!addAttribute(this, &attribute, data))
             return false;
