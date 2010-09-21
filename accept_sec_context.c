@@ -38,7 +38,7 @@
 static OM_uint32
 acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 {
-    OM_uint32 major;
+    OM_uint32 major, tmpMinor;
     VALUE_PAIR *vp;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
 
@@ -48,20 +48,24 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     if (GSS_ERROR(major))
         return major;
 
+    /*
+     * Now, if we have a username from the identity packet, discard it
+     * because it's unauthenticated.
+     */
+    gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
+
     vp = rc_avpair_get(ctx->acceptorCtx.avps, PW_USER_NAME, 0);
     if (vp != NULL) {
         nameBuf.length = vp->lvalue;
         nameBuf.value = vp->strvalue;
-    } else if (ctx->initiatorName == GSS_C_NO_NAME) {
+    } else {
         ctx->gssFlags |= GSS_C_ANON_FLAG;
     }
 
-    if (nameBuf.length != 0 || ctx->initiatorName == GSS_C_NO_NAME) {
-        major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
-                                 &ctx->initiatorName);
-        if (GSS_ERROR(major))
-            return major;
-    }
+    major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
+                             &ctx->initiatorName);
+    if (GSS_ERROR(major))
+        return major;
 
     ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
 
