@@ -260,6 +260,7 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
          * material it seems confusing to the caller to advertise this.
          */
         ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
+        ctx->encryptionType = ENCTYPE_NULL;
     }
 
     major = sequenceInit(minor,

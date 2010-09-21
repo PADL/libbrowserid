@@ -154,6 +154,60 @@ gss_eap_radius_attr_provider::createAttrContext(void)
 }
 
 OM_uint32
+addAvpFromBuffer(OM_uint32 *minor,
+                 rc_handle *rh,
+                 VALUE_PAIR **vp,
+                 int type,
+                 gss_buffer_t buffer)
+{
+    if (rc_avpair_add(rh, vp, type, buffer->value, buffer->length, 0) == NULL) {
+        return GSS_S_FAILURE;
+    }
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+getBufferFromAvps(OM_uint32 *minor,
+                  VALUE_PAIR *vps,
+                  int type,
+                  gss_buffer_t buffer,
+                  int concat)
+{
+    VALUE_PAIR *vp;
+    unsigned char *p;
+
+    buffer->length = 0;
+    buffer->value = NULL;
+
+    vp = rc_avpair_get(vps, type, 0);
+    if (vp == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    do {
+        buffer->length += vp->lvalue;
+    } while (concat && (vp = rc_avpair_get(vp->next, type, 0)) != NULL);
+
+    buffer->value = GSSEAP_MALLOC(buffer->length);
+    if (buffer->value == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    p = (unsigned char *)buffer->value;
+
+    for (vp = rc_avpair_get(vps, type, 0);
+         concat && vp != NULL;
+         vp = rc_avpair_get(vp->next, type, 0)) {
+        memcpy(p, vp->strvalue, vp->lvalue);
+        p += vp->lvalue;
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
 gssEapRadiusAttrProviderInit(OM_uint32 *minor)
 {
     return gss_eap_radius_attr_provider::init()

@@ -38,7 +38,7 @@
  * Mark a context as ready for cryptographic operations
  */
 static OM_uint32
-acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
+acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 {
     OM_uint32 major;
     VALUE_PAIR *vp;
@@ -65,6 +65,8 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
             return major;
     }
 
+    ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
+
     vp = rc_avpair_get(ctx->acceptorCtx.avps, 0x01370010, 0);
     if (ctx->encryptionType != ENCTYPE_NULL && vp != NULL) {
         major = gssEapDeriveRfc3961Key(minor,
@@ -86,6 +88,7 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
          * material it seems confusing to the caller to advertise this.
          */
         ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
+        ctx->encryptionType = ENCTYPE_NULL;
     }
 
     major = sequenceInit(minor,
@@ -270,7 +273,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         ctx->acceptorCtx.avps = received;
         received = NULL;
 
-        major = acceptReady(minor, ctx);
+        major = acceptReady(minor, ctx, cred);
         if (GSS_ERROR(major))
             goto cleanup;
 
