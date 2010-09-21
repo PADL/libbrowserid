@@ -32,6 +32,11 @@
 
 #include "gssapiP_eap.h"
 
+static gss_buffer_desc radiusUrnPrefix = {
+    sizeof("urn:radius:") - 1,
+    (void *)"urn:radius:"
+};
+
 VALUE_PAIR *
 gss_eap_radius_attr_provider::copyAvps(const VALUE_PAIR *src)
 {
@@ -179,7 +184,8 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
         attribute.value = (void *)vp->name;
         attribute.length = strlen(vp->name);
 #else
-        snprintf(attrid, sizeof(attrid), "%d", vp->attribute);
+        snprintf(attrid, sizeof(attrid), "%s%d",
+            (char *)radiusUrnPrefix.value, vp->attribute);
 
         attribute.value = attrid;
         attribute.length = strlen(attrid);
@@ -221,11 +227,12 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
     char *s;
 
     /* XXX vendor */
-
     duplicateBuffer(*attr, &strAttr);
     s = (char *)strAttr.value;
 
-    if (isdigit(((char *)strAttr.value)[0])) {
+    if (attr->length >= radiusUrnPrefix.length &&
+        memcmp(s, radiusUrnPrefix.value, radiusUrnPrefix.length) == 0) {
+        s += radiusUrnPrefix.length;
         attrid = strtoul(s, NULL, 10);
     } else {
         d = rc_dict_findattr(m_rh, (char *)s);
