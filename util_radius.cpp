@@ -171,25 +171,18 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
 
     for (vp = m_avps; vp != NULL; vp = vp->next) {
         gss_buffer_desc attribute;
-#ifndef RADIUS_STRING_ATTRS
         char attrid[64];
-#endif
         if (isHiddenAttributeP(ATTRID(vp->attribute), VENDOR(vp->attribute)))
             continue;
 
         if (alreadyAddedAttributeP(seen, vp))
             continue;
 
-#ifdef RADIUS_STRING_ATTRS
-        attribute.value = (void *)vp->name;
-        attribute.length = strlen(vp->name);
-#else
         snprintf(attrid, sizeof(attrid), "%s%d",
             (char *)radiusUrnPrefix.value, vp->attribute);
 
         attribute.value = attrid;
         attribute.length = strlen(attrid);
-#endif /* RADIUS_STRING_ATTRS */
 
         if (!addAttribute(this, &attribute, data))
             return false;
@@ -230,9 +223,13 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
     duplicateBuffer(*attr, &strAttr);
     s = (char *)strAttr.value;
 
-    if (attr->length >= radiusUrnPrefix.length &&
-        memcmp(s, radiusUrnPrefix.value, radiusUrnPrefix.length) == 0) {
-        s += radiusUrnPrefix.length;
+    if (attr->length < radiusUrnPrefix.length ||
+        memcmp(s, radiusUrnPrefix.value, radiusUrnPrefix.length) != 0)
+        return false;
+
+    s += radiusUrnPrefix.length;
+
+    if (isdigit(*s)) {
         attrid = strtoul(s, NULL, 10);
     } else {
         d = rc_dict_findattr(m_rh, (char *)s);
