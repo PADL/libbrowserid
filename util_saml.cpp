@@ -88,7 +88,7 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *mana
 {
     const gss_eap_radius_attr_provider *radius;
     gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
-    int authenticated, complete, more = -1;
+    int authenticated, complete;
     OM_uint32 minor;
 
     assert(m_assertion == NULL);
@@ -99,8 +99,9 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *mana
     radius = static_cast<const gss_eap_radius_attr_provider *>
         (m_manager->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
-        radius->getAttribute(PW_SAML_ASSERTION, &authenticated, &complete,
-                             &value, NULL, &more)) {
+        radius->getFragmentedAttribute(RADIUS_VENDOR_ATTR_GSS_EAP_SAML_AAA_ASSERTION,
+                                       RADIUS_VENDOR_ID_GSS_EAP,
+                                       &authenticated, &complete, &value)) {
         setAssertion(&value, authenticated);
         gss_release_buffer(&minor, &value);
     } else {
@@ -118,7 +119,11 @@ gss_eap_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion,
     delete m_assertion;
 
     if (assertion != NULL) {
+#if 0
         m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
+#else
+        m_assertion = (saml2::Assertion *)((void *)assertion->clone());
+#endif
         m_authenticated = authenticated;
     } else {
         m_assertion = NULL;
@@ -145,9 +150,16 @@ gss_eap_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
     const XMLObjectBuilder *b;
 
     doc = XMLToolingConfig::getConfig().getParser().parse(istream);
+    if (doc == NULL)
+        return NULL;
+
     b = XMLObjectBuilder::getBuilder(doc->getDocumentElement());
 
+#if 0
     return dynamic_cast<saml2::Assertion *>(b->buildFromDocument(doc));
+#else
+    return (saml2::Assertion *)((void *)b->buildFromDocument(doc));
+#endif
 }
 
 bool
@@ -210,7 +222,7 @@ gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
 {
     string str;
 
-    if (attr != GSS_C_NO_BUFFER || attr->length != 0)
+    if (attr != GSS_C_NO_BUFFER && attr->length != 0)
         return false;
 
     if (m_assertion == NULL)
@@ -370,11 +382,11 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
         XMLCh space[2] = { ' ', 0 };
         gss_buffer_desc utf8;
 
-        qualifiedName = new XMLCh[XMLString::stringLen(attributeName) + 1 +
-                                  XMLString::stringLen(attributeNameFormat) + 1];
-        XMLString::copyString(qualifiedName, attributeName);
+        qualifiedName = new XMLCh[XMLString::stringLen(attributeNameFormat) + 1 +
+                                  XMLString::stringLen(attributeName) + 1];
+        XMLString::copyString(qualifiedName, attributeNameFormat);
         XMLString::catString(qualifiedName, space);
-        XMLString::catString(qualifiedName, attributeNameFormat);
+        XMLString::catString(qualifiedName, attributeName);
 
         utf8.value = (void *)toUTF8(qualifiedName);
         utf8.length = strlen((char *)utf8.value);
@@ -493,8 +505,11 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
         i = 0;
     else if (i >= nvalues)
         return false;
-    av = dynamic_cast<const saml2::AttributeValue *>(a->getAttributeValues().at(i)
-);
+#if 0
+    av = dynamic_cast<const saml2::AttributeValue *>(a->getAttributeValues().at(i));
+#else
+    av = (const saml2::AttributeValue *)((void *)(a->getAttributeValues().at(i)));
+#endif
     if (av != NULL) {
         if (value != NULL) {
             value->value = toUTF8(av->getTextContent(), true);

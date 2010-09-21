@@ -134,7 +134,7 @@ alreadyAddedAttributeP(std::vector <std::string> &attrs, VALUE_PAIR *vp)
 }
 
 static bool
-isSecretAttributeP(int attrid, int vendor)
+isHiddenAttributeP(int attrid, int vendor)
 {
     bool ret = false;
 
@@ -148,6 +148,9 @@ isSecretAttributeP(int attrid, int vendor)
         default:
             break;
         }
+    case RADIUS_VENDOR_ID_GSS_EAP:
+        ret = true;
+        break;
     default:
         break;
     }
@@ -164,7 +167,7 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
     for (vp = m_avps; vp != NULL; vp = vp->next) {
         gss_buffer_desc attribute;
 
-        if (isSecretAttributeP(ATTRID(vp->attribute), VENDOR(vp->attribute)))
+        if (isHiddenAttributeP(ATTRID(vp->attribute), VENDOR(vp->attribute)))
             continue;
 
         if (alreadyAddedAttributeP(seen, vp))
@@ -261,8 +264,7 @@ gss_eap_radius_attr_provider::getAttribute(int attrid,
 {
     OM_uint32 tmpMinor;
     VALUE_PAIR *vp;
-    int i = *more;
-    int max = 0;
+    int i = *more, count = 0;
     char name[NAME_LENGTH + 1];
     char displayString[AUTH_STRING_LEN + 1];
     gss_buffer_desc valueBuf = GSS_C_EMPTY_BUFFER;
@@ -270,24 +272,23 @@ gss_eap_radius_attr_provider::getAttribute(int attrid,
 
     *more = 0;
 
-    if (isSecretAttributeP(attrid, vendor))
-        return false;
-
-    vp = rc_avpair_get(m_avps, attrid, vendor);
-    if (vp == NULL)
+    if (isHiddenAttributeP(attrid, vendor))
         return false;
 
     if (i == -1)
         i = 0;
 
-    do {
-        if (i == max)
+    for (vp = rc_avpair_get(m_avps, attrid, vendor);
+         vp != NULL;
+         vp = rc_avpair_get(vp->next, attrid, vendor)) {
+        if (count++ == i) {
+            if (rc_avpair_get(vp->next, attrid, vendor) != NULL)
+                *more = count;
             break;
+        }
+    }
 
-        max++;
-    } while ((vp = rc_avpair_get(vp->next, attrid, vendor)) != NULL);
-
-    if (i > max)
+    if (vp == NULL && *more == 0)
         return false;
 
     if (vp->type == PW_TYPE_STRING) {
@@ -320,10 +321,26 @@ gss_eap_radius_attr_provider::getAttribute(int attrid,
     if (complete != NULL)
         *complete = true;
 
-    if (max > i)
-        *more = i;
-
     return true;
+}
+
+bool
+gss_eap_radius_attr_provider::getFragmentedAttribute(int attribute,
+                                                     int vendor,
+                                                     int *authenticated,
+                                                     int *complete,
+                                                     gss_buffer_t value) const
+{
+    OM_uint32 major, minor;
+
+    major = getBufferFromAvps(&minor, m_avps, attribute, vendor, value, TRUE);
+
+    if (authenticated != NULL)
+        *authenticated = m_authenticated;
+    if (complete != NULL)
+        *complete = true;
+
+    return !GSS_ERROR(major);
 }
 
 bool

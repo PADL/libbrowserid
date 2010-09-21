@@ -80,6 +80,12 @@ public:
                       gss_buffer_t display_value,
                       int *more) const;
 
+    bool getFragmentedAttribute(int attribute,
+                                int vendor,
+                                int *authenticated,
+                                int *complete,
+                                gss_buffer_t value) const;
+
     bool authenticated() const { return m_authenticated; }
 
     static bool init();
@@ -100,8 +106,6 @@ private:
 };
 
 /* For now */
-#define PW_SAML_ASSERTION           1936
-
 extern "C" {
 #endif
 
@@ -143,7 +147,9 @@ enum { RADIUS_VENDOR_ATTR_MS_MPPE_SEND_KEY = 16,
 
 enum { RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_SERVICE_NAME = 1,
        RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_HOST_NAME,
-       RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_REALM_NAME };
+       RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_REALM_NAME,
+       RADIUS_VENDOR_ATTR_GSS_EAP_SAML_AAA_ASSERTION
+};
 
 #ifdef __cplusplus
 }
