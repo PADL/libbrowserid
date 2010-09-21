@@ -48,10 +48,6 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     if (GSS_ERROR(major))
         return major;
 
-    /*
-     * Now, if we have a username from the identity packet, discard it
-     * because it's unauthenticated.
-     */
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
 
     vp = rc_avpair_get(ctx->acceptorCtx.avps, PW_USER_NAME, 0);
@@ -130,9 +126,9 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    if (ctx->acceptorName == GSS_C_NO_NAME &&
-        cred != GSS_C_NO_CREDENTIAL &&
-        cred->name != GSS_C_NO_NAME) {
+    assert(ctx->acceptorName == GSS_C_NO_NAME);
+
+    if (cred != GSS_C_NO_CREDENTIAL && cred->name != GSS_C_NO_NAME) {
         major = gss_duplicate_name(minor, cred->name, &ctx->acceptorName);
         if (GSS_ERROR(major))
             return major;
@@ -153,33 +149,6 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     ctx->state = EAP_STATE_AUTHENTICATE;
 
     return GSS_S_CONTINUE_NEEDED;
-}
-
-static OM_uint32
-importInitiatorIdentity(OM_uint32 *minor,
-                        gss_ctx_id_t ctx,
-                        gss_buffer_t inputToken,
-                        gss_buffer_t nameBuf)
-{
-    OM_uint32 major, tmpMinor;
-    struct eap_hdr *pdu = (struct eap_hdr *)inputToken->value;
-    unsigned char *pos = (unsigned char *)(pdu + 1);
-    gss_name_t name;
-
-    assert(pdu->code == EAP_CODE_RESPONSE);
-    assert(pos[0] == EAP_TYPE_IDENTITY);
-
-    nameBuf->value = pos + 1;
-    nameBuf->length = inputToken->length - sizeof(*pdu) - 1;
-
-    major = gssEapImportName(minor, nameBuf, GSS_C_NT_USER_NAME, &name);
-    if (GSS_ERROR(major))
-        return major;
-
-    gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
-    ctx->initiatorName = name;
-
-    return GSS_S_COMPLETE;
 }
 
 static OM_uint32
@@ -234,10 +203,10 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     if (inputToken->length > sizeof(*pdu) &&
         pdu->code == EAP_CODE_RESPONSE &&
         pos[0] == EAP_TYPE_IDENTITY) {
-        major = importInitiatorIdentity(minor, ctx, inputToken, &nameBuf);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
+        /*
+         * XXX TODO do we really need to set User-Name? FreeRADIUS does
+         * not appear to require it.
+         */
         major = addAvpFromBuffer(minor, rh, &send, PW_USER_NAME, 0, &nameBuf);
         if (GSS_ERROR(major))
             goto cleanup;
