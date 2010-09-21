@@ -352,6 +352,9 @@ gss_eap_shib_attr_provider::mapToAny(int authenticated,
 {
     gss_any_t output;
 
+    if (authenticated && !m_authenticated)
+        return (gss_any_t)NULL;
+
     vector <Attribute *>v = duplicateAttributes(m_attributes);
 
     output = (gss_any_t)new vector <Attribute *>(v);

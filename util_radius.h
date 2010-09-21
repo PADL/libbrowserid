@@ -81,6 +81,9 @@ public:
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:
+    static VALUE_PAIR *copyAvps(const VALUE_PAIR *in);
+
+    VALUE_PAIR *m_avps;
     bool m_authenticated;
 };
 

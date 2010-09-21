@@ -32,13 +32,22 @@
 
 #include "gssapiP_eap.h"
 
+VALUE_PAIR *
+gss_eap_radius_attr_provider::copyAvps(const VALUE_PAIR *in)
+{
+    return NULL;
+}
+
 gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(void)
 {
+    m_avps = NULL;
     m_authenticated = false;
 }
 
 gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
 {
+    if (m_avps != NULL)
+        rc_avpair_free(m_avps);
 }
 
 bool
@@ -106,13 +115,17 @@ gss_any_t
 gss_eap_radius_attr_provider::mapToAny(int authenticated,
                                        gss_buffer_t type_id) const
 {
-    return (gss_any_t)NULL;
+    if (authenticated && !m_authenticated)
+        return (gss_any_t)NULL;
+
+    return (gss_any_t)copyAvps(m_avps);
 }
 
 void
 gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
                                                     gss_any_t input) const
 {
+    rc_avpair_free((VALUE_PAIR *)input);
 }
 
 void
