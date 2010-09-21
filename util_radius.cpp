@@ -33,29 +33,67 @@
 #include "gssapiP_eap.h"
 
 VALUE_PAIR *
-gss_eap_radius_attr_provider::copyAvps(const VALUE_PAIR *in)
+gss_eap_radius_attr_provider::copyAvps(const VALUE_PAIR *src)
 {
-    return NULL;
+    const VALUE_PAIR *vp;
+    VALUE_PAIR *dst = NULL, **pDst = &dst;
+
+    for (vp = src; vp != NULL; vp = vp->next) {
+        VALUE_PAIR *vp2;
+
+        vp2 = (VALUE_PAIR *)GSSEAP_CALLOC(1, sizeof(*vp2));
+        if (vp2 == NULL) {
+            rc_avpair_free(dst);
+            return NULL;
+        }
+        memcpy(vp2, vp, sizeof(*vp));
+        vp2->next = NULL;
+        *pDst = vp2;
+        pDst = &vp2->next;
+    }
+
+    return dst;
 }
 
 gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(void)
 {
+    m_rh = NULL;
     m_avps = NULL;
     m_authenticated = false;
 }
 
 gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
 {
+    if (m_rh != NULL)
+        rc_config_free(m_rh);
     if (m_avps != NULL)
         rc_avpair_free(m_avps);
+}
+
+bool
+gss_eap_radius_attr_provider::initFromGssCred(const gss_cred_id_t cred)
+{
+    OM_uint32 minor;
+
+    return !GSS_ERROR(gssEapRadiusAllocHandle(&minor, cred, &m_rh));
 }
 
 bool
 gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *manager,
                                                       const gss_eap_attr_provider *ctx)
 {
+    const gss_eap_radius_attr_provider *radius;
+
     if (!gss_eap_attr_provider::initFromExistingContext(manager, ctx))
         return false;
+
+    if (!initFromGssCred(GSS_C_NO_CREDENTIAL))
+        return false;
+
+    radius = static_cast<const gss_eap_radius_attr_provider *>(ctx);
+    if (radius->m_avps != NULL) {
+        m_avps = copyAvps(radius->getAvps());
+    }
 
     return true;
 }
@@ -68,12 +106,54 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
+    if (!initFromGssCred(gssCred))
+        return false;
+
+    if (gssCtx != GSS_C_NO_CONTEXT) {
+        if (gssCtx->acceptorCtx.avps != NULL) {
+            m_avps = copyAvps(gssCtx->acceptorCtx.avps);
+            if (m_avps == NULL)
+                return false;
+        }
+    }
+
     return true;
+}
+
+static bool
+alreadyAddedAttributeP(std::vector <std::string> &attrs, VALUE_PAIR *vp)
+{
+    for (std::vector<std::string>::const_iterator a = attrs.begin();
+         a != attrs.end();
+         ++a) {
+        if (strcmp(vp->name, (*a).c_str()) == 0)
+            return true;
+    }
+
+    return false;
 }
 
 bool
 gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute, void *data) const
 {
+    VALUE_PAIR *vp;
+    std::vector <std::string> seen;
+
+    for (vp = m_avps; vp != NULL; vp = vp->next) {
+        gss_buffer_desc attribute;
+
+        if (alreadyAddedAttributeP(seen, vp))
+            continue;
+
+        attribute.value = (void *)vp->name;
+        attribute.length = strlen(vp->name);
+
+        if (!addAttribute(this, &attribute, data))
+            return false;
+
+        seen.push_back(std::string(vp->name));
+    }
+
     return true;
 }
 
@@ -97,18 +177,130 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
                                            gss_buffer_t display_value,
                                            int *more) const
 {
-    return false;
+    OM_uint32 tmpMinor;
+    gss_buffer_desc strAttr = GSS_C_EMPTY_BUFFER;
+    DICT_ATTR *d;
+    int attrid;
+    char *s;
+
+    /* XXX vendor */
+
+    duplicateBuffer(*attr, &strAttr);
+    s = (char *)strAttr.value;
+
+    if (isdigit(((char *)strAttr.value)[0])) {
+        attrid = strtoul(s, NULL, 10);
+    } else {
+        d = rc_dict_findattr(m_rh, (char *)s);
+        if (d == NULL) {
+            gss_release_buffer(&tmpMinor, &strAttr);
+            return false;
+        }
+        attrid = d->value;
+    }
+
+    gss_release_buffer(&tmpMinor, &strAttr);
+
+    return getAttribute(attrid, authenticated, complete,
+                        value, display_value, more);
+}
+
+static bool
+isPrintableAttributeP(VALUE_PAIR *vp)
+{
+    size_t i;
+
+    for (i = 0; i < sizeof(vp->strvalue); i++) {
+        if (!isprint(vp->strvalue[i]))
+            return false;
+    }
+
+    return true;
 }
 
 bool
-gss_eap_radius_attr_provider::getAttribute(unsigned int attr,
+gss_eap_radius_attr_provider::getAttribute(int attrid,
+                                           int vendor,
                                            int *authenticated,
                                            int *complete,
                                            gss_buffer_t value,
                                            gss_buffer_t display_value,
                                            int *more) const
 {
-    return false;
+    OM_uint32 tmpMinor;
+    VALUE_PAIR *vp;
+    int i = *more;
+    int max = 0;
+    char name[NAME_LENGTH + 1];
+    char displayString[AUTH_STRING_LEN + 1];
+    gss_buffer_desc valueBuf = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc displayBuf = GSS_C_EMPTY_BUFFER;
+
+    *more = 0;
+
+    vp = rc_avpair_get(m_avps, attrid, vendor);
+    if (vp == NULL)
+        return false;
+
+    if (i == -1)
+        i = 0;
+
+    do {
+        if (i == max)
+            break;
+
+        max++;
+    } while ((vp = rc_avpair_get(vp->next, attrid, vendor)) != NULL);
+
+    if (i > max)
+        return false;
+
+    if (vp->type == PW_TYPE_STRING) {
+        valueBuf.value = (void *)vp->strvalue;
+        valueBuf.length = vp->lvalue;
+    } else {
+        valueBuf.value = (void *)&vp->lvalue;
+        valueBuf.length = 4;
+    }
+
+    if (value != GSS_C_NO_BUFFER)
+        duplicateBuffer(valueBuf, value);
+
+    if (display_value != GSS_C_NO_BUFFER &&
+        isPrintableAttributeP(vp)) {
+        if (rc_avpair_tostr(m_rh, vp, name, NAME_LENGTH,
+                            displayString, AUTH_STRING_LEN) != 0) {
+            gss_release_buffer(&tmpMinor, value);
+            return false;
+        }
+
+        displayBuf.value = (void *)displayString;
+        displayBuf.length = strlen(displayString);
+
+        duplicateBuffer(displayBuf, display_value);
+    }
+
+    if (authenticated != NULL)
+        *authenticated = m_authenticated;
+    if (complete != NULL)
+        *complete = true;
+
+    if (max > i)
+        *more = i;
+
+    return true;
+}
+
+bool
+gss_eap_radius_attr_provider::getAttribute(int attrid,
+                                           int *authenticated,
+                                           int *complete,
+                                           gss_buffer_t value,
+                                           gss_buffer_t display_value,
+                                           int *more) const
+{
+    return getAttribute(attrid, 0, authenticated, complete,
+                        value, display_value, more);
 }
 
 gss_any_t
@@ -140,6 +332,9 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
                                              const gss_buffer_t buffer)
 {
     if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
+        return false;
+
+    if (!initFromGssCred(GSS_C_NO_CREDENTIAL))
         return false;
 
     return true;
@@ -231,5 +426,34 @@ OM_uint32
 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
 {
     gss_eap_radius_attr_provider::finalize();
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+gssEapRadiusAllocHandle(OM_uint32 *minor,
+                        const gss_cred_id_t cred,
+                        rc_handle **pHandle)
+{
+    rc_handle *rh;
+    const char *config = RC_CONFIG_FILE;
+
+    *pHandle = NULL;
+
+    if (cred != GSS_C_NO_CREDENTIAL && cred->radiusConfigFile != NULL)
+        config = cred->radiusConfigFile;
+
+    rh = rc_read_config((char *)config);
+    if (rh == NULL) {
+        *minor = errno;
+        rc_config_free(rh);
+        return GSS_S_FAILURE;
+    }
+
+    if (rc_read_dictionary(rh, rc_conf_str(rh, (char *)"dictionary")) != 0) {
+        *minor = errno;
+        return GSS_S_FAILURE;
+    }
+
+    *pHandle = rh;
     return GSS_S_COMPLETE;
 }

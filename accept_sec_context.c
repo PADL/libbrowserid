@@ -32,8 +32,6 @@
 
 #include "gssapiP_eap.h"
 
-#define RC_CONFIG_FILE      SYSCONFDIR "/radiusclient/radiusclient.conf"
-
 /*
  * Mark a context as ready for cryptographic operations
  */
@@ -67,7 +65,7 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
 
-    vp = rc_avpair_get(ctx->acceptorCtx.avps, 0x01370010, 0);
+    vp = rc_avpair_get(ctx->acceptorCtx.avps, 16, 311);
     if (ctx->encryptionType != ENCTYPE_NULL && vp != NULL) {
         major = gssEapDeriveRfc3961Key(minor,
                                        (unsigned char *)vp->strvalue,
@@ -111,32 +109,20 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
                        gss_buffer_t outputToken)
 {
     OM_uint32 major;
-    rc_handle *rh;
     union {
         struct eap_hdr pdu;
         unsigned char data[5];
     } pkt;
     gss_buffer_desc pktBuffer;
-    char *config = RC_CONFIG_FILE;
 
     if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0)
         return GSS_S_DEFECTIVE_TOKEN;
 
     assert(ctx->acceptorCtx.radHandle == NULL);
 
-    if (cred != GSS_C_NO_CREDENTIAL && cred->radiusConfigFile != NULL)
-        config = cred->radiusConfigFile;
-
-    rh = ctx->acceptorCtx.radHandle = rc_read_config(config);
-    if (rh == NULL) {
-        *minor = errno;
-        return GSS_S_FAILURE;
-    }
-
-    if (rc_read_dictionary(rh, rc_conf_str(rh, "dictionary")) != 0) {
-        *minor = errno;
-        return GSS_S_FAILURE;
-    }
+    major = gssEapRadiusAllocHandle(minor, cred, &ctx->acceptorCtx.radHandle);
+    if (GSS_ERROR(major))
+        return major;
 
     if (ctx->acceptorName == GSS_C_NO_NAME &&
         cred != GSS_C_NO_CREDENTIAL &&

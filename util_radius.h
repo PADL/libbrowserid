@@ -66,7 +66,14 @@ public:
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
 
-    bool getAttribute(unsigned int attribute,
+    bool getAttribute(int attribute,
+                      int *authenticated,
+                      int *complete,
+                      gss_buffer_t value,
+                      gss_buffer_t display_value,
+                      int *more) const;
+    bool getAttribute(int attribute,
+                      int vendor,
                       int *authenticated,
                       int *complete,
                       gss_buffer_t value,
@@ -81,8 +88,13 @@ public:
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:
+    bool initFromGssCred(const gss_cred_id_t cred);
     static VALUE_PAIR *copyAvps(const VALUE_PAIR *in);
+    const VALUE_PAIR *getAvps(void) const {
+        return m_avps;
+    }
 
+    rc_handle *m_rh;
     VALUE_PAIR *m_avps;
     bool m_authenticated;
 };
@@ -109,6 +121,13 @@ getBufferFromAvps(OM_uint32 *minor,
 
 OM_uint32 gssEapRadiusAttrProviderInit(OM_uint32 *minor);
 OM_uint32 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor);
+
+OM_uint32
+gssEapRadiusAllocHandle(OM_uint32 *minor,
+                        const gss_cred_id_t cred,
+                        rc_handle **pHandle);
+
+#define RC_CONFIG_FILE      SYSCONFDIR "/radiusclient/radiusclient.conf"
 
 #ifdef __cplusplus
 }
