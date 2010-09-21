@@ -399,7 +399,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         resp = &emptyWpaBuffer;
         major = GSS_S_CONTINUE_NEEDED;
     } else {
-        major = GSS_S_FAILURE;
+        major = GSS_S_DEFECTIVE_TOKEN;
     }
 
 cleanup:
