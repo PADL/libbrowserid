@@ -444,7 +444,9 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
-    getPrimaryProvider()->exportToBuffer(buffer);
+    const gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
+
+    primaryProvider->exportToBuffer(buffer);
 }
 
 /*

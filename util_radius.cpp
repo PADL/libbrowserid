@@ -350,26 +350,6 @@ gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
     rc_avpair_free((VALUE_PAIR *)input);
 }
 
-void
-gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
-{
-    buffer->length = 0;
-    buffer->value = NULL;
-}
-
-bool
-gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
-                                             const gss_buffer_t buffer)
-{
-    if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
-        return false;
-
-    if (!initFromGssCred(GSS_C_NO_CREDENTIAL))
-        return false;
-
-    return true;
-}
-
 bool
 gss_eap_radius_attr_provider::init(void)
 {
@@ -486,4 +466,161 @@ gssEapRadiusAllocHandle(OM_uint32 *minor,
 
     *pHandle = rh;
     return GSS_S_COMPLETE;
+}
+
+/*
+ * This is a super-inefficient coding but the API is going to change
+ * as are the data structures, so not putting a lot of work in now.
+ */
+static size_t
+avpSize(const VALUE_PAIR *vp)
+{
+    return NAME_LENGTH + 1 + 12 + AUTH_STRING_LEN + 1;
+}
+
+static bool
+avpExport(const VALUE_PAIR *vp,
+          unsigned char **pBuffer,
+          size_t *pRemain)
+{
+    unsigned char *p = *pBuffer;
+    size_t remain = *pRemain;
+
+    assert(remain >= avpSize(vp));
+
+    memcpy(p, vp->name, NAME_LENGTH + 1);
+    p += NAME_LENGTH + 1;
+    remain -= NAME_LENGTH + 1;
+
+    store_uint32_be(vp->attribute, &p[0]);
+    store_uint32_be(vp->type,      &p[4]);
+    store_uint32_be(vp->lvalue,    &p[8]);
+
+    p += 12;
+    remain -= 12;
+
+    memcpy(p, vp->strvalue, AUTH_STRING_LEN + 1);
+    p += AUTH_STRING_LEN + 1;
+    remain -= AUTH_STRING_LEN + 1;
+
+    *pBuffer = p;
+    *pRemain = remain;
+
+    return true;
+
+}
+
+static bool
+avpImport(VALUE_PAIR **pVp,
+          unsigned char **pBuffer,
+          size_t *pRemain)
+{
+    unsigned char *p = *pBuffer;
+    size_t remain = *pRemain;
+    VALUE_PAIR *vp;
+
+    if (remain < avpSize(NULL)) {
+        return false;
+    }
+
+    vp = (VALUE_PAIR *)GSSEAP_CALLOC(1, sizeof(*vp));
+    if (vp == NULL) {
+        throw new std::bad_alloc;
+        return false;
+    }
+    vp->next = NULL;
+
+    memcpy(vp->name, p, NAME_LENGTH + 1);
+    p += NAME_LENGTH + 1;
+    remain -= NAME_LENGTH + 1;
+
+    vp->attribute = load_uint32_be(&p[0]);
+    vp->type      = load_uint32_be(&p[4]);
+    vp->lvalue    = load_uint32_be(&p[8]);
+
+    p += 12;
+    remain -= 12;
+
+    memcpy(vp->strvalue, p, AUTH_STRING_LEN + 1);
+    p += AUTH_STRING_LEN + 1;
+    remain -= AUTH_STRING_LEN + 1;
+
+    *pVp = vp;
+    *pBuffer = p;
+    *pRemain = remain;
+
+    return true;
+}
+
+bool
+gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
+                                             const gss_buffer_t buffer)
+{
+    unsigned char *p = (unsigned char *)buffer->value;
+    size_t remain = buffer->length;
+    OM_uint32 count;
+    VALUE_PAIR **pNext = &m_avps;
+
+    if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
+        return false;
+
+    if (!initFromGssCred(GSS_C_NO_CREDENTIAL))
+        return false;
+
+    if (remain < 4)
+        return false;
+
+    count = load_uint32_be(p);
+    p += 4;
+    remain -= 4;
+
+    do {
+        VALUE_PAIR *attr;
+
+        if (!avpImport(&attr, &p, &remain))
+            return false;
+
+        *pNext = attr;
+        pNext = &attr->next;
+
+        count--;
+    } while (remain != 0);
+
+    if (count != 0)
+        return false;
+
+    return true;
+}
+
+void
+gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
+{
+    OM_uint32 count = 0;
+    VALUE_PAIR *vp;
+    unsigned char *p;
+    size_t remain = 4;
+
+    for (vp = m_avps; vp != NULL; vp = vp->next) {
+        remain += avpSize(vp);
+        count++;
+    }
+
+    buffer->value = GSSEAP_MALLOC(remain);
+    if (buffer->value == NULL) {
+        throw new std::bad_alloc;
+        return;
+    }
+    buffer->length = remain;
+
+    p = (unsigned char *)buffer->value;
+
+    store_uint32_be(count, p);
+    p += 4;
+    remain -= 4;
+
+    for (vp = m_avps; vp != NULL; vp = vp->next) {
+        avpExport(vp, &p, &remain);
+    }
+
+    assert(remain == 0);
 }
