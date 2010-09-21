@@ -98,7 +98,6 @@ addAvpFromBuffer(OM_uint32 *minor,
                  gss_buffer_t buffer)
 {
     if (rc_avpair_add(rh, vp, type, buffer->value, buffer->length, 0) == NULL) {
-        *minor = ENOMEM;
         return GSS_S_FAILURE;
     }
 
@@ -109,18 +108,40 @@ static inline OM_uint32
 getBufferFromAvps(OM_uint32 *minor,
                   VALUE_PAIR *vps,
                   int type,
-                  gss_buffer_t buffer)
+                  gss_buffer_t buffer,
+                  int concat)
 {
     VALUE_PAIR *vp;
-    gss_buffer_desc tmp = GSS_C_EMPTY_BUFFER;
+    unsigned char *p;
+
+    buffer->length = 0;
+    buffer->value = NULL;
 
     vp = rc_avpair_get(vps, type, 0);
-    if (vp != NULL) {
-        tmp.length = vp->lvalue;
-        tmp.value = vp->strvalue;
+    if (vp == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    do {
+        buffer->length += vp->lvalue;
+    } while (concat && (vp = rc_avpair_get(vp->next, type, 0)) != NULL);
+    
+    buffer->value = GSSEAP_MALLOC(buffer->length);
+    if (buffer->value == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
     }
 
-    return duplicateBuffer(minor, &tmp, buffer);
+    p = (unsigned char *)buffer->value;
+
+    for (vp = rc_avpair_get(vps, type, 0);
+         concat && vp != NULL;
+         vp = rc_avpair_get(vp->next, type, 0)) {
+        memcpy(p, vp->strvalue, vp->lvalue);
+        p += vp->lvalue;
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32 gssEapRadiusAttrProviderInit(OM_uint32 *minor);

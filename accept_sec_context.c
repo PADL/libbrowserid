@@ -255,14 +255,16 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     ctx->acceptorCtx.lastStatus = code;
 
-    major = getBufferFromAvps(minor, received, PW_EAP_MESSAGE, outputToken);
-    if (GSS_ERROR(major))
+    major = getBufferFromAvps(minor, received, PW_EAP_MESSAGE,
+                              outputToken, TRUE);
+    if ((major == GSS_S_UNAVAILABLE && code != OK_RC) ||
+        GSS_ERROR(major))
         goto cleanup;
 
     if (code == CHALLENGE_RC) {
         major = getBufferFromAvps(minor, received, PW_STATE,
-                                  &ctx->acceptorCtx.state);
-        if (GSS_ERROR(major))
+                                  &ctx->acceptorCtx.state, TRUE);
+        if (major != GSS_S_UNAVAILABLE && GSS_ERROR(major))
             goto cleanup;
     } else {
         ctx->acceptorCtx.avps = received;
