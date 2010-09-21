@@ -33,8 +33,6 @@
 #ifndef _GSSAPIP_EAP_H_
 #define _GSSAPIP_EAP_H_ 1
 
-#define BUILTIN_EAP 1
-
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
@@ -46,7 +44,6 @@
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
 #include "gssapi_eap.h"
-#include "util.h"
 
 /* Kerberos includes */
 #include <krb5.h>
@@ -59,6 +56,11 @@
 #include <crypto/tls.h>
 #include <wpabuf.h>
 #endif
+
+#include <freeradius-client.h>
+#include <freeradius/radius.h>
+
+#include "util.h"
 
 /* These name flags are informative and not actually used by anything yet */
 #define NAME_FLAG_NAI                       0x00000001
@@ -87,6 +89,7 @@ struct gss_cred_id_struct {
     gss_buffer_desc password;
     gss_OID_set mechanisms;
     time_t expiryTime;
+    char *radiusConfigFile;
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
@@ -94,11 +97,8 @@ struct gss_cred_id_struct {
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
 enum gss_eap_state {
-    EAP_STATE_AUTHENTICATE = 0,
-#if 0
-    EAP_STATE_KEY_TRANSPORT,
-    EAP_STATE_SECURE_ASSOCIATION,
-#endif
+    EAP_STATE_IDENTITY = 0,
+    EAP_STATE_AUTHENTICATE,
     EAP_STATE_GSS_CHANNEL_BINDINGS,
     EAP_STATE_ESTABLISHED
 };
@@ -127,11 +127,10 @@ struct gss_eap_initiator_ctx {
 };
 
 struct gss_eap_acceptor_ctx {
-#if defined(BUILTIN_EAP) && !defined(__cplusplus)
-    struct eap_eapol_interface *eapPolInterface;
-    void *tlsContext;
-    struct eap_sm *eap;
-#endif
+    rc_handle *radHandle;
+    int lastStatus;
+    VALUE_PAIR *avps;
+    gss_buffer_desc state;
 };
 
 struct gss_ctx_id_struct {

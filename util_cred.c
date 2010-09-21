@@ -75,6 +75,9 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         GSSEAP_FREE(cred->password.value);
     }
 
+    if (cred->radiusConfigFile != NULL)
+        free(cred->radiusConfigFile);
+
     GSSEAP_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
     GSSEAP_FREE(cred);
@@ -98,6 +101,7 @@ gssEapAcquireCred(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_cred_id_t cred;
 
+    /* XXX TODO validate with changed set_cred_option API */
     *pCred = GSS_C_NO_CREDENTIAL;
 
     major = gssEapAllocCred(minor, &cred);

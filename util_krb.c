@@ -95,6 +95,8 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
     unsigned char constant[4 + sizeof("rfc4121-gss-eap") - 1], *p;
     ssize_t i, remain;
 
+    assert(encryptionType != ENCTYPE_NULL);
+
     memset(pKey, 0, sizeof(*pKey));
 
     GSSEAP_KRB_INIT(&krbContext);
@@ -104,6 +106,9 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
 
     t.data = NULL;
     t.length = 0;
+
+    prfOut.data = NULL;
+    prfOut.length = 0;
 
     code = krb5_c_keylengths(krbContext, encryptionType,
                              &randomLength, &keyLength);

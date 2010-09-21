@@ -236,6 +236,9 @@ gss_any_t
 gss_eap_saml_assertion_provider::mapToAny(int authenticated,
                                           gss_buffer_t type_id) const
 {
+    if (authenticated && !m_authenticated)
+        return (gss_any_t)NULL;
+
     return (gss_any_t)m_assertion;
 }
 

@@ -38,6 +38,7 @@ gssEapImportPartialContext(OM_uint32 *minor,
                            size_t *pRemain,
                            gss_ctx_id_t ctx)
 {
+    OM_uint32 major;
     unsigned char *p = *pBuf;
     size_t remain = *pRemain;
     gss_buffer_desc buf;
@@ -46,15 +47,22 @@ gssEapImportPartialContext(OM_uint32 *minor,
         *minor = ERANGE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
-
     buf.length = load_uint32_be(p);
 
-    if (buf.length != 0) {
-        *minor = EINVAL;
+    if (remain < buf.length) {
+        *minor = ERANGE;
         return GSS_S_DEFECTIVE_TOKEN;
-    }
 
-    *minor = 0;
+    }
+    buf.value = &p[4];
+
+    major = duplicateBuffer(minor, &buf, &ctx->acceptorCtx.state);
+    if (GSS_ERROR(major))
+        return major;
+
+    *pBuf += 4 + buf.length;
+    *pRemain -= 4 + buf.length;
+
     return GSS_S_COMPLETE;
 }
 
@@ -206,7 +214,7 @@ gssEapImportContext(OM_uint32 *minor,
     remain -= 16;
 
     /* Validate state */
-    if (ctx->state < EAP_STATE_AUTHENTICATE ||
+    if (ctx->state < EAP_STATE_IDENTITY ||
         ctx->state > EAP_STATE_ESTABLISHED)
         return GSS_S_DEFECTIVE_TOKEN;
 

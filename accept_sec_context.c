@@ -32,294 +32,152 @@
 
 #include "gssapiP_eap.h"
 
-#ifdef BUILTIN_EAP
-#define EAP_KEY_AVAILABLE(ctx)  ((ctx)->acceptorCtx.eapPolInterface->eapKeyAvailable)
-#define EAP_KEY_DATA(ctx)       ((ctx)->acceptorCtx.eapPolInterface->eapKeyData)
-#define EAP_KEY_LENGTH(ctx)     ((ctx)->acceptorCtx.eapPolInterface->eapKeyDataLen)
-#else
-#define EAP_KEY_AVAILABLE(ctx)  0
-#define EAP_KEY_DATA(ctx)       NULL
-#define EAP_KEY_LENGTH(ctx)     0
-#endif /* BUILTIN_EAP */
-
+/*
+ * Mark a context as ready for cryptographic operations
+ */
 static OM_uint32
-acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx);
-
-#ifdef BUILTIN_EAP
-#define EAP_MAX_METHODS 8
-
-#define EAP_TTLS_AUTH_PAP 1
-#define EAP_TTLS_AUTH_CHAP 2
-#define EAP_TTLS_AUTH_MSCHAP 4
-#define EAP_TTLS_AUTH_MSCHAPV2 8
-
-struct eap_user {
-        struct {
-                int vendor;
-                u32 method;
-        } methods[EAP_MAX_METHODS];
-        u8 *password;
-        size_t password_len;
-        int password_hash; /* whether password is hashed with
-                            * nt_password_hash() */
-        int phase2;
-        int force_version;
-        int ttls_auth; /* bitfield of
-                        * EAP_TTLS_AUTH_{PAP,CHAP,MSCHAP,MSCHAPV2} */
-};
-
-struct eap_eapol_interface {
-        /* Lower layer to full authenticator variables */
-        Boolean eapResp; /* shared with EAPOL Backend Authentication */
-        struct wpabuf *eapRespData;
-        Boolean portEnabled;
-        int retransWhile;
-        Boolean eapRestart; /* shared with EAPOL Authenticator PAE */
-        int eapSRTT;
-        int eapRTTVAR;
-
-        /* Full authenticator to lower layer variables */
-        Boolean eapReq; /* shared with EAPOL Backend Authentication */
-        Boolean eapNoReq; /* shared with EAPOL Backend Authentication */
-        Boolean eapSuccess;
-        Boolean eapFail;
-        Boolean eapTimeout;
-        struct wpabuf *eapReqData;
-        u8 *eapKeyData;
-        size_t eapKeyDataLen;
-        Boolean eapKeyAvailable; /* called keyAvailable in IEEE 802.1X-2004 */
-
-        /* AAA interface to full authenticator variables */
-        Boolean aaaEapReq;
-        Boolean aaaEapNoReq;
-        Boolean aaaSuccess;
-        Boolean aaaFail;
-        struct wpabuf *aaaEapReqData;
-        u8 *aaaEapKeyData;
-        size_t aaaEapKeyDataLen;
-        Boolean aaaEapKeyAvailable;
-        int aaaMethodTimeout;
-
-        /* Full authenticator to AAA interface variables */
-        Boolean aaaEapResp;
-        struct wpabuf *aaaEapRespData;
-        /* aaaIdentity -> eap_get_identity() */
-        Boolean aaaTimeout;
-};
-
-#define eapol_callbacks     SERVER_eapol_callbacks
-
-struct eapol_callbacks {
-        int (*get_eap_user)(void *ctx, const u8 *identity, size_t identity_len,
-                            int phase2, struct eap_user *user);
-        const char * (*get_eap_req_id_text)(void *ctx, size_t *len);
-};
-
-#define eap_config          SERVER_eap_config
-
-struct eap_config {
-        void *ssl_ctx;
-        void *msg_ctx;
-        void *eap_sim_db_priv;
-        Boolean backend_auth;
-        int eap_server;
-        u8 *pac_opaque_encr_key;
-        u8 *eap_fast_a_id;
-        size_t eap_fast_a_id_len;
-        char *eap_fast_a_id_info;
-        int eap_fast_prov;
-        int pac_key_lifetime;
-        int pac_key_refresh_time;
-        int eap_sim_aka_result_ind;
-        int tnc;
-        struct wps_context *wps;
-        const struct wpabuf *assoc_wps_ie;
-        const u8 *peer_addr;
-        int fragment_size;
-};
-
-struct eap_sm * eap_server_sm_init(void *eapol_ctx,
-                                   struct eapol_callbacks *eapol_cb,
-                                   struct eap_config *eap_conf);
-void eap_server_sm_deinit(struct eap_sm *sm);
-int eap_server_sm_step(struct eap_sm *sm);
-void eap_sm_notify_cached(struct eap_sm *sm);
-void eap_sm_pending_cb(struct eap_sm *sm);
-int eap_sm_method_pending(struct eap_sm *sm);
-const u8 * eap_get_identity(struct eap_sm *sm, size_t *len);
-struct eap_eapol_interface * eap_get_interface(struct eap_sm *sm);
-
-#include <eap_server/eap_i.h>
-
-static OM_uint32
-initTls(OM_uint32 *minor,
-        gss_ctx_id_t ctx)
+acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 {
-    struct tls_config tconf;
-    struct tls_connection_params tparams;
+    OM_uint32 major;
+    VALUE_PAIR *vp;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
 
-    memset(&tconf, 0, sizeof(tconf));
-    ctx->acceptorCtx.tlsContext = tls_init(&tconf);
-    if (ctx->acceptorCtx.tlsContext == NULL)
-        return GSS_S_FAILURE;
+    /* Cache encryption type derived from selected mechanism OID */
+    major = gssEapOidToEnctype(minor, ctx->mechanismUsed,
+                               &ctx->encryptionType);
+    if (GSS_ERROR(major))
+        return major;
 
-    memset(&tparams, 0, sizeof(tparams));
-    tparams.ca_cert = "ca.pem";
-    tparams.client_cert = "server.pem";
-    tparams.private_key = "server-key.pem";
-
-    if (tls_global_set_params(ctx->acceptorCtx.tlsContext, &tparams)) {
-        return GSS_S_FAILURE;
+    vp = rc_avpair_get(ctx->acceptorCtx.avps, PW_USER_NAME, 0);
+    if (vp != NULL) {
+        nameBuf.length = vp->lvalue;
+        nameBuf.value = vp->strvalue;
+    } else if (ctx->initiatorName == GSS_C_NO_NAME) {
+        ctx->gssFlags |= GSS_C_ANON_FLAG;
     }
 
-    if (tls_global_set_verify(ctx->acceptorCtx.tlsContext, 0)) {
-        return GSS_S_FAILURE;
+    if (nameBuf.length != 0 || ctx->initiatorName == GSS_C_NO_NAME) {
+        major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
+                                 &ctx->initiatorName);
+        if (GSS_ERROR(major))
+            return major;
     }
+
+    ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
+
+    vp = rc_avpair_get(ctx->acceptorCtx.avps,
+                       RADIUS_VENDOR_ATTR_MS_MPPE_SEND_KEY,
+                       RADIUS_VENDOR_ID_MICROSOFT);
+    if (ctx->encryptionType != ENCTYPE_NULL && vp != NULL) {
+        major = gssEapDeriveRfc3961Key(minor,
+                                       (unsigned char *)vp->strvalue,
+                                       vp->lvalue,
+                                       ctx->encryptionType,
+                                       &ctx->rfc3961Key);
+        if (GSS_ERROR(major))
+            return major;
+
+        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                           &ctx->checksumType);
+        if (GSS_ERROR(major))
+            return major;
+    } else {
+        /*
+         * draft-howlett-eap-gss says that integrity/confidentialty should
+         * always be advertised as available, but if we have no keying
+         * material it seems confusing to the caller to advertise this.
+         */
+        ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
+        ctx->encryptionType = ENCTYPE_NULL;
+    }
+
+    major = sequenceInit(minor,
+                         &ctx->seqState, ctx->recvSeq,
+                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                         TRUE);
+    if (GSS_ERROR(major))
+        return major;
 
     return GSS_S_COMPLETE;
 }
 
-static int
-serverGetEapUser(void *ctx,
-                 const unsigned char *identity,
-                 size_t identityLength,
-                 int phase2,
-                 struct eap_user *user)
-{
-    gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
-    OM_uint32 major, minor;
-    gss_buffer_desc buf;
-
-    memset(user, 0, sizeof(*user));
-
-    buf.length = identityLength;
-    buf.value = (void *)identity;
-
-    if (phase2 == 0) {
-        user->methods[0].vendor = EAP_VENDOR_IETF;
-        user->methods[0].method = EAP_TYPE_PEAP;
-        return 0;
-    }
-
-    major = gssEapImportName(&minor, &buf, GSS_C_NT_USER_NAME,
-                             &gssCtx->initiatorName);
-    if (GSS_ERROR(major))
-        return -1;
-
-    /*
-     * OK, obviously there is no real security here, this is simply
-     * for testing the token exchange; this code will be completely
-     * replaced with libradius once that library is available.
-     */
-    user->methods[0].vendor = EAP_VENDOR_IETF;
-    user->methods[0].method = EAP_TYPE_MSCHAPV2;
-    user->password = (unsigned char *)strdup("foo");
-    user->password_len = 3;
-
-    gssCtx->initiatorName->attrCtx = gssEapCreateAttrContext(NULL, gssCtx);
-    if (gssCtx->initiatorName->attrCtx != NULL)
-        gssCtx->initiatorName->flags |= NAME_FLAG_COMPOSITE;
-
-    return 0;
-}
-
-static const char *
-serverGetEapReqIdText(void *ctx,
-                      size_t *len)
-{
-    *len = 0;
-    return NULL;
-}
-
 static OM_uint32
-eapGssSmAcceptAuthenticate(OM_uint32 *minor,
-                           gss_ctx_id_t ctx,
-                           gss_cred_id_t cred,
-                           gss_buffer_t inputToken,
-                           gss_channel_bindings_t chanBindings,
-                           gss_buffer_t outputToken)
+eapGssSmAcceptIdentity(OM_uint32 *minor,
+                       gss_ctx_id_t ctx,
+                       gss_cred_id_t cred,
+                       gss_buffer_t inputToken,
+                       gss_channel_bindings_t chanBindings,
+                       gss_buffer_t outputToken)
 {
     OM_uint32 major;
-    OM_uint32 tmpMinor, tmpMajor;
-    int code;
-    struct wpabuf respData;
-    static struct eapol_callbacks cb = { serverGetEapUser, serverGetEapReqIdText };
-    if (ctx->acceptorCtx.eap == NULL) {
-        struct eap_config eapConfig;
+    union {
+        struct eap_hdr pdu;
+        unsigned char data[5];
+    } pkt;
+    gss_buffer_desc pktBuffer;
 
-        major = initTls(minor, ctx);
-        if (GSS_ERROR(major))
-            goto cleanup;
+    if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0)
+        return GSS_S_DEFECTIVE_TOKEN;
 
-        memset(&eapConfig, 0, sizeof(eapConfig));
-        eapConfig.eap_server = 1;
-        eapConfig.ssl_ctx = ctx->acceptorCtx.tlsContext;
+    assert(ctx->acceptorCtx.radHandle == NULL);
 
-        ctx->acceptorCtx.eap = eap_server_sm_init(ctx, &cb, &eapConfig);
-        if (ctx->acceptorCtx.eap == NULL) {
-            major = GSS_S_FAILURE;
-            goto cleanup;
-        }
-
-        ctx->acceptorCtx.eapPolInterface = eap_get_interface(ctx->acceptorCtx.eap);
-        ctx->acceptorCtx.eapPolInterface->portEnabled = TRUE;
-        ctx->acceptorCtx.eapPolInterface->eapRestart = TRUE;
-    }
+    major = gssEapRadiusAllocHandle(minor, cred, &ctx->acceptorCtx.radHandle);
+    if (GSS_ERROR(major))
+        return major;
 
     if (ctx->acceptorName == GSS_C_NO_NAME &&
         cred != GSS_C_NO_CREDENTIAL &&
         cred->name != GSS_C_NO_NAME) {
         major = gss_duplicate_name(minor, cred->name, &ctx->acceptorName);
         if (GSS_ERROR(major))
-            goto cleanup;
+            return major;
     }
 
-    wpabuf_set(&respData, inputToken->value, inputToken->length);
-    ctx->acceptorCtx.eapPolInterface->eapRespData = &respData;
-    ctx->acceptorCtx.eapPolInterface->eapResp = TRUE;
+    pkt.pdu.code = EAP_CODE_REQUEST;
+    pkt.pdu.identifier = 0;
+    pkt.pdu.length = htons(sizeof(pkt.data));
+    pkt.data[4] = EAP_TYPE_IDENTITY;
 
-    code = eap_server_sm_step(ctx->acceptorCtx.eap);
+    pktBuffer.length = sizeof(pkt.data);
+    pktBuffer.value = pkt.data;
 
-    if (ctx->acceptorCtx.eapPolInterface->eapReq) {
-        ctx->acceptorCtx.eapPolInterface->eapReq = 0;
-        major = GSS_S_CONTINUE_NEEDED;
-    }
+    major = duplicateBuffer(minor, &pktBuffer, outputToken);
+    if (GSS_ERROR(major))
+        return major;
 
-    if (ctx->acceptorCtx.eapPolInterface->eapSuccess) {
-        ctx->acceptorCtx.eapPolInterface->eapSuccess = 0;
-        major = acceptReady(minor, ctx);
-        if (GSS_ERROR(major))
-            goto cleanup;
+    ctx->state = EAP_STATE_AUTHENTICATE;
 
-        ctx->state = EAP_STATE_GSS_CHANNEL_BINDINGS;
-        major = GSS_S_CONTINUE_NEEDED;
-    } else if (ctx->acceptorCtx.eapPolInterface->eapFail) {
-        ctx->acceptorCtx.eapPolInterface->eapFail = 0;
-        major = GSS_S_FAILURE;
-    } else if (code == 0) {
-        major = GSS_S_FAILURE;
-    }
-
-    if (ctx->acceptorCtx.eapPolInterface->eapReqData != NULL) {
-        gss_buffer_desc buf;
-
-        buf.length = wpabuf_len(ctx->acceptorCtx.eapPolInterface->eapReqData);
-        buf.value = (void *)wpabuf_head(ctx->acceptorCtx.eapPolInterface->eapReqData);
-
-        tmpMajor = duplicateBuffer(&tmpMinor, &buf, outputToken);
-        if (GSS_ERROR(tmpMajor)) {
-            major = tmpMajor;
-            *minor = tmpMinor;
-            goto cleanup;
-        }
-    }
-
-cleanup:
-    ctx->acceptorCtx.eapPolInterface->eapRespData = NULL;
-
-    return major;
+    return GSS_S_CONTINUE_NEEDED;
 }
-#else
+
+static OM_uint32
+importInitiatorIdentity(OM_uint32 *minor,
+                        gss_ctx_id_t ctx,
+                        gss_buffer_t inputToken,
+                        gss_buffer_t nameBuf)
+{
+    OM_uint32 major, tmpMinor;
+    struct eap_hdr *pdu = (struct eap_hdr *)inputToken->value;
+    unsigned char *pos = (unsigned char *)(pdu + 1);
+    gss_name_t name;
+
+    assert(pdu->code == EAP_CODE_RESPONSE);
+    assert(pos[0] == EAP_TYPE_IDENTITY);
+
+    nameBuf->value = pos + 1;
+    nameBuf->length = inputToken->length - sizeof(*pdu) - 1;
+
+    major = gssEapImportName(minor, nameBuf, GSS_C_NT_USER_NAME, &name);
+    if (GSS_ERROR(major))
+        return major;
+
+    gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
+    ctx->initiatorName = name;
+
+    return GSS_S_COMPLETE;
+}
+
 static OM_uint32
 eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
@@ -329,11 +187,95 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_buffer_t outputToken)
 {
     OM_uint32 major, tmpMinor;
+    int code;
+    VALUE_PAIR *send = NULL;
+    VALUE_PAIR *received = NULL;
+    rc_handle *rh = ctx->acceptorCtx.radHandle;
+    char msgBuffer[4096];
+    struct eap_hdr *pdu;
+    unsigned char *pos;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+
+    pdu = (struct eap_hdr *)inputToken->value;
+    pos = (unsigned char *)(pdu + 1);
+
+    if (inputToken->length > sizeof(*pdu) &&
+        pdu->code == EAP_CODE_RESPONSE &&
+        pos[0] == EAP_TYPE_IDENTITY) {
+        major = importInitiatorIdentity(minor, ctx, inputToken, &nameBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = addAvpFromBuffer(minor, rh, &send, PW_USER_NAME, &nameBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    major = addAvpFromBuffer(minor, rh, &send, PW_EAP_MESSAGE, inputToken);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (ctx->acceptorCtx.lastStatus == CHALLENGE_RC) {
+        major = addAvpFromBuffer(minor, rh, &send, PW_STATE,
+                                 &ctx->acceptorCtx.state);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        gss_release_buffer(&tmpMinor, &ctx->acceptorCtx.state);
+    }
+
+    code = rc_auth(rh, 0, send, &received, msgBuffer);
+    switch (code) {
+    case OK_RC:
+    case CHALLENGE_RC:
+        major = GSS_S_CONTINUE_NEEDED;
+        break;
+    case TIMEOUT_RC:
+        major = GSS_S_UNAVAILABLE;
+        break;
+    case REJECT_RC:
+        major = GSS_S_DEFECTIVE_CREDENTIAL;
+        break;
+    default:
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    ctx->acceptorCtx.lastStatus = code;
+
+    major = getBufferFromAvps(minor, received, PW_EAP_MESSAGE,
+                              outputToken, TRUE);
+    if ((major == GSS_S_UNAVAILABLE && code != OK_RC) ||
+        GSS_ERROR(major))
+        goto cleanup;
+
+    if (code == CHALLENGE_RC) {
+        major = getBufferFromAvps(minor, received, PW_STATE,
+                                  &ctx->acceptorCtx.state, TRUE);
+        if (major != GSS_S_UNAVAILABLE && GSS_ERROR(major))
+            goto cleanup;
+    } else {
+        ctx->acceptorCtx.avps = received;
+        received = NULL;
+
+        major = acceptReady(minor, ctx, cred);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        ctx->state = EAP_STATE_GSS_CHANNEL_BINDINGS;
+    }
+
+    major = GSS_S_CONTINUE_NEEDED;
 
 cleanup:
+    if (received != NULL)
+        rc_avpair_free(received);
+
     return major;
 }
-#endif /* BUILTIN_EAP */
 
 static OM_uint32
 eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
@@ -343,7 +285,7 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
                                  gss_channel_bindings_t chanBindings,
                                  gss_buffer_t outputToken)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     gss_iov_buffer_desc iov[2];
 
     outputToken->length = 0;
@@ -411,11 +353,8 @@ static struct gss_eap_acceptor_sm {
                               gss_channel_bindings_t,
                               gss_buffer_t);
 } eapGssAcceptorSm[] = {
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptIdentity           },
     { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptAuthenticate       },
-#if 0
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  NULL                             },
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  NULL                             },
-#endif
     { TOK_TYPE_GSS_CB,      TOK_TYPE_NONE,     eapGssSmAcceptGssChannelBindings },
     { TOK_TYPE_NONE,        TOK_TYPE_NONE,     eapGssSmAcceptEstablished        },
 };
@@ -530,49 +469,3 @@ cleanup:
     return major;
 }
 
-/*
- * Mark a context as ready for cryptographic operations
- */
-static OM_uint32
-acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx)
-{
-    OM_uint32 major;
-
-    /* Cache encryption type derived from selected mechanism OID */
-    major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
-    if (GSS_ERROR(major))
-        return major;
-
-    if (ctx->encryptionType != ENCTYPE_NULL &&
-        EAP_KEY_AVAILABLE(ctx)) {
-        major = gssEapDeriveRfc3961Key(minor,
-                                       EAP_KEY_DATA(ctx),
-                                       EAP_KEY_LENGTH(ctx),
-                                       ctx->encryptionType,
-                                       &ctx->rfc3961Key);
-        if (GSS_ERROR(major))
-            return major;
-
-        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
-                                           &ctx->checksumType);
-        if (GSS_ERROR(major))
-            return major;
-    } else {
-        /*
-         * draft-howlett-eap-gss says that integrity/confidentialty should
-         * always be advertised as available, but if we have no keying
-         * material it seems confusing to the caller to advertise this.
-         */
-        ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
-    }
-
-    major = sequenceInit(minor,
-                         &ctx->seqState, ctx->recvSeq,
-                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
-                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
-                         TRUE);
-    if (GSS_ERROR(major))
-        return major;
-
-    return GSS_S_COMPLETE;
-}

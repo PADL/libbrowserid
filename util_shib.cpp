@@ -45,13 +45,13 @@
  * limitations under the License.
  */
 
-#include "gssapiP_eap.h"
-
 #include <shibsp/exceptions.h>
 #include <shibsp/attribute/SimpleAttribute.h>
 #include <shibsp/handler/AssertionConsumerService.h>
 
 #include <shibresolver/resolver.h>
+
+#include "gssapiP_eap.h"
 
 using namespace shibsp;
 using namespace shibresolver;
@@ -351,6 +351,9 @@ gss_eap_shib_attr_provider::mapToAny(int authenticated,
                                      gss_buffer_t type_id) const
 {
     gss_any_t output;
+
+    if (authenticated && !m_authenticated)
+        return (gss_any_t)NULL;
 
     vector <Attribute *>v = duplicateAttributes(m_attributes);
 

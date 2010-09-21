@@ -194,14 +194,21 @@ importUserName(OM_uint32 *minor,
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    major = bufferToString(minor, nameBuffer, &nameString);
-    if (GSS_ERROR(major))
-        return major;
+    if (nameBuffer == GSS_C_NO_BUFFER) {
+        *minor = krb5_copy_principal(krbContext,
+                                     krb5_anonymous_principal(), &krbPrinc);
+        if (*minor != 0)
+            return GSS_S_FAILURE;
+    } else {
+        major = bufferToString(minor, nameBuffer, &nameString);
+        if (GSS_ERROR(major))
+            return major;
 
-    *minor = krb5_parse_name(krbContext, nameString, &krbPrinc);
-    if (*minor != 0) {
-        GSSEAP_FREE(nameString);
-        return GSS_S_FAILURE;
+        *minor = krb5_parse_name(krbContext, nameString, &krbPrinc);
+        if (*minor != 0) {
+            GSSEAP_FREE(nameString);
+            return GSS_S_FAILURE;
+        }
     }
 
     major = krbPrincipalToName(minor, &krbPrinc, pName);
