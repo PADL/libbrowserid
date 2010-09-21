@@ -183,6 +183,34 @@ importInitiatorIdentity(OM_uint32 *minor,
 }
 
 static OM_uint32
+setAcceptorIdentity(OM_uint32 *minor,
+                    gss_ctx_id_t ctx,
+                    VALUE_PAIR **avps)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc nameBuf;
+
+    /* Awaits further specification */
+    if (ctx->acceptorName == GSS_C_NO_NAME)
+        return GSS_S_COMPLETE;
+
+    major = gss_display_name(minor, ctx->acceptorName, &nameBuf, NULL);
+    if (GSS_ERROR(major))
+        return major;
+
+    major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
+                             RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_SERVICE_NAME,
+                             RADIUS_VENDOR_ID_GSS_EAP,
+                             &nameBuf);
+    if (GSS_ERROR(major))
+        return major;
+
+    gss_release_buffer(&tmpMinor, &nameBuf);
+
+    return major;
+}
+
+static OM_uint32
 eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
                            gss_cred_id_t cred,
@@ -210,17 +238,21 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        major = addAvpFromBuffer(minor, rh, &send, PW_USER_NAME, &nameBuf);
+        major = addAvpFromBuffer(minor, rh, &send, PW_USER_NAME, 0, &nameBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = setAcceptorIdentity(minor, ctx, &send);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
-    major = addAvpFromBuffer(minor, rh, &send, PW_EAP_MESSAGE, inputToken);
+    major = addAvpFromBuffer(minor, rh, &send, PW_EAP_MESSAGE, 0, inputToken);
     if (GSS_ERROR(major))
         goto cleanup;
 
     if (ctx->acceptorCtx.lastStatus == CHALLENGE_RC) {
-        major = addAvpFromBuffer(minor, rh, &send, PW_STATE,
+        major = addAvpFromBuffer(minor, rh, &send, PW_STATE, 0,
                                  &ctx->acceptorCtx.state);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -250,14 +282,14 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     ctx->acceptorCtx.lastStatus = code;
 
-    major = getBufferFromAvps(minor, received, PW_EAP_MESSAGE,
+    major = getBufferFromAvps(minor, received, PW_EAP_MESSAGE, 0,
                               outputToken, TRUE);
     if ((major == GSS_S_UNAVAILABLE && code != OK_RC) ||
         GSS_ERROR(major))
         goto cleanup;
 
     if (code == CHALLENGE_RC) {
-        major = getBufferFromAvps(minor, received, PW_STATE,
+        major = getBufferFromAvps(minor, received, PW_STATE, 0,
                                   &ctx->acceptorCtx.state, TRUE);
         if (major != GSS_S_UNAVAILABLE && GSS_ERROR(major))
             goto cleanup;

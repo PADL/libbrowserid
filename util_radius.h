@@ -110,12 +110,14 @@ addAvpFromBuffer(OM_uint32 *minor,
                  rc_handle *rh,
                  VALUE_PAIR **vp,
                  int type,
+                 int vendor,
                  gss_buffer_t buffer);
 
 OM_uint32
 getBufferFromAvps(OM_uint32 *minor,
                   VALUE_PAIR *vps,
                   int type,
+                  int vendor,
                   gss_buffer_t buffer,
                   int concat);
 
@@ -135,6 +137,13 @@ gssEapRadiusAllocHandle(OM_uint32 *minor,
 enum { RADIUS_VENDOR_ATTR_MS_MPPE_SEND_KEY = 16,
        RADIUS_VENDOR_ATTR_MS_MPPE_RECV_KEY = 17
 };
+
+/* OK, this is completely unassigned */
+#define RADIUS_VENDOR_ID_GSS_EAP   5322
+
+enum { RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_SERVICE_NAME = 1,
+       RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_HOST_NAME,
+       RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_REALM_NAME };
 
 #ifdef __cplusplus
 }

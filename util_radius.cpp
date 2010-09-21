@@ -376,9 +376,11 @@ addAvpFromBuffer(OM_uint32 *minor,
                  rc_handle *rh,
                  VALUE_PAIR **vp,
                  int type,
+                 int vendor,
                  gss_buffer_t buffer)
 {
-    if (rc_avpair_add(rh, vp, type, buffer->value, buffer->length, 0) == NULL) {
+    if (rc_avpair_add(rh, vp, type,
+                      buffer->value, buffer->length, vendor) == NULL) {
         return GSS_S_FAILURE;
     }
 
@@ -389,6 +391,7 @@ OM_uint32
 getBufferFromAvps(OM_uint32 *minor,
                   VALUE_PAIR *vps,
                   int type,
+                  int vendor,
                   gss_buffer_t buffer,
                   int concat)
 {
@@ -398,13 +401,13 @@ getBufferFromAvps(OM_uint32 *minor,
     buffer->length = 0;
     buffer->value = NULL;
 
-    vp = rc_avpair_get(vps, type, 0);
+    vp = rc_avpair_get(vps, type, vendor);
     if (vp == NULL)
         return GSS_S_UNAVAILABLE;
 
     do {
         buffer->length += vp->lvalue;
-    } while (concat && (vp = rc_avpair_get(vp->next, type, 0)) != NULL);
+    } while (concat && (vp = rc_avpair_get(vp->next, type, vendor)) != NULL);
 
     buffer->value = GSSEAP_MALLOC(buffer->length);
     if (buffer->value == NULL) {
@@ -414,9 +417,9 @@ getBufferFromAvps(OM_uint32 *minor,
 
     p = (unsigned char *)buffer->value;
 
-    for (vp = rc_avpair_get(vps, type, 0);
+    for (vp = rc_avpair_get(vps, type, vendor);
          concat && vp != NULL;
-         vp = rc_avpair_get(vp->next, type, 0)) {
+         vp = rc_avpair_get(vp->next, type, vendor)) {
         memcpy(p, vp->strvalue, vp->lvalue);
         p += vp->lvalue;
     }
