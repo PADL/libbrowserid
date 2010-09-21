@@ -190,7 +190,7 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
 
     delete resolver;
 
-#ifdef GSSEAP_DEBUG
+#if 0
     gss_buffer_desc testattr = {
         sizeof("urn:greet:greeting") - 1, (void *)"urn:greet:greeting" };
     gss_buffer_desc testval =
