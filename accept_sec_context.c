@@ -65,7 +65,9 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
 
-    vp = rc_avpair_get(ctx->acceptorCtx.avps, 16, 311);
+    vp = rc_avpair_get(ctx->acceptorCtx.avps,
+                       RADIUS_VENDOR_ATTR_MS_MPPE_SEND_KEY,
+                       RADIUS_VENDOR_ID_MICROSOFT);
     if (ctx->encryptionType != ENCTYPE_NULL && vp != NULL) {
         major = gssEapDeriveRfc3961Key(minor,
                                        (unsigned char *)vp->strvalue,

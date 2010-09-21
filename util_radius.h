@@ -129,6 +129,13 @@ gssEapRadiusAllocHandle(OM_uint32 *minor,
 
 #define RC_CONFIG_FILE      SYSCONFDIR "/radiusclient/radiusclient.conf"
 
+/* RFC 2548 - Microsoft Vendor-specific RADIUS Attributes */
+#define RADIUS_VENDOR_ID_MICROSOFT 311
+
+enum { RADIUS_VENDOR_ATTR_MS_MPPE_SEND_KEY = 16,
+       RADIUS_VENDOR_ATTR_MS_MPPE_RECV_KEY = 17
+};
+
 #ifdef __cplusplus
 }
 #endif

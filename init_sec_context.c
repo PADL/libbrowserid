@@ -234,25 +234,37 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
     OM_uint32 major;
     const unsigned char *key;
     size_t keyLength;
+    krb5_enctype encryptionType;
+    int gotKey = 0;
 
     /* Cache encryption type derived from selected mechanism OID */
-    major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
+    major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &encryptionType);
     if (GSS_ERROR(major))
         return major;
 
-    if (ctx->encryptionType != ENCTYPE_NULL &&
+    if (encryptionType != ENCTYPE_NULL &&
         eap_key_available(ctx->initiatorCtx.eap)) {
         key = eap_get_eapKeyData(ctx->initiatorCtx.eap, &keyLength);
 
-        major = gssEapDeriveRfc3961Key(minor, key, keyLength,
-                                       ctx->encryptionType, &ctx->rfc3961Key);
-        if (GSS_ERROR(major))
-            return major;
+        if (keyLength >= EAP_EMSK_LEN) {
+            major = gssEapDeriveRfc3961Key(minor,
+                                           &key[EAP_EMSK_LEN / 2],
+                                           EAP_EMSK_LEN / 2,
+                                           encryptionType,
+                                           &ctx->rfc3961Key);
+               if (GSS_ERROR(major))
+                   return major;
 
-        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
-                                           &ctx->checksumType);
-        if (GSS_ERROR(major))
-            return major;
+            major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                              &ctx->checksumType);
+            if (GSS_ERROR(major))
+                return major;
+            gotKey++;
+        }
+    }
+
+    if (gotKey) {
+        ctx->encryptionType = encryptionType;
     } else {
         /*
          * draft-howlett-eap-gss says that integrity/confidentialty should
@@ -260,7 +272,6 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
          * material it seems confusing to the caller to advertise this.
          */
         ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
-        ctx->encryptionType = ENCTYPE_NULL;
     }
 
     major = sequenceInit(minor,
