@@ -66,8 +66,8 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
 
     vp = rc_avpair_get(ctx->acceptorCtx.avps,
-                       RADIUS_VENDOR_ATTR_MS_MPPE_SEND_KEY,
-                       RADIUS_VENDOR_ID_MICROSOFT);
+                       VENDOR_ATTR_MS_MPPE_SEND_KEY,
+                       VENDOR_ID_MICROSOFT);
     if (ctx->encryptionType != ENCTYPE_NULL && vp != NULL) {
         major = gssEapDeriveRfc3961Key(minor,
                                        (unsigned char *)vp->strvalue,
@@ -158,25 +158,51 @@ setAcceptorIdentity(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_buffer_desc nameBuf;
+    krb5_principal krbPrinc;
 
     /* Awaits further specification */
     if (ctx->acceptorName == GSS_C_NO_NAME)
         return GSS_S_COMPLETE;
 
-    major = gss_display_name(minor, ctx->acceptorName, &nameBuf, NULL);
-    if (GSS_ERROR(major))
-        return major;
+    krbPrinc = ctx->acceptorName->krbPrincipal;
+    assert(krbPrinc != NULL);
+
+    if (krbPrinc->length < 2)
+        return GSS_S_BAD_NAME;
+
+    nameBuf.value = krbPrinc->data[0].data;
+    nameBuf.length = krbPrinc->data[0].length;
 
     major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
-                             RADIUS_VENDOR_ATTR_GSS_EAP_ACCEPTOR_SERVICE_NAME,
-                             RADIUS_VENDOR_ID_GSS_EAP,
+                             VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_NAME,
+                             VENDOR_ID_GSS_EAP,
                              &nameBuf);
     if (GSS_ERROR(major))
         return major;
 
-    gss_release_buffer(&tmpMinor, &nameBuf);
+    nameBuf.value = krbPrinc->data[1].data;
+    nameBuf.length = krbPrinc->data[2].length;
 
-    return major;
+    major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
+                             VENDOR_ATTR_GSS_ACCEPTOR_HOST_NAME,
+                             VENDOR_ID_GSS_EAP,
+                             &nameBuf);
+    if (GSS_ERROR(major))
+        return major;
+
+    if (krbPrinc->realm.data != NULL) {
+        nameBuf.value = krbPrinc->realm.data;
+        nameBuf.length = krbPrinc->realm.length;
+
+        major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
+                                 VENDOR_ATTR_GSS_ACCEPTOR_REALM_NAME,
+                                 VENDOR_ID_GSS_EAP,
+                                 &nameBuf);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    return GSS_S_COMPLETE;
 }
 
 static OM_uint32

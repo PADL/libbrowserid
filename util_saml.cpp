@@ -99,8 +99,8 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *mana
     radius = static_cast<const gss_eap_radius_attr_provider *>
         (m_manager->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
-        radius->getFragmentedAttribute(RADIUS_VENDOR_ATTR_GSS_EAP_SAML_AAA_ASSERTION,
-                                       RADIUS_VENDOR_ID_GSS_EAP,
+        radius->getFragmentedAttribute(VENDOR_ATTR_SAML_AAA_ASSERTION,
+                                       VENDOR_ID_GSS_EAP,
                                        &authenticated, &complete, &value)) {
         setAssertion(&value, authenticated);
         gss_release_buffer(&minor, &value);

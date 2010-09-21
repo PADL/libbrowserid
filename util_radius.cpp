@@ -144,16 +144,16 @@ isHiddenAttributeP(int attrid, int vendor)
     bool ret = false;
 
     switch (vendor) {
-    case RADIUS_VENDOR_ID_MICROSOFT:
+    case VENDOR_ID_MICROSOFT:
         switch (attrid) {
-        case RADIUS_VENDOR_ATTR_MS_MPPE_SEND_KEY:
-        case RADIUS_VENDOR_ATTR_MS_MPPE_RECV_KEY:
+        case VENDOR_ATTR_MS_MPPE_SEND_KEY:
+        case VENDOR_ATTR_MS_MPPE_RECV_KEY:
             ret = true;
             break;
         default:
             break;
         }
-    case RADIUS_VENDOR_ID_GSS_EAP:
+    case VENDOR_ID_GSS_EAP:
         ret = true;
         break;
     default:

@@ -81,6 +81,8 @@ struct gss_name_struct {
 #define CRED_FLAG_ACCEPT                    0x00000002
 #define CRED_FLAG_DEFAULT_IDENTITY          0x00000004
 #define CRED_FLAG_PASSWORD                  0x00000008
+#define CRED_FLAG_DISABLE_LOCAL_ATTRS       0x00010000
+#define CRED_FLAG_SET_CRED_OPTION_MASK      0x00FF0000
 
 struct gss_cred_id_struct {
     GSSEAP_MUTEX mutex;
