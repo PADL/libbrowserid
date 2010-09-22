@@ -254,10 +254,10 @@ verifyTokenHeader(OM_uint32 *minor,
         if ((toksize -= 2) < 0)
             return GSS_S_DEFECTIVE_TOKEN;
 
-        *ret_tok_type = load_uint16_be(*buf);
+        *ret_tok_type = load_uint16_be(buf);
         if (tok_type != *ret_tok_type)
             return GSS_S_DEFECTIVE_TOKEN;
-        *buf += 2;
+        buf += 2;
     }
     *buf_in = buf;
     *body_size = toksize;

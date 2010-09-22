@@ -264,6 +264,10 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
+    code = krb5_cc_initialize(krbContext, cred->krbCredCache, creds[0]->client);
+    if (code != 0)
+        goto cleanup;
+
     code = krb5_cc_store_cred(krbContext, cred->krbCredCache, creds[0]);
     if (code != 0)
         goto cleanup;
