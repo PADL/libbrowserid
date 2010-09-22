@@ -64,14 +64,15 @@ gss_add_cred(OM_uint32 *minor,
     mechs.count = 1;
     mechs.elements = desired_mech;
 
-    major = gss_acquire_cred(minor,
-                             desired_name,
-                             time_req,
-                             &mechs,
-                             cred_usage,
-                             output_cred_handle,
-                             actual_mechs,
-                             &time_rec);
+    major = gssEapAcquireCred(minor,
+                              desired_name,
+                              GSS_C_NO_BUFFER,
+                              time_req,
+                              &mechs,
+                              cred_usage,
+                              output_cred_handle,
+                              actual_mechs,
+                              &time_rec);
 
     if (initiator_time_rec != NULL)
         *initiator_time_rec = time_rec;

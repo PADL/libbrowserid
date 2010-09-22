@@ -35,8 +35,11 @@
 #include <sstream>
 
 #include <xercesc/util/XMLUniDefs.hpp>
+#include <xmltooling/unicode.h>
 #include <xmltooling/XMLToolingConfig.h>
 #include <xmltooling/util/XMLHelper.h>
+#include <xmltooling/util/ParserPool.h>
+#include <xmltooling/util/DateTime.h>
 
 #include <saml/saml1/core/Assertions.h>
 #include <saml/saml2/core/Assertions.h>
@@ -96,11 +99,14 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *mana
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
+    /*
+     * XXX TODO we need to support draft-howlett-radius-saml-attr-00
+     */
     radius = static_cast<const gss_eap_radius_attr_provider *>
         (m_manager->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
         radius->getFragmentedAttribute(VENDOR_ATTR_SAML_AAA_ASSERTION,
-                                       VENDOR_ID_GSS_EAP,
+                                       VENDOR_ID_UKERNA,
                                        &authenticated, &complete, &value)) {
         setAssertion(&value, authenticated);
         gss_release_buffer(&minor, &value);
@@ -120,7 +126,9 @@ gss_eap_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion,
 
     if (assertion != NULL) {
 #if 0
-        m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
+        XMLObject *tmp = assertion->clone();
+        m_assertion = dynamic_cast<saml2::Assertion *>(tmp);
+//        m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
 #else
         m_assertion = (saml2::Assertion *)((void *)assertion->clone());
 #endif

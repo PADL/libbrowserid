@@ -46,6 +46,9 @@ gss_wrap(OM_uint32 *minor,
     unsigned char *p;
     int i;
 
+    if (!CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_NO_CONTEXT;
+
     iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
     iov[0].buffer.value = NULL;
     iov[0].buffer.length = 0;
@@ -61,7 +64,7 @@ gss_wrap(OM_uint32 *minor,
     iov[3].buffer.value = NULL;
     iov[3].buffer.length = 0;
 
-    major = gss_wrap_iov_length(minor, ctx, conf_req_flag, qop_req,
+    major = gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
                                 NULL, iov, 4);
     if (GSS_ERROR(major)) {
         return major;
@@ -85,7 +88,8 @@ gss_wrap(OM_uint32 *minor,
         p += iov[i].buffer.length;
     }
 
-    major = gss_wrap_iov(minor, ctx, conf_req_flag, qop_req, conf_state, iov, 4);
+    major = gssEapWrapOrGetMIC(minor, ctx, conf_req_flag, conf_state,
+                               iov, 4, TOK_TYPE_WRAP);
     if (GSS_ERROR(major)) {
         gss_release_buffer(&tmpMinor, output_message_buffer);
     }

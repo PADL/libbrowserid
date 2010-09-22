@@ -458,3 +458,91 @@ cleanup:
 
     return major;
 }
+
+OM_uint32
+gssEapDuplicateName(OM_uint32 *minor,
+                    const gss_name_t input_name,
+                    gss_name_t *dest_name)
+{
+    OM_uint32 major, tmpMinor;
+    krb5_context krbContext;
+    gss_name_t name;
+
+    if (input_name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
+    }
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    major = gssEapAllocName(minor, &name);
+    if (GSS_ERROR(major)) {
+        return major;
+    }
+
+    /* Lock mutex for copying mutable attributes */
+    GSSEAP_MUTEX_LOCK(&input_name->mutex);
+
+    *minor = krb5_copy_principal(krbContext, input_name->krbPrincipal,
+                                 &name->krbPrincipal);
+    if (*minor != 0) {
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+
+    if (input_name->attrCtx != NULL) {
+        major = gssEapDuplicateAttrContext(minor, input_name, name);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    *dest_name = name;
+
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&input_name->mutex);
+
+    if (GSS_ERROR(major)) {
+        gssEapReleaseName(&tmpMinor, &name);
+    }
+
+    return major;
+}
+
+OM_uint32
+gssEapDisplayName(OM_uint32 *minor,
+                  gss_name_t name,
+                  gss_buffer_t output_name_buffer,
+                  gss_OID *output_name_type)
+{
+    OM_uint32 major, tmpMinor;
+    krb5_context krbContext;
+    char *krbName;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    output_name_buffer->length = 0;
+    output_name_buffer->value = NULL;
+
+    if (name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
+    }
+
+    *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
+    if (*minor != 0) {
+        return GSS_S_FAILURE;
+    }
+
+    major = makeStringBuffer(minor, krbName, output_name_buffer);
+    if (GSS_ERROR(major)) {
+        krb5_free_unparsed_name(krbContext, krbName);
+        return major;
+    }
+
+    krb5_free_unparsed_name(krbContext, krbName);
+
+    if (output_name_type != NULL)
+        *output_name_type = GSS_EAP_NT_PRINCIPAL_NAME;
+
+    return GSS_S_COMPLETE;
+}

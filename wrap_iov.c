@@ -319,5 +319,5 @@ gss_wrap_iov(OM_uint32 *minor,
         return GSS_S_NO_CONTEXT;
 
     return gssEapWrapOrGetMIC(minor, ctx, conf_req_flag, conf_state,
-                             iov, iov_count, TOK_TYPE_WRAP);
+                              iov, iov_count, TOK_TYPE_WRAP);
 }

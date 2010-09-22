@@ -153,7 +153,7 @@ isHiddenAttributeP(int attrid, int vendor)
         default:
             break;
         }
-    case VENDOR_ID_GSS_EAP:
+    case VENDOR_ID_UKERNA:
         ret = true;
         break;
     default:

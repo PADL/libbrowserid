@@ -185,4 +185,13 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
                         int iov_count,
                         enum gss_eap_token_type toktype);
 
+OM_uint32
+gssEapWrapIovLength(OM_uint32 *minor,
+                    gss_ctx_id_t ctx,
+                    int conf_req_flag,
+                    gss_qop_t qop_req,
+                    int *conf_state,
+                    gss_iov_buffer_desc *iov,
+                    int iov_count);
+
 #endif /* _GSSAPIP_EAP_H_ */

@@ -125,7 +125,7 @@ gssEapAcquireCred(OM_uint32 *minor,
     }
 
     if (desiredName != GSS_C_NO_NAME) {
-        major = gss_duplicate_name(minor, desiredName, &cred->name);
+        major = gssEapDuplicateName(minor, desiredName, &cred->name);
         if (GSS_ERROR(major))
             goto cleanup;
     } else {
@@ -135,8 +135,8 @@ gssEapAcquireCred(OM_uint32 *minor,
             buf.value = getlogin(); /* XXX */
             buf.length = strlen((char *)buf.value);
 
-            major = gss_import_name(minor, &buf,
-                                    GSS_C_NT_USER_NAME, &cred->name);
+            major = gssEapImportName(minor, &buf,
+                                     GSS_C_NT_USER_NAME, &cred->name);
             if (GSS_ERROR(major))
                 goto cleanup;
         }

@@ -313,11 +313,11 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     else
         ctx->expiryTime = now + timeReq;
 
-    major = gss_duplicate_name(minor, cred->name, &ctx->initiatorName);
+    major = gssEapDuplicateName(minor, cred->name, &ctx->initiatorName);
     if (GSS_ERROR(major))
         return major;
 
-    major = gss_duplicate_name(minor, target, &ctx->acceptorName);
+    major = gssEapDuplicateName(minor, target, &ctx->acceptorName);
     if (GSS_ERROR(major))
         return major;
 
@@ -622,7 +622,7 @@ gss_init_sec_context(OM_uint32 *minor,
     if (ret_flags != NULL)
         *ret_flags = ctx->gssFlags;
     if (time_rec != NULL)
-        gss_context_time(&tmpMinor, ctx, time_rec);
+        gssEapContextTime(&tmpMinor, ctx, time_rec);
 
     assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
 

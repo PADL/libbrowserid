@@ -172,6 +172,17 @@ gssEapVerifyToken(OM_uint32 *minor,
                   enum gss_eap_token_type tokenType,
                   gss_buffer_t innerInputToken);
 
+OM_uint32
+gssEapContextTime(OM_uint32 *minor,
+                  gss_ctx_id_t context_handle,
+                  OM_uint32 *time_rec);
+
+OM_uint32
+gssEapDisplayName(OM_uint32 *minor,
+                  gss_name_t name,
+                  gss_buffer_t output_name_buffer,
+                  gss_OID *output_name_type);
+
 /* util_cred.c */
 OM_uint32 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 OM_uint32 gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred);
@@ -301,6 +312,10 @@ OM_uint32 gssEapImportNameInternal(OM_uint32 *minor,
                                    const gss_buffer_t input_name_buffer,
                                    gss_name_t *output_name,
                                    unsigned int flags);
+OM_uint32
+gssEapDuplicateName(OM_uint32 *minor,
+                    const gss_name_t input_name,
+                    gss_name_t *dest_name);
 
 /* util_oid.c */
 OM_uint32

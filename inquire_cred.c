@@ -43,7 +43,7 @@ gss_inquire_cred(OM_uint32 *minor,
     OM_uint32 major = GSS_S_COMPLETE;
 
     if (name != NULL) {
-        major = gss_duplicate_name(minor, cred->name, name);
+        major = gssEapDuplicateName(minor, cred->name, name);
         if (GSS_ERROR(major))
             goto cleanup;
     }

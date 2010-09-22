@@ -47,9 +47,10 @@
 
 #include <shibsp/exceptions.h>
 #include <shibsp/attribute/SimpleAttribute.h>
-#include <shibsp/handler/AssertionConsumerService.h>
 
 #include <shibresolver/resolver.h>
+
+#include <sstream>
 
 #include "gssapiP_eap.h"
 
@@ -57,9 +58,7 @@ using namespace shibsp;
 using namespace shibresolver;
 using namespace opensaml::saml2md;
 using namespace opensaml;
-using namespace xmltooling::logging;
 using namespace xmltooling;
-using namespace xercesc;
 using namespace std;
 
 gss_eap_shib_attr_provider::gss_eap_shib_attr_provider(void)
@@ -165,7 +164,7 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     resolver = ShibbolethResolver::create();
 
     if (gssCred != GSS_C_NO_CREDENTIAL &&
-        gss_display_name(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
+        gssEapDisplayName(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
         resolver->setApplicationID((const char *)nameBuf.value);
 
     m_authenticated = false;
@@ -189,14 +188,6 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     gss_release_buffer(&minor, &nameBuf);
 
     delete resolver;
-
-#if 0
-    gss_buffer_desc testattr = {
-        sizeof("urn:greet:greeting") - 1, (void *)"urn:greet:greeting" };
-    gss_buffer_desc testval =
-        { sizeof("Hello, GSS EAP.") - 1, (void *)"Hello, GSS EAP." };
-    setAttribute(true, &testattr, &testval);
-#endif /* GSSEAP_DEBUG */
 
     return true;
 }

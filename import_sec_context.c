@@ -43,6 +43,8 @@ gssEapImportPartialContext(OM_uint32 *minor,
     size_t remain = *pRemain;
     gss_buffer_desc buf;
 
+    /* XXX we also need to deserialise the current server name */
+
     if (remain < 4) {
         *minor = ERANGE;
         return GSS_S_DEFECTIVE_TOKEN;

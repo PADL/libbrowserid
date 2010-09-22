@@ -60,7 +60,7 @@
     while (0)
 
 OM_uint32
-gss_wrap_iov_length(OM_uint32 *minor,
+gssEapWrapIovLength(OM_uint32 *minor,
                     gss_ctx_id_t ctx,
                     int conf_req_flag,
                     gss_qop_t qop_req,
@@ -177,4 +177,17 @@ gss_wrap_iov_length(OM_uint32 *minor,
 
     *minor = 0;
     return GSS_S_COMPLETE;
+}
+
+OM_uint32
+gss_wrap_iov_length(OM_uint32 *minor,
+                    gss_ctx_id_t ctx,
+                    int conf_req_flag,
+                    gss_qop_t qop_req,
+                    int *conf_state,
+                    gss_iov_buffer_desc *iov,
+                    int iov_count)
+{
+    return gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
+                               conf_state, iov, iov_count);
 }

@@ -37,6 +37,7 @@ gssEapExportPartialContext(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
                            gss_buffer_t token)
 {
+    /* XXX we also need to serialise the current server name */
     return duplicateBuffer(minor, &ctx->acceptorCtx.state, token);
 }
 

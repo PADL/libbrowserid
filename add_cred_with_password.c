@@ -60,15 +60,15 @@ gss_add_cred_with_password(OM_uint32 *minor,
     mechs.count = 1;
     mechs.elements = desired_mech;
 
-    major = gss_acquire_cred_with_password(minor,
-                                           desired_name,
-                                           password,
-                                           time_req,
-                                           &mechs,
-                                           cred_usage,
-                                           output_cred_handle,
-                                           actual_mechs,
-                                           &time_rec);
+    major = gssEapAcquireCred(minor,
+                              desired_name,
+                              password,
+                              time_req,
+                              &mechs,
+                              cred_usage,
+                              output_cred_handle,
+                              actual_mechs,
+                              &time_rec);
 
     if (initiator_time_rec != NULL)
         *initiator_time_rec = time_rec;

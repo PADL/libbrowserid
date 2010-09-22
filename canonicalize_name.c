@@ -43,5 +43,5 @@ gss_canonicalize_name(OM_uint32 *minor,
         return GSS_S_BAD_MECH;
     }
 
-    return gss_duplicate_name(minor, input_name, output_name);
+    return gssEapDuplicateName(minor, input_name, output_name);
 }

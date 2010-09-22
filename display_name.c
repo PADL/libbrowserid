@@ -38,35 +38,6 @@ gss_display_name(OM_uint32 *minor,
                  gss_buffer_t output_name_buffer,
                  gss_OID *output_name_type)
 {
-    OM_uint32 major, tmpMinor;
-    krb5_context krbContext;
-    char *krbName;
-
-    GSSEAP_KRB_INIT(&krbContext);
-
-    output_name_buffer->length = 0;
-    output_name_buffer->value = NULL;
-
-    if (name == GSS_C_NO_NAME) {
-        *minor = EINVAL;
-        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
-    }
-
-    *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
-    if (*minor != 0) {
-        return GSS_S_FAILURE;
-    }
-
-    major = makeStringBuffer(minor, krbName, output_name_buffer);
-    if (GSS_ERROR(major)) {
-        krb5_free_unparsed_name(krbContext, krbName);
-        return major;
-    }
-
-    krb5_free_unparsed_name(krbContext, krbName);
-
-    if (output_name_type != NULL)
-        *output_name_type = GSS_EAP_NT_PRINCIPAL_NAME;
-
-    return GSS_S_COMPLETE;
+    return gssEapDisplayName(minor, name, output_name_buffer,
+                             output_name_type);
 }

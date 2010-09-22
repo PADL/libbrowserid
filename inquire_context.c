@@ -53,13 +53,13 @@ gss_inquire_context(OM_uint32 *minor,
     }
 
     if (src_name != NULL) {
-        major = gss_duplicate_name(minor, ctx->initiatorName, src_name);
+        major = gssEapDuplicateName(minor, ctx->initiatorName, src_name);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
     if (targ_name != NULL) {
-        major = gss_duplicate_name(minor, ctx->acceptorName, targ_name);
+        major = gssEapDuplicateName(minor, ctx->acceptorName, targ_name);
         if (GSS_ERROR(major))
             goto cleanup;
     }

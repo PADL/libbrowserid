@@ -59,7 +59,7 @@ gss_wrap_size_limit(OM_uint32 *minor,
     iov[3].buffer.value = NULL;
     iov[3].buffer.length = 0;
 
-    major = gss_wrap_iov_length(minor, ctx, conf_req_flag, qop_req,
+    major = gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
                                 NULL, iov, 4);
     if (GSS_ERROR(major)) {
         return major;

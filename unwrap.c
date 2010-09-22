@@ -50,7 +50,8 @@ gss_unwrap(OM_uint32 *minor,
     iov[1].buffer.value = NULL;
     iov[1].buffer.length = 0;
 
-    major = gss_unwrap_iov(minor, ctx, conf_state, qop_state, iov, 2);
+    major = gssEapUnwrapOrVerifyMIC(minor, ctx, conf_state, qop_state,
+                                    iov, 2, TOK_TYPE_WRAP);
     if (major == GSS_S_COMPLETE) {
         *output_message_buffer = iov[1].buffer;
     } else {
