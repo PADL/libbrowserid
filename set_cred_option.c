@@ -48,7 +48,7 @@ setCredRadiusConfig(OM_uint32 *minor,
     }
 
     if (cred->radiusConfigFile != NULL)
-        free(cred->radiusConfigFile);
+        GSSEAP_FREE(cred->radiusConfigFile);
 
     cred->radiusConfigFile = (char *)configFileBuffer.value;
 
