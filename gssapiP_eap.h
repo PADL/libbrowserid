@@ -91,6 +91,8 @@ struct gss_cred_id_struct {
     gss_OID_set mechanisms;
     time_t expiryTime;
     char *radiusConfigFile;
+    krb5_ccache krbCredCache;
+    gss_cred_id_t krbCred;
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
@@ -101,6 +103,7 @@ enum gss_eap_state {
     EAP_STATE_IDENTITY = 0,
     EAP_STATE_AUTHENTICATE,
     EAP_STATE_GSS_CHANNEL_BINDINGS,
+    EAP_STATE_FAST_REAUTH,
     EAP_STATE_ESTABLISHED
 };
 

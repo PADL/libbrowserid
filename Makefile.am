@@ -72,6 +72,7 @@ libmech_eap_la_SOURCES =    			\
 	util_oid.c				\
 	util_ordering.c				\
 	util_radius.cpp				\
+	util_reauth.c				\
 	util_saml.cpp				\
 	util_shib.cpp				\
 	util_token.c				\

@@ -490,6 +490,23 @@ cleanup:
 }
 
 static OM_uint32
+eapGssSmInitKrbCred(OM_uint32 *minor,
+                    gss_cred_id_t cred,
+                    gss_ctx_id_t ctx,
+                    gss_name_t target,
+                    gss_OID mech,
+                    OM_uint32 reqFlags,
+                    OM_uint32 timeReq,
+                    gss_channel_bindings_t chanBindings,
+                    gss_buffer_t inputToken,
+                    gss_buffer_t outputToken)
+{
+    /* Called with already established context */
+    *minor = EINVAL;
+    return GSS_S_BAD_STATUS;
+}
+
+static OM_uint32
 eapGssSmInitEstablished(OM_uint32 *minor,
                         gss_cred_id_t cred,
                         gss_ctx_id_t ctx,
@@ -523,6 +540,7 @@ static struct gss_eap_initiator_sm {
     { TOK_TYPE_NONE,    TOK_TYPE_EAP_RESP,  eapGssSmInitIdentity            },
     { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP,  eapGssSmInitAuthenticate        },
     { TOK_TYPE_NONE,    TOK_TYPE_GSS_CB,    eapGssSmInitGssChannelBindings  },
+    { TOK_TYPE_KRB_CRED,TOK_TYPE_NONE,      eapGssSmInitKrbCred             },
     { TOK_TYPE_NONE,    TOK_TYPE_NONE,      eapGssSmInitEstablished         },
 };
 

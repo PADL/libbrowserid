@@ -392,6 +392,19 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
 }
 
 static OM_uint32
+eapGssSmAcceptKrbCred(OM_uint32 *minor,
+                      gss_ctx_id_t ctx,
+                      gss_cred_id_t cred,
+                      gss_buffer_t inputToken,
+                      gss_channel_bindings_t chanBindings,
+                      gss_buffer_t outputToken)
+{
+    /* Called with already established context */
+    *minor = EINVAL;
+    return GSS_S_BAD_STATUS;
+}
+
+static OM_uint32
 eapGssSmAcceptEstablished(OM_uint32 *minor,
                           gss_ctx_id_t ctx,
                           gss_cred_id_t cred,
@@ -417,6 +430,7 @@ static struct gss_eap_acceptor_sm {
     { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptIdentity           },
     { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptAuthenticate       },
     { TOK_TYPE_GSS_CB,      TOK_TYPE_NONE,     eapGssSmAcceptGssChannelBindings },
+    { TOK_TYPE_NONE,        TOK_TYPE_KRB_CRED, eapGssSmAcceptKrbCred            },
     { TOK_TYPE_NONE,        TOK_TYPE_NONE,     eapGssSmAcceptEstablished        },
 };
 

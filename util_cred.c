@@ -63,10 +63,13 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
     OM_uint32 tmpMinor;
     gss_cred_id_t cred = *pCred;
+    krb5_context krbContext = NULL;
 
     if (cred == GSS_C_NO_CREDENTIAL) {
         return GSS_S_COMPLETE;
     }
+
+    GSSEAP_KRB_INIT(&krbContext);
 
     gssEapReleaseName(&tmpMinor, &cred->name);
 
@@ -76,7 +79,10 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     }
 
     if (cred->radiusConfigFile != NULL)
-        free(cred->radiusConfigFile);
+        GSSEAP_FREE(cred->radiusConfigFile);
+
+    if (cred->krbCredCache != NULL)
+        krb5_cc_destroy(krbContext, cred->krbCredCache);
 
     GSSEAP_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
