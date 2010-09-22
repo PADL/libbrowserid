@@ -664,3 +664,15 @@ gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 
     assert(remain == 0);
 }
+
+time_t
+gss_eap_radius_attr_provider::getExpiryTime(void) const
+{
+    VALUE_PAIR *vp;
+
+    vp = rc_avpair_get(m_avps, PW_SESSION_TIMEOUT, 0);
+    if (vp == NULL || vp->lvalue == 0)
+        return 0;
+
+    return time(NULL) + vp->lvalue;
+}

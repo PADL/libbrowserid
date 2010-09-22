@@ -86,10 +86,12 @@ public:
                                 int *complete,
                                 gss_buffer_t value) const;
 
-    bool authenticated() const { return m_authenticated; }
+    bool authenticated(void) const { return m_authenticated; }
 
-    static bool init();
-    static void finalize();
+    time_t getExpiryTime(void) const;
+
+    static bool init(void);
+    static void finalize(void);
 
     static gss_eap_attr_provider *createAttrContext(void);
 
