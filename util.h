@@ -540,6 +540,13 @@ store_oid(gss_OID oid, void *vp)
     return store_buffer(&buf, vp, FALSE);
 }
 
+static inline void
+krbDataToGssBuffer(krb5_data *data, gss_buffer_t buffer)
+{
+    buffer->value = (void *)data->data;
+    buffer->length = data->length;
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -156,22 +156,25 @@ setAcceptorIdentity(OM_uint32 *minor,
                     gss_ctx_id_t ctx,
                     VALUE_PAIR **avps)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     gss_buffer_desc nameBuf;
+    krb5_context krbContext = NULL;
     krb5_principal krbPrinc;
 
     /* Awaits further specification */
     if (ctx->acceptorName == GSS_C_NO_NAME)
         return GSS_S_COMPLETE;
 
+    GSSEAP_KRB_INIT(&krbContext);
+
     krbPrinc = ctx->acceptorName->krbPrincipal;
     assert(krbPrinc != NULL);
 
-    if (krbPrinc->length < 2)
+    if (krb5_princ_size(krbContext, krbPrinc) < 2)
         return GSS_S_BAD_NAME;
 
-    nameBuf.value = krbPrinc->data[0].data;
-    nameBuf.length = krbPrinc->data[0].length;
+    /* Acceptor-Service-Name */
+    krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 0), &nameBuf);
 
     major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
                              VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_NAME,
@@ -180,8 +183,8 @@ setAcceptorIdentity(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    nameBuf.value = krbPrinc->data[1].data;
-    nameBuf.length = krbPrinc->data[2].length;
+    /* Acceptor-Host-Name */
+    krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 1), &nameBuf);
 
     major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
                              VENDOR_ATTR_GSS_ACCEPTOR_HOST_NAME,
@@ -190,10 +193,37 @@ setAcceptorIdentity(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    if (krbPrinc->realm.data != NULL) {
-        nameBuf.value = krbPrinc->realm.data;
-        nameBuf.length = krbPrinc->realm.length;
+    if (krb5_princ_size(krbContext, krbPrinc) > 2) {
+        /* Acceptor-Service-Specific */
+        krb5_principal_data ssiPrinc = *krbPrinc;
+        char *ssi;
 
+        krb5_princ_size(krbContext, &ssiPrinc) -= 2;
+        krb5_princ_name(krbContext, &ssiPrinc) += 2;
+
+        *minor = krb5_unparse_name_flags(krbContext, &ssiPrinc,
+                                         KRB5_PRINCIPAL_UNPARSE_NO_REALM, &ssi);
+        if (*minor != 0)
+            return GSS_S_FAILURE;
+
+        nameBuf.value = ssi;
+        nameBuf.length = strlen(ssi);
+
+        major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
+                                 VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_SPECIFIC,
+                                 VENDOR_ID_UKERNA,
+                                 &nameBuf);
+
+        if (GSS_ERROR(major)) {
+            krb5_free_unparsed_name(krbContext, ssi);
+            return major;
+        }
+        krb5_free_unparsed_name(krbContext, ssi);
+    }
+
+    krbDataToGssBuffer(krb5_princ_realm(krbContext, krbPrinc), &nameBuf);
+    if (nameBuf.length != 0) {
+        /* Acceptor-Realm-Name */
         major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
                                  VENDOR_ATTR_GSS_ACCEPTOR_REALM_NAME,
                                  VENDOR_ID_UKERNA,
