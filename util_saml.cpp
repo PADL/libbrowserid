@@ -125,12 +125,10 @@ gss_eap_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion,
     delete m_assertion;
 
     if (assertion != NULL) {
-#if 0
-        XMLObject *tmp = assertion->clone();
-        m_assertion = dynamic_cast<saml2::Assertion *>(tmp);
-//        m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
-#else
+#ifdef __APPLE__
         m_assertion = (saml2::Assertion *)((void *)assertion->clone());
+#else
+        m_assertion = dynamic_cast<saml2::Assertion *>(assertion->clone());
 #endif
         m_authenticated = authenticated;
     } else {
@@ -163,10 +161,10 @@ gss_eap_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
 
     b = XMLObjectBuilder::getBuilder(doc->getDocumentElement());
 
-#if 0
-    return dynamic_cast<saml2::Assertion *>(b->buildFromDocument(doc));
-#else
+#ifdef __APPLE__
     return (saml2::Assertion *)((void *)b->buildFromDocument(doc));
+#else
+    return dynamic_cast<saml2::Assertion *>(b->buildFromDocument(doc));
 #endif
 }
 
@@ -513,10 +511,10 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
         i = 0;
     else if (i >= nvalues)
         return false;
-#if 0
-    av = dynamic_cast<const saml2::AttributeValue *>(a->getAttributeValues().at(i));
-#else
+#ifdef __APPLE__
     av = (const saml2::AttributeValue *)((void *)(a->getAttributeValues().at(i)));
+#else
+    av = dynamic_cast<const saml2::AttributeValue *>(a->getAttributeValues().at(i));
 #endif
     if (av != NULL) {
         if (value != NULL) {
