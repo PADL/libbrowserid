@@ -298,3 +298,4 @@ gssEapFinalize(void)
     eap_peer_unregister_methods();
     eap_server_unregister_methods();
 }
+

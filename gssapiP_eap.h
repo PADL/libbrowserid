@@ -77,12 +77,11 @@ struct gss_name_struct {
     struct gss_eap_attr_ctx *attrCtx;
 };
 
-#define CRED_FLAG_INITIATE                  0x00000001
-#define CRED_FLAG_ACCEPT                    0x00000002
-#define CRED_FLAG_DEFAULT_IDENTITY          0x00000004
-#define CRED_FLAG_PASSWORD                  0x00000008
-#define CRED_FLAG_DISABLE_LOCAL_ATTRS       0x00010000
-#define CRED_FLAG_SET_CRED_OPTION_MASK      0x00FF0000
+#define CRED_FLAG_INITIATE                  0x00010000
+#define CRED_FLAG_ACCEPT                    0x00020000
+#define CRED_FLAG_DEFAULT_IDENTITY          0x00040000
+#define CRED_FLAG_PASSWORD                  0x00080000
+#define CRED_FLAG_PUBLIC_MASK               0x0000FFFF
 
 struct gss_cred_id_struct {
     GSSEAP_MUTEX mutex;

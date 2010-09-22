@@ -33,10 +33,10 @@
 #include "gssapiP_eap.h"
 
 static OM_uint32
-setCredRadiusConfigFile(OM_uint32 *minor,
-                        gss_cred_id_t cred,
-                        const gss_OID oid,
-                        const gss_buffer_t buffer)
+setCredRadiusConfig(OM_uint32 *minor,
+                    gss_cred_id_t cred,
+                    const gss_OID oid,
+                    const gss_buffer_t buffer)
 {
     OM_uint32 major;
     gss_buffer_desc configFileBuffer = GSS_C_EMPTY_BUFFER;
@@ -56,6 +56,33 @@ setCredRadiusConfigFile(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+static OM_uint32
+setCredFlag(OM_uint32 *minor,
+            gss_cred_id_t cred,
+            const gss_OID oid,
+            const gss_buffer_t buffer)
+{
+    OM_uint32 flags;
+    unsigned char *p;
+
+    if (buffer == GSS_C_NO_BUFFER || buffer->length < 4) {
+        *minor = EINVAL;
+        return GSS_S_FAILURE;
+    }
+
+    p = (unsigned char *)buffer->value;
+
+    flags = load_uint32_be(buffer->value) & CRED_FLAG_PUBLIC_MASK;
+
+    if (buffer->length > 4 && p[4])
+        cred->flags &= ~(flags);
+    else
+        cred->flags |= flags;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
 static struct {
     gss_OID_desc oid;
     OM_uint32 (*setOption)(OM_uint32 *, gss_cred_id_t cred,
@@ -64,11 +91,17 @@ static struct {
     /* 1.3.6.1.4.1.5322.21.3.3.1 */
     {
         { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x03\x03\x01" },
-        setCredRadiusConfigFile,
+        setCredRadiusConfig,
+    },
+    /* 1.3.6.1.4.1.5322.21.3.3.2 */
+    {
+        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x03\x03\x02" },
+        setCredFlag,
     },
 };
 
-gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE = &setCredOps[0].oid;
+gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG = &setCredOps[0].oid;
+gss_OID GSS_EAP_CRED_SET_CRED_FLAG     = &setCredOps[1].oid;
 
 OM_uint32
 gssspi_set_cred_option(OM_uint32 *minor,
@@ -89,3 +122,24 @@ gssspi_set_cred_option(OM_uint32 *minor,
 
     return major;
 }
+
+#if 0
+OM_uint32
+gsseap_set_cred_flag(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     OM_uint32 flag,
+                     int clear)
+{
+    unsigned char buf[5];
+    gss_buffer_desc value;
+
+    value.length = sizeof(buf);
+    value.value = buf;
+
+    store_uint32_be(flag, buf);
+    buf[4] = (clear != 0);
+
+    return gssspi_set_cred_option(minor, cred,
+                                  GSS_EAP_CRED_SET_CRED_FLAG, &value);
+}
+#endif

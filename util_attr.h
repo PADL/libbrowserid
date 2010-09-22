@@ -51,6 +51,8 @@ typedef bool
 #define ATTR_TYPE_MIN               ATTR_TYPE_RADIUS
 #define ATTR_TYPE_MAX               ATTR_TYPE_LOCAL
 
+#define ATTR_FLAG_DISABLE_LOCAL     0x00000001
+
 /*
  * Attribute provider: this represents a source of attributes derived
  * from the security context.
@@ -204,12 +206,16 @@ public:
     time_t getExpiryTime(void) const;
 
 private:
+    bool providerEnabled(unsigned int type) const;
+    void releaseProvider(unsigned int type);
+
     gss_eap_attr_provider *getPrimaryProvider(void) const;
 
     /* make non-copyable */
     gss_eap_attr_ctx(const gss_eap_attr_ctx&);
     gss_eap_attr_ctx& operator=(const gss_eap_attr_ctx&);
 
+    uint32_t m_flags;
     gss_eap_attr_provider *m_providers[ATTR_TYPE_MAX + 1];
 };
 

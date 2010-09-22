@@ -80,6 +80,8 @@ gss_eap_attr_ctx::unregisterProvider(unsigned int type)
  */
 gss_eap_attr_ctx::gss_eap_attr_ctx(void)
 {
+    m_flags = 0;
+
     for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
 
@@ -121,6 +123,26 @@ gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
     return &gssEapAttrPrefixes[type];
 }
 
+bool
+gss_eap_attr_ctx::providerEnabled(unsigned int type) const
+{
+    if (type == ATTR_TYPE_LOCAL &&
+        (m_flags & ATTR_FLAG_DISABLE_LOCAL))
+        return false;
+
+    if (m_providers[type] == NULL)
+        return false;
+
+    return true;
+}
+
+void
+gss_eap_attr_ctx::releaseProvider(unsigned int type)
+{
+    delete m_providers[type];
+    m_providers[type] = NULL;
+}
+
 /*
  * Initialize a context from an existing context.
  */
@@ -129,17 +151,22 @@ gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
 {
     bool ret = true;
 
-    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider = m_providers[i];
+    m_flags = manager->m_flags;
 
-        if (provider == NULL)
+    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider;
+
+        if (!providerEnabled(i)) {
+            releaseProvider(i);
             continue;
+        }
+
+        provider = m_providers[i];
 
         ret = provider->initFromExistingContext(this,
                                                 manager->m_providers[i]);
         if (ret == false) {
-            delete provider;
-            m_providers[i] = NULL;
+            releaseProvider(i);
             break;
         }
     }
@@ -156,16 +183,24 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
 {
     bool ret = true;
 
-    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider = m_providers[i];
+    if (cred != GSS_C_NO_CREDENTIAL &&
+        (cred->flags & GSS_EAP_DISABLE_LOCAL_ATTRS_FLAG)) {
+        m_flags |= ATTR_FLAG_DISABLE_LOCAL;
+    }
 
-        if (provider == NULL)
+    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider;
+
+        if (!providerEnabled(i)) {
+            releaseProvider(i);
             continue;
+        }
+
+        provider = m_providers[i];
 
         ret = provider->initFromGssContext(this, cred, ctx);
         if (ret == false) {
-            delete provider;
-            m_providers[i] = NULL;
+            releaseProvider(i);
             break;
         }
     }
@@ -181,14 +216,29 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
 {
     bool ret;
     gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
+    gss_buffer_desc primaryBuf;
 
-    ret = primaryProvider->initFromBuffer(this, buffer);
+    if (buffer->length < 4)
+        return false;
+
+    m_flags = load_uint32_be(buffer->value);
+
+    primaryBuf.length = buffer->length - 4;
+    primaryBuf.value = (char *)buffer->value + 4;
+
+    ret = primaryProvider->initFromBuffer(this, &primaryBuf);
     if (ret == false)
         return ret;
 
     for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider = m_providers[i];
+        gss_eap_attr_provider *provider;
 
+        if (!providerEnabled(i)) {
+            releaseProvider(i);
+            continue;
+        }
+
+        provider = m_providers[i];
         if (provider == primaryProvider)
             continue;
 
@@ -196,8 +246,7 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
                                            GSS_C_NO_CREDENTIAL,
                                            GSS_C_NO_CONTEXT);
         if (ret == false) {
-            delete provider;
-            m_providers[i] = NULL;
+            releaseProvider(i);
             break;
         }
     }
@@ -445,8 +494,22 @@ void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
     const gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
+    gss_buffer_desc tmp;
+    unsigned char *p;
+    OM_uint32 tmpMinor;
 
-    primaryProvider->exportToBuffer(buffer);
+    primaryProvider->exportToBuffer(&tmp);
+
+    buffer->length = 4 + tmp.length;
+    buffer->value = GSSEAP_MALLOC(buffer->length);
+    if (buffer->value == NULL)
+        throw new std::bad_alloc;
+
+    p = (unsigned char *)buffer->value;
+    store_uint32_be(m_flags, p);
+    memcpy(p + 4, tmp.value, tmp.length);
+
+    gss_release_buffer(&tmpMinor, &tmp);
 }
 
 /*
