@@ -76,7 +76,7 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     }
 
     if (cred->radiusConfigFile != NULL)
-        free(cred->radiusConfigFile);
+        GSSEAP_FREE(cred->radiusConfigFile);
 
     GSSEAP_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
