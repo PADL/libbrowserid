@@ -32,23 +32,6 @@
 
 #include "gssapiP_eap.h"
 
-static OM_uint32
-acceptReadyCommon(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
-{
-    OM_uint32 major;
-
-    major = sequenceInit(minor,
-                         &ctx->seqState, ctx->recvSeq,
-                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
-                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
-                         TRUE);
-    if (GSS_ERROR(major))
-        return major;
-
-    return GSS_S_COMPLETE;
-}
-
-
 /*
  * Mark a context as ready for cryptographic operations
  */
@@ -108,7 +91,15 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
         ctx->encryptionType = ENCTYPE_NULL;
     }
 
-    return acceptReadyCommon(minor, ctx, cred);
+    major = sequenceInit(minor,
+                         &ctx->seqState, ctx->recvSeq,
+                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                         TRUE);
+    if (GSS_ERROR(major))
+        return major;
+
+    return GSS_S_COMPLETE;
 }
 
 static OM_uint32
@@ -390,6 +381,7 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
     }
 
     ctx->state = EAP_STATE_KRB_REAUTH_CRED;
+
     return GSS_S_CONTINUE_NEEDED;
 }
 
@@ -434,65 +426,19 @@ acceptReadyKrb(OM_uint32 *minor,
                OM_uint32 timeRec)
 {
     OM_uint32 major, tmpMinor;
-    gss_buffer_set_t keyData = GSS_C_NO_BUFFER_SET;
-    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc authData = GSS_C_EMPTY_BUFFER;
 
-    if (!oidEqual(mech, gss_mech_krb5)) {
-        major = GSS_S_BAD_MECH;
-        goto cleanup;
-    }
-
-    major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
-                                      GSS_C_INQ_SSPI_SESSION_KEY, &keyData);
+    major = gssEapGlueToMechName(minor, initiator, &ctx->initiatorName);
     if (GSS_ERROR(major))
         goto cleanup;
 
-    {
-        gss_OID_desc oid;
-        int suffix;
-
-        oid.length = keyData->elements[1].length;
-        oid.elements = keyData->elements[1].value;
-
-        /* GSS_KRB5_SESSION_KEY_ENCTYPE_OID */
-        major = decomposeOid(minor,
-                             "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x04",
-                             10, &oid, &suffix);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        ctx->encryptionType = suffix;
-    }
-
-    {
-        krb5_context krbContext = NULL;
-        krb5_keyblock key;
-
-        GSSEAP_KRB_INIT(&krbContext);
-
-        KRB_KEY_LENGTH(&key) = keyData->elements[0].length;
-        KRB_KEY_DATA(&key)   = keyData->elements[0].value;
-        KRB_KEY_TYPE(&key)   = ctx->encryptionType;
-
-        *minor = krb5_copy_keyblock_contents(krbContext,
-                                             &key, &ctx->rfc3961Key);
-        if (*minor != 0) {
-            major = GSS_S_FAILURE;
-            goto cleanup;
-        }
-    }
-
-    major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
-                                      &ctx->checksumType);
+    major = gssKrbExtractAuthzDataFromSecContext(minor, ctx->kerberosCtx,
+                                                 KRB5_AUTHDATA_RADIUS_AVP,
+                                                 &authData);
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = gssDisplayName(minor, initiator, &nameBuf, NULL);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
-                             &ctx->initiatorName);
+    major = gssEapImportAttrContext(minor, &authData, ctx->initiatorName);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -502,19 +448,14 @@ acceptReadyKrb(OM_uint32 *minor,
             goto cleanup;
     }
 
-    if (timeRec != GSS_C_INDEFINITE)
-        ctx->expiryTime = time(NULL) + timeRec;
-
-    major = acceptReadyCommon(minor, ctx, cred);
+    major = gssEapReauthComplete(minor, ctx, cred, mech, timeRec);
     if (GSS_ERROR(major))
         goto cleanup;
 
     ctx->state = EAP_STATE_ESTABLISHED;
-    ctx->mechanismUsed = GSS_EAP_MECHANISM;
 
 cleanup:
-    gss_release_buffer_set(&tmpMinor, &keyData);
-    gss_release_buffer(&tmpMinor, &nameBuf);
+    gss_release_buffer(&tmpMinor, &authData);
 
     return major;
 }
@@ -655,7 +596,7 @@ gss_accept_sec_context(OM_uint32 *minor,
         if (!gssEapInternalizeOid(ctx->mechanismUsed, mech_type))
             duplicateOid(&tmpMinor, ctx->mechanismUsed, mech_type);
     }
-    if (innerOutputToken.length != 0) {
+    if (innerOutputToken.value != NULL) {
         tmpMajor = gssEapMakeToken(&tmpMinor, ctx, &innerOutputToken,
                                    sm->outputTokenType, output_token);
         if (GSS_ERROR(tmpMajor)) {

@@ -269,6 +269,8 @@ gssEapImportContext(OM_uint32 *minor,
      * acceptor contexts.
      */
     if (!CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) {
+        assert((ctx->flags & CTX_FLAG_KRB_REAUTH_GSS) == 0);
+
         major = gssEapImportPartialContext(minor, &p, &remain, ctx);
         if (GSS_ERROR(major))
             return major;

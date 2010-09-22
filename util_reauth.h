@@ -35,6 +35,8 @@
 #ifndef _UTIL_REAUTH_H_
 #define _UTIL_REAUTH_H_ 1
 
+#define KRB5_AUTHDATA_RADIUS_AVP        513
+
 OM_uint32
 gssInitSecContext(OM_uint32 *minor,
                   gss_cred_id_t cred,
@@ -77,16 +79,16 @@ gssDeleteSecContext(OM_uint32 *minor,
                     gss_buffer_t output_token);
 
 OM_uint32
-gssDisplayName(OM_uint32 *minor,
-               gss_name_t name,
-               gss_buffer_t buffer,
-               gss_OID *name_type);
-
-OM_uint32
 gssInquireSecContextByOid(OM_uint32 *minor,
                           const gss_ctx_id_t context_handle,
                           const gss_OID desired_object,
                           gss_buffer_set_t *data_set);
+
+OM_uint32
+gssKrbExtractAuthzDataFromSecContext(OM_uint32 *minor,
+                                     const gss_ctx_id_t ctx,
+                                     int ad_type,
+                                     gss_buffer_t ad_data);
 
 OM_uint32
 gssEapMakeReauthCreds(OM_uint32 *minor,
@@ -99,5 +101,23 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
                        gss_cred_id_t cred,
                        gss_buffer_t credBuf);
+
+
+OM_uint32
+gssEapGlueToMechName(OM_uint32 *minor,
+                     gss_name_t glueName,
+                     gss_name_t *pMechName);
+
+OM_uint32
+gssEapMechToGlueName(OM_uint32 *minor,
+                     gss_name_t mechName,
+                     gss_name_t *pGlueName);
+
+OM_uint32
+gssEapReauthComplete(OM_uint32 *minor,
+                    gss_ctx_id_t ctx,
+                    gss_cred_id_t cred,
+                    const gss_OID mech,
+                    OM_uint32 timeRec);
 
 #endif /* _UTIL_REAUTH_H_ */
