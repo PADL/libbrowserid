@@ -76,9 +76,8 @@ public:
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
 
-
-    static bool init();
-    static void finalize();
+    static bool init(void);
+    static void finalize(void);
 
     static gss_eap_attr_provider *createAttrContext(void);
 
@@ -95,7 +94,7 @@ private:
         return m_attributes;
     }
 
-    bool authenticated() const { return m_authenticated; }
+    bool authenticated(void) const { return m_authenticated; }
 
     friend bool
     addRadiusAttribute(const gss_eap_attr_provider *source,

@@ -112,8 +112,8 @@ public:
 
     virtual time_t getExpiryTime(void) const { return 0; }
 
-    static bool init() { return true; }
-    static void finalize() {}
+    static bool init(void) { return true; }
+    static void finalize(void) {}
 
     static gss_eap_attr_provider *createAttrContext(void) { return NULL; }
 

@@ -83,8 +83,8 @@ public:
 
     time_t getExpiryTime(void) const;
 
-    static bool init();
-    static void finalize();
+    static bool init(void);
+    static void finalize(void);
 
     static gss_eap_attr_provider *createAttrContext(void);
 
@@ -133,8 +133,8 @@ public:
     bool getAssertion(int *authenticated,
                       const opensaml::saml2::Assertion **pAssertion) const;
 
-    static bool init();
-    static void finalize();
+    static bool init(void);
+    static void finalize(void);
 
     static gss_eap_attr_provider *createAttrContext(void);
 
