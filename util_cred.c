@@ -83,6 +83,8 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 
     if (cred->krbCredCache != NULL)
         krb5_cc_destroy(krbContext, cred->krbCredCache);
+    if (cred->krbCred != GSS_C_NO_CREDENTIAL)
+        gssReleaseCred(&tmpMinor, &cred->krbCred);
 
     GSSEAP_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));

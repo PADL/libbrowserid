@@ -32,11 +32,28 @@
 
 #include "gssapiP_eap.h"
 
+static OM_uint32
+acceptReadyCommon(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
+{
+    OM_uint32 major;
+
+    major = sequenceInit(minor,
+                         &ctx->seqState, ctx->recvSeq,
+                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                         TRUE);
+    if (GSS_ERROR(major))
+        return major;
+
+    return GSS_S_COMPLETE;
+}
+
+
 /*
  * Mark a context as ready for cryptographic operations
  */
 static OM_uint32
-acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
+acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 {
     OM_uint32 major, tmpMinor;
     VALUE_PAIR *vp;
@@ -91,15 +108,7 @@ acceptReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
         ctx->encryptionType = ENCTYPE_NULL;
     }
 
-    major = sequenceInit(minor,
-                         &ctx->seqState, ctx->recvSeq,
-                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
-                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
-                         TRUE);
-    if (GSS_ERROR(major))
-        return major;
-
-    return GSS_S_COMPLETE;
+    return acceptReadyCommon(minor, ctx, cred);
 }
 
 static OM_uint32
@@ -322,7 +331,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         ctx->acceptorCtx.avps = received;
         received = NULL;
 
-        major = acceptReady(minor, ctx, cred);
+        major = acceptReadyEap(minor, ctx, cred);
         if (GSS_ERROR(major))
             goto cleanup;
 
@@ -352,56 +361,55 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
     outputToken->length = 0;
     outputToken->value = NULL;
 
-    if (chanBindings == GSS_C_NO_CHANNEL_BINDINGS) {
-        ctx->state = EAP_STATE_ESTABLISHED;
-        return GSS_S_COMPLETE;
+    if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS) {
+        if (inputToken->length < 14) {
+            return GSS_S_DEFECTIVE_TOKEN;
+        }
+
+        iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
+        iov[0].buffer.length = 0;
+        iov[0].buffer.value = NULL;
+
+        if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
+            iov[0].buffer = chanBindings->application_data;
+
+        iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER;
+        iov[1].buffer.length = 16;
+        iov[1].buffer.value = (unsigned char *)inputToken->value - 2;
+
+        assert(load_uint16_be(iov[1].buffer.value) == TOK_TYPE_GSS_CB);
+
+        iov[2].type = GSS_IOV_BUFFER_TYPE_TRAILER;
+        iov[2].buffer.length = inputToken->length - 14;
+        iov[2].buffer.value = (unsigned char *)inputToken->value + 14;
+
+        major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
+                                        iov, 3, TOK_TYPE_GSS_CB);
+        if (GSS_ERROR(major))
+            return major;
     }
 
-    if (inputToken->length < 14) {
-        return GSS_S_DEFECTIVE_TOKEN;
-    }
-
-    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
-    iov[0].buffer.length = 0;
-    iov[0].buffer.value = NULL;
-
-    if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
-        iov[0].buffer = chanBindings->application_data;
-
-    iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER;
-    iov[1].buffer.length = 16;
-    iov[1].buffer.value = (unsigned char *)inputToken->value - 2;
-
-    assert(load_uint16_be(iov[1].buffer.value) == TOK_TYPE_GSS_CB);
-
-    iov[2].type = GSS_IOV_BUFFER_TYPE_TRAILER;
-    iov[2].buffer.length = inputToken->length - 14;
-    iov[2].buffer.value = (unsigned char *)inputToken->value + 14;
-
-    major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
-                                    iov, 3, TOK_TYPE_GSS_CB);
-    if (major == GSS_S_COMPLETE) {
-        ctx->state = EAP_STATE_ESTABLISHED;
-    }
-
-#if 0
-    gss_release_buffer(&tmpMinor, &iov[0].buffer);
-#endif
-
-    return major;
+    ctx->state = EAP_STATE_KRB_REAUTH_CRED;
+    return GSS_S_CONTINUE_NEEDED;
 }
 
 static OM_uint32
-eapGssSmAcceptKrbCred(OM_uint32 *minor,
-                      gss_ctx_id_t ctx,
-                      gss_cred_id_t cred,
-                      gss_buffer_t inputToken,
-                      gss_channel_bindings_t chanBindings,
-                      gss_buffer_t outputToken)
+eapGssSmAcceptKrbReauthCred(OM_uint32 *minor,
+                            gss_ctx_id_t ctx,
+                            gss_cred_id_t cred,
+                            gss_buffer_t inputToken,
+                            gss_channel_bindings_t chanBindings,
+                            gss_buffer_t outputToken)
 {
-    /* Called with already established context */
-    *minor = EINVAL;
-    return GSS_S_BAD_STATUS;
+    OM_uint32 major;
+
+    major = gssEapMakeReauthCreds(minor, ctx, cred, outputToken);
+    if (GSS_ERROR(major))
+        return major;
+
+    ctx->state = EAP_STATE_ESTABLISHED;
+
+    return GSS_S_COMPLETE;
 }
 
 static OM_uint32
@@ -417,6 +425,140 @@ eapGssSmAcceptEstablished(OM_uint32 *minor,
     return GSS_S_BAD_STATUS;
 }
 
+static OM_uint32
+acceptReadyKrb(OM_uint32 *minor,
+               gss_ctx_id_t ctx,
+               gss_cred_id_t cred,
+               const gss_name_t initiator,
+               const gss_OID mech,
+               OM_uint32 timeRec)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_set_t keyData = GSS_C_NO_BUFFER_SET;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+
+    if (!oidEqual(mech, gss_mech_krb5)) {
+        major = GSS_S_BAD_MECH;
+        goto cleanup;
+    }
+
+    major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
+                                      GSS_C_INQ_SSPI_SESSION_KEY, &keyData);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    {
+        gss_OID_desc oid;
+        int suffix;
+
+        oid.length = keyData->elements[1].length;
+        oid.elements = keyData->elements[1].value;
+
+        /* GSS_KRB5_SESSION_KEY_ENCTYPE_OID */
+        major = decomposeOid(minor,
+                             "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x04",
+                             10, &oid, &suffix);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        ctx->encryptionType = suffix;
+    }
+
+    {
+        krb5_context krbContext = NULL;
+        krb5_keyblock key;
+
+        GSSEAP_KRB_INIT(&krbContext);
+
+        KRB_KEY_LENGTH(&key) = keyData->elements[0].length;
+        KRB_KEY_DATA(&key)   = keyData->elements[0].value;
+        KRB_KEY_TYPE(&key)   = ctx->encryptionType;
+
+        *minor = krb5_copy_keyblock_contents(krbContext,
+                                             &key, &ctx->rfc3961Key);
+        if (*minor != 0) {
+            major = GSS_S_FAILURE;
+            goto cleanup;
+        }
+    }
+
+    major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                      &ctx->checksumType);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssDisplayName(minor, initiator, &nameBuf, NULL);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
+                             &ctx->initiatorName);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (cred != GSS_C_NO_CREDENTIAL && cred->name != GSS_C_NO_NAME) {
+        major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if (timeRec != GSS_C_INDEFINITE)
+        ctx->expiryTime = time(NULL) + timeRec;
+
+    major = acceptReadyCommon(minor, ctx, cred);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    ctx->state = EAP_STATE_ESTABLISHED;
+    ctx->mechanismUsed = GSS_EAP_MECHANISM;
+
+cleanup:
+    gss_release_buffer_set(&tmpMinor, &keyData);
+    gss_release_buffer(&tmpMinor, &nameBuf);
+
+    return major;
+}
+
+static OM_uint32
+eapGssSmAcceptGssReauth(OM_uint32 *minor,
+                         gss_ctx_id_t ctx,
+                         gss_cred_id_t cred,
+                         gss_buffer_t inputToken,
+                         gss_channel_bindings_t chanBindings,
+                         gss_buffer_t outputToken)
+{
+    OM_uint32 major, tmpMinor;
+    gss_cred_id_t krbCred = GSS_C_NO_CREDENTIAL;
+    gss_name_t krbInitiator = GSS_C_NO_NAME;
+    gss_OID mech = GSS_C_NO_OID;
+    OM_uint32 timeRec = GSS_C_INDEFINITE;
+
+    ctx->flags |= CTX_FLAG_KRB_REAUTH_GSS;
+
+    if (cred != GSS_C_NO_CREDENTIAL)
+        krbCred = cred->krbCred;
+
+    major = gssAcceptSecContext(minor,
+                                &ctx->kerberosCtx,
+                                krbCred,
+                                inputToken,
+                                chanBindings,
+                                &krbInitiator,
+                                &mech,
+                                outputToken,
+                                &ctx->gssFlags,
+                                &timeRec,
+                                NULL);
+    if (major == GSS_S_COMPLETE) {
+        major = acceptReadyKrb(minor, ctx, cred,
+                               krbInitiator, mech, timeRec);
+    }
+
+    gssReleaseName(&tmpMinor, &krbInitiator);
+
+    return major;
+}
+
 static struct gss_eap_acceptor_sm {
     enum gss_eap_token_type inputTokenType;
     enum gss_eap_token_type outputTokenType;
@@ -427,11 +569,12 @@ static struct gss_eap_acceptor_sm {
                               gss_channel_bindings_t,
                               gss_buffer_t);
 } eapGssAcceptorSm[] = {
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptIdentity           },
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,  eapGssSmAcceptAuthenticate       },
-    { TOK_TYPE_GSS_CB,      TOK_TYPE_NONE,     eapGssSmAcceptGssChannelBindings },
-    { TOK_TYPE_NONE,        TOK_TYPE_KRB_CRED, eapGssSmAcceptKrbCred            },
-    { TOK_TYPE_NONE,        TOK_TYPE_NONE,     eapGssSmAcceptEstablished        },
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,    eapGssSmAcceptIdentity           },
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,    eapGssSmAcceptAuthenticate       },
+    { TOK_TYPE_GSS_CB,      TOK_TYPE_NONE,       eapGssSmAcceptGssChannelBindings },
+    { TOK_TYPE_NONE,        TOK_TYPE_KRB_CRED,   eapGssSmAcceptKrbReauthCred      },
+    { TOK_TYPE_NONE,        TOK_TYPE_NONE,       eapGssSmAcceptEstablished        },
+    { TOK_TYPE_GSS_REAUTH,  TOK_TYPE_GSS_REAUTH, eapGssSmAcceptGssReauth          },
 };
 
 OM_uint32
@@ -453,6 +596,7 @@ gss_accept_sec_context(OM_uint32 *minor,
     struct gss_eap_acceptor_sm *sm = NULL;
     gss_buffer_desc innerInputToken = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
+    enum gss_eap_token_type tokType;
 
     *minor = 0;
 
@@ -480,9 +624,13 @@ gss_accept_sec_context(OM_uint32 *minor,
     sm = &eapGssAcceptorSm[ctx->state];
 
     major = gssEapVerifyToken(minor, ctx, input_token,
-                              sm->inputTokenType, &innerInputToken);
-    if (GSS_ERROR(major))
+                              sm->inputTokenType, &tokType,
+                              &innerInputToken);
+    if (major == GSS_S_DEFECTIVE_TOKEN && tokType == TOK_TYPE_GSS_REAUTH) {
+        ctx->state = EAP_STATE_KRB_REAUTH_GSS;
+    } else if (GSS_ERROR(major)) {
         goto cleanup;
+    }
 
     /* If credentials were provided, check they're usable with this mech */
     if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {

@@ -284,6 +284,9 @@ gssEapInit(void)
 
     major = gssEapLocalAttrProviderInit(&minor);
     assert(major == GSS_S_COMPLETE);
+
+    major = gssEapReauthInitialize(&minor);
+    assert(major == GSS_S_COMPLETE);
 }
 
 static void

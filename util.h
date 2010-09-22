@@ -172,6 +172,7 @@ gssEapVerifyToken(OM_uint32 *minor,
                   gss_ctx_id_t ctx,
                   const gss_buffer_t inputToken,
                   enum gss_eap_token_type tokenType,
+                  enum gss_eap_token_type *actualToken,
                   gss_buffer_t innerInputToken);
 
 OM_uint32
@@ -398,7 +399,8 @@ verifyTokenHeader(OM_uint32 *minor,
                   size_t *body_size,
                   unsigned char **buf_in,
                   size_t toksize_in,
-                  enum gss_eap_token_type tok_type);
+                  enum gss_eap_token_type tok_type,
+                  enum gss_eap_token_type *ret_tok_type);
 
 /* Helper macros */
 #define GSSEAP_CALLOC(count, size)      (calloc((count), (size)))
@@ -561,5 +563,6 @@ gssBufferToKrbData(gss_buffer_t buffer, krb5_data *data)
 #endif
 
 #include "util_attr.h"
+#include "util_reauth.h"
 
 #endif /* _UTIL_H_ */

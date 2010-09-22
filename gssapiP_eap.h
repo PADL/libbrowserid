@@ -42,6 +42,7 @@
 
 /* GSS includes */
 #include <gssapi/gssapi.h>
+#include <gssapi/gssapi_krb5.h>
 #include <gssapi/gssapi_ext.h>
 #include "gssapi_eap.h"
 
@@ -96,6 +97,7 @@ struct gss_cred_id_struct {
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
+#define CTX_FLAG_KRB_REAUTH_GSS             0x00000002
 
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
@@ -103,8 +105,9 @@ enum gss_eap_state {
     EAP_STATE_IDENTITY = 0,
     EAP_STATE_AUTHENTICATE,
     EAP_STATE_GSS_CHANNEL_BINDINGS,
-    EAP_STATE_FAST_REAUTH,
-    EAP_STATE_ESTABLISHED
+    EAP_STATE_KRB_REAUTH_CRED,
+    EAP_STATE_ESTABLISHED,
+    EAP_STATE_KRB_REAUTH_GSS
 };
 
 #define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == EAP_STATE_ESTABLISHED)
@@ -156,6 +159,8 @@ struct gss_ctx_id_struct {
         #define initiatorCtx         ctxU.initiator
         struct gss_eap_acceptor_ctx  acceptor;
         #define acceptorCtx          ctxU.acceptor
+        gss_ctx_id_t                 kerberos;
+        #define kerberosCtx          ctxU.kerberos
     } ctxU;
 };
 

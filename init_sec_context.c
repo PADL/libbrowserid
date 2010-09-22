@@ -480,8 +480,8 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = GSS_S_COMPLETE;
-    ctx->state = EAP_STATE_ESTABLISHED;
+    major = GSS_S_CONTINUE_NEEDED;
+    ctx->state = EAP_STATE_KRB_REAUTH_CRED;
 
 cleanup:
     gssEapReleaseIov(iov, 2);
@@ -490,20 +490,26 @@ cleanup:
 }
 
 static OM_uint32
-eapGssSmInitKrbCred(OM_uint32 *minor,
-                    gss_cred_id_t cred,
-                    gss_ctx_id_t ctx,
-                    gss_name_t target,
-                    gss_OID mech,
-                    OM_uint32 reqFlags,
-                    OM_uint32 timeReq,
-                    gss_channel_bindings_t chanBindings,
-                    gss_buffer_t inputToken,
-                    gss_buffer_t outputToken)
+eapGssSmInitKrbReauthCred(OM_uint32 *minor,
+                          gss_cred_id_t cred,
+                          gss_ctx_id_t ctx,
+                          gss_name_t target,
+                          gss_OID mech,
+                          OM_uint32 reqFlags,
+                          OM_uint32 timeReq,
+                          gss_channel_bindings_t chanBindings,
+                          gss_buffer_t inputToken,
+                          gss_buffer_t outputToken)
 {
-    /* Called with already established context */
-    *minor = EINVAL;
-    return GSS_S_BAD_STATUS;
+    OM_uint32 major;
+
+    major = gssEapStoreReauthCreds(minor, ctx, cred, inputToken);
+    if (GSS_ERROR(major))
+        return major;
+
+    ctx->state = EAP_STATE_ESTABLISHED;
+
+    return GSS_S_COMPLETE;
 }
 
 static OM_uint32
@@ -540,7 +546,7 @@ static struct gss_eap_initiator_sm {
     { TOK_TYPE_NONE,    TOK_TYPE_EAP_RESP,  eapGssSmInitIdentity            },
     { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP,  eapGssSmInitAuthenticate        },
     { TOK_TYPE_NONE,    TOK_TYPE_GSS_CB,    eapGssSmInitGssChannelBindings  },
-    { TOK_TYPE_KRB_CRED,TOK_TYPE_NONE,      eapGssSmInitKrbCred             },
+    { TOK_TYPE_KRB_CRED,TOK_TYPE_NONE,      eapGssSmInitKrbReauthCred       },
     { TOK_TYPE_NONE,    TOK_TYPE_NONE,      eapGssSmInitEstablished         },
 };
 
@@ -565,6 +571,7 @@ gss_init_sec_context(OM_uint32 *minor,
     struct gss_eap_initiator_sm *sm = NULL;
     gss_buffer_desc innerInputToken;
     gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
+    enum gss_eap_token_type tokType;
 
     *minor = 0;
 
@@ -595,7 +602,8 @@ gss_init_sec_context(OM_uint32 *minor,
 
     if (input_token != GSS_C_NO_BUFFER) {
         major = gssEapVerifyToken(minor, ctx, input_token,
-                                  sm->inputTokenType, &innerInputToken);
+                                  sm->inputTokenType,
+                                  &tokType, &innerInputToken);
         if (GSS_ERROR(major))
             goto cleanup;
     } else {

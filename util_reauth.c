@@ -32,11 +32,19 @@
 
 #include "gssapiP_eap.h"
 
+#include <dlfcn.h>
+
 /*
  * Fast reauthentication support for EAP GSS.
  */
 
 #define KRB5_AUTHDATA_RADIUS_AVP        513
+
+krb5_error_code
+krb5_encrypt_tkt_part(krb5_context, const krb5_keyblock *, krb5_ticket *);
+
+krb5_error_code
+encode_krb5_ticket(const krb5_ticket *rep, krb5_data **code);
 
 static krb5_error_code
 getAcceptorKey(krb5_context krbContext,
@@ -71,27 +79,22 @@ getAcceptorKey(krb5_context krbContext,
 
         while ((code = krb5_kt_next_entry(krbContext, keytab,
                                           &ktent, &cursor)) == 0) {
-            if (ktent.key.enctype != ctx->encryptionType) {
+            if (ktent.key.enctype == ctx->encryptionType) {
+                break;
+            } else {
                 krb5_free_keytab_entry_contents(krbContext, &ktent);
-                continue;
             }
         }
     }
 
-    code = krb5_copy_principal(krbContext, ktent.principal, princ);
-    if (code != 0)
-        goto cleanup;
-
-    code = krb5_copy_keyblock_contents(krbContext, &ktent.key, key);
-    if (code != 0)
-        goto cleanup;
+    if (code == 0) {
+        *princ = ktent.principal;
+        *key = ktent.key;
+    }
 
 cleanup:
     if (cred == GSS_C_NO_CREDENTIAL || cred->name == GSS_C_NO_NAME)
         krb5_kt_end_seq_get(krbContext, keytab, &cursor);
-
-    krb5_free_keytab_entry_contents(krbContext, &ktent);
-    krb5_kt_end_seq_get(krbContext, keytab, &cursor);
     krb5_kt_close(krbContext, keytab);
 
     if (code != 0) {
@@ -106,11 +109,11 @@ cleanup:
     return code; 
 }
 
-static OM_uint32
-makeReauthCreds(OM_uint32 *minor,
-                gss_ctx_id_t ctx,
-                gss_cred_id_t cred,
-                gss_buffer_t credBuf)
+OM_uint32
+gssEapMakeReauthCreds(OM_uint32 *minor,
+                      gss_ctx_id_t ctx,
+                      gss_cred_id_t cred,
+                      gss_buffer_t credBuf)
 {
     OM_uint32 major = GSS_S_COMPLETE, code;
     krb5_context krbContext = NULL;
@@ -167,6 +170,10 @@ makeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
+    code = krb5_encrypt_tkt_part(krbContext, &acceptorKey, &ticket);
+    if (code != 0)
+        goto cleanup;
+
     creds.client = enc_part.client;
     creds.server = ticket.server;
     creds.keyblock = session;
@@ -179,6 +186,10 @@ makeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
+    code = krb5_auth_con_setflags(krbContext, authContext, 0);
+    if (code != 0)
+        goto cleanup;
+
     code = krb5_auth_con_setsendsubkey(krbContext, authContext, &ctx->rfc3961Key);
     if (code != 0)
         goto cleanup;
@@ -188,10 +199,6 @@ makeReauthCreds(OM_uint32 *minor,
         goto cleanup;
 
     krbDataToGssBuffer(credsData, credBuf);
-
-    code = krb5_encrypt_tkt_part(krbContext, acceptorKey, &ticket);
-    if (code != 0)
-        goto cleanup;
 
 cleanup:
     *minor = code;
@@ -213,11 +220,11 @@ cleanup:
     return major;
 }
 
-static OM_uint32
-storeReauthCreds(OM_uint32 *minor,
-                 gss_ctx_id_t ctx,
-                 gss_cred_id_t cred,
-                 gss_buffer_t credBuf)
+OM_uint32
+gssEapStoreReauthCreds(OM_uint32 *minor,
+                       gss_ctx_id_t ctx,
+                       gss_cred_id_t cred,
+                       gss_buffer_t credBuf)
 {
     OM_uint32 major = GSS_S_COMPLETE, code;
     krb5_context krbContext = NULL;
@@ -235,6 +242,10 @@ storeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
+    code = krb5_auth_con_setflags(krbContext, authContext, 0);
+    if (code != 0)
+        goto cleanup;
+
     code = krb5_auth_con_setrecvsubkey(krbContext, authContext,
                                        &ctx->rfc3961Key);
     if (code != 0)
@@ -246,19 +257,20 @@ storeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
+    if (creds == NULL || creds[0] == NULL)
+        goto cleanup;
 
+    code = krb5_cc_new_unique(krbContext, "MEMORY", NULL, &cred->krbCredCache);
+    if (code != 0)
+        goto cleanup;
 
-/*
-OM_uint32 KRB5_CALLCONV
-gss_krb5_import_cred(OM_uint32 *minor_status,
-                     krb5_ccache id,
-                     krb5_principal keytab_principal,
-                     krb5_keytab keytab,
-                     gss_cred_id_t *cred);
-*/
+    code = krb5_cc_store_cred(krbContext, cred->krbCredCache, creds[0]);
+    if (code != 0)
+        goto cleanup;
 
-    if (creds != NULL && creds[0] != NULL) {
-    }    
+    major = gss_krb5_import_cred(minor, cred->krbCredCache, NULL, NULL, &cred->krbCred);
+    if (GSS_ERROR(major))
+        goto cleanup;
 
 cleanup:
     *minor = code;
@@ -272,4 +284,173 @@ cleanup:
         major = *minor ? GSS_S_FAILURE : GSS_S_COMPLETE;
 
     return major;
+}
+
+static OM_uint32 (*gssInitSecContextNext)(
+    OM_uint32 *minor,
+    gss_cred_id_t cred,
+    gss_ctx_id_t *context_handle,
+    gss_name_t target_name,
+    gss_OID mech_type,
+    OM_uint32 req_flags,
+    OM_uint32 time_req,
+    gss_channel_bindings_t input_chan_bindings,
+    gss_buffer_t input_token,
+    gss_OID *actual_mech_type,
+    gss_buffer_t output_token,
+    OM_uint32 *ret_flags,
+    OM_uint32 *time_rec);
+
+static OM_uint32 (*gssAcceptSecContextNext)(
+    OM_uint32 *minor,
+    gss_ctx_id_t *context_handle,
+    gss_cred_id_t cred,
+    gss_buffer_t input_token,
+    gss_channel_bindings_t input_chan_bindings,
+    gss_name_t *src_name,
+    gss_OID *mech_type,
+    gss_buffer_t output_token,
+    OM_uint32 *ret_flags,
+    OM_uint32 *time_rec,
+    gss_cred_id_t *delegated_cred_handle);
+
+static OM_uint32 (*gssReleaseCredNext)(
+    OM_uint32 *minor,
+    gss_cred_id_t *cred_handle);
+
+static OM_uint32 (*gssReleaseNameNext)(
+    OM_uint32 *minor,
+    gss_name_t *name);
+
+static OM_uint32 (*gssInquireSecContextByOidNext)(
+    OM_uint32 *minor,
+    const gss_ctx_id_t context_handle,
+    const gss_OID desired_object,
+    gss_buffer_set_t *data_set);
+
+static OM_uint32 (*gssDeleteSecContextNext)(
+    OM_uint32 *minor,
+    gss_ctx_id_t *context_handle,
+    gss_buffer_t output_token);
+
+static OM_uint32 (*gssDisplayNameNext)(
+    OM_uint32 *minor,
+    gss_name_t name,
+    gss_buffer_t output_name_buffer,
+    gss_OID *output_name_type);
+
+OM_uint32
+gssEapReauthInitialize(OM_uint32 *minor)
+{
+    gssInitSecContextNext = dlsym(RTLD_NEXT, "gss_init_sec_context");
+    gssAcceptSecContextNext = dlsym(RTLD_NEXT, "gss_accept_sec_context");
+    gssReleaseCredNext = dlsym(RTLD_NEXT, "gss_release_cred");
+    gssReleaseNameNext = dlsym(RTLD_NEXT, "gss_release_name");
+    gssInquireSecContextByOidNext = dlsym(RTLD_NEXT, "gss_inquire_sec_context_by_oid");
+    gssDeleteSecContextNext = dlsym(RTLD_NEXT, "gss_delete_sec_context");
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+gssInitSecContext(OM_uint32 *minor,
+                  gss_cred_id_t cred,
+                  gss_ctx_id_t *context_handle,
+                  gss_name_t target_name,
+                  gss_OID mech_type,
+                  OM_uint32 req_flags,
+                  OM_uint32 time_req,
+                  gss_channel_bindings_t input_chan_bindings,
+                  gss_buffer_t input_token,
+                  gss_OID *actual_mech_type,
+                  gss_buffer_t output_token,
+                  OM_uint32 *ret_flags,
+                  OM_uint32 *time_rec)
+{
+    if (gssInitSecContextNext == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssInitSecContextNext(minor, cred, context_handle,
+                                 target_name, mech_type, req_flags,
+                                 time_req, input_chan_bindings,
+                                 input_token, actual_mech_type,
+                                 output_token, ret_flags, time_rec);
+}
+
+OM_uint32
+gssAcceptSecContext(OM_uint32 *minor,
+                    gss_ctx_id_t *context_handle,
+                    gss_cred_id_t cred,
+                    gss_buffer_t input_token,
+                    gss_channel_bindings_t input_chan_bindings,
+                    gss_name_t *src_name,
+                    gss_OID *mech_type,
+                    gss_buffer_t output_token,
+                    OM_uint32 *ret_flags,
+                    OM_uint32 *time_rec,
+                    gss_cred_id_t *delegated_cred_handle)
+{
+    if (gssAcceptSecContextNext == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssAcceptSecContextNext(minor, context_handle, cred,
+                                   input_token, input_chan_bindings,
+                                   src_name, mech_type, output_token,
+                                   ret_flags, time_rec, delegated_cred_handle);
+}
+
+OM_uint32
+gssReleaseCred(OM_uint32 *minor,
+               gss_cred_id_t *cred_handle)
+{
+    if (gssReleaseCredNext == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssReleaseCredNext(minor, cred_handle);
+}
+
+OM_uint32
+gssReleaseName(OM_uint32 *minor,
+               gss_name_t *name)
+{
+    if (gssReleaseName == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssReleaseNameNext(minor, name);
+}
+
+OM_uint32
+gssDeleteSecContext(OM_uint32 *minor,
+                    gss_ctx_id_t *context_handle,
+                    gss_buffer_t output_token)
+{
+    if (gssDeleteSecContextNext == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssDeleteSecContextNext(minor, context_handle, output_token);
+}
+
+OM_uint32
+gssDisplayName(OM_uint32 *minor,
+               gss_name_t name,
+               gss_buffer_t buffer,
+               gss_OID *name_type)
+{
+    if (gssDisplayNameNext == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssDisplayNameNext(minor, name, buffer, name_type);
+}
+
+OM_uint32
+gssInquireSecContextByOid(OM_uint32 *minor,
+                          const gss_ctx_id_t context_handle,
+                          const gss_OID desired_object,
+                          gss_buffer_set_t *data_set)
+{
+    if (gssInquireSecContextByOidNext == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssInquireSecContextByOidNext(minor, context_handle,
+                                         desired_object, data_set);
 }
