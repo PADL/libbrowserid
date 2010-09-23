@@ -514,7 +514,7 @@ gssEapDisplayName(OM_uint32 *minor,
                   gss_buffer_t output_name_buffer,
                   gss_OID *output_name_type)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     krb5_context krbContext;
     char *krbName;
 

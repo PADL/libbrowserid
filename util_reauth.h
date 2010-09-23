@@ -120,4 +120,7 @@ gssEapReauthComplete(OM_uint32 *minor,
                     const gss_OID mech,
                     OM_uint32 timeRec);
 
+OM_uint32
+gssEapReauthInitialize(OM_uint32 *minor);
+
 #endif /* _UTIL_REAUTH_H_ */
