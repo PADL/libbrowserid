@@ -88,7 +88,7 @@ gssEapExportSecContext(OM_uint32 *minor,
             goto cleanup;
     }
 
-    length  = 16;                               /* version, state, flags, etc */
+    length  = 16;                               /* version, state, flags, */
     length += 4 + ctx->mechanismUsed->length;   /* mechanismUsed */
     length += 12 + key.length;                  /* rfc3961Key.value */
     length += 4 + initiatorName.length;         /* initiatorName.value */
