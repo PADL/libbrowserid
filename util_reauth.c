@@ -44,6 +44,18 @@ krb5_encrypt_tkt_part(krb5_context, const krb5_keyblock *, krb5_ticket *);
 krb5_error_code
 encode_krb5_ticket(const krb5_ticket *rep, krb5_data **code);
 
+static OM_uint32
+gssDisplayName(OM_uint32 *minor,
+               gss_name_t name,
+               gss_buffer_t buffer,
+               gss_OID *name_type);
+
+static OM_uint32
+gssImportName(OM_uint32 *minor,
+              gss_buffer_t buffer,
+              gss_OID name_type,
+              gss_name_t *name);
+
 static krb5_error_code
 getAcceptorKey(krb5_context krbContext,
                gss_ctx_id_t ctx,
@@ -138,6 +150,9 @@ freezeAttrContext(OM_uint32 *minor,
     return major;
 }
 
+/*
+ * Fabricate a ticket to ourselves given a GSS EAP context.
+ */
 OM_uint32
 gssEapMakeReauthCreds(OM_uint32 *minor,
                       gss_ctx_id_t ctx,
@@ -267,6 +282,9 @@ isTicketGrantingServiceP(krb5_context krbContext,
     return FALSE;
 }
 
+/*
+ * Store re-authentication (Kerberos) credentials in a credential handle.
+ */
 OM_uint32
 gssEapStoreReauthCreds(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
@@ -367,6 +385,211 @@ cleanup:
     return major;
 }
 
+static gss_buffer_desc radiusAvpKrbAttr = {
+    sizeof("urn:authdata-radius-avp") - 1, "urn:authdata-radius-avp"
+};
+
+/*
+ * Unfortunately extracting an AD-KDCIssued authorization data element
+ * is pretty implementation-dependent. It's not possible to verify the
+ * signature ourselves because the ticket session key is not exposed
+ * outside GSS. In an ideal world, all AD-KDCIssued elements would be
+ * verified by the Kerberos library and authentication would fail if
+ * verification failed. We're not quite there yet and as a result have
+ * to go through some hoops to get this to work. The alternative would
+ * be to sign the authorization data with our long-term key, but it
+ * seems a pity to compromise the design because of current implementation
+ * limitations.
+ *
+ * (Specifically, the hoops involve a libkrb5 authorisation data plugin
+ * that exposes the verified and serialised attribute context through
+ * the Kerberos GSS mechanism's naming extensions API.)
+ */
+static OM_uint32
+defrostAttrContext(OM_uint32 *minor,
+                   gss_name_t glueName,
+                   gss_name_t mechName)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc authData = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc authDataDisplay = GSS_C_EMPTY_BUFFER;
+    int more = -1;
+    int authenticated, complete;
+
+    major = gssGetNameAttribute(minor, glueName, &radiusAvpKrbAttr,
+                                &authenticated, &complete,
+                                &authData, &authDataDisplay, &more);
+    if (major == GSS_S_COMPLETE) {
+        if (authenticated == 0)
+            major = GSS_S_BAD_NAME;
+        else
+            major = gssEapImportAttrContext(minor, &authData, mechName);
+    } else if (major == GSS_S_UNAVAILABLE) {
+        major = GSS_S_COMPLETE;
+    }
+
+    gss_release_buffer(&tmpMinor, &authData);
+    gss_release_buffer(&tmpMinor, &authDataDisplay);
+
+    return major;
+}
+
+/*
+ * Convert a mechanism glue to an EAP mechanism name by displaying and
+ * importing it. This also handles the RADIUS attributes.
+ */
+OM_uint32
+gssEapGlueToMechName(OM_uint32 *minor,
+                     gss_name_t glueName,
+                     gss_name_t *pMechName)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+
+    *pMechName = GSS_C_NO_NAME;
+
+    major = gssDisplayName(minor, glueName, &nameBuf, NULL);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
+                             pMechName);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = defrostAttrContext(minor, glueName, *pMechName);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
+    if (GSS_ERROR(major)) {
+        gssReleaseName(&tmpMinor, pMechName);
+        *pMechName = GSS_C_NO_NAME;
+    }
+
+    gss_release_buffer(&tmpMinor, &nameBuf);
+
+    return major;
+}
+
+/*
+ * Convert an EAP mechanism name to a mechanism glue name by displaying
+ * and importing it.
+ */
+OM_uint32
+gssEapMechToGlueName(OM_uint32 *minor,
+                     gss_name_t mechName,
+                     gss_name_t *pGlueName)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+
+    *pGlueName = GSS_C_NO_NAME;
+
+    major = gssEapDisplayName(minor, mechName, &nameBuf, NULL);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
+                          pGlueName);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
+    gss_release_buffer(&tmpMinor, &nameBuf);
+
+    return major;
+}
+
+/*
+ * Suck out the analgous elements of a Kerberos GSS context into an EAP
+ * one so that the application doesn't know the difference.
+ */
+OM_uint32
+gssEapReauthComplete(OM_uint32 *minor,
+                    gss_ctx_id_t ctx,
+                    gss_cred_id_t cred,
+                    const gss_OID mech,
+                    OM_uint32 timeRec)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_set_t keyData = GSS_C_NO_BUFFER_SET;
+
+    if (!oidEqual(mech, gss_mech_krb5)) {
+        major = GSS_S_BAD_MECH;
+        goto cleanup;
+    }
+
+    /* Get the raw subsession key and encryptino type*/
+    major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
+                                      GSS_C_INQ_SSPI_SESSION_KEY, &keyData);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    {
+        gss_OID_desc oid;
+        int suffix;
+
+        oid.length = keyData->elements[1].length;
+        oid.elements = keyData->elements[1].value;
+
+        /* GSS_KRB5_SESSION_KEY_ENCTYPE_OID */
+        major = decomposeOid(minor,
+                             "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x04",
+                             10, &oid, &suffix);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        ctx->encryptionType = suffix;
+    }
+
+    {
+        krb5_context krbContext = NULL;
+        krb5_keyblock key;
+
+        GSSEAP_KRB_INIT(&krbContext);
+
+        KRB_KEY_LENGTH(&key) = keyData->elements[0].length;
+        KRB_KEY_DATA(&key)   = keyData->elements[0].value;
+        KRB_KEY_TYPE(&key)   = ctx->encryptionType;
+
+        *minor = krb5_copy_keyblock_contents(krbContext,
+                                             &key, &ctx->rfc3961Key);
+        if (*minor != 0) {
+            major = GSS_S_FAILURE;
+            goto cleanup;
+        }
+    }
+
+    major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                      &ctx->checksumType);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (timeRec != GSS_C_INDEFINITE)
+        ctx->expiryTime = time(NULL) + timeRec;
+
+    /* Initialize our sequence state */
+    major = sequenceInit(minor,
+                         &ctx->seqState, ctx->recvSeq,
+                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
+                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
+                         TRUE);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = GSS_S_COMPLETE;
+
+cleanup:
+    gss_release_buffer_set(&tmpMinor, &keyData);
+
+    return major;
+}
+
+/*
+ * The remainder of this file consists of wrappers so we can call into the
+ * mechanism glue without calling ourselves.
+ */
 static OM_uint32
 (*gssInitSecContextNext)(OM_uint32 *,
                          gss_cred_id_t,
@@ -611,196 +834,4 @@ gssGetNameAttribute(OM_uint32 *minor,
 
     return gssGetNameAttributeNext(minor, name, attr, authenticated, complete,
                                    value, display_value, more);
-}
-
-static gss_buffer_desc radiusAvpKrbAttr = {
-    sizeof("urn:authdata-radius-avp") - 1, "urn:authdata-radius-avp"
-};
-
-/*
- * Unfortunately extracting an AD-KDCIssued authorization data element
- * is pretty implementation-dependent. It's not possible to verify the
- * signature ourselves because the ticket session key is not exposed
- * outside GSS. In an ideal world, all AD-KDCIssued elements would be
- * verified by the Kerberos library and authentication would fail if
- * verification failed. We're not quite there yet and as a result have
- * to go through some hoops to get this to work. The alternative would
- * be to sign the authorization data with our long-term key, but it
- * seems a pity to compromise the design because of current implementation
- * limitations.
- *
- * (Specifically, the hoops involve a libkrb5 authorisation data plugin
- * that exposes the verified and serialised attribute context through
- * the Kerberos GSS mechanism's naming extensions API.)
- */
-static OM_uint32
-defrostAttrContext(OM_uint32 *minor,
-                   gss_name_t glueName,
-                   gss_name_t mechName)
-{
-    OM_uint32 major, tmpMinor;
-    gss_buffer_desc authData = GSS_C_EMPTY_BUFFER;
-    gss_buffer_desc authDataDisplay = GSS_C_EMPTY_BUFFER;
-    int more = -1;
-    int authenticated, complete;
-
-    major = gssGetNameAttribute(minor, glueName, &radiusAvpKrbAttr,
-                                &authenticated, &complete,
-                                &authData, &authDataDisplay, &more);
-    if (major == GSS_S_COMPLETE) {
-        if (authenticated == 0)
-            major = GSS_S_BAD_NAME;
-        else
-            major = gssEapImportAttrContext(minor, &authData, mechName);
-    } else if (major == GSS_S_UNAVAILABLE) {
-        major = GSS_S_COMPLETE;
-    }
-
-    gss_release_buffer(&tmpMinor, &authData);
-    gss_release_buffer(&tmpMinor, &authDataDisplay);
-
-    return major;
-}
-
-OM_uint32
-gssEapGlueToMechName(OM_uint32 *minor,
-                     gss_name_t glueName,
-                     gss_name_t *pMechName)
-{
-    OM_uint32 major, tmpMinor;
-    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-
-    *pMechName = GSS_C_NO_NAME;
-
-    major = gssDisplayName(minor, glueName, &nameBuf, NULL);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
-                             pMechName);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = defrostAttrContext(minor, glueName, *pMechName);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-cleanup:
-    if (GSS_ERROR(major)) {
-        gssReleaseName(&tmpMinor, pMechName);
-        *pMechName = GSS_C_NO_NAME;
-    }
-
-    gss_release_buffer(&tmpMinor, &nameBuf);
-
-    return major;
-}
-
-OM_uint32
-gssEapMechToGlueName(OM_uint32 *minor,
-                     gss_name_t mechName,
-                     gss_name_t *pGlueName)
-{
-    OM_uint32 major, tmpMinor;
-    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-
-    *pGlueName = GSS_C_NO_NAME;
-
-    major = gssEapDisplayName(minor, mechName, &nameBuf, NULL);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gssImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
-                          pGlueName);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-cleanup:
-    gss_release_buffer(&tmpMinor, &nameBuf);
-
-    return major;
-}
-
-/*
- * Suck out the analgous elements of a Kerberos GSS context into an EAP
- * one so that the application doesn't know the difference.
- */
-OM_uint32
-gssEapReauthComplete(OM_uint32 *minor,
-                    gss_ctx_id_t ctx,
-                    gss_cred_id_t cred,
-                    const gss_OID mech,
-                    OM_uint32 timeRec)
-{
-    OM_uint32 major, tmpMinor;
-    gss_buffer_set_t keyData = GSS_C_NO_BUFFER_SET;
-
-    if (!oidEqual(mech, gss_mech_krb5)) {
-        major = GSS_S_BAD_MECH;
-        goto cleanup;
-    }
-
-    /* Get the raw subsession key and encryptino type*/
-    major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
-                                      GSS_C_INQ_SSPI_SESSION_KEY, &keyData);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    {
-        gss_OID_desc oid;
-        int suffix;
-
-        oid.length = keyData->elements[1].length;
-        oid.elements = keyData->elements[1].value;
-
-        /* GSS_KRB5_SESSION_KEY_ENCTYPE_OID */
-        major = decomposeOid(minor,
-                             "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x04",
-                             10, &oid, &suffix);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        ctx->encryptionType = suffix;
-    }
-
-    {
-        krb5_context krbContext = NULL;
-        krb5_keyblock key;
-
-        GSSEAP_KRB_INIT(&krbContext);
-
-        KRB_KEY_LENGTH(&key) = keyData->elements[0].length;
-        KRB_KEY_DATA(&key)   = keyData->elements[0].value;
-        KRB_KEY_TYPE(&key)   = ctx->encryptionType;
-
-        *minor = krb5_copy_keyblock_contents(krbContext,
-                                             &key, &ctx->rfc3961Key);
-        if (*minor != 0) {
-            major = GSS_S_FAILURE;
-            goto cleanup;
-        }
-    }
-
-    major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
-                                      &ctx->checksumType);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    if (timeRec != GSS_C_INDEFINITE)
-        ctx->expiryTime = time(NULL) + timeRec;
-
-    major = sequenceInit(minor,
-                         &ctx->seqState, ctx->recvSeq,
-                         ((ctx->gssFlags & GSS_C_REPLAY_FLAG) != 0),
-                         ((ctx->gssFlags & GSS_C_SEQUENCE_FLAG) != 0),
-                         TRUE);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = GSS_S_COMPLETE;
-
-cleanup:
-    gss_release_buffer_set(&tmpMinor, &keyData);
-
-    return major;
 }
