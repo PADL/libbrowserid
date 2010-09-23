@@ -500,7 +500,7 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
                                krbInitiator, mech, timeRec);
     }
 
-    ctx->gssFlags = gssFlags & ~(GSS_C_DCE_STYLE);
+    ctx->gssFlags = gssFlags;
 
     gssReleaseName(&tmpMinor, &krbInitiator);
 

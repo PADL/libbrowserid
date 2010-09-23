@@ -293,7 +293,7 @@ unwrapStream(OM_uint32 *minor,
 
     assert(toktype == TOK_TYPE_WRAP);
 
-    if (toktype != TOK_TYPE_WRAP || (ctx->gssFlags & GSS_C_DCE_STYLE)) {
+    if (toktype != TOK_TYPE_WRAP) {
         code = EINVAL;
         goto cleanup;
     }
