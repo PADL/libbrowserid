@@ -622,8 +622,12 @@ static gss_buffer_desc radiusAvpKrbAttr = {
  * be to sign the authorization data with our long-term key, but it
  * seems a pity to compromise the design because of current implementation
  * limitations.
+ *
+ * (Specifically, the hoops involve a libkrb5 authorisation data plugin
+ * that exposes the verified and serialised attribute context through
+ * the Kerberos GSS mechanism's naming extensions API.)
  */
-OM_uint32
+static OM_uint32
 defrostAttrContext(OM_uint32 *minor,
                    gss_name_t glueName,
                    gss_name_t mechName)
