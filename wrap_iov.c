@@ -55,6 +55,27 @@
 
 #include "gssapiP_eap.h"
 
+unsigned char
+rfc4121Flags(gss_ctx_id_t ctx, int receiving)
+{
+    unsigned char flags;
+    int isAcceptor;
+
+    isAcceptor = !CTX_IS_INITIATOR(ctx);
+    if (receiving)
+        isAcceptor = !isAcceptor;
+
+    flags = 0;
+    if (isAcceptor)
+        flags |= TOK_FLAG_SENDER_IS_ACCEPTOR;
+
+    if ((ctx->flags & CTX_FLAG_KRB_REAUTH_GSS) &&
+        (ctx->gssFlags & GSS_C_MUTUAL_FLAG))
+        flags |= TOK_FLAG_ACCEPTOR_SUBKEY;
+
+    return flags;
+}
+
 OM_uint32
 gssEapWrapOrGetMIC(OM_uint32 *minor,
                    gss_ctx_id_t ctx,
@@ -68,7 +89,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     gss_iov_buffer_t header;
     gss_iov_buffer_t padding;
     gss_iov_buffer_t trailer;
-    unsigned char acceptorFlag;
+    unsigned char flags;
     unsigned char *outbuf = NULL;
     unsigned char *tbuf = NULL;
     int keyUsage;
@@ -82,23 +103,16 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    acceptorFlag = CTX_IS_INITIATOR(ctx) ? 0 : TOK_FLAG_SENDER_IS_ACCEPTOR;
+    flags = rfc4121Flags(ctx, FALSE);
 
-    switch (toktype) {
-    case TOK_TYPE_WRAP:
+    if (toktype == TOK_TYPE_WRAP) {
         keyUsage = CTX_IS_INITIATOR(ctx)
                    ? KEY_USAGE_INITIATOR_SEAL
                    : KEY_USAGE_ACCEPTOR_SEAL;
-        break;
-    case TOK_TYPE_GSS_CB:
-        keyUsage = KEY_USAGE_CHANNEL_BINDINGS;
-        break;
-    case TOK_TYPE_MIC:
-    default:
+    } else {
         keyUsage = CTX_IS_INITIATOR(ctx)
                    ? KEY_USAGE_INITIATOR_SIGN
                    : KEY_USAGE_ACCEPTOR_SIGN;
-        break;
     }
 
     gssEapIovMessageLength(iov, iov_count, &dataLen, &assocDataLen);
@@ -177,9 +191,8 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         /* TOK_ID */
         store_uint16_be((uint16_t)toktype, outbuf);
         /* flags */
-        outbuf[2] = (acceptorFlag
-                     | (conf_req_flag ? TOK_FLAG_WRAP_CONFIDENTIAL : 0)
-                     | (0 ? TOK_FLAG_ACCEPTOR_SUBKEY : 0));
+        outbuf[2] = flags
+                     | (conf_req_flag ? TOK_FLAG_WRAP_CONFIDENTIAL : 0);
         /* filler */
         outbuf[3] = 0xFF;
         /* EC */
@@ -251,8 +264,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         /* TOK_ID */
         store_uint16_be((uint16_t)toktype, outbuf);
         /* flags */
-        outbuf[2] = (acceptorFlag
-                     | (0 ? TOK_FLAG_ACCEPTOR_SUBKEY : 0));
+        outbuf[2] = flags;
         /* filler */
         outbuf[3] = 0xFF;
         if (toktype == TOK_TYPE_WRAP) {
@@ -276,8 +288,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         if (code != 0)
             goto cleanup;
 
-        if (toktype != TOK_TYPE_GSS_CB)
-            ctx->sendSeq++;
+        ctx->sendSeq++;
 
         if (toktype == TOK_TYPE_WRAP) {
             /* Fix up EC field */
@@ -285,7 +296,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
             /* Fix up RRC field */
             store_uint16_be(rrc, outbuf + 6);
         }
-    } else if (toktype == TOK_TYPE_MIC || toktype == TOK_TYPE_GSS_CB) {
+    } else if (toktype == TOK_TYPE_MIC) {
         trailer = NULL;
         goto wrap_with_checksum;
     } else if (toktype == TOK_TYPE_DELETE_CONTEXT) {

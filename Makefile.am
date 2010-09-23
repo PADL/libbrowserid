@@ -1,21 +1,21 @@
 AUTOMAKE_OPTIONS = foreign
 
 gssdir = $(libdir)/gss
+gss_LTLIBRARIES = mech_eap.la
 
-gss_LTLIBRARIES = libmech_eap.la
+mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\"
+mech_eap_la_CFLAGS   = -g -Wall -fno-strict-aliasing \
+			@EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
+mech_eap_la_CXXFLAGS = -g -Wall \
+			@EAP_CFLAGS@ @KRB5_CFLAGS@ @SHIBSP_CXXFLAGS@ \
+			@SHIBRESOLVER_CXXFLAGS@ @TARGET_CFLAGS@
+mech_eap_la_LDFLAGS  = -avoid-version -module \
+			-export-symbols mech_eap.exports -no-undefined \
+			@EAP_LDFLAGS@ @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
+mech_eap_la_LIBADD   = @EAP_LIBS@ @KRB5_LIBS@ @SHIBSP_LIBS@ \
+		       @SHIBRESOLVER_LIBS@ -lfreeradius-client
 
-libmech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\"
-libmech_eap_la_CFLAGS   = -g -Wall -fno-strict-aliasing \
-			  @EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
-libmech_eap_la_CXXFLAGS = -g -Wall \
-			  @EAP_CFLAGS@ @KRB5_CFLAGS@ @SHIBSP_CXXFLAGS@ \
-			  @SHIBRESOLVER_CXXFLAGS@ @TARGET_CFLAGS@
-libmech_eap_la_LDFLAGS  = -export-symbols mech_eap.exports -version-info 0:0:0 \
-			  -no-undefined \
-			  @EAP_LDFLAGS@ @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
-libmech_eap_la_LIBADD   = @EAP_LIBS@ @KRB5_LIBS@ @SHIBSP_LIBS@ @SHIBRESOLVER_LIBS@ -lfreeradius-client
-
-libmech_eap_la_SOURCES =    			\
+mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
 	acquire_cred.c				\
 	acquire_cred_with_password.c		\
@@ -81,3 +81,16 @@ libmech_eap_la_SOURCES =    			\
 	wrap_iov_length.c			\
 	wrap_size_limit.c
 
+if GSSEAP_ENABLE_REAUTH
+mech_eap_la_SOURCES += util_reauth.c
+
+krb5pluginsdir = $(libdir)/krb5/plugins/authdata
+krb5plugins_LTLIBRARIES = radius_ad.la
+
+radius_ad_la_CFLAGS  = -g -Wall -fno-strict-aliasing \
+			  @EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
+radius_ad_la_LDFLAGS = -avoid-version -module \
+		       -export-symbols radius_ad.exports -no-undefined
+radius_ad_la_LIBADD  = @KRB5_LIBS@
+radius_ad_la_SOURCES = util_adshim.c
+endif

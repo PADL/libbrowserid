@@ -80,8 +80,8 @@ gssEapWrapIovLength(OM_uint32 *minor,
     if (qop_req != GSS_C_QOP_DEFAULT)
         return GSS_S_FAILURE;
 
-    if (!CTX_IS_ESTABLISHED(ctx))
-        return GSS_S_NO_CONTEXT;
+    if (ctx->encryptionType == ENCTYPE_NULL)
+        return GSS_S_UNAVAILABLE;
 
     GSSEAP_KRB_INIT(&krbContext);
 

@@ -81,12 +81,14 @@ gssEapExportSecContext(OM_uint32 *minor,
      * contexts.
      */
     if (!CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) {
+        assert((ctx->flags & CTX_FLAG_KRB_REAUTH_GSS) == 0);
+
         major = gssEapExportPartialContext(minor, ctx, &partialCtx);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
-    length  = 16;                               /* version, state, flags, etc */
+    length  = 16;                               /* version, state, flags, */
     length += 4 + ctx->mechanismUsed->length;   /* mechanismUsed */
     length += 12 + key.length;                  /* rfc3961Key.value */
     length += 4 + initiatorName.length;         /* initiatorName.value */

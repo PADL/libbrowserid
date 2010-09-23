@@ -42,6 +42,7 @@
 
 /* GSS includes */
 #include <gssapi/gssapi.h>
+#include <gssapi/gssapi_krb5.h>
 #include <gssapi/gssapi_ext.h>
 #include "gssapi_eap.h"
 
@@ -91,17 +92,26 @@ struct gss_cred_id_struct {
     gss_OID_set mechanisms;
     time_t expiryTime;
     char *radiusConfigFile;
+#ifdef GSSEAP_ENABLE_REAUTH
+    krb5_ccache krbCredCache;
+    gss_cred_id_t krbCred;
+#endif
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
+#define CTX_FLAG_KRB_REAUTH_GSS             0x00000002
 
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
 enum gss_eap_state {
     EAP_STATE_IDENTITY = 0,
     EAP_STATE_AUTHENTICATE,
-    EAP_STATE_GSS_CHANNEL_BINDINGS,
-    EAP_STATE_ESTABLISHED
+    EAP_STATE_EXTENSIONS_REQ,
+    EAP_STATE_EXTENSIONS_RESP,
+    EAP_STATE_ESTABLISHED,
+#ifdef GSSEAP_ENABLE_REAUTH
+    EAP_STATE_KRB_REAUTH_GSS
+#endif
 };
 
 #define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == EAP_STATE_ESTABLISHED)
@@ -153,6 +163,10 @@ struct gss_ctx_id_struct {
         #define initiatorCtx         ctxU.initiator
         struct gss_eap_acceptor_ctx  acceptor;
         #define acceptorCtx          ctxU.acceptor
+#ifdef GSSEAP_ENABLE_REAUTH
+        gss_ctx_id_t                 kerberos;
+        #define kerberosCtx          ctxU.kerberos
+#endif
     } ctxU;
 };
 
@@ -193,5 +207,16 @@ gssEapWrapIovLength(OM_uint32 *minor,
                     int *conf_state,
                     gss_iov_buffer_desc *iov,
                     int iov_count);
+OM_uint32
+gssEapWrap(OM_uint32 *minor,
+           gss_ctx_id_t ctx,
+           int conf_req_flag,
+           gss_qop_t qop_req,
+           gss_buffer_t input_message_buffer,
+           int *conf_state,
+           gss_buffer_t output_message_buffer);
+
+unsigned char
+rfc4121Flags(gss_ctx_id_t ctx, int receiving);
 
 #endif /* _GSSAPIP_EAP_H_ */

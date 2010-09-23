@@ -106,6 +106,11 @@ gssEapReleaseContext(OM_uint32 *minor,
 
     gssEapKerberosInit(&tmpMinor, &krbContext);
 
+#ifdef GSSEAP_ENABLE_REAUTH
+    if (ctx->flags & CTX_FLAG_KRB_REAUTH_GSS) {
+        gssDeleteSecContext(&tmpMinor, &ctx->kerberosCtx, GSS_C_NO_BUFFER);
+    } else
+#endif
     if (CTX_IS_INITIATOR(ctx)) {
         releaseInitiatorContext(&ctx->initiatorCtx);
     } else {
@@ -156,7 +161,7 @@ OM_uint32
 gssEapVerifyToken(OM_uint32 *minor,
                   gss_ctx_id_t ctx,
                   const gss_buffer_t inputToken,
-                  enum gss_eap_token_type tokenType,
+                  enum gss_eap_token_type *actualToken,
                   gss_buffer_t innerInputToken)
 {
     OM_uint32 major;
@@ -174,9 +179,9 @@ gssEapVerifyToken(OM_uint32 *minor,
     }
 
     major = verifyTokenHeader(minor, oid, &bodySize, &p,
-                              inputToken->length, tokenType);
+                              inputToken->length, actualToken);
     if (GSS_ERROR(major))
-        return GSS_S_DEFECTIVE_TOKEN;
+        return major;
 
     if (ctx->mechanismUsed == GSS_C_NO_OID) {
         if (!gssEapIsConcreteMechanismOid(oid))

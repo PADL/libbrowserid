@@ -88,7 +88,9 @@ enum gss_eap_token_type {
     TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
     TOK_TYPE_EAP_RESP                = 0x0601,  /* draft-howlett-eap-gss */
     TOK_TYPE_EAP_REQ                 = 0x0602,  /* draft-howlett-eap-gss */
-    TOK_TYPE_GSS_CB                  = 0x0603,  /* draft-howlett-eap-gss */
+    TOK_TYPE_EXT_REQ                 = 0x0603,  /* draft-howlett-eap-gss */
+    TOK_TYPE_EXT_RESP                = 0x0604,  /* to be specified */
+    TOK_TYPE_GSS_REAUTH              = 0x0605,  /* to be specified */
 };
 
 #define EAP_EXPORT_CONTEXT_V1           1
@@ -169,7 +171,7 @@ OM_uint32
 gssEapVerifyToken(OM_uint32 *minor,
                   gss_ctx_id_t ctx,
                   const gss_buffer_t inputToken,
-                  enum gss_eap_token_type tokenType,
+                  enum gss_eap_token_type *tokenType,
                   gss_buffer_t innerInputToken);
 
 OM_uint32
@@ -396,7 +398,7 @@ verifyTokenHeader(OM_uint32 *minor,
                   size_t *body_size,
                   unsigned char **buf_in,
                   size_t toksize_in,
-                  enum gss_eap_token_type tok_type);
+                  enum gss_eap_token_type *ret_tok_type);
 
 /* Helper macros */
 #define GSSEAP_CALLOC(count, size)      (calloc((count), (size)))
@@ -547,10 +549,20 @@ krbDataToGssBuffer(krb5_data *data, gss_buffer_t buffer)
     buffer->length = data->length;
 }
 
+static inline void
+gssBufferToKrbData(gss_buffer_t buffer, krb5_data *data)
+{
+    data->data = (char *)buffer->value;
+    data->length = buffer->length;
+}
+
 #ifdef __cplusplus
 }
 #endif
 
 #include "util_attr.h"
+#ifdef GSSEAP_ENABLE_REAUTH
+#include "util_reauth.h"
+#endif
 
 #endif /* _UTIL_H_ */

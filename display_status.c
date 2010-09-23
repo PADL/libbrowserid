@@ -40,7 +40,7 @@ gss_display_status(OM_uint32 *minor,
                    OM_uint32 *message_context,
                    gss_buffer_t status_string)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     krb5_context krbContext;
     const char *errMsg;
 

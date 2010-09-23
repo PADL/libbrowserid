@@ -284,6 +284,11 @@ gssEapInit(void)
 
     major = gssEapLocalAttrProviderInit(&minor);
     assert(major == GSS_S_COMPLETE);
+
+#ifdef GSSEAP_ENABLE_REAUTH
+    major = gssEapReauthInitialize(&minor);
+    assert(major == GSS_S_COMPLETE);
+#endif
 }
 
 static void
