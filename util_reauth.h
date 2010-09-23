@@ -91,6 +91,16 @@ gssKrbExtractAuthzDataFromSecContext(OM_uint32 *minor,
                                      gss_buffer_t ad_data);
 
 OM_uint32
+gssStoreCred(OM_uint32 *minor,
+             const gss_cred_id_t input_cred_handle,
+             gss_cred_usage_t input_usage,
+             const gss_OID desired_mech,
+             OM_uint32 overwrite_cred,
+             OM_uint32 default_cred,
+             gss_OID_set *elements_stored,
+             gss_cred_usage_t *cred_usage_stored);
+
+OM_uint32
 gssEapMakeReauthCreds(OM_uint32 *minor,
                       gss_ctx_id_t ctx,
                       gss_cred_id_t cred,

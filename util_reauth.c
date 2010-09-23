@@ -398,6 +398,16 @@ static OM_uint32 (*gssKrbExtractAuthzDataFromSecContextNext)(
     int ad_type,
     gss_buffer_t ad_data);
 
+static OM_uint32 (*gssStoreCredNext)(
+    OM_uint32 *minor,
+    const gss_cred_id_t input_cred_handle,
+    gss_cred_usage_t input_usage,
+    const gss_OID desired_mech,
+    OM_uint32 overwrite_cred,
+    OM_uint32 default_cred,
+    gss_OID_set *elements_stored,
+    gss_cred_usage_t *cred_usage_stored);
+
 #define NEXT_SYMBOL(local, global)  ((local) = dlsym(RTLD_NEXT, (global)))
 
 OM_uint32
@@ -412,6 +422,7 @@ gssEapReauthInitialize(OM_uint32 *minor)
     NEXT_SYMBOL(gssDisplayNameNext,                       "gss_display_name");
     NEXT_SYMBOL(gssImportNameNext,                        "gss_import_name");
     NEXT_SYMBOL(gssKrbExtractAuthzDataFromSecContextNext, "gsskrb5_extract_authz_data_from_sec_context");
+    NEXT_SYMBOL(gssStoreCredNext,                         "gss_store_cred");
 
     return GSS_S_COMPLETE;
 }
@@ -542,6 +553,24 @@ gssKrbExtractAuthzDataFromSecContext(OM_uint32 *minor,
 
     return gssKrbExtractAuthzDataFromSecContextNext(minor, ctx,
                                                     ad_type, ad_data);
+}
+
+OM_uint32
+gssStoreCred(OM_uint32 *minor,
+             const gss_cred_id_t input_cred_handle,
+             gss_cred_usage_t input_usage,
+             const gss_OID desired_mech,
+             OM_uint32 overwrite_cred,
+             OM_uint32 default_cred,
+             gss_OID_set *elements_stored,
+             gss_cred_usage_t *cred_usage_stored)
+{
+    if (gssStoreCredNext == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssStoreCredNext(minor, input_cred_handle, input_usage,
+                            desired_mech, overwrite_cred, default_cred,
+                            elements_stored, cred_usage_stored);
 }
 
 OM_uint32
