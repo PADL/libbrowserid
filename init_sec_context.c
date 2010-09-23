@@ -428,7 +428,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
         ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
         major = GSS_S_CONTINUE_NEEDED;
-        ctx->state = EAP_STATE_GSS_CHANNEL_BINDINGS;
+        ctx->state = EAP_STATE_EXTENSIONS_REQ;
     } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
         major = GSS_S_DEFECTIVE_CREDENTIAL;
     } else if (code == 0 && initialContextToken) {
@@ -462,59 +462,28 @@ cleanup:
 }
 
 static OM_uint32
-eapGssSmInitGssChannelBindings(OM_uint32 *minor,
-                               gss_cred_id_t cred,
-                               gss_ctx_id_t ctx,
-                               gss_name_t target,
-                               gss_OID mech,
-                               OM_uint32 reqFlags,
-                               OM_uint32 timeReq,
-                               gss_channel_bindings_t chanBindings,
-                               gss_buffer_t inputToken,
-                               gss_buffer_t outputToken)
+initGssChannelBindings(OM_uint32 *minor,
+                       gss_ctx_id_t ctx,
+                       gss_channel_bindings_t chanBindings,
+                       gss_buffer_t outputToken)
 {
     OM_uint32 major;
-    gss_iov_buffer_desc iov[2];
-    gss_buffer_desc buf;
+    gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
 
-    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
-    iov[0].buffer.length = 0;
-    iov[0].buffer.value = NULL;
-
-    iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER | GSS_IOV_BUFFER_FLAG_ALLOCATE;
-    iov[1].buffer.length = 0;
-    iov[1].buffer.value = NULL;
 
     if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
-        iov[0].buffer = chanBindings->application_data;
+        buffer = chanBindings->application_data;
 
-    major = gssEapWrapOrGetMIC(minor, ctx, FALSE, FALSE, iov, 2,
-                               TOK_TYPE_GSS_CB);
+    major = gssEapWrap(minor, ctx, TRUE, GSS_C_QOP_DEFAULT,
+                       &buffer, NULL, outputToken);
     if (GSS_ERROR(major))
-        goto cleanup;
+        return major;                       
 
-    /* Skip past token ID */
-    assert(iov[1].buffer.length > 2);
-    assert(load_uint16_be(iov[1].buffer.value) == TOK_TYPE_GSS_CB);
-
-    buf.length = iov[1].buffer.length - 2;
-    buf.value = (unsigned char *)iov[1].buffer.value + 2;
-
-    major = duplicateBuffer(minor, &buf, outputToken);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = GSS_S_CONTINUE_NEEDED;
-    ctx->state = EAP_STATE_KRB_REAUTH_CRED;
-
-cleanup:
-    gssEapReleaseIov(iov, 2);
-
-    return major;
+    return GSS_S_CONTINUE_NEEDED;
 }
 
 static OM_uint32
-eapGssSmInitKrbReauthCred(OM_uint32 *minor,
+eapGssSmInitExtensionsReq(OM_uint32 *minor,
                           gss_cred_id_t cred,
                           gss_ctx_id_t ctx,
                           gss_name_t target,
@@ -524,6 +493,38 @@ eapGssSmInitKrbReauthCred(OM_uint32 *minor,
                           gss_channel_bindings_t chanBindings,
                           gss_buffer_t inputToken,
                           gss_buffer_t outputToken)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc cbToken = GSS_C_EMPTY_BUFFER;
+
+    major = initGssChannelBindings(minor, ctx, chanBindings, &cbToken);
+    if (GSS_ERROR(major))
+        return major;
+
+    ctx->state = EAP_STATE_EXTENSIONS_RESP;
+
+    major = duplicateBuffer(minor, &cbToken, outputToken);
+    if (GSS_ERROR(major)) {
+        gss_release_buffer(&tmpMinor, &cbToken);
+        return major;
+    }
+
+    gss_release_buffer(&tmpMinor, &cbToken);
+
+    return GSS_S_CONTINUE_NEEDED;
+}
+
+static OM_uint32
+eapGssSmInitExtensionsResp(OM_uint32 *minor,
+                           gss_cred_id_t cred,
+                           gss_ctx_id_t ctx,
+                           gss_name_t target,
+                           gss_OID mech,
+                           OM_uint32 reqFlags,
+                           OM_uint32 timeReq,
+                           gss_channel_bindings_t chanBindings,
+                           gss_buffer_t inputToken,
+                           gss_buffer_t outputToken)
 {
     OM_uint32 major;
 
@@ -642,8 +643,8 @@ static struct gss_eap_initiator_sm {
 } eapGssInitiatorSm[] = {
     { TOK_TYPE_NONE,    TOK_TYPE_EAP_RESP,      eapGssSmInitIdentity            },
     { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP,      eapGssSmInitAuthenticate        },
-    { TOK_TYPE_NONE,    TOK_TYPE_GSS_CB,        eapGssSmInitGssChannelBindings  },
-    { TOK_TYPE_KRB_CRED,TOK_TYPE_NONE,          eapGssSmInitKrbReauthCred       },
+    { TOK_TYPE_NONE,    TOK_TYPE_EXT_REQ,       eapGssSmInitExtensionsReq       },
+    { TOK_TYPE_EXT_RESP,TOK_TYPE_NONE,          eapGssSmInitExtensionsResp      },
     { TOK_TYPE_NONE,    TOK_TYPE_NONE,          eapGssSmInitEstablished         },
     { TOK_TYPE_GSS_REAUTH, TOK_TYPE_GSS_REAUTH, eapGssSmInitGssReauth           },
 };

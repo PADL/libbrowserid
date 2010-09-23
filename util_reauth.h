@@ -101,6 +101,16 @@ gssStoreCred(OM_uint32 *minor,
              gss_cred_usage_t *cred_usage_stored);
 
 OM_uint32
+gssGetNameAttribute(OM_uint32 *minor,
+                    gss_name_t name,
+                    gss_buffer_t attr,
+                    int *authenticated,
+                    int *complete,
+                    gss_buffer_t value,
+                    gss_buffer_t display_value,
+                    int *more);
+
+OM_uint32
 gssEapMakeReauthCreds(OM_uint32 *minor,
                       gss_ctx_id_t ctx,
                       gss_cred_id_t cred,

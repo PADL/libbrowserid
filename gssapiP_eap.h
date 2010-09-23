@@ -104,8 +104,8 @@ struct gss_cred_id_struct {
 enum gss_eap_state {
     EAP_STATE_IDENTITY = 0,
     EAP_STATE_AUTHENTICATE,
-    EAP_STATE_GSS_CHANNEL_BINDINGS,
-    EAP_STATE_KRB_REAUTH_CRED,
+    EAP_STATE_EXTENSIONS_REQ,
+    EAP_STATE_EXTENSIONS_RESP,
     EAP_STATE_ESTABLISHED,
     EAP_STATE_KRB_REAUTH_GSS
 };
@@ -201,6 +201,14 @@ gssEapWrapIovLength(OM_uint32 *minor,
                     int *conf_state,
                     gss_iov_buffer_desc *iov,
                     int iov_count);
+OM_uint32
+gssEapWrap(OM_uint32 *minor,
+           gss_ctx_id_t ctx,
+           int conf_req_flag,
+           gss_qop_t qop_req,
+           gss_buffer_t input_message_buffer,
+           int *conf_state,
+           gss_buffer_t output_message_buffer);
 
 unsigned char
 rfc4121Flags(gss_ctx_id_t ctx, int receiving);

@@ -43,6 +43,9 @@ gss_unwrap(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_iov_buffer_desc iov[2];
 
+    if (!CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_NO_CONTEXT;
+
     iov[0].type = GSS_IOV_BUFFER_TYPE_STREAM;
     iov[0].buffer = *input_message_buffer;
 

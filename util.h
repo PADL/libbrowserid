@@ -88,8 +88,8 @@ enum gss_eap_token_type {
     TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
     TOK_TYPE_EAP_RESP                = 0x0601,  /* draft-howlett-eap-gss */
     TOK_TYPE_EAP_REQ                 = 0x0602,  /* draft-howlett-eap-gss */
-    TOK_TYPE_GSS_CB                  = 0x0603,  /* draft-howlett-eap-gss */
-    TOK_TYPE_KRB_CRED                = 0x0604,  /* to be specified */
+    TOK_TYPE_EXT_REQ                 = 0x0603,  /* draft-howlett-eap-gss */
+    TOK_TYPE_EXT_RESP                = 0x0604,  /* to be specified */
     TOK_TYPE_GSS_REAUTH              = 0x0605,  /* to be specified */
 };
 

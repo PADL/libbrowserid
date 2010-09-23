@@ -326,7 +326,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        ctx->state = EAP_STATE_GSS_CHANNEL_BINDINGS;
+        ctx->state = EAP_STATE_EXTENSIONS_REQ;
     }
 
     major = GSS_S_CONTINUE_NEEDED;
@@ -339,54 +339,41 @@ cleanup:
 }
 
 static OM_uint32
-eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
-                                 gss_ctx_id_t ctx,
-                                 gss_cred_id_t cred,
-                                 gss_buffer_t inputToken,
-                                 gss_channel_bindings_t chanBindings,
-                                 gss_buffer_t outputToken)
+acceptGssChannelBindings(OM_uint32 *minor,
+                         gss_ctx_id_t ctx,
+                         gss_cred_id_t cred,
+                         gss_buffer_t inputToken,
+                         gss_channel_bindings_t chanBindings)
 {
-    OM_uint32 major;
+    OM_uint32 major, tmpMinor;
     gss_iov_buffer_desc iov[2];
 
-    outputToken->length = 0;
-    outputToken->value = NULL;
+    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA | GSS_IOV_BUFFER_FLAG_ALLOCATE;
+    iov[0].buffer.length = 0;
+    iov[0].buffer.value = NULL;
 
-    if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS) {
-        if (inputToken->length < 14) {
-            return GSS_S_DEFECTIVE_TOKEN;
-        }
+    iov[1].type = GSS_IOV_BUFFER_TYPE_STREAM;
+    iov[1].buffer = *inputToken;
 
-        iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
-        iov[0].buffer.length = 0;
-        iov[0].buffer.value = NULL;
+    major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
+                                    iov, 2, TOK_TYPE_WRAP);
+    if (GSS_ERROR(major))
+        return major;
 
-        if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
-            iov[0].buffer = chanBindings->application_data;
-
-        iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER;
-        iov[1].buffer.length = 16;
-        iov[1].buffer.value = (unsigned char *)inputToken->value - 2;
-
-        assert(load_uint16_be(iov[1].buffer.value) == TOK_TYPE_GSS_CB);
-
-        iov[2].type = GSS_IOV_BUFFER_TYPE_TRAILER;
-        iov[2].buffer.length = inputToken->length - 14;
-        iov[2].buffer.value = (unsigned char *)inputToken->value + 14;
-
-        major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
-                                        iov, 3, TOK_TYPE_GSS_CB);
-        if (GSS_ERROR(major))
-            return major;
+    if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS &&
+        !bufferEqual(&iov[0].buffer, &chanBindings->application_data)) {
+        major = GSS_S_BAD_BINDINGS;
+    } else {
+        major = GSS_S_CONTINUE_NEEDED;
     }
 
-    ctx->state = EAP_STATE_KRB_REAUTH_CRED;
+    gss_release_buffer(&tmpMinor, &iov[0].buffer);
 
-    return GSS_S_CONTINUE_NEEDED;
+    return major;
 }
 
 static OM_uint32
-eapGssSmAcceptKrbReauthCred(OM_uint32 *minor,
+eapGssSmAcceptExtensionsReq(OM_uint32 *minor,
                             gss_ctx_id_t ctx,
                             gss_cred_id_t cred,
                             gss_buffer_t inputToken,
@@ -395,11 +382,43 @@ eapGssSmAcceptKrbReauthCred(OM_uint32 *minor,
 {
     OM_uint32 major;
 
-    major = gssEapMakeReauthCreds(minor, ctx, cred, outputToken);
+    outputToken->length = 0;
+    outputToken->value = NULL;
+
+    major = acceptGssChannelBindings(minor, ctx, cred, inputToken,
+                                     chanBindings);
+    if (GSS_ERROR(major))
+        return major;
+
+    ctx->state = EAP_STATE_EXTENSIONS_RESP;
+
+    return GSS_S_CONTINUE_NEEDED;
+}
+
+static OM_uint32
+eapGssSmAcceptExtensionsResp(OM_uint32 *minor,
+                             gss_ctx_id_t ctx,
+                             gss_cred_id_t cred,
+                             gss_buffer_t inputToken,
+                             gss_channel_bindings_t chanBindings,
+                             gss_buffer_t outputToken)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc credsToken = GSS_C_EMPTY_BUFFER;
+
+    major = gssEapMakeReauthCreds(minor, ctx, cred, &credsToken);
     if (GSS_ERROR(major))
         return major;
 
     ctx->state = EAP_STATE_ESTABLISHED;
+
+    major = duplicateBuffer(minor, &credsToken, outputToken);
+    if (GSS_ERROR(major)) {
+        gss_release_buffer(&tmpMinor, &credsToken);
+        return major;
+    }
+
+    gss_release_buffer(&tmpMinor, &credsToken);
 
     return GSS_S_COMPLETE;
 }
@@ -425,39 +444,25 @@ acceptReadyKrb(OM_uint32 *minor,
                const gss_OID mech,
                OM_uint32 timeRec)
 {
-    OM_uint32 major, tmpMinor;
-    gss_buffer_desc authData = GSS_C_EMPTY_BUFFER;
+    OM_uint32 major;
 
     major = gssEapGlueToMechName(minor, initiator, &ctx->initiatorName);
     if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gssKrbExtractAuthzDataFromSecContext(minor, ctx->kerberosCtx,
-                                                 KRB5_AUTHDATA_RADIUS_AVP,
-                                                 &authData);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gssEapImportAttrContext(minor, &authData, ctx->initiatorName);
-    if (GSS_ERROR(major))
-        goto cleanup;
+        return major;
 
     if (cred != GSS_C_NO_CREDENTIAL && cred->name != GSS_C_NO_NAME) {
         major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
         if (GSS_ERROR(major))
-            goto cleanup;
+            return major;
     }
 
     major = gssEapReauthComplete(minor, ctx, cred, mech, timeRec);
     if (GSS_ERROR(major))
-        goto cleanup;
+        return major;
 
     ctx->state = EAP_STATE_ESTABLISHED;
 
-cleanup:
-    gss_release_buffer(&tmpMinor, &authData);
-
-    return major;
+    return GSS_S_COMPLETE;
 }
 
 static OM_uint32
@@ -514,8 +519,8 @@ static struct gss_eap_acceptor_sm {
 } eapGssAcceptorSm[] = {
     { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,    eapGssSmAcceptIdentity           },
     { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,    eapGssSmAcceptAuthenticate       },
-    { TOK_TYPE_GSS_CB,      TOK_TYPE_NONE,       eapGssSmAcceptGssChannelBindings },
-    { TOK_TYPE_NONE,        TOK_TYPE_KRB_CRED,   eapGssSmAcceptKrbReauthCred      },
+    { TOK_TYPE_EXT_REQ,     TOK_TYPE_NONE,       eapGssSmAcceptExtensionsReq      },
+    { TOK_TYPE_NONE,        TOK_TYPE_EXT_RESP,   eapGssSmAcceptExtensionsResp     },
     { TOK_TYPE_NONE,        TOK_TYPE_NONE,       eapGssSmAcceptEstablished        },
     { TOK_TYPE_GSS_REAUTH,  TOK_TYPE_GSS_REAUTH, eapGssSmAcceptGssReauth          },
 };

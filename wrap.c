@@ -41,13 +41,28 @@ gss_wrap(OM_uint32 *minor,
          int *conf_state,
          gss_buffer_t output_message_buffer)
 {
+    if (!CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_NO_CONTEXT;
+
+    return gssEapWrap(minor, ctx, conf_req_flag, qop_req,
+                      input_message_buffer,
+                      conf_state, output_message_buffer);
+}
+
+OM_uint32
+gssEapWrap(OM_uint32 *minor,
+           gss_ctx_id_t ctx,
+           int conf_req_flag,
+           gss_qop_t qop_req,
+           gss_buffer_t input_message_buffer,
+           int *conf_state,
+           gss_buffer_t output_message_buffer)
+{
     OM_uint32 major, tmpMinor;
     gss_iov_buffer_desc iov[4];
     unsigned char *p;
     int i;
 
-    if (!CTX_IS_ESTABLISHED(ctx))
-        return GSS_S_NO_CONTEXT;
 
     iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
     iov[0].buffer.value = NULL;

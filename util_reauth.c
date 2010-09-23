@@ -66,7 +66,7 @@ getAcceptorKey(krb5_context krbContext,
 
     if (cred != GSS_C_NO_CREDENTIAL && cred->name != GSS_C_NO_NAME) {
         code = krb5_kt_get_entry(krbContext, keytab,
-                                 cred->name->krbPrincipal, 0, 
+                                 cred->name->krbPrincipal, 0,
                                  ctx->encryptionType, &ktent);
         if (code != 0)
             goto cleanup;
@@ -104,7 +104,7 @@ cleanup:
         memset(key, 0, sizeof(key));
     }
 
-    return code; 
+    return code;
 }
 
 OM_uint32
@@ -124,10 +124,10 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     krb5_data *ticketData = NULL, *credsData = NULL;
     krb5_creds creds = { 0 };
     krb5_auth_context authContext = NULL;
- 
+
     credBuf->length = 0;
     credBuf->value = NULL;
- 
+
     GSSEAP_KRB_INIT(&krbContext);
 
     code = getAcceptorKey(krbContext, ctx, cred,
@@ -170,7 +170,12 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     authDatum.contents = attrBuf.value;
     authData[0] = &authDatum;
     authData[1] = NULL;
-    enc_part.authorization_data = authData;
+
+    code = krb5_make_authdata_kdc_issued(krbContext, &session,
+                                         ticket.server, authData,
+                                         &enc_part.authorization_data);
+    if (code != 0)
+        goto cleanup;
 
     ticket.enc_part2 = &enc_part;
 
@@ -217,6 +222,7 @@ cleanup:
     gss_release_buffer(minor, &attrBuf);
     krb5_free_data(krbContext, ticketData);
     krb5_auth_con_free(krbContext, authContext);
+    krb5_free_authdata(krbContext, enc_part.authorization_data);
     if (credsData != NULL)
         GSSEAP_FREE(credsData);
 
@@ -408,6 +414,16 @@ static OM_uint32 (*gssStoreCredNext)(
     gss_OID_set *elements_stored,
     gss_cred_usage_t *cred_usage_stored);
 
+static OM_uint32 (*gssGetNameAttributeNext)(
+    OM_uint32 *minor,
+    gss_name_t name,
+    gss_buffer_t attr,
+    int *authenticated,
+    int *complete,
+    gss_buffer_t value,
+    gss_buffer_t display_value,
+    int *more);
+
 #define NEXT_SYMBOL(local, global)  ((local) = dlsym(RTLD_NEXT, (global)))
 
 OM_uint32
@@ -423,6 +439,7 @@ gssEapReauthInitialize(OM_uint32 *minor)
     NEXT_SYMBOL(gssImportNameNext,                        "gss_import_name");
     NEXT_SYMBOL(gssKrbExtractAuthzDataFromSecContextNext, "gsskrb5_extract_authz_data_from_sec_context");
     NEXT_SYMBOL(gssStoreCredNext,                         "gss_store_cred");
+    NEXT_SYMBOL(gssGetNameAttributeNext,                  "gss_get_name_attribute");
 
     return GSS_S_COMPLETE;
 }
@@ -574,6 +591,68 @@ gssStoreCred(OM_uint32 *minor,
 }
 
 OM_uint32
+gssGetNameAttribute(OM_uint32 *minor,
+                    gss_name_t name,
+                    gss_buffer_t attr,
+                    int *authenticated,
+                    int *complete,
+                    gss_buffer_t value,
+                    gss_buffer_t display_value,
+                    int *more)
+{
+    if (gssGetNameAttributeNext == NULL)
+        return GSS_S_UNAVAILABLE;
+
+    return gssGetNameAttributeNext(minor, name, attr, authenticated, complete,
+                                   value, display_value, more);
+}
+
+static gss_buffer_desc radiusAvpKrbAttr = {
+    sizeof("urn:authdata-radius-avp") - 1, "urn:authdata-radius-avp"
+};
+
+/*
+ * Unfortunately extracting an AD-KDCIssued authorization data element
+ * is pretty implementation-dependent. It's not possible to verify the
+ * signature ourselves because the ticket session key is not exposed
+ * outside GSS. In an ideal world, all AD-KDCIssued elements would be
+ * verified by the Kerberos library and authentication would fail if
+ * verification failed. We're not quite there yet and as a result have
+ * to go through some hoops to get this to work. The alternative would
+ * be to sign the authorization data with our long-term key, but it
+ * seems a pity to compromise the design because of current implementation
+ * limitations.
+ */
+OM_uint32
+defrostAttrContext(OM_uint32 *minor,
+                   gss_name_t glueName,
+                   gss_name_t mechName)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc authData = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc authDataDisplay = GSS_C_EMPTY_BUFFER;
+    int more = -1;
+    int authenticated, complete;
+
+    major = gssGetNameAttribute(minor, glueName, &radiusAvpKrbAttr,
+                                &authenticated, &complete,
+                                &authData, &authDataDisplay, &more);
+    if (major == GSS_S_COMPLETE) {
+        if (authenticated == 0)
+            major = GSS_S_BAD_NAME;
+        else
+            major = gssEapImportAttrContext(minor, &authData, mechName);
+    } else if (major == GSS_S_UNAVAILABLE) {
+        major = GSS_S_COMPLETE;
+    }
+
+    gss_release_buffer(&tmpMinor, &authData);
+    gss_release_buffer(&tmpMinor, &authDataDisplay);
+
+    return major;
+}
+
+OM_uint32
 gssEapGlueToMechName(OM_uint32 *minor,
                      gss_name_t glueName,
                      gss_name_t *pMechName)
@@ -592,7 +671,16 @@ gssEapGlueToMechName(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+    major = defrostAttrContext(minor, glueName, *pMechName);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
 cleanup:
+    if (GSS_ERROR(major)) {
+        gssReleaseName(&tmpMinor, pMechName);
+        *pMechName = GSS_C_NO_NAME;
+    }
+
     gss_release_buffer(&tmpMinor, &nameBuf);
 
     return major;
@@ -701,3 +789,4 @@ cleanup:
 
     return major;
 }
+

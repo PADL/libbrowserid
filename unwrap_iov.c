@@ -101,21 +101,14 @@ unwrapToken(OM_uint32 *minor,
 
     flags = rfc4121Flags(ctx, TRUE);
 
-    switch (toktype) {
-    case TOK_TYPE_WRAP:
+    if (toktype == TOK_TYPE_WRAP) {
         keyUsage = !CTX_IS_INITIATOR(ctx)
                    ? KEY_USAGE_INITIATOR_SEAL
                    : KEY_USAGE_ACCEPTOR_SEAL;
-        break;
-    case TOK_TYPE_GSS_CB:
-        keyUsage = KEY_USAGE_CHANNEL_BINDINGS;
-        break;
-    case TOK_TYPE_MIC:
-    default:
+    } else {
         keyUsage = !CTX_IS_INITIATOR(ctx)
                    ? KEY_USAGE_INITIATOR_SIGN
                    : KEY_USAGE_ACCEPTOR_SIGN;
-        break;
     }
 
     gssEapIovMessageLength(iov, iov_count, &dataLen, &assocDataLen);
@@ -213,7 +206,7 @@ unwrapToken(OM_uint32 *minor,
         }
 
         code = sequenceCheck(minor, &ctx->seqState, seqnum);
-    } else if (toktype == TOK_TYPE_MIC || toktype == TOK_TYPE_GSS_CB) {
+    } else if (toktype == TOK_TYPE_MIC) {
         if (load_uint16_be(ptr) != toktype)
             goto defective;
 
@@ -229,8 +222,7 @@ unwrapToken(OM_uint32 *minor,
             *minor = code;
             return GSS_S_BAD_SIG;
         }
-        if (toktype != TOK_TYPE_GSS_CB)
-            code = sequenceCheck(minor, &ctx->seqState, seqnum);
+        code = sequenceCheck(minor, &ctx->seqState, seqnum);
     } else if (toktype == TOK_TYPE_DELETE_CONTEXT) {
         if (load_uint16_be(ptr) != TOK_TYPE_DELETE_CONTEXT)
             goto defective;
@@ -471,9 +463,6 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor,
 {
     OM_uint32 major;
 
-    if (!CTX_IS_ESTABLISHED(ctx))
-        return GSS_S_NO_CONTEXT;
-
     if (ctx->encryptionType == ENCTYPE_NULL)
         return GSS_S_UNAVAILABLE;
 
@@ -496,6 +485,9 @@ gss_unwrap_iov(OM_uint32 *minor,
                gss_iov_buffer_desc *iov,
                int iov_count)
 {
+    if (!CTX_IS_ESTABLISHED(ctx))
+        return GSS_S_NO_CONTEXT;
+
     return gssEapUnwrapOrVerifyMIC(minor, ctx, conf_state, qop_state,
                                    iov, iov_count, TOK_TYPE_WRAP);
 }
