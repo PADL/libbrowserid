@@ -117,7 +117,7 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     krb5_error_code code;
     krb5_context krbContext = NULL;
     krb5_ticket ticket = { 0 };
-    krb5_keyblock session, acceptorKey = { 0 };
+    krb5_keyblock session = { 0 }, acceptorKey = { 0 };
     krb5_enc_tkt_part enc_part = { 0 };
     gss_buffer_desc attrBuf = GSS_C_EMPTY_BUFFER;
     krb5_authdata *authData[2], authDatum = { 0 };
@@ -198,7 +198,8 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    code = krb5_auth_con_setsendsubkey(krbContext, authContext, &ctx->rfc3961Key);
+    code = krb5_auth_con_setsendsubkey(krbContext, authContext,
+                                       &ctx->rfc3961Key);
     if (code != 0)
         goto cleanup;
 
@@ -293,14 +294,18 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    code = krb5_cc_initialize(krbContext, cred->krbCredCache, creds[0]->client);
+    code = krb5_cc_initialize(krbContext, cred->krbCredCache,
+                              creds[0]->client);
     if (code != 0)
         goto cleanup;
 
     for (i = 0; creds[i] != NULL; i++) {
         krb5_creds kcred = *(creds[i]);
 
-        /* Swap in the acceptor name the client asked for so get_credentials() works */
+        /*
+         * Swap in the acceptor name the client asked for so
+         * get_credentials() works
+         */
         if (!isTicketGrantingServiceP(krbContext, kcred.server))
             kcred.server = ctx->acceptorName->krbPrincipal;
 
@@ -393,18 +398,20 @@ static OM_uint32 (*gssKrbExtractAuthzDataFromSecContextNext)(
     int ad_type,
     gss_buffer_t ad_data);
 
+#define NEXT_SYMBOL(local, global)  ((local) = dlsym(RTLD_NEXT, (global)))
+
 OM_uint32
 gssEapReauthInitialize(OM_uint32 *minor)
 {
-    gssInitSecContextNext = dlsym(RTLD_NEXT, "gss_init_sec_context");
-    gssAcceptSecContextNext = dlsym(RTLD_NEXT, "gss_accept_sec_context");
-    gssReleaseCredNext = dlsym(RTLD_NEXT, "gss_release_cred");
-    gssReleaseNameNext = dlsym(RTLD_NEXT, "gss_release_name");
-    gssInquireSecContextByOidNext = dlsym(RTLD_NEXT, "gss_inquire_sec_context_by_oid");
-    gssDeleteSecContextNext = dlsym(RTLD_NEXT, "gss_delete_sec_context");
-    gssDisplayNameNext = dlsym(RTLD_NEXT, "gss_display_name");
-    gssImportNameNext = dlsym(RTLD_NEXT, "gss_import_name");
-    gssKrbExtractAuthzDataFromSecContextNext = dlsym(RTLD_NEXT, "gsskrb5_extract_authz_data_from_sec_context");
+    NEXT_SYMBOL(gssInitSecContextNext,                    "gss_init_sec_context");
+    NEXT_SYMBOL(gssAcceptSecContextNext,                  "gss_accept_sec_context");
+    NEXT_SYMBOL(gssReleaseCredNext,                       "gss_release_cred");
+    NEXT_SYMBOL(gssReleaseNameNext,                       "gss_release_name");
+    NEXT_SYMBOL(gssInquireSecContextByOidNext,            "gss_inquire_sec_context_by_oid");
+    NEXT_SYMBOL(gssDeleteSecContextNext,                  "gss_delete_sec_context");
+    NEXT_SYMBOL(gssDisplayNameNext,                       "gss_display_name");
+    NEXT_SYMBOL(gssImportNameNext,                        "gss_import_name");
+    NEXT_SYMBOL(gssKrbExtractAuthzDataFromSecContextNext, "gsskrb5_extract_authz_data_from_sec_context");
 
     return GSS_S_COMPLETE;
 }
@@ -533,7 +540,8 @@ gssKrbExtractAuthzDataFromSecContext(OM_uint32 *minor,
     if (gssKrbExtractAuthzDataFromSecContextNext == NULL)
         return GSS_S_UNAVAILABLE;
 
-    return gssKrbExtractAuthzDataFromSecContextNext(minor, ctx, ad_type, ad_data);
+    return gssKrbExtractAuthzDataFromSecContextNext(minor, ctx,
+                                                    ad_type, ad_data);
 }
 
 OM_uint32
