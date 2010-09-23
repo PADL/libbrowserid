@@ -271,7 +271,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         pos[0] == EAP_TYPE_IDENTITY) {
         /*
          * XXX TODO do we really need to set User-Name? FreeRADIUS does
-         * not appear to require it.
+         * not require it but some other RADIUS servers might.
          */
         major = addAvpFromBuffer(minor, rh, &send, PW_USER_NAME, 0, &nameBuf);
         if (GSS_ERROR(major))
@@ -416,6 +416,11 @@ eapGssSmAcceptExtensionsResp(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_buffer_desc credsToken = GSS_C_EMPTY_BUFFER;
 
+    /*
+     * If we're built with fast reauthentication enabled, then
+     * fabricate a ticket from the initiator to ourselves.
+     * Otherwise return an empty token.
+     */
 #ifdef GSSEAP_ENABLE_REAUTH
     major = gssEapMakeReauthCreds(minor, ctx, cred, &credsToken);
     if (GSS_ERROR(major))
@@ -526,6 +531,12 @@ gss_accept_sec_context(OM_uint32 *minor,
         goto cleanup;
 
 #ifdef GSSEAP_ENABLE_REAUTH
+    /*
+     * If we're built with fast reauthentication support, it's valid
+     * for an initiator to send a GSS reauthentication token as its
+     * initial context token, causing us to short-circuit the state
+     * machine and process Kerberos GSS messages instead.
+     */
     if (tokType == TOK_TYPE_GSS_REAUTH && initialContextToken) {
         ctx->state = EAP_STATE_KRB_REAUTH_GSS;
     } else

@@ -53,12 +53,11 @@ getAcceptorKey(krb5_context krbContext,
 {
     krb5_error_code code;
     krb5_keytab keytab = NULL;
-    krb5_keytab_entry ktent;
+    krb5_keytab_entry ktent = { 0 };
     krb5_kt_cursor cursor = NULL;
 
     *princ = NULL;
     memset(key, 0, sizeof(*key));
-    memset(&ktent, 0, sizeof(ktent));
 
     code = krb5_kt_default(krbContext, &keytab);
     if (code != 0)
@@ -77,11 +76,10 @@ getAcceptorKey(krb5_context krbContext,
 
         while ((code = krb5_kt_next_entry(krbContext, keytab,
                                           &ktent, &cursor)) == 0) {
-            if (ktent.key.enctype == ctx->encryptionType) {
+            if (ktent.key.enctype == ctx->encryptionType)
                 break;
-            } else {
+            else
                 krb5_free_keytab_entry_contents(krbContext, &ktent);
-            }
         }
     }
 
@@ -95,16 +93,49 @@ cleanup:
         krb5_kt_end_seq_get(krbContext, keytab, &cursor);
     krb5_kt_close(krbContext, keytab);
 
-    if (code != 0) {
-        if (*princ != NULL) {
-            krb5_free_principal(krbContext, *princ);
-            *princ = NULL;
-        }
-        krb5_free_keyblock_contents(krbContext, key),
-        memset(key, 0, sizeof(key));
-    }
+    if (code != 0)
+        krb5_free_keytab_entry_contents(krbContext, &ktent);
 
     return code;
+}
+
+static OM_uint32
+freezeAttrContext(OM_uint32 *minor,
+                  gss_name_t initiatorName,
+                  krb5_const_principal acceptorPrinc,
+                  krb5_keyblock *session,
+                  krb5_authdata ***authdata)
+{
+    OM_uint32 major, tmpMinor;
+    krb5_error_code code;
+    gss_buffer_desc attrBuf = GSS_C_EMPTY_BUFFER;
+    krb5_authdata *authData[2], authDatum = { 0 };
+    krb5_context krbContext;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    major = gssEapExportAttrContext(minor, initiatorName, &attrBuf);
+    if (GSS_ERROR(major))
+        return major;
+
+    authDatum.ad_type = KRB5_AUTHDATA_RADIUS_AVP;
+    authDatum.length = attrBuf.length;
+    authDatum.contents = attrBuf.value;
+    authData[0] = &authDatum;
+    authData[1] = NULL;
+
+    code = krb5_make_authdata_kdc_issued(krbContext, session, acceptorPrinc,
+                                         authData, authdata);
+    if (code != 0) {
+        major = GSS_S_FAILURE;
+        *minor = code;
+    } else {
+        major = GSS_S_COMPLETE;
+    }
+
+    gss_release_buffer(&tmpMinor, &attrBuf);
+
+    return major;
 }
 
 OM_uint32
@@ -119,8 +150,6 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     krb5_ticket ticket = { 0 };
     krb5_keyblock session = { 0 }, acceptorKey = { 0 };
     krb5_enc_tkt_part enc_part = { 0 };
-    gss_buffer_desc attrBuf = GSS_C_EMPTY_BUFFER;
-    krb5_authdata *authData[2], authDatum = { 0 };
     krb5_data *ticketData = NULL, *credsData = NULL;
     krb5_creds creds = { 0 };
     krb5_auth_context authContext = NULL;
@@ -146,6 +175,10 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
 
     enc_part.flags = TKT_FLG_INITIAL;
 
+    /*
+     * Generate a random session key to place in the ticket and
+     * sign the "KDC-Issued" authorization data element.
+     */
     code = krb5_c_make_random_key(krbContext, ctx->encryptionType,
                                   &session);
     if (code != 0)
@@ -160,21 +193,9 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
                              : KRB5_INT32_MAX;
     enc_part.times.renew_till = 0;
 
-    major = gssEapExportAttrContext(minor, ctx->initiatorName,
-                                    &attrBuf);
+    major = freezeAttrContext(minor, ctx->initiatorName, ticket.server,
+                              &session, &enc_part.authorization_data);
     if (GSS_ERROR(major))
-        goto cleanup;
-
-    authDatum.ad_type = KRB5_AUTHDATA_RADIUS_AVP;
-    authDatum.length = attrBuf.length;
-    authDatum.contents = attrBuf.value;
-    authData[0] = &authDatum;
-    authData[1] = NULL;
-
-    code = krb5_make_authdata_kdc_issued(krbContext, &session,
-                                         ticket.server, authData,
-                                         &enc_part.authorization_data);
-    if (code != 0)
         goto cleanup;
 
     ticket.enc_part2 = &enc_part;
@@ -193,7 +214,7 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     creds.times = enc_part.times;
     creds.ticket_flags = enc_part.flags;
     creds.ticket = *ticketData;
-    creds.authdata = authData;
+    creds.authdata = enc_part.authorization_data;
 
     code = krb5_auth_con_init(krbContext, &authContext);
     if (code != 0)
@@ -219,7 +240,6 @@ cleanup:
         GSSEAP_FREE(ticket.enc_part.ciphertext.data);
     krb5_free_keyblock_contents(krbContext, &session);
     krb5_free_keyblock_contents(krbContext, &acceptorKey);
-    gss_release_buffer(minor, &attrBuf);
     krb5_free_data(krbContext, ticketData);
     krb5_auth_con_free(krbContext, authContext);
     krb5_free_authdata(krbContext, enc_part.authorization_data);
@@ -240,7 +260,8 @@ isTicketGrantingServiceP(krb5_context krbContext,
 {
     if (krb5_princ_size(krbContext, principal) == 2 &&
         krb5_princ_component(krbContext, principal, 0)->length == 6 &&
-        memcmp(krb5_princ_component(krbContext, principal, 0)->data, "krbtgt", 6) == 0)
+        memcmp(krb5_princ_component(krbContext,
+                                    principal, 0)->data, "krbtgt", 6) == 0)
         return TRUE;
 
     return FALSE;
@@ -310,7 +331,9 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
 
         /*
          * Swap in the acceptor name the client asked for so
-         * get_credentials() works
+         * get_credentials() works. We're making the assumption that
+         * any service tickets returned are for us. We'll need to
+         * reflect some more on whether that is a safe assumption.
          */
         if (!isTicketGrantingServiceP(krbContext, kcred.server))
             kcred.server = ctx->acceptorName->krbPrincipal;
@@ -320,6 +343,11 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
             goto cleanup;
     }
 
+    /*
+     * To turn a credentials cache into a GSS credentials handle, we
+     * require the gss_krb5_import_cred() API (present in Heimdal, but
+     * not shipped in MIT yet).
+     */
     major = gss_krb5_import_cred(minor, cred->krbCredCache, NULL, NULL,
                                  &cred->krbCred);
     if (GSS_ERROR(major))
@@ -339,90 +367,82 @@ cleanup:
     return major;
 }
 
-static OM_uint32 (*gssInitSecContextNext)(
-    OM_uint32 *minor,
-    gss_cred_id_t cred,
-    gss_ctx_id_t *context_handle,
-    gss_name_t target_name,
-    gss_OID mech_type,
-    OM_uint32 req_flags,
-    OM_uint32 time_req,
-    gss_channel_bindings_t input_chan_bindings,
-    gss_buffer_t input_token,
-    gss_OID *actual_mech_type,
-    gss_buffer_t output_token,
-    OM_uint32 *ret_flags,
-    OM_uint32 *time_rec);
+static OM_uint32
+(*gssInitSecContextNext)(OM_uint32 *,
+                         gss_cred_id_t,
+                         gss_ctx_id_t *,
+                         gss_name_t,
+                         gss_OID,
+                         OM_uint32,
+                         OM_uint32,
+                         gss_channel_bindings_t,
+                         gss_buffer_t,
+                         gss_OID *,
+                         gss_buffer_t,
+                         OM_uint32 *,
+                         OM_uint32 *);
 
-static OM_uint32 (*gssAcceptSecContextNext)(
-    OM_uint32 *minor,
-    gss_ctx_id_t *context_handle,
-    gss_cred_id_t cred,
-    gss_buffer_t input_token,
-    gss_channel_bindings_t input_chan_bindings,
-    gss_name_t *src_name,
-    gss_OID *mech_type,
-    gss_buffer_t output_token,
-    OM_uint32 *ret_flags,
-    OM_uint32 *time_rec,
-    gss_cred_id_t *delegated_cred_handle);
+static OM_uint32
+(*gssAcceptSecContextNext)(OM_uint32 *,
+                           gss_ctx_id_t *,
+                           gss_cred_id_t,
+                           gss_buffer_t,
+                           gss_channel_bindings_t,
+                           gss_name_t *,
+                           gss_OID *,
+                           gss_buffer_t,
+                           OM_uint32 *,
+                           OM_uint32 *,
+                           gss_cred_id_t *);
 
-static OM_uint32 (*gssReleaseCredNext)(
-    OM_uint32 *minor,
-    gss_cred_id_t *cred_handle);
+static OM_uint32
+(*gssReleaseCredNext)(OM_uint32 *, gss_cred_id_t *);
 
-static OM_uint32 (*gssReleaseNameNext)(
-    OM_uint32 *minor,
-    gss_name_t *name);
+static OM_uint32
+(*gssReleaseNameNext)(OM_uint32 *, gss_name_t *);
 
-static OM_uint32 (*gssInquireSecContextByOidNext)(
-    OM_uint32 *minor,
-    const gss_ctx_id_t context_handle,
-    const gss_OID desired_object,
-    gss_buffer_set_t *data_set);
+static OM_uint32
+(*gssInquireSecContextByOidNext)(OM_uint32 *,
+                                 const gss_ctx_id_t,
+                                 const gss_OID,
+                                 gss_buffer_set_t *);
 
-static OM_uint32 (*gssDeleteSecContextNext)(
-    OM_uint32 *minor,
-    gss_ctx_id_t *context_handle,
-    gss_buffer_t output_token);
+static OM_uint32
+(*gssDeleteSecContextNext)(OM_uint32 *,
+                          gss_ctx_id_t *,
+                          gss_buffer_t);
 
-static OM_uint32 (*gssDisplayNameNext)(
-    OM_uint32 *minor,
-    gss_name_t name,
-    gss_buffer_t output_name_buffer,
-    gss_OID *output_name_type);
+static OM_uint32
+(*gssDisplayNameNext)(OM_uint32 *,
+                      gss_name_t,
+                      gss_buffer_t,
+                      gss_OID *);
 
-static OM_uint32 (*gssImportNameNext)(
-    OM_uint32 *minor,
-    gss_buffer_t buffer,
-    gss_OID nameType,
-    gss_name_t *outputName);
+static OM_uint32
+(*gssImportNameNext)(OM_uint32 *,
+                     gss_buffer_t,
+                     gss_OID,
+                     gss_name_t *);
 
-static OM_uint32 (*gssKrbExtractAuthzDataFromSecContextNext)(
-    OM_uint32 *minor,
-    const gss_ctx_id_t context_handle,
-    int ad_type,
-    gss_buffer_t ad_data);
+static OM_uint32
+(*gssStoreCredNext)(OM_uint32 *,
+                    const gss_cred_id_t,
+                    gss_cred_usage_t,
+                    const gss_OID,
+                    OM_uint32,
+                    OM_uint32,
+                    gss_OID_set *,
+                    gss_cred_usage_t *);
 
-static OM_uint32 (*gssStoreCredNext)(
-    OM_uint32 *minor,
-    const gss_cred_id_t input_cred_handle,
-    gss_cred_usage_t input_usage,
-    const gss_OID desired_mech,
-    OM_uint32 overwrite_cred,
-    OM_uint32 default_cred,
-    gss_OID_set *elements_stored,
-    gss_cred_usage_t *cred_usage_stored);
-
-static OM_uint32 (*gssGetNameAttributeNext)(
-    OM_uint32 *minor,
-    gss_name_t name,
-    gss_buffer_t attr,
-    int *authenticated,
-    int *complete,
-    gss_buffer_t value,
-    gss_buffer_t display_value,
-    int *more);
+static OM_uint32
+(*gssGetNameAttributeNext)(OM_uint32 *,
+                          gss_name_t,
+                          gss_buffer_t,
+                          int *,
+                          int *,
+                          gss_buffer_t,
+                          gss_buffer_t,
+                          int *);
 
 #define NEXT_SYMBOL(local, global)  ((local) = dlsym(RTLD_NEXT, (global)))
 
@@ -437,7 +457,6 @@ gssEapReauthInitialize(OM_uint32 *minor)
     NEXT_SYMBOL(gssDeleteSecContextNext,                  "gss_delete_sec_context");
     NEXT_SYMBOL(gssDisplayNameNext,                       "gss_display_name");
     NEXT_SYMBOL(gssImportNameNext,                        "gss_import_name");
-    NEXT_SYMBOL(gssKrbExtractAuthzDataFromSecContextNext, "gsskrb5_extract_authz_data_from_sec_context");
     NEXT_SYMBOL(gssStoreCredNext,                         "gss_store_cred");
     NEXT_SYMBOL(gssGetNameAttributeNext,                  "gss_get_name_attribute");
 
@@ -557,19 +576,6 @@ gssInquireSecContextByOid(OM_uint32 *minor,
 
     return gssInquireSecContextByOidNext(minor, context_handle,
                                          desired_object, data_set);
-}
-
-OM_uint32
-gssKrbExtractAuthzDataFromSecContext(OM_uint32 *minor,
-                                     const gss_ctx_id_t ctx,
-                                     int ad_type,
-                                     gss_buffer_t ad_data)
-{
-    if (gssKrbExtractAuthzDataFromSecContextNext == NULL)
-        return GSS_S_UNAVAILABLE;
-
-    return gssKrbExtractAuthzDataFromSecContextNext(minor, ctx,
-                                                    ad_type, ad_data);
 }
 
 OM_uint32
@@ -715,6 +721,10 @@ cleanup:
     return major;
 }
 
+/*
+ * Suck out the analgous elements of a Kerberos GSS context into an EAP
+ * one so that the application doesn't know the difference.
+ */
 OM_uint32
 gssEapReauthComplete(OM_uint32 *minor,
                     gss_ctx_id_t ctx,
@@ -730,6 +740,7 @@ gssEapReauthComplete(OM_uint32 *minor,
         goto cleanup;
     }
 
+    /* Get the raw subsession key and encryptino type*/
     major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
                                       GSS_C_INQ_SSPI_SESSION_KEY, &keyData);
     if (GSS_ERROR(major))

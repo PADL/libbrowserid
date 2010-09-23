@@ -85,12 +85,6 @@ gssInquireSecContextByOid(OM_uint32 *minor,
                           gss_buffer_set_t *data_set);
 
 OM_uint32
-gssKrbExtractAuthzDataFromSecContext(OM_uint32 *minor,
-                                     const gss_ctx_id_t ctx,
-                                     int ad_type,
-                                     gss_buffer_t ad_data);
-
-OM_uint32
 gssStoreCred(OM_uint32 *minor,
              const gss_cred_id_t input_cred_handle,
              gss_cred_usage_t input_usage,
