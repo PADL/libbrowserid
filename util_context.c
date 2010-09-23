@@ -158,7 +158,6 @@ OM_uint32
 gssEapVerifyToken(OM_uint32 *minor,
                   gss_ctx_id_t ctx,
                   const gss_buffer_t inputToken,
-                  enum gss_eap_token_type tokenType,
                   enum gss_eap_token_type *actualToken,
                   gss_buffer_t innerInputToken)
 {
@@ -177,10 +176,9 @@ gssEapVerifyToken(OM_uint32 *minor,
     }
 
     major = verifyTokenHeader(minor, oid, &bodySize, &p,
-                              inputToken->length, tokenType,
-                              actualToken);
+                              inputToken->length, actualToken);
     if (GSS_ERROR(major))
-        return GSS_S_DEFECTIVE_TOKEN;
+        return major;
 
     if (ctx->mechanismUsed == GSS_C_NO_OID) {
         if (!gssEapIsConcreteMechanismOid(oid))

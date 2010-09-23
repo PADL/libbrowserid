@@ -472,7 +472,7 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
     gss_cred_id_t krbCred = GSS_C_NO_CREDENTIAL;
     gss_name_t krbInitiator = GSS_C_NO_NAME;
     gss_OID mech = GSS_C_NO_OID;
-    OM_uint32 timeRec = GSS_C_INDEFINITE;
+    OM_uint32 gssFlags, timeRec = GSS_C_INDEFINITE;
 
     ctx->flags |= CTX_FLAG_KRB_REAUTH_GSS;
 
@@ -487,13 +487,15 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
                                 &krbInitiator,
                                 &mech,
                                 outputToken,
-                                &ctx->gssFlags,
+                                &gssFlags,
                                 &timeRec,
                                 NULL);
     if (major == GSS_S_COMPLETE) {
         major = acceptReadyKrb(minor, ctx, cred,
                                krbInitiator, mech, timeRec);
     }
+
+    ctx->gssFlags = gssFlags & ~(GSS_C_DCE_STYLE);
 
     gssReleaseName(&tmpMinor, &krbInitiator);
 
@@ -538,6 +540,7 @@ gss_accept_sec_context(OM_uint32 *minor,
     gss_buffer_desc innerInputToken = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
     enum gss_eap_token_type tokType;
+    int initialContextToken = 0;
 
     *minor = 0;
 
@@ -557,6 +560,7 @@ gss_accept_sec_context(OM_uint32 *minor,
         if (GSS_ERROR(major))
             return major;
 
+        initialContextToken = 1;
         *context_handle = ctx;
     }
 
@@ -565,16 +569,20 @@ gss_accept_sec_context(OM_uint32 *minor,
     sm = &eapGssAcceptorSm[ctx->state];
 
     major = gssEapVerifyToken(minor, ctx, input_token,
-                              sm->inputTokenType, &tokType,
-                              &innerInputToken);
-    if (major == GSS_S_DEFECTIVE_TOKEN && tokType == TOK_TYPE_GSS_REAUTH) {
+                              &tokType, &innerInputToken);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (tokType == TOK_TYPE_GSS_REAUTH && initialContextToken) {
         ctx->state = EAP_STATE_KRB_REAUTH_GSS;
-    } else if (GSS_ERROR(major)) {
+    } else if (tokType != sm->inputTokenType) {
+        major = GSS_S_DEFECTIVE_TOKEN;
         goto cleanup;
     }
 
     /* If credentials were provided, check they're usable with this mech */
-    if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
+    if (cred != GSS_C_NO_CREDENTIAL &&
+        !gssEapCredAvailable(cred, ctx->mechanismUsed)) {
         major = GSS_S_BAD_MECH;
         goto cleanup;
     }
@@ -632,4 +640,3 @@ cleanup:
 
     return major;
 }
-

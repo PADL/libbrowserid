@@ -287,35 +287,31 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
 }
 
 static OM_uint32
-eapGssSmInitIdentity(OM_uint32 *minor,
-                     gss_cred_id_t cred,
-                     gss_ctx_id_t ctx,
-                     gss_name_t target,
-                     gss_OID mech,
-                     OM_uint32 reqFlags,
-                     OM_uint32 timeReq,
-                     gss_channel_bindings_t chanBindings,
-                     gss_buffer_t inputToken,
-                     gss_buffer_t outputToken)
+initBegin(OM_uint32 *minor,
+          gss_cred_id_t cred,
+          gss_ctx_id_t ctx,
+          gss_name_t target,
+          gss_OID mech,
+          OM_uint32 reqFlags,
+          OM_uint32 timeReq,
+          gss_channel_bindings_t chanBindings,
+          gss_buffer_t inputToken,
+          gss_buffer_t outputToken)
 {
-    time_t now;
     OM_uint32 major;
-    int initialContextToken;
 
-    initialContextToken = (inputToken == GSS_C_NO_BUFFER ||
-                           inputToken->length == 0);
-    if (!initialContextToken)
-        return GSS_S_DEFECTIVE_TOKEN;
-
-    time(&now);
-    if (timeReq == 0 || timeReq == GSS_C_INDEFINITE)
+    if (cred != GSS_C_NO_CREDENTIAL && cred->expiryTime)
+        ctx->expiryTime = cred->expiryTime;
+    else if (timeReq == 0 || timeReq == GSS_C_INDEFINITE)
         ctx->expiryTime = 0;
     else
-        ctx->expiryTime = now + timeReq;
+        ctx->expiryTime = time(NULL) + timeReq;
 
-    major = gssEapDuplicateName(minor, cred->name, &ctx->initiatorName);
-    if (GSS_ERROR(major))
-        return major;
+    if (cred != GSS_C_NO_CREDENTIAL) {
+        major = gssEapDuplicateName(minor, cred->name, &ctx->initiatorName);
+        if (GSS_ERROR(major))
+            return major;
+    }
 
     major = gssEapDuplicateName(minor, target, &ctx->acceptorName);
     if (GSS_ERROR(major))
@@ -335,6 +331,34 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     /* If credentials were provided, check they're usable with this mech */
     if (!gssEapCredAvailable(cred, ctx->mechanismUsed))
         return GSS_S_BAD_MECH;
+
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+eapGssSmInitIdentity(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     gss_ctx_id_t ctx,
+                     gss_name_t target,
+                     gss_OID mech,
+                     OM_uint32 reqFlags,
+                     OM_uint32 timeReq,
+                     gss_channel_bindings_t chanBindings,
+                     gss_buffer_t inputToken,
+                     gss_buffer_t outputToken)
+{
+    OM_uint32 major;
+    int initialContextToken;
+
+    initialContextToken = (inputToken->length == 0);
+    if (!initialContextToken)
+        return GSS_S_DEFECTIVE_TOKEN;
+
+    major = initBegin(minor, cred, ctx, target, mech,
+                      reqFlags, timeReq, chanBindings,
+                      inputToken, outputToken);
+    if (GSS_ERROR(major))
+        return major;
 
     ctx->state = EAP_STATE_AUTHENTICATE;
 
@@ -538,33 +562,6 @@ canReauthP(gss_cred_id_t cred)
 }
 
 static OM_uint32
-initReadyKrb(OM_uint32 *minor,
-            gss_ctx_id_t ctx,
-            gss_cred_id_t cred,
-            const gss_name_t target,
-            const gss_OID mech,
-            OM_uint32 timeRec)
-{
-    OM_uint32 major;
-
-    major = gssEapGlueToMechName(minor, target, &ctx->acceptorName);
-    if (GSS_ERROR(major))
-        return major;
-
-    major = gssEapDuplicateName(minor, cred->name, &ctx->initiatorName);
-    if (GSS_ERROR(major))
-        return major;
-
-    major = gssEapReauthComplete(minor, ctx, cred, mech, timeRec);
-    if (GSS_ERROR(major))
-        return major;
-
-    ctx->state = EAP_STATE_ESTABLISHED;
-
-    return GSS_S_COMPLETE;
-}
-
-static OM_uint32
 eapGssSmInitGssReauth(OM_uint32 *minor,
                       gss_cred_id_t cred,
                       gss_ctx_id_t ctx,
@@ -579,11 +576,19 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_name_t mechTarget = GSS_C_NO_NAME;
     gss_OID actualMech = GSS_C_NO_OID;
-    OM_uint32 timeRec;
+    OM_uint32 gssFlags, timeRec;
 
     assert(cred != GSS_C_NO_CREDENTIAL);
 
     ctx->flags |= CTX_FLAG_KRB_REAUTH_GSS;
+
+    if (inputToken->length == 0) {
+        major = initBegin(minor, cred, ctx, target, mech,
+                          reqFlags, timeReq, chanBindings,
+                          inputToken, outputToken);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
     major = gssEapMechToGlueName(minor, target, &mechTarget);
     if (GSS_ERROR(major))
@@ -594,16 +599,26 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
                               &ctx->kerberosCtx,
                               mechTarget,
                               (gss_OID)gss_mech_krb5,
-                              reqFlags,
+                              reqFlags | GSS_C_DCE_STYLE,
                               timeReq,
                               chanBindings,
                               inputToken,
                               &actualMech,
                               outputToken,
-                              &ctx->gssFlags,
+                              &gssFlags,
                               &timeRec);
     if (GSS_ERROR(major))
         goto cleanup;
+
+    ctx->gssFlags = gssFlags;
+
+    if (major == GSS_S_COMPLETE) {
+        major = gssEapReauthComplete(minor, ctx, cred, actualMech, timeRec);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        ctx->state = EAP_STATE_ESTABLISHED;
+    }
 
 cleanup:
     gssReleaseName(&tmpMinor, &mechTarget);
@@ -688,10 +703,14 @@ gss_init_sec_context(OM_uint32 *minor,
 
     if (input_token != GSS_C_NO_BUFFER) {
         major = gssEapVerifyToken(minor, ctx, input_token,
-                                  sm->inputTokenType,
                                   &tokType, &innerInputToken);
         if (GSS_ERROR(major))
             goto cleanup;
+
+        if (tokType != sm->inputTokenType) {
+            major = GSS_S_DEFECTIVE_TOKEN;
+            goto cleanup;
+        }
     } else {
         innerInputToken.length = 0;
         innerInputToken.value = NULL;

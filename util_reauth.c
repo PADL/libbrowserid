@@ -174,11 +174,11 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
 
     ticket.enc_part2 = &enc_part;
 
-    code = encode_krb5_ticket(&ticket, &ticketData);
+    code = krb5_encrypt_tkt_part(krbContext, &acceptorKey, &ticket);
     if (code != 0)
         goto cleanup;
 
-    code = krb5_encrypt_tkt_part(krbContext, &acceptorKey, &ticket);
+    code = encode_krb5_ticket(&ticket, &ticketData);
     if (code != 0)
         goto cleanup;
 
@@ -227,6 +227,18 @@ cleanup:
     return major;
 }
 
+static int
+isTicketGrantingServiceP(krb5_context krbContext,
+                         krb5_const_principal principal)
+{
+    if (krb5_princ_size(krbContext, principal) == 2 &&
+        krb5_princ_component(krbContext, principal, 0)->length == 6 &&
+        memcmp(krb5_princ_component(krbContext, principal, 0)->data, "krbtgt", 6) == 0)
+        return TRUE;
+
+    return FALSE;
+}
+
 OM_uint32
 gssEapStoreReauthCreds(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
@@ -269,6 +281,7 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
         goto cleanup;
 
     code = krb5_copy_principal(krbContext, creds[0]->client, &canonPrinc);
+    if (code != 0)
         goto cleanup;
 
     krb5_free_principal(krbContext, cred->name->krbPrincipal);
@@ -284,11 +297,20 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    code = krb5_cc_store_cred(krbContext, cred->krbCredCache, creds[0]);
-    if (code != 0)
-        goto cleanup;
+    for (i = 0; creds[i] != NULL; i++) {
+        krb5_creds kcred = *(creds[i]);
 
-    major = gss_krb5_import_cred(minor, cred->krbCredCache, NULL, NULL, &cred->krbCred);
+        /* Swap in the acceptor name the client asked for so get_credentials() works */
+        if (!isTicketGrantingServiceP(krbContext, kcred.server))
+            kcred.server = ctx->acceptorName->krbPrincipal;
+
+        code = krb5_cc_store_cred(krbContext, cred->krbCredCache, &kcred);
+        if (code != 0)
+            goto cleanup;
+    }
+
+    major = gss_krb5_import_cred(minor, cred->krbCredCache, NULL, NULL,
+                                 &cred->krbCred);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -511,7 +533,7 @@ gssKrbExtractAuthzDataFromSecContext(OM_uint32 *minor,
     if (gssKrbExtractAuthzDataFromSecContextNext == NULL)
         return GSS_S_UNAVAILABLE;
 
-    return gssKrbExtractAuthzDataFromSecContext(minor, ctx, ad_type, ad_data);
+    return gssKrbExtractAuthzDataFromSecContextNext(minor, ctx, ad_type, ad_data);
 }
 
 OM_uint32
@@ -635,7 +657,6 @@ gssEapReauthComplete(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    ctx->mechanismUsed = GSS_EAP_MECHANISM;
     major = GSS_S_COMPLETE;
 
 cleanup:
@@ -643,4 +664,3 @@ cleanup:
 
     return major;
 }
-

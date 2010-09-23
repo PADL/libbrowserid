@@ -202,7 +202,6 @@ verifyTokenHeader(OM_uint32 *minor,
                   size_t *body_size,
                   unsigned char **buf_in,
                   size_t toksize_in,
-                  enum gss_eap_token_type tok_type,
                   enum gss_eap_token_type *ret_tok_type)
 {
     unsigned char *buf = *buf_in;
@@ -211,6 +210,9 @@ verifyTokenHeader(OM_uint32 *minor,
     ssize_t toksize = (ssize_t)toksize_in;
 
     *minor = 0;
+
+    if (ret_tok_type != NULL)
+        *ret_tok_type = TOK_TYPE_NONE;
 
     if ((toksize -= 1) < 0)
         return GSS_S_DEFECTIVE_TOKEN;
@@ -250,13 +252,11 @@ verifyTokenHeader(OM_uint32 *minor,
         return GSS_S_BAD_MECH;
     }
 
-    if (tok_type != TOK_TYPE_NONE) {
+    if (ret_tok_type != NULL) {
         if ((toksize -= 2) < 0)
             return GSS_S_DEFECTIVE_TOKEN;
 
         *ret_tok_type = load_uint16_be(buf);
-        if (tok_type != *ret_tok_type)
-            return GSS_S_DEFECTIVE_TOKEN;
         buf += 2;
     }
     *buf_in = buf;

@@ -171,8 +171,7 @@ OM_uint32
 gssEapVerifyToken(OM_uint32 *minor,
                   gss_ctx_id_t ctx,
                   const gss_buffer_t inputToken,
-                  enum gss_eap_token_type tokenType,
-                  enum gss_eap_token_type *actualToken,
+                  enum gss_eap_token_type *tokenType,
                   gss_buffer_t innerInputToken);
 
 OM_uint32
@@ -399,7 +398,6 @@ verifyTokenHeader(OM_uint32 *minor,
                   size_t *body_size,
                   unsigned char **buf_in,
                   size_t toksize_in,
-                  enum gss_eap_token_type tok_type,
                   enum gss_eap_token_type *ret_tok_type);
 
 /* Helper macros */

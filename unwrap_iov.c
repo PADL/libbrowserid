@@ -73,7 +73,7 @@ unwrapToken(OM_uint32 *minor,
     gss_iov_buffer_t header;
     gss_iov_buffer_t padding;
     gss_iov_buffer_t trailer;
-    unsigned char acceptorFlag;
+    unsigned char flags;
     unsigned char *ptr = NULL;
     int keyUsage;
     size_t rrc, ec;
@@ -99,7 +99,8 @@ unwrapToken(OM_uint32 *minor,
 
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
 
-    acceptorFlag = CTX_IS_INITIATOR(ctx) ? TOK_FLAG_SENDER_IS_ACCEPTOR : 0;
+    flags = rfc4121Flags(ctx, TRUE);
+
     switch (toktype) {
     case TOK_TYPE_WRAP:
         keyUsage = !CTX_IS_INITIATOR(ctx)
@@ -121,18 +122,11 @@ unwrapToken(OM_uint32 *minor,
 
     ptr = (unsigned char *)header->buffer.value;
 
-    if (header->buffer.length < 16) {
-        *minor = 0;
+    if (header->buffer.length < 16)
         return GSS_S_DEFECTIVE_TOKEN;
-    }
 
-    if ((ptr[2] & TOK_FLAG_SENDER_IS_ACCEPTOR) != acceptorFlag) {
+    if ((ptr[2] & flags) != flags)
         return GSS_S_BAD_SIG;
-    }
-
-    if (ptr[2] & TOK_FLAG_ACCEPTOR_SUBKEY) {
-        return GSS_S_BAD_SIG;
-    }
 
     if (toktype == TOK_TYPE_WRAP) {
         unsigned int krbTrailerLen;

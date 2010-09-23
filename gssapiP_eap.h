@@ -202,4 +202,7 @@ gssEapWrapIovLength(OM_uint32 *minor,
                     gss_iov_buffer_desc *iov,
                     int iov_count);
 
+unsigned char
+rfc4121Flags(gss_ctx_id_t ctx, int receiving);
+
 #endif /* _GSSAPIP_EAP_H_ */
