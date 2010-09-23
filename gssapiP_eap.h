@@ -92,8 +92,10 @@ struct gss_cred_id_struct {
     gss_OID_set mechanisms;
     time_t expiryTime;
     char *radiusConfigFile;
+#ifdef GSSEAP_ENABLE_REAUTH
     krb5_ccache krbCredCache;
     gss_cred_id_t krbCred;
+#endif
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
@@ -107,7 +109,9 @@ enum gss_eap_state {
     EAP_STATE_EXTENSIONS_REQ,
     EAP_STATE_EXTENSIONS_RESP,
     EAP_STATE_ESTABLISHED,
+#ifdef GSSEAP_ENABLE_REAUTH
     EAP_STATE_KRB_REAUTH_GSS
+#endif
 };
 
 #define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == EAP_STATE_ESTABLISHED)
@@ -159,8 +163,10 @@ struct gss_ctx_id_struct {
         #define initiatorCtx         ctxU.initiator
         struct gss_eap_acceptor_ctx  acceptor;
         #define acceptorCtx          ctxU.acceptor
+#ifdef GSSEAP_ENABLE_REAUTH
         gss_ctx_id_t                 kerberos;
         #define kerberosCtx          ctxU.kerberos
+#endif
     } ctxU;
 };
 

@@ -50,6 +50,7 @@ gss_store_cred(OM_uint32 *minor,
     if (input_cred_handle == GSS_C_NO_CREDENTIAL)
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CRED;
 
+#ifdef GSSEAP_ENABLE_REAUTH
     if (input_cred_handle->krbCred != GSS_C_NO_CREDENTIAL) {
         return gssStoreCred(minor,
                             input_cred_handle->krbCred,
@@ -60,6 +61,7 @@ gss_store_cred(OM_uint32 *minor,
                             elements_stored,
                             cred_usage_stored);
     }
+#endif
 
     *minor = 0;
     return GSS_S_UNAVAILABLE;

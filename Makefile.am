@@ -72,7 +72,6 @@ mech_eap_la_SOURCES =    			\
 	util_oid.c				\
 	util_ordering.c				\
 	util_radius.cpp				\
-	util_reauth.c				\
 	util_saml.cpp				\
 	util_shib.cpp				\
 	util_token.c				\
@@ -81,6 +80,9 @@ mech_eap_la_SOURCES =    			\
 	wrap_iov.c				\
 	wrap_iov_length.c			\
 	wrap_size_limit.c
+
+if GSSEAP_ENABLE_REAUTH
+mech_eap_la_SOURCES += util_reauth.c
 
 krb5pluginsdir = $(libdir)/krb5/plugins/authdata
 krb5plugins_LTLIBRARIES = radius_ad.la
@@ -91,3 +93,4 @@ radius_ad_la_LDFLAGS = -avoid-version -module \
 		       -export-symbols radius_ad.exports -no-undefined
 radius_ad_la_LIBADD  = @KRB5_LIBS@
 radius_ad_la_SOURCES = util_adshim.c
+endif
