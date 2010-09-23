@@ -1,5 +1,8 @@
 AUTOMAKE_OPTIONS = foreign
 
+gssincludedir = $(includedir)/gssapi
+gssinclude_HEADERS = gssapi_eap.h
+
 gssdir = $(libdir)/gss
 gss_LTLIBRARIES = mech_eap.la
 
