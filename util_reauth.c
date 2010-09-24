@@ -82,6 +82,10 @@ getAcceptorKey(krb5_context krbContext,
         if (code != 0)
             goto cleanup;
     } else {
+        /*
+         * It's not clear that looking encrypting the ticket in the
+         * requested EAP enctype provides any value.
+         */
         code = krb5_kt_start_seq_get(krbContext, keytab, &cursor);
         if (code != 0)
             goto cleanup;
@@ -481,7 +485,7 @@ gssEapMechToGlueName(OM_uint32 *minor,
                      gss_name_t mechName,
                      gss_name_t *pGlueName)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major, tmpM;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
 
     *pGlueName = GSS_C_NO_NAME;
@@ -520,7 +524,7 @@ gssEapReauthComplete(OM_uint32 *minor,
         goto cleanup;
     }
 
-    /* Get the raw subsession key and encryptino type*/
+    /* Get the raw subsession key and encryption type*/
     major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
                                       GSS_C_INQ_SSPI_SESSION_KEY, &keyData);
     if (GSS_ERROR(major))
@@ -672,16 +676,16 @@ static OM_uint32
 OM_uint32
 gssEapReauthInitialize(OM_uint32 *minor)
 {
-    NEXT_SYMBOL(gssInitSecContextNext,                    "gss_init_sec_context");
-    NEXT_SYMBOL(gssAcceptSecContextNext,                  "gss_accept_sec_context");
-    NEXT_SYMBOL(gssReleaseCredNext,                       "gss_release_cred");
-    NEXT_SYMBOL(gssReleaseNameNext,                       "gss_release_name");
-    NEXT_SYMBOL(gssInquireSecContextByOidNext,            "gss_inquire_sec_context_by_oid");
-    NEXT_SYMBOL(gssDeleteSecContextNext,                  "gss_delete_sec_context");
-    NEXT_SYMBOL(gssDisplayNameNext,                       "gss_display_name");
-    NEXT_SYMBOL(gssImportNameNext,                        "gss_import_name");
-    NEXT_SYMBOL(gssStoreCredNext,                         "gss_store_cred");
-    NEXT_SYMBOL(gssGetNameAttributeNext,                  "gss_get_name_attribute");
+    NEXT_SYMBOL(gssInitSecContextNext,         "gss_init_sec_context");
+    NEXT_SYMBOL(gssAcceptSecContextNext,       "gss_accept_sec_context");
+    NEXT_SYMBOL(gssReleaseCredNext,            "gss_release_cred");
+    NEXT_SYMBOL(gssReleaseNameNext,            "gss_release_name");
+    NEXT_SYMBOL(gssInquireSecContextByOidNext, "gss_inquire_sec_context_by_oid");
+    NEXT_SYMBOL(gssDeleteSecContextNext,       "gss_delete_sec_context");
+    NEXT_SYMBOL(gssDisplayNameNext,            "gss_display_name");
+    NEXT_SYMBOL(gssImportNameNext,             "gss_import_name");
+    NEXT_SYMBOL(gssStoreCredNext,              "gss_store_cred");
+    NEXT_SYMBOL(gssGetNameAttributeNext,       "gss_get_name_attribute");
 
     return GSS_S_COMPLETE;
 }
