@@ -639,6 +639,7 @@ gss_init_sec_context(OM_uint32 *minor,
             goto cleanup;
         }
     } else {
+        /* XXX TODO should we store this in the context handle? */
         major = gssEapAcquireCred(minor, GSS_C_NO_NAME, GSS_C_NO_BUFFER,
                                   time_req, GSS_C_NO_OID_SET, GSS_C_INITIATE,
                                   &defaultCred, NULL, NULL);

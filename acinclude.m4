@@ -11,10 +11,10 @@ AC_ARG_WITH(krb5,
     [check_krb5_dir=])
 for dir in $check_krb5_dir /usr /usr/local ; do
    krb5dir="$dir"
-   if test -f "$dir/include/krb5.h"; then
+   if test -x "$dir/bin/krb5-config"; then
      found_krb5="yes";
-     KRB5_DIR="${krb5dir}"
-     KRB5_CFLAGS="-I$krb5dir/include";
+     KRB5_CFLAGS=`$dir/bin/krb5-config gssapi --cflags`;
+     KRB5_LIBS=`$dir/bin/krb5-config gssapi --libs`;
      break;
    fi
 done
@@ -30,10 +30,7 @@ if test x_$found_krb5 != x_yes; then
 ])
 else
 	printf "Kerberos found in $krb5dir\n";
-	KRB5_LIBS="-lgssapi_krb5 -lkrb5 -lk5crypto";
-	KRB5_LDFLAGS="-L$krb5dir/lib";
 	AC_SUBST(KRB5_CFLAGS)
-	AC_SUBST(KRB5_LDFLAGS)
 	AC_SUBST(KRB5_LIBS)
 	AC_CHECK_LIB(gssapi_krb5, GSS_C_NT_COMPOSITE_EXPORT, [AC_DEFINE_UNQUOTED([HAVE_GSS_C_NT_COMPOSITE_EXPORT], 1, [Define if GSS-API library supports recent naming extensions draft])], [], "$KRB5_LDFLAGS")
 fi
