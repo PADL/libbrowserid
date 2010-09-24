@@ -212,6 +212,14 @@ peerConfigInit(OM_uint32 *minor,
     krb5_error_code code;
     char *identity;
 
+    eapPeerConfig->identity = NULL;
+    eapPeerConfig->identity_len = 0;
+    eapPeerConfig->password = NULL;
+    eapPeerConfig->password_len = 0;
+
+    if (cred == GSS_C_NO_CREDENTIAL)
+        return GSS_S_NO_CRED;
+
     GSSEAP_KRB_INIT(&krbContext);
 
     eapPeerConfig->fragment_size = 1024;
