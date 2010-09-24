@@ -14,7 +14,7 @@ mech_eap_la_CXXFLAGS = -g -Wall \
 			@SHIBRESOLVER_CXXFLAGS@ @TARGET_CFLAGS@
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols mech_eap.exports -no-undefined \
-			@EAP_LDFLAGS@ @KRB5_LDFLAGS@ @TARGET_LDFLAGS@
+			@EAP_LDFLAGS@ @TARGET_LDFLAGS@
 mech_eap_la_LIBADD   = @EAP_LIBS@ @KRB5_LIBS@ @SHIBSP_LIBS@ \
 		       @SHIBRESOLVER_LIBS@ -lfreeradius-client
 
