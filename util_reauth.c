@@ -485,7 +485,7 @@ gssEapMechToGlueName(OM_uint32 *minor,
                      gss_name_t mechName,
                      gss_name_t *pGlueName)
 {
-    OM_uint32 major, tmpM;
+    OM_uint32 major, tmpMinor;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
 
     *pGlueName = GSS_C_NO_NAME;
