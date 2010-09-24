@@ -217,8 +217,7 @@ peerConfigInit(OM_uint32 *minor,
     eapPeerConfig->password = NULL;
     eapPeerConfig->password_len = 0;
 
-    if (cred == GSS_C_NO_CREDENTIAL)
-        return GSS_S_NO_CRED;
+    assert(cred != GSS_C_NO_CREDENTIAL);
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -325,18 +324,18 @@ initBegin(OM_uint32 *minor,
 {
     OM_uint32 major;
 
-    if (cred != GSS_C_NO_CREDENTIAL && cred->expiryTime)
+    assert(cred != GSS_C_NO_CREDENTIAL);
+
+    if (cred->expiryTime)
         ctx->expiryTime = cred->expiryTime;
     else if (timeReq == 0 || timeReq == GSS_C_INDEFINITE)
         ctx->expiryTime = 0;
     else
         ctx->expiryTime = time(NULL) + timeReq;
 
-    if (cred != GSS_C_NO_CREDENTIAL) {
-        major = gssEapDuplicateName(minor, cred->name, &ctx->initiatorName);
-        if (GSS_ERROR(major))
-            return major;
-    }
+    major = gssEapDuplicateName(minor, cred->name, &ctx->initiatorName);
+    if (GSS_ERROR(major))
+        return major;
 
     major = gssEapDuplicateName(minor, target, &ctx->acceptorName);
     if (GSS_ERROR(major))
@@ -627,14 +626,26 @@ gss_init_sec_context(OM_uint32 *minor,
     gss_buffer_desc innerInputToken;
     gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
     enum gss_eap_token_type tokType;
+    gss_cred_id_t defaultCred = GSS_C_NO_CREDENTIAL;
 
     *minor = 0;
 
     output_token->length = 0;
     output_token->value = NULL;
 
-    if (cred != GSS_C_NO_CREDENTIAL && !(cred->flags & CRED_FLAG_INITIATE)) {
-        return GSS_S_NO_CRED;
+    if (cred != GSS_C_NO_CREDENTIAL) {
+        if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
+            major = GSS_S_NO_CRED;
+            goto cleanup;
+        }
+    } else {
+        major = gssEapAcquireCred(minor, GSS_C_NO_NAME, GSS_C_NO_BUFFER,
+                                  time_req, GSS_C_NO_OID_SET, GSS_C_INITIATE,
+                                  &defaultCred, NULL, NULL);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        cred = defaultCred;
     }
 
     if (ctx == GSS_C_NO_CONTEXT) {
@@ -644,7 +655,7 @@ gss_init_sec_context(OM_uint32 *minor,
 
         major = gssEapAllocContext(minor, &ctx);
         if (GSS_ERROR(major))
-            return major;
+            goto cleanup;
 
         ctx->flags |= CTX_FLAG_INITIATOR;
 
@@ -723,6 +734,7 @@ cleanup:
         gssEapReleaseContext(&tmpMinor, context_handle);
 
     gss_release_buffer(&tmpMinor, &innerOutputToken);
+    gssEapReleaseCred(&tmpMinor, &defaultCred);
 
     return major;
 }
@@ -800,5 +812,3 @@ cleanup:
     return major;
 }
 #endif /* GSSEAP_ENABLE_REAUTH */
-
-
