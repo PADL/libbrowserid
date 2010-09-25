@@ -53,7 +53,7 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
 
-    if (mech_attrs != GSS_C_NO_OID_SET) {
+    if (mech_attrs != NULL) {
         major = gss_create_empty_oid_set(minor, mech_attrs);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -79,7 +79,7 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
 #endif
     }
 
-    if (known_mech_attrs != GSS_C_NO_OID_SET) {
+    if (known_mech_attrs != NULL) {
         major = gss_create_empty_oid_set(minor, known_mech_attrs);
         if (GSS_ERROR(major))
             goto cleanup;
