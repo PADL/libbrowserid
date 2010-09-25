@@ -365,6 +365,7 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
             goto cleanup;
     }
 
+#ifdef HAVE_GSS_KRB5_IMPORT_CRED
     /*
      * To turn a credentials cache into a GSS credentials handle, we
      * require the gss_krb5_import_cred() API (present in Heimdal, but
@@ -374,6 +375,9 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
                                  &cred->krbCred);
     if (GSS_ERROR(major))
         goto cleanup;
+#else
+#warning Missing gss_krb5_import_cred() implementation
+#endif
 
 cleanup:
     *minor = code;

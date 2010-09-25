@@ -34,7 +34,7 @@ else
 	AC_SUBST(KRB5_LIBS)
 	AC_CHECK_LIB(gssapi_krb5, GSS_C_NT_COMPOSITE_EXPORT, [AC_DEFINE_UNQUOTED([HAVE_GSS_C_NT_COMPOSITE_EXPORT], 1, [Define if GSS-API library supports recent naming extensions draft])], [], "$KRB5_LIBS")
 	AC_CHECK_LIB(gssapi_krb5, gss_inquire_attrs_for_mech, [AC_DEFINE_UNQUOTED([HAVE_GSS_INQUIRE_ATTRS_FOR_MECH], 1, [Define if GSS-API library supports RFC 5587])], [], "$KRB5_LIBS")
-	AC_CHECK_LIB(gssapi_krb5, gss_krb5_import_cred, [AC_DEFINE_UNQUOTED([HAVE_GSS_INQUIRE_ATTRS_FOR_MECH], 1, [Define if GSS-API library supports krb5_gss_import_cred])], [], "$KRB5_LIBS")
+	AC_CHECK_LIB(gssapi_krb5, gss_krb5_import_cred, [AC_DEFINE_UNQUOTED([HAVE_GSS_KRB5_IMPORT_CRED], 1, [Define if GSS-API library supports gss_krb5_import_cred])], [], "$KRB5_LIBS")
 fi
 ])dnl
 
