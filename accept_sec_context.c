@@ -416,12 +416,12 @@ eapGssSmAcceptExtensionsResp(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_buffer_desc credsToken = GSS_C_EMPTY_BUFFER;
 
+#ifdef GSSEAP_ENABLE_REAUTH
     /*
      * If we're built with fast reauthentication enabled, then
      * fabricate a ticket from the initiator to ourselves.
      * Otherwise return an empty token.
      */
-#ifdef GSSEAP_ENABLE_REAUTH
     major = gssEapMakeReauthCreds(minor, ctx, cred, &credsToken);
     if (GSS_ERROR(major))
         return major;
@@ -504,7 +504,8 @@ gss_accept_sec_context(OM_uint32 *minor,
     output_token->length = 0;
     output_token->value = NULL;
 
-    if (cred != GSS_C_NO_CREDENTIAL && !(cred->flags & CRED_FLAG_ACCEPT)) {
+    if (cred != GSS_C_NO_CREDENTIAL &&
+        (cred->flags & CRED_FLAG_ACCEPT) == 0) {
         return GSS_S_NO_CRED;
     }
 

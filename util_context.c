@@ -76,6 +76,9 @@ gssEapAllocContext(OM_uint32 *minor,
 static void
 releaseInitiatorContext(struct gss_eap_initiator_ctx *ctx)
 {
+    OM_uint32 minor;
+
+    gssEapReleaseCred(&minor, &ctx->defaultCred);
     eap_peer_sm_deinit(ctx->eap);
 }
 

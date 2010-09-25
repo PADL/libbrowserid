@@ -129,6 +129,7 @@ enum gss_eap_state {
 #define CTX_FLAG_EAP_MASK                   0xFFFF0000
 
 struct gss_eap_initiator_ctx {
+    gss_cred_id_t defaultCred;
     unsigned int idleWhile;
 #ifndef __cplusplus
     struct eap_peer_config eapPeerConfig;

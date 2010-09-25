@@ -633,22 +633,6 @@ gss_init_sec_context(OM_uint32 *minor,
     output_token->length = 0;
     output_token->value = NULL;
 
-    if (cred != GSS_C_NO_CREDENTIAL) {
-        if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
-            major = GSS_S_NO_CRED;
-            goto cleanup;
-        }
-    } else {
-        /* XXX TODO should we store this in the context handle? */
-        major = gssEapAcquireCred(minor, GSS_C_NO_NAME, GSS_C_NO_BUFFER,
-                                  time_req, GSS_C_NO_OID_SET, GSS_C_INITIATE,
-                                  &defaultCred, NULL, NULL);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        cred = defaultCred;
-    }
-
     if (ctx == GSS_C_NO_CONTEXT) {
         if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {
             return GSS_S_DEFECTIVE_TOKEN;
@@ -666,6 +650,29 @@ gss_init_sec_context(OM_uint32 *minor,
 #endif
 
         *context_handle = ctx;
+    }
+
+    if (cred != GSS_C_NO_CREDENTIAL) {
+        if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
+            major = GSS_S_NO_CRED;
+            goto cleanup;
+        }
+    } else {
+        if (ctx->initiatorCtx.defaultCred == GSS_C_NO_CREDENTIAL) {
+            major = gssEapAcquireCred(minor,
+                                      GSS_C_NO_NAME,
+                                      GSS_C_NO_BUFFER,
+                                      time_req,
+                                      GSS_C_NO_OID_SET,
+                                      GSS_C_INITIATE,
+                                      &defaultCred,
+                                      NULL,
+                                      NULL);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+
+        cred = ctx->initiatorCtx.defaultCred;
     }
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
@@ -735,7 +742,6 @@ cleanup:
         gssEapReleaseContext(&tmpMinor, context_handle);
 
     gss_release_buffer(&tmpMinor, &innerOutputToken);
-    gssEapReleaseCred(&tmpMinor, &defaultCred);
 
     return major;
 }
