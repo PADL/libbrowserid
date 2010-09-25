@@ -293,6 +293,12 @@ OM_uint32
 gssEapValidateMechs(OM_uint32 *minor,
                    const gss_OID_set mechs);
 
+gss_buffer_t
+gssEapOidToSaslName(const gss_OID oid);
+
+gss_OID
+gssEapSaslNameToOid(const gss_buffer_t name);
+
 /* util_name.c */
 #define EXPORT_NAME_FLAG_OID        0x1
 #define EXPORT_NAME_FLAG_COMPOSITE  0x2

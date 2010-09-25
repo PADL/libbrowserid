@@ -47,7 +47,7 @@
  *        mechInvoke(5)
  */
 
-static gss_OID_desc gssEapConcreteMechs[] = {
+static gss_OID_desc gssEapMechOids[] = {
     /* 1.3.6.1.4.1.5322.21.1  */
     { 9, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01" },
     /* 1.3.6.1.4.1.5322.21.1.17 */
@@ -56,9 +56,9 @@ static gss_OID_desc gssEapConcreteMechs[] = {
     { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01\x12" }
 };
 
-gss_OID GSS_EAP_MECHANISM                            = &gssEapConcreteMechs[0];
-gss_OID GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapConcreteMechs[1];
-gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapConcreteMechs[2];
+gss_OID GSS_EAP_MECHANISM                            = &gssEapMechOids[0];
+gss_OID GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapMechOids[1];
+gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapMechOids[2];
 
 int
 gssEapIsConcreteMechanismOid(const gss_OID oid)
@@ -241,10 +241,10 @@ gssEapInternalizeOid(const gss_OID oid,
     *pInternalizedOid = GSS_C_NO_OID;
 
     for (i = 0;
-         i < sizeof(gssEapConcreteMechs) / sizeof(gssEapConcreteMechs[0]);
+         i < sizeof(gssEapMechOids) / sizeof(gssEapMechOids[0]);
          i++) {
-        if (oidEqual(oid, &gssEapConcreteMechs[i])) {
-            *pInternalizedOid = (const gss_OID)&gssEapConcreteMechs[i];
+        if (oidEqual(oid, &gssEapMechOids[i])) {
+            *pInternalizedOid = (const gss_OID)&gssEapMechOids[i];
             break;
         }
     }
@@ -260,4 +260,36 @@ gssEapInternalizeOid(const gss_OID oid,
     }
 
     return 1;
+}
+
+static gss_buffer_desc gssEapSaslMechs[] = {
+    { sizeof("GS2-EAP"), "GS2-EAP", },
+    { sizeof("GS2-EAP-AES128"), "GS2-EAP-AES128" },
+    { sizeof("GS2-EAP-AES256"), "GS2-EAP-AES256" },
+};
+
+gss_buffer_t
+gssEapOidToSaslName(const gss_OID oid)
+{
+    size_t i;
+
+    for (i = 0; i < sizeof(gssEapMechOids)/sizeof(gssEapMechOids[0]); i++) {
+        if (oidEqual(&gssEapMechOids[i], oid))
+            return &gssEapSaslMechs[i];
+    }
+
+    return GSS_C_NO_BUFFER;
+}
+
+gss_OID
+gssEapSaslNameToOid(const gss_buffer_t name)
+{
+    size_t i;
+
+    for (i = 0; i < sizeof(gssEapSaslMechs)/sizeof(gssEapSaslMechs[0]); i++) {
+        if (bufferEqual(&gssEapSaslMechs[i], name))
+            return &gssEapMechOids[i];
+    }
+
+    return GSS_C_NO_OID;
 }
