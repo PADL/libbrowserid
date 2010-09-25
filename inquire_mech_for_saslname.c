@@ -40,6 +40,24 @@ gss_inquire_saslname_for_mech(OM_uint32 *minor,
                               gss_buffer_t mech_description)
 {
     gss_buffer_t name;
+    krb5_enctype etype = ENCTYPE_NULL;
+    krb5_context krbContext;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    makeStringBuffer(minor,
+                    "Extensible Authentication Protocol GSS-API Mechanism",
+                    mech_description);
+
+    /* Dynamically construct mechanism name from Kerberos string enctype */
+    if (oidEqual(mech, GSS_EAP_MECHANISM)) {
+        makeStringBuffer(minor, "eap", mech_name);
+    } else if (gssEapOidToEnctype(minor, mech, &etype) == GSS_S_COMPLETE) {
+        char krbBuf[128] = "eap-";
+
+        if (krb5_enctype_to_name(etype, 0, &krbBuf[4], sizeof(krbBuf) - 4) == 0)
+            makeStringBuffer(minor, krbBuf, mech_name);
+    }
 
     name = gssEapOidToSaslName(mech);
     if (name == GSS_C_NO_BUFFER)

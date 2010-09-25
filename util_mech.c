@@ -263,9 +263,9 @@ gssEapInternalizeOid(const gss_OID oid,
 }
 
 static gss_buffer_desc gssEapSaslMechs[] = {
-    { sizeof("GS2-EAP"), "GS2-EAP", },
-    { sizeof("GS2-EAP-AES128"), "GS2-EAP-AES128" },
-    { sizeof("GS2-EAP-AES256"), "GS2-EAP-AES256" },
+    { sizeof("GS2-EAP") - 1,        "GS2-EAP",       },
+    { sizeof("GS2-EAP-AES128") - 1, "GS2-EAP-AES128" },
+    { sizeof("GS2-EAP-AES256") - 1, "GS2-EAP-AES256" },
 };
 
 gss_buffer_t

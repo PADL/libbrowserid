@@ -181,10 +181,9 @@ makeTokenHeader(
     *(*buf)++ = (unsigned char)mech->length;
     memcpy(*buf, mech->elements, mech->length);
     *buf += mech->length;
-    if (tok_type != TOK_TYPE_NONE) {
-        *(*buf)++ = (unsigned char)((tok_type>>8) & 0xff);
-        *(*buf)++ = (unsigned char)(tok_type & 0xff);
-    }
+    assert(tok_type != TOK_TYPE_NONE);
+    *(*buf)++ = (unsigned char)((tok_type>>8) & 0xff);
+    *(*buf)++ = (unsigned char)(tok_type & 0xff);
 }
 
 /*
