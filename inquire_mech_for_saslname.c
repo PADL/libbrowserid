@@ -42,6 +42,10 @@ gss_inquire_saslname_for_mech(OM_uint32 *minor,
     gss_buffer_t name;
     krb5_enctype etype = ENCTYPE_NULL;
     krb5_context krbContext;
+    char krbBuf[128] = "eap-";
+
+    if (oidEqual(mech, GSS_EAP_MECHANISM))
+        return GSS_S_UNAVAILABLE;
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -50,14 +54,11 @@ gss_inquire_saslname_for_mech(OM_uint32 *minor,
                     mech_description);
 
     /* Dynamically construct mechanism name from Kerberos string enctype */
-    if (oidEqual(mech, GSS_EAP_MECHANISM)) {
-        makeStringBuffer(minor, "eap", mech_name);
-    } else if (gssEapOidToEnctype(minor, mech, &etype) == GSS_S_COMPLETE) {
-        char krbBuf[128] = "eap-";
+    if (gssEapOidToEnctype(minor, mech, &etype) != GSS_S_COMPLETE)
+        return GSS_S_BAD_MECH;
 
-        if (krb5_enctype_to_name(etype, 0, &krbBuf[4], sizeof(krbBuf) - 4) == 0)
-            makeStringBuffer(minor, krbBuf, mech_name);
-    }
+    if (krb5_enctype_to_name(etype, 0, &krbBuf[4], sizeof(krbBuf) - 4) == 0)
+        makeStringBuffer(minor, krbBuf, mech_name);
 
     name = gssEapOidToSaslName(mech);
     if (name == GSS_C_NO_BUFFER)
