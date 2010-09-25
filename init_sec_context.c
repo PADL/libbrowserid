@@ -261,7 +261,7 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx, OM_uint32 reqFlags)
     krb5_enctype encryptionType;
     int gotKey = 0;
 
-#if 0
+#if 1
     /* XXX actually check for mutual auth */
     if (reqFlags & GSS_C_MUTUAL_FLAG)
         ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
