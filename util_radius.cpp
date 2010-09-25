@@ -33,8 +33,8 @@
 #include "gssapiP_eap.h"
 
 static gss_buffer_desc radiusUrnPrefix = {
-    sizeof("urn:radius:") - 1,
-    (void *)"urn:radius:"
+    sizeof("urn:x-radius:") - 1,
+    (void *)"urn:x-radius:"
 };
 
 VALUE_PAIR *
