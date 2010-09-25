@@ -253,13 +253,19 @@ peerConfigFree(OM_uint32 *minor,
 }
 
 static OM_uint32
-initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
+initReady(OM_uint32 *minor, gss_ctx_id_t ctx, OM_uint32 reqFlags)
 {
     OM_uint32 major;
     const unsigned char *key;
     size_t keyLength;
     krb5_enctype encryptionType;
     int gotKey = 0;
+
+#if 0
+    /* XXX actually check for mutual auth */
+    if (reqFlags & GSS_C_MUTUAL_FLAG)
+        ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
+#endif
 
     /* Cache encryption type derived from selected mechanism OID */
     major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &encryptionType);
@@ -446,7 +452,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
         resp = eap_get_eapRespData(ctx->initiatorCtx.eap);
     } else if (ctx->flags & CTX_FLAG_EAP_SUCCESS) {
-        major = initReady(minor, ctx);
+        major = initReady(minor, ctx, reqFlags);
         if (GSS_ERROR(major))
             goto cleanup;
 
