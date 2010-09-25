@@ -33,6 +33,7 @@
 #ifndef _GSSAPIP_EAP_H_
 #define _GSSAPIP_EAP_H_ 1
 
+#include "config.h"
 #include <assert.h>
 #include <string.h>
 #include <errno.h>

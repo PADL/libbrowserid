@@ -19,6 +19,7 @@ gss_import_name
 gss_import_sec_context
 gss_indicate_mechs
 gss_init_sec_context
+gss_inquire_attrs_for_mech
 gss_inquire_context
 gss_inquire_cred
 gss_inquire_cred_by_oid

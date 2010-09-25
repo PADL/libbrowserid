@@ -43,6 +43,7 @@ mech_eap_la_SOURCES =    			\
 	import_sec_context.c			\
 	indicate_mechs.c			\
 	init_sec_context.c			\
+	inquire_attrs_for_mech.c		\
 	inquire_context.c			\
 	inquire_cred.c				\
 	inquire_cred_by_oid.c			\
