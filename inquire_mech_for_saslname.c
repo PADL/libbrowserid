@@ -39,30 +39,37 @@ gss_inquire_saslname_for_mech(OM_uint32 *minor,
                               gss_buffer_t mech_name,
                               gss_buffer_t mech_description)
 {
+    OM_uint32 major;
     gss_buffer_t name;
     krb5_enctype etype = ENCTYPE_NULL;
-    krb5_context krbContext;
     char krbBuf[128] = "eap-";
 
+    /* Don't advertise GSS EAP pseudo-mechanism */
     if (oidEqual(mech, GSS_EAP_MECHANISM))
         return GSS_S_UNAVAILABLE;
 
-    GSSEAP_KRB_INIT(&krbContext);
-
-    makeStringBuffer(minor,
-                    "Extensible Authentication Protocol GSS-API Mechanism",
-                    mech_description);
-
     /* Dynamically construct mechanism name from Kerberos string enctype */
-    if (gssEapOidToEnctype(minor, mech, &etype) != GSS_S_COMPLETE)
-        return GSS_S_BAD_MECH;
+    major = gssEapOidToEnctype(minor, mech, &etype);
+    if (GSS_ERROR(major))
+        return major;
 
-    if (krb5_enctype_to_name(etype, 0, &krbBuf[4], sizeof(krbBuf) - 4) == 0)
-        makeStringBuffer(minor, krbBuf, mech_name);
+    if (krb5_enctype_to_name(etype, 0, &krbBuf[4], sizeof(krbBuf) - 4) == 0) {
+        major = makeStringBuffer(minor, krbBuf, mech_name);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    major = makeStringBuffer(minor,
+                             "Extensible Authentication Protocol GSS-API Mechanism",
+                             mech_description);
+    if (GSS_ERROR(major))
+        return major;
 
     name = gssEapOidToSaslName(mech);
     if (name == GSS_C_NO_BUFFER)
-        return GSS_S_BAD_MECH;
+        major = GSS_S_BAD_MECH;
+    else
+        major = duplicateBuffer(minor, name, sasl_mech_name);
 
-    return duplicateBuffer(minor, name, sasl_mech_name);
+    return major;
 }
