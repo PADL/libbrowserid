@@ -152,11 +152,11 @@ gssEapInitLibRadius(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
-static void gssEapInit(void) __attribute__((constructor));
+static void gssEapInitiatorInit(void) __attribute__((constructor));
 static void gssEapFinalize(void) __attribute__((destructor));
 
 static void
-gssEapInit(void)
+gssEapInitiatorInit(void)
 {
     OM_uint32 major, minor;
 
@@ -164,15 +164,6 @@ gssEapInit(void)
     assert(major == GSS_S_COMPLETE);
 
     major = gssEapInitLibRadius(&minor);
-    assert(major == GSS_S_COMPLETE);
-
-    major = gssEapRadiusAttrProviderInit(&minor);
-    assert(major == GSS_S_COMPLETE);
-
-    major = gssEapSamlAttrProvidersInit(&minor);
-    assert(major == GSS_S_COMPLETE);
-
-    major = gssEapLocalAttrProviderInit(&minor);
     assert(major == GSS_S_COMPLETE);
 
 #ifdef GSSEAP_ENABLE_REAUTH
@@ -186,9 +177,6 @@ gssEapFinalize(void)
 {
     OM_uint32 minor;
 
-    gssEapLocalAttrProviderFinalize(&minor);
-    gssEapSamlAttrProvidersFinalize(&minor);
-    gssEapRadiusAttrProviderFinalize(&minor);
+    gssEapAttrProvidersFinalize(&minor);
     eap_peer_unregister_methods();
 }
-
