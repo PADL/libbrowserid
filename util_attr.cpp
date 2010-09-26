@@ -46,22 +46,26 @@ gssEapAttrProvidersInitInternal(void)
 {
     OM_uint32 major, minor;
 
+    assert(gssEapAttrProvidersInitStatus == GSS_S_UNAVAILABLE);
+
     major = gssEapRadiusAttrProviderInit(&minor);
-    assert(major == GSS_S_COMPLETE);
+    if (major == GSS_S_COMPLETE)
+        major = gssEapSamlAttrProvidersInit(&minor);
+    if (major == GSS_S_COMPLETE)
+        major = gssEapLocalAttrProviderInit(&minor);
 
-    major = gssEapSamlAttrProvidersInit(&minor);
+#ifdef GSSEAP_DEBUG
     assert(major == GSS_S_COMPLETE);
-
-    major = gssEapLocalAttrProviderInit(&minor);
-    assert(major == GSS_S_COMPLETE);
+#endif
 
     gssEapAttrProvidersInitStatus = major;
 }
 
-static void
+static OM_uint32
 gssEapAttrProvidersInit(void)
 {
     GSSEAP_ONCE(&gssEapAttrProvidersInitOnce, gssEapAttrProvidersInitInternal);
+    return gssEapAttrProvidersInitStatus;
 }
 
 OM_uint32
@@ -71,11 +75,15 @@ gssEapAttrProvidersFinalize(OM_uint32 *minor)
 
     if (gssEapAttrProvidersInitStatus == GSS_S_COMPLETE) {
         major = gssEapLocalAttrProviderFinalize(minor);
-        major = gssEapSamlAttrProvidersFinalize(minor);
-        major = gssEapRadiusAttrProviderFinalize(minor);
+        if (major == GSS_S_COMPLETE)
+            major = gssEapSamlAttrProvidersFinalize(minor);
+        if (major == GSS_S_COMPLETE)
+            major = gssEapRadiusAttrProviderFinalize(minor);
+
+        gssEapAttrProvidersInitStatus = GSS_S_UNAVAILABLE;
     }
 
-    return GSS_S_COMPLETE;
+    return major;
 }
 
 static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX + 1];
@@ -724,7 +732,8 @@ gssEapInquireName(OM_uint32 *minor,
     if (name->attrCtx == NULL)
         return GSS_S_UNAVAILABLE;
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     try {
         if (!name->attrCtx->getAttributeTypes(attrs))
@@ -762,7 +771,8 @@ gssEapGetNameAttribute(OM_uint32 *minor,
     if (name->attrCtx == NULL)
         return GSS_S_UNAVAILABLE;
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     try {
         if (!name->attrCtx->getAttribute(attr, authenticated, complete,
@@ -783,7 +793,8 @@ gssEapDeleteNameAttribute(OM_uint32 *minor,
     if (name->attrCtx == NULL)
         return GSS_S_UNAVAILABLE;
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     try {
         name->attrCtx->deleteAttribute(attr);
@@ -804,7 +815,8 @@ gssEapSetNameAttribute(OM_uint32 *minor,
     if (name->attrCtx == NULL)
         return GSS_S_UNAVAILABLE;
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     try {
         name->attrCtx->setAttribute(complete, attr, value);
@@ -827,7 +839,8 @@ gssEapExportAttrContext(OM_uint32 *minor,
         return GSS_S_COMPLETE;
     }
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     try {
         name->attrCtx->exportToBuffer(buffer);
@@ -847,7 +860,8 @@ gssEapImportAttrContext(OM_uint32 *minor,
 
     assert(name->attrCtx == NULL);
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     if (buffer->length != 0) {
         try {
@@ -876,7 +890,8 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
 
     assert(out->attrCtx == NULL);
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     try {
         if (in->attrCtx != NULL) {
@@ -905,7 +920,8 @@ gssEapMapNameToAny(OM_uint32 *minor,
     if (name->attrCtx == NULL)
         return GSS_S_UNAVAILABLE;
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     try {
         *output = name->attrCtx->mapToAny(authenticated, type_id);
@@ -925,7 +941,8 @@ gssEapReleaseAnyNameMapping(OM_uint32 *minor,
     if (name->attrCtx == NULL)
         return GSS_S_UNAVAILABLE;
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return GSS_S_UNAVAILABLE;
 
     try {
         if (*input != NULL)
@@ -960,7 +977,8 @@ gssEapCreateAttrContext(gss_cred_id_t gssCred,
 
     assert(gssCtx != GSS_C_NO_CONTEXT);
 
-    gssEapAttrProvidersInit();
+    if (GSS_ERROR(gssEapAttrProvidersInit()))
+        return NULL;
 
     ctx = new gss_eap_attr_ctx();
     if (!ctx->initFromGssContext(gssCred, gssCtx)) {
