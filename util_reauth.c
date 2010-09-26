@@ -386,6 +386,7 @@ cleanup:
     if (creds != NULL) {
         for (i = 0; creds[i] != NULL; i++)
             krb5_free_creds(krbContext, creds[i]);
+        GSSEAP_FREE(creds);
     }
     if (major == GSS_S_COMPLETE)
         major = *minor ? GSS_S_FAILURE : GSS_S_COMPLETE;
