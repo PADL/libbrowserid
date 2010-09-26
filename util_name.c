@@ -338,7 +338,7 @@ gssEapImportName(OM_uint32 *minor,
         oidEqual(nameType, GSS_EAP_NT_PRINCIPAL_NAME))
         major = importUserName(minor, nameBuffer, name);
     else if (oidEqual(nameType, GSS_C_NT_HOSTBASED_SERVICE) ||
-               oidEqual(nameType, GSS_C_NT_HOSTBASED_SERVICE_X))
+             oidEqual(nameType, GSS_C_NT_HOSTBASED_SERVICE_X))
         major = importServiceName(minor, nameBuffer, name);
     else if (oidEqual(nameType, GSS_C_NT_EXPORT_NAME))
         major = gssEapImportNameInternal(minor, nameBuffer, name,

@@ -53,23 +53,28 @@ gss_inquire_saslname_for_mech(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    if (krb5_enctype_to_name(etype, 0, &krbBuf[4], sizeof(krbBuf) - 4) == 0) {
+    if (mech_name != GSS_C_NO_BUFFER &&
+        krb5_enctype_to_name(etype, 0, &krbBuf[4], sizeof(krbBuf) - 4) == 0) {
         major = makeStringBuffer(minor, krbBuf, mech_name);
         if (GSS_ERROR(major))
             return major;
     }
 
-    major = makeStringBuffer(minor,
-                             "Extensible Authentication Protocol GSS-API Mechanism",
-                             mech_description);
-    if (GSS_ERROR(major))
-        return major;
+    if (mech_description != GSS_C_NO_BUFFER) {
+        major = makeStringBuffer(minor,
+                                 "Extensible Authentication Protocol GSS-API Mechanism",
+                                 mech_description);
+        if (GSS_ERROR(major))
+            return major;
+    }
 
-    name = gssEapOidToSaslName(mech);
-    if (name == GSS_C_NO_BUFFER)
-        major = GSS_S_BAD_MECH;
-    else
-        major = duplicateBuffer(minor, name, sasl_mech_name);
+    if (sasl_mech_name != GSS_C_NO_BUFFER) {
+        name = gssEapOidToSaslName(mech);
+        if (name == GSS_C_NO_BUFFER)
+            major = GSS_S_BAD_MECH;
+        else
+            major = duplicateBuffer(minor, name, sasl_mech_name);
+    }
 
     return major;
 }
