@@ -56,9 +56,13 @@ gssEapExportLucidSecContext(OM_uint32 *minor,
     lctx->send_seq = ctx->sendSeq;
     lctx->recv_seq = ctx->recvSeq;
     lctx->protocol = 1;
-    lctx->cfx_kd.have_acceptor_subkey = 0;
 
-    lkey = &lctx->cfx_kd.ctx_key;
+    lctx->cfx_kd.have_acceptor_subkey =
+        ((rfc4121Flags(ctx, 0) & TOK_FLAG_ACCEPTOR_SUBKEY) != 0);
+
+    lkey = lctx->cfx_kd.have_acceptor_subkey
+           ? &lctx->cfx_kd.ctx_key
+           : &lctx->cfx_kd.acceptor_subkey;
 
     lkey->type = KRB_KEY_TYPE(&ctx->rfc3961Key);
     lkey->data = GSSEAP_MALLOC(KRB_KEY_LENGTH(&ctx->rfc3961Key));
