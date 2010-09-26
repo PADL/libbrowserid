@@ -92,6 +92,11 @@ static struct {
         { 11, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x05\x05" },
         inquireSessionKey
     },
+    {
+        /* GSS_KRB5_EXPORT_LUCID_SEC_CONTEXT + v1 */
+        { 12, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x05\x06\x01" },
+        gssEapExportLucidSecContext
+    },
 };
 
 OM_uint32

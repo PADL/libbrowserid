@@ -260,6 +260,13 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
         }                                           \
     } while (0)
 
+/* util_lucid.c */
+OM_uint32
+gssEapExportLucidSecContext(OM_uint32 *minor,
+                            gss_ctx_id_t ctx,
+                            const gss_OID desiredObject,
+                            gss_buffer_set_t *data_set);
+
 /* util_mech.c */
 int
 gssEapInternalizeOid(const gss_OID oid,
