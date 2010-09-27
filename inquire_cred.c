@@ -42,6 +42,11 @@ gss_inquire_cred(OM_uint32 *minor,
 {
     OM_uint32 major = GSS_S_COMPLETE;
 
+    if (cred == NULL)
+        return GSS_S_NO_CRED;
+
+    GSSEAP_MUTEX_LOCK(&cred->mutex);
+
     if (name != NULL) {
         major = gssEapDuplicateName(minor, cred->name, name);
         if (GSS_ERROR(major))
@@ -89,5 +94,7 @@ gss_inquire_cred(OM_uint32 *minor,
     }
 
 cleanup:
+    GSSEAP_MUTEX_UNLOCK(&cred->mutex);
+
     return major;
 }

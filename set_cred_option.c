@@ -105,23 +105,28 @@ gss_OID GSS_EAP_CRED_SET_CRED_FLAG     = &setCredOps[1].oid;
 
 OM_uint32
 gssspi_set_cred_option(OM_uint32 *minor,
-                       gss_cred_id_t *cred,
+                       gss_cred_id_t *pCred,
                        const gss_OID desired_object,
                        const gss_buffer_t value)
 {
     OM_uint32 major = GSS_S_UNAVAILABLE;
+    gss_cred_id_t cred = *pCred;
     int i;
 
-    if (*cred == GSS_C_NO_CREDENTIAL)
+    if (cred == GSS_C_NO_CREDENTIAL)
         return GSS_S_UNAVAILABLE;
+
+    GSSEAP_MUTEX_LOCK(&cred->mutex);
 
     for (i = 0; i < sizeof(setCredOps) / sizeof(setCredOps[0]); i++) {
         if (oidEqual(&setCredOps[i].oid, desired_object)) {
-            major = (*setCredOps[i].setOption)(minor, *cred,
+            major = (*setCredOps[i].setOption)(minor, cred,
                                               desired_object, value);
             break;
         }
     }
+
+    GSSEAP_MUTEX_UNLOCK(&cred->mutex);
 
     return major;
 }

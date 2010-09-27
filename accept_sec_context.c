@@ -504,11 +504,6 @@ gss_accept_sec_context(OM_uint32 *minor,
     output_token->length = 0;
     output_token->value = NULL;
 
-    if (cred != GSS_C_NO_CREDENTIAL &&
-        (cred->flags & CRED_FLAG_ACCEPT) == 0) {
-        return GSS_S_NO_CRED;
-    }
-
     if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
         return GSS_S_DEFECTIVE_TOKEN;
     }
@@ -547,11 +542,17 @@ gss_accept_sec_context(OM_uint32 *minor,
         goto cleanup;
     }
 
-    /* If credentials were provided, check they're usable with this mech */
-    if (cred != GSS_C_NO_CREDENTIAL &&
-        !gssEapCredAvailable(cred, ctx->mechanismUsed)) {
-        major = GSS_S_BAD_MECH;
-        goto cleanup;
+    /* Validate and lock credentials */
+    if (cred != GSS_C_NO_CREDENTIAL) {
+        if ((cred->flags & CRED_FLAG_ACCEPT) == 0) {
+            major = GSS_S_NO_CRED;
+            goto cleanup;
+        } else if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
+            major = GSS_S_BAD_MECH;
+            goto cleanup;
+        }
+
+        GSSEAP_MUTEX_LOCK(&cred->mutex);
     }
 
     do {
@@ -598,6 +599,8 @@ gss_accept_sec_context(OM_uint32 *minor,
     assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
+    if (cred != GSS_C_NO_CREDENTIAL)
+        GSSEAP_MUTEX_UNLOCK(&cred->mutex);
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     if (GSS_ERROR(major))

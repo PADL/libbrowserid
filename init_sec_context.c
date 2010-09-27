@@ -33,9 +33,6 @@
 #include "gssapiP_eap.h"
 
 #ifdef GSSEAP_ENABLE_REAUTH
-static int
-canReauthP(gss_cred_id_t cred);
-
 static OM_uint32
 eapGssSmInitGssReauth(OM_uint32 *minor,
                       gss_cred_id_t cred,
@@ -633,6 +630,7 @@ gss_init_sec_context(OM_uint32 *minor,
     gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
     enum gss_eap_token_type tokType;
     gss_cred_id_t defaultCred = GSS_C_NO_CREDENTIAL;
+    int initialContextToken = 0;
 
     *minor = 0;
 
@@ -646,24 +644,17 @@ gss_init_sec_context(OM_uint32 *minor,
 
         major = gssEapAllocContext(minor, &ctx);
         if (GSS_ERROR(major))
-            goto cleanup;
+            return major;
 
         ctx->flags |= CTX_FLAG_INITIATOR;
 
-#ifdef GSSEAP_ENABLE_REAUTH
-        if (canReauthP(cred))
-            ctx->state = EAP_STATE_KRB_REAUTH_GSS;
-#endif
-
+        initialContextToken = 1;
         *context_handle = ctx;
     }
 
-    if (cred != GSS_C_NO_CREDENTIAL) {
-        if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
-            major = GSS_S_NO_CRED;
-            goto cleanup;
-        }
-    } else {
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (cred == GSS_C_NO_CREDENTIAL) {
         if (ctx->initiatorCtx.defaultCred == GSS_C_NO_CREDENTIAL) {
             major = gssEapAcquireCred(minor,
                                       GSS_C_NO_NAME,
@@ -681,7 +672,17 @@ gss_init_sec_context(OM_uint32 *minor,
         cred = ctx->initiatorCtx.defaultCred;
     }
 
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+    GSSEAP_MUTEX_LOCK(&cred->mutex);
+
+#ifdef GSSEAP_ENABLE_REAUTH
+    if (initialContextToken && gssEapCanReauthP(cred, target_name, time_req))
+            ctx->state = EAP_STATE_KRB_REAUTH_GSS;
+#endif
+
+    if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
+        major = GSS_S_NO_CRED;
+        goto cleanup;
+    }
 
     sm = &eapGssInitiatorSm[ctx->state];
 
@@ -742,6 +743,8 @@ gss_init_sec_context(OM_uint32 *minor,
     assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
+    if (cred != GSS_C_NO_CREDENTIAL)
+        GSSEAP_MUTEX_UNLOCK(&cred->mutex);
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     if (GSS_ERROR(major))
@@ -753,14 +756,6 @@ cleanup:
 }
 
 #ifdef GSSEAP_ENABLE_REAUTH
-static int
-canReauthP(gss_cred_id_t cred)
-{
-    return (cred != GSS_C_NO_CREDENTIAL &&
-            cred->krbCred != GSS_C_NO_CREDENTIAL &&
-            cred->expiryTime > time(NULL));
-}
-
 static OM_uint32
 eapGssSmInitGssReauth(OM_uint32 *minor,
                       gss_cred_id_t cred,
