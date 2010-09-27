@@ -286,6 +286,100 @@ isTicketGrantingServiceP(krb5_context krbContext,
     return FALSE;
 }
 
+static int
+reauthUseCredsCache(krb5_context krbContext,
+                    krb5_principal principal)
+{
+    int reauthUseCCache;
+
+    /* if reauth_use_ccache, use default credentials cache if ticket is for us */
+    krb5_appdefault_boolean(krbContext, "eap_gss",
+                            krb5_princ_realm(krbContext, principal),
+                            "reauth_use_ccache", 0, &reauthUseCCache);
+
+    return reauthUseCCache;
+}
+
+static OM_uint32
+getReauthCredentials(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     gss_name_t target,
+                     time_t now,
+                     OM_uint32 timeReq)
+{
+    OM_uint32 major = GSS_S_CRED_UNAVAIL;
+    krb5_context krbContext = NULL;
+    krb5_error_code code;
+    krb5_ccache ccache = NULL;
+    krb5_creds match = { 0 };
+    krb5_creds creds = { 0 };
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    assert(cred != GSS_C_NO_CREDENTIAL);
+    assert(target != GSS_C_NO_NAME);
+
+    if (!reauthUseCredsCache(krbContext, cred->name->krbPrincipal))
+        goto cleanup;
+
+    match.client = cred->name->krbPrincipal;
+    match.server = target->krbPrincipal;
+    if (timeReq != 0 && timeReq != GSS_C_INDEFINITE)
+        match.times.endtime = now + timeReq;
+
+    code = krb5_cc_default(krbContext, &ccache);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_cc_retrieve_cred(krbContext, ccache, 0, &match, &creds);
+    if (code != 0)
+        goto cleanup;
+
+    cred->flags |= CRED_FLAG_DEFAULT_CCACHE;
+    cred->krbCredCache = ccache;
+    ccache = NULL;
+
+    major = gss_krb5_import_cred(minor, cred->krbCredCache, NULL, NULL,
+                                 &cred->krbCred);
+
+cleanup:
+    if (major == GSS_S_CRED_UNAVAIL)
+        *minor = code;
+
+    if (ccache != NULL)
+        krb5_cc_close(krbContext, ccache);
+    krb5_free_cred_contents(krbContext, &creds);
+
+    return major;
+}
+
+int
+gssEapCanReauthP(gss_cred_id_t cred,
+                 gss_name_t target,
+                 OM_uint32 timeReq)
+{
+    time_t now;
+
+    if (cred == GSS_C_NO_CREDENTIAL)
+        return FALSE;
+
+    now = time(NULL);
+
+    if (cred->krbCredCache != NULL &&
+        cred->expiryTime > time(NULL) + (timeReq ? timeReq : 0))
+        return TRUE;
+
+    if (cred->name != GSS_C_NO_NAME) {
+        OM_uint32 major, minor;
+
+        major = getReauthCredentials(&minor, cred, target, now, timeReq);
+
+        return !GSS_ERROR(major);
+    }
+
+    return FALSE;
+}
+
 /*
  * Store re-authentication (Kerberos) credentials in a credential handle.
  */
@@ -295,12 +389,14 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
                        gss_cred_id_t cred,
                        gss_buffer_t credBuf)
 {
-    OM_uint32 major = GSS_S_COMPLETE, code;
+    OM_uint32 major = GSS_S_COMPLETE;
+    krb5_error_code code;
     krb5_context krbContext = NULL;
     krb5_auth_context authContext = NULL;
     krb5_data credData = { 0 };
     krb5_creds **creds = NULL;
     krb5_principal canonPrinc;
+    krb5_principal ccPrinc = NULL;
     int i;
 
     if (credBuf->length == 0 || cred == GSS_C_NO_CREDENTIAL)
@@ -339,14 +435,38 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
 
     cred->expiryTime = creds[0]->times.endtime;
 
-    code = krb5_cc_new_unique(krbContext, "MEMORY", NULL, &cred->krbCredCache);
-    if (code != 0)
-        goto cleanup;
+    if (cred->krbCredCache == NULL) {
+        if (reauthUseCredsCache(krbContext, creds[0]->client) &&
+            krb5_cc_default(krbContext, &cred->krbCredCache) == 0)
+            cred->flags |= CRED_FLAG_DEFAULT_CCACHE;
+    } else {
+        /*
+         * If we already have an associated credentials cache, possibly from
+         * the last time we stored a reauthentication credential, then we
+         * need to clear it out and release the associated GSS credential.
+         */
+        if (cred->flags & CRED_FLAG_DEFAULT_CCACHE) {
+            krb5_cc_remove_cred(krbContext, cred->krbCredCache, 0, creds[0]);
+        } else {
+            krb5_cc_destroy(krbContext, cred->krbCredCache);
+            cred->krbCredCache = NULL;
+        }
+        gssReleaseCred(minor, &cred->krbCred);
+    }
 
-    code = krb5_cc_initialize(krbContext, cred->krbCredCache,
-                              creds[0]->client);
-    if (code != 0)
-        goto cleanup;
+    if (cred->krbCredCache == NULL) {
+        code = krb5_cc_new_unique(krbContext, "MEMORY", NULL, &cred->krbCredCache);
+        if (code != 0)
+            goto cleanup;
+    }
+
+    if ((cred->flags & CRED_FLAG_DEFAULT_CCACHE) == 0 ||
+        krb5_cc_get_principal(krbContext, cred->krbCredCache, &ccPrinc) != 0) {
+        code = krb5_cc_initialize(krbContext, cred->krbCredCache,
+                                  creds[0]->client);
+        if (code != 0)
+            goto cleanup;
+    }
 
     for (i = 0; creds[i] != NULL; i++) {
         krb5_creds kcred = *(creds[i]);
@@ -365,23 +485,15 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
             goto cleanup;
     }
 
-#ifdef HAVE_GSS_KRB5_IMPORT_CRED
-    /*
-     * To turn a credentials cache into a GSS credentials handle, we
-     * require the gss_krb5_import_cred() API (present in Heimdal, but
-     * not shipped in MIT yet).
-     */
     major = gss_krb5_import_cred(minor, cred->krbCredCache, NULL, NULL,
                                  &cred->krbCred);
     if (GSS_ERROR(major))
         goto cleanup;
-#else
-#warning Missing gss_krb5_import_cred() implementation
-#endif
 
 cleanup:
     *minor = code;
 
+    krb5_free_principal(krbContext, ccPrinc);
     krb5_auth_con_free(krbContext, authContext);
     if (creds != NULL) {
         for (i = 0; creds[i] != NULL; i++)

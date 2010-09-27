@@ -137,4 +137,9 @@ gssEapReauthComplete(OM_uint32 *minor,
 OM_uint32
 gssEapReauthInitialize(OM_uint32 *minor);
 
+int
+gssEapCanReauthP(gss_cred_id_t cred,
+                 gss_name_t target,
+                 OM_uint32 timeReq);
+
 #endif /* _UTIL_REAUTH_H_ */
