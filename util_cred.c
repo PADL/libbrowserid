@@ -118,6 +118,22 @@ gssEapAcquireCred(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+    if (password != GSS_C_NO_BUFFER) {
+        major = duplicateBuffer(minor, password, &cred->password);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        cred->flags |= CRED_FLAG_PASSWORD;
+    } else if (credUsage == GSS_C_INITIATE) {
+        /*
+         * OK, here we need to ask the supplicant if we have creds or it
+         * will acquire them, so GS2 can know whether to prompt for a
+         * password or not.
+         */
+        major = GSS_S_CRED_UNAVAIL;
+        goto cleanup;
+    }
+
     switch (credUsage) {
     case GSS_C_BOTH:
         cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
@@ -152,14 +168,6 @@ gssEapAcquireCred(OM_uint32 *minor,
         }
 
         cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
-    }
-
-    if (password != GSS_C_NO_BUFFER) {
-        major = duplicateBuffer(minor, password, &cred->password);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        cred->flags |= CRED_FLAG_PASSWORD;
     }
 
     major = gssEapValidateMechs(minor, desiredMechs);
