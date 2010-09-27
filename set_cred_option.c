@@ -121,7 +121,7 @@ gssspi_set_cred_option(OM_uint32 *minor,
     for (i = 0; i < sizeof(setCredOps) / sizeof(setCredOps[0]); i++) {
         if (oidEqual(&setCredOps[i].oid, desired_object)) {
             major = (*setCredOps[i].setOption)(minor, cred,
-                                              desired_object, value);
+                                               desired_object, value);
             break;
         }
     }

@@ -309,11 +309,11 @@ reauthUseCredsCache(krb5_context krbContext,
  * if policy allows.
  */
 static OM_uint32
-getReauthCredentials(OM_uint32 *minor,
-                     gss_cred_id_t cred,
-                     gss_name_t target,
-                     time_t now,
-                     OM_uint32 timeReq)
+getDefaultReauthCredentials(OM_uint32 *minor,
+                            gss_cred_id_t cred,
+                            gss_name_t target,
+                            time_t now,
+                            OM_uint32 timeReq)
 {
     OM_uint32 major = GSS_S_CRED_UNAVAIL;
     krb5_context krbContext = NULL;
@@ -327,7 +327,8 @@ getReauthCredentials(OM_uint32 *minor,
     assert(cred != GSS_C_NO_CREDENTIAL);
     assert(target != GSS_C_NO_NAME);
 
-    if (!reauthUseCredsCache(krbContext, cred->name->krbPrincipal))
+    if (cred->name == GSS_C_NO_NAME ||
+        !reauthUseCredsCache(krbContext, cred->name->krbPrincipal))
         goto cleanup;
 
     match.client = cred->name->krbPrincipal;
@@ -371,24 +372,22 @@ gssEapCanReauthP(gss_cred_id_t cred,
                  gss_name_t target,
                  OM_uint32 timeReq)
 {
-    time_t now;
+    time_t now, expiryReq;
+    OM_uint32 minor;
 
-    if (cred == GSS_C_NO_CREDENTIAL)
-        return FALSE;
+    assert(cred != GSS_C_NO_CREDENTIAL);
 
     now = time(NULL);
+    expiryReq = now;
+    if (timeReq != GSS_C_INDEFINITE)
+        expiryReq += timeReq;
 
-    if (cred->krbCredCache != NULL &&
-        cred->expiryTime > time(NULL) + (timeReq ? timeReq : 0))
+    if (cred->krbCredCache != NULL && cred->expiryTime > expiryReq)
         return TRUE;
 
-    if (cred->name != GSS_C_NO_NAME) {
-        OM_uint32 major, minor;
-
-        major = getReauthCredentials(&minor, cred, target, now, timeReq);
-
-        return !GSS_ERROR(major);
-    }
+    if (getDefaultReauthCredentials(&minor, cred, target,
+                                    now, timeReq) == GSS_S_COMPLETE)
+        return TRUE;
 
     return FALSE;
 }
