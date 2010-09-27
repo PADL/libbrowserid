@@ -82,8 +82,12 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         GSSEAP_FREE(cred->radiusConfigFile);
 
 #ifdef GSSEAP_ENABLE_REAUTH
-    if (cred->krbCredCache != NULL)
-        krb5_cc_destroy(krbContext, cred->krbCredCache);
+    if (cred->krbCredCache != NULL) {
+        if (cred->flags & CRED_FLAG_DEFAULT_CCACHE)
+            krb5_cc_close(krbContext, cred->krbCredCache);
+        else
+            krb5_cc_destroy(krbContext, cred->krbCredCache);
+    }
     if (cred->krbCred != GSS_C_NO_CREDENTIAL)
         gssReleaseCred(&tmpMinor, &cred->krbCred);
 #endif
@@ -118,38 +122,6 @@ gssEapAcquireCred(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    if (password != GSS_C_NO_BUFFER) {
-        major = duplicateBuffer(minor, password, &cred->password);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        cred->flags |= CRED_FLAG_PASSWORD;
-    } else if (credUsage == GSS_C_INITIATE) {
-        /*
-         * OK, here we need to ask the supplicant if we have creds or it
-         * will acquire them, so GS2 can know whether to prompt for a
-         * password or not.
-         */
-        major = GSS_S_CRED_UNAVAIL;
-        goto cleanup;
-    }
-
-    switch (credUsage) {
-    case GSS_C_BOTH:
-        cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
-        break;
-    case GSS_C_INITIATE:
-        cred->flags |= CRED_FLAG_INITIATE;
-        break;
-    case GSS_C_ACCEPT:
-        cred->flags |= CRED_FLAG_ACCEPT;
-        break;
-    default:
-        major = GSS_S_FAILURE;
-        goto cleanup;
-        break;
-    }
-
     if (desiredName != GSS_C_NO_NAME) {
         major = gssEapDuplicateName(minor, desiredName, &cred->name);
         if (GSS_ERROR(major))
@@ -168,6 +140,41 @@ gssEapAcquireCred(OM_uint32 *minor,
         }
 
         cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
+    }
+
+    if (password != GSS_C_NO_BUFFER) {
+        major = duplicateBuffer(minor, password, &cred->password);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        cred->flags |= CRED_FLAG_PASSWORD;
+    } else if (credUsage == GSS_C_INITIATE) {
+        /*
+         * OK, here we need to ask the supplicant if we have creds or it
+         * will acquire them, so GS2 can know whether to prompt for a
+         * password or not.
+         */
+#if 0
+        && !gssEapCanReauthP(cred, GSS_C_NO_NAME, timeReq)
+#endif
+        major = GSS_S_CRED_UNAVAIL;
+        goto cleanup;
+    }
+
+    switch (credUsage) {
+    case GSS_C_BOTH:
+        cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
+        break;
+    case GSS_C_INITIATE:
+        cred->flags |= CRED_FLAG_INITIATE;
+        break;
+    case GSS_C_ACCEPT:
+        cred->flags |= CRED_FLAG_ACCEPT;
+        break;
+    default:
+        major = GSS_S_FAILURE;
+        goto cleanup;
+        break;
     }
 
     major = gssEapValidateMechs(minor, desiredMechs);
@@ -197,6 +204,10 @@ cleanup:
     return major;
 }
 
+/*
+ * Return TRUE if cred available for mechanism. Caller need no acquire
+ * lock because mechanisms list is immutable.
+ */
 int
 gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech)
 {
