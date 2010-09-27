@@ -286,6 +286,10 @@ isTicketGrantingServiceP(krb5_context krbContext,
     return FALSE;
 }
 
+/*
+ * Returns TRUE if the configuration variable reauth_use_ccache is
+ * set in krb5.conf for the eap_gss application and the client realm.
+ */
 static int
 reauthUseCredsCache(krb5_context krbContext,
                     krb5_principal principal)
@@ -300,6 +304,10 @@ reauthUseCredsCache(krb5_context krbContext,
     return reauthUseCCache;
 }
 
+/*
+ * Look in default credentials cache for reauthentication credentials,
+ * if policy allows.
+ */
 static OM_uint32
 getReauthCredentials(OM_uint32 *minor,
                      gss_cred_id_t cred,
@@ -353,6 +361,11 @@ cleanup:
     return major;
 }
 
+/*
+ * Returns TRUE if the credential handle's reauth credentials are
+ * valid or if we can use the default credentials cache. Credentials
+ * handle must be locked.
+ */
 int
 gssEapCanReauthP(gss_cred_id_t cred,
                  gss_name_t target,
@@ -382,6 +395,7 @@ gssEapCanReauthP(gss_cred_id_t cred,
 
 /*
  * Store re-authentication (Kerberos) credentials in a credential handle.
+ * Credentials handle must be locked.
  */
 OM_uint32
 gssEapStoreReauthCreds(OM_uint32 *minor,
