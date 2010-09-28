@@ -171,6 +171,9 @@ radius_ad_get_attribute(krb5_context kcontext,
                radius_ad_attr.length) != 0)
         return ENOENT;
 
+    if (radius_ad->avpdata.length == 0)
+        return ENOENT;
+
     *authenticated = radius_ad->verified;
     *complete = TRUE;
     *more = 0;
