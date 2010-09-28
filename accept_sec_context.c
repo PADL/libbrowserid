@@ -524,11 +524,7 @@ gss_accept_sec_context(OM_uint32 *minor,
         if ((cred->flags & CRED_FLAG_ACCEPT) == 0) {
             major = GSS_S_NO_CRED;
             goto cleanup;
-        } else if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
-            major = GSS_S_BAD_MECH;
-            goto cleanup;
         }
-
         GSSEAP_MUTEX_LOCK(&cred->mutex);
     }
 
@@ -538,6 +534,11 @@ gss_accept_sec_context(OM_uint32 *minor,
                               &tokType, &innerInputToken);
     if (GSS_ERROR(major))
         goto cleanup;
+
+    if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
+        major = GSS_S_BAD_MECH;
+        goto cleanup;
+    }
 
 #ifdef GSSEAP_ENABLE_REAUTH
     /*
