@@ -519,6 +519,19 @@ gss_accept_sec_context(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
+    /* Validate and lock credentials */
+    if (cred != GSS_C_NO_CREDENTIAL) {
+        if ((cred->flags & CRED_FLAG_ACCEPT) == 0) {
+            major = GSS_S_NO_CRED;
+            goto cleanup;
+        } else if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
+            major = GSS_S_BAD_MECH;
+            goto cleanup;
+        }
+
+        GSSEAP_MUTEX_LOCK(&cred->mutex);
+    }
+
     sm = &eapGssAcceptorSm[ctx->state];
 
     major = gssEapVerifyToken(minor, ctx, input_token,
@@ -540,19 +553,6 @@ gss_accept_sec_context(OM_uint32 *minor,
     if (tokType != sm->inputTokenType) {
         major = GSS_S_DEFECTIVE_TOKEN;
         goto cleanup;
-    }
-
-    /* Validate and lock credentials */
-    if (cred != GSS_C_NO_CREDENTIAL) {
-        if ((cred->flags & CRED_FLAG_ACCEPT) == 0) {
-            major = GSS_S_NO_CRED;
-            goto cleanup;
-        } else if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
-            major = GSS_S_BAD_MECH;
-            goto cleanup;
-        }
-
-        GSSEAP_MUTEX_LOCK(&cred->mutex);
     }
 
     do {
