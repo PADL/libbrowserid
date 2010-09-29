@@ -521,11 +521,12 @@ gss_accept_sec_context(OM_uint32 *minor,
 
     /* Validate and lock credentials */
     if (cred != GSS_C_NO_CREDENTIAL) {
+        GSSEAP_MUTEX_LOCK(&cred->mutex);
+
         if ((cred->flags & CRED_FLAG_ACCEPT) == 0) {
             major = GSS_S_NO_CRED;
             goto cleanup;
         }
-        GSSEAP_MUTEX_LOCK(&cred->mutex);
     }
 
     sm = &eapGssAcceptorSm[ctx->state];
