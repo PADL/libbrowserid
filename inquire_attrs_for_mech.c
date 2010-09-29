@@ -53,6 +53,14 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
 
+    if (mech_attrs != NULL)
+        *mech_attrs = GSS_C_NO_OID_SET;
+    if (known_mech_attrs != NULL)
+        *known_mech_attrs = GSS_C_NO_OID_SET;
+
+    if (!gssEapIsConcreteMechanismOid(mech_oid))
+        return GSS_S_BAD_MECH;
+
     if (mech_attrs != NULL) {
         major = gss_create_empty_oid_set(minor, mech_attrs);
         if (GSS_ERROR(major))

@@ -344,7 +344,7 @@ initBegin(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    if (mech == GSS_C_NULL_OID || oidEqual(mech, GSS_EAP_MECHANISM)) {
+    if (mech == GSS_C_NULL_OID) {
         major = gssEapDefaultMech(minor, &ctx->mechanismUsed);
     } else if (gssEapIsConcreteMechanismOid(mech)) {
         if (!gssEapInternalizeOid(mech, &ctx->mechanismUsed))

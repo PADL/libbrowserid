@@ -63,7 +63,6 @@ gssEapWrap(OM_uint32 *minor,
     unsigned char *p;
     int i;
 
-
     iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
     iov[0].buffer.value = NULL;
     iov[0].buffer.length = 0;

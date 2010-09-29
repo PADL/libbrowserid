@@ -268,6 +268,8 @@ gssEapExportLucidSecContext(OM_uint32 *minor,
                             gss_buffer_set_t *data_set);
 
 /* util_mech.c */
+extern gss_OID GSS_EAP_MECHANISM;
+
 int
 gssEapInternalizeOid(const gss_OID oid,
                      gss_OID *const pInternalizedOid);

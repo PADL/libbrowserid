@@ -39,7 +39,6 @@
 extern "C" {
 #endif /* __cplusplus */
 
-extern gss_OID GSS_EAP_MECHANISM;
 extern gss_OID GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM;
 extern gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM;
 

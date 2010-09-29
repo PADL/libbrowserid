@@ -47,6 +47,13 @@
  *        mechInvoke(5)
  */
 
+/*
+ * Note: the enctype-less OID is used as the mechanism OID in exported
+ * names. There is no exported symbol for it. This is consistent with
+ * the krb5 mechanism which, whilst known by many OIDs, always uses a
+ * canonical OID for exported names. (This OID is also returned by
+ * gss_inquire_name.)
+ */
 static gss_OID_desc gssEapMechOids[] = {
     /* 1.3.6.1.4.1.5322.21.1  */
     { 9, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x01" },
@@ -60,6 +67,10 @@ gss_OID GSS_EAP_MECHANISM                            = &gssEapMechOids[0];
 gss_OID GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapMechOids[1];
 gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapMechOids[2];
 
+/*
+ * Returns TRUE is the OID is a concrete mechanism OID, that is, one
+ * with a Kerberos enctype as the last element.
+ */
 int
 gssEapIsConcreteMechanismOid(const gss_OID oid)
 {
@@ -76,6 +87,9 @@ gssEapIsMechanismOid(const gss_OID oid)
            gssEapIsConcreteMechanismOid(oid);
 }
 
+/*
+ * Validate that all elements are concrete mechanism OIDs.
+ */
 OM_uint32
 gssEapValidateMechs(OM_uint32 *minor,
                     const gss_OID_set mechs)
@@ -91,7 +105,7 @@ gssEapValidateMechs(OM_uint32 *minor,
     for (i = 0; i < mechs->count; i++) {
         gss_OID oid = &mechs->elements[i];
 
-        if (!gssEapIsMechanismOid(oid))
+        if (!gssEapIsConcreteMechanismOid(oid))
             return GSS_S_BAD_MECH;
     }
 
@@ -263,7 +277,7 @@ gssEapInternalizeOid(const gss_OID oid,
 }
 
 static gss_buffer_desc gssEapSaslMechs[] = {
-    { sizeof("EAP") - 1,        "EAP",       },
+    { sizeof("EAP") - 1,        "EAP",       }, /* not used */
     { sizeof("EAP-AES128") - 1, "EAP-AES128" },
     { sizeof("EAP-AES256") - 1, "EAP-AES256" },
 };
@@ -273,7 +287,7 @@ gssEapOidToSaslName(const gss_OID oid)
 {
     size_t i;
 
-    for (i = 0; i < sizeof(gssEapMechOids)/sizeof(gssEapMechOids[0]); i++) {
+    for (i = 1; i < sizeof(gssEapMechOids)/sizeof(gssEapMechOids[0]); i++) {
         if (oidEqual(&gssEapMechOids[i], oid))
             return &gssEapSaslMechs[i];
     }
@@ -286,7 +300,7 @@ gssEapSaslNameToOid(const gss_buffer_t name)
 {
     size_t i;
 
-    for (i = 0; i < sizeof(gssEapSaslMechs)/sizeof(gssEapSaslMechs[0]); i++) {
+    for (i = 1; i < sizeof(gssEapSaslMechs)/sizeof(gssEapSaslMechs[0]); i++) {
         if (bufferEqual(&gssEapSaslMechs[i], name))
             return &gssEapMechOids[i];
     }

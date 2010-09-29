@@ -44,10 +44,6 @@ gss_inquire_saslname_for_mech(OM_uint32 *minor,
     krb5_enctype etype = ENCTYPE_NULL;
     char krbBuf[128] = "eap-";
 
-    /* Don't advertise GSS EAP pseudo-mechanism */
-    if (oidEqual(mech, GSS_EAP_MECHANISM))
-        return GSS_S_UNAVAILABLE;
-
     /* Dynamically construct mechanism name from Kerberos string enctype */
     major = gssEapOidToEnctype(minor, mech, &etype);
     if (GSS_ERROR(major))
