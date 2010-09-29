@@ -509,17 +509,23 @@ gssEapRadiusAllocHandle(OM_uint32 *minor,
 }
 
 /*
- * This is a super-inefficient coding but the API is going to change
- * as are the data structures, so not putting a lot of work in now.
+ * Encoding is:
+ * 4 octet NBO attribute ID | 4 octet attribute length | attribute data
  */
 static size_t
 avpSize(const VALUE_PAIR *vp)
 {
-    return NAME_LENGTH + 1 + 12 + AUTH_STRING_LEN + 1;
+    size_t size = 4 + 1;
+
+    if (vp != NULL)
+        size += (vp->type == PW_TYPE_STRING) ? vp->lvalue : 4;
+
+    return size;
 }
 
 static bool
-avpExport(const VALUE_PAIR *vp,
+avpExport(rc_handle *rh,
+          const VALUE_PAIR *vp,
           unsigned char **pBuffer,
           size_t *pRemain)
 {
@@ -528,68 +534,86 @@ avpExport(const VALUE_PAIR *vp,
 
     assert(remain >= avpSize(vp));
 
-    memcpy(p, vp->name, NAME_LENGTH + 1);
-    p += NAME_LENGTH + 1;
-    remain -= NAME_LENGTH + 1;
+    store_uint32_be(vp->attribute, p);
 
-    store_uint32_be(vp->attribute, &p[0]);
-    store_uint32_be(vp->type,      &p[4]);
-    store_uint32_be(vp->lvalue,    &p[8]);
+    if (vp->type == PW_TYPE_STRING) {
+        assert(vp->lvalue <= AUTH_STRING_LEN);
+        p[4] = (uint8_t)vp->lvalue;
+        memcpy(p + 5, vp->strvalue, vp->lvalue);
+    } else {
+        p[4] = 4;
+        store_uint32_be(vp->lvalue, p + 5);
+    }
 
-    p += 12;
-    remain -= 12;
-
-    memcpy(p, vp->strvalue, AUTH_STRING_LEN + 1);
-    p += AUTH_STRING_LEN + 1;
-    remain -= AUTH_STRING_LEN + 1;
-
-    *pBuffer = p;
-    *pRemain = remain;
+    *pBuffer += 5 + p[4];
+    *pRemain -= 5 + p[4];
 
     return true;
 
 }
 
 static bool
-avpImport(VALUE_PAIR **pVp,
+avpImport(rc_handle *rh,
+          VALUE_PAIR **pVp,
           unsigned char **pBuffer,
           size_t *pRemain)
 {
     unsigned char *p = *pBuffer;
     size_t remain = *pRemain;
     VALUE_PAIR *vp;
+    DICT_ATTR *d;
 
-    if (remain < avpSize(NULL)) {
+    if (remain < avpSize(NULL))
         return false;
-    }
 
     vp = (VALUE_PAIR *)GSSEAP_CALLOC(1, sizeof(*vp));
     if (vp == NULL) {
         throw new std::bad_alloc;
         return false;
     }
-    vp->next = NULL;
 
-    memcpy(vp->name, p, NAME_LENGTH + 1);
-    p += NAME_LENGTH + 1;
-    remain -= NAME_LENGTH + 1;
+    vp->attribute = load_uint32_be(p);
+    p += 4;
+    remain -= 4;
 
-    vp->attribute = load_uint32_be(&p[0]);
-    vp->type      = load_uint32_be(&p[4]);
-    vp->lvalue    = load_uint32_be(&p[8]);
+    d = rc_dict_getattr(rh, vp->attribute);
+    if (d == NULL)
+        goto fail;
 
-    p += 12;
-    remain -= 12;
+    assert(sizeof(vp->name) == sizeof(d->name));
+    strcpy(vp->name, d->name);
+    vp->type = d->type;
 
-    memcpy(vp->strvalue, p, AUTH_STRING_LEN + 1);
-    p += AUTH_STRING_LEN + 1;
-    remain -= AUTH_STRING_LEN + 1;
+    if (remain < p[0])
+        goto fail;
+
+    if (vp->type == PW_TYPE_STRING) {
+        if (p[0] > AUTH_STRING_LEN)
+            goto fail;
+
+        vp->lvalue = (uint32_t)p[0];
+        memcpy(vp->strvalue, p + 1, vp->lvalue);
+        vp->strvalue[vp->lvalue] = '\0';
+        p += 1 + vp->lvalue;
+        remain -= 1 + vp->lvalue;
+    } else {
+        if (p[0] != 4)
+            goto fail;
+
+        vp->lvalue = load_uint32_be(p + 1);
+        p += 5;
+        remain -= 5;
+    }
 
     *pVp = vp;
     *pBuffer = p;
     *pRemain = remain;
 
     return true;
+
+fail:
+    GSSEAP_FREE(vp);
+    return false;
 }
 
 bool
@@ -617,7 +641,7 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
     do {
         VALUE_PAIR *attr;
 
-        if (!avpImport(&attr, &p, &remain))
+        if (!avpImport(m_rh, &attr, &p, &remain))
             return false;
 
         *pNext = attr;
@@ -659,7 +683,7 @@ gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
     remain -= 4;
 
     for (vp = m_avps; vp != NULL; vp = vp->next) {
-        avpExport(vp, &p, &remain);
+        avpExport(m_rh, vp, &p, &remain);
     }
 
     assert(remain == 0);
