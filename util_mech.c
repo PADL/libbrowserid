@@ -49,7 +49,7 @@
 
 /*
  * Note: the enctype-less OID is used as the mechanism OID in exported
- * names. There is no exported symbol for it. This is consistent with
+ * names. There is no public symbol for it. This is consistent with
  * the krb5 mechanism which, whilst known by many OIDs, always uses a
  * canonical OID for exported names. (This OID is also returned by
  * gss_inquire_name.)
