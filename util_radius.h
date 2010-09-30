@@ -96,7 +96,7 @@ public:
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:
-    bool initFromGssCred(const gss_cred_id_t cred);
+    bool allocRadHandle(const std::string &configFile);
     static VALUE_PAIR *copyAvps(const VALUE_PAIR *in);
     const VALUE_PAIR *getAvps(void) const {
         return m_avps;
@@ -105,6 +105,7 @@ private:
     rc_handle *m_rh;
     VALUE_PAIR *m_avps;
     bool m_authenticated;
+    std::string m_configFile;
 };
 
 /* For now */
