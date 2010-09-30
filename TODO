@@ -1,4 +1,8 @@
-- hook up libradius, AVP parsing logic
 - better handling of mechanism-specific error namespace
+- textual error codes
 - better interfaces for initiator EAP configuration/credential management
-- make CBT ASN.1
+- make CBT ASN.1 ??
+- integration with initiator-side EAP channel bindings
+- integration with final supplicant architecture
+- integration with libradsec
+- port to Heimdal

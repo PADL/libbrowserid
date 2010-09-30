@@ -32,6 +32,111 @@
 
 #include "gssapiP_eap.h"
 
+static GSSEAP_THREAD_ONCE gssEapStatusInfoKeyOnce = GSSEAP_ONCE_INITIALIZER;
+static GSSEAP_THREAD_KEY gssEapStatusInfoKey;
+
+struct gss_eap_status_info {
+    OM_uint32 code;
+    char *message;
+    struct gss_eap_status_info *next;
+};
+
+static void
+destroyStatusInfo(void *arg)
+{
+    struct gss_eap_status_info *p = arg, *next;
+
+    for (p = arg; p != NULL; p = next) {
+        next = p->next;
+        GSSEAP_FREE(p->message);
+        GSSEAP_FREE(p);
+    }
+}
+
+static void
+createStatusInfoKey(void)
+{
+    GSSEAP_KEY_CREATE(&gssEapStatusInfoKey, destroyStatusInfo);
+}
+
+static void
+saveStatusInfoNoCopy(OM_uint32 minor, char *message)
+{
+    struct gss_eap_status_info *info, *p;
+
+    GSSEAP_ONCE(&gssEapStatusInfoKeyOnce, createStatusInfoKey);
+
+    info = GSSEAP_CALLOC(1, sizeof(*info));
+    if (info == NULL)
+        return;
+
+    info->code = minor;
+    info->message = message;
+
+    p = GSSEAP_GETSPECIFIC(gssEapStatusInfoKey);
+    if (p == NULL) {
+        GSSEAP_SETSPECIFIC(gssEapStatusInfoKey, info);
+    } else {
+        struct gss_eap_status_info **next = &p;
+
+        for (; p != NULL; p = p->next)
+            next = &p->next;
+
+        *next = info;
+    }
+}
+
+static const char *
+getStatusInfo(OM_uint32 minor)
+{
+    struct gss_eap_status_info *p;
+
+    GSSEAP_ONCE(&gssEapStatusInfoKeyOnce, createStatusInfoKey);
+
+    for (p = GSSEAP_GETSPECIFIC(gssEapStatusInfoKey);
+         p != NULL;
+         p = p->next) {
+        if (p->code == minor)
+            return p->message;
+    }
+
+    return NULL;
+}
+
+void
+gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...)
+{
+    char *s;
+    int n;
+    va_list ap;
+
+    va_start(ap, format);
+    n = vasprintf(&s, format, ap);
+    va_end(ap);
+
+    if (n >= 0)
+        saveStatusInfoNoCopy(minor, s);
+}
+
+#if 0
+void
+gssEapSaveKrbStatusInfo(OM_uint32 minor)
+{
+    krb5_context krbContext = NULL;
+    OM_uint32 tmpMinor;
+    const char *s;
+
+    gssEapKerberosInit(&tmpMinor, &krbContext);
+
+    if (krbContext != NULL) {
+        s = krb5_get_error_message(krbContext, minor);
+        gssEapSaveStatusInfo(minor, "%s", s);
+        krb5_set_error_message(krbContext, minor, "%s", s);
+        krb5_free_error_message(krbContext, s);
+    }
+}
+#endif
+
 OM_uint32
 gss_display_status(OM_uint32 *minor,
                    OM_uint32 status_value,
@@ -40,7 +145,7 @@ gss_display_status(OM_uint32 *minor,
                    OM_uint32 *message_context,
                    gss_buffer_t status_string)
 {
-    OM_uint32 major;
+    OM_uint32 major = GSS_S_COMPLETE;
     krb5_context krbContext;
     const char *errMsg;
 
@@ -56,16 +161,15 @@ gss_display_status(OM_uint32 *minor,
         return GSS_S_BAD_STATUS;
     }
 
-    /* XXX we need to support RADIUS codes too? */
     GSSEAP_KRB_INIT(&krbContext);
 
     errMsg = krb5_get_error_message(krbContext, status_value);
+
     if (errMsg != NULL) {
         major = makeStringBuffer(minor, errMsg, status_string);
-        krb5_free_error_message(krbContext, errMsg);
-    } else {
-        major = GSS_S_COMPLETE;
     }
 
-    return GSS_S_COMPLETE;
+    krb5_free_error_message(krbContext, errMsg);
+
+    return major;
 }

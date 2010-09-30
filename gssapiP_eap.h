@@ -222,4 +222,8 @@ gssEapWrap(OM_uint32 *minor,
 unsigned char
 rfc4121Flags(gss_ctx_id_t ctx, int receiving);
 
+/* display_status.c */
+void
+gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...);
+
 #endif /* _GSSAPIP_EAP_H_ */
