@@ -71,11 +71,20 @@ gss_pseudo_random(OM_uint32 *minor,
     unsigned char *p;
     krb5_context krbContext;
 
+    *minor = 0;
+
     prf_out->length = 0;
     prf_out->value = NULL;
 
-    if (!CTX_IS_ESTABLISHED(ctx))
+    if (ctx == GSS_C_NO_CONTEXT)
         return GSS_S_NO_CONTEXT;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+        return GSS_S_NO_CONTEXT;
+    }
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -85,7 +94,7 @@ gss_pseudo_random(OM_uint32 *minor,
     ns.length = 0;
     ns.data = NULL;
 
-    if (prf_key != GSS_C_PRF_KEY_FULL &&
+    if (prf_key != GSS_C_PRF_KEY_PARTIAL &&
         prf_key != GSS_C_PRF_KEY_FULL) {
         code = EINVAL;
         goto cleanup;
@@ -136,12 +145,14 @@ gss_pseudo_random(OM_uint32 *minor,
     }
 
 cleanup:
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
     if (code != 0)
         gss_release_buffer(&tmpMinor, prf_out);
     krb5_free_data_contents(krbContext, &ns);
     krb5_free_data_contents(krbContext, &t);
 
     *minor = code;
+
     return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
-

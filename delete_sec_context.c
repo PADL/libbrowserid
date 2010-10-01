@@ -65,8 +65,10 @@ gss_delete_sec_context(OM_uint32 *minor,
 
         major = gssEapWrapOrGetMIC(minor, ctx, FALSE, FALSE,
                                    iov, 2, TOK_TYPE_DELETE_CONTEXT);
-        if (GSS_ERROR(major))
+        if (GSS_ERROR(major)) {
+            GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
             return major;
+        }
     }
 
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);

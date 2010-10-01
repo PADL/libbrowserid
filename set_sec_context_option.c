@@ -46,15 +46,24 @@ gss_set_sec_context_option(OM_uint32 *minor,
                            const gss_buffer_t value)
 {
     OM_uint32 major = GSS_S_UNAVAILABLE;
+    gss_ctx_id_t ctx = *pCtx;
     int i;
+
+    if (ctx != GSS_C_NO_CONTEXT)
+        GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     for (i = 0; i < sizeof(setCtxOps) / sizeof(setCtxOps[0]); i++) {
         if (oidEqual(&setCtxOps[i].oid, desired_object)) {
-            major = (*setCtxOps[i].setOption)(minor, pCtx,
+            major = (*setCtxOps[i].setOption)(minor, &ctx,
                                               desired_object, value);
             break;
         }
     }
+
+    if (*pCtx == NULL)
+        *pCtx = ctx;
+    else
+        GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;
 }

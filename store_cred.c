@@ -34,7 +34,7 @@
 
 OM_uint32
 gss_store_cred(OM_uint32 *minor,
-               const gss_cred_id_t input_cred_handle,
+               const gss_cred_id_t cred,
                gss_cred_usage_t input_usage,
                const gss_OID desired_mech,
                OM_uint32 overwrite_cred,
@@ -42,27 +42,34 @@ gss_store_cred(OM_uint32 *minor,
                gss_OID_set *elements_stored,
                gss_cred_usage_t *cred_usage_stored)
 {
+    OM_uint32 major = GSS_S_UNAVAILABLE;
+
+    *minor = 0;
+
     if (elements_stored != NULL)
         *elements_stored = GSS_C_NO_OID_SET;
     if (cred_usage_stored != NULL)
         *cred_usage_stored = input_usage;
 
-    if (input_cred_handle == GSS_C_NO_CREDENTIAL)
+    if (cred == GSS_C_NO_CREDENTIAL)
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CRED;
 
+    GSSEAP_MUTEX_LOCK(&cred->mutex);
+
 #ifdef GSSEAP_ENABLE_REAUTH
-    if (input_cred_handle->krbCred != GSS_C_NO_CREDENTIAL) {
-        return gssStoreCred(minor,
-                            input_cred_handle->krbCred,
-                            input_usage,
-                            (gss_OID)gss_mech_krb5,
-                            overwrite_cred,
-                            default_cred,
-                            elements_stored,
-                            cred_usage_stored);
+    if (cred->krbCred != GSS_C_NO_CREDENTIAL) {
+        major = gssStoreCred(minor,
+                             cred->krbCred,
+                             input_usage,
+                             (gss_OID)gss_mech_krb5,
+                             overwrite_cred,
+                             default_cred,
+                             elements_stored,
+                             cred_usage_stored);
     }
 #endif
 
-    *minor = 0;
-    return GSS_S_UNAVAILABLE;
+    GSSEAP_MUTEX_UNLOCK(&cred->mutex);
+
+    return major;
 }

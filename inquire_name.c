@@ -40,6 +40,8 @@ OM_uint32 gss_inquire_name(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
 
+    *minor = 0;
+
     if (name_is_MN != NULL)
         *name_is_MN = 1;
     if (MN_mech != NULL)

@@ -40,7 +40,15 @@ gss_process_context_token(OM_uint32 *minor,
     OM_uint32 major;
     gss_iov_buffer_desc iov[1];
 
+    *minor = 0;
+
+    if (ctx == NULL)
+        return GSS_S_NO_CONTEXT;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
     if (!CTX_IS_ESTABLISHED(ctx)) {
+        GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
         return GSS_S_NO_CONTEXT;
     }
 
@@ -49,8 +57,12 @@ gss_process_context_token(OM_uint32 *minor,
 
     major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
                                     iov, 1, TOK_TYPE_DELETE_CONTEXT);
-    if (GSS_ERROR(major))
+    if (GSS_ERROR(major)) {
+        GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
         return major;
+    }
+
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return gssEapReleaseContext(minor, &ctx);
 }

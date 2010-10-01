@@ -41,17 +41,16 @@ gss_wrap(OM_uint32 *minor,
          int *conf_state,
          gss_buffer_t output_message_buffer)
 {
-    OM_uint32 major;
+    OM_uint32 major = GSS_C_NO_CONTEXT;
+
+    *minor = 0;
 
     if (ctx == GSS_C_NO_CONTEXT)
         return GSS_S_NO_CONTEXT;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    if (!CTX_IS_ESTABLISHED(ctx)) {
-        *minor = 0;
-        major = GSS_S_NO_CONTEXT;
-    } else {
+    if (CTX_IS_ESTABLISHED(ctx)) {
         major = gssEapWrap(minor, ctx, conf_req_flag, qop_req,
                            input_message_buffer,
                            conf_state, output_message_buffer);

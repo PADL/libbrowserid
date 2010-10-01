@@ -485,17 +485,16 @@ gss_unwrap_iov(OM_uint32 *minor,
                gss_iov_buffer_desc *iov,
                int iov_count)
 {
-    OM_uint32 major;
+    OM_uint32 major = GSS_C_NO_CONTEXT;
+
+    *minor = 0;
 
     if (ctx == GSS_C_NO_CONTEXT)
         return GSS_S_NO_CONTEXT;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    if (!CTX_IS_ESTABLISHED(ctx)) {
-        *minor = 0;
-        major = GSS_S_NO_CONTEXT;
-    } else {
+    if (CTX_IS_ESTABLISHED(ctx)) {
         major = gssEapUnwrapOrVerifyMIC(minor, ctx, conf_state, qop_state,
                                         iov, iov_count, TOK_TYPE_WRAP);
     }

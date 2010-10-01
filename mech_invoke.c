@@ -39,5 +39,6 @@ gssspi_mech_invoke(OM_uint32 *minor,
                    gss_buffer_t value)
 {
     *minor = 0;
+
     return GSS_S_UNAVAILABLE;
 }
