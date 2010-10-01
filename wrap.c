@@ -41,12 +41,25 @@ gss_wrap(OM_uint32 *minor,
          int *conf_state,
          gss_buffer_t output_message_buffer)
 {
-    if (!CTX_IS_ESTABLISHED(ctx))
+    OM_uint32 major;
+
+    if (ctx == GSS_C_NO_CONTEXT)
         return GSS_S_NO_CONTEXT;
 
-    return gssEapWrap(minor, ctx, conf_req_flag, qop_req,
-                      input_message_buffer,
-                      conf_state, output_message_buffer);
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        *minor = 0;
+        major = GSS_S_NO_CONTEXT;
+    } else {
+        major = gssEapWrap(minor, ctx, conf_req_flag, qop_req,
+                           input_message_buffer,
+                           conf_state, output_message_buffer);
+    }
+
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    return major;
 }
 
 OM_uint32

@@ -123,9 +123,15 @@ gssEapAcquireCred(OM_uint32 *minor,
         goto cleanup;
 
     if (desiredName != GSS_C_NO_NAME) {
+        GSSEAP_MUTEX_LOCK(&desiredName->mutex);
+
         major = gssEapDuplicateName(minor, desiredName, &cred->name);
-        if (GSS_ERROR(major))
+        if (GSS_ERROR(major)) {
+            GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
             goto cleanup;
+        }
+
+        GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
     } else {
         if (cred->flags & CRED_FLAG_INITIATE) {
             gss_buffer_desc buf;

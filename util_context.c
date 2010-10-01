@@ -209,16 +209,6 @@ gssEapContextTime(OM_uint32 *minor,
                   gss_ctx_id_t context_handle,
                   OM_uint32 *time_rec)
 {
-    if (context_handle == GSS_C_NO_CONTEXT) {
-        return GSS_S_NO_CONTEXT;
-    }
-
-    if (!CTX_IS_ESTABLISHED(context_handle)) {
-        return GSS_S_NO_CONTEXT;
-    }
-
-    *minor = 0;
-
     if (context_handle->expiryTime == 0) {
         *time_rec = GSS_C_INDEFINITE;
     } else {

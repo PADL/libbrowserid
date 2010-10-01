@@ -294,6 +294,7 @@ gss_import_sec_context(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
 
+    *minor = 0;
     *context_handle = GSS_C_NO_CONTEXT;
 
     if (interprocess_token == GSS_C_NO_BUFFER ||

@@ -47,10 +47,10 @@ gss_inquire_context(OM_uint32 *minor,
 
     *minor = 0;
 
-    if (ctx == GSS_C_NO_CONTEXT) {
-        major = GSS_S_NO_CONTEXT;
-        goto cleanup;
-    }
+    if (ctx == GSS_C_NO_CONTEXT)
+        return GSS_S_NO_CONTEXT;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (src_name != NULL) {
         major = gssEapDuplicateName(minor, ctx->initiatorName, src_name);
@@ -102,6 +102,8 @@ gss_inquire_context(OM_uint32 *minor,
     major = GSS_S_COMPLETE;
 
 cleanup:
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
     if (GSS_ERROR(major)) {
         gssEapReleaseName(&tmpMinor, src_name);
         gssEapReleaseName(&tmpMinor, targ_name);

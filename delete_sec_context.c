@@ -38,16 +38,19 @@ gss_delete_sec_context(OM_uint32 *minor,
                        gss_buffer_t output_token)
 {
     OM_uint32 major;
+    gss_ctx_id_t ctx = *context_handle;
+
+    *minor = 0;
 
     if (output_token != GSS_C_NO_BUFFER) {
         output_token->length = 0;
         output_token->value = NULL;
     }
 
-    if (*context_handle == GSS_C_NO_CONTEXT) {
-        *minor = 0;
+    if (ctx == GSS_C_NO_CONTEXT)
         return GSS_S_COMPLETE;
-    }
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (output_token != GSS_C_NO_BUFFER) {
         gss_iov_buffer_desc iov[2];
@@ -60,11 +63,13 @@ gss_delete_sec_context(OM_uint32 *minor,
         iov[1].buffer.value = NULL;
         iov[1].buffer.length = 0;
 
-        major = gssEapWrapOrGetMIC(minor, *context_handle, FALSE, FALSE,
+        major = gssEapWrapOrGetMIC(minor, ctx, FALSE, FALSE,
                                    iov, 2, TOK_TYPE_DELETE_CONTEXT);
         if (GSS_ERROR(major))
             return major;
     }
+
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return gssEapReleaseContext(minor, context_handle);
 }

@@ -336,13 +336,24 @@ initBegin(OM_uint32 *minor,
     else
         ctx->expiryTime = time(NULL) + timeReq;
 
+    /*
+     * The credential mutex protects its name, however we need to
+     * explicitly lock the acceptor name (unlikely as it may be
+     * that it has attributes set on it).
+     */
     major = gssEapDuplicateName(minor, cred->name, &ctx->initiatorName);
     if (GSS_ERROR(major))
         return major;
 
+    GSSEAP_MUTEX_LOCK(&target->mutex);
+
     major = gssEapDuplicateName(minor, target, &ctx->acceptorName);
-    if (GSS_ERROR(major))
+    if (GSS_ERROR(major)) {
+        GSSEAP_MUTEX_UNLOCK(&target->mutex);
         return major;
+    }
+
+    GSSEAP_MUTEX_UNLOCK(&target->mutex);
 
     if (mech == GSS_C_NULL_OID) {
         major = gssEapDefaultMech(minor, &ctx->mechanismUsed);

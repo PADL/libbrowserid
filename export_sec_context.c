@@ -156,6 +156,8 @@ gss_export_sec_context(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
 
+    *minor = 0;
+
     interprocess_token->length = 0;
     interprocess_token->value = NULL;
 

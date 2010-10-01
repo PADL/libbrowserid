@@ -38,10 +38,23 @@ gss_canonicalize_name(OM_uint32 *minor,
                       const gss_OID mech_type,
                       gss_name_t *output_name)
 {
-    if (!gssEapIsMechanismOid(mech_type)) {
-        *minor = 0;
+    OM_uint32 major;
+
+    *minor = 0;
+
+    if (!gssEapIsMechanismOid(mech_type))
         return GSS_S_BAD_MECH;
+
+    if (input_name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
     }
 
-    return gssEapDuplicateName(minor, input_name, output_name);
+    GSSEAP_MUTEX_LOCK(&input_name->mutex);
+
+    major = gssEapDuplicateName(minor, input_name, output_name);
+
+    GSSEAP_MUTEX_UNLOCK(&input_name->mutex);
+
+    return major;
 }

@@ -39,6 +39,7 @@ gss_verify_mic(OM_uint32 *minor,
                gss_buffer_t message_token,
                gss_qop_t *qop_state)
 {
+    OM_uint32 major;
     gss_iov_buffer_desc iov[3];
     int conf_state;
 
@@ -58,6 +59,12 @@ gss_verify_mic(OM_uint32 *minor,
     iov[2].buffer.length = message_token->length - 16;
     iov[2].buffer.value = (unsigned char *)message_token->value + 16;
 
-    return gssEapUnwrapOrVerifyMIC(minor, ctx, &conf_state, qop_state,
-                                   iov, 3, TOK_TYPE_MIC);
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    major = gssEapUnwrapOrVerifyMIC(minor, ctx, &conf_state, qop_state,
+                                    iov, 3, TOK_TYPE_MIC);
+
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    return major;
 }

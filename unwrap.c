@@ -43,8 +43,15 @@ gss_unwrap(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_iov_buffer_desc iov[2];
 
-    if (!CTX_IS_ESTABLISHED(ctx))
+    if (ctx == GSS_C_NO_CONTEXT)
         return GSS_S_NO_CONTEXT;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        major = GSS_S_NO_CONTEXT;
+        goto cleanup;
+    }
 
     iov[0].type = GSS_IOV_BUFFER_TYPE_STREAM;
     iov[0].buffer = *input_message_buffer;
@@ -61,6 +68,9 @@ gss_unwrap(OM_uint32 *minor,
         if (iov[1].type & GSS_IOV_BUFFER_FLAG_ALLOCATED)
             gss_release_buffer(&tmpMinor, &iov[1].buffer);
     }
+
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;
 }

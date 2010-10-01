@@ -101,22 +101,34 @@ static struct {
 
 OM_uint32
 gss_inquire_sec_context_by_oid(OM_uint32 *minor,
-                               const gss_ctx_id_t context_handle,
+                               const gss_ctx_id_t ctx,
                                const gss_OID desired_object,
                                gss_buffer_set_t *data_set)
 {
-    OM_uint32 major = GSS_S_UNAVAILABLE;
+    OM_uint32 major;
     int i;
 
     *data_set = GSS_C_NO_BUFFER_SET;
 
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        major = GSS_S_NO_CONTEXT;
+        goto cleanup;
+    }
+
+    major = GSS_S_UNAVAILABLE;
+
     for (i = 0; i < sizeof(inquireCtxOps) / sizeof(inquireCtxOps[0]); i++) {
         if (oidEqual(&inquireCtxOps[i].oid, desired_object)) {
-            major = (*inquireCtxOps[i].inquire)(minor, context_handle,
+            major = (*inquireCtxOps[i].inquire)(minor, ctx,
                                                  desired_object, data_set);
             break;
         }
     }
+
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;
 }

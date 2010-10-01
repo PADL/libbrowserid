@@ -188,6 +188,17 @@ gss_wrap_iov_length(OM_uint32 *minor,
                     gss_iov_buffer_desc *iov,
                     int iov_count)
 {
-    return gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
-                               conf_state, iov, iov_count);
+    OM_uint32 major;
+
+    if (ctx == GSS_C_NO_CONTEXT)
+        return GSS_S_NO_CONTEXT;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    major = gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
+                                conf_state, iov, iov_count);
+
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    return major;
 }

@@ -54,6 +54,7 @@ gss_add_cred(OM_uint32 *minor,
     OM_uint32 time_req, time_rec = 0;
     gss_OID_set_desc mechs;
 
+    *minor = 0;
     *output_cred_handle = GSS_C_NO_CREDENTIAL;
 
     if (cred_usage == GSS_C_ACCEPT)

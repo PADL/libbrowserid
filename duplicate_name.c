@@ -37,5 +37,20 @@ gss_duplicate_name(OM_uint32 *minor,
                    const gss_name_t input_name,
                    gss_name_t *dest_name)
 {
-    return gssEapDuplicateName(minor, input_name, dest_name);
+    OM_uint32 major;
+
+    *minor = 0;
+
+    if (input_name == GSS_C_NO_NAME) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
+    }
+
+    GSSEAP_MUTEX_LOCK(&input_name->mutex);
+
+    major = gssEapDuplicateName(minor, input_name, dest_name);
+
+    GSSEAP_MUTEX_UNLOCK(&input_name->mutex);
+
+    return major;
 }

@@ -38,6 +38,7 @@ gss_display_name(OM_uint32 *minor,
                  gss_buffer_t output_name_buffer,
                  gss_OID *output_name_type)
 {
+    /* Lock not required as long as attributes are not used */
     return gssEapDisplayName(minor, name, output_name_buffer,
                              output_name_type);
 }

@@ -42,11 +42,20 @@ gss_get_mic(OM_uint32 *minor,
     OM_uint32 major;
     gss_iov_buffer_desc iov[2];
 
+    *minor = 0;
+
+    if (ctx == GSS_C_NO_CONTEXT)
+        return GSS_S_NO_CONTEXT;
+
     message_token->value = NULL;
     message_token->length = 0;
 
-    if (!CTX_IS_ESTABLISHED(ctx))
-        return GSS_S_NO_CONTEXT;
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        major = GSS_S_NO_CONTEXT;
+        goto cleanup;
+    }
 
     iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
     iov[0].buffer = *message_buffer;
@@ -59,6 +68,9 @@ gss_get_mic(OM_uint32 *minor,
     if (major == GSS_S_COMPLETE) {
         *message_token = iov[1].buffer;
     }
+
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;
 }

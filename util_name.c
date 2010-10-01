@@ -384,7 +384,6 @@ gssEapExportNameInternal(OM_uint32 *minor,
     exportedName->value = NULL;
 
     GSSEAP_KRB_INIT(&krbContext);
-    GSSEAP_MUTEX_LOCK(&name->mutex);
 
     *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
     if (*minor != 0) {
@@ -450,7 +449,6 @@ gssEapExportNameInternal(OM_uint32 *minor,
     major = GSS_S_COMPLETE;
 
 cleanup:
-    GSSEAP_MUTEX_UNLOCK(&name->mutex);
     gss_release_buffer(&tmpMinor, &attrs);
     if (GSS_ERROR(major))
         gss_release_buffer(&tmpMinor, exportedName);
@@ -480,9 +478,6 @@ gssEapDuplicateName(OM_uint32 *minor,
         return major;
     }
 
-    /* Lock mutex for copying mutable attributes */
-    GSSEAP_MUTEX_LOCK(&input_name->mutex);
-
     *minor = krb5_copy_principal(krbContext, input_name->krbPrincipal,
                                  &name->krbPrincipal);
     if (*minor != 0) {
@@ -499,8 +494,6 @@ gssEapDuplicateName(OM_uint32 *minor,
     *dest_name = name;
 
 cleanup:
-    GSSEAP_MUTEX_UNLOCK(&input_name->mutex);
-
     if (GSS_ERROR(major)) {
         gssEapReleaseName(&tmpMinor, &name);
     }
