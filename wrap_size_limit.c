@@ -43,6 +43,18 @@ gss_wrap_size_limit(OM_uint32 *minor,
     gss_iov_buffer_desc iov[4];
     OM_uint32 major, overhead;
 
+    *minor = 0;
+
+    if (ctx == GSS_C_NO_CONTEXT)
+        return GSS_S_NO_CONTEXT;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        major = GSS_S_NO_CONTEXT;
+        goto cleanup;
+    }
+
     iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
     iov[0].buffer.value = NULL;
     iov[0].buffer.length = 0;
@@ -61,9 +73,8 @@ gss_wrap_size_limit(OM_uint32 *minor,
 
     major = gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
                                 NULL, iov, 4);
-    if (GSS_ERROR(major)) {
-        return major;
-    }
+    if (GSS_ERROR(major))
+        goto cleanup;
 
     overhead = iov[0].buffer.length + iov[3].buffer.length;
 
@@ -72,5 +83,8 @@ gss_wrap_size_limit(OM_uint32 *minor,
     else
         *max_input_size = 0;
 
-    return GSS_S_COMPLETE;
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    return major;
 }
