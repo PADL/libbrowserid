@@ -1,0 +1,2 @@
+- gss_xxx routines acquire lock, gssXxx don't
+
