@@ -195,9 +195,17 @@ gss_wrap_iov_length(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        major = GSS_S_NO_CONTEXT;
+        goto cleanup;
+    }
+
     major = gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
                                 conf_state, iov, iov_count);
+    if (GSS_ERROR(major))
+        goto cleanup;
 
+cleanup:
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;
