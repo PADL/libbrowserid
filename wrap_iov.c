@@ -328,18 +328,24 @@ gss_wrap_iov(OM_uint32 *minor,
 {
     OM_uint32 major;
 
+    *minor = 0;
+
     if (ctx == GSS_C_NO_CONTEXT)
         return GSS_S_NO_CONTEXT;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
-        *minor = 0;
         major = GSS_S_NO_CONTEXT;
-    } else
-        major = gssEapWrapOrGetMIC(minor, ctx, conf_req_flag, conf_state,
-                                   iov, iov_count, TOK_TYPE_WRAP);
+        goto cleanup;
+    }
 
+    major = gssEapWrapOrGetMIC(minor, ctx, conf_req_flag, conf_state,
+                               iov, iov_count, TOK_TYPE_WRAP);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;

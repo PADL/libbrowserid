@@ -43,6 +43,8 @@ gss_verify_mic(OM_uint32 *minor,
     gss_iov_buffer_desc iov[3];
     int conf_state;
 
+    *minor = 0;
+
     if (message_token->length < 16) {
         *minor = KRB5_BAD_MSIZE;
         return GSS_S_BAD_SIG;
