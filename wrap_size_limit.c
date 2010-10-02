@@ -43,10 +43,12 @@ gss_wrap_size_limit(OM_uint32 *minor,
     gss_iov_buffer_desc iov[4];
     OM_uint32 major, overhead;
 
-    *minor = 0;
-
-    if (ctx == GSS_C_NO_CONTEXT)
+    if (ctx == GSS_C_NO_CONTEXT) {
+        *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
+
+    *minor = 0;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 

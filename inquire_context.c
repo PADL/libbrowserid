@@ -45,10 +45,12 @@ gss_inquire_context(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
 
-    *minor = 0;
-
-    if (ctx == GSS_C_NO_CONTEXT)
+    if (ctx == GSS_C_NO_CONTEXT) {
+        *mionr = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
+
+    *minor = 0;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 

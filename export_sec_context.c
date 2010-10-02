@@ -156,13 +156,15 @@ gss_export_sec_context(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
 
-    *minor = 0;
-
     interprocess_token->length = 0;
     interprocess_token->value = NULL;
 
-    if (ctx == GSS_C_NO_CONTEXT)
+    if (ctx == GSS_C_NO_CONTEXT) {
+        *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
+
+    *minor = 0;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 

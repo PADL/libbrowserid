@@ -71,13 +71,15 @@ gss_pseudo_random(OM_uint32 *minor,
     unsigned char *p;
     krb5_context krbContext;
 
-    *minor = 0;
-
     prf_out->length = 0;
     prf_out->value = NULL;
 
-    if (ctx == GSS_C_NO_CONTEXT)
+    if (ctx == GSS_C_NO_CONTEXT) {
+        *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
+
+    *minor = 0;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 

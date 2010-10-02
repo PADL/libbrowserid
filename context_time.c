@@ -39,10 +39,12 @@ gss_context_time(OM_uint32 *minor,
 {
     OM_uint32 major = GSS_S_NO_CONTEXT;
 
-    *minor = 0;
-
-    if (ctx == GSS_C_NO_CONTEXT)
+    if (ctx == GSS_C_NO_CONTEXT) {
+        *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
+
+    *minor = 0;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 

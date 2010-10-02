@@ -43,8 +43,12 @@ gss_unwrap(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_iov_buffer_desc iov[2];
 
-    if (ctx == GSS_C_NO_CONTEXT)
+    if (ctx == GSS_C_NO_CONTEXT) {
+        *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
+
+    *minor = 0;
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
