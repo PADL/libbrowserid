@@ -207,7 +207,7 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     enc_part.client = ctx->initiatorName->krbPrincipal;
     enc_part.times.authtime = time(NULL);
     enc_part.times.starttime = enc_part.times.authtime;
-    enc_part.times.endtime = ctx->expiryTime
+    enc_part.times.endtime = (ctx->expiryTime != 0)
                              ? ctx->expiryTime
                              : KRB5_INT32_MAX;
     enc_part.times.renew_till = 0;
@@ -446,7 +446,10 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
     krb5_free_principal(krbContext, cred->name->krbPrincipal);
     cred->name->krbPrincipal = canonPrinc;
 
-    cred->expiryTime = creds[0]->times.endtime;
+    if (creds[0]->times.endtime == KRB5_INT32_MAX)
+        cred->expiryTime = 0;
+    else
+        cred->expiryTime = creds[0]->times.endtime;
 
     if (cred->krbCredCache == NULL) {
         if (reauthUseCredsCache(krbContext, creds[0]->client) &&
