@@ -134,7 +134,7 @@ OM_uint32 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor);
 OM_uint32
 gssEapRadiusAllocHandle(OM_uint32 *minor,
                         const gss_cred_id_t cred,
-                        rc_handle **pHandle);
+                        gss_ctx_id_t ctx);
 
 #define RC_CONFIG_FILE      SYSCONFDIR "/radiusclient/radiusclient.conf"
 

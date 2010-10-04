@@ -142,9 +142,9 @@ struct gss_eap_initiator_ctx {
 
 struct gss_eap_acceptor_ctx {
     rc_handle *radHandle;
-    int lastStatus;
-    VALUE_PAIR *avps;
+    char *radServer;
     gss_buffer_desc state;
+    VALUE_PAIR *avps;
 };
 
 struct gss_ctx_id_struct {

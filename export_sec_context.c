@@ -37,8 +37,49 @@ gssEapExportPartialContext(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
                            gss_buffer_t token)
 {
-    /* XXX we also need to serialise the current server name */
-    return duplicateBuffer(minor, &ctx->acceptorCtx.state, token);
+    OM_uint32 major, tmpMinor;
+    size_t length, serverLen;
+    unsigned char *p;
+
+    if (ctx->acceptorCtx.radServer != NULL)
+        serverLen = strlen(ctx->acceptorCtx.radServer);
+    else
+        serverLen = 0;
+
+    length = 4 + serverLen + 4 + ctx->acceptorCtx.state.length;
+
+    token->value = GSSEAP_MALLOC(length);
+    if (token->value == NULL) {
+        *minor = ENOMEM;
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+    token->length = length;
+
+    p = (unsigned char *)token->value;
+
+    store_uint32_be(serverLen, p);
+    p += 4;
+    if (serverLen != 0) {
+        memcpy(p, ctx->acceptorCtx.radServer, serverLen);
+        p += serverLen;
+    }
+
+    store_uint32_be(ctx->acceptorCtx.state.length, p);
+    p += 4;
+    if (ctx->acceptorCtx.state.length != 0) {
+        memcpy(p, ctx->acceptorCtx.state.value,
+               ctx->acceptorCtx.state.length);
+        p += ctx->acceptorCtx.state.length;
+    }
+
+    assert(p == (unsigned char *)token->value + token->length);
+
+cleanup:
+    if (GSS_ERROR(major))
+        gss_release_buffer(&tmpMinor, token);
+
+    return major;
 }
 
 static OM_uint32

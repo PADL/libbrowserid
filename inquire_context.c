@@ -46,7 +46,7 @@ gss_inquire_context(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
 
     if (ctx == GSS_C_NO_CONTEXT) {
-        *mionr = EINVAL;
+        *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
     }
 

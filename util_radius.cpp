@@ -37,11 +37,12 @@ static gss_buffer_desc radiusUrnPrefix = {
     (void *)"urn:x-radius:"
 };
 
-static bool
+static int
 radiusAllocHandle(const char *configFile,
                   rc_handle **pHandle)
 {
     rc_handle *rh;
+    int ret;
 
     *pHandle = NULL;
 
@@ -51,16 +52,17 @@ radiusAllocHandle(const char *configFile,
     rh = rc_read_config((char *)configFile);
     if (rh == NULL) {
         rc_config_free(rh);
-        return false;
+        return -1;
     }
 
-    if (rc_read_dictionary(rh, rc_conf_str(rh, (char *)"dictionary")) != 0) {
+    ret = rc_read_dictionary(rh, rc_conf_str(rh, (char *)"dictionary"));
+    if (ret != 0) {
         rc_config_free(rh);
-        return false;
+        return ret;
     }
 
     *pHandle = rh;
-    return true;
+    return 0;
 }
 
 VALUE_PAIR *
@@ -106,7 +108,7 @@ gss_eap_radius_attr_provider::allocRadHandle(const std::string &configFile)
 {
     m_configFile.assign(configFile);
 
-    return radiusAllocHandle(m_configFile.c_str(), &m_rh);
+    return (radiusAllocHandle(m_configFile.c_str(), &m_rh) == 0);
 }
 
 bool
@@ -513,17 +515,21 @@ gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
 OM_uint32
 gssEapRadiusAllocHandle(OM_uint32 *minor,
                         const gss_cred_id_t cred,
-                        rc_handle **pHandle)
+                        gss_ctx_id_t ctx)
 {
     const char *configFile = NULL;
 
-    *pHandle = NULL;
+    assert(ctx->acceptorCtx.radHandle == NULL);
 
     if (cred != GSS_C_NO_CREDENTIAL && cred->radiusConfigFile != NULL)
         configFile = cred->radiusConfigFile;
 
-    if (!radiusAllocHandle(configFile, pHandle))
+    if (radiusAllocHandle(configFile, &ctx->acceptorCtx.radHandle) != 0)
         return GSS_S_FAILURE;
+
+    /* XXX TODO allocate connection handle */
+
+    /* XXX TODO select based on acceptorCtx.radServer */
 
     return GSS_S_COMPLETE;
 }

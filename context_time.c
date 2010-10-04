@@ -37,7 +37,7 @@ gss_context_time(OM_uint32 *minor,
                  gss_ctx_id_t ctx,
                  OM_uint32 *time_rec)
 {
-    OM_uint32 major = GSS_S_NO_CONTEXT;
+    OM_uint32 major;
 
     if (ctx == GSS_C_NO_CONTEXT) {
         *minor = EINVAL;
@@ -48,10 +48,16 @@ gss_context_time(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    if (CTX_IS_ESTABLISHED(ctx)) {
-        major = gssEapContextTime(minor, ctx, time_rec);
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        major = GSS_S_NO_CONTEXT;
+        goto cleanup;
     }
 
+    major = gssEapContextTime(minor, ctx, time_rec);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;

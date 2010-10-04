@@ -93,6 +93,8 @@ releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
         rc_config_free(ctx->radHandle);
 
     gss_release_buffer(&tmpMinor, &ctx->state);
+    if (ctx->radServer != NULL)
+        GSSEAP_FREE(ctx->radServer);
 }
 
 OM_uint32

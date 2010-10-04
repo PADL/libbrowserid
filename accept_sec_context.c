@@ -130,12 +130,6 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0)
         return GSS_S_DEFECTIVE_TOKEN;
 
-    assert(ctx->acceptorCtx.radHandle == NULL);
-
-    major = gssEapRadiusAllocHandle(minor, cred, &ctx->acceptorCtx.radHandle);
-    if (GSS_ERROR(major))
-        return major;
-
     assert(ctx->acceptorName == GSS_C_NO_NAME);
 
     if (cred != GSS_C_NO_CREDENTIAL && cred->name != GSS_C_NO_NAME) {
@@ -170,6 +164,9 @@ setAcceptorIdentity(OM_uint32 *minor,
     gss_buffer_desc nameBuf;
     krb5_context krbContext = NULL;
     krb5_principal krbPrinc;
+    rc_handle *rh = ctx->acceptorCtx.radHandle;
+
+    assert(rh != NULL);
 
     /* Awaits further specification */
     if (ctx->acceptorName == GSS_C_NO_NAME)
@@ -186,7 +183,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     /* Acceptor-Service-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 0), &nameBuf);
 
-    major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
+    major = addAvpFromBuffer(minor, rh, avps,
                              VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_NAME,
                              VENDOR_ID_UKERNA,
                              &nameBuf);
@@ -196,7 +193,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     /* Acceptor-Host-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 1), &nameBuf);
 
-    major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
+    major = addAvpFromBuffer(minor, rh, avps,
                              VENDOR_ATTR_GSS_ACCEPTOR_HOST_NAME,
                              VENDOR_ID_UKERNA,
                              &nameBuf);
@@ -219,7 +216,7 @@ setAcceptorIdentity(OM_uint32 *minor,
         nameBuf.value = ssi;
         nameBuf.length = strlen(ssi);
 
-        major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
+        major = addAvpFromBuffer(minor, rh, avps,
                                  VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_SPECIFIC,
                                  VENDOR_ID_UKERNA,
                                  &nameBuf);
@@ -234,7 +231,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     krbDataToGssBuffer(krb5_princ_realm(krbContext, krbPrinc), &nameBuf);
     if (nameBuf.length != 0) {
         /* Acceptor-Realm-Name */
-        major = addAvpFromBuffer(minor, ctx->acceptorCtx.radHandle, avps,
+        major = addAvpFromBuffer(minor, rh, avps,
                                  VENDOR_ATTR_GSS_ACCEPTOR_REALM_NAME,
                                  VENDOR_ID_UKERNA,
                                  &nameBuf);
@@ -254,14 +251,23 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_buffer_t outputToken)
 {
     OM_uint32 major, tmpMinor;
+    rc_handle *rh;
     int code;
     VALUE_PAIR *send = NULL;
     VALUE_PAIR *received = NULL;
-    rc_handle *rh = ctx->acceptorCtx.radHandle;
     char msgBuffer[4096];
     struct eap_hdr *pdu;
     unsigned char *pos;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+
+    if (ctx->acceptorCtx.radHandle == NULL) {
+        /* May be NULL from an imported partial context */
+        major = gssEapRadiusAllocHandle(minor, cred, ctx);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    rh = ctx->acceptorCtx.radHandle;
 
     pdu = (struct eap_hdr *)inputToken->value;
     pos = (unsigned char *)(pdu + 1);
@@ -286,7 +292,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    if (ctx->acceptorCtx.lastStatus == CHALLENGE_RC) {
+    if (ctx->acceptorCtx.state.length != 0) {
         major = addAvpFromBuffer(minor, rh, &send, PW_STATE, 0,
                                  &ctx->acceptorCtx.state);
         if (GSS_ERROR(major))
@@ -314,8 +320,6 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     if (GSS_ERROR(major))
         goto cleanup;
-
-    ctx->acceptorCtx.lastStatus = code;
 
     major = getBufferFromAvps(minor, received, PW_EAP_MESSAGE, 0,
                               outputToken, TRUE);

@@ -32,6 +32,18 @@
 
 #include "gssapiP_eap.h"
 
+#define UPDATE_REMAIN(n)    do {            \
+        p += (n);                           \
+        remain -= (n);                      \
+    } while (0)
+
+#define CHECK_REMAIN(n)     do {            \
+        if (remain < (n)) {                 \
+            *minor = ERANGE;                \
+            return GSS_S_DEFECTIVE_TOKEN;   \
+        }                                   \
+    } while (0)
+
 static OM_uint32
 gssEapImportPartialContext(OM_uint32 *minor,
                            unsigned char **pBuf,
@@ -42,28 +54,46 @@ gssEapImportPartialContext(OM_uint32 *minor,
     unsigned char *p = *pBuf;
     size_t remain = *pRemain;
     gss_buffer_desc buf;
+    size_t serverLen;
 
-    /* XXX we also need to deserialise the current server name */
+    /* Selected RADIUS server */
+    CHECK_REMAIN(4);
+    serverLen = load_uint32_be(p);
+    UPDATE_REMAIN(4);
 
-    if (remain < 4) {
-        *minor = ERANGE;
-        return GSS_S_DEFECTIVE_TOKEN;
+    if (serverLen != 0) {
+        CHECK_REMAIN(serverLen);
+
+        ctx->acceptorCtx.radServer = GSSEAP_MALLOC(serverLen + 1);
+        if (ctx->acceptorCtx.radServer == NULL) {
+            *minor = ENOMEM;
+            return GSS_S_FAILURE;
+        }
+        memcpy(ctx->acceptorCtx.radServer, p, serverLen);
+        ctx->acceptorCtx.radServer[serverLen] = '\0';
+
+        UPDATE_REMAIN(serverLen);
     }
+
+    /* RADIUS state blob */
+    CHECK_REMAIN(4);
     buf.length = load_uint32_be(p);
+    UPDATE_REMAIN(4);
 
-    if (remain < buf.length) {
-        *minor = ERANGE;
-        return GSS_S_DEFECTIVE_TOKEN;
+    if (buf.length != 0) {
+        CHECK_REMAIN(buf.length);
 
+        buf.value = p;
+
+        major = duplicateBuffer(minor, &buf, &ctx->acceptorCtx.state);
+        if (GSS_ERROR(major))
+            return major;
+
+        UPDATE_REMAIN(buf.length);
     }
-    buf.value = &p[4];
 
-    major = duplicateBuffer(minor, &buf, &ctx->acceptorCtx.state);
-    if (GSS_ERROR(major))
-        return major;
-
-    *pBuf += 4 + buf.length;
-    *pRemain -= 4 + buf.length;
+    *pBuf = p;
+    *pRemain = remain;
 
     return GSS_S_COMPLETE;
 }
