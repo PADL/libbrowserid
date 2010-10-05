@@ -157,9 +157,9 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
         return false;
 
     saml = static_cast<const gss_eap_saml_assertion_provider *>
-        (manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
+        (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     radius = static_cast<const gss_eap_radius_attr_provider *>
-        (manager->getProvider(ATTR_TYPE_RADIUS));
+        (m_manager->getProvider(ATTR_TYPE_RADIUS));
 
     resolver = ShibbolethResolver::create();
 

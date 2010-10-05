@@ -88,14 +88,14 @@ static struct {
     OM_uint32 (*setOption)(OM_uint32 *, gss_cred_id_t cred,
                            const gss_OID, const gss_buffer_t);
 } setCredOps[] = {
-    /* 1.3.6.1.4.1.5322.21.3.3.1 */
+    /* 1.3.6.1.4.1.5322.22.3.3.1 */
     {
-        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x03\x03\x01" },
+        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x03\x03\x01" },
         setCredRadiusConfig,
     },
-    /* 1.3.6.1.4.1.5322.21.3.3.2 */
+    /* 1.3.6.1.4.1.5322.22.3.3.2 */
     {
-        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x15\x03\x03\x02" },
+        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x03\x03\x02" },
         setCredFlag,
     },
 };
