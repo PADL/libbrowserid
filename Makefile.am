@@ -8,14 +8,14 @@ gss_LTLIBRARIES = mech_eap.la
 
 mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\"
 mech_eap_la_CFLAGS   = -g -Wall -fno-strict-aliasing \
-			@EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
+			@EAP_CFLAGS@ @RADSEC_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
 mech_eap_la_CXXFLAGS = -g -Wall \
-			@EAP_CFLAGS@ @KRB5_CFLAGS@ @SHIBSP_CXXFLAGS@ \
-			@SHIBRESOLVER_CXXFLAGS@ @TARGET_CFLAGS@
+			@EAP_CFLAGS@ @RADSEC_CFLAGS@ @KRB5_CFLAGS@ \
+		        @SHIBSP_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @TARGET_CFLAGS@
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols mech_eap.exports -no-undefined \
-			@EAP_LDFLAGS@ @TARGET_LDFLAGS@
-mech_eap_la_LIBADD   = @EAP_LIBS@ @KRB5_LIBS@ @SHIBSP_LIBS@ \
+			@EAP_LDFLAGS@ @RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
+mech_eap_la_LIBADD   = @EAP_LIBS@ @RADSEC_LIBS@ @KRB5_LIBS@ @SHIBSP_LIBS@ \
 		       @SHIBRESOLVER_LIBS@ -lfreeradius-client
 
 mech_eap_la_SOURCES =    			\

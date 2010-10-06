@@ -178,3 +178,41 @@ else
 	AC_SUBST(SHIBRESOLVER_LIBS)
 fi
 ])dnl
+
+AC_DEFUN([AX_CHECK_RADSEC],
+[AC_MSG_CHECKING(for radsec)
+RADSEC_DIR=
+found_radsec="no"
+AC_ARG_WITH(radsec,
+    AC_HELP_STRING([--with-radsec],
+       [Use radsec (in specified installation directory)]),
+    [check_radsec_dir="$withval"],
+    [check_radsec_dir=])
+for dir in $check_radsec_dir /usr /usr/local ; do
+   radsecdir="$dir"
+   if test -f "$dir/include/radsec/radsec.h"; then
+     found_radsec="yes";
+     RADSEC_DIR="${radsecdir}"
+     RADSEC_CFLAGS="-I$radsecdir/include";
+     break;
+   fi
+done
+AC_MSG_RESULT($found_radsec)
+if test x_$found_radsec != x_yes; then
+   AC_MSG_ERROR([
+----------------------------------------------------------------------
+  Cannot find radsec libraries.
+
+  Please install libradsec or specify installation directory with
+  --with-radsec=(dir).
+----------------------------------------------------------------------
+])
+else
+	printf "radsec found in $radsecdir\n";
+	RADSEC_LIBS="-lradsec";
+	RADSEC_LDFLAGS="-L$$radsecdir/lib";
+	AC_SUBST(RADSEC_CLFAGS)
+	AC_SUBST(RADSEC_LDFLAGS)
+	AC_SUBST(RADSEC_LIBS)
+fi
+])dnl
