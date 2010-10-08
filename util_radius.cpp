@@ -32,6 +32,7 @@
 
 #include "gssapiP_eap.h"
 
+/* stuff that should be provided by libradsec/libfreeradius-radius */
 #define VENDORATTR(vendor, attr)            ((vendor) << 16 | (attr))
 
 #ifndef ATTRID
@@ -512,13 +513,30 @@ gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
+/* partition error namespace so it does not conflict with krb5 */
+#define ERROR_TABLE_BASE_rse (46882560L)
+
+#define RS_TO_COM_ERR(rse)                  ((rse) == RSE_OK ? 0 : (rse) + ERROR_TABLE_BASE_rse)
+#define COM_TO_RS_ERR(err)                  ((err) > ERROR_TABLE_BASE_rse && \
+                                             (err) <= (ERROR_TABLE_BASE_rse + RSE_SOME_ERROR) ? \
+                                             (err) - ERROR_TABLE_BASE_rse : RSE_SOME_ERROR)
+
 OM_uint32
 gssEapRadiusMapError(OM_uint32 *minor,
                      struct rs_error *err)
 {
-    if (err != NULL)
-        rs_err_code(err, 1);
+    int code = RSE_OK;
 
+    if (err != NULL)
+        code = rs_err_code(err, 0);
+    else
+        code = RSE_SOME_ERROR;
+
+    *minor = RS_TO_COM_ERR(code);
+
+    gssEapSaveStatusInfo(*minor, "radsec: %s", rs_err_msg(err, 0));
+
+    rs_err_free(err);
     return GSS_S_FAILURE;
 }
 

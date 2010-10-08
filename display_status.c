@@ -120,25 +120,6 @@ gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...)
         saveStatusInfoNoCopy(minor, s);
 }
 
-#if 0
-void
-gssEapSaveKrbStatusInfo(OM_uint32 minor)
-{
-    krb5_context krbContext = NULL;
-    OM_uint32 tmpMinor;
-    const char *s;
-
-    gssEapKerberosInit(&tmpMinor, &krbContext);
-
-    if (krbContext != NULL) {
-        s = krb5_get_error_message(krbContext, minor);
-        gssEapSaveStatusInfo(minor, "%s", s);
-        krb5_set_error_message(krbContext, minor, "%s", s);
-        krb5_free_error_message(krbContext, s);
-    }
-}
-#endif
-
 OM_uint32
 gss_display_status(OM_uint32 *minor,
                    OM_uint32 status_value,
@@ -148,7 +129,7 @@ gss_display_status(OM_uint32 *minor,
                    gss_buffer_t status_string)
 {
     OM_uint32 major = GSS_S_COMPLETE;
-    krb5_context krbContext;
+    krb5_context krbContext = NULL;
     const char *errMsg;
 
     status_string->length = 0;
@@ -163,15 +144,18 @@ gss_display_status(OM_uint32 *minor,
         return GSS_S_BAD_STATUS;
     }
 
-    GSSEAP_KRB_INIT(&krbContext);
+    errMsg = getStatusInfo(status_value);
+    if (errMsg == NULL) {
+        GSSEAP_KRB_INIT(&krbContext);
 
-    errMsg = krb5_get_error_message(krbContext, status_value);
-
-    if (errMsg != NULL) {
-        major = makeStringBuffer(minor, errMsg, status_string);
+        errMsg = krb5_get_error_message(krbContext, status_value);
     }
 
-    krb5_free_error_message(krbContext, errMsg);
+    if (errMsg != NULL)
+        major = makeStringBuffer(minor, errMsg, status_string);
+
+    if (krbContext != NULL)
+        krb5_free_error_message(krbContext, errMsg);
 
     return major;
 }
