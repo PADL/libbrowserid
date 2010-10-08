@@ -45,9 +45,13 @@ extern gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM;
 /* name type */
 extern gss_OID GSS_EAP_NT_PRINCIPAL_NAME;
 
+/* the libradsec configuration file */
 extern gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE;
+/* the stanza in the libradsec configuration file */
 extern gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_STANZA;
 
+/* flags in NBO followed by an optional boolean octet that
+ * specifies whether to clear the specified flags */
 extern gss_OID GSS_EAP_CRED_SET_CRED_FLAG;
 
 #define GSS_EAP_DISABLE_LOCAL_ATTRS_FLAG    0x00000001
