@@ -16,7 +16,7 @@ mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols mech_eap.exports -no-undefined \
 			@EAP_LDFLAGS@ @RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
 mech_eap_la_LIBADD   = @EAP_LIBS@ @RADSEC_LIBS@ @KRB5_LIBS@ @SHIBSP_LIBS@ \
-		       @SHIBRESOLVER_LIBS@ -lfreeradius-client
+		       @SHIBRESOLVER_LIBS@
 
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
