@@ -60,8 +60,9 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
 
-    vp = pairfind(ctx->acceptorCtx.vps, PW_USER_NAME);
-    if (vp != NULL) {
+    major = gssEapRadiusGetRawAvp(minor, ctx->acceptorCtx.vps,
+                                  PW_USER_NAME, 0, &vp);
+    if (major == GSS_S_COMPLETE) {
         nameBuf.length = vp->length;
         nameBuf.value = vp->vp_strvalue;
     } else {
@@ -252,6 +253,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     struct rs_handle *rh;
     struct rs_connection *rconn;
+    struct rs_request *request = NULL;
     struct rs_packet *req = NULL, *resp = NULL;
     struct radius_packet *frreq, *frresp;
     int sendAcceptorIdentity = 0;
@@ -280,7 +282,8 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
             goto cleanup;
     }
 
-    major = gssEapRadiusAddAvp(minor, rh, &frreq->vps, PW_EAP_MESSAGE, 0, inputToken);
+    major = gssEapRadiusAddAvp(minor, rh, &frreq->vps,
+                               PW_EAP_MESSAGE, 0, inputToken);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -293,16 +296,13 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         gss_release_buffer(&tmpMinor, &ctx->acceptorCtx.state);
     }
 
-    if (rs_packet_send(req, NULL) != 0) {
+    if (rs_request_create(rconn, &request) != 0 ||
+        rs_request_send(request, req, &resp) != 0) {
         major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
         goto cleanup;
     }
-    req = NULL;
 
-    if (rs_conn_receive_packet(rconn, &resp) != 0) {
-        major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
-        goto cleanup;
-    }
+    assert(resp != NULL);
 
     frresp = rs_packet_frpkt(resp);
     switch (frresp->code) {
@@ -345,8 +345,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     major = GSS_S_CONTINUE_NEEDED;
 
 cleanup:
-    rs_packet_destroy(req);
-    rs_packet_destroy(resp);
+    rs_request_destroy(request);
 
     return major;
 }

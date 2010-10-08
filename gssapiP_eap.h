@@ -68,6 +68,7 @@ extern "C" {
 #include <freeradius/libradius.h>
 #include <freeradius/radius.h>
 #include <radsec/radsec.h>
+#include <radsec/request.h>
 #ifdef __cplusplus
 #undef operator
 }

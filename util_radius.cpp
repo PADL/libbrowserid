@@ -33,7 +33,7 @@
 #include "gssapiP_eap.h"
 
 /* stuff that should be provided by libradsec/libfreeradius-radius */
-#define VENDORATTR(vendor, attr)            ((vendor) << 16 | (attr))
+#define VENDORATTR(vendor, attr)            (((vendor) << 16) | (attr))
 
 #ifndef ATTRID
 #define ATTRID(attr)                        ((attr) & 0xFFFF)
@@ -169,7 +169,7 @@ alreadyAddedAttributeP(std::vector <std::string> &attrs, VALUE_PAIR *vp)
 }
 
 static bool
-isHiddenAttributeP(int attrid, uint16_t vendor)
+isHiddenAttributeP(uint16_t attrid, uint16_t vendor)
 {
     bool ret = false;
 
@@ -246,7 +246,7 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
     OM_uint32 tmpMinor;
     gss_buffer_desc strAttr = GSS_C_EMPTY_BUFFER;
     DICT_ATTR *da;
-    int attrid;
+    uint32_t attrid;
     char *s;
 
     duplicateBuffer(*attr, &strAttr);
@@ -416,7 +416,7 @@ gssEapRadiusAddAvp(OM_uint32 *minor,
                    uint16_t vendor,
                    gss_buffer_t buffer)
 {
-    uint16_t attrid = VENDORATTR(vendor, vattrid);
+    uint32_t attrid = VENDORATTR(vendor, vattrid);
     unsigned char *p = (unsigned char *)buffer->value;
     size_t remain = buffer->length;
 
@@ -434,6 +434,8 @@ gssEapRadiusAddAvp(OM_uint32 *minor,
         }
 
         memcpy(vp->vp_octets, p, n);
+        vp->length = n;
+
         pairadd(vps, vp);
 
         p += n;
@@ -450,7 +452,7 @@ gssEapRadiusGetRawAvp(OM_uint32 *minor,
                       uint16_t vendor,
                       VALUE_PAIR **vp)
 {
-    uint16_t attr = VENDORATTR(vendor, type);
+    uint32_t attr = VENDORATTR(vendor, type);
 
     *vp = pairfind(vps, attr);
 
