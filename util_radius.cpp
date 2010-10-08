@@ -685,10 +685,14 @@ avpImport(rs_handle *rh,
         break;
     case PW_TYPE_STRING:
         /* check enough room to NUL terminate */
-        if (p[0] >= MAX_STRING_LEN)
+        if (p[0] == MAX_STRING_LEN)
             goto fail;
+        else
         /* fallthrough */
     default:
+        if (p[0] > MAX_STRING_LEN)
+            goto fail;
+
         vp->length = (uint32_t)p[0];
         memcpy(vp->vp_octets, p + 1, vp->length);
 
