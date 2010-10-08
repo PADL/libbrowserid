@@ -506,6 +506,8 @@ gssEapRadiusFreeAvps(OM_uint32 *minor,
                      VALUE_PAIR **vps)
 {
     pairfree(vps);
+    *minor = 0;
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32
