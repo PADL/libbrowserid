@@ -66,22 +66,22 @@ public:
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
 
-    bool getAttribute(int attribute,
+    bool getAttribute(uint32_t attribute,
                       int *authenticated,
                       int *complete,
                       gss_buffer_t value,
                       gss_buffer_t display_value,
                       int *more) const;
-    bool getAttribute(int attribute,
-                      int vendor,
+    bool getAttribute(uint16_t attribute,
+                      uint16_t vendor,
                       int *authenticated,
                       int *complete,
                       gss_buffer_t value,
                       gss_buffer_t display_value,
                       int *more) const;
 
-    bool getFragmentedAttribute(int attribute,
-                                int vendor,
+    bool getFragmentedAttribute(uint16_t attribute,
+                                uint16_t vendor,
                                 int *authenticated,
                                 int *complete,
                                 gss_buffer_t value) const;
@@ -97,12 +97,11 @@ public:
 
 private:
     bool allocRadHandle(const std::string &configFile);
-    static VALUE_PAIR *copyAvps(const VALUE_PAIR *in);
     const VALUE_PAIR *getAvps(void) const {
         return m_avps;
     }
 
-    rc_handle *m_rh;
+    struct rs_handle *m_rh;
     VALUE_PAIR *m_avps;
     bool m_authenticated;
     std::string m_configFile;
@@ -113,46 +112,55 @@ extern "C" {
 #endif
 
 OM_uint32
-addAvpFromBuffer(OM_uint32 *minor,
-                 rc_handle *rh,
-                 VALUE_PAIR **vp,
-                 int type,
-                 int vendor,
-                 gss_buffer_t buffer);
+gssEapRadiusAddAvp(OM_uint32 *minor,
+                   struct rs_handle *rh,
+                   VALUE_PAIR **vp,
+                   uint16_t type,
+                   uint16_t vendor,
+                   gss_buffer_t buffer);
 
 OM_uint32
-getBufferFromAvps(OM_uint32 *minor,
-                  VALUE_PAIR *vps,
-                  int type,
-                  int vendor,
-                  gss_buffer_t buffer,
-                  int concat);
+gssEapRadiusGetAvp(OM_uint32 *minor,
+                   VALUE_PAIR *vps,
+                   uint16_t type,
+                   uint16_t vendor,
+                   gss_buffer_t buffer,
+                   int concat);
+
+OM_uint32
+gssEapRadiusGetRawAvp(OM_uint32 *minor,
+                      VALUE_PAIR *vps,
+                      uint16_t type,
+                      uint16_t vendor,
+                      VALUE_PAIR **vp);
 
 OM_uint32 gssEapRadiusAttrProviderInit(OM_uint32 *minor);
 OM_uint32 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor);
 
 OM_uint32
-gssEapRadiusAllocHandle(OM_uint32 *minor,
-                        const gss_cred_id_t cred,
-                        gss_ctx_id_t ctx);
+gssEapRadiusAllocConn(OM_uint32 *minor,
+                      const gss_cred_id_t cred,
+                      gss_ctx_id_t ctx);
 
-#define RC_CONFIG_FILE      SYSCONFDIR "/radiusclient/radiusclient.conf"
+OM_uint32
+gssEapRadiusMapError(OM_uint32 *minor,
+                     struct rs_error *err);
 
-/* RFC 2548 - Microsoft Vendor-specific RADIUS Attributes */
-#define VENDOR_ID_MICROSOFT 311
+#define RS_CONFIG_FILE      SYSCONFDIR "/radsec.conf"
+#define RS_DICT_FILE        DATAROOTDIR "/freeradius/dictionary"
 
-enum { VENDOR_ATTR_MS_MPPE_SEND_KEY = 16,
-       VENDOR_ATTR_MS_MPPE_RECV_KEY = 17
-};
+#define VENDORPEC_MS                        311 /* RFC 2548 */
 
-#define VENDOR_ID_UKERNA    25622
+#define PW_MS_MPPE_SEND_KEY                 16
+#define PW_MS_MPPE_RECV_KEY                 17
 
-enum { VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_NAME = 128,
-       VENDOR_ATTR_GSS_ACCEPTOR_HOST_NAME,
-       VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_SPECIFIC,
-       VENDOR_ATTR_GSS_ACCEPTOR_REALM_NAME,
-       VENDOR_ATTR_SAML_AAA_ASSERTION
-};
+#define VENDORPEC_UKERNA                    25622
+
+#define PW_GSS_ACCEPTOR_SERVICE_NAME        128
+#define PW_GSS_ACCEPTOR_HOST_NAME           129
+#define PW_GSS_ACCEPTOR_SERVICE_SPECIFIC    130
+#define PW_GSS_ACCEPTOR_REALM_NAME          131
+#define PW_SAML_AAA_ASSERTION               132
 
 #ifdef __cplusplus
 }

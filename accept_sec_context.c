@@ -60,10 +60,10 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
 
-    vp = rc_avpair_get(ctx->acceptorCtx.avps, PW_USER_NAME, 0);
+    vp = pairfind(ctx->acceptorCtx.avps, PW_USER_NAME);
     if (vp != NULL) {
-        nameBuf.length = vp->lvalue;
-        nameBuf.value = vp->strvalue;
+        nameBuf.length = vp->length;
+        nameBuf.value = vp->vp_strvalue;
     } else {
         ctx->gssFlags |= GSS_C_ANON_FLAG;
     }
@@ -75,13 +75,12 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
 
-    vp = rc_avpair_get(ctx->acceptorCtx.avps,
-                       VENDOR_ATTR_MS_MPPE_SEND_KEY,
-                       VENDOR_ID_MICROSOFT);
-    if (ctx->encryptionType != ENCTYPE_NULL && vp != NULL) {
+    major = gssEapRadiusGetRawAvp(minor, ctx->acceptorCtx.avps,
+                                  PW_MS_MPPE_SEND_KEY, VENDORPEC_MS, &vp);
+    if (major == GSS_S_COMPLETE && ctx->encryptionType != ENCTYPE_NULL) {
         major = gssEapDeriveRfc3961Key(minor,
-                                       (unsigned char *)vp->strvalue,
-                                       vp->lvalue,
+                                       vp->vp_octets,
+                                       vp->length,
                                        ctx->encryptionType,
                                        &ctx->rfc3961Key);
         if (GSS_ERROR(major))
@@ -164,7 +163,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     gss_buffer_desc nameBuf;
     krb5_context krbContext = NULL;
     krb5_principal krbPrinc;
-    rc_handle *rh = ctx->acceptorCtx.radHandle;
+    struct rs_handle *rh = ctx->acceptorCtx.radHandle;
 
     assert(rh != NULL);
 
@@ -183,20 +182,20 @@ setAcceptorIdentity(OM_uint32 *minor,
     /* Acceptor-Service-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 0), &nameBuf);
 
-    major = addAvpFromBuffer(minor, rh, avps,
-                             VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_NAME,
-                             VENDOR_ID_UKERNA,
-                             &nameBuf);
+    major = gssEapRadiusAddAvp(minor, rh, avps,
+                               PW_GSS_ACCEPTOR_SERVICE_NAME,
+                               VENDORPEC_UKERNA,
+                               &nameBuf);
     if (GSS_ERROR(major))
         return major;
 
     /* Acceptor-Host-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 1), &nameBuf);
 
-    major = addAvpFromBuffer(minor, rh, avps,
-                             VENDOR_ATTR_GSS_ACCEPTOR_HOST_NAME,
-                             VENDOR_ID_UKERNA,
-                             &nameBuf);
+    major = gssEapRadiusAddAvp(minor, rh, avps,
+                               PW_GSS_ACCEPTOR_HOST_NAME,
+                               VENDORPEC_UKERNA,
+                               &nameBuf);
     if (GSS_ERROR(major))
         return major;
 
@@ -216,10 +215,10 @@ setAcceptorIdentity(OM_uint32 *minor,
         nameBuf.value = ssi;
         nameBuf.length = strlen(ssi);
 
-        major = addAvpFromBuffer(minor, rh, avps,
-                                 VENDOR_ATTR_GSS_ACCEPTOR_SERVICE_SPECIFIC,
-                                 VENDOR_ID_UKERNA,
-                                 &nameBuf);
+        major = gssEapRadiusAddAvp(minor, rh, avps,
+                                   PW_GSS_ACCEPTOR_SERVICE_SPECIFIC,
+                                   VENDORPEC_UKERNA,
+                                   &nameBuf);
 
         if (GSS_ERROR(major)) {
             krb5_free_unparsed_name(krbContext, ssi);
@@ -231,10 +230,10 @@ setAcceptorIdentity(OM_uint32 *minor,
     krbDataToGssBuffer(krb5_princ_realm(krbContext, krbPrinc), &nameBuf);
     if (nameBuf.length != 0) {
         /* Acceptor-Realm-Name */
-        major = addAvpFromBuffer(minor, rh, avps,
-                                 VENDOR_ATTR_GSS_ACCEPTOR_REALM_NAME,
-                                 VENDOR_ID_UKERNA,
-                                 &nameBuf);
+        major = gssEapRadiusAddAvp(minor, rh, avps,
+                                   PW_GSS_ACCEPTOR_REALM_NAME,
+                                   VENDORPEC_UKERNA,
+                                   &nameBuf);
         if (GSS_ERROR(major))
             return major;
     }
@@ -251,90 +250,90 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_buffer_t outputToken)
 {
     OM_uint32 major, tmpMinor;
-    rc_handle *rh;
-    int code;
-    VALUE_PAIR *send = NULL;
-    VALUE_PAIR *received = NULL;
-    char msgBuffer[4096];
-    struct eap_hdr *pdu;
-    unsigned char *pos;
-    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+    struct rs_handle *rh;
+    struct rs_connection *rconn;
+    struct rs_packet *req = NULL, *resp = NULL;
+    struct radius_packet *frreq, *frresp;
+    int sendAcceptorIdentity = 0;
 
     if (ctx->acceptorCtx.radHandle == NULL) {
         /* May be NULL from an imported partial context */
-        major = gssEapRadiusAllocHandle(minor, cred, ctx);
+        major = gssEapRadiusAllocConn(minor, cred, ctx);
         if (GSS_ERROR(major))
             goto cleanup;
+
+        sendAcceptorIdentity = 1;
     }
 
     rh = ctx->acceptorCtx.radHandle;
+    rconn = ctx->acceptorCtx.radConn;
 
-    pdu = (struct eap_hdr *)inputToken->value;
-    pos = (unsigned char *)(pdu + 1);
+    if (rs_packet_create_acc_request(rconn, &req, NULL, NULL) != 0) {
+        major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
+        goto cleanup;
+    }
+    frreq = rs_packet_frpkt(req);
 
-    if (inputToken->length > sizeof(*pdu) &&
-        pdu->code == EAP_CODE_RESPONSE &&
-        pos[0] == EAP_TYPE_IDENTITY) {
-        /*
-         * XXX TODO do we really need to set User-Name? FreeRADIUS does
-         * not require it but some other RADIUS servers might.
-         */
-        major = addAvpFromBuffer(minor, rh, &send, PW_USER_NAME, 0, &nameBuf);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        major = setAcceptorIdentity(minor, ctx, &send);
+    if (sendAcceptorIdentity) {
+        major = setAcceptorIdentity(minor, ctx, &frreq->vps);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
-    major = addAvpFromBuffer(minor, rh, &send, PW_EAP_MESSAGE, 0, inputToken);
+    major = gssEapRadiusAddAvp(minor, rh, &frreq->vps, PW_EAP_MESSAGE, 0, inputToken);
     if (GSS_ERROR(major))
         goto cleanup;
 
     if (ctx->acceptorCtx.state.length != 0) {
-        major = addAvpFromBuffer(minor, rh, &send, PW_STATE, 0,
-                                 &ctx->acceptorCtx.state);
+        major = gssEapRadiusAddAvp(minor, rh, &frreq->vps, PW_STATE, 0,
+                                   &ctx->acceptorCtx.state);
         if (GSS_ERROR(major))
             goto cleanup;
 
         gss_release_buffer(&tmpMinor, &ctx->acceptorCtx.state);
     }
 
-    code = rc_auth(rh, 0, send, &received, msgBuffer);
-    switch (code) {
-    case OK_RC:
-    case CHALLENGE_RC:
+    if (rs_packet_send(req, NULL) != 0) {
+        major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
+        goto cleanup;
+    }
+    req = NULL;
+
+    if (rs_conn_receive_packet(rconn, &resp) != 0) {
+        major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
+        goto cleanup;
+    }
+
+    frresp = rs_packet_frpkt(resp);
+    switch (frresp->code) {
+    case PW_AUTHENTICATION_ACK:
+    case PW_ACCESS_CHALLENGE:
         major = GSS_S_CONTINUE_NEEDED;
         break;
-    case TIMEOUT_RC:
-        major = GSS_S_UNAVAILABLE;
-        break;
-    case REJECT_RC:
+    case PW_AUTHENTICATION_REJECT:
         major = GSS_S_DEFECTIVE_CREDENTIAL;
+        goto cleanup;
         break;
     default:
         major = GSS_S_FAILURE;
         goto cleanup;
+        break;
     }
 
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = getBufferFromAvps(minor, received, PW_EAP_MESSAGE, 0,
-                              outputToken, TRUE);
-    if ((major == GSS_S_UNAVAILABLE && code != OK_RC) ||
+    major = gssEapRadiusGetAvp(minor, frresp->vps, PW_EAP_MESSAGE, 0,
+                               outputToken, TRUE);
+    if ((major == GSS_S_UNAVAILABLE && frresp->code != PW_AUTHENTICATION_ACK) ||
         GSS_ERROR(major))
         goto cleanup;
 
-    if (code == CHALLENGE_RC) {
-        major = getBufferFromAvps(minor, received, PW_STATE, 0,
-                                  &ctx->acceptorCtx.state, TRUE);
+    if (frresp->code == PW_ACCESS_CHALLENGE) {
+        major = gssEapRadiusGetAvp(minor, frresp->vps, PW_STATE, 0,
+                                   &ctx->acceptorCtx.state, TRUE);
         if (major != GSS_S_UNAVAILABLE && GSS_ERROR(major))
             goto cleanup;
     } else {
-        ctx->acceptorCtx.avps = received;
-        received = NULL;
+        ctx->acceptorCtx.avps = frresp->vps;
+        frresp->vps = NULL;
 
         major = acceptReadyEap(minor, ctx, cred);
         if (GSS_ERROR(major))
@@ -346,8 +345,8 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     major = GSS_S_CONTINUE_NEEDED;
 
 cleanup:
-    if (received != NULL)
-        rc_avpair_free(received);
+    rs_packet_destroy(req);
+    rs_packet_destroy(resp);
 
     return major;
 }

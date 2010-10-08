@@ -210,8 +210,8 @@ if test x_$found_radsec != x_yes; then
 else
 	printf "radsec found in $radsecdir\n";
 	RADSEC_LIBS="-lradsec";
-	RADSEC_LDFLAGS="-L$$radsecdir/lib";
-	AC_SUBST(RADSEC_CLFAGS)
+	RADSEC_LDFLAGS="-L$radsecdir/lib";
+	AC_SUBST(RADSEC_CFLAGS)
 	AC_SUBST(RADSEC_LDFLAGS)
 	AC_SUBST(RADSEC_LIBS)
 fi

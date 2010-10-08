@@ -87,14 +87,15 @@ releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
 {
     OM_uint32 tmpMinor;
 
-    if (ctx->avps != NULL)
-        rc_avpair_free(ctx->avps);
+    if (ctx->radConn != NULL)
+        rs_conn_destroy(ctx->radConn);
     if (ctx->radHandle != NULL)
-        rc_config_free(ctx->radHandle);
-
-    gss_release_buffer(&tmpMinor, &ctx->state);
+        rs_context_destroy(ctx->radHandle);
     if (ctx->radServer != NULL)
         GSSEAP_FREE(ctx->radServer);
+    gss_release_buffer(&tmpMinor, &ctx->state);
+    if (ctx->avps != NULL)
+        pairfree(&ctx->avps);
 }
 
 OM_uint32

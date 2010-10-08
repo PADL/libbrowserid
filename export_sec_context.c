@@ -38,13 +38,14 @@ gssEapExportPartialContext(OM_uint32 *minor,
                            gss_buffer_t token)
 {
     OM_uint32 major, tmpMinor;
-    size_t length, serverLen;
+    size_t length, serverLen = 0;
     unsigned char *p;
+    char serverBuf[MAXHOSTNAMELEN];
 
-    if (ctx->acceptorCtx.radServer != NULL)
-        serverLen = strlen(ctx->acceptorCtx.radServer);
-    else
-        serverLen = 0;
+    if (ctx->acceptorCtx.radConn != NULL &&
+        rs_conn_get_current_server(ctx->acceptorCtx.radConn,
+                                   serverBuf, sizeof(serverBuf)) == 0)
+        serverLen = strlen(serverBuf);
 
     length = 4 + serverLen + 4 + ctx->acceptorCtx.state.length;
 
@@ -61,7 +62,7 @@ gssEapExportPartialContext(OM_uint32 *minor,
     store_uint32_be(serverLen, p);
     p += 4;
     if (serverLen != 0) {
-        memcpy(p, ctx->acceptorCtx.radServer, serverLen);
+        memcpy(p, serverBuf, serverLen);
         p += serverLen;
     }
 

@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/param.h>
 
 /* GSS includes */
 #include <gssapi/gssapi.h>
@@ -50,7 +51,7 @@
 /* Kerberos includes */
 #include <krb5.h>
 
-/* EAP includes */
+/* EAP includes (not C++ clean) */
 #ifndef __cplusplus
 #include <common.h>
 #include <eap_peer/eap.h>
@@ -59,10 +60,24 @@
 #include <wpabuf.h>
 #endif
 
-#include <freeradius-client.h>
+/* Workaround for FreeRADIUS not being C++ clean */
+#ifdef __cplusplus
+extern "C" {
+#define operator fr_operator
+#endif
+#include <freeradius/libradius.h>
 #include <freeradius/radius.h>
+#include <radsec/radsec.h>
+#ifdef __cplusplus
+#undef operator
+}
+#endif
 
 #include "util.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* These name flags are informative and not actually used by anything yet */
 #define NAME_FLAG_NAI                       0x00000001
@@ -141,7 +156,8 @@ struct gss_eap_initiator_ctx {
 };
 
 struct gss_eap_acceptor_ctx {
-    rc_handle *radHandle;
+    struct rs_handle *radHandle;
+    struct rs_connection *radConn;
     char *radServer;
     gss_buffer_desc state;
     VALUE_PAIR *avps;
@@ -225,5 +241,9 @@ rfc4121Flags(gss_ctx_id_t ctx, int receiving);
 /* display_status.c */
 void
 gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _GSSAPIP_EAP_H_ */

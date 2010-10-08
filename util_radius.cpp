@@ -32,60 +32,70 @@
 
 #include "gssapiP_eap.h"
 
+#define VENDORATTR(vendor, attr)            ((vendor) << 16 | (attr))
+
+#ifndef ATTRID
+#define ATTRID(attr)                        ((attr) & 0xFFFF)
+#endif
+
 static gss_buffer_desc radiusUrnPrefix = {
     sizeof("urn:x-radius:") - 1,
     (void *)"urn:x-radius:"
 };
 
-static int
-radiusAllocHandle(const char *configFile,
-                  rc_handle **pHandle)
+static void *
+gssEapCalloc(size_t nmemb, size_t size)
 {
-    rc_handle *rh;
-    int ret;
+    return GSSEAP_CALLOC(nmemb, size);
+}
+
+static void *
+gssEapMalloc(size_t size)
+{
+    return GSSEAP_MALLOC(size);
+}
+
+static void
+gssEapFree(void *ptr)
+{
+    GSSEAP_FREE(ptr);
+}
+
+static void *
+gssEapRealloc(void *ptr, size_t size)
+{
+    return GSSEAP_REALLOC(ptr, size);
+}
+
+static struct rs_error *
+radiusAllocHandle(const char *configFile,
+                  rs_handle **pHandle)
+{
+    rs_handle *rh;
+    struct rs_alloc_scheme ralloc;
 
     *pHandle = NULL;
 
     if (configFile == NULL || configFile[0] == '\0')
-        configFile = RC_CONFIG_FILE;
+        configFile = RS_CONFIG_FILE;
 
-    rh = rc_read_config((char *)configFile);
-    if (rh == NULL) {
-        rc_config_free(rh);
-        return -1;
-    }
+    if (rs_context_create(&rh, RS_DICT_FILE) != 0)
+        return NULL;
 
-    ret = rc_read_dictionary(rh, rc_conf_str(rh, (char *)"dictionary"));
-    if (ret != 0) {
-        rc_config_free(rh);
-        return ret;
+    ralloc.calloc = gssEapCalloc;
+    ralloc.malloc = gssEapMalloc;
+    ralloc.free = gssEapFree;
+    ralloc.realloc = gssEapRealloc;
+
+    rs_context_set_alloc_scheme(rh, &ralloc);
+
+    if (rs_context_read_config(rh, configFile) != 0) {
+        rs_context_destroy(rh);
+        return rs_err_ctx_pop(rh);
     }
 
     *pHandle = rh;
-    return 0;
-}
-
-VALUE_PAIR *
-gss_eap_radius_attr_provider::copyAvps(const VALUE_PAIR *src)
-{
-    const VALUE_PAIR *vp;
-    VALUE_PAIR *dst = NULL, **pDst = &dst;
-
-    for (vp = src; vp != NULL; vp = vp->next) {
-        VALUE_PAIR *vp2;
-
-        vp2 = (VALUE_PAIR *)GSSEAP_CALLOC(1, sizeof(*vp2));
-        if (vp2 == NULL) {
-            rc_avpair_free(dst);
-            return NULL;
-        }
-        memcpy(vp2, vp, sizeof(*vp));
-        vp2->next = NULL;
-        *pDst = vp2;
-        pDst = &vp2->next;
-    }
-
-    return dst;
+    return NULL;
 }
 
 gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(void)
@@ -98,9 +108,9 @@ gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(void)
 gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
 {
     if (m_rh != NULL)
-        rc_config_free(m_rh);
+        rs_context_destroy(m_rh);
     if (m_avps != NULL)
-        rc_avpair_free(m_avps);
+        pairfree(&m_avps);
 }
 
 bool
@@ -108,7 +118,17 @@ gss_eap_radius_attr_provider::allocRadHandle(const std::string &configFile)
 {
     m_configFile.assign(configFile);
 
-    return (radiusAllocHandle(m_configFile.c_str(), &m_rh) == 0);
+    /*
+     * Currently none of the FreeRADIUS functions we use here actually take
+     * a handle, so we may as well leave it as NULL.
+     */
+#if 0
+    radiusAllocHandle(m_configFile.c_str(), &m_rh);
+
+    return (m_rh != NULL);
+#else
+    return true;
+#endif
 }
 
 bool
@@ -126,7 +146,7 @@ gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *ma
         return false;
 
     if (radius->m_avps != NULL)
-        m_avps = copyAvps(radius->getAvps());
+        m_avps = paircopy(const_cast<VALUE_PAIR *>(radius->getAvps()));
 
     return true;
 }
@@ -136,7 +156,7 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
                                                  const gss_cred_id_t gssCred,
                                                  const gss_ctx_id_t gssCtx)
 {
-    std::string configFile(RC_CONFIG_FILE);
+    std::string configFile(RS_CONFIG_FILE);
 
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
         return false;
@@ -149,7 +169,7 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
 
     if (gssCtx != GSS_C_NO_CONTEXT) {
         if (gssCtx->acceptorCtx.avps != NULL) {
-            m_avps = copyAvps(gssCtx->acceptorCtx.avps);
+            m_avps = paircopy(gssCtx->acceptorCtx.avps);
             if (m_avps == NULL)
                 return false;
         }
@@ -172,21 +192,21 @@ alreadyAddedAttributeP(std::vector <std::string> &attrs, VALUE_PAIR *vp)
 }
 
 static bool
-isHiddenAttributeP(int attrid, int vendor)
+isHiddenAttributeP(int attrid, uint16_t vendor)
 {
     bool ret = false;
 
     switch (vendor) {
-    case VENDOR_ID_MICROSOFT:
+    case VENDORPEC_MS:
         switch (attrid) {
-        case VENDOR_ATTR_MS_MPPE_SEND_KEY:
-        case VENDOR_ATTR_MS_MPPE_RECV_KEY:
+        case PW_MS_MPPE_SEND_KEY:
+        case PW_MS_MPPE_RECV_KEY:
             ret = true;
             break;
         default:
             break;
         }
-    case VENDOR_ID_UKERNA:
+    case VENDORPEC_UKERNA:
         ret = true;
         break;
     default:
@@ -248,11 +268,10 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
 {
     OM_uint32 tmpMinor;
     gss_buffer_desc strAttr = GSS_C_EMPTY_BUFFER;
-    DICT_ATTR *d;
+    DICT_ATTR *da;
     int attrid;
     char *s;
 
-    /* XXX vendor */
     duplicateBuffer(*attr, &strAttr);
     s = (char *)strAttr.value;
 
@@ -265,12 +284,12 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
     if (isdigit(*s)) {
         attrid = strtoul(s, NULL, 10);
     } else {
-        d = rc_dict_findattr(m_rh, (char *)s);
-        if (d == NULL) {
+        da = dict_attrbyname(s);
+        if (da == NULL) {
             gss_release_buffer(&tmpMinor, &strAttr);
             return false;
         }
-        attrid = d->value;
+        attrid = da->attr;
     }
 
     gss_release_buffer(&tmpMinor, &strAttr);
@@ -279,42 +298,18 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
                         value, display_value, more);
 }
 
-static bool
-isPrintableAttributeP(VALUE_PAIR *vp)
-{
-    size_t i;
-    int gotChar = 0;
-
-    for (i = 0; i < sizeof(vp->strvalue); i++) {
-        if (gotChar && vp->strvalue[i] == '\0')
-            return true;
-
-        if (!isprint(vp->strvalue[i]))
-            return false;
-
-        if (!gotChar)
-            gotChar++;
-    }
-
-    return true;
-}
-
 bool
-gss_eap_radius_attr_provider::getAttribute(int attrid,
-                                           int vendor,
+gss_eap_radius_attr_provider::getAttribute(uint16_t vattrid,
+                                           uint16_t vendor,
                                            int *authenticated,
                                            int *complete,
                                            gss_buffer_t value,
                                            gss_buffer_t display_value,
                                            int *more) const
 {
-    OM_uint32 tmpMinor;
+    uint32_t attrid = VENDORATTR(vendor, vattrid);
     VALUE_PAIR *vp;
     int i = *more, count = 0;
-    char name[NAME_LENGTH + 1];
-    char displayString[AUTH_STRING_LEN + 1];
-    gss_buffer_desc valueBuf = GSS_C_EMPTY_BUFFER;
-    gss_buffer_desc displayBuf = GSS_C_EMPTY_BUFFER;
 
     *more = 0;
 
@@ -324,11 +319,11 @@ gss_eap_radius_attr_provider::getAttribute(int attrid,
     if (i == -1)
         i = 0;
 
-    for (vp = rc_avpair_get(m_avps, attrid, vendor);
+    for (vp = pairfind(m_avps, attrid);
          vp != NULL;
-         vp = rc_avpair_get(vp->next, attrid, vendor)) {
+         vp = pairfind(vp->next, attrid)) {
         if (count++ == i) {
-            if (rc_avpair_get(vp->next, attrid, vendor) != NULL)
+            if (pairfind(vp->next, attrid) != NULL)
                 *more = count;
             break;
         }
@@ -337,27 +332,22 @@ gss_eap_radius_attr_provider::getAttribute(int attrid,
     if (vp == NULL && *more == 0)
         return false;
 
-    if (vp->type == PW_TYPE_STRING) {
-        valueBuf.value = (void *)vp->strvalue;
-        valueBuf.length = vp->lvalue;
-    } else {
-        valueBuf.value = (void *)&vp->lvalue;
-        valueBuf.length = 4;
+    if (value != GSS_C_NO_BUFFER) {
+        gss_buffer_desc valueBuf;
+
+        valueBuf.value = (void *)vp->vp_octets;
+        valueBuf.length = vp->length;
+
+        duplicateBuffer(valueBuf, value);
     }
 
-    if (value != GSS_C_NO_BUFFER)
-        duplicateBuffer(valueBuf, value);
+    if (display_value != GSS_C_NO_BUFFER) {
+        char displayString[MAX_STRING_LEN];
+        gss_buffer_desc displayBuf;
 
-    if (display_value != GSS_C_NO_BUFFER &&
-        isPrintableAttributeP(vp)) {
-        if (rc_avpair_tostr(m_rh, vp, name, NAME_LENGTH,
-                            displayString, AUTH_STRING_LEN) != 0) {
-            gss_release_buffer(&tmpMinor, value);
-            return false;
-        }
-
+        displayBuf.length = vp_prints_value(displayString,
+                                            sizeof(displayString), vp, 0);
         displayBuf.value = (void *)displayString;
-        displayBuf.length = strlen(displayString);
 
         duplicateBuffer(displayBuf, display_value);
     }
@@ -371,15 +361,15 @@ gss_eap_radius_attr_provider::getAttribute(int attrid,
 }
 
 bool
-gss_eap_radius_attr_provider::getFragmentedAttribute(int attribute,
-                                                     int vendor,
+gss_eap_radius_attr_provider::getFragmentedAttribute(uint16_t attribute,
+                                                     uint16_t vendor,
                                                      int *authenticated,
                                                      int *complete,
                                                      gss_buffer_t value) const
 {
     OM_uint32 major, minor;
 
-    major = getBufferFromAvps(&minor, m_avps, attribute, vendor, value, TRUE);
+    major = gssEapRadiusGetAvp(&minor, m_avps, attribute, vendor, value, TRUE);
 
     if (authenticated != NULL)
         *authenticated = m_authenticated;
@@ -390,7 +380,7 @@ gss_eap_radius_attr_provider::getFragmentedAttribute(int attribute,
 }
 
 bool
-gss_eap_radius_attr_provider::getAttribute(int attrid,
+gss_eap_radius_attr_provider::getAttribute(uint32_t attrid,
                                            int *authenticated,
                                            int *complete,
                                            gss_buffer_t value,
@@ -410,14 +400,14 @@ gss_eap_radius_attr_provider::mapToAny(int authenticated,
     if (authenticated && !m_authenticated)
         return (gss_any_t)NULL;
 
-    return (gss_any_t)copyAvps(m_avps);
+    return (gss_any_t)paircopy(m_avps);
 }
 
 void
 gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
                                                     gss_any_t input) const
 {
-    rc_avpair_free((VALUE_PAIR *)input);
+    pairfree((VALUE_PAIR **)&input);
 }
 
 bool
@@ -442,42 +432,76 @@ gss_eap_radius_attr_provider::createAttrContext(void)
 }
 
 OM_uint32
-addAvpFromBuffer(OM_uint32 *minor,
-                 rc_handle *rh,
-                 VALUE_PAIR **vp,
-                 int type,
-                 int vendor,
-                 gss_buffer_t buffer)
+gssEapRadiusAddAvp(OM_uint32 *minor,
+                   rs_handle *rh,
+                   VALUE_PAIR **vps,
+                   uint16_t vattrid,
+                   uint16_t vendor,
+                   gss_buffer_t buffer)
 {
-    if (rc_avpair_add(rh, vp, type,
-                      buffer->value, buffer->length, vendor) == NULL) {
-        return GSS_S_FAILURE;
-    }
+    uint16_t attrid = VENDORATTR(vendor, vattrid);
+    unsigned char *p = (unsigned char *)buffer->value;
+    size_t remain = buffer->length;
+
+    do {
+        VALUE_PAIR *vp;
+        size_t n = remain;
+
+        if (n > MAX_STRING_LEN)
+            n = MAX_STRING_LEN;
+
+        vp = paircreate(attrid, PW_TYPE_OCTETS);
+        if (vp == NULL) {
+            *minor = ENOMEM;
+            return GSS_S_FAILURE;
+        }
+
+        memcpy(vp->vp_octets, p, n);
+        pairadd(vps, vp);
+
+        p += n;
+        remain -= n;
+    } while (remain != 0);
 
     return GSS_S_COMPLETE;
 }
 
 OM_uint32
-getBufferFromAvps(OM_uint32 *minor,
-                  VALUE_PAIR *vps,
-                  int type,
-                  int vendor,
-                  gss_buffer_t buffer,
-                  int concat)
+gssEapRadiusGetRawAvp(OM_uint32 *minor,
+                      VALUE_PAIR *vps,
+                      uint16_t type,
+                      uint16_t vendor,
+                      VALUE_PAIR **vp)
+{
+    uint16_t attr = VENDORATTR(vendor, type);
+
+    *vp = pairfind(vps, attr);
+
+    return (*vp == NULL) ? GSS_S_UNAVAILABLE : GSS_S_COMPLETE;
+}
+
+OM_uint32
+gssEapRadiusGetAvp(OM_uint32 *minor,
+                   VALUE_PAIR *vps,
+                   uint16_t type,
+                   uint16_t vendor,
+                   gss_buffer_t buffer,
+                   int concat)
 {
     VALUE_PAIR *vp;
     unsigned char *p;
+    uint32_t attr = VENDORATTR(vendor, type);
 
     buffer->length = 0;
     buffer->value = NULL;
 
-    vp = rc_avpair_get(vps, type, vendor);
+    vp = pairfind(vps, attr);
     if (vp == NULL)
         return GSS_S_UNAVAILABLE;
 
     do {
-        buffer->length += vp->lvalue;
-    } while (concat && (vp = rc_avpair_get(vp->next, type, vendor)) != NULL);
+        buffer->length += vp->length;
+    } while (concat && (vp = pairfind(vp->next, attr)) != NULL);
 
     buffer->value = GSSEAP_MALLOC(buffer->length);
     if (buffer->value == NULL) {
@@ -487,11 +511,11 @@ getBufferFromAvps(OM_uint32 *minor,
 
     p = (unsigned char *)buffer->value;
 
-    for (vp = rc_avpair_get(vps, type, vendor);
+    for (vp = pairfind(vps, attr);
          concat && vp != NULL;
-         vp = rc_avpair_get(vp->next, type, vendor)) {
-        memcpy(p, vp->strvalue, vp->lvalue);
-        p += vp->lvalue;
+         vp = pairfind(vp->next, attr)) {
+        memcpy(p, vp->vp_octets, vp->length);
+        p += vp->length;
     }
 
     *minor = 0;
@@ -513,24 +537,48 @@ gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
 }
 
 OM_uint32
-gssEapRadiusAllocHandle(OM_uint32 *minor,
-                        const gss_cred_id_t cred,
-                        gss_ctx_id_t ctx)
+gssEapRadiusMapError(OM_uint32 *minor,
+                     struct rs_error *err)
 {
-    const char *configFile = NULL;
+    if (err != NULL)
+        rs_err_code(err, 1);
 
-    assert(ctx->acceptorCtx.radHandle == NULL);
+    return GSS_S_FAILURE;
+}
+
+OM_uint32
+gssEapRadiusAllocConn(OM_uint32 *minor,
+                      const gss_cred_id_t cred,
+                      gss_ctx_id_t ctx)
+{
+    struct gss_eap_acceptor_ctx *actx = &ctx->acceptorCtx;
+    const char *configFile = NULL;
+    struct rs_error *err;
+
+    assert(actx->radHandle == NULL);
+    assert(actx->radConn == NULL);
 
     if (cred != GSS_C_NO_CREDENTIAL && cred->radiusConfigFile != NULL)
         configFile = cred->radiusConfigFile;
 
-    if (radiusAllocHandle(configFile, &ctx->acceptorCtx.radHandle) != 0)
-        return GSS_S_FAILURE;
+    err = radiusAllocHandle(configFile, &actx->radHandle);
+    if (err != NULL || actx->radHandle == NULL) {
+        return gssEapRadiusMapError(minor, err);
+    }
 
-    /* XXX TODO allocate connection handle */
+    if (rs_conn_create(actx->radHandle, &actx->radConn, "gss-eap") != 0) {
+        return gssEapRadiusMapError(minor, rs_err_conn_pop(actx->radConn));
+    }
 
-    /* XXX TODO select based on acceptorCtx.radServer */
+    /* XXX TODO rs_conn_select_server does not exist yet */
+#if 0
+    if (actx->radServer != NULL) {
+        if (rs_conn_select_server(actx->radConn, actx->radServer) != 0)
+            return gssEapRadiusMapError(minor, rs_err_conn_pop(actx->radConn));
+    }
+#endif
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -544,13 +592,13 @@ avpSize(const VALUE_PAIR *vp)
     size_t size = 4 + 1;
 
     if (vp != NULL)
-        size += (vp->type == PW_TYPE_STRING) ? vp->lvalue : 4;
+        size += vp->length;
 
     return size;
 }
 
 static bool
-avpExport(rc_handle *rh,
+avpExport(rs_handle *rh,
           const VALUE_PAIR *vp,
           unsigned char **pBuffer,
           size_t *pRemain)
@@ -562,13 +610,18 @@ avpExport(rc_handle *rh,
 
     store_uint32_be(vp->attribute, p);
 
-    if (vp->type == PW_TYPE_STRING) {
-        assert(vp->lvalue <= AUTH_STRING_LEN);
-        p[4] = (uint8_t)vp->lvalue;
-        memcpy(p + 5, vp->strvalue, vp->lvalue);
-    } else {
+    switch (vp->type) {
+    case PW_TYPE_INTEGER:
+    case PW_TYPE_IPADDR:
+    case PW_TYPE_DATE:
         p[4] = 4;
         store_uint32_be(vp->lvalue, p + 5);
+        break;
+    default:
+        assert(vp->length <= MAX_STRING_LEN);
+        p[4] = (uint8_t)vp->length;
+        memcpy(p + 5, vp->vp_octets, vp->length);
+        break;
     }
 
     *pBuffer += 5 + p[4];
@@ -579,56 +632,64 @@ avpExport(rc_handle *rh,
 }
 
 static bool
-avpImport(rc_handle *rh,
+avpImport(rs_handle *rh,
           VALUE_PAIR **pVp,
           unsigned char **pBuffer,
           size_t *pRemain)
 {
     unsigned char *p = *pBuffer;
     size_t remain = *pRemain;
-    VALUE_PAIR *vp;
-    DICT_ATTR *d;
+    VALUE_PAIR *vp = NULL;
+    DICT_ATTR *da;
+    OM_uint32 attrid;
 
     if (remain < avpSize(NULL))
-        return false;
+        goto fail;
 
-    vp = (VALUE_PAIR *)GSSEAP_CALLOC(1, sizeof(*vp));
-    if (vp == NULL) {
-        throw new std::bad_alloc;
-        return false;
-    }
-
-    vp->attribute = load_uint32_be(p);
+    attrid = load_uint32_be(p);
     p += 4;
     remain -= 4;
 
-    d = rc_dict_getattr(rh, vp->attribute);
-    if (d == NULL)
+    da = dict_attrbyvalue(attrid);
+    if (da == NULL)
         goto fail;
 
-    assert(sizeof(vp->name) == sizeof(d->name));
-    strcpy(vp->name, d->name);
-    vp->type = d->type;
+    vp = pairalloc(da);
+    if (vp == NULL) {
+        throw new std::bad_alloc;
+        goto fail;
+    }
 
     if (remain < p[0])
         goto fail;
 
-    if (vp->type == PW_TYPE_STRING) {
-        if (p[0] > AUTH_STRING_LEN)
-            goto fail;
-
-        vp->lvalue = (uint32_t)p[0];
-        memcpy(vp->strvalue, p + 1, vp->lvalue);
-        vp->strvalue[vp->lvalue] = '\0';
-        p += 1 + vp->lvalue;
-        remain -= 1 + vp->lvalue;
-    } else {
+    switch (vp->type) {
+    case PW_TYPE_INTEGER:
+    case PW_TYPE_IPADDR:
+    case PW_TYPE_DATE:
         if (p[0] != 4)
             goto fail;
 
+        vp->length = 4;
         vp->lvalue = load_uint32_be(p + 1);
         p += 5;
         remain -= 5;
+        break;
+    case PW_TYPE_STRING:
+        /* check enough room to NUL terminate */
+        if (p[0] >= MAX_STRING_LEN)
+            goto fail;
+        /* fallthrough */
+    default:
+        vp->length = (uint32_t)p[0];
+        memcpy(vp->vp_octets, p + 1, vp->length);
+
+        if (vp->type == PW_TYPE_STRING)
+            vp->vp_strvalue[vp->length] = '\0';
+
+        p += 1 + vp->length;
+        remain -= 1 + vp->length;
+        break;
     }
 
     *pVp = vp;
@@ -638,7 +699,7 @@ avpImport(rc_handle *rh,
     return true;
 
 fail:
-    GSSEAP_FREE(vp);
+    pairbasicfree(vp);
     return false;
 }
 
@@ -742,7 +803,7 @@ gss_eap_radius_attr_provider::getExpiryTime(void) const
 {
     VALUE_PAIR *vp;
 
-    vp = rc_avpair_get(m_avps, PW_SESSION_TIMEOUT, 0);
+    vp = pairfind(m_avps, PW_SESSION_TIMEOUT);
     if (vp == NULL || vp->lvalue == 0)
         return 0;
 

@@ -58,7 +58,7 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
     if (known_mech_attrs != NULL)
         *known_mech_attrs = GSS_C_NO_OID_SET;
 
-    if (!gssEapIsConcreteMechanismOid(mech_oid))
+    if (!gssEapIsConcreteMechanismOid((const gss_OID)mech_oid))
         return GSS_S_BAD_MECH;
 
     if (mech_attrs != NULL) {

@@ -6,7 +6,7 @@ gssinclude_HEADERS = gssapi_eap.h
 gssdir = $(libdir)/gss
 gss_LTLIBRARIES = mech_eap.la
 
-mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\"
+mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
 mech_eap_la_CFLAGS   = -g -Wall -fno-strict-aliasing \
 			@EAP_CFLAGS@ @RADSEC_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
 mech_eap_la_CXXFLAGS = -g -Wall \
