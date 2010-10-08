@@ -78,28 +78,21 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     major = gssEapRadiusGetRawAvp(minor, ctx->acceptorCtx.vps,
                                   PW_MS_MPPE_SEND_KEY, VENDORPEC_MS, &vp);
-    if (major == GSS_S_COMPLETE && ctx->encryptionType != ENCTYPE_NULL) {
-        major = gssEapDeriveRfc3961Key(minor,
-                                       vp->vp_octets,
-                                       vp->length,
-                                       ctx->encryptionType,
-                                       &ctx->rfc3961Key);
-        if (GSS_ERROR(major))
-            return major;
+    if (GSS_ERROR(major))
+        return major;
 
-        major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
-                                           &ctx->checksumType);
-        if (GSS_ERROR(major))
-            return major;
-    } else {
-        /*
-         * draft-howlett-eap-gss says that integrity/confidentialty should
-         * always be advertised as available, but if we have no keying
-         * material it seems confusing to the caller to advertise this.
-         */
-        ctx->gssFlags &= ~(GSS_C_INTEG_FLAG | GSS_C_CONF_FLAG);
-        ctx->encryptionType = ENCTYPE_NULL;
-    }
+    major = gssEapDeriveRfc3961Key(minor,
+                                   vp->vp_octets,
+                                   vp->length,
+                                   ctx->encryptionType,
+                                   &ctx->rfc3961Key);
+    if (GSS_ERROR(major))
+        return major;
+
+    major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
+                                       &ctx->checksumType);
+    if (GSS_ERROR(major))
+        return major;
 
     major = sequenceInit(minor,
                          &ctx->seqState, ctx->recvSeq,
