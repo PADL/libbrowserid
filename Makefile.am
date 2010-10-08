@@ -66,6 +66,7 @@ mech_eap_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
+	util_alloc.c				\
 	util_attr.cpp				\
 	util_buffer.c				\
 	util_context.c				\
@@ -99,5 +100,5 @@ radius_ad_la_CFLAGS  = -g -Wall -fno-strict-aliasing \
 radius_ad_la_LDFLAGS = -avoid-version -module \
 		       -export-symbols radius_ad.exports -no-undefined
 radius_ad_la_LIBADD  = @KRB5_LIBS@
-radius_ad_la_SOURCES = util_adshim.c
+radius_ad_la_SOURCES = util_adshim.c util_alloc.c
 endif

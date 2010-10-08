@@ -43,30 +43,6 @@ static gss_buffer_desc radiusUrnPrefix = {
     (void *)"urn:x-radius:"
 };
 
-static void *
-gssEapCalloc(size_t nmemb, size_t size)
-{
-    return GSSEAP_CALLOC(nmemb, size);
-}
-
-static void *
-gssEapMalloc(size_t size)
-{
-    return GSSEAP_MALLOC(size);
-}
-
-static void
-gssEapFree(void *ptr)
-{
-    GSSEAP_FREE(ptr);
-}
-
-static void *
-gssEapRealloc(void *ptr, size_t size)
-{
-    return GSSEAP_REALLOC(ptr, size);
-}
-
 static struct rs_error *
 radiusAllocHandle(const char *configFile,
                   rs_handle **pHandle)

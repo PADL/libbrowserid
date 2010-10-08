@@ -95,6 +95,19 @@ enum gss_eap_token_type {
 
 #define EAP_EXPORT_CONTEXT_V1           1
 
+/* util_alloc.c */
+void *
+gssEapCalloc(size_t nmemb, size_t size);
+
+void *
+gssEapMalloc(size_t size);
+
+void
+gssEapFree(void *ptr);
+
+void *
+gssEapRealloc(void *ptr, size_t size);
+
 /* util_buffer.c */
 OM_uint32
 makeStringBuffer(OM_uint32 *minor,
@@ -416,10 +429,11 @@ verifyTokenHeader(OM_uint32 *minor,
                   enum gss_eap_token_type *ret_tok_type);
 
 /* Helper macros */
-#define GSSEAP_CALLOC(count, size)      (calloc((count), (size)))
-#define GSSEAP_FREE(ptr)                (free((ptr)))
-#define GSSEAP_MALLOC(size)             (malloc((size)))
-#define GSSEAP_REALLOC(ptr, size)       (realloc((ptr), (size)))
+
+#define GSSEAP_CALLOC(count, size)      (gssEapCalloc((count), (size)))
+#define GSSEAP_MALLOC(size)             (gssEapMalloc((size)))
+#define GSSEAP_FREE(ptr)                (gssEapFree((ptr)))
+#define GSSEAP_REALLOC(ptr, size)       (gssEapRealloc((ptr), (size)))
 
 #define GSSEAP_NOT_IMPLEMENTED          do {            \
         assert(0 && "not implemented");                 \
