@@ -98,11 +98,11 @@ public:
 private:
     bool allocRadHandle(const std::string &configFile);
     const VALUE_PAIR *getAvps(void) const {
-        return m_avps;
+        return m_vps;
     }
 
     struct rs_handle *m_rh;
-    VALUE_PAIR *m_avps;
+    VALUE_PAIR *m_vps;
     bool m_authenticated;
     std::string m_configFile;
 };

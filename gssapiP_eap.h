@@ -160,7 +160,7 @@ struct gss_eap_acceptor_ctx {
     struct rs_connection *radConn;
     char *radServer;
     gss_buffer_desc state;
-    VALUE_PAIR *avps;
+    VALUE_PAIR *vps;
 };
 
 struct gss_ctx_id_struct {

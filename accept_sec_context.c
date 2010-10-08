@@ -60,7 +60,7 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
 
-    vp = pairfind(ctx->acceptorCtx.avps, PW_USER_NAME);
+    vp = pairfind(ctx->acceptorCtx.vps, PW_USER_NAME);
     if (vp != NULL) {
         nameBuf.length = vp->length;
         nameBuf.value = vp->vp_strvalue;
@@ -75,7 +75,7 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
 
-    major = gssEapRadiusGetRawAvp(minor, ctx->acceptorCtx.avps,
+    major = gssEapRadiusGetRawAvp(minor, ctx->acceptorCtx.vps,
                                   PW_MS_MPPE_SEND_KEY, VENDORPEC_MS, &vp);
     if (major == GSS_S_COMPLETE && ctx->encryptionType != ENCTYPE_NULL) {
         major = gssEapDeriveRfc3961Key(minor,
@@ -157,7 +157,7 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
 static OM_uint32
 setAcceptorIdentity(OM_uint32 *minor,
                     gss_ctx_id_t ctx,
-                    VALUE_PAIR **avps)
+                    VALUE_PAIR **vps)
 {
     OM_uint32 major;
     gss_buffer_desc nameBuf;
@@ -182,7 +182,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     /* Acceptor-Service-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 0), &nameBuf);
 
-    major = gssEapRadiusAddAvp(minor, rh, avps,
+    major = gssEapRadiusAddAvp(minor, rh, vps,
                                PW_GSS_ACCEPTOR_SERVICE_NAME,
                                VENDORPEC_UKERNA,
                                &nameBuf);
@@ -192,7 +192,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     /* Acceptor-Host-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 1), &nameBuf);
 
-    major = gssEapRadiusAddAvp(minor, rh, avps,
+    major = gssEapRadiusAddAvp(minor, rh, vps,
                                PW_GSS_ACCEPTOR_HOST_NAME,
                                VENDORPEC_UKERNA,
                                &nameBuf);
@@ -215,7 +215,7 @@ setAcceptorIdentity(OM_uint32 *minor,
         nameBuf.value = ssi;
         nameBuf.length = strlen(ssi);
 
-        major = gssEapRadiusAddAvp(minor, rh, avps,
+        major = gssEapRadiusAddAvp(minor, rh, vps,
                                    PW_GSS_ACCEPTOR_SERVICE_SPECIFIC,
                                    VENDORPEC_UKERNA,
                                    &nameBuf);
@@ -230,7 +230,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     krbDataToGssBuffer(krb5_princ_realm(krbContext, krbPrinc), &nameBuf);
     if (nameBuf.length != 0) {
         /* Acceptor-Realm-Name */
-        major = gssEapRadiusAddAvp(minor, rh, avps,
+        major = gssEapRadiusAddAvp(minor, rh, vps,
                                    PW_GSS_ACCEPTOR_REALM_NAME,
                                    VENDORPEC_UKERNA,
                                    &nameBuf);
@@ -332,7 +332,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         if (major != GSS_S_UNAVAILABLE && GSS_ERROR(major))
             goto cleanup;
     } else {
-        ctx->acceptorCtx.avps = frresp->vps;
+        ctx->acceptorCtx.vps = frresp->vps;
         frresp->vps = NULL;
 
         major = acceptReadyEap(minor, ctx, cred);

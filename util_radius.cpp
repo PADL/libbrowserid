@@ -77,7 +77,7 @@ radiusAllocHandle(const char *configFile,
 gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(void)
 {
     m_rh = NULL;
-    m_avps = NULL;
+    m_vps = NULL;
     m_authenticated = false;
 }
 
@@ -85,8 +85,8 @@ gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
 {
     if (m_rh != NULL)
         rs_context_destroy(m_rh);
-    if (m_avps != NULL)
-        pairfree(&m_avps);
+    if (m_vps != NULL)
+        pairfree(&m_vps);
 }
 
 bool
@@ -121,8 +121,8 @@ gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *ma
     if (!allocRadHandle(radius->m_configFile))
         return false;
 
-    if (radius->m_avps != NULL)
-        m_avps = paircopy(const_cast<VALUE_PAIR *>(radius->getAvps()));
+    if (radius->m_vps != NULL)
+        m_vps = paircopy(const_cast<VALUE_PAIR *>(radius->getAvps()));
 
     return true;
 }
@@ -144,9 +144,9 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
         return false;
 
     if (gssCtx != GSS_C_NO_CONTEXT) {
-        if (gssCtx->acceptorCtx.avps != NULL) {
-            m_avps = paircopy(gssCtx->acceptorCtx.avps);
-            if (m_avps == NULL)
+        if (gssCtx->acceptorCtx.vps != NULL) {
+            m_vps = paircopy(gssCtx->acceptorCtx.vps);
+            if (m_vps == NULL)
                 return false;
         }
     }
@@ -198,7 +198,7 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
     VALUE_PAIR *vp;
     std::vector <std::string> seen;
 
-    for (vp = m_avps; vp != NULL; vp = vp->next) {
+    for (vp = m_vps; vp != NULL; vp = vp->next) {
         gss_buffer_desc attribute;
         char attrid[64];
         if (isHiddenAttributeP(ATTRID(vp->attribute), VENDOR(vp->attribute)))
@@ -295,7 +295,7 @@ gss_eap_radius_attr_provider::getAttribute(uint16_t vattrid,
     if (i == -1)
         i = 0;
 
-    for (vp = pairfind(m_avps, attrid);
+    for (vp = pairfind(m_vps, attrid);
          vp != NULL;
          vp = pairfind(vp->next, attrid)) {
         if (count++ == i) {
@@ -345,7 +345,7 @@ gss_eap_radius_attr_provider::getFragmentedAttribute(uint16_t attribute,
 {
     OM_uint32 major, minor;
 
-    major = gssEapRadiusGetAvp(&minor, m_avps, attribute, vendor, value, TRUE);
+    major = gssEapRadiusGetAvp(&minor, m_vps, attribute, vendor, value, TRUE);
 
     if (authenticated != NULL)
         *authenticated = m_authenticated;
@@ -376,7 +376,7 @@ gss_eap_radius_attr_provider::mapToAny(int authenticated,
     if (authenticated && !m_authenticated)
         return (gss_any_t)NULL;
 
-    return (gss_any_t)paircopy(m_avps);
+    return (gss_any_t)paircopy(m_vps);
 }
 
 void
@@ -686,7 +686,7 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
     unsigned char *p = (unsigned char *)buffer->value;
     size_t remain = buffer->length;
     OM_uint32 configFileLen, count;
-    VALUE_PAIR **pNext = &m_avps;
+    VALUE_PAIR **pNext = &m_vps;
 
     if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
         return false;
@@ -741,7 +741,7 @@ gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
     unsigned char *p;
     size_t remain = 4 + m_configFile.length() + 4;
 
-    for (vp = m_avps; vp != NULL; vp = vp->next) {
+    for (vp = m_vps; vp != NULL; vp = vp->next) {
         remain += avpSize(vp);
         count++;
     }
@@ -767,7 +767,7 @@ gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
     p += 4;
     remain -= 4;
 
-    for (vp = m_avps; vp != NULL; vp = vp->next) {
+    for (vp = m_vps; vp != NULL; vp = vp->next) {
         avpExport(m_rh, vp, &p, &remain);
     }
 
@@ -779,7 +779,7 @@ gss_eap_radius_attr_provider::getExpiryTime(void) const
 {
     VALUE_PAIR *vp;
 
-    vp = pairfind(m_avps, PW_SESSION_TIMEOUT);
+    vp = pairfind(m_vps, PW_SESSION_TIMEOUT);
     if (vp == NULL || vp->lvalue == 0)
         return 0;
 
