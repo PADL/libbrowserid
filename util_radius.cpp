@@ -502,6 +502,13 @@ gssEapRadiusGetAvp(OM_uint32 *minor,
 }
 
 OM_uint32
+gssEapRadiusFreeAvps(OM_uint32 *minor,
+                     VALUE_PAIR **vps)
+{
+    pairfree(vps);
+}
+
+OM_uint32
 gssEapRadiusAttrProviderInit(OM_uint32 *minor)
 {
     return gss_eap_radius_attr_provider::init()

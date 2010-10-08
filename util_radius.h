@@ -133,6 +133,9 @@ gssEapRadiusGetRawAvp(OM_uint32 *minor,
                       uint16_t type,
                       uint16_t vendor,
                       VALUE_PAIR **vp);
+OM_uint32
+gssEapRadiusFreeAvps(OM_uint32 *minor,
+                     VALUE_PAIR **vps);
 
 OM_uint32 gssEapRadiusAttrProviderInit(OM_uint32 *minor);
 OM_uint32 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor);

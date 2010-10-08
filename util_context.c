@@ -95,7 +95,7 @@ releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
         GSSEAP_FREE(ctx->radServer);
     gss_release_buffer(&tmpMinor, &ctx->state);
     if (ctx->vps != NULL)
-        pairfree(&ctx->vps);
+        gssEapRadiusFreeAvps(&tmpMinor, &ctx->vps);
 }
 
 OM_uint32
