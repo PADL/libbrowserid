@@ -80,6 +80,8 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 
     if (cred->radiusConfigFile != NULL)
         GSSEAP_FREE(cred->radiusConfigFile);
+    if (cred->radiusConfigStanza != NULL)
+        GSSEAP_FREE(cred->radiusConfigStanza);
 
 #ifdef GSSEAP_ENABLE_REAUTH
     if (cred->krbCredCache != NULL) {

@@ -109,6 +109,7 @@ struct gss_cred_id_struct {
     gss_OID_set mechanisms;
     time_t expiryTime;
     char *radiusConfigFile;
+    char *radiusConfigStanza;
 #ifdef GSSEAP_ENABLE_REAUTH
     krb5_ccache krbCredCache;
     gss_cred_id_t krbCred;

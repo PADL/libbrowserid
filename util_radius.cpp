@@ -547,20 +547,25 @@ gssEapRadiusAllocConn(OM_uint32 *minor,
 {
     struct gss_eap_acceptor_ctx *actx = &ctx->acceptorCtx;
     const char *configFile = NULL;
+    const char *configStanza = "gss-eap";
     struct rs_error *err;
 
     assert(actx->radHandle == NULL);
     assert(actx->radConn == NULL);
 
-    if (cred != GSS_C_NO_CREDENTIAL && cred->radiusConfigFile != NULL)
-        configFile = cred->radiusConfigFile;
+    if (cred != GSS_C_NO_CREDENTIAL) {
+        if (cred->radiusConfigFile != NULL)
+            configFile = cred->radiusConfigFile;
+        if (cred->radiusConfigStanza != NULL)
+            configStanza = cred->radiusConfigStanza;
+    }
 
     err = radiusAllocHandle(configFile, &actx->radHandle);
     if (err != NULL || actx->radHandle == NULL) {
         return gssEapRadiusMapError(minor, err);
     }
 
-    if (rs_conn_create(actx->radHandle, &actx->radConn, "gss-eap") != 0) {
+    if (rs_conn_create(actx->radHandle, &actx->radConn, configStanza) != 0) {
         return gssEapRadiusMapError(minor, rs_err_conn_pop(actx->radConn));
     }
 

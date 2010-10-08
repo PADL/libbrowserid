@@ -33,10 +33,10 @@
 #include "gssapiP_eap.h"
 
 static OM_uint32
-setCredRadiusConfig(OM_uint32 *minor,
-                    gss_cred_id_t cred,
-                    const gss_OID oid,
-                    const gss_buffer_t buffer)
+setCredRadiusConfigFile(OM_uint32 *minor,
+                        gss_cred_id_t cred,
+                        const gss_OID oid,
+                        const gss_buffer_t buffer)
 {
     OM_uint32 major;
     gss_buffer_desc configFileBuffer = GSS_C_EMPTY_BUFFER;
@@ -51,6 +51,30 @@ setCredRadiusConfig(OM_uint32 *minor,
         GSSEAP_FREE(cred->radiusConfigFile);
 
     cred->radiusConfigFile = (char *)configFileBuffer.value;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+setCredRadiusConfigStanza(OM_uint32 *minor,
+                          gss_cred_id_t cred,
+                          const gss_OID oid,
+                          const gss_buffer_t buffer)
+{
+    OM_uint32 major;
+    gss_buffer_desc configStanzaBuffer = GSS_C_EMPTY_BUFFER;
+
+    if (buffer != GSS_C_NO_BUFFER && buffer->length != 0) {
+        major = duplicateBuffer(minor, buffer, &configStanzaBuffer);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    if (cred->radiusConfigStanza != NULL)
+        GSSEAP_FREE(cred->radiusConfigStanza);
+
+    cred->radiusConfigStanza = (char *)configStanzaBuffer.value;
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -91,17 +115,23 @@ static struct {
     /* 1.3.6.1.4.1.5322.22.3.3.1 */
     {
         { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x03\x03\x01" },
-        setCredRadiusConfig,
+        setCredRadiusConfigFile,
     },
     /* 1.3.6.1.4.1.5322.22.3.3.2 */
     {
         { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x03\x03\x02" },
+        setCredRadiusConfigStanza,
+    },
+    /* 1.3.6.1.4.1.5322.22.3.3.3 */
+    {
+        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x03\x03\x03" },
         setCredFlag,
     },
 };
 
-gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG = &setCredOps[0].oid;
-gss_OID GSS_EAP_CRED_SET_CRED_FLAG     = &setCredOps[1].oid;
+gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE     = &setCredOps[0].oid;
+gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_STANZA   = &setCredOps[1].oid;
+gss_OID GSS_EAP_CRED_SET_CRED_FLAG              = &setCredOps[2].oid;
 
 OM_uint32
 gssspi_set_cred_option(OM_uint32 *minor,
