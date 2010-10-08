@@ -485,7 +485,7 @@ gss_unwrap_iov(OM_uint32 *minor,
                gss_iov_buffer_desc *iov,
                int iov_count)
 {
-    OM_uint32 major = GSS_C_NO_CONTEXT;
+    OM_uint32 major = GSS_S_NO_CONTEXT;
 
     if (ctx == GSS_C_NO_CONTEXT) {
         *minor = EINVAL;
