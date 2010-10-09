@@ -80,13 +80,8 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
                                                  const gss_cred_id_t gssCred,
                                                  const gss_ctx_id_t gssCtx)
 {
-    std::string configFile(RS_CONFIG_FILE);
-
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
         return false;
-
-    if (gssCred != GSS_C_NO_CREDENTIAL && gssCred->radiusConfigFile != NULL)
-        configFile.assign(gssCred->radiusConfigFile);
 
     if (gssCtx != GSS_C_NO_CONTEXT) {
         if (gssCtx->acceptorCtx.vps != NULL) {
