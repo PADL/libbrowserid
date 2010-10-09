@@ -398,7 +398,6 @@ unwrapStream(OM_uint32 *minor,
     }
 
     /* IOV: -----------0-------------+---1---+--2--+----------------3--------------*/
-    /* Old: GSS-Header | Conf        | Data  | Pad |                               */
     /* CFX: GSS-Header | Kerb-Header | Data  |     | EC | E(Header) | Kerb-Trailer */
     /* GSS: -------GSS-HEADER--------+-DATA--+-PAD-+----------GSS-TRAILER----------*/
 
