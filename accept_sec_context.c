@@ -328,6 +328,9 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         ctx->acceptorCtx.vps = frresp->vps;
         frresp->vps = NULL;
 
+        rs_conn_destroy(ctx->acceptorCtx.radConn);
+        ctx->acceptorCtx.radConn = NULL;
+
         major = acceptReadyEap(minor, ctx, cred);
         if (GSS_ERROR(major))
             goto cleanup;
