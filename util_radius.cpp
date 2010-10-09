@@ -59,10 +59,10 @@ radiusAllocHandle(const char *configFile,
     if (rs_context_create(&rh, RS_DICT_FILE) != 0)
         return NULL;
 
-    ralloc.calloc = gssEapCalloc;
-    ralloc.malloc = gssEapMalloc;
-    ralloc.free = gssEapFree;
-    ralloc.realloc = gssEapRealloc;
+    ralloc.calloc = GSSEAP_CALLOC;
+    ralloc.malloc = GSSEAP_MALLOC;
+    ralloc.free = GSSEAP_FREE;
+    ralloc.realloc = GSSEAP_REALLOC;
 
     rs_context_set_alloc_scheme(rh, &ralloc);
 
