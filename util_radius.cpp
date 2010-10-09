@@ -72,6 +72,8 @@ gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *ma
     if (radius->m_vps != NULL)
         m_vps = copyAvps(const_cast<VALUE_PAIR *>(radius->getAvps()));
 
+    m_authenticated = radius->m_authenticated;
+
     return true;
 }
 
@@ -88,6 +90,9 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
             m_vps = copyAvps(gssCtx->acceptorCtx.vps);
             if (m_vps == NULL)
                 return false;
+
+            /* We assume libradsec validated this for us */
+            m_authenticated = (pairfind(m_vps, PW_MESSAGE_AUTHENTICATOR) != NULL);
         }
     }
 
