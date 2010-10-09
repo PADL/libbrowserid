@@ -92,7 +92,8 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
                 return false;
 
             /* We assume libradsec validated this for us */
-            m_authenticated = (pairfind(m_vps, PW_MESSAGE_AUTHENTICATOR) != NULL);
+            assert(pairfind(m_vps, PW_MESSAGE_AUTHENTICATOR) != NULL);
+            m_authenticated = true;
         }
     }
 
