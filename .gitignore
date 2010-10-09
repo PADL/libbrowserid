@@ -7,6 +7,7 @@
 /config.sub
 /config.h
 /configure
+/config.h.in
 /depcomp
 
 /libtool
