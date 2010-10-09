@@ -147,7 +147,7 @@ gssEapInitLibEap(OM_uint32 *minor)
 }
 
 static OM_uint32
-gssEapInitLibRadius(OM_uint32 *minor)
+gssEapInitLibRadsec(OM_uint32 *minor)
 {
     return GSS_S_COMPLETE;
 }
@@ -163,7 +163,7 @@ gssEapInitiatorInit(void)
     major = gssEapInitLibEap(&minor);
     assert(major == GSS_S_COMPLETE);
 
-    major = gssEapInitLibRadius(&minor);
+    major = gssEapInitLibRadsec(&minor);
     assert(major == GSS_S_COMPLETE);
 
 #ifdef GSSEAP_ENABLE_REAUTH
