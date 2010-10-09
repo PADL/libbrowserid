@@ -525,103 +525,6 @@ gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
-/* partition error namespace so it does not conflict with krb5 */
-#define ERROR_TABLE_BASE_rse (46882560L)
-
-#define RS_TO_COM_ERR(rse)                  ((rse) == RSE_OK ? 0 : (rse) + ERROR_TABLE_BASE_rse)
-#define COM_TO_RS_ERR(err)                  ((err) > ERROR_TABLE_BASE_rse && \
-                                             (err) <= (ERROR_TABLE_BASE_rse + RSE_SOME_ERROR) ? \
-                                             (err) - ERROR_TABLE_BASE_rse : RSE_SOME_ERROR)
-
-OM_uint32
-gssEapRadiusMapError(OM_uint32 *minor,
-                     struct rs_error *err)
-{
-    int code = RSE_OK;
-
-    if (err != NULL)
-        code = rs_err_code(err, 0);
-    else
-        code = RSE_SOME_ERROR;
-
-    *minor = RS_TO_COM_ERR(code);
-
-    gssEapSaveStatusInfo(*minor, "radsec: %s", rs_err_msg(err, 0));
-
-    rs_err_free(err);
-    return GSS_S_FAILURE;
-}
-
-OM_uint32
-gssEapRadiusAllocConn(OM_uint32 *minor,
-                      const gss_cred_id_t cred,
-                      gss_ctx_id_t ctx)
-{
-    struct gss_eap_acceptor_ctx *actx = &ctx->acceptorCtx;
-    const char *configFile = RS_CONFIG_FILE;
-    const char *configStanza = "gss-eap";
-    struct rs_alloc_scheme ralloc;
-    struct rs_error *err;
-
-    assert(actx->radHandle == NULL);
-    assert(actx->radConn == NULL);
-
-    if (rs_context_create(&actx->radHandle, RS_DICT_FILE) != 0)
-        return GSS_S_FAILURE;
-
-    if (cred != GSS_C_NO_CREDENTIAL) {
-        if (cred->radiusConfigFile != NULL)
-            configFile = cred->radiusConfigFile;
-        if (cred->radiusConfigStanza != NULL)
-            configStanza = cred->radiusConfigStanza;
-    }
-
-    ralloc.calloc  = GSSEAP_CALLOC;
-    ralloc.malloc  = GSSEAP_MALLOC;
-    ralloc.free    = GSSEAP_FREE;
-    ralloc.realloc = GSSEAP_REALLOC;
-
-    rs_context_set_alloc_scheme(actx->radHandle, &ralloc);
-
-    if (rs_context_read_config(actx->radHandle, configFile) != 0) {
-        err = rs_err_ctx_pop(actx->radHandle);
-        goto fail;
-    }
-
-    if (rs_conn_create(actx->radHandle, &actx->radConn, configStanza) != 0) {
-        err = rs_err_conn_pop(actx->radConn);
-        goto fail;
-    }
-
-    /* XXX TODO rs_conn_select_server does not exist yet */
-#if 0
-    if (actx->radServer != NULL) {
-        if (rs_conn_select_server(actx->radConn, actx->radServer) != 0) {
-            err = rs_err_conn_pop(actx->radConn);
-            goto fail;
-        }
-    }
-#endif
-
-    *minor = 0;
-    return GSS_S_COMPLETE;
-
-fail:
-    OM_uint32 major = gssEapRadiusMapError(minor, err);
-
-    if (actx->radConn != NULL) {
-        rs_conn_destroy(actx->radConn);
-        actx->radConn = NULL;
-    }
-
-    if (actx->radHandle != NULL) {
-        rs_context_destroy(actx->radHandle);
-        actx->radHandle = NULL;
-    }
-
-    return major;
-}
-
 /*
  * Encoding is:
  * 4 octet NBO attribute ID | 4 octet attribute length | attribute data
@@ -825,4 +728,31 @@ gss_eap_radius_attr_provider::getExpiryTime(void) const
         return 0;
 
     return time(NULL) + vp->lvalue;
+}
+
+/* partition error namespace so it does not conflict with krb5 */
+#define ERROR_TABLE_BASE_rse (46882560L)
+
+#define RS_TO_COM_ERR(rse)                  ((rse) == RSE_OK ? 0 : (rse) + ERROR_TABLE_BASE_rse)
+#define COM_TO_RS_ERR(err)                  ((err) > ERROR_TABLE_BASE_rse && \
+                                             (err) <= (ERROR_TABLE_BASE_rse + RSE_SOME_ERROR) ? \
+                                             (err) - ERROR_TABLE_BASE_rse : RSE_SOME_ERROR)
+
+OM_uint32
+gssEapRadiusMapError(OM_uint32 *minor,
+                     struct rs_error *err)
+{
+    int code = RSE_OK;
+
+    if (err != NULL)
+        code = rs_err_code(err, 0);
+    else
+        code = RSE_SOME_ERROR;
+
+    *minor = RS_TO_COM_ERR(code);
+
+    gssEapSaveStatusInfo(*minor, "radsec: %s", rs_err_msg(err, 0));
+
+    rs_err_free(err);
+    return GSS_S_FAILURE;
 }

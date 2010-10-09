@@ -137,11 +137,6 @@ OM_uint32 gssEapRadiusAttrProviderInit(OM_uint32 *minor);
 OM_uint32 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor);
 
 OM_uint32
-gssEapRadiusAllocConn(OM_uint32 *minor,
-                      const gss_cred_id_t cred,
-                      gss_ctx_id_t ctx);
-
-OM_uint32
 gssEapRadiusMapError(OM_uint32 *minor,
                      struct rs_error *err);
 

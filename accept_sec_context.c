@@ -236,6 +236,64 @@ setAcceptorIdentity(OM_uint32 *minor,
 }
 
 static OM_uint32
+createRadiusHandle(OM_uint32 *minor,
+                   gss_cred_id_t cred,
+                   gss_ctx_id_t ctx)
+{
+    struct gss_eap_acceptor_ctx *actx = &ctx->acceptorCtx;
+    const char *configFile = RS_CONFIG_FILE;
+    const char *configStanza = "gss-eap";
+    struct rs_alloc_scheme ralloc;
+    struct rs_error *err;
+
+    assert(actx->radHandle == NULL);
+    assert(actx->radConn == NULL);
+
+    if (rs_context_create(&actx->radHandle, RS_DICT_FILE) != 0)
+        return GSS_S_FAILURE;
+
+    if (cred != GSS_C_NO_CREDENTIAL) {
+        if (cred->radiusConfigFile != NULL)
+            configFile = cred->radiusConfigFile;
+        if (cred->radiusConfigStanza != NULL)
+            configStanza = cred->radiusConfigStanza;
+    }
+
+    ralloc.calloc  = GSSEAP_CALLOC;
+    ralloc.malloc  = GSSEAP_MALLOC;
+    ralloc.free    = GSSEAP_FREE;
+    ralloc.realloc = GSSEAP_REALLOC;
+
+    rs_context_set_alloc_scheme(actx->radHandle, &ralloc);
+
+    if (rs_context_read_config(actx->radHandle, configFile) != 0) {
+        err = rs_err_ctx_pop(actx->radHandle);
+        goto fail;
+    }
+
+    if (rs_conn_create(actx->radHandle, &actx->radConn, configStanza) != 0) {
+        err = rs_err_conn_pop(actx->radConn);
+        goto fail;
+    }
+
+    /* XXX TODO rs_conn_select_server does not exist yet */
+#if 0
+    if (actx->radServer != NULL) {
+        if (rs_conn_select_server(actx->radConn, actx->radServer) != 0) {
+            err = rs_err_conn_pop(actx->radConn);
+            goto fail;
+        }
+    }
+#endif
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+
+fail:
+    return gssEapRadiusMapError(minor, err);
+}
+
+static OM_uint32
 eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
                            gss_cred_id_t cred,
@@ -253,7 +311,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     if (ctx->acceptorCtx.radHandle == NULL) {
         /* May be NULL from an imported partial context */
-        major = gssEapRadiusAllocConn(minor, cred, ctx);
+        major = createRadiusHandle(minor, cred, ctx);
         if (GSS_ERROR(major))
             goto cleanup;
 
