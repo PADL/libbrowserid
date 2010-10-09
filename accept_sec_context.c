@@ -74,8 +74,6 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     if (GSS_ERROR(major))
         return major;
 
-    ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
-
     major = gssEapRadiusGetRawAvp(minor, ctx->acceptorCtx.vps,
                                   PW_MS_MPPE_SEND_KEY, VENDORPEC_MS, &vp);
     if (GSS_ERROR(major))
@@ -101,6 +99,8 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
                          TRUE);
     if (GSS_ERROR(major))
         return major;
+
+    ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
 
     return GSS_S_COMPLETE;
 }

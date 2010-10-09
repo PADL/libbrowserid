@@ -44,6 +44,8 @@ static gss_buffer_desc radiusUrnPrefix = {
     (void *)"urn:x-radius:"
 };
 
+static VALUE_PAIR *copyAvps(const VALUE_PAIR *src);
+
 static struct rs_error *
 radiusAllocHandle(const char *configFile,
                   rs_handle **pHandle)
@@ -123,7 +125,7 @@ gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *ma
         return false;
 
     if (radius->m_vps != NULL)
-        m_vps = paircopy(const_cast<VALUE_PAIR *>(radius->getAvps()));
+        m_vps = copyAvps(const_cast<VALUE_PAIR *>(radius->getAvps()));
 
     return true;
 }
@@ -146,7 +148,7 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
 
     if (gssCtx != GSS_C_NO_CONTEXT) {
         if (gssCtx->acceptorCtx.vps != NULL) {
-            m_vps = paircopy(gssCtx->acceptorCtx.vps);
+            m_vps = copyAvps(gssCtx->acceptorCtx.vps);
             if (m_vps == NULL)
                 return false;
         }
@@ -169,7 +171,7 @@ alreadyAddedAttributeP(std::vector <std::string> &attrs, VALUE_PAIR *vp)
 }
 
 static bool
-isHiddenAttributeP(uint16_t attrid, uint16_t vendor)
+isSecretAttributeP(uint16_t attrid, uint16_t vendor)
 {
     bool ret = false;
 
@@ -183,6 +185,28 @@ isHiddenAttributeP(uint16_t attrid, uint16_t vendor)
         default:
             break;
         }
+    default:
+        break;
+    }
+
+    return ret;
+}
+
+static bool
+isSecretAttributeP(uint32_t attribute)
+{
+    return isSecretAttributeP(ATTRID(attribute), VENDOR(attribute));
+}
+
+static bool
+isHiddenAttributeP(uint16_t attrid, uint16_t vendor)
+{
+    bool ret = false;
+
+    /* should have been filtered */
+    assert(!isSecretAttributeP(attrid, vendor));
+
+    switch (vendor) {
     case VENDORPEC_UKERNA:
         ret = true;
         break;
@@ -191,6 +215,41 @@ isHiddenAttributeP(uint16_t attrid, uint16_t vendor)
     }
 
     return ret;
+}
+
+static bool
+isHiddenAttributeP(uint32_t attribute)
+{
+    return isHiddenAttributeP(ATTRID(attribute), VENDOR(attribute));
+}
+
+/*
+ * Copy AVP list, same as paircopy except it filters out attributes
+ * containing keys.
+ */
+static VALUE_PAIR *
+copyAvps(const VALUE_PAIR *src)
+{
+    const VALUE_PAIR *vp;
+    VALUE_PAIR *dst = NULL, **pDst = &dst;
+
+    for (vp = src; vp != NULL; vp = vp->next) {
+        VALUE_PAIR *vpcopy;
+
+        if (isSecretAttributeP(vp->attribute))
+            continue;
+
+        vpcopy = paircopyvp(vp);
+        if (vpcopy == NULL) {
+            pairfree(&dst);
+            throw new std::bad_alloc;
+            return NULL;
+        }
+        *pDst = vpcopy;
+        pDst = &vpcopy->next;
+     }
+
+    return dst;
 }
 
 bool
@@ -202,7 +261,8 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
     for (vp = m_vps; vp != NULL; vp = vp->next) {
         gss_buffer_desc attribute;
         char attrid[64];
-        if (isHiddenAttributeP(ATTRID(vp->attribute), VENDOR(vp->attribute)))
+
+        if (isHiddenAttributeP(vp->attribute))
             continue;
 
         if (alreadyAddedAttributeP(seen, vp))
@@ -276,21 +336,19 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
 }
 
 bool
-gss_eap_radius_attr_provider::getAttribute(uint16_t vattrid,
-                                           uint16_t vendor,
+gss_eap_radius_attr_provider::getAttribute(uint32_t attrid,
                                            int *authenticated,
                                            int *complete,
                                            gss_buffer_t value,
                                            gss_buffer_t display_value,
                                            int *more) const
 {
-    uint32_t attrid = VENDORATTR(vendor, vattrid);
     VALUE_PAIR *vp;
     int i = *more, count = 0;
 
     *more = 0;
 
-    if (isHiddenAttributeP(attrid, vendor))
+    if (isHiddenAttributeP(attrid))
         return false;
 
     if (i == -1)
@@ -357,7 +415,8 @@ gss_eap_radius_attr_provider::getFragmentedAttribute(uint16_t attribute,
 }
 
 bool
-gss_eap_radius_attr_provider::getAttribute(uint32_t attrid,
+gss_eap_radius_attr_provider::getAttribute(uint16_t attribute,
+                                           uint16_t vendor,
                                            int *authenticated,
                                            int *complete,
                                            gss_buffer_t value,
@@ -365,7 +424,7 @@ gss_eap_radius_attr_provider::getAttribute(uint32_t attrid,
                                            int *more) const
 {
 
-    return getAttribute(ATTRID(attrid), VENDOR(attrid),
+    return getAttribute(VENDORATTR(attribute, vendor),
                         authenticated, complete,
                         value, display_value, more);
 }
@@ -377,7 +436,7 @@ gss_eap_radius_attr_provider::mapToAny(int authenticated,
     if (authenticated && !m_authenticated)
         return (gss_any_t)NULL;
 
-    return (gss_any_t)paircopy(m_vps);
+    return (gss_any_t)copyAvps(m_vps);
 }
 
 void
@@ -412,11 +471,11 @@ OM_uint32
 gssEapRadiusAddAvp(OM_uint32 *minor,
                    rs_handle *rh,
                    VALUE_PAIR **vps,
-                   uint16_t vattrid,
+                   uint16_t attribute,
                    uint16_t vendor,
                    gss_buffer_t buffer)
 {
-    uint32_t attrid = VENDORATTR(vendor, vattrid);
+    uint32_t attrid = VENDORATTR(vendor, attribute);
     unsigned char *p = (unsigned char *)buffer->value;
     size_t remain = buffer->length;
 
@@ -448,11 +507,11 @@ gssEapRadiusAddAvp(OM_uint32 *minor,
 OM_uint32
 gssEapRadiusGetRawAvp(OM_uint32 *minor,
                       VALUE_PAIR *vps,
-                      uint16_t type,
+                      uint16_t attribute,
                       uint16_t vendor,
                       VALUE_PAIR **vp)
 {
-    uint32_t attr = VENDORATTR(vendor, type);
+    uint32_t attr = VENDORATTR(vendor, attribute);
 
     *vp = pairfind(vps, attr);
 
@@ -462,14 +521,14 @@ gssEapRadiusGetRawAvp(OM_uint32 *minor,
 OM_uint32
 gssEapRadiusGetAvp(OM_uint32 *minor,
                    VALUE_PAIR *vps,
-                   uint16_t type,
+                   uint16_t attribute,
                    uint16_t vendor,
                    gss_buffer_t buffer,
                    int concat)
 {
     VALUE_PAIR *vp;
     unsigned char *p;
-    uint32_t attr = VENDORATTR(vendor, type);
+    uint32_t attr = VENDORATTR(vendor, attribute);
 
     buffer->length = 0;
     buffer->value = NULL;
@@ -651,7 +710,7 @@ avpImport(rs_handle *rh,
     size_t remain = *pRemain;
     VALUE_PAIR *vp = NULL;
     DICT_ATTR *da;
-    OM_uint32 attrid;
+    uint32_t attrid;
 
     if (remain < avpSize(NULL))
         goto fail;
