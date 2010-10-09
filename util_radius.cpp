@@ -46,68 +46,16 @@ static gss_buffer_desc radiusUrnPrefix = {
 
 static VALUE_PAIR *copyAvps(const VALUE_PAIR *src);
 
-static struct rs_error *
-radiusAllocHandle(const char *configFile,
-                  rs_handle **pHandle)
-{
-    rs_handle *rh;
-    struct rs_alloc_scheme ralloc;
-
-    *pHandle = NULL;
-
-    if (configFile == NULL || configFile[0] == '\0')
-        configFile = RS_CONFIG_FILE;
-
-    if (rs_context_create(&rh, RS_DICT_FILE) != 0)
-        return NULL;
-
-    ralloc.calloc = GSSEAP_CALLOC;
-    ralloc.malloc = GSSEAP_MALLOC;
-    ralloc.free = GSSEAP_FREE;
-    ralloc.realloc = GSSEAP_REALLOC;
-
-    rs_context_set_alloc_scheme(rh, &ralloc);
-
-    if (rs_context_read_config(rh, configFile) != 0) {
-        rs_context_destroy(rh);
-        return rs_err_ctx_pop(rh);
-    }
-
-    *pHandle = rh;
-    return NULL;
-}
-
 gss_eap_radius_attr_provider::gss_eap_radius_attr_provider(void)
 {
-    m_rh = NULL;
     m_vps = NULL;
     m_authenticated = false;
 }
 
 gss_eap_radius_attr_provider::~gss_eap_radius_attr_provider(void)
 {
-    if (m_rh != NULL)
-        rs_context_destroy(m_rh);
     if (m_vps != NULL)
         pairfree(&m_vps);
-}
-
-bool
-gss_eap_radius_attr_provider::allocRadHandle(const std::string &configFile)
-{
-    m_configFile.assign(configFile);
-
-    /*
-     * Currently none of the FreeRADIUS functions we use here actually take
-     * a handle, so we may as well leave it as NULL.
-     */
-#if 0
-    radiusAllocHandle(m_configFile.c_str(), &m_rh);
-
-    return (m_rh != NULL);
-#else
-    return true;
-#endif
 }
 
 bool
@@ -120,9 +68,6 @@ gss_eap_radius_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *ma
         return false;
 
     radius = static_cast<const gss_eap_radius_attr_provider *>(ctx);
-
-    if (!allocRadHandle(radius->m_configFile))
-        return false;
 
     if (radius->m_vps != NULL)
         m_vps = copyAvps(const_cast<VALUE_PAIR *>(radius->getAvps()));
@@ -142,9 +87,6 @@ gss_eap_radius_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager
 
     if (gssCred != GSS_C_NO_CREDENTIAL && gssCred->radiusConfigFile != NULL)
         configFile.assign(gssCred->radiusConfigFile);
-
-    if (!allocRadHandle(configFile))
-        return false;
 
     if (gssCtx != GSS_C_NO_CONTEXT) {
         if (gssCtx->acceptorCtx.vps != NULL) {
@@ -469,7 +411,6 @@ gss_eap_radius_attr_provider::createAttrContext(void)
 
 OM_uint32
 gssEapRadiusAddAvp(OM_uint32 *minor,
-                   rs_handle *rh,
                    VALUE_PAIR **vps,
                    uint16_t attribute,
                    uint16_t vendor,
@@ -616,12 +557,16 @@ gssEapRadiusAllocConn(OM_uint32 *minor,
                       gss_ctx_id_t ctx)
 {
     struct gss_eap_acceptor_ctx *actx = &ctx->acceptorCtx;
-    const char *configFile = NULL;
+    const char *configFile = RS_CONFIG_FILE;
     const char *configStanza = "gss-eap";
+    struct rs_alloc_scheme ralloc;
     struct rs_error *err;
 
     assert(actx->radHandle == NULL);
     assert(actx->radConn == NULL);
+
+    if (rs_context_create(&actx->radHandle, RS_DICT_FILE) != 0)
+        return GSS_S_FAILURE;
 
     if (cred != GSS_C_NO_CREDENTIAL) {
         if (cred->radiusConfigFile != NULL)
@@ -630,25 +575,50 @@ gssEapRadiusAllocConn(OM_uint32 *minor,
             configStanza = cred->radiusConfigStanza;
     }
 
-    err = radiusAllocHandle(configFile, &actx->radHandle);
-    if (err != NULL || actx->radHandle == NULL) {
-        return gssEapRadiusMapError(minor, err);
+    ralloc.calloc  = GSSEAP_CALLOC;
+    ralloc.malloc  = GSSEAP_MALLOC;
+    ralloc.free    = GSSEAP_FREE;
+    ralloc.realloc = GSSEAP_REALLOC;
+
+    rs_context_set_alloc_scheme(actx->radHandle, &ralloc);
+
+    if (rs_context_read_config(actx->radHandle, configFile) != 0) {
+        err = rs_err_ctx_pop(actx->radHandle);
+        goto fail;
     }
 
     if (rs_conn_create(actx->radHandle, &actx->radConn, configStanza) != 0) {
-        return gssEapRadiusMapError(minor, rs_err_conn_pop(actx->radConn));
+        err = rs_err_conn_pop(actx->radConn);
+        goto fail;
     }
 
     /* XXX TODO rs_conn_select_server does not exist yet */
 #if 0
     if (actx->radServer != NULL) {
-        if (rs_conn_select_server(actx->radConn, actx->radServer) != 0)
-            return gssEapRadiusMapError(minor, rs_err_conn_pop(actx->radConn));
+        if (rs_conn_select_server(actx->radConn, actx->radServer) != 0) {
+            err = rs_err_conn_pop(actx->radConn);
+            goto fail;
+        }
     }
 #endif
 
     *minor = 0;
     return GSS_S_COMPLETE;
+
+fail:
+    OM_uint32 major = gssEapRadiusMapError(minor, err);
+
+    if (actx->radConn != NULL) {
+        rs_conn_destroy(actx->radConn);
+        actx->radConn = NULL;
+    }
+
+    if (actx->radHandle != NULL) {
+        rs_context_destroy(actx->radHandle);
+        actx->radHandle = NULL;
+    }
+
+    return major;
 }
 
 /*
@@ -667,8 +637,7 @@ avpSize(const VALUE_PAIR *vp)
 }
 
 static bool
-avpExport(rs_handle *rh,
-          const VALUE_PAIR *vp,
+avpExport(const VALUE_PAIR *vp,
           unsigned char **pBuffer,
           size_t *pRemain)
 {
@@ -701,8 +670,7 @@ avpExport(rs_handle *rh,
 }
 
 static bool
-avpImport(rs_handle *rh,
-          VALUE_PAIR **pVp,
+avpImport(VALUE_PAIR **pVp,
           unsigned char **pBuffer,
           size_t *pRemain)
 {
@@ -782,27 +750,10 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 {
     unsigned char *p = (unsigned char *)buffer->value;
     size_t remain = buffer->length;
-    OM_uint32 configFileLen, count;
+    uint32_t count;
     VALUE_PAIR **pNext = &m_vps;
 
     if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
-        return false;
-
-    if (remain < 4)
-        return false;
-
-    configFileLen = load_uint32_be(p);
-    p += 4;
-    remain -= 4;
-
-    if (remain < configFileLen)
-        return false;
-
-    std::string configFile((char *)p, configFileLen);
-    p += configFileLen;
-    remain -= configFileLen;
-
-    if (!allocRadHandle(configFile))
         return false;
 
     if (remain < 4)
@@ -815,7 +766,7 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
     do {
         VALUE_PAIR *attr;
 
-        if (!avpImport(m_rh, &attr, &p, &remain))
+        if (!avpImport(&attr, &p, &remain))
             return false;
 
         *pNext = attr;
@@ -833,10 +784,10 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 void
 gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 {
-    OM_uint32 count = 0;
+    uint32_t count = 0;
     VALUE_PAIR *vp;
     unsigned char *p;
-    size_t remain = 4 + m_configFile.length() + 4;
+    size_t remain = 4;
 
     for (vp = m_vps; vp != NULL; vp = vp->next) {
         remain += avpSize(vp);
@@ -852,20 +803,12 @@ gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 
     p = (unsigned char *)buffer->value;
 
-    store_uint32_be(m_configFile.length(), p);
-    p += 4;
-    remain -= 4;
-
-    memcpy(p, m_configFile.c_str(), m_configFile.length());
-    p += m_configFile.length();
-    remain -= m_configFile.length();
-
     store_uint32_be(count, p);
     p += 4;
     remain -= 4;
 
     for (vp = m_vps; vp != NULL; vp = vp->next) {
-        avpExport(m_rh, vp, &p, &remain);
+        avpExport(vp, &p, &remain);
     }
 
     assert(remain == 0);

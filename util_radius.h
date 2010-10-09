@@ -96,15 +96,12 @@ public:
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:
-    bool allocRadHandle(const std::string &configFile);
     const VALUE_PAIR *getAvps(void) const {
         return m_vps;
     }
 
-    struct rs_handle *m_rh;
     VALUE_PAIR *m_vps;
     bool m_authenticated;
-    std::string m_configFile;
 };
 
 /* For now */
@@ -113,7 +110,6 @@ extern "C" {
 
 OM_uint32
 gssEapRadiusAddAvp(OM_uint32 *minor,
-                   struct rs_handle *rh,
                    VALUE_PAIR **vp,
                    uint16_t type,
                    uint16_t vendor,

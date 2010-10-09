@@ -176,7 +176,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     /* Acceptor-Service-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 0), &nameBuf);
 
-    major = gssEapRadiusAddAvp(minor, rh, vps,
+    major = gssEapRadiusAddAvp(minor, vps,
                                PW_GSS_ACCEPTOR_SERVICE_NAME,
                                VENDORPEC_UKERNA,
                                &nameBuf);
@@ -186,7 +186,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     /* Acceptor-Host-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 1), &nameBuf);
 
-    major = gssEapRadiusAddAvp(minor, rh, vps,
+    major = gssEapRadiusAddAvp(minor, vps,
                                PW_GSS_ACCEPTOR_HOST_NAME,
                                VENDORPEC_UKERNA,
                                &nameBuf);
@@ -209,7 +209,7 @@ setAcceptorIdentity(OM_uint32 *minor,
         nameBuf.value = ssi;
         nameBuf.length = strlen(ssi);
 
-        major = gssEapRadiusAddAvp(minor, rh, vps,
+        major = gssEapRadiusAddAvp(minor, vps,
                                    PW_GSS_ACCEPTOR_SERVICE_SPECIFIC,
                                    VENDORPEC_UKERNA,
                                    &nameBuf);
@@ -224,7 +224,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     krbDataToGssBuffer(krb5_princ_realm(krbContext, krbPrinc), &nameBuf);
     if (nameBuf.length != 0) {
         /* Acceptor-Realm-Name */
-        major = gssEapRadiusAddAvp(minor, rh, vps,
+        major = gssEapRadiusAddAvp(minor, vps,
                                    PW_GSS_ACCEPTOR_REALM_NAME,
                                    VENDORPEC_UKERNA,
                                    &nameBuf);
@@ -275,13 +275,13 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
             goto cleanup;
     }
 
-    major = gssEapRadiusAddAvp(minor, rh, &frreq->vps,
+    major = gssEapRadiusAddAvp(minor, &frreq->vps,
                                PW_EAP_MESSAGE, 0, inputToken);
     if (GSS_ERROR(major))
         goto cleanup;
 
     if (ctx->acceptorCtx.state.length != 0) {
-        major = gssEapRadiusAddAvp(minor, rh, &frreq->vps, PW_STATE, 0,
+        major = gssEapRadiusAddAvp(minor, &frreq->vps, PW_STATE, 0,
                                    &ctx->acceptorCtx.state);
         if (GSS_ERROR(major))
             goto cleanup;
