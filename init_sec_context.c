@@ -487,14 +487,14 @@ cleanup:
 }
 
 static OM_uint32
-initGssChannelBindings(OM_uint32 *minor,
+makeGssChannelBindings(OM_uint32 *minor,
+                       gss_cred_id_t cred,
                        gss_ctx_id_t ctx,
                        gss_channel_bindings_t chanBindings,
                        gss_buffer_t outputToken)
 {
     OM_uint32 major;
     gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
-
 
     if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
         buffer = chanBindings->application_data;
@@ -504,8 +504,13 @@ initGssChannelBindings(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;                       
 
-    return GSS_S_CONTINUE_NEEDED;
+    return GSS_S_COMPLETE;
 }
+
+static struct gss_eap_extension_provider
+eapGssMakeInitExtensions[] = {
+    { EXT_TYPE_GSS_CHANNEL_BINDINGS, 1, makeGssChannelBindings },
+};
 
 static OM_uint32
 eapGssSmInitExtensionsReq(OM_uint32 *minor,
@@ -519,25 +524,40 @@ eapGssSmInitExtensionsReq(OM_uint32 *minor,
                           gss_buffer_t inputToken,
                           gss_buffer_t outputToken)
 {
-    OM_uint32 major, tmpMinor;
-    gss_buffer_desc cbToken = GSS_C_EMPTY_BUFFER;
+    OM_uint32 major;
 
-    major = initGssChannelBindings(minor, ctx, chanBindings, &cbToken);
+    major = gssEapMakeExtensions(minor, cred, ctx, eapGssMakeInitExtensions,
+                                 sizeof(eapGssMakeInitExtensions) /
+                                    sizeof(eapGssMakeInitExtensions[0]),
+                                 chanBindings, outputToken);
     if (GSS_ERROR(major))
         return major;
 
+    assert(outputToken->value != NULL);
+
     ctx->state = EAP_STATE_EXTENSIONS_RESP;
-
-    major = duplicateBuffer(minor, &cbToken, outputToken);
-    if (GSS_ERROR(major)) {
-        gss_release_buffer(&tmpMinor, &cbToken);
-        return major;
-    }
-
-    gss_release_buffer(&tmpMinor, &cbToken);
 
     return GSS_S_CONTINUE_NEEDED;
 }
+
+static OM_uint32
+verifyReauthCreds(OM_uint32 *minor,
+                  gss_cred_id_t cred,
+                  gss_ctx_id_t ctx,
+                  gss_channel_bindings_t chanBindings,
+                  gss_buffer_t inputToken)
+{
+#ifdef GSSEAP_ENABLE_REAUTH
+    return gssEapStoreReauthCreds(minor, ctx, cred, inputToken);
+#else
+    return GSS_S_UNAVAILABLE;
+#endif
+}
+
+static struct gss_eap_extension_provider
+eapGssVerifyAcceptExtensions[] = {
+    { EXT_TYPE_REAUTH_CREDS, 0, verifyReauthCreds },
+};
 
 static OM_uint32
 eapGssSmInitExtensionsResp(OM_uint32 *minor,
@@ -551,13 +571,14 @@ eapGssSmInitExtensionsResp(OM_uint32 *minor,
                            gss_buffer_t inputToken,
                            gss_buffer_t outputToken)
 {
-#ifdef GSSEAP_ENABLE_REAUTH
     OM_uint32 major;
 
-    major = gssEapStoreReauthCreds(minor, ctx, cred, inputToken);
+    major = gssEapVerifyExtensions(minor, cred, ctx, eapGssVerifyAcceptExtensions,
+                                   sizeof(eapGssVerifyAcceptExtensions) /
+                                        sizeof(eapGssVerifyAcceptExtensions[0]),
+                                   chanBindings, inputToken);
     if (GSS_ERROR(major))
         return major;
-#endif
 
     ctx->state = EAP_STATE_ESTABLISHED;
 

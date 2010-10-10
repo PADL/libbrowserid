@@ -199,7 +199,6 @@ struct gss_ctx_id_struct {
 #define KEY_USAGE_ACCEPTOR_SIGN             23
 #define KEY_USAGE_INITIATOR_SEAL            24
 #define KEY_USAGE_INITIATOR_SIGN            25
-#define KEY_USAGE_CHANNEL_BINDINGS          64
 
 /* wrap_iov.c */
 OM_uint32

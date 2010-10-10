@@ -243,6 +243,42 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
                        krb5_enctype enctype,
                        krb5_keyblock *pKey);
 
+/* util_exts.c */
+#define EXT_FLAG_CRITICAL               0x80000000
+#define EXT_FLAG_VERIFIED               0x40000000
+
+#define EXT_TYPE_GSS_CHANNEL_BINDINGS   0x00000000
+#define EXT_TYPE_REAUTH_CREDS           0x00000001
+#define EXT_TYPE_MASK                   (~(EXT_FLAG_CRITICAL | EXT_FLAG_VERIFIED))
+
+struct gss_eap_extension_provider {
+    OM_uint32 type;
+    int critical;
+    OM_uint32 (*callback)(OM_uint32 *,
+                          gss_cred_id_t,
+                          gss_ctx_id_t,
+                          gss_channel_bindings_t,
+                          gss_buffer_t);
+};
+
+OM_uint32
+gssEapMakeExtensions(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     gss_ctx_id_t ctx,
+                     const struct gss_eap_extension_provider *exts,
+                     size_t count,
+                     gss_channel_bindings_t chanBindings,
+                     gss_buffer_t buffer);
+
+OM_uint32
+gssEapVerifyExtensions(OM_uint32 *minor,
+                       gss_cred_id_t cred,
+                       gss_ctx_id_t ctx,
+                       const struct gss_eap_extension_provider *exts,
+                       size_t count,
+                       gss_channel_bindings_t chanBindings,
+                       const gss_buffer_t buffer);
+
 /* util_krb.c */
 OM_uint32
 gssEapKerberosInit(OM_uint32 *minor, krb5_context *context);
