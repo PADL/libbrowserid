@@ -654,18 +654,10 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 {
     unsigned char *p = (unsigned char *)buffer->value;
     size_t remain = buffer->length;
-    uint32_t count;
     VALUE_PAIR **pNext = &m_vps;
 
     if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
         return false;
-
-    if (remain < 4)
-        return false;
-
-    count = load_uint32_be(p);
-    p += 4;
-    remain -= 4;
 
     do {
         VALUE_PAIR *attr;
@@ -675,12 +667,7 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 
         *pNext = attr;
         pNext = &attr->next;
-
-        count--;
     } while (remain != 0);
-
-    if (count != 0)
-        return false;
 
     return true;
 }
@@ -688,14 +675,12 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
 void
 gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 {
-    uint32_t count = 0;
     VALUE_PAIR *vp;
     unsigned char *p;
-    size_t remain = 4;
+    size_t remain = 0;
 
     for (vp = m_vps; vp != NULL; vp = vp->next) {
         remain += avpSize(vp);
-        count++;
     }
 
     buffer->value = GSSEAP_MALLOC(remain);
@@ -706,10 +691,6 @@ gss_eap_radius_attr_provider::exportToBuffer(gss_buffer_t buffer) const
     buffer->length = remain;
 
     p = (unsigned char *)buffer->value;
-
-    store_uint32_be(count, p);
-    p += 4;
-    remain -= 4;
 
     for (vp = m_vps; vp != NULL; vp = vp->next) {
         avpExport(vp, &p, &remain);
