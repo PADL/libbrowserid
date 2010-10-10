@@ -253,20 +253,24 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
 
 struct gss_eap_extension_provider {
     OM_uint32 type;
-    int critical;
-    OM_uint32 (*callback)(OM_uint32 *,
-                          gss_cred_id_t,
-                          gss_ctx_id_t,
-                          gss_channel_bindings_t,
-                          gss_buffer_t);
+    int critical; /* client */
+    int required; /* server */
+    OM_uint32 (*make)(OM_uint32 *,
+                      gss_cred_id_t,
+                      gss_ctx_id_t,
+                      gss_channel_bindings_t,
+                      gss_buffer_t);
+    OM_uint32 (*verify)(OM_uint32 *,
+                        gss_cred_id_t,
+                        gss_ctx_id_t,
+                        gss_channel_bindings_t,
+                        const gss_buffer_t);
 };
 
 OM_uint32
 gssEapMakeExtensions(OM_uint32 *minor,
                      gss_cred_id_t cred,
                      gss_ctx_id_t ctx,
-                     const struct gss_eap_extension_provider *exts,
-                     size_t count,
                      gss_channel_bindings_t chanBindings,
                      gss_buffer_t buffer);
 
@@ -274,8 +278,6 @@ OM_uint32
 gssEapVerifyExtensions(OM_uint32 *minor,
                        gss_cred_id_t cred,
                        gss_ctx_id_t ctx,
-                       const struct gss_eap_extension_provider *exts,
-                       size_t count,
                        gss_channel_bindings_t chanBindings,
                        const gss_buffer_t buffer);
 

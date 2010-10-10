@@ -487,32 +487,6 @@ cleanup:
 }
 
 static OM_uint32
-makeGssChannelBindings(OM_uint32 *minor,
-                       gss_cred_id_t cred,
-                       gss_ctx_id_t ctx,
-                       gss_channel_bindings_t chanBindings,
-                       gss_buffer_t outputToken)
-{
-    OM_uint32 major;
-    gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
-
-    if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
-        buffer = chanBindings->application_data;
-
-    major = gssEapWrap(minor, ctx, TRUE, GSS_C_QOP_DEFAULT,
-                       &buffer, NULL, outputToken);
-    if (GSS_ERROR(major))
-        return major;                       
-
-    return GSS_S_COMPLETE;
-}
-
-static struct gss_eap_extension_provider
-eapGssMakeInitExtensions[] = {
-    { EXT_TYPE_GSS_CHANNEL_BINDINGS, 1, makeGssChannelBindings },
-};
-
-static OM_uint32
 eapGssSmInitExtensionsReq(OM_uint32 *minor,
                           gss_cred_id_t cred,
                           gss_ctx_id_t ctx,
@@ -526,10 +500,7 @@ eapGssSmInitExtensionsReq(OM_uint32 *minor,
 {
     OM_uint32 major;
 
-    major = gssEapMakeExtensions(minor, cred, ctx, eapGssMakeInitExtensions,
-                                 sizeof(eapGssMakeInitExtensions) /
-                                    sizeof(eapGssMakeInitExtensions[0]),
-                                 chanBindings, outputToken);
+    major = gssEapMakeExtensions(minor, cred, ctx, chanBindings, outputToken);
     if (GSS_ERROR(major))
         return major;
 
@@ -539,25 +510,6 @@ eapGssSmInitExtensionsReq(OM_uint32 *minor,
 
     return GSS_S_CONTINUE_NEEDED;
 }
-
-static OM_uint32
-verifyReauthCreds(OM_uint32 *minor,
-                  gss_cred_id_t cred,
-                  gss_ctx_id_t ctx,
-                  gss_channel_bindings_t chanBindings,
-                  gss_buffer_t inputToken)
-{
-#ifdef GSSEAP_ENABLE_REAUTH
-    return gssEapStoreReauthCreds(minor, ctx, cred, inputToken);
-#else
-    return GSS_S_UNAVAILABLE;
-#endif
-}
-
-static struct gss_eap_extension_provider
-eapGssVerifyAcceptExtensions[] = {
-    { EXT_TYPE_REAUTH_CREDS, 0, verifyReauthCreds },
-};
 
 static OM_uint32
 eapGssSmInitExtensionsResp(OM_uint32 *minor,
@@ -573,10 +525,7 @@ eapGssSmInitExtensionsResp(OM_uint32 *minor,
 {
     OM_uint32 major;
 
-    major = gssEapVerifyExtensions(minor, cred, ctx, eapGssVerifyAcceptExtensions,
-                                   sizeof(eapGssVerifyAcceptExtensions) /
-                                        sizeof(eapGssVerifyAcceptExtensions[0]),
-                                   chanBindings, inputToken);
+    major = gssEapVerifyExtensions(minor, cred, ctx, chanBindings, inputToken);
     if (GSS_ERROR(major))
         return major;
 
