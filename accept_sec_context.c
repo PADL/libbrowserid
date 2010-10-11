@@ -366,6 +366,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         major = GSS_S_CONTINUE_NEEDED;
         break;
     case PW_AUTHENTICATION_REJECT:
+        *minor = GSSEAP_PEER_AUTH_FAILURE;
         major = GSS_S_DEFECTIVE_CREDENTIAL;
         goto cleanup;
         break;
