@@ -39,6 +39,7 @@ mech_eap_la_SOURCES =    			\
 	export_sec_context.c			\
 	get_mic.c				\
 	get_name_attribute.c			\
+	gsseap_err.c				\
 	import_name.c				\
 	import_sec_context.c			\
 	indicate_mechs.c			\
@@ -102,3 +103,9 @@ radius_ad_la_LDFLAGS = -avoid-version -module \
 radius_ad_la_LIBADD  = @KRB5_LIBS@
 radius_ad_la_SOURCES = util_adshim.c
 endif
+
+gsseap_err.c: gsseap_err.et
+	$(prefix)/bin/compile_et $<
+
+clean-generic:
+	rm -f gsseap_err.[ch]

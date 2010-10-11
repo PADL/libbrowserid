@@ -14,6 +14,8 @@
 /ltmain.sh
 /missing
 
+/gsseap_err.[ch]
+
 .DS_Store
 
 Makefile.in

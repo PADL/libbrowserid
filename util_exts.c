@@ -287,11 +287,8 @@ verifyExtensions(OM_uint32 *minor,
             types[j] |= EXT_FLAG_VERIFIED;
         } else if (ext->required) {
             /* Required extension missing */
-            *minor = ENOENT;
+            *minor = GSSEAP_MISSING_REQUIRED_EXT;
             major = GSS_S_UNAVAILABLE;
-            gssEapSaveStatusInfo(*minor,
-                                 "Missing required GSS EAP extension %08x",
-                                 ext->type);
             goto cleanup;
         }
     }
@@ -300,11 +297,8 @@ verifyExtensions(OM_uint32 *minor,
     for (i = 0; i < extensions->count; i++) {
         if ((types[i] & EXT_FLAG_CRITICAL) &&
             (types[i] & EXT_FLAG_VERIFIED) == 0) {
-            *minor = ENOSYS;
+            *minor = GSSEAP_CRIT_EXT_UNAVAILABLE;
             major = GSS_S_UNAVAILABLE;
-            gssEapSaveStatusInfo(*minor,
-                                 "Received unknown critical GSS EAP extension %08x",
-                                 (types[i] & EXT_TYPE_MASK));
             goto cleanup;
         }
     }
