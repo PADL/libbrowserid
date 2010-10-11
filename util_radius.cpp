@@ -715,27 +715,25 @@ gss_eap_radius_attr_provider::getExpiryTime(void) const
     return time(NULL) + vp->lvalue;
 }
 
-/* partition error namespace so it does not conflict with krb5 */
-#define RS_TO_COM_ERR(rse)                  ((rse) == RSE_OK ? 0 : (rse) + ERROR_TABLE_BASE_rse)
-#define COM_TO_RS_ERR(err)                  ((err) > ERROR_TABLE_BASE_rse && \
-                                             (err) <= (ERROR_TABLE_BASE_rse + RSE_SOME_ERROR) ? \
-                                             (err) - ERROR_TABLE_BASE_rse : RSE_SOME_ERROR)
-
 OM_uint32
 gssEapRadiusMapError(OM_uint32 *minor,
                      struct rs_error *err)
 {
-    int code = RSE_OK;
+    int code;
 
-    if (err != NULL)
-        code = rs_err_code(err, 0);
-    else
-        code = RSE_SOME_ERROR;
+    assert(err != NULL);
 
-    *minor = RS_TO_COM_ERR(code);
+    code = rs_err_code(err, 0);
+
+    if (code == RSE_OK) {
+        *minor = 0;
+        return GSS_S_COMPLETE;
+    }
+
+    *minor = ERROR_TABLE_BASE_rse + code;
 
     gssEapSaveStatusInfo(*minor, "%s", rs_err_msg(err, 0));
-
     rs_err_free(err);
+
     return GSS_S_FAILURE;
 }
