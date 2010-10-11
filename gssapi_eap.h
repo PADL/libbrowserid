@@ -51,7 +51,7 @@ extern gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE;
 extern gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_STANZA;
 
 /* flags in NBO followed by an optional boolean octet that
- * specifies that the specified flags should be cleared */
+ * specifies if the specified flags should be cleared */
 extern gss_OID GSS_EAP_CRED_SET_CRED_FLAG;
 
 #define GSS_EAP_DISABLE_LOCAL_ATTRS_FLAG    0x00000001

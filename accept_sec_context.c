@@ -418,6 +418,9 @@ eapGssSmAcceptExtensionsReq(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
+    outputToken->length = 0;
+    outputToken->value = NULL;
+
     ctx->state = EAP_STATE_EXTENSIONS_RESP;
 
     return GSS_S_CONTINUE_NEEDED;
