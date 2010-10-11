@@ -323,39 +323,61 @@ cleanup:
     return major;
 }
 
+static OM_uint32
+importExportName(OM_uint32 *minor,
+                 const gss_buffer_t nameBuffer,
+                 gss_name_t *name)
+{
+    return gssEapImportNameInternal(minor, nameBuffer, name,
+                                    EXPORT_NAME_FLAG_OID);
+}
+
+#ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
+static OM_uint32
+importCompositeExportName(OM_uint32 *minor,
+                          const gss_buffer_t nameBuffer,
+                          gss_name_t *name)
+{
+    return gssEapImportNameInternal(minor, nameBuffer, name,
+                                    EXPORT_NAME_FLAG_OID |
+                                    EXPORT_NAME_FLAG_COMPOSITE);
+}
+#endif
+
+struct gss_eap_name_import_provider {
+    gss_OID oid;
+    OM_uint32 (*import)(OM_uint32 *, const gss_buffer_t, gss_name_t *);
+};
+
 OM_uint32
 gssEapImportName(OM_uint32 *minor,
                  const gss_buffer_t nameBuffer,
                  gss_OID nameType,
                  gss_name_t *name)
 {
-    OM_uint32 major, tmpMinor;
+    struct gss_eap_name_import_provider nameTypes[] = {
+        { GSS_C_NT_USER_NAME,               importUserName              },
+        { GSS_EAP_NT_PRINCIPAL_NAME,        importUserName              },
+        { GSS_C_NT_HOSTBASED_SERVICE,       importServiceName           },
+        { GSS_C_NT_HOSTBASED_SERVICE_X,     importServiceName           },
+        { GSS_C_NT_EXPORT_NAME,             importExportName            },
+#ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
+        { GSS_C_NT_COMPOSITE_EXPORT,        importCompositeExportName   },
+#endif
+    };
+    size_t i;
 
     *name = GSS_C_NO_NAME;
 
-    if (nameType == GSS_C_NULL_OID ||
-        oidEqual(nameType, GSS_C_NT_USER_NAME) ||
-        oidEqual(nameType, GSS_EAP_NT_PRINCIPAL_NAME))
-        major = importUserName(minor, nameBuffer, name);
-    else if (oidEqual(nameType, GSS_C_NT_HOSTBASED_SERVICE) ||
-             oidEqual(nameType, GSS_C_NT_HOSTBASED_SERVICE_X))
-        major = importServiceName(minor, nameBuffer, name);
-    else if (oidEqual(nameType, GSS_C_NT_EXPORT_NAME))
-        major = gssEapImportNameInternal(minor, nameBuffer, name,
-                                         EXPORT_NAME_FLAG_OID);
-#ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
-    else if (oidEqual(nameType, GSS_C_NT_COMPOSITE_EXPORT))
-        major = gssEapImportNameInternal(minor, nameBuffer, name,
-                                         EXPORT_NAME_FLAG_OID |
-                                         EXPORT_NAME_FLAG_COMPOSITE);
-#endif
-    else
-        major = GSS_S_BAD_NAMETYPE;
+    if (nameType == GSS_C_NO_OID)
+        nameType = nameTypes[0].oid;
 
-    if (GSS_ERROR(major))
-        gssEapReleaseName(&tmpMinor, name);
+    for (i = 0; i < sizeof(nameTypes) / sizeof(nameTypes[0]); i++) {
+        if (oidEqual(nameTypes[i].oid, nameType))
+            return nameTypes[i].import(minor, nameBuffer, name);
+    }
 
-    return major;
+    return GSS_S_BAD_NAMETYPE;
 }
 
 OM_uint32
