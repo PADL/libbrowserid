@@ -143,11 +143,13 @@ verifyReauthCreds(OM_uint32 *minor,
                   gss_channel_bindings_t chanBindings,
                   gss_buffer_t inputToken)
 {
+    OM_uint32 major = GSS_S_UNAVAILABLE;
+
 #ifdef GSSEAP_ENABLE_REAUTH
-    return gssEapStoreReauthCreds(minor, ctx, cred, inputToken);
-#else
-    return GSS_S_UNAVAILABLE;
+    major = gssEapStoreReauthCreds(minor, ctx, cred, inputToken);
 #endif
+
+    return major;
 }
 
 static struct gss_eap_extension_provider
@@ -162,25 +164,18 @@ eapGssAcceptExtensions[] = {
 };
 
 OM_uint32
-gssEapMakeExtensions(OM_uint32 *minor,
-                     gss_cred_id_t cred,
-                     gss_ctx_id_t ctx,
-                     gss_channel_bindings_t chanBindings,
-                     gss_buffer_t buffer)
+makeExtensions(OM_uint32 *minor,
+               gss_cred_id_t cred,
+               gss_ctx_id_t ctx,
+               const struct gss_eap_extension_provider *exts,
+               size_t nexts,
+               gss_channel_bindings_t chanBindings,
+               gss_buffer_t buffer)
 {
     OM_uint32 major, tmpMinor;
-    size_t i, j, nexts;
+    size_t i, j;
     gss_buffer_set_t extensions = GSS_C_NO_BUFFER_SET;
     OM_uint32 *types;
-    const struct gss_eap_extension_provider *exts;
-
-    if (CTX_IS_INITIATOR(ctx)) {
-        exts = eapGssInitExtensions;
-        nexts = sizeof(eapGssInitExtensions) / sizeof(eapGssInitExtensions[0]);
-    } else {
-        exts = eapGssAcceptExtensions;
-        nexts = sizeof(eapGssAcceptExtensions) / sizeof(eapGssAcceptExtensions[0]);
-    }
 
     assert(buffer != GSS_C_NO_BUFFER);
 
@@ -232,25 +227,39 @@ cleanup:
 }
 
 OM_uint32
-gssEapVerifyExtensions(OM_uint32 *minor,
-                       gss_cred_id_t cred,
-                       gss_ctx_id_t ctx,
-                       gss_channel_bindings_t chanBindings,
-                       const gss_buffer_t buffer)
+gssEapMakeExtensions(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     gss_ctx_id_t ctx,
+                     gss_channel_bindings_t chanBindings,
+                     gss_buffer_t buffer)
+{
+    size_t nexts;
+    const struct gss_eap_extension_provider *exts;
+
+    if (CTX_IS_INITIATOR(ctx)) {
+        exts = eapGssInitExtensions;
+        nexts = sizeof(eapGssInitExtensions) / sizeof(eapGssInitExtensions[0]);
+    } else {
+        exts = eapGssAcceptExtensions;
+        nexts = sizeof(eapGssAcceptExtensions) / sizeof(eapGssAcceptExtensions[0]);
+    }
+
+    return makeExtensions(minor, cred, ctx, exts, nexts, chanBindings, buffer);
+}
+
+static OM_uint32
+verifyExtensions(OM_uint32 *minor,
+                 gss_cred_id_t cred,
+                 gss_ctx_id_t ctx,
+                 const struct gss_eap_extension_provider *exts,
+                 size_t nexts,
+                 gss_channel_bindings_t chanBindings,
+                 const gss_buffer_t buffer)
 {
     OM_uint32 major, tmpMinor;
     gss_buffer_set_t extensions = GSS_C_NO_BUFFER_SET;
     OM_uint32 *types = NULL;
-    size_t i, nexts;
-    const struct gss_eap_extension_provider *exts;
-
-    if (CTX_IS_INITIATOR(ctx)) {
-        exts = eapGssAcceptExtensions;
-        nexts = sizeof(eapGssAcceptExtensions) / sizeof(eapGssAcceptExtensions[0]);
-    } else {
-        exts = eapGssInitExtensions;
-        nexts = sizeof(eapGssInitExtensions) / sizeof(eapGssInitExtensions[0]);
-    }
+    size_t i;
 
     major = decodeExtensions(minor, buffer, &extensions, &types);
     if (GSS_ERROR(major))
@@ -309,6 +318,27 @@ cleanup:
         GSSEAP_FREE(types);
 
     return major;
+}
+
+OM_uint32
+gssEapVerifyExtensions(OM_uint32 *minor,
+                       gss_cred_id_t cred,
+                       gss_ctx_id_t ctx,
+                       gss_channel_bindings_t chanBindings,
+                       const gss_buffer_t buffer)
+{
+    size_t nexts;
+    const struct gss_eap_extension_provider *exts;
+
+    if (CTX_IS_INITIATOR(ctx)) {
+        exts = eapGssAcceptExtensions;
+        nexts = sizeof(eapGssAcceptExtensions) / sizeof(eapGssAcceptExtensions[0]);
+    } else {
+        exts = eapGssInitExtensions;
+        nexts = sizeof(eapGssInitExtensions) / sizeof(eapGssInitExtensions[0]);
+    }
+
+    return verifyExtensions(minor, cred, ctx, exts, nexts, chanBindings, buffer);
 }
 
 static OM_uint32
