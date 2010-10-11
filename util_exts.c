@@ -448,5 +448,3 @@ cleanup:
 
     return major;
 }
-
-
