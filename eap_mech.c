@@ -160,7 +160,8 @@ gssEapInitiatorInit(void)
 {
     OM_uint32 major, minor;
 
-    initialize_gsseap_error_table();
+    initialize_eapg_error_table();
+    initialize_rse_error_table();
 
     major = gssEapInitLibEap(&minor);
     assert(major == GSS_S_COMPLETE);

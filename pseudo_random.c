@@ -85,6 +85,7 @@ gss_pseudo_random(OM_uint32 *minor,
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
         GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         return GSS_S_NO_CONTEXT;
     }
 

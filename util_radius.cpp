@@ -514,8 +514,12 @@ gssEapRadiusFreeAvps(OM_uint32 *minor,
 OM_uint32
 gssEapRadiusAttrProviderInit(OM_uint32 *minor)
 {
-    return gss_eap_radius_attr_provider::init()
-        ? GSS_S_COMPLETE : GSS_S_FAILURE;
+    if (!gss_eap_radius_attr_provider::init()) {
+        *minor = GSSEAP_RADSEC_INIT_FAILURE;
+        return GSS_S_FAILURE;
+    }
+
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32
@@ -712,8 +716,6 @@ gss_eap_radius_attr_provider::getExpiryTime(void) const
 }
 
 /* partition error namespace so it does not conflict with krb5 */
-#define ERROR_TABLE_BASE_rse (46882560L)
-
 #define RS_TO_COM_ERR(rse)                  ((rse) == RSE_OK ? 0 : (rse) + ERROR_TABLE_BASE_rse)
 #define COM_TO_RS_ERR(err)                  ((err) > ERROR_TABLE_BASE_rse && \
                                              (err) <= (ERROR_TABLE_BASE_rse + RSE_SOME_ERROR) ? \
@@ -732,7 +734,7 @@ gssEapRadiusMapError(OM_uint32 *minor,
 
     *minor = RS_TO_COM_ERR(code);
 
-    gssEapSaveStatusInfo(*minor, "radsec: %s", rs_err_msg(err, 0));
+    gssEapSaveStatusInfo(*minor, "%s", rs_err_msg(err, 0));
 
     rs_err_free(err);
     return GSS_S_FAILURE;

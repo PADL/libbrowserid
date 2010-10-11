@@ -267,13 +267,17 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx, OM_uint32 reqFlags)
     if (GSS_ERROR(major))
         return major;
 
-    if (!eap_key_available(ctx->initiatorCtx.eap))
+    if (!eap_key_available(ctx->initiatorCtx.eap)) {
+        *minor = GSSEAP_KEY_UNAVAILABLE;
         return GSS_S_UNAVAILABLE;
+    }
 
     key = eap_get_eapKeyData(ctx->initiatorCtx.eap, &keyLength);
 
-    if (keyLength < EAP_EMSK_LEN)
+    if (keyLength < EAP_EMSK_LEN) {
+        *minor = GSSEAP_KEY_TOO_SHORT;
         return GSS_S_UNAVAILABLE;
+    }
 
     major = gssEapDeriveRfc3961Key(minor,
                                    &key[EAP_EMSK_LEN / 2],
@@ -297,6 +301,7 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx, OM_uint32 reqFlags)
     if (GSS_ERROR(major))
         return major;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -348,6 +353,7 @@ initBegin(OM_uint32 *minor,
         if (!gssEapInternalizeOid(mech, &ctx->mechanismUsed))
             major = duplicateOid(minor, mech, &ctx->mechanismUsed);
     } else {
+        *minor = GSSEAP_WRONG_MECH;
         major = GSS_S_BAD_MECH;
     }
     if (GSS_ERROR(major))
@@ -376,8 +382,10 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     int initialContextToken;
 
     initialContextToken = (inputToken->length == 0);
-    if (!initialContextToken)
+    if (!initialContextToken) {
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
+    }
 
     major = initBegin(minor, cred, ctx, target, mech,
                       reqFlags, timeReq, chanBindings,
@@ -427,6 +435,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
                                                  ctx,
                                                  &eapConfig);
         if (ctx->initiatorCtx.eap == NULL) {
+            *minor = GSSEAP_PEER_INIT_FAILURE;
             major = GSS_S_FAILURE;
             goto cleanup;
         }
@@ -455,11 +464,13 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         major = GSS_S_CONTINUE_NEEDED;
         ctx->state = EAP_STATE_EXTENSIONS_REQ;
     } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
+        *minor = GSSEAP_PEER_AUTH_FAILURE;
         major = GSS_S_DEFECTIVE_CREDENTIAL;
     } else if (code == 0 && initialContextToken) {
         resp = &emptyWpaBuffer;
         major = GSS_S_CONTINUE_NEEDED;
     } else {
+        *minor = GSSEAP_PEER_BAD_MESSAGE;
         major = GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -547,7 +558,7 @@ eapGssSmInitEstablished(OM_uint32 *minor,
                         gss_buffer_t outputToken)
 {
     /* Called with already established context */
-    *minor = EINVAL;
+    *minor = GSSEAP_CONTEXT_ESTABLISHED;
     return GSS_S_BAD_STATUS;
 }
 
@@ -607,6 +618,7 @@ gss_init_sec_context(OM_uint32 *minor,
 
     if (ctx == GSS_C_NO_CONTEXT) {
         if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {
+            *minor = GSSEAP_WRONG_SIZE;
             return GSS_S_DEFECTIVE_TOKEN;
         }
 
@@ -644,10 +656,11 @@ gss_init_sec_context(OM_uint32 *minor,
 
 #ifdef GSSEAP_ENABLE_REAUTH
     if (initialContextToken && gssEapCanReauthP(cred, target_name, time_req))
-            ctx->state = EAP_STATE_KRB_REAUTH_GSS;
+        ctx->state = EAP_STATE_KRB_REAUTH_GSS;
 #endif
 
     if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
+        *minor = GSSEAP_CRED_USAGE_MISMATCH;
         major = GSS_S_NO_CRED;
         goto cleanup;
     }
@@ -661,6 +674,7 @@ gss_init_sec_context(OM_uint32 *minor,
             goto cleanup;
 
         if (tokType != sm->inputTokenType) {
+            *minor = GSSEAP_WRONG_TOK_ID;
             major = GSS_S_DEFECTIVE_TOKEN;
             goto cleanup;
         }

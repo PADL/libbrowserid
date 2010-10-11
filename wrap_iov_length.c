@@ -87,7 +87,7 @@ gssEapWrapIovLength(OM_uint32 *minor,
 
     header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
     if (header == NULL) {
-        *minor = EINVAL;
+        *minor = GSSEAP_MISSING_IOV;
         return GSS_S_FAILURE;
     }
     INIT_IOV_DATA(header);
@@ -200,6 +200,7 @@ gss_wrap_iov_length(OM_uint32 *minor,
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         major = GSS_S_NO_CONTEXT;
         goto cleanup;
     }

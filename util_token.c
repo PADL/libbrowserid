@@ -208,7 +208,7 @@ verifyTokenHeader(OM_uint32 *minor,
     gss_OID_desc toid;
     ssize_t toksize = (ssize_t)toksize_in;
 
-    *minor = 0;
+    *minor = GSSEAP_BAD_TOK_HEADER;
 
     if (ret_tok_type != NULL)
         *ret_tok_type = TOK_TYPE_NONE;
@@ -248,6 +248,7 @@ verifyTokenHeader(OM_uint32 *minor,
         if (toid.length == 0)
             return GSS_S_BAD_MECH;
     } else if (!oidEqual(&toid, mech)) {
+        *minor = GSSEAP_WRONG_MECH;
         return GSS_S_BAD_MECH;
     }
 
@@ -258,8 +259,10 @@ verifyTokenHeader(OM_uint32 *minor,
         *ret_tok_type = load_uint16_be(buf);
         buf += 2;
     }
+
     *buf_in = buf;
     *body_size = toksize;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }

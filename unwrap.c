@@ -54,6 +54,7 @@ gss_unwrap(OM_uint32 *minor,
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
         major = GSS_S_NO_CONTEXT;
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         goto cleanup;
     }
 

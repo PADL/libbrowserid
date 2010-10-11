@@ -1,4 +1,7 @@
 #! /bin/sh
+
+PATH=/usr/local/bin:$PATH
+
 if [ -x "`which autoreconf 2>/dev/null`" ] ; then
    exec autoreconf -ivf
 fi

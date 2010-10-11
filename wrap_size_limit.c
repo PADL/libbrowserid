@@ -53,6 +53,7 @@ gss_wrap_size_limit(OM_uint32 *minor,
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         major = GSS_S_NO_CONTEXT;
         goto cleanup;
     }

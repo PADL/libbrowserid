@@ -35,44 +35,38 @@
 OM_uint32
 gss_inquire_names_for_mech(OM_uint32 *minor,
                            gss_OID mechanism,
-                           gss_OID_set *name_types)
+                           gss_OID_set *ret_name_types)
 {
     OM_uint32 major, tmpMinor;
+    gss_OID nameTypes[] = {
+        GSS_C_NT_USER_NAME,
+        GSS_C_NT_HOSTBASED_SERVICE,
+        GSS_C_NT_EXPORT_NAME,
+#ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
+        GSS_C_NT_COMPOSITE_EXPORT,
+#endif
+        GSS_EAP_NT_PRINCIPAL_NAME,
+    };
+    size_t i;
 
     if (!gssEapIsMechanismOid(mechanism)) {
         *minor = 0;
         return GSS_S_BAD_MECH;
     }
 
-    major = gss_create_empty_oid_set(minor, name_types);
+    major = gss_create_empty_oid_set(minor, ret_name_types);
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = gss_add_oid_set_member(minor, GSS_C_NT_USER_NAME, name_types);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gss_add_oid_set_member(minor, GSS_C_NT_HOSTBASED_SERVICE, name_types);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gss_add_oid_set_member(minor, GSS_C_NT_EXPORT_NAME, name_types);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-#ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
-    major = gss_add_oid_set_member(minor, GSS_C_NT_COMPOSITE_EXPORT, name_types);
-    if (GSS_ERROR(major))
-        goto cleanup;
-#endif
-
-    major = gss_add_oid_set_member(minor, GSS_EAP_NT_PRINCIPAL_NAME, name_types);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    for (i = 0; i < sizeof(nameTypes)/sizeof(nameTypes[0]); i++) {
+        major = gss_add_oid_set_member(minor, nameTypes[i], ret_name_types);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
 cleanup:
     if (GSS_ERROR(major))
-        gss_release_oid_set(&tmpMinor, name_types);
+        gss_release_oid_set(&tmpMinor, ret_name_types);
 
     return major;
 }

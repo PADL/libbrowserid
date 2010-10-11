@@ -119,7 +119,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
     header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
     if (header == NULL) {
-        *minor = EINVAL;
+        *minor = GSSEAP_MISSING_IOV;
         return GSS_S_FAILURE;
     }
 
@@ -172,7 +172,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         if (header->type & GSS_IOV_BUFFER_FLAG_ALLOCATE) {
             code = gssEapAllocIov(header, (size_t)gssHeaderLen);
         } else if (header->buffer.length < gssHeaderLen)
-            code = KRB5_BAD_MSIZE;
+            code = GSSEAP_WRONG_SIZE;
         if (code != 0)
             goto cleanup;
         outbuf = (unsigned char *)header->buffer.value;
@@ -182,7 +182,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
             if (trailer->type & GSS_IOV_BUFFER_FLAG_ALLOCATE)
                 code = gssEapAllocIov(trailer, (size_t)gssTrailerLen);
             else if (trailer->buffer.length < gssTrailerLen)
-                code = KRB5_BAD_MSIZE;
+                code = GSSEAP_WRONG_SIZE;
             if (code != 0)
                 goto cleanup;
             trailer->buffer.length = (size_t)gssTrailerLen;
@@ -245,7 +245,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         if (header->type & GSS_IOV_BUFFER_FLAG_ALLOCATE)
             code = gssEapAllocIov(header, (size_t)gssHeaderLen);
         else if (header->buffer.length < gssHeaderLen)
-            code = KRB5_BAD_MSIZE;
+            code = GSSEAP_WRONG_SIZE;
         if (code != 0)
             goto cleanup;
         outbuf = (unsigned char *)header->buffer.value;
@@ -255,7 +255,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
             if (trailer->type & GSS_IOV_BUFFER_FLAG_ALLOCATE)
                 code = gssEapAllocIov(trailer, (size_t)gssTrailerLen);
             else if (trailer->buffer.length < gssTrailerLen)
-                code = KRB5_BAD_MSIZE;
+                code = GSSEAP_WRONG_SIZE;
             if (code != 0)
                 goto cleanup;
             trailer->buffer.length = (size_t)gssTrailerLen;
@@ -338,6 +338,7 @@ gss_wrap_iov(OM_uint32 *minor,
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         major = GSS_S_NO_CONTEXT;
         goto cleanup;
     }

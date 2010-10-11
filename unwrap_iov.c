@@ -294,7 +294,7 @@ unwrapStream(OM_uint32 *minor,
     assert(toktype == TOK_TYPE_WRAP);
 
     if (toktype != TOK_TYPE_WRAP) {
-        code = EINVAL;
+        code = GSSEAP_WRONG_TOK_ID;
         goto cleanup;
     }
 
@@ -330,7 +330,7 @@ unwrapStream(OM_uint32 *minor,
         if (type == GSS_IOV_BUFFER_TYPE_DATA) {
             if (data != NULL) {
                 /* only a single DATA buffer can appear */
-                code = EINVAL;
+                code = GSSEAP_BAD_STREAM_IOV;
                 goto cleanup;
             }
 
@@ -344,7 +344,7 @@ unwrapStream(OM_uint32 *minor,
 
     if (data == NULL) {
         /* a single DATA buffer must be present */
-        code = EINVAL;
+        code = GSSEAP_BAD_STREAM_IOV;
         goto cleanup;
     }
 
@@ -405,7 +405,7 @@ unwrapStream(OM_uint32 *minor,
     if (stream->buffer.length < theader->buffer.length +
         tpadding->buffer.length +
         ttrailer->buffer.length) {
-        code = KRB5_BAD_MSIZE;
+        code = GSSEAP_WRONG_SIZE;
         major = GSS_S_DEFECTIVE_TOKEN;
         goto cleanup;
     }
@@ -484,7 +484,7 @@ gss_unwrap_iov(OM_uint32 *minor,
                gss_iov_buffer_desc *iov,
                int iov_count)
 {
-    OM_uint32 major = GSS_S_NO_CONTEXT;
+    OM_uint32 major;
 
     if (ctx == GSS_C_NO_CONTEXT) {
         *minor = EINVAL;
@@ -495,11 +495,18 @@ gss_unwrap_iov(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    if (CTX_IS_ESTABLISHED(ctx)) {
-        major = gssEapUnwrapOrVerifyMIC(minor, ctx, conf_state, qop_state,
-                                        iov, iov_count, TOK_TYPE_WRAP);
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
+        major = GSS_S_NO_CONTEXT;
+        goto cleanup;
     }
 
+    major = gssEapUnwrapOrVerifyMIC(minor, ctx, conf_state, qop_state,
+                                    iov, iov_count, TOK_TYPE_WRAP);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;

@@ -101,7 +101,7 @@ composeOid(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
     if (oid->length < prefix_len) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_FAILURE;
     }
 
@@ -160,7 +160,7 @@ decomposeOid(OM_uint32 *minor,
     for (i = 0; i < slen; i++) {
         *suffix = (*suffix << 7) | (op[i] & 0x7f);
         if (i + 1 != slen && (op[i] & 0x80) == 0) {
-            *minor = EINVAL;
+            *minor = GSSEAP_WRONG_SIZE;
             return GSS_S_FAILURE;
         }
     }

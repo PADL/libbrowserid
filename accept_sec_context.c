@@ -76,8 +76,10 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     major = gssEapRadiusGetRawAvp(minor, ctx->acceptorCtx.vps,
                                   PW_MS_MPPE_SEND_KEY, VENDORPEC_MS, &vp);
-    if (GSS_ERROR(major))
-        return major;
+    if (GSS_ERROR(major)) {
+        *minor = GSSEAP_KEY_UNAVAILABLE;
+        return GSS_S_UNAVAILABLE;
+    }
 
     major = gssEapDeriveRfc3961Key(minor,
                                    vp->vp_octets,
@@ -249,8 +251,10 @@ createRadiusHandle(OM_uint32 *minor,
     assert(actx->radHandle == NULL);
     assert(actx->radConn == NULL);
 
-    if (rs_context_create(&actx->radHandle, RS_DICT_FILE) != 0)
+    if (rs_context_create(&actx->radHandle, RS_DICT_FILE) != 0) {
+        *minor = GSSEAP_RADSEC_INIT_FAILURE;
         return GSS_S_FAILURE;
+    }
 
     if (cred != GSS_C_NO_CREDENTIAL) {
         if (cred->radiusConfigFile != NULL)
@@ -454,7 +458,7 @@ eapGssSmAcceptEstablished(OM_uint32 *minor,
                           gss_buffer_t outputToken)
 {
     /* Called with already established context */
-    *minor = EINVAL;
+    *minor = GSSEAP_CONTEXT_ESTABLISHED;
     return GSS_S_BAD_STATUS;
 }
 
@@ -525,6 +529,7 @@ gss_accept_sec_context(OM_uint32 *minor,
         GSSEAP_MUTEX_LOCK(&cred->mutex);
 
         if ((cred->flags & CRED_FLAG_ACCEPT) == 0) {
+            *minor = GSSEAP_CRED_USAGE_MISMATCH;
             major = GSS_S_NO_CRED;
             goto cleanup;
         }
@@ -538,6 +543,7 @@ gss_accept_sec_context(OM_uint32 *minor,
         goto cleanup;
 
     if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
+        *minor = GSSEAP_WRONG_MECH;
         major = GSS_S_BAD_MECH;
         goto cleanup;
     }
@@ -554,6 +560,7 @@ gss_accept_sec_context(OM_uint32 *minor,
     } else
 #endif
     if (tokType != sm->inputTokenType) {
+        *minor = GSSEAP_WRONG_TOK_ID;
         major = GSS_S_DEFECTIVE_TOKEN;
         goto cleanup;
     }

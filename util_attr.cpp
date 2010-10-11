@@ -62,9 +62,13 @@ gssEapAttrProvidersInitInternal(void)
 }
 
 static OM_uint32
-gssEapAttrProvidersInit(void)
+gssEapAttrProvidersInit(OM_uint32 *minor)
 {
     GSSEAP_ONCE(&gssEapAttrProvidersInitOnce, gssEapAttrProvidersInitInternal);
+
+    if (GSS_ERROR(gssEapAttrProvidersInitStatus))
+        *minor = GSSEAP_NO_ATTR_PROVIDERS;
+
     return gssEapAttrProvidersInitStatus;
 }
 
@@ -729,15 +733,20 @@ gssEapInquireName(OM_uint32 *minor,
                   gss_OID *MN_mech,
                   gss_buffer_set_t *attrs)
 {
-    if (name->attrCtx == NULL)
+    if (name->attrCtx == NULL) {
+        *minor = GSSEAP_NO_ATTR_CONTEXT;
         return GSS_S_UNAVAILABLE;
+    }
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor))) {
         return GSS_S_UNAVAILABLE;
+    }
 
     try {
-        if (!name->attrCtx->getAttributeTypes(attrs))
+        if (!name->attrCtx->getAttributeTypes(attrs)) {
+            *minor = GSSEAP_NO_ATTR_CONTEXT;
             return GSS_S_UNAVAILABLE;
+        }
     } catch (std::exception &e) {
         return mapException(minor, e);
     }
@@ -768,16 +777,23 @@ gssEapGetNameAttribute(OM_uint32 *minor,
         display_value->value = NULL;
     }
 
-    if (name->attrCtx == NULL)
+    if (name->attrCtx == NULL) {
+        *minor = GSSEAP_NO_ATTR_CONTEXT;
         return GSS_S_UNAVAILABLE;
+    }
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor))) {
         return GSS_S_UNAVAILABLE;
+    }
 
     try {
         if (!name->attrCtx->getAttribute(attr, authenticated, complete,
-                                         value, display_value, more))
+                                         value, display_value, more)) {
+            *minor = GSSEAP_NO_SUCH_ATTR;
+            gssEapSaveStatusInfo(*minor, "Unknown naming attribute %.*s",
+                                 (int)attr->length, (char *)attr->value);
             return GSS_S_UNAVAILABLE;
+        }
     } catch (std::exception &e) {
         return mapException(minor, e);
     }
@@ -790,10 +806,12 @@ gssEapDeleteNameAttribute(OM_uint32 *minor,
                           gss_name_t name,
                           gss_buffer_t attr)
 {
-    if (name->attrCtx == NULL)
+    if (name->attrCtx == NULL) {
+        *minor = GSSEAP_NO_ATTR_CONTEXT;
         return GSS_S_UNAVAILABLE;
+    }
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor)))
         return GSS_S_UNAVAILABLE;
 
     try {
@@ -812,10 +830,12 @@ gssEapSetNameAttribute(OM_uint32 *minor,
                        gss_buffer_t attr,
                        gss_buffer_t value)
 {
-    if (name->attrCtx == NULL)
+    if (name->attrCtx == NULL) {
+        *minor = GSSEAP_NO_ATTR_CONTEXT;
         return GSS_S_UNAVAILABLE;
+    }
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor)))
         return GSS_S_UNAVAILABLE;
 
     try {
@@ -839,7 +859,7 @@ gssEapExportAttrContext(OM_uint32 *minor,
         return GSS_S_COMPLETE;
     }
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor)))
         return GSS_S_UNAVAILABLE;
 
     try {
@@ -860,7 +880,7 @@ gssEapImportAttrContext(OM_uint32 *minor,
 
     assert(name->attrCtx == NULL);
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor)))
         return GSS_S_UNAVAILABLE;
 
     if (buffer->length != 0) {
@@ -869,6 +889,7 @@ gssEapImportAttrContext(OM_uint32 *minor,
 
             if (!ctx->initFromBuffer(buffer)) {
                 delete ctx;
+                *minor = GSSEAP_BAD_ATTR_TOKEN;
                 return GSS_S_DEFECTIVE_TOKEN;
             }
             name->attrCtx = ctx;
@@ -890,7 +911,7 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
 
     assert(out->attrCtx == NULL);
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor)))
         return GSS_S_UNAVAILABLE;
 
     try {
@@ -898,6 +919,7 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
             ctx = new gss_eap_attr_ctx();
             if (!ctx->initFromExistingContext(in->attrCtx)) {
                 delete ctx;
+                *minor = GSSEAP_ATTR_CONTEXT_FAILURE;
                 return GSS_S_FAILURE;
             }
             out->attrCtx = ctx;
@@ -917,10 +939,12 @@ gssEapMapNameToAny(OM_uint32 *minor,
                    gss_buffer_t type_id,
                    gss_any_t *output)
 {
-    if (name->attrCtx == NULL)
+    if (name->attrCtx == NULL) {
+        *minor = GSSEAP_NO_ATTR_CONTEXT;
         return GSS_S_UNAVAILABLE;
+    }
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor)))
         return GSS_S_UNAVAILABLE;
 
     try {
@@ -938,10 +962,12 @@ gssEapReleaseAnyNameMapping(OM_uint32 *minor,
                             gss_buffer_t type_id,
                             gss_any_t *input)
 {
-    if (name->attrCtx == NULL)
+    if (name->attrCtx == NULL) {
+        *minor = GSSEAP_NO_ATTR_CONTEXT;
         return GSS_S_UNAVAILABLE;
+    }
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(minor)))
         return GSS_S_UNAVAILABLE;
 
     try {
@@ -974,10 +1000,11 @@ gssEapCreateAttrContext(gss_cred_id_t gssCred,
                         gss_ctx_id_t gssCtx)
 {
     gss_eap_attr_ctx *ctx;
+    OM_uint32 tmpMinor;
 
     assert(gssCtx != GSS_C_NO_CONTEXT);
 
-    if (GSS_ERROR(gssEapAttrProvidersInit()))
+    if (GSS_ERROR(gssEapAttrProvidersInit(&tmpMinor)))
         return NULL;
 
     ctx = new gss_eap_attr_ctx();

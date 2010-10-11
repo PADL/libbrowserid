@@ -32,16 +32,16 @@
 
 #include "gssapiP_eap.h"
 
-#define UPDATE_REMAIN(n)    do {            \
-        p += (n);                           \
-        remain -= (n);                      \
+#define UPDATE_REMAIN(n)    do {                \
+        p += (n);                               \
+        remain -= (n);                          \
     } while (0)
 
-#define CHECK_REMAIN(n)     do {            \
-        if (remain < (n)) {                 \
-            *minor = ERANGE;                \
-            return GSS_S_DEFECTIVE_TOKEN;   \
-        }                                   \
+#define CHECK_REMAIN(n)     do {                \
+        if (remain < (n)) {                     \
+            *minor = GSSEAP_WRONG_SIZE;         \
+            return GSS_S_DEFECTIVE_TOKEN;       \
+        }                                       \
     } while (0)
 
 static OM_uint32
@@ -111,13 +111,14 @@ importMechanismOid(OM_uint32 *minor,
 
     oidBuf.length = load_uint32_be(p);
     if (remain < 4 + oidBuf.length || oidBuf.length == 0) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
     oidBuf.elements = &p[4];
 
     if (!gssEapIsConcreteMechanismOid(&oidBuf)) {
+        *minor = GSSEAP_WRONG_MECH;
         return GSS_S_BAD_MECH;
     }
 
@@ -149,7 +150,7 @@ importKerberosKey(OM_uint32 *minor,
     gss_buffer_desc tmp;
 
     if (remain < 12) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -158,12 +159,12 @@ importKerberosKey(OM_uint32 *minor,
     length         = load_uint32_be(&p[8]);
 
     if ((length != 0) != (encryptionType != ENCTYPE_NULL)) {
-        *minor = ERANGE;
+        *minor = GSSEAP_BAD_CONTEXT_TOKEN;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
     if (remain - 12 < length) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -196,14 +197,14 @@ importName(OM_uint32 *minor,
     gss_buffer_desc tmp;
 
     if (remain < 4) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
     tmp.length = load_uint32_be(p);
     if (tmp.length != 0) {
         if (remain - 4 < tmp.length) {
-            *minor = ERANGE;
+            *minor = GSSEAP_WRONG_SIZE;
             return GSS_S_DEFECTIVE_TOKEN;
         }
 
@@ -232,11 +233,11 @@ gssEapImportContext(OM_uint32 *minor,
     size_t remain = token->length;
 
     if (remain < 16) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
     if (load_uint32_be(&p[0]) != EAP_EXPORT_CONTEXT_V1) {
-        *minor = EINVAL;
+        *minor = GSSEAP_BAD_CONTEXT_TOKEN;
         return GSS_S_DEFECTIVE_TOKEN;
     }
     ctx->state      = load_uint32_be(&p[4]);
@@ -281,7 +282,7 @@ gssEapImportContext(OM_uint32 *minor,
     }
 
     if (remain < 24 + sequenceSize(ctx->seqState)) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
     ctx->expiryTime = (time_t)load_uint64_be(&p[0]); /* XXX */

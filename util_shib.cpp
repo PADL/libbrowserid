@@ -478,8 +478,11 @@ gss_eap_shib_attr_provider::duplicateAttributes(const vector <Attribute *>src)
 OM_uint32
 gssEapLocalAttrProviderInit(OM_uint32 *minor)
 {
-    return gss_eap_shib_attr_provider::init()
-        ? GSS_S_COMPLETE : GSS_S_FAILURE;
+    if (!gss_eap_shib_attr_provider::init()) {
+        *minor = GSSEAP_SHIB_INIT_FAILURE;
+        return GSS_S_FAILURE;
+    }
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32

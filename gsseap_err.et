@@ -30,9 +30,36 @@
 #  SUCH DAMAGE.
 #
 
-error_table gsseap
+error_table eapg
 
+error_code GSSEAP_BAD_SERVICE_NAME,         "Could not parse service name"
+error_code GSSEAP_WRONG_SIZE,               "Buffer is incorrect size"
+error_code GSSEAP_BAD_USAGE,                "Credential usage type is unknown"
+error_code GSSEAP_WRONG_MECH,               "Mechanism OID is incorrect"
+error_code GSSEAP_BAD_TOK_HEADER,           "Token header is malformed or corrupt"
+error_code GSSEAP_BAD_DIRECTION,            "Packet was replayed in wrong direction"
+error_code GSSEAP_WRONG_TOK_ID,             "Received token ID does not match expected token ID"
+error_code GSSEAP_CRED_USAGE_MISMATCH,      "Credential usage does not match requested usage"
 error_code GSSEAP_CRIT_EXT_UNAVAILABLE,     "Critical extension unavailable"
 error_code GSSEAP_MISSING_REQUIRED_EXT,     "Missing required extension"
+error_code GSSEAP_INPUT_TOO_LONG,           "PRF input too long"
+error_code GSSEAP_CONTEXT_ESTABLISHED,      "Context is already fully established"
+error_code GSSEAP_CONTEXT_INCOMPLETE,       "Attempt to use incomplete security context"
+error_code GSSEAP_RADSEC_INIT_FAILURE,      "Failed to initialise RADIUS library"
+error_code GSSEAP_SAML_INIT_FAILURE,        "Failed to initialise SAML library"
+error_code GSSEAP_SHIB_INIT_FAILURE,        "Failed to initialise Shibboleth"
+error_code GSSEAP_PEER_INIT_FAILURE,        "Failed to initialise EAP state machine"
+error_code GSSEAP_PEER_AUTH_FAILURE,        "EAP authentication failure"
+error_code GSSEAP_PEER_BAD_MESSAGE,         "Bad EAP message"
+error_code GSSEAP_KEY_UNAVAILABLE,          "EAP key unavailable"
+error_code GSSEAP_KEY_TOO_SHORT,            "EAP key too short"
+error_code GSSEAP_NO_ATTR_CONTEXT,          "Name has no attributes"
+error_code GSSEAP_NO_ATTR_PROVIDERS,        "Failed to initialise attribute providers"
+error_code GSSEAP_NO_SUCH_ATTR,             "Unknown naming attribute"
+error_code GSSEAP_BAD_ATTR_TOKEN,           "Serialised attributes are malformed or corrupt"
+error_code GSSEAP_ATTR_CONTEXT_FAILURE,     "Failed to initialise attribute context"
+error_code GSSEAP_BAD_CONTEXT_TOKEN,        "Context token is malformed or corrupt"
+error_code GSSEAP_MISSING_IOV,              "IOV is missing required buffer"
+error_code GSSEAP_BAD_STREAM_IOV,           "Stream IOV can only contain a single data buffer"
 
 end

@@ -584,11 +584,13 @@ gss_eap_saml_attr_provider::createAttrContext(void)
 OM_uint32
 gssEapSamlAttrProvidersInit(OM_uint32 *minor)
 {
-    if (gss_eap_saml_assertion_provider::init() &&
-        gss_eap_saml_attr_provider::init())
-        return GSS_S_COMPLETE;
+    if (!gss_eap_saml_assertion_provider::init() ||
+        !gss_eap_saml_attr_provider::init()) {
+        *minor = GSSEAP_SAML_INIT_FAILURE;
+        return GSS_S_FAILURE;
+    }
 
-    return GSS_S_FAILURE;
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32

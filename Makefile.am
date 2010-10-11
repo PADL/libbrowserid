@@ -57,6 +57,7 @@ mech_eap_la_SOURCES =    			\
 	map_name_to_any.c			\
 	process_context_token.c			\
 	pseudo_random.c				\
+	radsec_err.c				\
 	release_any_name_mapping.c		\
 	release_cred.c				\
 	release_name.c				\
@@ -104,8 +105,15 @@ radius_ad_la_LIBADD  = @KRB5_LIBS@
 radius_ad_la_SOURCES = util_adshim.c
 endif
 
-gsseap_err.c: gsseap_err.et
+gsseap_err.h: gsseap_err.et
 	$(prefix)/bin/compile_et $<
 
+gsseap_err.c: gsseap_err.h
+
+radsec_err.h: radsec_err.et
+	$(prefix)/bin/compile_et $<
+
+radsec_err.c: radsec_err.h
+
 clean-generic:
-	rm -f gsseap_err.[ch]
+	rm -f gsseap_err.[ch] radsec_err.[ch]

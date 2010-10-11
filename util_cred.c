@@ -180,6 +180,7 @@ gssEapAcquireCred(OM_uint32 *minor,
         cred->flags |= CRED_FLAG_ACCEPT;
         break;
     default:
+        *minor = GSSEAP_BAD_USAGE;
         major = GSS_S_FAILURE;
         goto cleanup;
         break;

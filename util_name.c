@@ -227,7 +227,7 @@ importUserName(OM_uint32 *minor,
 
 #define CHECK_REMAIN(n)     do {        \
         if (remain < (n)) {             \
-            *minor = ERANGE;            \
+            *minor = GSSEAP_WRONG_SIZE; \
             major = GSS_S_BAD_NAME;     \
             goto cleanup;               \
         }                               \

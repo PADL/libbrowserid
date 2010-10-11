@@ -75,6 +75,7 @@ extern "C" {
 #endif
 
 #include "gsseap_err.h"
+#include "radsec_err.h"
 #include "util.h"
 
 #ifdef __cplusplus

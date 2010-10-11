@@ -62,30 +62,32 @@ createStatusInfoKey(void)
 static void
 saveStatusInfoNoCopy(OM_uint32 minor, char *message)
 {
-    struct gss_eap_status_info *info, *p;
+    struct gss_eap_status_info **next = NULL, *p;
 
     GSSEAP_ONCE(&gssEapStatusInfoKeyOnce, createStatusInfoKey);
 
-    info = GSSEAP_CALLOC(1, sizeof(*info));
-    if (info == NULL) {
+    p = GSSEAP_GETSPECIFIC(gssEapStatusInfoKey);
+    for (; p != NULL; p = p->next) {
+        if (p->code == minor) {
+            p->message = message;
+            return;
+        }
+        next = &p->next;
+    }
+
+    p = GSSEAP_CALLOC(1, sizeof(*p));
+    if (p == NULL) {
         GSSEAP_FREE(message);
         return;
     }
 
-    info->code = minor;
-    info->message = message;
+    p->code = minor;
+    p->message = message;
 
-    p = GSSEAP_GETSPECIFIC(gssEapStatusInfoKey);
-    if (p == NULL) {
-        GSSEAP_SETSPECIFIC(gssEapStatusInfoKey, info);
-    } else {
-        struct gss_eap_status_info **next = &p;
-
-        for (; p != NULL; p = p->next)
-            next = &p->next;
-
-        *next = info;
-    }
+    if (p != NULL)
+        *next = p;
+    else
+        GSSEAP_SETSPECIFIC(gssEapStatusInfoKey, p);
 }
 
 static const char *
