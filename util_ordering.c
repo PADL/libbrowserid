@@ -264,7 +264,7 @@ sequenceExternalize(OM_uint32 *minor,
                     size_t *lenremain)
 {
     if (*lenremain < sizeof(queue)) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_FAILURE;
     }
     memcpy(*buf, vqueue, sizeof(queue));
@@ -283,7 +283,7 @@ sequenceInternalize(OM_uint32 *minor,
     void *q;
 
     if (*lenremain < sizeof(queue)) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 

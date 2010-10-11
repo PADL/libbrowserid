@@ -99,7 +99,7 @@ gss_pseudo_random(OM_uint32 *minor,
 
     if (prf_key != GSS_C_PRF_KEY_PARTIAL &&
         prf_key != GSS_C_PRF_KEY_FULL) {
-        code = EINVAL;
+        code = GSSEAP_BAD_PRF_KEY;
         goto cleanup;
     }
 

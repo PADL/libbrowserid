@@ -89,8 +89,13 @@ setCredFlag(OM_uint32 *minor,
     OM_uint32 flags;
     unsigned char *p;
 
-    if (buffer == GSS_C_NO_BUFFER || buffer->length < 4) {
+    if (buffer == GSS_C_NO_BUFFER) {
         *minor = EINVAL;
+        return GSS_S_FAILURE;
+    }
+
+    if (buffer->length < 4) {
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_FAILURE;
     }
 

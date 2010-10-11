@@ -166,10 +166,10 @@ importServiceName(OM_uint32 *minor,
     }
 
     /* XXX this is probably NOT what we want to be doing */
-    *minor = krb5_sname_to_principal(krbContext, host, service,
-                                     KRB5_NT_SRV_HST, &krbPrinc);
-    if (*minor != 0) {
+    if (krb5_sname_to_principal(krbContext, host, service,
+                                KRB5_NT_SRV_HST, &krbPrinc) != 0) {
         GSSEAP_FREE(service);
+        *minor = GSSEAP_BAD_SERVICE_NAME;
         return GSS_S_FAILURE;
     }
 

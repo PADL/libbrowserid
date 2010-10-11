@@ -116,7 +116,7 @@ composeOid(OM_uint32 *minor,
     suffix = osuffix;
 
     if (oid->length < prefix_len + nbytes) {
-        *minor = ERANGE;
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_FAILURE;
     }
 
