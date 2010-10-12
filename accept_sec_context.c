@@ -366,11 +366,12 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         major = GSS_S_CONTINUE_NEEDED;
         break;
     case PW_AUTHENTICATION_REJECT:
-        *minor = GSSEAP_PEER_AUTH_FAILURE;
+        *minor = GSSEAP_RADIUS_AUTH_FAILURE;
         major = GSS_S_DEFECTIVE_CREDENTIAL;
         goto cleanup;
         break;
     default:
+        *minor = GSSEAP_UNKNOWN_RADIUS_CODE;
         major = GSS_S_FAILURE;
         goto cleanup;
         break;
@@ -378,8 +379,11 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     major = gssEapRadiusGetAvp(minor, frresp->vps, PW_EAP_MESSAGE, 0,
                                outputToken, TRUE);
-    if ((major == GSS_S_UNAVAILABLE && frresp->code != PW_AUTHENTICATION_ACK) ||
-        GSS_ERROR(major))
+    if (major == GSS_S_UNAVAILABLE && frresp->code == PW_ACCESS_CHALLENGE) {
+        *minor = GSSEAP_MISSING_EAP_REQUEST;
+        major = GSS_S_DEFECTIVE_TOKEN;
+        goto cleanup;
+    } else if (GSS_ERROR(major))
         goto cleanup;
 
     if (frresp->code == PW_ACCESS_CHALLENGE) {
@@ -471,6 +475,36 @@ makeErrorToken(OM_uint32 *minor,
 {
     unsigned char errorData[8];
     gss_buffer_desc errorBuffer;
+
+    assert(GSS_ERROR(majorStatus));
+
+    /*
+     * Only return error codes that the initiator could have caused,
+     * to avoid information leakage.
+     */
+    switch (minorStatus) {
+    case GSSEAP_WRONG_SIZE:
+    case GSSEAP_WRONG_MECH:
+    case GSSEAP_BAD_TOK_HEADER:
+    case GSSEAP_BAD_DIRECTION:
+    case GSSEAP_WRONG_TOK_ID:
+    case GSSEAP_CRIT_EXT_UNAVAILABLE:
+    case GSSEAP_MISSING_REQUIRED_EXT:
+    case GSSEAP_KEY_UNAVAILABLE:
+    case GSSEAP_KEY_TOO_SHORT:
+    case GSSEAP_RADIUS_AUTH_FAILURE:
+    case GSSEAP_UNKNOWN_RADIUS_CODE:
+    case GSSEAP_MISSING_EAP_REQUEST:
+        break;
+    default:
+        /* Don't return system error codes */
+        if (IS_RADIUS_ERROR(minorStatus))
+            minorStatus = GSSEAP_GENERIC_RADIUS_ERROR;
+        else
+            return GSS_S_COMPLETE;
+    }
+
+    minorStatus -= ERROR_TABLE_BASE_eapg;
 
     store_uint32_be(majorStatus, &errorData[0]);
     store_uint32_be(minorStatus, &errorData[4]);

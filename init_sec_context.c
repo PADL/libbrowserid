@@ -585,7 +585,7 @@ eapGssSmInitError(OM_uint32 *minor,
     p = (unsigned char *)inputToken->value;
 
     major = load_uint32_be(&p[0]);
-    *minor = load_uint32_be(&p[4]);
+    *minor = ERROR_TABLE_BASE_eapg + load_uint32_be(&p[4]);
 
     if (!GSS_ERROR(major)) {
         *minor = GSSEAP_BAD_ERROR_TOKEN;
