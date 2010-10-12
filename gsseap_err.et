@@ -32,6 +32,10 @@
 
 error_table eapg
 
+#
+# Protocol errors that can be returned in an error token. This should match
+# up with makeErrorToken in accept_sec_context.c.
+#
 error_code GSSEAP_RESERVED,                 ""
 error_code GSSEAP_WRONG_SIZE,               "Buffer is incorrect size"
 error_code GSSEAP_WRONG_MECH,               "Mechanism OID is incorrect"
@@ -42,39 +46,77 @@ error_code GSSEAP_WRONG_TOK_ID,             "Received token ID does not match ex
 error_code GSSEAP_REFLECT,                  "Token was reflected"
 error_code GSSEAP_CRIT_EXT_UNAVAILABLE,     "Critical extension unavailable"
 error_code GSSEAP_MISSING_REQUIRED_EXT,     "Missing required extension"
-error_code GSSEAP_BAD_SERVICE_NAME,         "Could not parse service name"
 error_code GSSEAP_KEY_UNAVAILABLE,          "EAP key unavailable"
 error_code GSSEAP_KEY_TOO_SHORT,            "EAP key too short"
 error_code GSSEAP_RADIUS_AUTH_FAILURE,      "Authentication rejected by RADIUS server"
 error_code GSSEAP_UNKNOWN_RADIUS_CODE,      "Received unknown response code from RADIUS server"
 error_code GSSEAP_MISSING_EAP_REQUEST,      "RADIUS response is missing EAP request"
 error_code GSSEAP_GENERIC_RADIUS_ERROR,     "Generic RADIUS error"
-error_code GSSEAP_BAD_USAGE,                "Credential usage type is unknown"
-error_code GSSEAP_CRED_USAGE_MISMATCH,      "Credential usage does not match requested usage"
-error_code GSSEAP_INPUT_TOO_LONG,           "PRF input too long"
+
+#
+# Context errors
+#
 error_code GSSEAP_CONTEXT_ESTABLISHED,      "Context is already fully established"
 error_code GSSEAP_CONTEXT_INCOMPLETE,       "Attempt to use incomplete security context"
-error_code GSSEAP_RADSEC_INIT_FAILURE,      "Failed to initialise RadSec library"
-error_code GSSEAP_SAML_INIT_FAILURE,        "Failed to initialise SAML library"
-error_code GSSEAP_SHIB_INIT_FAILURE,        "Failed to initialise Shibboleth"
-error_code GSSEAP_PEER_INIT_FAILURE,        "Failed to initialise EAP state machine"
+error_code GSSEAP_BAD_CONTEXT_TOKEN,        "Context token is malformed or corrupt"
+error_code GSSEAP_BAD_ERROR_TOKEN,          "Error token is malformed or corrupt"
+error_code GSSEAP_BAD_CONTEXT_OPTION,       "Bad context option"
+
+#
+# Name errors
+#
+error_code GSSEAP_BAD_SERVICE_NAME,         "Name is not a valid service name"
+error_code GSSEAP_BAD_INITIATOR_NAME,       "Initiator identity must be a valid name"
+error_code GSSEAP_NO_HOSTNAME,              "Could not determine local host name"
+
+#
+# Credential errors
+#
+error_code GSSEAP_BAD_USAGE,                "Credential usage type is unknown"
+error_code GSSEAP_CRED_USAGE_MISMATCH,      "Credential usage does not match requested usage"
+error_code GSSEAP_CRED_MECH_MISMATCH,       "Credential is not usable with this mechanism"
+error_code GSSEAP_BAD_CRED_OPTION,          "Bad credential option"
+
+#
+# Wrap/unwrap/PRF errors
+#
+error_code GSSEAP_BAD_WRAP_TOKEN,           "Bad RFC 4121 wrap or MIC token"
+error_code GSSEAP_MISSING_IOV,              "IOV is missing required buffer"
+error_code GSSEAP_BAD_STREAM_IOV,           "Stream IOV can only contain a single data buffer"
+error_code GSSEAP_BAD_PADDING_IOV,          "Padding IOV is not permitted for RFC 4121 tokens"
+error_code GSSEAP_UNKNOWN_QOP,              "Unknown quality of protection specified"
+error_code GSSEAP_INPUT_TOO_LONG,           "PRF input too long"
+error_code GSSEAP_BAD_PRF_KEY,              "PRF key usage type is unknown"
+
+#
+# libeap errors
+#
+error_code GSSEAP_LIBEAP_INIT_FAILURE,      "Failed to initialise EAP library"
+error_code GSSEAP_PEER_SM_INIT_FAILURE,     "Failed to create EAP state machine"
 error_code GSSEAP_PEER_AUTH_FAILURE,        "EAP peer authentication failure"
 error_code GSSEAP_PEER_BAD_MESSAGE,         "Received bad EAP message"
+
+#
+# RadSec initialisation errors
+#
+error_code GSSEAP_RADSEC_INIT_FAILURE,      "Failed to initialise RadSec library"
+error_code GSSEAP_RADSEC_CONTEXT_FAILURE,   "Failed to create RadSec context"
+
+#
+# SAML/Shibboleth/attribute errors
+#
+error_code GSSEAP_SAML_INIT_FAILURE,        "Failed to initialise SAML library"
+error_code GSSEAP_SHIB_INIT_FAILURE,        "Failed to initialise Shibboleth"
 error_code GSSEAP_NO_ATTR_CONTEXT,          "Name has no attributes"
 error_code GSSEAP_NO_ATTR_PROVIDERS,        "Failed to initialise attribute providers"
 error_code GSSEAP_NO_SUCH_ATTR,             "Unknown naming attribute"
 error_code GSSEAP_BAD_ATTR_TOKEN,           "Serialised attributes are malformed or corrupt"
 error_code GSSEAP_ATTR_CONTEXT_FAILURE,     "Failed to initialise attribute context"
-error_code GSSEAP_BAD_CONTEXT_TOKEN,        "Context token is malformed or corrupt"
-error_code GSSEAP_MISSING_IOV,              "IOV is missing required buffer"
-error_code GSSEAP_BAD_STREAM_IOV,           "Stream IOV can only contain a single data buffer"
-error_code GSSEAP_BAD_PADDING_IOV,          "Padding IOV is not permitted for RFC 4121 tokens"
-error_code GSSEAP_BAD_PRF_KEY,              "PRF key usage type is unknown"
-error_code GSSEAP_BAD_ERROR_TOKEN,          "Error token is malformed or corrupt"
-error_code GSSEAP_BAD_WRAP_TOKEN,           "Bad RFC 4121 wrap or MIC token"
+
+#
+# Extensions
+#
 error_code GSSEAP_BINDINGS_MISMATCH,        "Channel bindings do not match"
 error_code GSSEAP_NO_MECHGLUE_SYMBOL,       "Could not find symbol in mechanism glue"
-error_code GSSEAP_UNKNOWN_QOP,              "Unknown quality of protection specified"
-error_code GSSEAP_NO_HOSTNAME,              "Could not determine local host name"
 
 end

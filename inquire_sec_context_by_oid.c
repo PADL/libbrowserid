@@ -119,6 +119,7 @@ gss_inquire_sec_context_by_oid(OM_uint32 *minor,
     }
 
     major = GSS_S_UNAVAILABLE;
+    *minor = GSSEAP_BAD_CONTEXT_OPTION;
 
     for (i = 0; i < sizeof(inquireCtxOps) / sizeof(inquireCtxOps[0]); i++) {
         if (oidEqual(&inquireCtxOps[i].oid, desired_object)) {

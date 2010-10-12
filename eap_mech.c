@@ -137,7 +137,11 @@ eapPeerRegisterMethods(OM_uint32 *minor)
         ret = eap_peer_tnc_register();
 #endif /* EAP_TNC */
 
-    return ret ? GSS_S_FAILURE : GSS_S_COMPLETE;
+    if (ret == 0)
+        return GSS_S_COMPLETE;
+
+    *minor = GSSEAP_LIBEAP_INIT_FAILURE;
+    return GSS_S_FAILURE;
 }
 
 static OM_uint32
@@ -149,6 +153,11 @@ gssEapInitLibEap(OM_uint32 *minor)
 static OM_uint32
 gssEapInitLibRadsec(OM_uint32 *minor)
 {
+    if (0) {
+        *minor = GSSEAP_RADSEC_INIT_FAILURE;
+        return GSS_S_FAILURE;
+    }
+
     return GSS_S_COMPLETE;
 }
 

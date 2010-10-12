@@ -431,7 +431,7 @@ decodeExtensions(OM_uint32 *minor,
         gss_buffer_desc extension;
 
         if (remain < 8) {
-            *minor = GSSEAP_WRONG_SIZE;
+            *minor = GSSEAP_TOK_TRUNC;
             major = GSS_S_DEFECTIVE_TOKEN;
             goto cleanup;
         }
@@ -449,7 +449,7 @@ decodeExtensions(OM_uint32 *minor,
         extension.length = load_uint32_be(&p[4]);
 
         if (remain < 8 + extension.length) {
-            *minor = GSSEAP_WRONG_SIZE;
+            *minor = GSSEAP_TOK_TRUNC;
             major = GSS_S_DEFECTIVE_TOKEN;
             goto cleanup;
         }

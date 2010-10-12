@@ -118,7 +118,7 @@ unwrapToken(OM_uint32 *minor,
     ptr = (unsigned char *)header->buffer.value;
 
     if (header->buffer.length < 16) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -411,7 +411,7 @@ unwrapStream(OM_uint32 *minor,
     if (stream->buffer.length < theader->buffer.length +
         tpadding->buffer.length +
         ttrailer->buffer.length) {
-        code = GSSEAP_WRONG_SIZE;
+        code = GSSEAP_TOK_TRUNC;
         major = GSS_S_DEFECTIVE_TOKEN;
         goto cleanup;
     }

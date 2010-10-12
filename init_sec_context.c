@@ -221,6 +221,11 @@ peerConfigInit(OM_uint32 *minor,
     eapPeerConfig->fragment_size = 1024;
     wpa_debug_level = 0;
 
+    if ((cred->name->flags & (NAME_FLAG_NAI | NAME_FLAG_SERVICE)) == 0) {
+        *minor = GSSEAP_BAD_INITIATOR_NAME;
+        return GSS_S_BAD_NAME;
+    }
+
     code = krb5_unparse_name(krbContext, cred->name->krbPrincipal, &identity);
     if (code != 0) {
         *minor = code;
@@ -232,6 +237,7 @@ peerConfigInit(OM_uint32 *minor,
     eapPeerConfig->password = (unsigned char *)cred->password.value;
     eapPeerConfig->password_len = cred->password.length;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -246,6 +252,7 @@ peerConfigFree(OM_uint32 *minor,
 
     krb5_free_unparsed_name(krbContext, (char *)eapPeerConfig->identity);
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -363,9 +370,12 @@ initBegin(OM_uint32 *minor,
         return major;
 
     /* If credentials were provided, check they're usable with this mech */
-    if (!gssEapCredAvailable(cred, ctx->mechanismUsed))
+    if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
+        *minor = GSSEAP_CRED_MECH_MISMATCH;
         return GSS_S_BAD_MECH;
+    }
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -398,6 +408,7 @@ eapGssSmInitIdentity(OM_uint32 *minor,
 
     ctx->state = EAP_STATE_AUTHENTICATE;
 
+    *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
 }
 
@@ -421,6 +432,8 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
     struct wpabuf *resp = NULL;
     int initialContextToken;
 
+    *minor = 0;
+
     initialContextToken = (inputToken == GSS_C_NO_BUFFER ||
                            inputToken->length == 0);
 
@@ -438,7 +451,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
                                                  ctx,
                                                  &eapConfig);
         if (ctx->initiatorCtx.eap == NULL) {
-            *minor = GSSEAP_PEER_INIT_FAILURE;
+            *minor = GSSEAP_PEER_SM_INIT_FAILURE;
             major = GSS_S_FAILURE;
             goto cleanup;
         }
@@ -522,6 +535,7 @@ eapGssSmInitExtensionsReq(OM_uint32 *minor,
 
     ctx->state = EAP_STATE_EXTENSIONS_RESP;
 
+    *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
 }
 
@@ -545,6 +559,7 @@ eapGssSmInitExtensionsResp(OM_uint32 *minor,
 
     ctx->state = EAP_STATE_ESTABLISHED;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -581,7 +596,7 @@ eapGssSmInitError(OM_uint32 *minor,
     unsigned char *p;
 
     if (inputToken->length < 8) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 

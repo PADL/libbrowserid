@@ -50,8 +50,6 @@ gss_inquire_context(OM_uint32 *minor,
         return GSS_S_NO_CONTEXT;
     }
 
-    *minor = 0;
-
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (src_name != NULL) {
@@ -102,6 +100,7 @@ gss_inquire_context(OM_uint32 *minor,
     }
 
     major = GSS_S_COMPLETE;
+    *minor = 0;
 
 cleanup:
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);

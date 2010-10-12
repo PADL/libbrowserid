@@ -283,7 +283,7 @@ sequenceInternalize(OM_uint32 *minor,
     void *q;
 
     if (*lenremain < sizeof(queue)) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 

@@ -144,7 +144,7 @@ gssspi_set_cred_option(OM_uint32 *minor,
                        const gss_OID desired_object,
                        const gss_buffer_t value)
 {
-    OM_uint32 major = GSS_S_UNAVAILABLE;
+    OM_uint32 major;
     gss_cred_id_t cred = *pCred;
     int i;
 
@@ -154,6 +154,9 @@ gssspi_set_cred_option(OM_uint32 *minor,
     }
 
     GSSEAP_MUTEX_LOCK(&cred->mutex);
+
+    major = GSS_S_UNAVAILABLE;
+    *minor = GSSEAP_BAD_CRED_OPTION;
 
     for (i = 0; i < sizeof(setCredOps) / sizeof(setCredOps[0]); i++) {
         if (oidEqual(&setCredOps[i].oid, desired_object)) {

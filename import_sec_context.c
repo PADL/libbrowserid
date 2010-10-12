@@ -39,7 +39,7 @@
 
 #define CHECK_REMAIN(n)     do {                \
         if (remain < (n)) {                     \
-            *minor = GSSEAP_WRONG_SIZE;         \
+            *minor = GSSEAP_TOK_TRUNC;          \
             return GSS_S_DEFECTIVE_TOKEN;       \
         }                                       \
     } while (0)
@@ -111,7 +111,7 @@ importMechanismOid(OM_uint32 *minor,
 
     oidBuf.length = load_uint32_be(p);
     if (remain < 4 + oidBuf.length || oidBuf.length == 0) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -150,7 +150,7 @@ importKerberosKey(OM_uint32 *minor,
     gss_buffer_desc tmp;
 
     if (remain < 12) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -164,7 +164,7 @@ importKerberosKey(OM_uint32 *minor,
     }
 
     if (remain - 12 < length) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -197,14 +197,14 @@ importName(OM_uint32 *minor,
     gss_buffer_desc tmp;
 
     if (remain < 4) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
     tmp.length = load_uint32_be(p);
     if (tmp.length != 0) {
         if (remain - 4 < tmp.length) {
-            *minor = GSSEAP_WRONG_SIZE;
+            *minor = GSSEAP_TOK_TRUNC;
             return GSS_S_DEFECTIVE_TOKEN;
         }
 
@@ -233,7 +233,7 @@ gssEapImportContext(OM_uint32 *minor,
     size_t remain = token->length;
 
     if (remain < 16) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
     if (load_uint32_be(&p[0]) != EAP_EXPORT_CONTEXT_V1) {
@@ -282,7 +282,7 @@ gssEapImportContext(OM_uint32 *minor,
     }
 
     if (remain < 24 + sequenceSize(ctx->seqState)) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
     ctx->expiryTime = (time_t)load_uint64_be(&p[0]); /* XXX */
@@ -325,12 +325,13 @@ gss_import_sec_context(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
 
-    *minor = 0;
     *context_handle = GSS_C_NO_CONTEXT;
 
     if (interprocess_token == GSS_C_NO_BUFFER ||
-        interprocess_token->length == 0)
+        interprocess_token->length == 0) {
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
+    }
 
     major = gssEapAllocContext(minor, &ctx);
     if (GSS_ERROR(major))

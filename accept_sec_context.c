@@ -104,6 +104,7 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -126,8 +127,10 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     } pkt;
     gss_buffer_desc pktBuffer;
 
-    if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0)
+    if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0) {
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
+    }
 
     assert(ctx->acceptorName == GSS_C_NO_NAME);
 
@@ -151,6 +154,7 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
 
     ctx->state = EAP_STATE_AUTHENTICATE;
 
+    *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
 }
 
@@ -170,17 +174,21 @@ setAcceptorIdentity(OM_uint32 *minor,
 
     assert(rh != NULL);
 
-    /* Awaits further specification */
-    if (ctx->acceptorName == GSS_C_NO_NAME)
+    if (ctx->acceptorName == GSS_C_NO_NAME) {
+        *minor = 0;
         return GSS_S_COMPLETE;
+    }
+
+    if ((ctx->acceptorName->flags & NAME_FLAG_SERVICE) == 0) {
+        *minor = GSSEAP_BAD_SERVICE_NAME;
+        return GSS_S_BAD_NAME;
+    }
 
     GSSEAP_KRB_INIT(&krbContext);
 
     krbPrinc = ctx->acceptorName->krbPrincipal;
     assert(krbPrinc != NULL);
-
-    if (krb5_princ_size(krbContext, krbPrinc) < 2)
-        return GSS_S_BAD_NAME;
+    assert(krb5_princ_size(krbContext, krbPrinc) >= 2);
 
     /* Acceptor-Service-Name */
     krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 0), &nameBuf);
@@ -241,6 +249,7 @@ setAcceptorIdentity(OM_uint32 *minor,
             return major;
     }
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -262,7 +271,7 @@ createRadiusHandle(OM_uint32 *minor,
     assert(actx->radConn == NULL);
 
     if (rs_context_create(&actx->radHandle, RS_DICT_FILE) != 0) {
-        *minor = GSSEAP_RADSEC_INIT_FAILURE;
+        *minor = GSSEAP_RADSEC_CONTEXT_FAILURE;
         return GSS_S_FAILURE;
     }
 
@@ -418,6 +427,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         ctx->state = EAP_STATE_EXTENSIONS_REQ;
     }
 
+    *minor = 0;
     major = GSS_S_CONTINUE_NEEDED;
 
 cleanup:
@@ -445,6 +455,7 @@ eapGssSmAcceptExtensionsReq(OM_uint32 *minor,
 
     ctx->state = EAP_STATE_EXTENSIONS_RESP;
 
+    *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
 }
 
@@ -464,6 +475,7 @@ eapGssSmAcceptExtensionsResp(OM_uint32 *minor,
 
     ctx->state = EAP_STATE_ESTABLISHED;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -580,6 +592,7 @@ gss_accept_sec_context(OM_uint32 *minor,
     output_token->value = NULL;
 
     if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
@@ -613,7 +626,7 @@ gss_accept_sec_context(OM_uint32 *minor,
         goto cleanup;
 
     if (!gssEapCredAvailable(cred, ctx->mechanismUsed)) {
-        *minor = GSSEAP_WRONG_MECH;
+        *minor = GSSEAP_CRED_MECH_MISMATCH;
         major = GSS_S_BAD_MECH;
         goto cleanup;
     }
@@ -672,8 +685,11 @@ gss_accept_sec_context(OM_uint32 *minor,
             if (GSS_ERROR(major))
                 goto cleanup;
         }
-        if (time_rec != NULL)
-            gssEapContextTime(&tmpMinor, ctx, time_rec);
+        if (time_rec != NULL) {
+            major = gssEapContextTime(&tmpMinor, ctx, time_rec);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
     }
 
     assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
@@ -729,6 +745,7 @@ acceptReadyKrb(OM_uint32 *minor,
 
     ctx->state = EAP_STATE_ESTABLISHED;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 

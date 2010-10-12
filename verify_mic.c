@@ -44,7 +44,7 @@ gss_verify_mic(OM_uint32 *minor,
     int conf_state;
 
     if (message_token->length < 16) {
-        *minor = GSSEAP_WRONG_SIZE;
+        *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_BAD_SIG;
     }
 

@@ -83,6 +83,9 @@ gssEapExportPartialContext(OM_uint32 *minor,
 
     assert(p == (unsigned char *)token->value + token->length);
 
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
 cleanup:
     if (GSS_ERROR(major))
         gss_release_buffer(&tmpMinor, token);

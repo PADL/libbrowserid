@@ -132,10 +132,10 @@ krbPrincipalToName(OM_uint32 *minor,
     name->krbPrincipal = *principal;
     *principal = NULL;
 
-    if (name->krbPrincipal->length == 1) {
-        name->flags |= NAME_FLAG_NAI;
-    } else {
+    if (name->krbPrincipal->length > 1) {
         name->flags |= NAME_FLAG_SERVICE;
+    } else {
+        name->flags |= NAME_FLAG_NAI;
     }
 
     *pName = name;
@@ -228,7 +228,7 @@ importUserName(OM_uint32 *minor,
 
 #define CHECK_REMAIN(n)     do {        \
         if (remain < (n)) {             \
-            *minor = GSSEAP_WRONG_SIZE; \
+            *minor = GSSEAP_TOK_TRUNC;  \
             major = GSS_S_BAD_NAME;     \
             goto cleanup;               \
         }                               \
