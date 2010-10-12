@@ -562,6 +562,39 @@ eapGssSmInitEstablished(OM_uint32 *minor,
     return GSS_S_BAD_STATUS;
 }
 
+static OM_uint32
+eapGssSmInitError(OM_uint32 *minor,
+                  gss_cred_id_t cred,
+                  gss_ctx_id_t ctx,
+                  gss_name_t target,
+                  gss_OID mech,
+                  OM_uint32 reqFlags,
+                  OM_uint32 timeReq,
+                  gss_channel_bindings_t chanBindings,
+                  gss_buffer_t inputToken,
+                  gss_buffer_t outputToken)
+{
+    OM_uint32 major;
+    unsigned char *p;
+
+    if (inputToken->length < 8) {
+        *minor = GSSEAP_WRONG_SIZE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    p = (unsigned char *)inputToken->value;
+
+    major = load_uint32_be(&p[0]);
+    *minor = load_uint32_be(&p[4]);
+
+    if (!GSS_ERROR(major)) {
+        *minor = GSSEAP_BAD_ERROR_TOKEN;
+        major = GSS_S_FAILURE;
+    }
+
+    return major;
+}
+
 static struct gss_eap_initiator_sm {
     enum gss_eap_token_type inputTokenType;
     enum gss_eap_token_type outputTokenType;
@@ -576,13 +609,14 @@ static struct gss_eap_initiator_sm {
                               gss_buffer_t,
                               gss_buffer_t);
 } eapGssInitiatorSm[] = {
-    { TOK_TYPE_NONE,    TOK_TYPE_EAP_RESP,      eapGssSmInitIdentity            },
-    { TOK_TYPE_EAP_REQ, TOK_TYPE_EAP_RESP,      eapGssSmInitAuthenticate        },
-    { TOK_TYPE_NONE,    TOK_TYPE_EXT_REQ,       eapGssSmInitExtensionsReq       },
-    { TOK_TYPE_EXT_RESP,TOK_TYPE_NONE,          eapGssSmInitExtensionsResp      },
-    { TOK_TYPE_NONE,    TOK_TYPE_NONE,          eapGssSmInitEstablished         },
+    { TOK_TYPE_NONE,        TOK_TYPE_EAP_RESP,      eapGssSmInitIdentity            },
+    { TOK_TYPE_EAP_REQ,     TOK_TYPE_EAP_RESP,      eapGssSmInitAuthenticate        },
+    { TOK_TYPE_NONE,        TOK_TYPE_EXT_REQ,       eapGssSmInitExtensionsReq       },
+    { TOK_TYPE_EXT_RESP,    TOK_TYPE_NONE,          eapGssSmInitExtensionsResp      },
+    { TOK_TYPE_NONE,        TOK_TYPE_NONE,          eapGssSmInitEstablished         },
+    { TOK_TYPE_CONTEXT_ERR, TOK_TYPE_NONE,          eapGssSmInitError               },
 #ifdef GSSEAP_ENABLE_REAUTH
-    { TOK_TYPE_GSS_REAUTH, TOK_TYPE_GSS_REAUTH, eapGssSmInitGssReauth           },
+    { TOK_TYPE_GSS_REAUTH,  TOK_TYPE_GSS_REAUTH,    eapGssSmInitGssReauth           },
 #endif
 };
 
@@ -673,7 +707,9 @@ gss_init_sec_context(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        if (tokType != sm->inputTokenType) {
+        if (tokType == TOK_TYPE_CONTEXT_ERR) {
+            ctx->state = EAP_STATE_ERROR;
+        } else if (tokType != sm->inputTokenType) {
             *minor = GSSEAP_WRONG_TOK_ID;
             major = GSS_S_DEFECTIVE_TOKEN;
             goto cleanup;

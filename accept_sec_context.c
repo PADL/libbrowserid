@@ -463,6 +463,24 @@ eapGssSmAcceptEstablished(OM_uint32 *minor,
     return GSS_S_BAD_STATUS;
 }
 
+static OM_uint32
+makeErrorToken(OM_uint32 *minor,
+               OM_uint32 majorStatus,
+               OM_uint32 minorStatus,
+               gss_buffer_t outputToken)
+{
+    unsigned char errorData[8];
+    gss_buffer_desc errorBuffer;
+
+    store_uint32_be(majorStatus, &errorData[0]);
+    store_uint32_be(minorStatus, &errorData[4]);
+
+    errorBuffer.length = sizeof(errorData);
+    errorBuffer.value = errorData;
+
+    return duplicateBuffer(minor, &errorBuffer, outputToken);
+}
+
 static struct gss_eap_acceptor_sm {
     enum gss_eap_token_type inputTokenType;
     enum gss_eap_token_type outputTokenType;
@@ -473,13 +491,14 @@ static struct gss_eap_acceptor_sm {
                               gss_channel_bindings_t,
                               gss_buffer_t);
 } eapGssAcceptorSm[] = {
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,    eapGssSmAcceptIdentity           },
-    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,    eapGssSmAcceptAuthenticate       },
-    { TOK_TYPE_EXT_REQ,     TOK_TYPE_NONE,       eapGssSmAcceptExtensionsReq      },
-    { TOK_TYPE_NONE,        TOK_TYPE_EXT_RESP,   eapGssSmAcceptExtensionsResp     },
-    { TOK_TYPE_NONE,        TOK_TYPE_NONE,       eapGssSmAcceptEstablished        },
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,       eapGssSmAcceptIdentity           },
+    { TOK_TYPE_EAP_RESP,    TOK_TYPE_EAP_REQ,       eapGssSmAcceptAuthenticate       },
+    { TOK_TYPE_EXT_REQ,     TOK_TYPE_NONE,          eapGssSmAcceptExtensionsReq      },
+    { TOK_TYPE_NONE,        TOK_TYPE_EXT_RESP,      eapGssSmAcceptExtensionsResp     },
+    { TOK_TYPE_NONE,        TOK_TYPE_NONE,          eapGssSmAcceptEstablished        },
+    { TOK_TYPE_NONE,        TOK_TYPE_CONTEXT_ERR,   NULL                             },
 #ifdef GSSEAP_ENABLE_REAUTH
-    { TOK_TYPE_GSS_REAUTH,  TOK_TYPE_GSS_REAUTH, eapGssSmAcceptGssReauth          },
+    { TOK_TYPE_GSS_REAUTH,  TOK_TYPE_GSS_REAUTH,    eapGssSmAcceptGssReauth          },
 #endif
 };
 
@@ -575,22 +594,22 @@ gss_accept_sec_context(OM_uint32 *minor,
                                    &innerInputToken,
                                    input_chan_bindings,
                                    &innerOutputToken);
-        if (GSS_ERROR(major))
-            goto cleanup;
+        if (GSS_ERROR(major)) {
+            /* Generate an error token */
+            tmpMajor = makeErrorToken(&tmpMinor, major, *minor, &innerOutputToken);
+            if (GSS_ERROR(tmpMajor)) {
+                major = tmpMajor;
+                goto cleanup;
+            }
+
+            sm = &eapGssAcceptorSm[EAP_STATE_ERROR];
+            goto send_token;
+        }
     } while (major == GSS_S_CONTINUE_NEEDED && innerOutputToken.length == 0);
 
     if (mech_type != NULL) {
         if (!gssEapInternalizeOid(ctx->mechanismUsed, mech_type))
             duplicateOid(&tmpMinor, ctx->mechanismUsed, mech_type);
-    }
-    if (innerOutputToken.value != NULL) {
-        tmpMajor = gssEapMakeToken(&tmpMinor, ctx, &innerOutputToken,
-                                   sm->outputTokenType, output_token);
-        if (GSS_ERROR(tmpMajor)) {
-            major = tmpMajor;
-            *minor = tmpMinor;
-            goto cleanup;
-        }
     }
     if (ret_flags != NULL)
         *ret_flags = ctx->gssFlags;
@@ -608,6 +627,17 @@ gss_accept_sec_context(OM_uint32 *minor,
     }
 
     assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
+
+send_token:
+    if (innerOutputToken.value != NULL) {
+        tmpMajor = gssEapMakeToken(&tmpMinor, ctx, &innerOutputToken,
+                                   sm->outputTokenType, output_token);
+        if (GSS_ERROR(tmpMajor)) {
+            major = tmpMajor;
+            *minor = tmpMinor;
+            goto cleanup;
+        }
+    }
 
 cleanup:
     if (cred != GSS_C_NO_CREDENTIAL)

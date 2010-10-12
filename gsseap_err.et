@@ -62,5 +62,6 @@ error_code GSSEAP_BAD_CONTEXT_TOKEN,        "Context token is malformed or corru
 error_code GSSEAP_MISSING_IOV,              "IOV is missing required buffer"
 error_code GSSEAP_BAD_STREAM_IOV,           "Stream IOV can only contain a single data buffer"
 error_code GSSEAP_BAD_PRF_KEY,              "PRF key usage type is unknown"
+error_code GSSEAP_BAD_ERROR_TOKEN,          "Error token is malformed or corrupt"
 
 end
