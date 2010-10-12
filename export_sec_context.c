@@ -42,10 +42,14 @@ gssEapExportPartialContext(OM_uint32 *minor,
     unsigned char *p;
     char serverBuf[MAXHOSTNAMELEN];
 
-    if (ctx->acceptorCtx.radConn != NULL &&
-        rs_conn_get_current_server(ctx->acceptorCtx.radConn,
-                                   serverBuf, sizeof(serverBuf)) == 0)
+    if (ctx->acceptorCtx.radConn != NULL) {
+        if (rs_conn_get_current_server(ctx->acceptorCtx.radConn,
+                                       serverBuf, sizeof(serverBuf)) != 0) {
+            return gssEapRadiusMapError(minor,
+                                        rs_err_conn_pop(ctx->acceptorCtx.radConn));
+        }
         serverLen = strlen(serverBuf);
+    }
 
     length = 4 + serverLen + 4 + ctx->acceptorCtx.state.length;
 
