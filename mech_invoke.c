@@ -38,7 +38,7 @@ gssspi_mech_invoke(OM_uint32 *minor,
                    const gss_OID desired_object,
                    gss_buffer_t value)
 {
-    *minor = 0;
+    *minor = GSSEAP_BAD_INVOCATION;
 
     return GSS_S_UNAVAILABLE;
 }

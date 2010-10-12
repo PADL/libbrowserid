@@ -221,6 +221,8 @@ peerConfigInit(OM_uint32 *minor,
     eapPeerConfig->fragment_size = 1024;
     wpa_debug_level = 0;
 
+    assert(cred->name != GSS_C_NO_NAME);
+
     if ((cred->name->flags & (NAME_FLAG_NAI | NAME_FLAG_SERVICE)) == 0) {
         *minor = GSSEAP_BAD_INITIATOR_NAME;
         return GSS_S_BAD_NAME;

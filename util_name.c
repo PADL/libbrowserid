@@ -497,6 +497,8 @@ gssEapDuplicateName(OM_uint32 *minor,
         return major;
     }
 
+    name->flags = input_name->flags;
+
     *minor = krb5_copy_principal(krbContext, input_name->krbPrincipal,
                                  &name->krbPrincipal);
     if (*minor != 0) {

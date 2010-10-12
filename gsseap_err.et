@@ -118,5 +118,6 @@ error_code GSSEAP_ATTR_CONTEXT_FAILURE,     "Failed to initialise attribute cont
 #
 error_code GSSEAP_BINDINGS_MISMATCH,        "Channel bindings do not match"
 error_code GSSEAP_NO_MECHGLUE_SYMBOL,       "Could not find symbol in mechanism glue"
+error_code GSSEAP_BAD_INVOCATION,           "Bad mechanism invoke OID"
 
 end
