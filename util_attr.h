@@ -87,10 +87,10 @@ public:
         return false;
     }
 
-    virtual void setAttribute(int complete,
+    virtual bool setAttribute(int complete,
                               const gss_buffer_t attr,
-                              const gss_buffer_t value) {}
-    virtual void deleteAttribute(const gss_buffer_t value) {}
+                              const gss_buffer_t value) { return false; }
+    virtual bool deleteAttribute(const gss_buffer_t value) { return false; }
     virtual bool getAttribute(const gss_buffer_t attr,
                               int *authenticated,
                               int *complete,
@@ -145,10 +145,10 @@ public:
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
     bool getAttributeTypes(gss_buffer_set_t *attrs);
 
-    void setAttribute(int complete,
+    bool setAttribute(int complete,
                       const gss_buffer_t attr,
                       const gss_buffer_t value);
-    void deleteAttribute(const gss_buffer_t value);
+    bool deleteAttribute(const gss_buffer_t value);
     bool getAttribute(const gss_buffer_t attr,
                       int *authenticated,
                       int *complete,

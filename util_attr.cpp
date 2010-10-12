@@ -349,7 +349,7 @@ gss_eap_attr_ctx::getPrimaryProvider(void) const
 /*
  * Set an attribute
  */
-void
+bool
 gss_eap_attr_ctx::setAttribute(int complete,
                                const gss_buffer_t attr,
                                const gss_buffer_t value)
@@ -357,34 +357,39 @@ gss_eap_attr_ctx::setAttribute(int complete,
     gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
     unsigned int type;
     gss_eap_attr_provider *provider;
+    bool ret = false;
 
     decomposeAttributeName(attr, &type, &suffix);
 
     provider = m_providers[type];
     if (provider != NULL) {
-        provider->setAttribute(complete,
-                               (type == ATTR_TYPE_LOCAL) ? attr : &suffix,
-                               value);
-    } else {
-        /* XXX TODO throw exception */
+        ret = provider->setAttribute(complete,
+                                     (type == ATTR_TYPE_LOCAL) ? attr : &suffix,
+                                     value);
     }
+
+    return ret;
 }
 
 /*
  * Delete an attrbiute
  */
-void
+bool
 gss_eap_attr_ctx::deleteAttribute(const gss_buffer_t attr)
 {
     gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
     unsigned int type;
     gss_eap_attr_provider *provider;
+    bool ret = false;
 
     decomposeAttributeName(attr, &type, &suffix);
 
     provider = m_providers[type];
-    if (provider != NULL)
-        provider->deleteAttribute(type == ATTR_TYPE_LOCAL ? attr : &suffix);
+    if (provider != NULL) {
+        ret = provider->deleteAttribute(type == ATTR_TYPE_LOCAL ? attr : &suffix);
+    }
+
+    return ret;
 }
 
 /*
@@ -815,7 +820,12 @@ gssEapDeleteNameAttribute(OM_uint32 *minor,
         return GSS_S_UNAVAILABLE;
 
     try {
-        name->attrCtx->deleteAttribute(attr);
+        if (!name->attrCtx->deleteAttribute(attr)) {
+            *minor = GSSEAP_NO_SUCH_ATTR;
+            gssEapSaveStatusInfo(*minor, "Unknown naming attribute %.*s",
+                                 (int)attr->length, (char *)attr->value);
+            return GSS_S_UNAVAILABLE;
+        }
     } catch (std::exception &ex) {
         return mapException(minor, ex);
     }
@@ -839,7 +849,12 @@ gssEapSetNameAttribute(OM_uint32 *minor,
         return GSS_S_UNAVAILABLE;
 
     try {
-        name->attrCtx->setAttribute(complete, attr, value);
+        if (!name->attrCtx->setAttribute(complete, attr, value)) {
+             *minor = GSSEAP_NO_SUCH_ATTR;
+            gssEapSaveStatusInfo(*minor, "Unknown naming attribute %.*s",
+                                 (int)attr->length, (char *)attr->value);
+            return GSS_S_UNAVAILABLE;
+        }
     } catch (std::exception &ex) {
         return mapException(minor, ex);
     }

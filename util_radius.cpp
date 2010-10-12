@@ -226,16 +226,88 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
     return true;
 }
 
-void
+uint32_t
+getAttributeId(const gss_buffer_t attr)
+{
+    OM_uint32 tmpMinor;
+    gss_buffer_desc strAttr = GSS_C_EMPTY_BUFFER;
+    DICT_ATTR *da;
+    char *s;
+    uint32_t attrid = 0;
+
+    if (attr->length < radiusUrnPrefix.length ||
+        memcmp(attr->value, radiusUrnPrefix.value, radiusUrnPrefix.length) != 0)
+        return 0;
+
+    /* need to duplicate because attr may not be NUL terminated */
+    duplicateBuffer(*attr, &strAttr);
+    s = (char *)strAttr.value + radiusUrnPrefix.length;
+
+    if (isdigit(*s)) {
+        attrid = strtoul(s, NULL, 10);
+    } else {
+        da = dict_attrbyname(s);
+        if (da != NULL)
+            attrid = da->attr;
+    }
+
+    gss_release_buffer(&tmpMinor, &strAttr);
+
+    return attrid;
+}
+
+bool
+gss_eap_radius_attr_provider::setAttribute(int complete,
+                                           uint32_t attrid,
+                                           const gss_buffer_t value)
+{
+    OM_uint32 major = GSS_S_UNAVAILABLE, minor;
+
+    if (!isSecretAttributeP(attrid) &&
+        !isHiddenAttributeP(attrid)) {
+        deleteAttribute(attrid);
+
+        major = gssEapRadiusAddAvp(&minor, &m_vps,
+                                   ATTRID(attrid), VENDOR(attrid), 
+                                   value);
+    }
+
+    return !GSS_ERROR(major);
+}
+
+bool
 gss_eap_radius_attr_provider::setAttribute(int complete,
                                            const gss_buffer_t attr,
                                            const gss_buffer_t value)
 {
+    uint32_t attrid = getAttributeId(attr);
+
+    if (!attrid)
+        return false;
+
+    return setAttribute(complete, attrid, value);
 }
 
-void
-gss_eap_radius_attr_provider::deleteAttribute(const gss_buffer_t value)
+bool
+gss_eap_radius_attr_provider::deleteAttribute(uint32_t attrid)
 {
+    if (isSecretAttributeP(attrid) || isHiddenAttributeP(attrid) ||
+        pairfind(m_vps, attrid) == NULL)
+        return false;
+
+    pairdelete(&m_vps, attrid);
+    return true;
+}
+
+bool
+gss_eap_radius_attr_provider::deleteAttribute(const gss_buffer_t attr)
+{
+    uint32_t attrid = getAttributeId(attr);
+
+    if (!attrid)
+        return false;
+
+    return deleteAttribute(attrid);
 }
 
 bool
@@ -246,33 +318,11 @@ gss_eap_radius_attr_provider::getAttribute(const gss_buffer_t attr,
                                            gss_buffer_t display_value,
                                            int *more) const
 {
-    OM_uint32 tmpMinor;
-    gss_buffer_desc strAttr = GSS_C_EMPTY_BUFFER;
-    DICT_ATTR *da;
     uint32_t attrid;
-    char *s;
 
-    duplicateBuffer(*attr, &strAttr);
-    s = (char *)strAttr.value;
-
-    if (attr->length < radiusUrnPrefix.length ||
-        memcmp(s, radiusUrnPrefix.value, radiusUrnPrefix.length) != 0)
+    attrid = getAttributeId(attr);
+    if (!attrid)
         return false;
-
-    s += radiusUrnPrefix.length;
-
-    if (isdigit(*s)) {
-        attrid = strtoul(s, NULL, 10);
-    } else {
-        da = dict_attrbyname(s);
-        if (da == NULL) {
-            gss_release_buffer(&tmpMinor, &strAttr);
-            return false;
-        }
-        attrid = da->attr;
-    }
-
-    gss_release_buffer(&tmpMinor, &strAttr);
 
     return getAttribute(attrid, authenticated, complete,
                         value, display_value, more);
@@ -415,7 +465,7 @@ gssEapRadiusAddAvp(OM_uint32 *minor,
                    VALUE_PAIR **vps,
                    uint16_t attribute,
                    uint16_t vendor,
-                   gss_buffer_t buffer)
+                   const gss_buffer_t buffer)
 {
     uint32_t attrid = VENDORATTR(vendor, attribute);
     unsigned char *p = (unsigned char *)buffer->value;

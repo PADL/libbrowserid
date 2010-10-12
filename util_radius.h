@@ -47,10 +47,10 @@ public:
                             const gss_ctx_id_t ctx);
 
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
-    void setAttribute(int complete,
+    bool setAttribute(int complete,
                       const gss_buffer_t attr,
                       const gss_buffer_t value);
-    void deleteAttribute(const gss_buffer_t value);
+    bool deleteAttribute(const gss_buffer_t attr);
     bool getAttribute(const gss_buffer_t attr,
                       int *authenticated,
                       int *complete,
@@ -79,6 +79,10 @@ public:
                       gss_buffer_t value,
                       gss_buffer_t display_value,
                       int *more) const;
+    bool setAttribute(int complete,
+                      uint32_t attribute,
+                      const gss_buffer_t value);
+    bool deleteAttribute(uint32_t attribute);
 
     bool getFragmentedAttribute(uint16_t attribute,
                                 uint16_t vendor,
@@ -113,7 +117,7 @@ gssEapRadiusAddAvp(OM_uint32 *minor,
                    VALUE_PAIR **vp,
                    uint16_t type,
                    uint16_t vendor,
-                   gss_buffer_t buffer);
+                   const gss_buffer_t buffer);
 
 OM_uint32
 gssEapRadiusGetAvp(OM_uint32 *minor,

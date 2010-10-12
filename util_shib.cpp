@@ -214,7 +214,7 @@ gss_eap_shib_attr_provider::getAttributeIndex(const gss_buffer_t attr) const
     return -1;
 }
 
-void
+bool
 gss_eap_shib_attr_provider::setAttribute(int complete,
                                          const gss_buffer_t attr,
                                          const gss_buffer_t value)
@@ -231,9 +231,11 @@ gss_eap_shib_attr_provider::setAttribute(int complete,
 
     m_attributes.push_back(a);
     m_authenticated = false;
+
+    return true;
 }
 
-void
+bool
 gss_eap_shib_attr_provider::deleteAttribute(const gss_buffer_t attr)
 {
     int i;
@@ -243,6 +245,8 @@ gss_eap_shib_attr_provider::deleteAttribute(const gss_buffer_t attr)
         m_attributes.erase(m_attributes.begin() + i);
 
     m_authenticated = false;
+
+    return true;
 }
 
 bool

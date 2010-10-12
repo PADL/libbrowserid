@@ -56,10 +56,10 @@ public:
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
-    void setAttribute(int complete,
+    bool setAttribute(int complete,
                       const gss_buffer_t attr,
                       const gss_buffer_t value);
-    void deleteAttribute(const gss_buffer_t value);
+    bool deleteAttribute(const gss_buffer_t value);
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
     bool getAttribute(const gss_buffer_t attr,
                       int *authenticated,

@@ -183,22 +183,27 @@ gss_eap_saml_assertion_provider::getAttributeTypes(gss_eap_attr_enumeration_cb a
     return ret;
 }
 
-void
+bool
 gss_eap_saml_assertion_provider::setAttribute(int complete,
                                               const gss_buffer_t attr,
                                               const gss_buffer_t value)
 {
     if (attr == GSS_C_NO_BUFFER || attr->length == 0) {
         setAssertion(value);
+        return true;
     }
+
+    return false;
 }
 
-void
+bool
 gss_eap_saml_assertion_provider::deleteAttribute(const gss_buffer_t value)
 {
     delete m_assertion;
     m_assertion = NULL;
     m_authenticated = false;
+
+    return true;
 }
 
 time_t
@@ -408,16 +413,18 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
     return ret;
 }
 
-void
+bool
 gss_eap_saml_attr_provider::setAttribute(int complete,
                                          const gss_buffer_t attr,
                                          const gss_buffer_t value)
 {
+    return false;
 }
 
-void
+bool
 gss_eap_saml_attr_provider::deleteAttribute(const gss_buffer_t value)
 {
+    return false;
 }
 
 static BaseRefVectorOf<XMLCh> *
