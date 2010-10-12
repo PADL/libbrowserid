@@ -299,13 +299,8 @@ gssEapImportNameInternal(OM_uint32 *minor,
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
         gss_buffer_desc buf;
 
-        CHECK_REMAIN(4);
-        buf.length = load_uint32_be(p);
-        UPDATE_REMAIN(4);
-
-        CHECK_REMAIN(buf.length);
+        buf.length = remain;
         buf.value = p;
-        UPDATE_REMAIN(buf.length);
 
         major = gssEapImportAttrContext(minor, &buf, name);
         if (GSS_ERROR(major))
@@ -423,7 +418,7 @@ gssEapExportNameInternal(OM_uint32 *minor,
         major = gssEapExportAttrContext(minor, name, &attrs);
         if (GSS_ERROR(major))
             goto cleanup;
-        exportedNameLen += 4 + attrs.length;
+        exportedNameLen += attrs.length;
     }
 
     exportedName->value = GSSEAP_MALLOC(exportedNameLen);
@@ -462,10 +457,11 @@ gssEapExportNameInternal(OM_uint32 *minor,
     p += krbNameLen;
 
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
-        store_uint32_be(attrs.length, p);
-        memcpy(&p[4], attrs.value, attrs.length);
-        p += 4 + attrs.length;
+        memcpy(p, attrs.value, attrs.length);
+        p += attrs.length;
     }
+
+    assert(p == (unsigned char *)exportedName->value + exportedNameLen);
 
     *minor = 0;
     major = GSS_S_COMPLETE;
