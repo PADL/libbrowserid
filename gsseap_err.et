@@ -70,5 +70,7 @@ error_code GSSEAP_BAD_PADDING_IOV,          "Padding IOV is not permitted for RF
 error_code GSSEAP_BAD_PRF_KEY,              "PRF key usage type is unknown"
 error_code GSSEAP_BAD_ERROR_TOKEN,          "Error token is malformed or corrupt"
 error_code GSSEAP_BAD_WRAP_TOKEN,           "Bad RFC 4121 wrap or MIC token"
+error_code GSSEAP_BINDINGS_MISMATCH,        "Channel bindings do not match"
+error_code GSSEAP_NO_MECHGLUE_SYMBOL,       "Could not find symbol in mechanism glue"
 
 end

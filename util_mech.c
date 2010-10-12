@@ -105,8 +105,10 @@ gssEapValidateMechs(OM_uint32 *minor,
     for (i = 0; i < mechs->count; i++) {
         gss_OID oid = &mechs->elements[i];
 
-        if (!gssEapIsConcreteMechanismOid(oid))
+        if (!gssEapIsConcreteMechanismOid(oid)) {
+            *minor = GSSEAP_WRONG_MECH;
             return GSS_S_BAD_MECH;
+        }
     }
 
     return GSS_S_COMPLETE;

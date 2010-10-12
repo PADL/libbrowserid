@@ -804,11 +804,20 @@ static OM_uint32
                           gss_buffer_t,
                           int *);
 
-#define NEXT_SYMBOL(local, global)  ((local) = dlsym(RTLD_NEXT, (global)))
+#define NEXT_SYMBOL(local, global)  do {        \
+        ((local) = dlsym(RTLD_NEXT, (global))); \
+        if ((local) == NULL) {                  \
+            *minor = GSSEAP_NO_MECHGLUE_SYMBOL; \
+            major = GSS_S_UNAVAILABLE;          \
+            /* but continue */                  \
+        }                                       \
+    } while (0)
 
 OM_uint32
 gssEapReauthInitialize(OM_uint32 *minor)
 {
+    OM_uint32 major = GSS_S_COMPLETE;
+
     NEXT_SYMBOL(gssInitSecContextNext,         "gss_init_sec_context");
     NEXT_SYMBOL(gssAcceptSecContextNext,       "gss_accept_sec_context");
     NEXT_SYMBOL(gssReleaseCredNext,            "gss_release_cred");
@@ -820,7 +829,7 @@ gssEapReauthInitialize(OM_uint32 *minor)
     NEXT_SYMBOL(gssStoreCredNext,              "gss_store_cred");
     NEXT_SYMBOL(gssGetNameAttributeNext,       "gss_get_name_attribute");
 
-    return GSS_S_COMPLETE;
+    return major;
 }
 
 OM_uint32
@@ -838,8 +847,10 @@ gssInitSecContext(OM_uint32 *minor,
                   OM_uint32 *ret_flags,
                   OM_uint32 *time_rec)
 {
-    if (gssInitSecContextNext == NULL)
+    if (gssInitSecContextNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssInitSecContextNext(minor, cred, context_handle,
                                  target_name, mech_type, req_flags,
@@ -861,8 +872,10 @@ gssAcceptSecContext(OM_uint32 *minor,
                     OM_uint32 *time_rec,
                     gss_cred_id_t *delegated_cred_handle)
 {
-    if (gssAcceptSecContextNext == NULL)
+    if (gssAcceptSecContextNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssAcceptSecContextNext(minor, context_handle, cred,
                                    input_token, input_chan_bindings,
@@ -874,8 +887,10 @@ OM_uint32
 gssReleaseCred(OM_uint32 *minor,
                gss_cred_id_t *cred_handle)
 {
-    if (gssReleaseCredNext == NULL)
+    if (gssReleaseCredNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssReleaseCredNext(minor, cred_handle);
 }
@@ -884,8 +899,10 @@ OM_uint32
 gssReleaseName(OM_uint32 *minor,
                gss_name_t *name)
 {
-    if (gssReleaseName == NULL)
+    if (gssReleaseName == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssReleaseNameNext(minor, name);
 }
@@ -895,8 +912,10 @@ gssDeleteSecContext(OM_uint32 *minor,
                     gss_ctx_id_t *context_handle,
                     gss_buffer_t output_token)
 {
-    if (gssDeleteSecContextNext == NULL)
+    if (gssDeleteSecContextNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssDeleteSecContextNext(minor, context_handle, output_token);
 }
@@ -907,8 +926,10 @@ gssDisplayName(OM_uint32 *minor,
                gss_buffer_t buffer,
                gss_OID *name_type)
 {
-    if (gssDisplayNameNext == NULL)
+    if (gssDisplayNameNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssDisplayNameNext(minor, name, buffer, name_type);
 }
@@ -919,8 +940,10 @@ gssImportName(OM_uint32 *minor,
               gss_OID name_type,
               gss_name_t *name)
 {
-    if (gssImportNameNext == NULL)
+    if (gssImportNameNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssImportNameNext(minor, buffer, name_type, name);
 }
@@ -931,8 +954,10 @@ gssInquireSecContextByOid(OM_uint32 *minor,
                           const gss_OID desired_object,
                           gss_buffer_set_t *data_set)
 {
-    if (gssInquireSecContextByOidNext == NULL)
+    if (gssInquireSecContextByOidNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssInquireSecContextByOidNext(minor, context_handle,
                                          desired_object, data_set);
@@ -948,8 +973,10 @@ gssStoreCred(OM_uint32 *minor,
              gss_OID_set *elements_stored,
              gss_cred_usage_t *cred_usage_stored)
 {
-    if (gssStoreCredNext == NULL)
+    if (gssStoreCredNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssStoreCredNext(minor, input_cred_handle, input_usage,
                             desired_mech, overwrite_cred, default_cred,
@@ -966,8 +993,10 @@ gssGetNameAttribute(OM_uint32 *minor,
                     gss_buffer_t display_value,
                     int *more)
 {
-    if (gssGetNameAttributeNext == NULL)
+    if (gssGetNameAttributeNext == NULL) {
+        *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
+    }
 
     return gssGetNameAttributeNext(minor, name, attr, authenticated, complete,
                                    value, display_value, more);

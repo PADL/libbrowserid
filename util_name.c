@@ -94,6 +94,8 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     krb5_context krbContext = NULL;
     OM_uint32 tmpMinor;
 
+    *minor = 0;
+
     if (pName == NULL) {
         return GSS_S_COMPLETE;
     }
@@ -112,7 +114,6 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     GSSEAP_FREE(name);
     *pName = NULL;
 
-    *minor = 0;
     return GSS_S_COMPLETE;
 }
 

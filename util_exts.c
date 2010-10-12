@@ -88,10 +88,11 @@ verifyGssChannelBindings(OM_uint32 *minor,
     major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
                                     iov, 2, TOK_TYPE_WRAP);
     if (GSS_ERROR(major))
-        return major;
+        return GSS_S_BAD_BINDINGS;
 
     if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS &&
         !bufferEqual(&iov[0].buffer, &chanBindings->application_data)) {
+        *minor = GSSEAP_BINDINGS_MISMATCH;
         major = GSS_S_BAD_BINDINGS;
     } else {
         major = GSS_S_COMPLETE;
@@ -430,6 +431,7 @@ decodeExtensions(OM_uint32 *minor,
         gss_buffer_desc extension;
 
         if (remain < 8) {
+            *minor = GSSEAP_WRONG_SIZE;
             major = GSS_S_DEFECTIVE_TOKEN;
             goto cleanup;
         }
@@ -447,6 +449,7 @@ decodeExtensions(OM_uint32 *minor,
         extension.length = load_uint32_be(&p[4]);
 
         if (remain < 8 + extension.length) {
+            *minor = GSSEAP_WRONG_SIZE;
             major = GSS_S_DEFECTIVE_TOKEN;
             goto cleanup;
         }

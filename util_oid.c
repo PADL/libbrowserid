@@ -63,7 +63,6 @@ duplicateOid(OM_uint32 *minor,
 {
     gss_OID p;
 
-    *minor = 0;
     *newOid = GSS_C_NO_OID;
 
     p = (gss_OID)GSSEAP_MALLOC(sizeof(*p));
@@ -75,12 +74,14 @@ duplicateOid(OM_uint32 *minor,
     p->elements = GSSEAP_MALLOC(p->length);
     if (p->elements == NULL) {
         GSSEAP_FREE(p);
+        *minor = ENOMEM;
         return GSS_S_FAILURE;
     }
 
     memcpy(p->elements, oid->elements, p->length);
     *newOid = p;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
