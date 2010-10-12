@@ -36,8 +36,10 @@ error_code GSSEAP_RESERVED,                 ""
 error_code GSSEAP_WRONG_SIZE,               "Buffer is incorrect size"
 error_code GSSEAP_WRONG_MECH,               "Mechanism OID is incorrect"
 error_code GSSEAP_BAD_TOK_HEADER,           "Token header is malformed or corrupt"
+error_code GSSEAP_TOK_TRUNC,                "Token is missing data"
 error_code GSSEAP_BAD_DIRECTION,            "Packet was replayed in wrong direction"
 error_code GSSEAP_WRONG_TOK_ID,             "Received token ID does not match expected token ID"
+error_code GSSEAP_REFLECT,                  "Token was reflected"
 error_code GSSEAP_CRIT_EXT_UNAVAILABLE,     "Critical extension unavailable"
 error_code GSSEAP_MISSING_REQUIRED_EXT,     "Missing required extension"
 error_code GSSEAP_BAD_SERVICE_NAME,         "Could not parse service name"
@@ -72,5 +74,7 @@ error_code GSSEAP_BAD_ERROR_TOKEN,          "Error token is malformed or corrupt
 error_code GSSEAP_BAD_WRAP_TOKEN,           "Bad RFC 4121 wrap or MIC token"
 error_code GSSEAP_BINDINGS_MISMATCH,        "Channel bindings do not match"
 error_code GSSEAP_NO_MECHGLUE_SYMBOL,       "Could not find symbol in mechanism glue"
+error_code GSSEAP_UNKNOWN_QOP,              "Unknown quality of protection specified"
+error_code GSSEAP_NO_HOSTNAME,              "Could not determine local host name"
 
 end

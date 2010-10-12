@@ -135,14 +135,32 @@ gssEapAcquireCred(OM_uint32 *minor,
 
         GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
     } else {
-        if (cred->flags & CRED_FLAG_INITIATE) {
-            gss_buffer_desc buf;
+        gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+        gss_OID nameType = GSS_C_NO_OID;
 
-            buf.value = getlogin(); /* XXX */
-            buf.length = strlen((char *)buf.value);
+        if (cred->flags & CRED_FLAG_ACCEPT) {
+            char serviceName[5 + MAXHOSTNAMELEN] = "host@";
 
-            major = gssEapImportName(minor, &buf,
-                                     GSS_C_NT_USER_NAME, &cred->name);
+            /* default host-based service is host@localhost */
+            if (gethostname(&serviceName[5], MAXHOSTNAMELEN) != 0) {
+                *minor = GSSEAP_NO_HOSTNAME;
+                major = GSS_S_FAILURE;
+                goto cleanup;
+            }
+
+            nameBuf.value = serviceName;
+            nameBuf.length = strlen((char *)nameBuf.value);
+
+            nameType = GSS_C_NT_HOSTBASED_SERVICE;
+        } else if (cred->flags & CRED_FLAG_INITIATE) {
+            nameBuf.value = getlogin(); /* XXX */
+            nameBuf.length = strlen((char *)nameBuf.value);
+
+            nameType = GSS_C_NT_USER_NAME;
+        }
+
+        if (nameBuf.length != 0) {
+            major = gssEapImportName(minor, &nameBuf, nameType, &cred->name);
             if (GSS_ERROR(major))
                 goto cleanup;
         }
