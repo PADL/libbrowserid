@@ -296,6 +296,7 @@ gss_eap_radius_attr_provider::deleteAttribute(uint32_t attrid)
         return false;
 
     pairdelete(&m_vps, attrid);
+
     return true;
 }
 
