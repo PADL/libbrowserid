@@ -50,7 +50,7 @@ gss_inquire_names_for_mech(OM_uint32 *minor,
     size_t i;
 
     if (!gssEapIsMechanismOid(mechanism)) {
-        *minor = 0;
+        *minor = GSSEAP_WRONG_MECH;
         return GSS_S_BAD_MECH;
     }
 

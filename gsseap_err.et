@@ -66,7 +66,9 @@ error_code GSSEAP_ATTR_CONTEXT_FAILURE,     "Failed to initialise attribute cont
 error_code GSSEAP_BAD_CONTEXT_TOKEN,        "Context token is malformed or corrupt"
 error_code GSSEAP_MISSING_IOV,              "IOV is missing required buffer"
 error_code GSSEAP_BAD_STREAM_IOV,           "Stream IOV can only contain a single data buffer"
+error_code GSSEAP_BAD_PADDING_IOV,          "Padding IOV is not permitted for RFC 4121 tokens"
 error_code GSSEAP_BAD_PRF_KEY,              "PRF key usage type is unknown"
 error_code GSSEAP_BAD_ERROR_TOKEN,          "Error token is malformed or corrupt"
+error_code GSSEAP_BAD_WRAP_TOKEN,           "Bad RFC 4121 wrap or MIC token"
 
 end

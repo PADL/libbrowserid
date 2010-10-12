@@ -38,8 +38,10 @@ gss_inquire_mech_for_saslname(OM_uint32 *minor,
                               gss_OID *mech_type)
 {
     *mech_type = gssEapSaslNameToOid(sasl_mech_name);
-    if (*mech_type == GSS_C_NO_OID)
+    if (*mech_type == GSS_C_NO_OID) {
+        *minor = GSSEAP_WRONG_MECH;
         return GSS_S_BAD_MECH;
+    }
 
     return GSS_S_COMPLETE;
 }

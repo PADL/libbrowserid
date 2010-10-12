@@ -94,8 +94,10 @@ unwrapToken(OM_uint32 *minor,
     assert(header != NULL);
 
     padding = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_PADDING);
-    if (padding != NULL && padding->buffer.length != 0)
+    if (padding != NULL && padding->buffer.length != 0) {
+        *minor = GSSEAP_BAD_PADDING_IOV;
         return GSS_S_DEFECTIVE_TOKEN;
+    }
 
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
 
@@ -115,11 +117,15 @@ unwrapToken(OM_uint32 *minor,
 
     ptr = (unsigned char *)header->buffer.value;
 
-    if (header->buffer.length < 16)
+    if (header->buffer.length < 16) {
+        *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
+    }
 
-    if ((ptr[2] & flags) != flags)
+    if ((ptr[2] & flags) != flags) {
+        *minor = GSSEAP_BAD_DIRECTION;
         return GSS_S_BAD_SIG;
+    }
 
     if (toktype == TOK_TYPE_WRAP) {
         unsigned int krbTrailerLen;
@@ -184,7 +190,7 @@ unwrapToken(OM_uint32 *minor,
                 || althdr[2] != ptr[2]
                 || althdr[3] != ptr[3]
                 || memcmp(althdr + 8, ptr + 8, 8) != 0) {
-                *minor = 0;
+                *minor = GSSEAP_BAD_WRAP_TOKEN;
                 return GSS_S_BAD_SIG;
             }
         } else {
@@ -239,7 +245,7 @@ unwrapToken(OM_uint32 *minor,
     return code;
 
 defective:
-    *minor = 0;
+    *minor = GSSEAP_BAD_WRAP_TOKEN;
 
     return GSS_S_DEFECTIVE_TOKEN;
 }
@@ -462,8 +468,10 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor,
 {
     OM_uint32 major;
 
-    if (ctx->encryptionType == ENCTYPE_NULL)
+    if (ctx->encryptionType == ENCTYPE_NULL) {
+        *minor = GSSEAP_KEY_UNAVAILABLE;
         return GSS_S_UNAVAILABLE;
+    }
 
     if (gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_STREAM) != NULL) {
         major = unwrapStream(minor, ctx, conf_state, qop_state,

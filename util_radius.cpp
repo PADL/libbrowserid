@@ -507,8 +507,12 @@ gssEapRadiusGetRawAvp(OM_uint32 *minor,
     uint32_t attr = VENDORATTR(vendor, attribute);
 
     *vp = pairfind(vps, attr);
+    if (*vp == NULL) {
+        *minor = GSSEAP_NO_SUCH_ATTR;
+        return GSS_S_UNAVAILABLE;
+    }
 
-    return (*vp == NULL) ? GSS_S_UNAVAILABLE : GSS_S_COMPLETE;
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32
@@ -527,8 +531,10 @@ gssEapRadiusGetAvp(OM_uint32 *minor,
     buffer->value = NULL;
 
     vp = pairfind(vps, attr);
-    if (vp == NULL)
+    if (vp == NULL) {
+        *minor = GSSEAP_NO_SUCH_ATTR;
         return GSS_S_UNAVAILABLE;
+    }
 
     do {
         buffer->length += vp->length;

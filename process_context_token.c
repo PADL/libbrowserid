@@ -42,8 +42,10 @@ gss_process_context_token(OM_uint32 *minor,
 
     *minor = 0;
 
-    if (ctx == NULL)
+    if (ctx == NULL) {
+        *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 

@@ -32,6 +32,9 @@
 
 #include "gssapiP_eap.h"
 
+/*
+ * Export a partially established acceptor context.
+ */
 static OM_uint32
 gssEapExportPartialContext(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
@@ -101,8 +104,10 @@ gssEapExportSecContext(OM_uint32 *minor,
     unsigned char *p;
 
     if ((CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) ||
-        ctx->mechanismUsed == GSS_C_NO_OID)
+        ctx->mechanismUsed == GSS_C_NO_OID) {
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         return GSS_S_NO_CONTEXT;
+    }
 
     key.length = KRB_KEY_LENGTH(&ctx->rfc3961Key);
     key.value  = KRB_KEY_DATA(&ctx->rfc3961Key);

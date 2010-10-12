@@ -59,6 +59,13 @@ createStatusInfoKey(void)
     GSSEAP_KEY_CREATE(&gssEapStatusInfoKey, destroyStatusInfo);
 }
 
+/*
+ * Associate a message with a mechanism (minor) status code. This function
+ * takes ownership of the message regardless of success. The message must
+ * be explicitly cleared, if required, so it is suggested that a specific
+ * minor code is either always or never associated with a message, to avoid
+ * dangling (and potentially confusing) error messages.
+ */
 static void
 saveStatusInfoNoCopy(OM_uint32 minor, char *message)
 {
@@ -69,7 +76,9 @@ saveStatusInfoNoCopy(OM_uint32 minor, char *message)
     p = GSSEAP_GETSPECIFIC(gssEapStatusInfoKey);
     for (; p != NULL; p = p->next) {
         if (p->code == minor) {
-            GSSEAP_FREE(p->message);
+            /* Set message in-place */
+            if (p->message != NULL)
+                GSSEAP_FREE(p->message);
             p->message = message;
             return;
         }
@@ -78,7 +87,8 @@ saveStatusInfoNoCopy(OM_uint32 minor, char *message)
 
     p = GSSEAP_CALLOC(1, sizeof(*p));
     if (p == NULL) {
-        GSSEAP_FREE(message);
+        if (message != NULL)
+            GSSEAP_FREE(message);
         return;
     }
 
@@ -151,6 +161,7 @@ gss_display_status(OM_uint32 *minor,
     if (errMsg == NULL) {
         GSSEAP_KRB_INIT(&krbContext);
 
+        /* Try the com_err message */
         errMsg = krb5_get_error_message(krbContext, status_value);
     }
 

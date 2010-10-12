@@ -148,8 +148,10 @@ gssspi_set_cred_option(OM_uint32 *minor,
     gss_cred_id_t cred = *pCred;
     int i;
 
-    if (cred == GSS_C_NO_CREDENTIAL)
+    if (cred == GSS_C_NO_CREDENTIAL) {
+        *minor = EINVAL;
         return GSS_S_UNAVAILABLE;
+    }
 
     GSSEAP_MUTEX_LOCK(&cred->mutex);
 

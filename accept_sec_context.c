@@ -43,7 +43,7 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
 #endif
 
 /*
- * Mark a context as ready for cryptographic operations
+ * Mark an acceptor context as ready for cryptographic operations
  */
 static OM_uint32
 acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
@@ -107,6 +107,10 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     return GSS_S_COMPLETE;
 }
 
+/*
+ * Emit a identity EAP request to force the initiator (peer) to identify
+ * itself.
+ */
 static OM_uint32
 eapGssSmAcceptIdentity(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
@@ -150,6 +154,9 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     return GSS_S_CONTINUE_NEEDED;
 }
 
+/*
+ * Pass the asserted acceptor identity to the authentication server.
+ */
 static OM_uint32
 setAcceptorIdentity(OM_uint32 *minor,
                     gss_ctx_id_t ctx,
@@ -237,6 +244,9 @@ setAcceptorIdentity(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+/*
+ * Allocate a RadSec handle
+ */
 static OM_uint32
 createRadiusHandle(OM_uint32 *minor,
                    gss_cred_id_t cred,
@@ -297,6 +307,9 @@ fail:
     return gssEapRadiusMapError(minor, err);
 }
 
+/*
+ * Process a EAP response from the initiator.
+ */
 static OM_uint32
 eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
@@ -389,7 +402,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     if (frresp->code == PW_ACCESS_CHALLENGE) {
         major = gssEapRadiusGetAvp(minor, frresp->vps, PW_STATE, 0,
                                    &ctx->acceptorCtx.state, TRUE);
-        if (major != GSS_S_UNAVAILABLE && GSS_ERROR(major))
+        if (GSS_ERROR(major) && *minor != GSSEAP_NO_SUCH_ATTR)
             goto cleanup;
     } else {
         ctx->acceptorCtx.vps = frresp->vps;
@@ -497,10 +510,11 @@ makeErrorToken(OM_uint32 *minor,
     case GSSEAP_MISSING_EAP_REQUEST:
         break;
     default:
-        /* Don't return system error codes */
         if (IS_RADIUS_ERROR(minorStatus))
+            /* Squash RADIUS error codes */
             minorStatus = GSSEAP_GENERIC_RADIUS_ERROR;
         else
+            /* Don't return system error codes */
             return GSS_S_COMPLETE;
     }
 
@@ -629,7 +643,7 @@ gss_accept_sec_context(OM_uint32 *minor,
                                    input_chan_bindings,
                                    &innerOutputToken);
         if (GSS_ERROR(major)) {
-            /* Generate an error token */
+            /* Possibly generate an error token */
             tmpMajor = makeErrorToken(&tmpMinor, major, *minor, &innerOutputToken);
             if (GSS_ERROR(tmpMajor)) {
                 major = tmpMajor;

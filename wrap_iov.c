@@ -98,8 +98,10 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     size_t dataLen, assocDataLen;
     krb5_context krbContext;
 
-    if (ctx->encryptionType == ENCTYPE_NULL)
+    if (ctx->encryptionType == ENCTYPE_NULL) {
+        *minor = GSSEAP_KEY_UNAVAILABLE;
         return GSS_S_UNAVAILABLE;
+    }
 
     GSSEAP_KRB_INIT(&krbContext);
 

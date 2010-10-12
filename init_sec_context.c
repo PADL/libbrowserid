@@ -249,6 +249,9 @@ peerConfigFree(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+/*
+ * Mark an initiator context as ready for cryptographic operations
+ */
 static OM_uint32
 initReady(OM_uint32 *minor, gss_ctx_id_t ctx, OM_uint32 reqFlags)
 {
