@@ -74,7 +74,9 @@ public:
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
 
-    const opensaml::saml2::Assertion *getAssertion(void) const {
+    opensaml::saml2::Assertion *initAssertion(void);
+
+    opensaml::saml2::Assertion *getAssertion(void) const {
         return m_assertion;
     }
     bool authenticated(void) const {
@@ -131,8 +133,8 @@ public:
                       int *complete,
                       const opensaml::saml2::Attribute **pAttribute) const;
     bool getAssertion(int *authenticated,
-                      const opensaml::saml2::Assertion **pAssertion) const;
-    ssize_t getAttributeIndex(const gss_buffer_t attr) const;
+                      opensaml::saml2::Assertion **pAssertion,
+                      bool createIfAbsent = false) const;
 
     static bool init(void);
     static void finalize(void);

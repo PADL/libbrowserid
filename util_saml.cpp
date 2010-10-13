@@ -329,14 +329,25 @@ gss_eap_saml_assertion_provider::createAttrContext(void)
     return new gss_eap_saml_assertion_provider;
 }
 
+saml2::Assertion *
+gss_eap_saml_assertion_provider::initAssertion(void)
+{
+    delete m_assertion;
+    m_assertion = saml2::AssertionBuilder::buildAssertion();
+    m_authenticated = false;
+
+    return m_assertion;
+}
+
 /*
  * gss_eap_saml_attr_provider is for retrieving the underlying attributes.
  */
 bool
 gss_eap_saml_attr_provider::getAssertion(int *authenticated,
-                                         const saml2::Assertion **pAssertion) const
+                                         saml2::Assertion **pAssertion,
+                                         bool createIfAbsent) const
 {
-    const gss_eap_saml_assertion_provider *saml;
+    gss_eap_saml_assertion_provider *saml;
 
     if (authenticated != NULL)
         *authenticated = false;
@@ -353,14 +364,24 @@ gss_eap_saml_attr_provider::getAssertion(int *authenticated,
     if (pAssertion != NULL)
         *pAssertion = saml->getAssertion();
 
-    return (saml->getAssertion() != NULL);
+    if (saml->getAssertion() == NULL) {
+        if (createIfAbsent) {
+            if (authenticated != NULL)
+                *authenticated = false;
+            if (pAssertion != NULL)
+                *pAssertion = saml->initAssertion();
+        } else
+            return false;
+    }
+
+    return true;
 }
 
 bool
 gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
                                               void *data) const
 {
-    const saml2::Assertion *assertion;
+    saml2::Assertion *assertion;
     int authenticated;
 
     if (!getAssertion(&authenticated, &assertion))
@@ -381,13 +402,13 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
      *   using the same name syntax.
      */
     /* For each attribute statement, look for an attribute match */
-    const vector <saml2::AttributeStatement *>&statements =
-        assertion->getAttributeStatements();
+    const vector <saml2::AttributeStatement *> &statements =
+        const_cast<const saml2::Assertion *>(assertion)->getAttributeStatements();
 
     for (vector<saml2::AttributeStatement *>::const_iterator s = statements.begin();
         s != statements.end();
         ++s) {
-        const vector<saml2::Attribute*>& attrs =
+        const vector<saml2::Attribute*> &attrs =
             const_cast<const saml2::AttributeStatement*>(*s)->getAttributes();
 
         for (vector<saml2::Attribute*>::const_iterator a = attrs.begin(); a != attrs.end(); ++a) {
@@ -419,26 +440,6 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
     return true;
 }
 
-ssize_t
-gss_eap_saml_attr_provider::getAttributeIndex(const gss_buffer_t attr) const
-{
-    return -1;
-}
-
-bool
-gss_eap_saml_attr_provider::setAttribute(int complete,
-                                         const gss_buffer_t attr,
-                                         const gss_buffer_t value)
-{
-    return false;
-}
-
-bool
-gss_eap_saml_attr_provider::deleteAttribute(const gss_buffer_t value)
-{
-    return false;
-}
-
 static BaseRefVectorOf<XMLCh> *
 decomposeAttributeName(const gss_buffer_t attr)
 {
@@ -449,7 +450,106 @@ decomposeAttributeName(const gss_buffer_t attr)
 
     delete qualifiedAttr;
 
+    if (components->size() != 2) {
+        delete components;
+        components = NULL;
+    }
+
     return components;
+}
+
+bool
+gss_eap_saml_attr_provider::setAttribute(int complete,
+                                         const gss_buffer_t attr,
+                                         const gss_buffer_t value)
+{
+    saml2::Assertion *assertion;
+    saml2::Attribute *attribute;
+    saml2::AttributeValue *attributeValue;
+    saml2::AttributeStatement *attributeStatement;
+
+    if (!getAssertion(NULL, &assertion, true))
+        return false;
+
+    if (assertion->getAttributeStatements().size() != 0) {
+        attributeStatement = assertion->getAttributeStatements().front();
+    } else {
+        attributeStatement = saml2::AttributeStatementBuilder::buildAttributeStatement();
+        assertion->getAttributeStatements().push_back(attributeStatement);
+    }
+
+    /* Check the attribute name consists of name format | whsp | name */
+    BaseRefVectorOf<XMLCh> *components = decomposeAttributeName(attr);
+    if (components == NULL)
+        return false;
+
+    attribute = saml2::AttributeBuilder::buildAttribute();
+    attribute->setNameFormat(components->elementAt(0));
+    attribute->setName(components->elementAt(1));
+
+    XMLCh *xmlValue = new XMLCh[value->length + 1];
+    XMLString::transcode((const char *)value->value, xmlValue, attr->length);
+
+    attributeValue = saml2::AttributeValueBuilder::buildAttributeValue();
+    attributeValue->setTextContent(xmlValue);
+
+    attribute->getAttributeValues().push_back(attributeValue);
+
+    assert(attributeStatement != NULL);
+    attributeStatement->getAttributes().push_back(attribute);
+
+    delete components;
+    delete xmlValue;
+
+    return true;
+}
+
+bool
+gss_eap_saml_attr_provider::deleteAttribute(const gss_buffer_t attr)
+{
+    saml2::Assertion *assertion;
+    bool ret = false;
+
+    if (!getAssertion(NULL, &assertion) ||
+        assertion->getAttributeStatements().size() == 0)
+        return false;
+
+    /* Check the attribute name consists of name format | whsp | name */
+    BaseRefVectorOf<XMLCh> *components = decomposeAttributeName(attr);
+    if (components == NULL)
+        return false;
+
+    /* For each attribute statement, look for an attribute match */
+    const vector<saml2::AttributeStatement *> &statements =
+        const_cast<const saml2::Assertion *>(assertion)->getAttributeStatements();
+
+    for (vector<saml2::AttributeStatement *>::const_iterator s = statements.begin();
+        s != statements.end();
+        ++s) {
+        const vector<saml2::Attribute *> &attrs =
+            const_cast<const saml2::AttributeStatement *>(*s)->getAttributes();
+        ssize_t index = -1, i = 0;
+
+        /* There's got to be an easier way to do this */
+        for (vector<saml2::Attribute *>::const_iterator a = attrs.begin();
+             a != attrs.end();
+             ++a) {
+            if (XMLString::equals((*a)->getNameFormat(), components->elementAt(0)) &&
+                XMLString::equals((*a)->getName(), components->elementAt(1))) {
+                index = i;
+                break;
+            }
+            ++i;
+        }
+        if (index != -1) {
+            (*s)->getAttributes().erase((*s)->getAttributes().begin() + index);
+            ret = true;
+        }
+    }
+
+    delete components;
+
+    return ret;
 }
 
 bool
@@ -458,7 +558,7 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
                                          int *complete,
                                          const saml2::Attribute **pAttribute) const
 {
-    const saml2::Assertion *assertion;
+    saml2::Assertion *assertion;
 
     if (authenticated != NULL)
         *authenticated = false;
@@ -472,23 +572,21 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 
     /* Check the attribute name consists of name format | whsp | name */
     BaseRefVectorOf<XMLCh> *components = decomposeAttributeName(attr);
-    if (components == NULL || components->size() != 2) {
-        delete components;
+    if (components == NULL)
         return false;
-    }
 
     /* For each attribute statement, look for an attribute match */
-    const vector <saml2::AttributeStatement *>&statements =
-        assertion->getAttributeStatements();
+    const vector <saml2::AttributeStatement *> &statements =
+        const_cast<const saml2::Assertion *>(assertion)->getAttributeStatements();
     const saml2::Attribute *ret = NULL;
 
     for (vector<saml2::AttributeStatement *>::const_iterator s = statements.begin();
         s != statements.end();
         ++s) {
-        const vector<saml2::Attribute*>& attrs =
+        const vector<saml2::Attribute *> &attrs =
             const_cast<const saml2::AttributeStatement*>(*s)->getAttributes();
 
-        for (vector<saml2::Attribute*>::const_iterator a = attrs.begin(); a != attrs.end(); ++a) {
+        for (vector<saml2::Attribute *>::const_iterator a = attrs.begin(); a != attrs.end(); ++a) {
             if (XMLString::equals((*a)->getNameFormat(), components->elementAt(0)) &&
                 XMLString::equals((*a)->getName(), components->elementAt(1))) {
                 ret = *a;
