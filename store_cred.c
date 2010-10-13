@@ -42,19 +42,22 @@ gss_store_cred(OM_uint32 *minor,
                gss_OID_set *elements_stored,
                gss_cred_usage_t *cred_usage_stored)
 {
-    OM_uint32 major = GSS_S_UNAVAILABLE;
-
-    *minor = 0;
+    OM_uint32 major;
 
     if (elements_stored != NULL)
         *elements_stored = GSS_C_NO_OID_SET;
     if (cred_usage_stored != NULL)
         *cred_usage_stored = input_usage;
 
-    if (cred == GSS_C_NO_CREDENTIAL)
+    if (cred == GSS_C_NO_CREDENTIAL) {
+        *minor = EINVAL;
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CRED;
+    }
 
     GSSEAP_MUTEX_LOCK(&cred->mutex);
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
 
 #ifdef GSSEAP_ENABLE_REAUTH
     if (cred->krbCred != GSS_C_NO_CREDENTIAL) {

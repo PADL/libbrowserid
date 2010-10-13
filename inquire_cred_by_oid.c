@@ -45,7 +45,7 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
                         const gss_OID desired_object,
                         gss_buffer_set_t *data_set)
 {
-    OM_uint32 major = GSS_S_UNAVAILABLE;
+    OM_uint32 major;
     int i;
 
     *data_set = GSS_C_NO_BUFFER_SET;

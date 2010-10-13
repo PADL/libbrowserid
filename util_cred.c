@@ -143,8 +143,8 @@ gssEapAcquireCred(OM_uint32 *minor,
 
             /* default host-based service is host@localhost */
             if (gethostname(&serviceName[5], MAXHOSTNAMELEN) != 0) {
-                *minor = GSSEAP_NO_HOSTNAME;
                 major = GSS_S_FAILURE;
+                *minor = GSSEAP_NO_HOSTNAME;
                 goto cleanup;
             }
 
@@ -198,8 +198,8 @@ gssEapAcquireCred(OM_uint32 *minor,
         cred->flags |= CRED_FLAG_ACCEPT;
         break;
     default:
-        *minor = GSSEAP_BAD_USAGE;
         major = GSS_S_FAILURE;
+        *minor = GSSEAP_BAD_USAGE;
         goto cleanup;
         break;
     }
@@ -222,7 +222,9 @@ gssEapAcquireCred(OM_uint32 *minor,
         *timeRec = GSS_C_INDEFINITE;
 
     *pCred = cred;
+
     major = GSS_S_COMPLETE;
+    *minor = 0;
 
 cleanup:
     if (GSS_ERROR(major))

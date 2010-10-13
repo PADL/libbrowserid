@@ -67,8 +67,8 @@ gss_inquire_saslname_for_mech(OM_uint32 *minor,
     if (sasl_mech_name != GSS_C_NO_BUFFER) {
         name = gssEapOidToSaslName(mech);
         if (name == GSS_C_NO_BUFFER) {
-            *minor = GSSEAP_WRONG_MECH;
             major = GSS_S_BAD_MECH;
+            *minor = GSSEAP_WRONG_MECH;
         } else {
             major = duplicateBuffer(minor, name, sasl_mech_name);
         }

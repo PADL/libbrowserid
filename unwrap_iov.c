@@ -411,8 +411,8 @@ unwrapStream(OM_uint32 *minor,
     if (stream->buffer.length < theader->buffer.length +
         tpadding->buffer.length +
         ttrailer->buffer.length) {
-        code = GSSEAP_TOK_TRUNC;
         major = GSS_S_DEFECTIVE_TOKEN;
+        code = GSSEAP_TOK_TRUNC;
         goto cleanup;
     }
 
@@ -504,8 +504,8 @@ gss_unwrap_iov(OM_uint32 *minor,
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
-        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         major = GSS_S_NO_CONTEXT;
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         goto cleanup;
     }
 

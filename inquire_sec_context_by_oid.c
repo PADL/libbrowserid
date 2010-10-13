@@ -69,6 +69,7 @@ inquireSessionKey(OM_uint32 *minor,
         goto cleanup;
 
     major = GSS_S_COMPLETE;
+    *minor = 0;
 
 cleanup:
     if (GSS_ERROR(major) && *dataSet != GSS_C_NO_BUFFER_SET) {

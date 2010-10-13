@@ -58,8 +58,8 @@ gssEapExportPartialContext(OM_uint32 *minor,
 
     token->value = GSSEAP_MALLOC(length);
     if (token->value == NULL) {
-        *minor = ENOMEM;
         major = GSS_S_FAILURE;
+        *minor = ENOMEM;
         goto cleanup;
     }
     token->length = length;
@@ -154,8 +154,8 @@ gssEapExportSecContext(OM_uint32 *minor,
 
     token->value = GSSEAP_MALLOC(length);
     if (token->value == NULL) {
-        *minor = ENOMEM;
         major = GSS_S_FAILURE;
+        *minor = ENOMEM;
         goto cleanup;
     }
     token->length = length;

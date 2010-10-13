@@ -228,8 +228,8 @@ importUserName(OM_uint32 *minor,
 
 #define CHECK_REMAIN(n)     do {        \
         if (remain < (n)) {             \
-            *minor = GSSEAP_TOK_TRUNC;  \
             major = GSS_S_BAD_NAME;     \
+            *minor = GSSEAP_TOK_TRUNC;  \
             goto cleanup;               \
         }                               \
     } while (0)
@@ -309,6 +309,7 @@ gssEapImportNameInternal(OM_uint32 *minor,
     }
 
     major = GSS_S_COMPLETE;
+    *minor = 0;
 
 cleanup:
     if (GSS_ERROR(major))
@@ -464,8 +465,8 @@ gssEapExportNameInternal(OM_uint32 *minor,
 
     assert(p == (unsigned char *)exportedName->value + exportedNameLen);
 
-    *minor = 0;
     major = GSS_S_COMPLETE;
+    *minor = 0;
 
 cleanup:
     gss_release_buffer(&tmpMinor, &attrs);

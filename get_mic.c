@@ -55,8 +55,8 @@ gss_get_mic(OM_uint32 *minor,
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
-        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         major = GSS_S_NO_CONTEXT;
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
         goto cleanup;
     }
 

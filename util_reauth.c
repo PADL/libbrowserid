@@ -317,7 +317,7 @@ getDefaultReauthCredentials(OM_uint32 *minor,
 {
     OM_uint32 major = GSS_S_CRED_UNAVAIL;
     krb5_context krbContext = NULL;
-    krb5_error_code code;
+    krb5_error_code code = 0;
     krb5_ccache ccache = NULL;
     krb5_creds match = { 0 };
     krb5_creds creds = { 0 };

@@ -365,8 +365,8 @@ initBegin(OM_uint32 *minor,
         if (!gssEapInternalizeOid(mech, &ctx->mechanismUsed))
             major = duplicateOid(minor, mech, &ctx->mechanismUsed);
     } else {
-        *minor = GSSEAP_WRONG_MECH;
         major = GSS_S_BAD_MECH;
+        *minor = GSSEAP_WRONG_MECH;
     }
     if (GSS_ERROR(major))
         return major;
@@ -453,8 +453,8 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
                                                  ctx,
                                                  &eapConfig);
         if (ctx->initiatorCtx.eap == NULL) {
-            *minor = GSSEAP_PEER_SM_INIT_FAILURE;
             major = GSS_S_FAILURE;
+            *minor = GSSEAP_PEER_SM_INIT_FAILURE;
             goto cleanup;
         }
 
@@ -482,14 +482,14 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         major = GSS_S_CONTINUE_NEEDED;
         ctx->state = EAP_STATE_EXTENSIONS_REQ;
     } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
-        *minor = GSSEAP_PEER_AUTH_FAILURE;
         major = GSS_S_DEFECTIVE_CREDENTIAL;
+        *minor = GSSEAP_PEER_AUTH_FAILURE;
     } else if (code == 0 && initialContextToken) {
         resp = &emptyWpaBuffer;
         major = GSS_S_CONTINUE_NEEDED;
     } else {
-        *minor = GSSEAP_PEER_BAD_MESSAGE;
         major = GSS_S_DEFECTIVE_TOKEN;
+        *minor = GSSEAP_PEER_BAD_MESSAGE;
     }
 
 cleanup:
@@ -608,8 +608,8 @@ eapGssSmInitError(OM_uint32 *minor,
     *minor = ERROR_TABLE_BASE_eapg + load_uint32_be(&p[4]);
 
     if (!GSS_ERROR(major)) {
-        *minor = GSSEAP_BAD_ERROR_TOKEN;
         major = GSS_S_FAILURE;
+        *minor = GSSEAP_BAD_ERROR_TOKEN;
     }
 
     return major;
@@ -714,8 +714,8 @@ gss_init_sec_context(OM_uint32 *minor,
 #endif
 
     if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
-        *minor = GSSEAP_CRED_USAGE_MISMATCH;
         major = GSS_S_NO_CRED;
+        *minor = GSSEAP_CRED_USAGE_MISMATCH;
         goto cleanup;
     }
 
@@ -730,8 +730,8 @@ gss_init_sec_context(OM_uint32 *minor,
         if (tokType == TOK_TYPE_CONTEXT_ERR) {
             ctx->state = EAP_STATE_ERROR;
         } else if (tokType != sm->inputTokenType) {
-            *minor = GSSEAP_WRONG_TOK_ID;
             major = GSS_S_DEFECTIVE_TOKEN;
+            *minor = GSSEAP_WRONG_TOK_ID;
             goto cleanup;
         }
     } else {

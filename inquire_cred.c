@@ -40,7 +40,7 @@ gss_inquire_cred(OM_uint32 *minor,
                  gss_cred_usage_t *cred_usage,
                  gss_OID_set *mechanisms)
 {
-    OM_uint32 major = GSS_S_COMPLETE;
+    OM_uint32 major;
 
     if (cred == NULL) {
         *minor = EINVAL;
@@ -95,8 +95,8 @@ gss_inquire_cred(OM_uint32 *minor,
             goto cleanup;
     }
 
-    *minor = 0;
     major = GSS_S_COMPLETE;
+    *minor = 0;
 
 cleanup:
     GSSEAP_MUTEX_UNLOCK(&cred->mutex);

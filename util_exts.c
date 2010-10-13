@@ -92,8 +92,8 @@ verifyGssChannelBindings(OM_uint32 *minor,
 
     if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS &&
         !bufferEqual(&iov[0].buffer, &chanBindings->application_data)) {
-        *minor = GSSEAP_BINDINGS_MISMATCH;
         major = GSS_S_BAD_BINDINGS;
+        *minor = GSSEAP_BINDINGS_MISMATCH;
     } else {
         major = GSS_S_COMPLETE;
     }
@@ -185,8 +185,8 @@ makeExtensions(OM_uint32 *minor,
 
     types = GSSEAP_CALLOC(nexts, sizeof(OM_uint32));
     if (types == NULL) {
-        *minor = ENOMEM;
         major = GSS_S_FAILURE;
+        *minor = ENOMEM;
         goto cleanup;
     }
 
@@ -288,8 +288,8 @@ verifyExtensions(OM_uint32 *minor,
             types[j] |= EXT_FLAG_VERIFIED;
         } else if (ext->required) {
             /* Required extension missing */
-            *minor = GSSEAP_MISSING_REQUIRED_EXT;
             major = GSS_S_UNAVAILABLE;
+            *minor = GSSEAP_MISSING_REQUIRED_EXT;
             goto cleanup;
         }
     }
@@ -298,14 +298,14 @@ verifyExtensions(OM_uint32 *minor,
     for (i = 0; i < extensions->count; i++) {
         if ((types[i] & EXT_FLAG_CRITICAL) &&
             (types[i] & EXT_FLAG_VERIFIED) == 0) {
-            *minor = GSSEAP_CRIT_EXT_UNAVAILABLE;
             major = GSS_S_UNAVAILABLE;
+            *minor = GSSEAP_CRIT_EXT_UNAVAILABLE;
             goto cleanup;
         }
     }
 
-    *minor = 0;
     major = GSS_S_COMPLETE;
+    *minor = 0;
 
 cleanup:
     gss_release_buffer_set(&tmpMinor, &extensions);
@@ -362,8 +362,8 @@ encodeExtensions(OM_uint32 *minor,
      */
     buffer->value = GSSEAP_MALLOC(required ? required : 1);
     if (buffer->value == NULL) {
-        *minor = ENOMEM;
         major = GSS_S_FAILURE;
+        *minor = ENOMEM;
         goto cleanup;
     }
 
@@ -431,16 +431,16 @@ decodeExtensions(OM_uint32 *minor,
         gss_buffer_desc extension;
 
         if (remain < 8) {
-            *minor = GSSEAP_TOK_TRUNC;
             major = GSS_S_DEFECTIVE_TOKEN;
+            *minor = GSSEAP_TOK_TRUNC;
             goto cleanup;
         }
 
         ntypes = GSSEAP_REALLOC(types,
                                 (extensions->count + 1) * sizeof(OM_uint32));
         if (ntypes == NULL) {
-            *minor = ENOMEM;
             major = GSS_S_FAILURE;
+            *minor = ENOMEM;
             goto cleanup;
         }
         types = ntypes;
@@ -449,8 +449,8 @@ decodeExtensions(OM_uint32 *minor,
         extension.length = load_uint32_be(&p[4]);
 
         if (remain < 8 + extension.length) {
-            *minor = GSSEAP_TOK_TRUNC;
             major = GSS_S_DEFECTIVE_TOKEN;
+            *minor = GSSEAP_TOK_TRUNC;
             goto cleanup;
         }
         extension.value = &p[8];

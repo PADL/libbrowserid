@@ -141,7 +141,7 @@ gss_display_status(OM_uint32 *minor,
                    OM_uint32 *message_context,
                    gss_buffer_t status_string)
 {
-    OM_uint32 major = GSS_S_COMPLETE;
+    OM_uint32 major;
     krb5_context krbContext = NULL;
     const char *errMsg;
 
@@ -149,11 +149,13 @@ gss_display_status(OM_uint32 *minor,
     status_string->value = NULL;
 
     if (!gssEapIsMechanismOid(mech_type)) {
+        *minor = GSSEAP_WRONG_MECH;
         return GSS_S_BAD_MECH;
     }
 
     if (status_type != GSS_C_MECH_CODE) {
         /* we rely on the mechglue for GSS_C_GSS_CODE */
+        *minor = 0;
         return GSS_S_BAD_STATUS;
     }
 
@@ -165,8 +167,12 @@ gss_display_status(OM_uint32 *minor,
         errMsg = krb5_get_error_message(krbContext, status_value);
     }
 
-    if (errMsg != NULL)
+    if (errMsg != NULL) {
         major = makeStringBuffer(minor, errMsg, status_string);
+    } else {
+        major = GSS_S_COMPLETE;
+        *minor = 0;
+    }
 
     if (krbContext != NULL)
         krb5_free_error_message(krbContext, errMsg);

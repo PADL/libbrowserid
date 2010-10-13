@@ -124,6 +124,9 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
 #endif
     }
 
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
 cleanup:
     if (GSS_ERROR(major)) {
         gss_release_oid_set(&tmpMinor, mech_attrs);
