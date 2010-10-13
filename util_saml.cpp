@@ -361,7 +361,6 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
                                               void *data) const
 {
     const saml2::Assertion *assertion;
-    bool ret = true;
     int authenticated;
 
     if (!getAssertion(&authenticated, &assertion))
@@ -381,36 +380,49 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
      *   query, the retrieved attributes SHOULD be GSS-API name attributes
      *   using the same name syntax.
      */
-    const vector<saml2::Attribute*>& attrs2 =
-        const_cast<const saml2::AttributeStatement*>(assertion->getAttributeStatements().front())->getAttributes();
-    for (vector<saml2::Attribute*>::const_iterator a = attrs2.begin();
-        a != attrs2.end();
-        ++a)
-    {
-        const XMLCh *attributeName = (*a)->getName();
-        const XMLCh *attributeNameFormat = (*a)->getNameFormat();
-        XMLCh *qualifiedName;
-        XMLCh space[2] = { ' ', 0 };
-        gss_buffer_desc utf8;
+    /* For each attribute statement, look for an attribute match */
+    const vector <saml2::AttributeStatement *>&statements =
+        assertion->getAttributeStatements();
 
-        qualifiedName = new XMLCh[XMLString::stringLen(attributeNameFormat) + 1 +
-                                  XMLString::stringLen(attributeName) + 1];
-        XMLString::copyString(qualifiedName, attributeNameFormat);
-        XMLString::catString(qualifiedName, space);
-        XMLString::catString(qualifiedName, attributeName);
+    for (vector<saml2::AttributeStatement *>::const_iterator s = statements.begin();
+        s != statements.end();
+        ++s) {
+        const vector<saml2::Attribute*>& attrs =
+            const_cast<const saml2::AttributeStatement*>(*s)->getAttributes();
 
-        utf8.value = (void *)toUTF8(qualifiedName);
-        utf8.length = strlen((char *)utf8.value);
+        for (vector<saml2::Attribute*>::const_iterator a = attrs.begin(); a != attrs.end(); ++a) {
+            const XMLCh *attributeName = (*a)->getName();
+            const XMLCh *attributeNameFormat = (*a)->getNameFormat();
+            XMLCh *qualifiedName;
+            XMLCh space[2] = { ' ', 0 };
+            gss_buffer_desc utf8;
+            bool ret;
 
-        ret = addAttribute(this, &utf8, data);
+            qualifiedName = new XMLCh[XMLString::stringLen(attributeNameFormat) + 1 +
+                                      XMLString::stringLen(attributeName) + 1];
+            XMLString::copyString(qualifiedName, attributeNameFormat);
+            XMLString::catString(qualifiedName, space);
+            XMLString::catString(qualifiedName, attributeName);
 
-        delete qualifiedName;
+            utf8.value = (void *)toUTF8(qualifiedName);
+            utf8.length = strlen((char *)utf8.value);
 
-        if (!ret)
-            break;
+            ret = addAttribute(this, &utf8, data);
+
+            delete qualifiedName;
+
+            if (!ret)
+                return ret;
+        }
     }
 
-    return ret;
+    return true;
+}
+
+ssize_t
+gss_eap_saml_attr_provider::getAttributeIndex(const gss_buffer_t attr) const
+{
+    return -1;
 }
 
 bool

@@ -132,6 +132,7 @@ public:
                       const opensaml::saml2::Attribute **pAttribute) const;
     bool getAssertion(int *authenticated,
                       const opensaml::saml2::Assertion **pAssertion) const;
+    ssize_t getAttributeIndex(const gss_buffer_t attr) const;
 
     static bool init(void);
     static void finalize(void);

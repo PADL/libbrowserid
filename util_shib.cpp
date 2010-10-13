@@ -192,7 +192,7 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     return true;
 }
 
-int
+ssize_t
 gss_eap_shib_attr_provider::getAttributeIndex(const gss_buffer_t attr) const
 {
     int i = 0;

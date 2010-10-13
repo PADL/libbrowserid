@@ -87,7 +87,7 @@ private:
     static std::vector <shibsp::Attribute *>
         duplicateAttributes(const std::vector <shibsp::Attribute *>src);
 
-    int getAttributeIndex(const gss_buffer_t attr) const;
+    ssize_t getAttributeIndex(const gss_buffer_t attr) const;
     const shibsp::Attribute *getAttribute(const gss_buffer_t attr) const;
 
     std::vector<shibsp::Attribute *> getAttributes(void) const {
