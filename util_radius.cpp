@@ -142,7 +142,7 @@ isSecretAttributeP(uint32_t attribute)
 }
 
 static bool
-isHiddenAttributeP(uint16_t attrid, uint16_t vendor)
+isInternalAttributeP(uint16_t attrid, uint16_t vendor)
 {
     bool ret = false;
 
@@ -161,9 +161,9 @@ isHiddenAttributeP(uint16_t attrid, uint16_t vendor)
 }
 
 static bool
-isHiddenAttributeP(uint32_t attribute)
+isInternalAttributeP(uint32_t attribute)
 {
-    return isHiddenAttributeP(ATTRID(attribute), VENDOR(attribute));
+    return isInternalAttributeP(ATTRID(attribute), VENDOR(attribute));
 }
 
 /*
@@ -196,7 +196,8 @@ copyAvps(const VALUE_PAIR *src)
 }
 
 bool
-gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute, void *data) const
+gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
+                                                void *data) const
 {
     VALUE_PAIR *vp;
     std::vector <std::string> seen;
@@ -205,7 +206,8 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
         gss_buffer_desc attribute;
         char attrid[64];
 
-        if (isHiddenAttributeP(vp->attribute))
+        /* Don't advertise attributes that are internal to the GSS-EAP mechanism */
+        if (isInternalAttributeP(vp->attribute))
             continue;
 
         if (alreadyAddedAttributeP(seen, vp))
@@ -264,7 +266,7 @@ gss_eap_radius_attr_provider::setAttribute(int complete,
     OM_uint32 major = GSS_S_UNAVAILABLE, minor;
 
     if (!isSecretAttributeP(attrid) &&
-        !isHiddenAttributeP(attrid)) {
+        !isInternalAttributeP(attrid)) {
         deleteAttribute(attrid);
 
         major = gssEapRadiusAddAvp(&minor, &m_vps,
@@ -291,7 +293,7 @@ gss_eap_radius_attr_provider::setAttribute(int complete,
 bool
 gss_eap_radius_attr_provider::deleteAttribute(uint32_t attrid)
 {
-    if (isSecretAttributeP(attrid) || isHiddenAttributeP(attrid) ||
+    if (isSecretAttributeP(attrid) || isInternalAttributeP(attrid) ||
         pairfind(m_vps, attrid) == NULL)
         return false;
 
@@ -341,9 +343,6 @@ gss_eap_radius_attr_provider::getAttribute(uint32_t attrid,
     int i = *more, count = 0;
 
     *more = 0;
-
-    if (isHiddenAttributeP(attrid))
-        return false;
 
     if (i == -1)
         i = 0;
