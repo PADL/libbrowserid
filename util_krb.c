@@ -73,12 +73,13 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
 }
 
 /*
- * Derive a key for RFC 4121 use by using the following
- * derivation function:
+ * Derive a key K for RFC 4121 use by using the following
+ * derivation function (based on RFC 4402);
  *
- *    random-to-key(prf(random-to-key([e]msk), "rfc4121-gss-eap"))
- *
- * where random-to-key and prf are defined in RFC 3961.
+ * KMSK = random-to-key(MSK)
+ * Tn = pseudo-random(KMSK, n || "rfc4121-gss-eap")
+ * L = output key size
+ * K = truncate(L, T1 || T2 || .. || Tn)
  */
 OM_uint32
 gssEapDeriveRfc3961Key(OM_uint32 *minor,
