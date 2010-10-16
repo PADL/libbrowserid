@@ -39,21 +39,41 @@
 extern "C" {
 #endif /* __cplusplus */
 
+/*
+ * GSS EAP mechanism OIDs.
+ */
 extern gss_OID GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM;
 extern gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM;
 
-/* name type */
+/*
+ * Mechanism name OID.
+ */
 extern gss_OID GSS_EAP_NT_PRINCIPAL_NAME;
 
-/* the libradsec configuration file */
+/*
+ * The libradsec configuration file; defaults to radsec.conf
+ * in the system configuration directory if unspecified.
+ */
 extern gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE;
-/* the stanza in the libradsec configuration file */
+
+/*
+ * The stanza in the libradsec configuration file; defaults
+ * to "gss-eap" if unspecified.
+ */
 extern gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_STANZA;
 
-/* flags in NBO followed by an optional boolean octet that
- * specifies if the specified flags should be cleared */
+/*
+ * Flags as a 32-bit integer in network byte order,
+ * followed by a boolean octet indicating whether to
+ * clear the specified flags (if absent, defaults to
+ * FALSE, ie. set flags).
+ */
 extern gss_OID GSS_EAP_CRED_SET_CRED_FLAG;
 
+/*
+ * Credentials flag indicating the local attributes
+ * processing should be skipped.
+ */
 #define GSS_EAP_DISABLE_LOCAL_ATTRS_FLAG    0x00000001
 
 #ifdef __cplusplus
