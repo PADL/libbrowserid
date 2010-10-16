@@ -241,8 +241,8 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
                        krb5_keyblock *pKey);
 
 /* util_exts.c */
-#define EXT_FLAG_CRITICAL               0x80000000
-#define EXT_FLAG_VERIFIED               0x40000000
+#define EXT_FLAG_CRITICAL               0x80000000  /* critical, wire flag */
+#define EXT_FLAG_VERIFIED               0x40000000  /* verified, API flag */
 
 #define EXT_TYPE_GSS_CHANNEL_BINDINGS   0x00000000
 #define EXT_TYPE_REAUTH_CREDS           0x00000001

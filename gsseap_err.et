@@ -43,7 +43,6 @@ error_code GSSEAP_BAD_TOK_HEADER,           "Token header is malformed or corrup
 error_code GSSEAP_TOK_TRUNC,                "Token is missing data"
 error_code GSSEAP_BAD_DIRECTION,            "Packet was replayed in wrong direction"
 error_code GSSEAP_WRONG_TOK_ID,             "Received token ID does not match expected token ID"
-error_code GSSEAP_REFLECT,                  "Token was reflected"
 error_code GSSEAP_CRIT_EXT_UNAVAILABLE,     "Critical extension unavailable"
 error_code GSSEAP_MISSING_REQUIRED_EXT,     "Missing required extension"
 error_code GSSEAP_KEY_UNAVAILABLE,          "EAP key unavailable"
