@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Message protection services: verify a message integrity check.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

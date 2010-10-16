@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Map SASL mechanism name to a mechanism OID.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

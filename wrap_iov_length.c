@@ -53,6 +53,10 @@
  * or implied warranty.
  */
 
+/*
+ * Message protection services: determine protected message size.
+ */
+
 #include "gssapiP_eap.h"
 
 #define INIT_IOV_DATA(_iov)     do { (_iov)->buffer.value = NULL;       \
@@ -77,11 +81,15 @@ gssEapWrapIovLength(OM_uint32 *minor,
     int dce_style;
     size_t ec;
 
-    if (qop_req != GSS_C_QOP_DEFAULT)
-        return GSS_S_FAILURE;
-
-    if (ctx->encryptionType == ENCTYPE_NULL)
+    if (qop_req != GSS_C_QOP_DEFAULT) {
+        *minor = GSSEAP_UNKNOWN_QOP;
         return GSS_S_UNAVAILABLE;
+    }
+
+    if (ctx->encryptionType == ENCTYPE_NULL) {
+        *minor = GSSEAP_KEY_UNAVAILABLE;
+        return GSS_S_UNAVAILABLE;
+    }
 
     GSSEAP_KRB_INIT(&krbContext);
 

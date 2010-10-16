@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Return context handle properties.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

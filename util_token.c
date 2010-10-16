@@ -51,6 +51,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*
+ * Utility routines for GSS tokens.
+ */
+
 #include "gssapiP_eap.h"
 
 /*

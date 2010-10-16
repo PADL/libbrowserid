@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Set an extended property on a credential handle.
+ */
+
 #include "gssapiP_eap.h"
 
 static OM_uint32

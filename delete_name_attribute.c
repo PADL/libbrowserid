@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Wrapper for removing a name attribute.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

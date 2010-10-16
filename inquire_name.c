@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Enumerate name attributes.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32 gss_inquire_name(OM_uint32 *minor,

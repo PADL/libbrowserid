@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Serialise a name and its attributes.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

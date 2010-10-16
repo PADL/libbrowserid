@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Local attribute provider.
+ */
+
 #ifndef _UTIL_SHIB_H_
 #define _UTIL_SHIB_H_ 1
 

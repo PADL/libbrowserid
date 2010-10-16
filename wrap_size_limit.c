@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Message protection services: determine maximum input size.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

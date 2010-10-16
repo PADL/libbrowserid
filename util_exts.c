@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Extension token support.
+ */
+
 #include "gssapiP_eap.h"
 
 static OM_uint32

@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * "Lucid" security context export routine (called by MIT Kerberos mechanism).
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

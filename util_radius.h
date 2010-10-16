@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * RADIUS attribute provider.
+ */
+
 #ifndef _UTIL_RADIUS_H_
 #define _UTIL_RADIUS_H_ 1
 

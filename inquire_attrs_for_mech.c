@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Enumerate the features supported by the GSS EAP mechanism.
+ */
+
 #include "gssapiP_eap.h"
 
 #define MA_ADD(ma, set)    do { \

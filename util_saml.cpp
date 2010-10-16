@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * SAML attribute provider implementation.
+ */
+
 #include "gssapiP_eap.h"
 
 #include <sstream>

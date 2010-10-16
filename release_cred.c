@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Release a credential handle.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

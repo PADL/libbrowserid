@@ -53,6 +53,10 @@
  * or implied warranty.
  */
 
+/*
+ * Message protection services: wrap with scatter-gather API.
+ */
+
 #include "gssapiP_eap.h"
 
 unsigned char
@@ -333,6 +337,11 @@ gss_wrap_iov(OM_uint32 *minor,
     if (ctx == GSS_C_NO_CONTEXT) {
         *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
+
+    if (qop_req != GSS_C_QOP_DEFAULT) {
+        *minor = GSSEAP_UNKNOWN_QOP;
+        return GSS_S_UNAVAILABLE;
     }
 
     *minor = 0;

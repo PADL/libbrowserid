@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Parameterized version of gss_display_name(), currently unimplemented.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

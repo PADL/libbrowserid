@@ -53,6 +53,10 @@
  * or implied warranty.
  */
 
+/*
+ * Name utility routines.
+ */
+
 #include "gssapiP_eap.h"
 
 static gss_OID_desc gssEapNtPrincipalName = {

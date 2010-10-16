@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Wrapper for "displaying" (returning string representation of) a name.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

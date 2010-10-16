@@ -30,6 +30,11 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Establish a security context on the initiator (client). These functions
+ * wrap around libeap.
+ */
+
 #include "gssapiP_eap.h"
 
 #ifdef GSSEAP_ENABLE_REAUTH

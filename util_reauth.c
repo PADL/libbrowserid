@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Fast reauthentication support.
+ */
+
 #include "gssapiP_eap.h"
 
 #include <dlfcn.h>

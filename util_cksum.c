@@ -51,6 +51,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*
+ * Message protection services: checksum helpers.
+ */
+
 #include "gssapiP_eap.h"
 
 static int

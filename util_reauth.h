@@ -30,11 +30,16 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Fast reauthentication support.
+ */
+
 #include "gssapiP_eap.h"
 
 #ifndef _UTIL_REAUTH_H_
 #define _UTIL_REAUTH_H_ 1
 
+/* AD element containing serialised AVPs. */
 #define KRB5_AUTHDATA_RADIUS_AVP        513
 
 OM_uint32

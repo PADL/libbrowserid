@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * General mechanism utility routines.
+ */
+
 #include "gssapiP_eap.h"
 
 /*

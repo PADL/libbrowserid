@@ -77,6 +77,10 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
+/*
+ * Message protection services: cryptography helpers.
+ */
+
 #include "gssapiP_eap.h"
 
 /*

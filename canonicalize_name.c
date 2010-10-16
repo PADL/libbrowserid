@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Function for canonicalizing a name; presently just duplicates it.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

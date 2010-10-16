@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Deserialise a context handle.
+ */
+
 #include "gssapiP_eap.h"
 
 #define UPDATE_REMAIN(n)    do {                \

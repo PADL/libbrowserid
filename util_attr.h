@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Attribute provider interface.
+ */
+
 #ifndef _UTIL_ATTR_H_
 #define _UTIL_ATTR_H_ 1
 

@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Utility routines for credential handles.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

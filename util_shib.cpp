@@ -45,6 +45,10 @@
  * limitations under the License.
  */
 
+/*
+ * Local attribute provider implementation.
+ */
+
 #include <shibsp/exceptions.h>
 #include <shibsp/attribute/SimpleAttribute.h>
 

@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Message protection services: wrap.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * SAML attribute provider.
+ */
+
 #ifndef _UTIL_SAML_H_
 #define _UTIL_SAML_H_ 1
 

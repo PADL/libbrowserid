@@ -54,6 +54,10 @@
  *
  */
 
+/*
+ * OID utility routines.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

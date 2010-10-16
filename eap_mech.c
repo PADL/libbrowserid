@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Initialisation and finalise functions.
+ */
+
 #include "gssapiP_eap.h"
 
 static OM_uint32

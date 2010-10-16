@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Attribute provider mechanism.
+ */
+
 #include "gssapiP_eap.h"
 
 #include <typeinfo>

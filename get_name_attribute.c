@@ -32,6 +32,10 @@
 
 #include "gssapiP_eap.h"
 
+/*
+ * Wrapper for retrieving a naming attribute.
+ */
+
 OM_uint32
 gss_get_name_attribute(OM_uint32 *minor,
                        gss_name_t name,

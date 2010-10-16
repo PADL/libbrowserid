@@ -52,11 +52,7 @@
  */
 
 /*
- * $Id: util_ordering.c 23457 2009-12-08 00:04:48Z tlyu $
- */
-
-/*
- * functions to check sequence numbers for replay and sequencing
+ * Functions to check sequence numbers for replay and sequencing
  */
 
 #include "gssapiP_eap.h"

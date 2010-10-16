@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Enumerate the supported mechanism OIDs.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

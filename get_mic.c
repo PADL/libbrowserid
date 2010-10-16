@@ -30,12 +30,16 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Message protection services: make a message integerity check.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32
 gss_get_mic(OM_uint32 *minor,
             gss_ctx_id_t ctx,
-            gss_qop_t qop_req __attribute__((__unused__)),
+            gss_qop_t qop_req,
             gss_buffer_t message_buffer,
             gss_buffer_t message_token)
 {
@@ -45,6 +49,11 @@ gss_get_mic(OM_uint32 *minor,
     if (ctx == GSS_C_NO_CONTEXT) {
         *minor = EINVAL;
         return GSS_S_NO_CONTEXT;
+    }
+
+    if (qop_req != GSS_C_QOP_DEFAULT) {
+        *minor = GSSEAP_UNKNOWN_QOP;
+        return GSS_S_UNAVAILABLE;
     }
 
     *minor = 0;

@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Kerberos 5 helpers.
+ */
+
 #include "gssapiP_eap.h"
 
 static GSSEAP_THREAD_ONCE krbContextKeyOnce = GSSEAP_ONCE_INITIALIZER;

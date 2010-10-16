@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Buffer handling helpers.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

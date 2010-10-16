@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Mark an internalized OID as not required to be released.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

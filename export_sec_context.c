@@ -30,11 +30,13 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Serialise a security context. On the acceptor, this may be partially
+ * established.
+ */
+
 #include "gssapiP_eap.h"
 
-/*
- * Export a partially established acceptor context.
- */
 static OM_uint32
 gssEapExportPartialContext(OM_uint32 *minor,
                            gss_ctx_id_t ctx,

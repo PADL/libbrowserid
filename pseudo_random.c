@@ -53,6 +53,10 @@
  * or implied warranty.
  */
 
+/*
+ * PRF
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

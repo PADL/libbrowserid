@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * RADIUS attribute provider implementation.
+ */
+
 #include "gssapiP_eap.h"
 
 /* stuff that should be provided by libradsec/libfreeradius-radius */

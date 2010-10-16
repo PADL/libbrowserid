@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Wrapper for acquiring a credential handle using a password.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

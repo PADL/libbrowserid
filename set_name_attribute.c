@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Set an attribute on a name.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

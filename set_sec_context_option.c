@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Set an extended property on a context handle.
+ */
+
 #include "gssapiP_eap.h"
 
 static struct {

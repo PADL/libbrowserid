@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Compare two names.
+ */
+
 #include "gssapiP_eap.h"
 
 OM_uint32

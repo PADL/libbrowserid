@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Return extended credential handle properties.
+ */
+
 #include "gssapiP_eap.h"
 
 static struct {

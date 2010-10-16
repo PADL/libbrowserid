@@ -30,6 +30,10 @@
  * SUCH DAMAGE.
  */
 
+/*
+ * Function for converting mechanism error codes to strings.
+ */
+
 #include "gssapiP_eap.h"
 
 static GSSEAP_THREAD_ONCE gssEapStatusInfoKeyOnce = GSSEAP_ONCE_INITIALIZER;

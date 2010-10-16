@@ -53,6 +53,10 @@
  * or implied warranty.
  */
 
+/*
+ * Message protection services: unwrap with scatter-gather API.
+ */
+
 #include "gssapiP_eap.h"
 
 /*
