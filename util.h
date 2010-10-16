@@ -57,6 +57,7 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_ 1
 
+#include <sys/param.h>
 #include <string.h>
 #include <errno.h>
 
@@ -66,35 +67,9 @@
 extern "C" {
 #endif
 
-#ifndef MIN             /* Usually found in <sys/param.h>. */
+#ifndef MIN
 #define MIN(_a,_b)  ((_a)<(_b)?(_a):(_b))
 #endif
-
-#define KRB_KEY_TYPE(key)       ((key)->enctype)
-#define KRB_KEY_DATA(key)       ((key)->contents)
-#define KRB_KEY_LENGTH(key)     ((key)->length)
-#define KRB_KEY_INIT(key)       do {        \
-        KRB_KEY_TYPE(key) = ENCTYPE_NULL;   \
-        KRB_KEY_DATA(key) = NULL;           \
-        KRB_KEY_LENGTH(key) = 0;            \
-    } while (0)
-
-enum gss_eap_token_type {
-    TOK_TYPE_NONE                    = 0x0000,  /* no token */
-    TOK_TYPE_MIC                     = 0x0404,  /* RFC 4121 MIC token */
-    TOK_TYPE_WRAP                    = 0x0504,  /* RFC 4121 wrap token */
-    TOK_TYPE_EXPORT_NAME             = 0x0401,  /* RFC 2743 exported name */
-    TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,  /* exported composite name */
-    TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
-    TOK_TYPE_EAP_RESP                = 0x0601,  /* EAP response */
-    TOK_TYPE_EAP_REQ                 = 0x0602,  /* EAP request */
-    TOK_TYPE_EXT_REQ                 = 0x0603,  /* GSS EAP extensions request */
-    TOK_TYPE_EXT_RESP                = 0x0604,  /* GSS EAP extensions response */
-    TOK_TYPE_GSS_REAUTH              = 0x0605,  /* GSS EAP fast reauthentication token */
-    TOK_TYPE_CONTEXT_ERR             = 0x0606,  /* context error */
-};
-
-#define EAP_EXPORT_CONTEXT_V1           1
 
 /* util_buffer.c */
 OM_uint32
@@ -158,6 +133,23 @@ gssEapEncodeGssChannelBindings(OM_uint32 *minor,
 #endif
 
 /* util_context.c */
+#define EAP_EXPORT_CONTEXT_V1           1
+
+enum gss_eap_token_type {
+    TOK_TYPE_NONE                    = 0x0000,  /* no token */
+    TOK_TYPE_MIC                     = 0x0404,  /* RFC 4121 MIC token */
+    TOK_TYPE_WRAP                    = 0x0504,  /* RFC 4121 wrap token */
+    TOK_TYPE_EXPORT_NAME             = 0x0401,  /* RFC 2743 exported name */
+    TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,  /* exported composite name */
+    TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
+    TOK_TYPE_EAP_RESP                = 0x0601,  /* EAP response */
+    TOK_TYPE_EAP_REQ                 = 0x0602,  /* EAP request */
+    TOK_TYPE_EXT_REQ                 = 0x0603,  /* GSS EAP extensions request */
+    TOK_TYPE_EXT_RESP                = 0x0604,  /* GSS EAP extensions response */
+    TOK_TYPE_GSS_REAUTH              = 0x0605,  /* GSS EAP fast reauthentication token */
+    TOK_TYPE_CONTEXT_ERR             = 0x0606,  /* context error */
+};
+
 OM_uint32 gssEapAllocContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 OM_uint32 gssEapReleaseContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 
@@ -283,6 +275,24 @@ gssEapVerifyExtensions(OM_uint32 *minor,
                        const gss_buffer_t buffer);
 
 /* util_krb.c */
+#define KRB_KEY_TYPE(key)       ((key)->enctype)
+#define KRB_KEY_DATA(key)       ((key)->contents)
+#define KRB_KEY_LENGTH(key)     ((key)->length)
+#define KRB_KEY_INIT(key)       do {        \
+        KRB_KEY_TYPE(key) = ENCTYPE_NULL;   \
+        KRB_KEY_DATA(key) = NULL;           \
+        KRB_KEY_LENGTH(key) = 0;            \
+    } while (0)
+
+#define GSSEAP_KRB_INIT(ctx) do {                   \
+        OM_uint32 tmpMajor;                         \
+                                                    \
+        tmpMajor  = gssEapKerberosInit(minor, ctx); \
+        if (GSS_ERROR(tmpMajor)) {                  \
+            return tmpMajor;                        \
+        }                                           \
+    } while (0)
+
 OM_uint32
 gssEapKerberosInit(OM_uint32 *minor, krb5_context *context);
 
@@ -290,14 +300,6 @@ OM_uint32
 rfc3961ChecksumTypeForKey(OM_uint32 *minor,
                           krb5_keyblock *key,
                           krb5_cksumtype *cksumtype);
-
-#define GSSEAP_KRB_INIT(ctx) do {                   \
-        OM_uint32 tmpMajor;                         \
-        tmpMajor  = gssEapKerberosInit(minor, ctx); \
-        if (GSS_ERROR(tmpMajor)) {                  \
-            return tmpMajor;                        \
-        }                                           \
-    } while (0)
 
 /* util_lucid.c */
 OM_uint32
