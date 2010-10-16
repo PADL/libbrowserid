@@ -170,9 +170,9 @@ setAcceptorIdentity(OM_uint32 *minor,
     gss_buffer_desc nameBuf;
     krb5_context krbContext = NULL;
     krb5_principal krbPrinc;
-    struct rs_handle *rh = ctx->acceptorCtx.radHandle;
+    struct rs_context *rc = ctx->acceptorCtx.radContext;
 
-    assert(rh != NULL);
+    assert(rc != NULL);
 
     if (ctx->acceptorName == GSS_C_NO_NAME) {
         *minor = 0;
@@ -267,10 +267,10 @@ createRadiusHandle(OM_uint32 *minor,
     struct rs_alloc_scheme ralloc;
     struct rs_error *err;
 
-    assert(actx->radHandle == NULL);
+    assert(actx->radContext == NULL);
     assert(actx->radConn == NULL);
 
-    if (rs_context_create(&actx->radHandle, RS_DICT_FILE) != 0) {
+    if (rs_context_create(&actx->radContext, RS_DICT_FILE) != 0) {
         *minor = GSSEAP_RADSEC_CONTEXT_FAILURE;
         return GSS_S_FAILURE;
     }
@@ -287,14 +287,14 @@ createRadiusHandle(OM_uint32 *minor,
     ralloc.free    = GSSEAP_FREE;
     ralloc.realloc = GSSEAP_REALLOC;
 
-    rs_context_set_alloc_scheme(actx->radHandle, &ralloc);
+    rs_context_set_alloc_scheme(actx->radContext, &ralloc);
 
-    if (rs_context_read_config(actx->radHandle, configFile) != 0) {
-        err = rs_err_ctx_pop(actx->radHandle);
+    if (rs_context_read_config(actx->radContext, configFile) != 0) {
+        err = rs_err_ctx_pop(actx->radContext);
         goto fail;
     }
 
-    if (rs_conn_create(actx->radHandle, &actx->radConn, configStanza) != 0) {
+    if (rs_conn_create(actx->radContext, &actx->radConn, configStanza) != 0) {
         err = rs_err_conn_pop(actx->radConn);
         goto fail;
     }
@@ -328,14 +328,13 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            gss_buffer_t outputToken)
 {
     OM_uint32 major, tmpMinor;
-    struct rs_handle *rh;
     struct rs_connection *rconn;
     struct rs_request *request = NULL;
     struct rs_packet *req = NULL, *resp = NULL;
     struct radius_packet *frreq, *frresp;
     int sendAcceptorIdentity = 0;
 
-    if (ctx->acceptorCtx.radHandle == NULL) {
+    if (ctx->acceptorCtx.radContext == NULL) {
         /* May be NULL from an imported partial context */
         major = createRadiusHandle(minor, cred, ctx);
         if (GSS_ERROR(major))
@@ -344,7 +343,6 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         sendAcceptorIdentity = 1;
     }
 
-    rh = ctx->acceptorCtx.radHandle;
     rconn = ctx->acceptorCtx.radConn;
 
     if (rs_packet_create_acc_request(rconn, &req, NULL, NULL) != 0) {

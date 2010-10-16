@@ -89,8 +89,8 @@ releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
 
     if (ctx->radConn != NULL)
         rs_conn_destroy(ctx->radConn);
-    if (ctx->radHandle != NULL)
-        rs_context_destroy(ctx->radHandle);
+    if (ctx->radContext != NULL)
+        rs_context_destroy(ctx->radContext);
     if (ctx->radServer != NULL)
         GSSEAP_FREE(ctx->radServer);
     gss_release_buffer(&tmpMinor, &ctx->state);

@@ -161,7 +161,7 @@ struct gss_eap_initiator_ctx {
 };
 
 struct gss_eap_acceptor_ctx {
-    struct rs_handle *radHandle;
+    struct rs_context *radContext;
     struct rs_connection *radConn;
     char *radServer;
     gss_buffer_desc state;
