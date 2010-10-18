@@ -395,6 +395,9 @@ encodeExtensions(OM_uint32 *minor,
     assert(p == (unsigned char *)buffer->value + required);
     assert(buffer->value != NULL);
 
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
 cleanup:
     if (GSS_ERROR(major)) {
         gss_release_buffer(&tmpMinor, buffer);
