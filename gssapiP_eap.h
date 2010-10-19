@@ -34,6 +34,7 @@
 #define _GSSAPIP_EAP_H_ 1
 
 #include "config.h"
+
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
@@ -42,25 +43,23 @@
 #include <time.h>
 #include <sys/param.h>
 
-/* GSS includes */
+/* GSS headers */
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_krb5.h>
 #include <gssapi/gssapi_ext.h>
 #include "gssapi_eap.h"
 
-/* Kerberos includes */
+/* Kerberos headers */
 #include <krb5.h>
 
-/* EAP includes (not C++ clean) */
-#ifndef __cplusplus
+/* EAP headers */
 #include <common.h>
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>
-#include <crypto/tls.h>
+#include <eap_peer/eap_methods.h>
 #include <wpabuf.h>
-#endif
 
-/* Workaround for FreeRADIUS not being C++ clean */
+/* FreeRADIUS headers */
 #ifdef __cplusplus
 extern "C" {
 #define operator fr_operator
