@@ -17,6 +17,10 @@
 
 #include "wpabuf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Debugging function - conditional printf and hex dump. Driver wrappers can
  * use these for debugging purposes. */
 
@@ -81,7 +85,7 @@ void wpa_hexdump(int level, const char *title, const u8 *buf, size_t len);
 static inline void wpa_hexdump_buf(int level, const char *title,
 				   const struct wpabuf *buf)
 {
-	wpa_hexdump(level, title, wpabuf_head(buf), wpabuf_len(buf));
+	wpa_hexdump(level, title, (const u8 *)wpabuf_head(buf), wpabuf_len(buf));
 }
 
 /**
@@ -102,7 +106,7 @@ void wpa_hexdump_key(int level, const char *title, const u8 *buf, size_t len);
 static inline void wpa_hexdump_buf_key(int level, const char *title,
 				       const struct wpabuf *buf)
 {
-	wpa_hexdump_key(level, title, wpabuf_head(buf), wpabuf_len(buf));
+	wpa_hexdump_key(level, title, (const u8 *)wpabuf_head(buf), wpabuf_len(buf));
 }
 
 /**
@@ -253,6 +257,10 @@ static inline void wpa_debug_close_syslog(void)
 	} while (0)
 #else
 #define WPA_ASSERT(a) do { } while (0)
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* WPA_DEBUG_H */

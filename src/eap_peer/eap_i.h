@@ -19,6 +19,10 @@
 #include "eap_peer/eap.h"
 #include "eap_common/eap_common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* RFC 4137 - EAP Peer state machine */
 
 typedef enum {
@@ -352,5 +356,9 @@ const struct wpa_config_blob *
 eap_get_config_blob(struct eap_sm *sm, const char *name);
 void eap_notify_pending(struct eap_sm *sm);
 int eap_allowed_method(struct eap_sm *sm, int vendor, u32 method);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_I_H */

@@ -19,6 +19,10 @@
 #include "eap_common/eap_defs.h"
 #include "eap_peer/eap_methods.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct eap_sm;
 struct wpa_config_blob;
 struct wpabuf;
@@ -287,5 +291,9 @@ int eap_is_wps_pbc_enrollee(struct eap_peer_config *conf);
 int eap_is_wps_pin_enrollee(struct eap_peer_config *conf);
 
 #endif /* IEEE8021X_EAPOL */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_H */

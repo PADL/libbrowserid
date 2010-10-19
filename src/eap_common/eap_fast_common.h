@@ -15,6 +15,10 @@
 #ifndef EAP_FAST_H
 #define EAP_FAST_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define EAP_FAST_VERSION 1
 #define EAP_FAST_KEY_LEN 64
 #define EAP_FAST_SIMCK_LEN 40
@@ -109,5 +113,9 @@ void eap_fast_derive_eap_msk(const u8 *simck, u8 *msk);
 void eap_fast_derive_eap_emsk(const u8 *simck, u8 *emsk);
 int eap_fast_parse_tlv(struct eap_fast_tlv_parse *tlv,
 		       int tlv_type, u8 *pos, int len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_FAST_H */

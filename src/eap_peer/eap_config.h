@@ -15,6 +15,10 @@
 #ifndef EAP_CONFIG_H
 #define EAP_CONFIG_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * struct eap_peer_config - EAP peer configuration/credentials
  */
@@ -665,5 +669,9 @@ struct wpa_config_blob {
 	 */
 	struct wpa_config_blob *next;
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_CONFIG_H */

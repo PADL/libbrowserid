@@ -15,6 +15,10 @@
 #ifndef WPABUF_H
 #define WPABUF_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Internal data structure for wpabuf. Please do not touch this directly from
  * elsewhere. This is only defined in header file to allow inline functions
@@ -85,7 +89,7 @@ static inline const void * wpabuf_head(const struct wpabuf *buf)
 
 static inline const u8 * wpabuf_head_u8(const struct wpabuf *buf)
 {
-	return wpabuf_head(buf);
+	return (const u8 *)wpabuf_head(buf);
 }
 
 /**
@@ -102,42 +106,42 @@ static inline void * wpabuf_mhead(struct wpabuf *buf)
 
 static inline u8 * wpabuf_mhead_u8(struct wpabuf *buf)
 {
-	return wpabuf_mhead(buf);
+	return (u8 *)wpabuf_mhead(buf);
 }
 
 static inline void wpabuf_put_u8(struct wpabuf *buf, u8 data)
 {
-	u8 *pos = wpabuf_put(buf, 1);
+	u8 *pos = (u8 *)wpabuf_put(buf, 1);
 	*pos = data;
 }
 
 static inline void wpabuf_put_le16(struct wpabuf *buf, u16 data)
 {
-	u8 *pos = wpabuf_put(buf, 2);
+	u8 *pos = (u8 *)wpabuf_put(buf, 2);
 	WPA_PUT_LE16(pos, data);
 }
 
 static inline void wpabuf_put_le32(struct wpabuf *buf, u32 data)
 {
-	u8 *pos = wpabuf_put(buf, 4);
+	u8 *pos = (u8 *)wpabuf_put(buf, 4);
 	WPA_PUT_LE32(pos, data);
 }
 
 static inline void wpabuf_put_be16(struct wpabuf *buf, u16 data)
 {
-	u8 *pos = wpabuf_put(buf, 2);
+	u8 *pos = (u8 *)wpabuf_put(buf, 2);
 	WPA_PUT_BE16(pos, data);
 }
 
 static inline void wpabuf_put_be24(struct wpabuf *buf, u32 data)
 {
-	u8 *pos = wpabuf_put(buf, 3);
+	u8 *pos = (u8 *)wpabuf_put(buf, 3);
 	WPA_PUT_BE24(pos, data);
 }
 
 static inline void wpabuf_put_be32(struct wpabuf *buf, u32 data)
 {
-	u8 *pos = wpabuf_put(buf, 4);
+	u8 *pos = (u8 *)wpabuf_put(buf, 4);
 	WPA_PUT_BE32(pos, data);
 }
 
@@ -164,5 +168,9 @@ static inline void wpabuf_put_str(struct wpabuf *dst, const char *str)
 {
 	wpabuf_put_data(dst, str, os_strlen(str));
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* WPABUF_H */

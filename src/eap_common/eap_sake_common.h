@@ -15,6 +15,10 @@
 #ifndef EAP_SAKE_COMMON_H
 #define EAP_SAKE_COMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define EAP_SAKE_VERSION 2
 
 #define EAP_SAKE_SUBTYPE_CHALLENGE 1
@@ -98,5 +102,9 @@ int eap_sake_compute_mic(const u8 *tek_auth,
 			 const u8 *mic_pos, u8 *mic);
 void eap_sake_add_attr(struct wpabuf *buf, u8 type, const u8 *data,
 		       size_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_SAKE_COMMON_H */

@@ -21,6 +21,10 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * definition of a finite cyclic group
  * TODO: support one based on a prime field
@@ -75,5 +79,9 @@ int compute_keys(EAP_PWD_group *, BN_CTX *, BIGNUM *, EC_POINT *, EC_POINT *,
 void H_Init(HMAC_CTX *);
 void H_Update(HMAC_CTX *, const u8 *, int);
 void H_Final(HMAC_CTX *, u8 *);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* EAP_PWD_COMMON_H */

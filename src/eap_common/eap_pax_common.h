@@ -15,6 +15,10 @@
 #ifndef EAP_PAX_COMMON_H
 #define EAP_PAX_COMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #endif /* _MSC_VER */
@@ -93,5 +97,9 @@ int eap_pax_mac(u8 mac_id, const u8 *key, size_t key_len,
 		u8 *mac);
 int eap_pax_initial_key_derivation(u8 mac_id, const u8 *ak, const u8 *e,
 				   u8 *mk, u8 *ck, u8 *ick);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_PAX_COMMON_H */

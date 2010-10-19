@@ -15,6 +15,10 @@
 #ifndef EAP_GPSK_COMMON_H
 #define EAP_GPSK_COMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define EAP_GPSK_OPCODE_GPSK_1 1
 #define EAP_GPSK_OPCODE_GPSK_2 2
 #define EAP_GPSK_OPCODE_GPSK_3 3
@@ -62,5 +66,9 @@ int eap_gpsk_derive_keys(const u8 *psk, size_t psk_len, int vendor,
 size_t eap_gpsk_mic_len(int vendor, int specifier);
 int eap_gpsk_compute_mic(const u8 *sk, size_t sk_len, int vendor,
 			 int specifier, const u8 *data, size_t len, u8 *mic);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_GPSK_COMMON_H */

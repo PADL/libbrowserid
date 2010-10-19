@@ -15,6 +15,10 @@
 #ifndef EAP_SIM_COMMON_H
 #define EAP_SIM_COMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define EAP_SIM_NONCE_S_LEN 16
 #define EAP_SIM_NONCE_MT_LEN 16
 #define EAP_SIM_MAC_LEN 16
@@ -231,5 +235,9 @@ int eap_sim_msg_add_encr_end(struct eap_sim_msg *msg, u8 *k_encr,
 			     int attr_pad);
 
 void eap_sim_report_notification(void *msg_ctx, int notification, int aka);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_SIM_COMMON_H */

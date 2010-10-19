@@ -15,6 +15,9 @@
 #ifndef EAP_PSK_COMMON_H
 #define EAP_PSK_COMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define EAP_PSK_RAND_LEN 16
 #define EAP_PSK_MAC_LEN 16
@@ -74,5 +77,9 @@ struct eap_psk_hdr_4 {
 int __must_check eap_psk_key_setup(const u8 *psk, u8 *ak, u8 *kdk);
 int __must_check eap_psk_derive_keys(const u8 *kdk, const u8 *rand_p, u8 *tek,
 				     u8 *msk, u8 *emsk);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_PSK_COMMON_H */

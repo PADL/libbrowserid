@@ -15,6 +15,10 @@
 #ifndef EAP_TTLS_H
 #define EAP_TTLS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ttls_avp {
 	be32 avp_code;
 	be32 avp_length; /* 8-bit flags, 24-bit length;
@@ -67,5 +71,9 @@ do { \
 #define EAP_TTLS_MSCHAP_RESPONSE_LEN 50
 #define EAP_TTLS_CHAP_CHALLENGE_LEN 16
 #define EAP_TTLS_CHAP_PASSWORD_LEN 16
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EAP_TTLS_H */
