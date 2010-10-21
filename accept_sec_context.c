@@ -108,6 +108,10 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
         return major;
 
     ctx->initiatorName->attrCtx = gssEapCreateAttrContext(cred, ctx);
+    if (ctx->initiatorName->attrCtx == NULL) {
+        *minor = GSSEAP_ATTR_CONTEXT_FAILURE;
+        return GSS_S_FAILURE;
+    }
 
     *minor = 0;
     return GSS_S_COMPLETE;
