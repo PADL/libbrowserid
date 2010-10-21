@@ -88,6 +88,7 @@ public:
     }
 
     time_t getExpiryTime(void) const;
+    OM_uint32 mapException(OM_uint32 *minor, std::exception &e) const;
 
     static bool init(void);
     static void finalize(void);

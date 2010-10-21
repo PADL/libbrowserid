@@ -116,6 +116,9 @@ public:
 
     virtual time_t getExpiryTime(void) const { return 0; }
 
+    virtual OM_uint32 mapException(OM_uint32 *minor, std::exception &e) const
+    { return GSS_S_CONTINUE_NEEDED; }
+
     static bool init(void) { return true; }
     static void finalize(void) {}
 
@@ -208,6 +211,7 @@ public:
     unregisterProvider(unsigned int type);
 
     time_t getExpiryTime(void) const;
+    OM_uint32 mapException(OM_uint32 *minor, std::exception &e) const;
 
 private:
     bool providerEnabled(unsigned int type) const;

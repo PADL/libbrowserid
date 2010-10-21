@@ -171,8 +171,10 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     resolver = ShibbolethResolver::create();
 
     if (gssCred != GSS_C_NO_CREDENTIAL &&
-        gssEapDisplayName(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE)
+        gssEapDisplayName(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE) {
         resolver->setApplicationID((const char *)nameBuf.value);
+        gss_release_buffer(&minor, &nameBuf);
+    }
 
     m_authenticated = false;
 
@@ -192,12 +194,13 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
         m_attributes = resolver->getResolvedAttributes();
         resolver->getResolvedAttributes().clear();
     } catch (exception &e) {
+#if 0
+        delete resolver;
+        throw e;
+#endif
     }
 
-    gss_release_buffer(&minor, &nameBuf);
-
     delete resolver;
-
     return true;
 }
 
@@ -457,6 +460,28 @@ gss_eap_shib_attr_provider::finalize(void)
 {
     gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_LOCAL);
     ShibbolethResolver::term();
+}
+
+OM_uint32
+gss_eap_shib_attr_provider::mapException(OM_uint32 *minor,
+                                         std::exception &e) const
+{
+    if (typeid(e) == typeid(AttributeException))
+        *minor = GSSEAP_SHIB_ATTR_FAILURE;
+    else if (typeid(e) == typeid(AttributeExtractionException))
+        *minor = GSSEAP_SHIB_ATTR_EXTRACT_FAILURE;
+    else if (typeid(e) == typeid(AttributeFilteringException))
+        *minor = GSSEAP_SHIB_ATTR_FILTER_FAILURE;
+    else if (typeid(e) == typeid(AttributeResolutionException))
+        *minor = GSSEAP_SHIB_ATTR_RESOLVE_FAILURE;
+    else if (typeid(e) == typeid(ConfigurationException))
+        *minor = GSSEAP_SHIB_CONFIG_FAILURE;
+    else if (typeid(e) == typeid(ListenerException))
+        *minor = GSSEAP_SHIB_LISTENER_FAILURE;
+    else
+        return GSS_S_CONTINUE_NEEDED;
+
+    return GSS_S_FAILURE;
 }
 
 gss_eap_attr_provider *

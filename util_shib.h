@@ -83,6 +83,8 @@ public:
     static bool init(void);
     static void finalize(void);
 
+    OM_uint32 mapException(OM_uint32 *minor, std::exception &e) const;
+
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:

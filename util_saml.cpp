@@ -45,9 +45,11 @@
 #include <xmltooling/util/ParserPool.h>
 #include <xmltooling/util/DateTime.h>
 
+#include <saml/exceptions.h>
 #include <saml/saml1/core/Assertions.h>
 #include <saml/saml2/core/Assertions.h>
 #include <saml/saml2/metadata/Metadata.h>
+#include <saml/saml2/metadata/MetadataProvider.h>
 
 using namespace xmltooling;
 using namespace opensaml::saml2md;
@@ -225,6 +227,28 @@ gss_eap_saml_assertion_provider::getExpiryTime(void) const
         expiryTime = conditions->getNotOnOrAfter()->getEpoch();
 
     return expiryTime;
+}
+
+OM_uint32
+gss_eap_saml_assertion_provider::mapException(OM_uint32 *minor,
+                                              std::exception &e) const
+{
+    if (typeid(e) == typeid(SecurityPolicyException))
+        *minor = GSSEAP_SAML_SEC_POLICY_FAILURE;
+    else if (typeid(e) == typeid(BindingException))
+        *minor = GSSEAP_SAML_BINDING_FAILURE;
+    else if (typeid(e) == typeid(ProfileException))
+        *minor = GSSEAP_SAML_PROFILE_FAILURE;
+    else if (typeid(e) == typeid(FatalProfileException))
+        *minor = GSSEAP_SAML_FATAL_PROFILE_FAILURE;
+    else if (typeid(e) == typeid(RetryableProfileException))
+        *minor = GSSEAP_SAML_RETRY_PROFILE_FAILURE;
+    else if (typeid(e) == typeid(MetadataException))
+        *minor = GSSEAP_SAML_METADATA_FAILURE;
+    else
+        return GSS_S_CONTINUE_NEEDED;
+
+    return GSS_S_FAILURE;
 }
 
 bool
