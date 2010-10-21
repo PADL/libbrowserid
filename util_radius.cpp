@@ -120,14 +120,14 @@ alreadyAddedAttributeP(std::vector <std::string> &attrs, VALUE_PAIR *vp)
 static bool
 isSecretAttributeP(uint16_t attrid, uint16_t vendor)
 {
-    bool ret = false;
+    bool bSecretAttribute = false;
 
     switch (vendor) {
     case VENDORPEC_MS:
         switch (attrid) {
         case PW_MS_MPPE_SEND_KEY:
         case PW_MS_MPPE_RECV_KEY:
-            ret = true;
+            bSecretAttribute = true;
             break;
         default:
             break;
@@ -136,7 +136,7 @@ isSecretAttributeP(uint16_t attrid, uint16_t vendor)
         break;
     }
 
-    return ret;
+    return bSecretAttribute;
 }
 
 static bool
@@ -148,20 +148,20 @@ isSecretAttributeP(uint32_t attribute)
 static bool
 isInternalAttributeP(uint16_t attrid, uint16_t vendor)
 {
-    bool ret = false;
+    bool bInternalAttribute = false;
 
     /* should have been filtered */
     assert(!isSecretAttributeP(attrid, vendor));
 
     switch (vendor) {
     case VENDORPEC_UKERNA:
-        ret = true;
+        bInternalAttribute = true;
         break;
     default:
         break;
     }
 
-    return ret;
+    return bInternalAttribute;
 }
 
 static bool
