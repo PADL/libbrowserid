@@ -49,9 +49,12 @@
  * Local attribute provider implementation.
  */
 
+#include <xmltooling/XMLObject.h>
+
+#include <saml/saml2/core/Assertions.h>
+
 #include <shibsp/exceptions.h>
 #include <shibsp/attribute/SimpleAttribute.h>
-
 #include <shibresolver/resolver.h>
 
 #include <sstream>
