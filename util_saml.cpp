@@ -161,17 +161,21 @@ gss_eap_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
     DOMDocument *doc;
     const XMLObjectBuilder *b;
 
-    doc = XMLToolingConfig::getConfig().getParser().parse(istream);
-    if (doc == NULL)
-        return NULL;
+    try {
+        doc = XMLToolingConfig::getConfig().getParser().parse(istream);
+        if (doc == NULL)
+            return NULL;
 
-    b = XMLObjectBuilder::getBuilder(doc->getDocumentElement());
+        b = XMLObjectBuilder::getBuilder(doc->getDocumentElement());
 
 #ifdef __APPLE__
-    return (saml2::Assertion *)((void *)b->buildFromDocument(doc));
+        return (saml2::Assertion *)((void *)b->buildFromDocument(doc));
 #else
-    return dynamic_cast<saml2::Assertion *>(b->buildFromDocument(doc));
+        return dynamic_cast<saml2::Assertion *>(b->buildFromDocument(doc));
 #endif
+    } catch (exception &e) {
+        return NULL;
+    }
 }
 
 bool
