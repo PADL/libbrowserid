@@ -1014,25 +1014,30 @@ gssEapReleaseAttrContext(OM_uint32 *minor,
  * Public accessor for initialisng a context from a GSS context. Also
  * sets expiry time on GSS context as a side-effect.
  */
-struct gss_eap_attr_ctx *
-gssEapCreateAttrContext(gss_cred_id_t gssCred,
-                        gss_ctx_id_t gssCtx)
+OM_uint32
+gssEapCreateAttrContext(OM_uint32 *minor,
+                        gss_cred_id_t gssCred,
+                        gss_ctx_id_t gssCtx,
+                        struct gss_eap_attr_ctx **pAttrContext)
 {
     gss_eap_attr_ctx *ctx;
-    OM_uint32 tmpMinor;
+    OM_uint32 major;
 
     assert(gssCtx != GSS_C_NO_CONTEXT);
 
-    if (GSS_ERROR(gssEapAttrProvidersInit(&tmpMinor)))
-        return NULL;
+    major = gssEapAttrProvidersInit(minor);
+    if (GSS_ERROR(major))
+        return major;
 
     ctx = new gss_eap_attr_ctx();
     if (!ctx->initFromGssContext(gssCred, gssCtx)) {
         delete ctx;
-        return NULL;
+        *minor = GSSEAP_ATTR_CONTEXT_FAILURE;
+        return GSS_S_FAILURE;
     }
 
     gssCtx->expiryTime = ctx->getExpiryTime();
 
-    return ctx;
+    *minor = 0;
+    return GSS_S_COMPLETE;
 }

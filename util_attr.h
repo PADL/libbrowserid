@@ -268,9 +268,11 @@ extern "C" {
  * obtain the name mutex.
  */
 
-struct gss_eap_attr_ctx *
-gssEapCreateAttrContext(gss_cred_id_t acceptorCred,
-                        gss_ctx_id_t acceptorCtx);
+OM_uint32
+gssEapCreateAttrContext(OM_uint32 *minor,
+                        gss_cred_id_t acceptorCred,
+                        gss_ctx_id_t acceptorCtx,
+                        struct gss_eap_attr_ctx **pAttrCtx);
 
 OM_uint32
 gssEapInquireName(OM_uint32 *minor,
