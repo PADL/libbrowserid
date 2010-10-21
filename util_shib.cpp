@@ -187,10 +187,12 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
             m_authenticated = saml->authenticated();
     }
 
-    resolver->resolve();
-
-    m_attributes = resolver->getResolvedAttributes();
-    resolver->getResolvedAttributes().clear();
+    try {
+        resolver->resolve();
+        m_attributes = resolver->getResolvedAttributes();
+        resolver->getResolvedAttributes().clear();
+    } catch (exception &e) {
+    }
 
     gss_release_buffer(&minor, &nameBuf);
 
