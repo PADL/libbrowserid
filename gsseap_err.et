@@ -50,7 +50,7 @@ error_code GSSEAP_KEY_TOO_SHORT,                "EAP key too short"
 error_code GSSEAP_RADIUS_AUTH_FAILURE,          "Authentication rejected by RADIUS server"
 error_code GSSEAP_UNKNOWN_RADIUS_CODE,          "Received unknown response code from RADIUS server"
 error_code GSSEAP_MISSING_EAP_REQUEST,          "RADIUS response is missing EAP request"
-error_code GSSEAP_GENERIC_RADIUS_ERROR,         "Generic RADIUS error"
+error_code GSSEAP_RADIUS_PROT_FAILURE,          "Generic RADIUS failure"
 
 #
 # Context errors

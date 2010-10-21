@@ -528,7 +528,7 @@ makeErrorToken(OM_uint32 *minor,
     default:
         if (IS_RADIUS_ERROR(minorStatus))
             /* Squash RADIUS error codes */
-            minorStatus = GSSEAP_GENERIC_RADIUS_ERROR;
+            minorStatus = GSSEAP_RADIUS_PROT_FAILURE;
         else
             /* Don't return system error codes */
             return GSS_S_COMPLETE;
