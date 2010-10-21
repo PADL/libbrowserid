@@ -307,15 +307,12 @@ createRadiusHandle(OM_uint32 *minor,
         goto fail;
     }
 
-    /* XXX TODO rs_conn_select_server does not exist yet */
-#if 0
     if (actx->radServer != NULL) {
         if (rs_conn_select_server(actx->radConn, actx->radServer) != 0) {
             err = rs_err_conn_pop(actx->radConn);
             goto fail;
         }
     }
-#endif
 
     *minor = 0;
     return GSS_S_COMPLETE;
