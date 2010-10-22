@@ -251,8 +251,8 @@ gssEapImportContext(OM_uint32 *minor,
     remain -= 16;
 
     /* Validate state */
-    if (ctx->state < EAP_STATE_IDENTITY ||
-        ctx->state > EAP_STATE_ESTABLISHED)
+    if (ctx->state < GSSEAP_STATE_IDENTITY ||
+        ctx->state > GSSEAP_STATE_ESTABLISHED)
         return GSS_S_DEFECTIVE_TOKEN;
 
     /* Only acceptor can export partial context tokens */
@@ -304,7 +304,7 @@ gssEapImportContext(OM_uint32 *minor,
      * acceptor contexts.
      */
     if (!CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) {
-        assert((ctx->flags & CTX_FLAG_KRB_REAUTH_GSS) == 0);
+        assert((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
 
         major = gssEapImportPartialContext(minor, &p, &remain, ctx);
         if (GSS_ERROR(major))

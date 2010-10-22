@@ -119,23 +119,23 @@ struct gss_cred_id_struct {
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
-#define CTX_FLAG_KRB_REAUTH_GSS             0x00000002
+#define CTX_FLAG_KRB_REAUTH                 0x00000002
 
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
 enum gss_eap_state {
-    EAP_STATE_IDENTITY = 0,
-    EAP_STATE_AUTHENTICATE,
-    EAP_STATE_EXTENSIONS_REQ,
-    EAP_STATE_EXTENSIONS_RESP,
-    EAP_STATE_ESTABLISHED,
-    EAP_STATE_ERROR,
+    GSSEAP_STATE_IDENTITY = 0,
+    GSSEAP_STATE_AUTHENTICATE,
+    GSSEAP_STATE_EXTENSIONS_REQ,
+    GSSEAP_STATE_EXTENSIONS_RESP,
+    GSSEAP_STATE_ESTABLISHED,
+    GSSEAP_STATE_ERROR,
 #ifdef GSSEAP_ENABLE_REAUTH
-    EAP_STATE_KRB_REAUTH_GSS
+    GSSEAP_STATE_KRB_REAUTH
 #endif
 };
 
-#define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == EAP_STATE_ESTABLISHED)
+#define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == GSSEAP_STATE_ESTABLISHED)
 
 /* Initiator context flags */
 #define CTX_FLAG_EAP_SUCCESS                0x00010000

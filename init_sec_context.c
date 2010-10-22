@@ -413,7 +413,7 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    ctx->state = EAP_STATE_AUTHENTICATE;
+    ctx->state = GSSEAP_STATE_AUTHENTICATE;
 
     *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
@@ -485,7 +485,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
         ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
         major = GSS_S_CONTINUE_NEEDED;
-        ctx->state = EAP_STATE_EXTENSIONS_REQ;
+        ctx->state = GSSEAP_STATE_EXTENSIONS_REQ;
     } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
         major = GSS_S_DEFECTIVE_CREDENTIAL;
         *minor = GSSEAP_PEER_AUTH_FAILURE;
@@ -540,7 +540,7 @@ eapGssSmInitExtensionsReq(OM_uint32 *minor,
 
     assert(outputToken->value != NULL);
 
-    ctx->state = EAP_STATE_EXTENSIONS_RESP;
+    ctx->state = GSSEAP_STATE_EXTENSIONS_RESP;
 
     *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
@@ -564,7 +564,7 @@ eapGssSmInitExtensionsResp(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    ctx->state = EAP_STATE_ESTABLISHED;
+    ctx->state = GSSEAP_STATE_ESTABLISHED;
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -715,7 +715,7 @@ gss_init_sec_context(OM_uint32 *minor,
 
 #ifdef GSSEAP_ENABLE_REAUTH
     if (initialContextToken && gssEapCanReauthP(cred, target_name, time_req))
-        ctx->state = EAP_STATE_KRB_REAUTH_GSS;
+        ctx->state = GSSEAP_STATE_KRB_REAUTH;
 #endif
 
     if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
@@ -733,7 +733,7 @@ gss_init_sec_context(OM_uint32 *minor,
             goto cleanup;
 
         if (tokType == TOK_TYPE_CONTEXT_ERR) {
-            ctx->state = EAP_STATE_ERROR;
+            ctx->state = GSSEAP_STATE_ERROR;
         } else if (tokType != sm->inputTokenType) {
             major = GSS_S_DEFECTIVE_TOKEN;
             *minor = GSSEAP_WRONG_TOK_ID;
@@ -783,7 +783,7 @@ gss_init_sec_context(OM_uint32 *minor,
     if (time_rec != NULL)
         gssEapContextTime(&tmpMinor, ctx, time_rec);
 
-    assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
+    assert(ctx->state == GSSEAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
     if (cred != GSS_C_NO_CREDENTIAL)
@@ -818,7 +818,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
 
     assert(cred != GSS_C_NO_CREDENTIAL);
 
-    ctx->flags |= CTX_FLAG_KRB_REAUTH_GSS;
+    ctx->flags |= CTX_FLAG_KRB_REAUTH;
 
     if (inputToken->length == 0) {
         major = initBegin(minor, cred, ctx, target, mech,
@@ -854,7 +854,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
         major = gssEapReauthComplete(minor, ctx, cred, actualMech, timeRec);
         if (GSS_ERROR(major))
             goto cleanup;
-        ctx->state = EAP_STATE_ESTABLISHED;
+        ctx->state = GSSEAP_STATE_ESTABLISHED;
     }
 
 cleanup:

@@ -73,7 +73,7 @@ rfc4121Flags(gss_ctx_id_t ctx, int receiving)
     if (isAcceptor)
         flags |= TOK_FLAG_SENDER_IS_ACCEPTOR;
 
-    if ((ctx->flags & CTX_FLAG_KRB_REAUTH_GSS) &&
+    if ((ctx->flags & CTX_FLAG_KRB_REAUTH) &&
         (ctx->gssFlags & GSS_C_MUTUAL_FLAG))
         flags |= TOK_FLAG_ACCEPTOR_SUBKEY;
 

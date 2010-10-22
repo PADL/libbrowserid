@@ -57,7 +57,7 @@ gssEapAllocContext(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    ctx->state = EAP_STATE_IDENTITY;
+    ctx->state = GSSEAP_STATE_IDENTITY;
 
     /*
      * Integrity, confidentiality, sequencing and replay detection are
@@ -117,7 +117,7 @@ gssEapReleaseContext(OM_uint32 *minor,
     gssEapKerberosInit(&tmpMinor, &krbContext);
 
 #ifdef GSSEAP_ENABLE_REAUTH
-    if (ctx->flags & CTX_FLAG_KRB_REAUTH_GSS) {
+    if (ctx->flags & CTX_FLAG_KRB_REAUTH) {
         gssDeleteSecContext(&tmpMinor, &ctx->kerberosCtx, GSS_C_NO_BUFFER);
     } else
 #endif

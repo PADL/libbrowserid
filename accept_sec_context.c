@@ -160,7 +160,7 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    ctx->state = EAP_STATE_AUTHENTICATE;
+    ctx->state = GSSEAP_STATE_AUTHENTICATE;
 
     *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
@@ -427,7 +427,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        ctx->state = EAP_STATE_EXTENSIONS_REQ;
+        ctx->state = GSSEAP_STATE_EXTENSIONS_REQ;
     }
 
     *minor = 0;
@@ -456,7 +456,7 @@ eapGssSmAcceptExtensionsReq(OM_uint32 *minor,
     outputToken->length = 0;
     outputToken->value = NULL;
 
-    ctx->state = EAP_STATE_EXTENSIONS_RESP;
+    ctx->state = GSSEAP_STATE_EXTENSIONS_RESP;
 
     *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
@@ -476,7 +476,7 @@ eapGssSmAcceptExtensionsResp(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    ctx->state = EAP_STATE_ESTABLISHED;
+    ctx->state = GSSEAP_STATE_ESTABLISHED;
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -641,7 +641,7 @@ gss_accept_sec_context(OM_uint32 *minor,
      * machine and process Kerberos GSS messages instead.
      */
     if (tokType == TOK_TYPE_GSS_REAUTH && initialContextToken) {
-        ctx->state = EAP_STATE_KRB_REAUTH_GSS;
+        ctx->state = GSSEAP_STATE_KRB_REAUTH;
     } else
 #endif
     if (tokType != sm->inputTokenType) {
@@ -667,7 +667,7 @@ gss_accept_sec_context(OM_uint32 *minor,
                 goto cleanup;
             }
 
-            sm = &eapGssAcceptorSm[EAP_STATE_ERROR];
+            sm = &eapGssAcceptorSm[GSSEAP_STATE_ERROR];
             goto send_token;
         }
     } while (major == GSS_S_CONTINUE_NEEDED && innerOutputToken.length == 0);
@@ -694,7 +694,7 @@ gss_accept_sec_context(OM_uint32 *minor,
         }
     }
 
-    assert(ctx->state == EAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
+    assert(ctx->state == GSSEAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
 
 send_token:
     if (innerOutputToken.value != NULL) {
@@ -745,7 +745,7 @@ acceptReadyKrb(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    ctx->state = EAP_STATE_ESTABLISHED;
+    ctx->state = GSSEAP_STATE_ESTABLISHED;
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -765,7 +765,7 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
     gss_OID mech = GSS_C_NO_OID;
     OM_uint32 gssFlags, timeRec = GSS_C_INDEFINITE;
 
-    ctx->flags |= CTX_FLAG_KRB_REAUTH_GSS;
+    ctx->flags |= CTX_FLAG_KRB_REAUTH;
 
     if (cred != GSS_C_NO_CREDENTIAL)
         krbCred = cred->krbCred;
