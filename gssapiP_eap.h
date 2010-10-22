@@ -124,14 +124,14 @@ struct gss_cred_id_struct {
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
 enum gss_eap_state {
-    GSSEAP_STATE_IDENTITY = 0,
-    GSSEAP_STATE_AUTHENTICATE,
-    GSSEAP_STATE_EXTENSIONS_REQ,
-    GSSEAP_STATE_EXTENSIONS_RESP,
-    GSSEAP_STATE_ESTABLISHED,
-    GSSEAP_STATE_ERROR,
+    GSSEAP_STATE_IDENTITY = 0,              /* identify peer */
+    GSSEAP_STATE_AUTHENTICATE,              /* exchange EAP messages */
+    GSSEAP_STATE_EXTENSIONS_REQ,            /* initiator extensions */
+    GSSEAP_STATE_EXTENSIONS_RESP,           /* acceptor extensions */
+    GSSEAP_STATE_ESTABLISHED,               /* context established */
+    GSSEAP_STATE_ERROR,                     /* context error */
 #ifdef GSSEAP_ENABLE_REAUTH
-    GSSEAP_STATE_KRB_REAUTH
+    GSSEAP_STATE_KRB_REAUTH                 /* fast reauthentication */
 #endif
 };
 
