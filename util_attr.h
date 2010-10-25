@@ -39,6 +39,7 @@
 
 #ifdef __cplusplus
 #include <string>
+#include <new>
 
 struct gss_eap_attr_provider;
 struct gss_eap_attr_ctx;
@@ -234,9 +235,6 @@ private:
 #include "util_shib.h"
 
 #ifdef __cplusplus
-
-#include <string>
-#include <new>
 
 static inline void
 duplicateBuffer(gss_buffer_desc &src, gss_buffer_t dst)
