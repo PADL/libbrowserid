@@ -95,7 +95,7 @@ setCredFlag(OM_uint32 *minor,
 
     if (buffer == GSS_C_NO_BUFFER) {
         *minor = EINVAL;
-        return GSS_S_FAILURE;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_FAILURE;
     }
 
     if (buffer->length < 4) {

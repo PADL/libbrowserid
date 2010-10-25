@@ -200,7 +200,7 @@ gss_wrap_iov_length(OM_uint32 *minor,
 
     if (ctx == GSS_C_NO_CONTEXT) {
         *minor = EINVAL;
-        return GSS_S_NO_CONTEXT;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CONTEXT;
     }
 
     *minor = 0;

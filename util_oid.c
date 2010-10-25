@@ -103,8 +103,9 @@ composeOid(OM_uint32 *minor,
 
     if (oid == GSS_C_NO_OID) {
         *minor = EINVAL;
-        return GSS_S_FAILURE;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_FAILURE;
     }
+
     if (oid->length < prefix_len) {
         *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_FAILURE;

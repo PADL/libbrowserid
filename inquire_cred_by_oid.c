@@ -56,7 +56,7 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
 
     if (cred_handle == GSS_C_NO_CREDENTIAL) {
         *minor = EINVAL;
-        return GSS_S_NO_CRED;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CRED;
     }
 
     GSSEAP_MUTEX_LOCK(&cred_handle->mutex);
