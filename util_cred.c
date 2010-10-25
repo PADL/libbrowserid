@@ -128,6 +128,23 @@ gssEapAcquireCred(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+    switch (credUsage) {
+    case GSS_C_BOTH:
+        cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
+        break;
+    case GSS_C_INITIATE:
+        cred->flags |= CRED_FLAG_INITIATE;
+        break;
+    case GSS_C_ACCEPT:
+        cred->flags |= CRED_FLAG_ACCEPT;
+        break;
+    default:
+        major = GSS_S_FAILURE;
+        *minor = GSSEAP_BAD_USAGE;
+        goto cleanup;
+        break;
+    }
+
     if (desiredName != GSS_C_NO_NAME) {
         GSSEAP_MUTEX_LOCK(&desiredName->mutex);
 
@@ -178,7 +195,7 @@ gssEapAcquireCred(OM_uint32 *minor,
             goto cleanup;
 
         cred->flags |= CRED_FLAG_PASSWORD;
-    } else if (credUsage == GSS_C_INITIATE) {
+    } else if (cred->flags & CRED_FLAG_INITIATE) {
         /*
          * OK, here we need to ask the supplicant if we have creds or it
          * will acquire them, so GS2 can know whether to prompt for a
@@ -189,23 +206,6 @@ gssEapAcquireCred(OM_uint32 *minor,
 #endif
         major = GSS_S_CRED_UNAVAIL;
         goto cleanup;
-    }
-
-    switch (credUsage) {
-    case GSS_C_BOTH:
-        cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
-        break;
-    case GSS_C_INITIATE:
-        cred->flags |= CRED_FLAG_INITIATE;
-        break;
-    case GSS_C_ACCEPT:
-        cred->flags |= CRED_FLAG_ACCEPT;
-        break;
-    default:
-        major = GSS_S_FAILURE;
-        *minor = GSSEAP_BAD_USAGE;
-        goto cleanup;
-        break;
     }
 
     major = gssEapValidateMechs(minor, desiredMechs);
