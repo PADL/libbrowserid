@@ -185,14 +185,8 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     code = getAcceptorKey(krbContext, ctx, cred,
                           &ticket.server, &acceptorKey);
     if (code == KRB5_KT_NOTFOUND) {
-        gss_buffer_desc emptyToken = { 0, "" };
-
-        /*
-         * If we can't produce the KRB-CRED message, we need to
-         * return an empty (not NULL) token to the caller so we
-         * don't change the number of authentication legs.
-         */
-        return duplicateBuffer(minor, &emptyToken, credBuf);
+        *minor = code;
+        return GSS_S_UNAVAILABLE;
     } else if (code != 0)
         goto cleanup;
 
