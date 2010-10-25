@@ -195,7 +195,7 @@ gssEapIndicateMechs(OM_uint32 *minor,
 
     major = gss_create_empty_oid_set(minor, mechs);
     if (GSS_ERROR(major)) {
-        GSSEAP_FREE(etypes); /* XXX */
+        GSSEAP_FREE(etypes);
         return major;
     }
 
@@ -217,7 +217,7 @@ gssEapIndicateMechs(OM_uint32 *minor,
         gss_release_oid(&tmpMinor, &mechOid);
     }
 
-    GSSEAP_FREE(etypes); /* XXX */
+    GSSEAP_FREE(etypes);
 
     *minor = 0;
     return major;

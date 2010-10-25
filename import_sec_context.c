@@ -289,7 +289,7 @@ gssEapImportContext(OM_uint32 *minor,
         *minor = GSSEAP_TOK_TRUNC;
         return GSS_S_DEFECTIVE_TOKEN;
     }
-    ctx->expiryTime = (time_t)load_uint64_be(&p[0]); /* XXX */
+    ctx->expiryTime = (time_t)load_uint64_be(&p[0]);
     ctx->sendSeq    = load_uint64_be(&p[8]);
     ctx->recvSeq    = load_uint64_be(&p[16]);
     p      += 24;
