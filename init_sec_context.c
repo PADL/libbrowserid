@@ -202,7 +202,9 @@ static struct eapol_callbacks gssEapPolicyCallbacks = {
     peerNotifyPending,
 };
 
+#ifdef GSSEAP_DEBUG
 extern int wpa_debug_level;
+#endif
 
 static OM_uint32
 peerConfigInit(OM_uint32 *minor,
@@ -224,7 +226,9 @@ peerConfigInit(OM_uint32 *minor,
     GSSEAP_KRB_INIT(&krbContext);
 
     eapPeerConfig->fragment_size = 1024;
+#ifdef GSSEAP_DEBUG
     wpa_debug_level = 0;
+#endif
 
     assert(cred->name != GSS_C_NO_NAME);
 
