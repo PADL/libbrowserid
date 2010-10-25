@@ -345,7 +345,7 @@ gss_eap_saml_assertion_provider::init(void)
 {
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML_ASSERTION,
                                        "urn:ietf:params:gss-eap:saml-aaa-assertion",
-                                       gss_eap_saml_assertion_provider::createAttrContext);
+                                       createAttrContext);
     return true;
 }
 
@@ -714,7 +714,7 @@ gss_eap_saml_attr_provider::init(void)
 {
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML,
                                        "urn:ietf:params:gss-eap:saml-attr",
-                                       gss_eap_saml_attr_provider::createAttrContext);
+                                       createAttrContext);
     return true;
 }
 

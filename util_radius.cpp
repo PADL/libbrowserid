@@ -448,7 +448,7 @@ gss_eap_radius_attr_provider::init(void)
 {
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_RADIUS,
                                        "urn:ietf:params:gss-eap:radius-avp",
-                                       gss_eap_radius_attr_provider::createAttrContext);
+                                       createAttrContext);
     return true;
 }
 
