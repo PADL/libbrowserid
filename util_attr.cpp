@@ -1040,14 +1040,13 @@ OM_uint32
 gssEapCreateAttrContext(OM_uint32 *minor,
                         gss_cred_id_t gssCred,
                         gss_ctx_id_t gssCtx,
-                        struct gss_eap_attr_ctx **pAttrContext)
+                        struct gss_eap_attr_ctx **pAttrContext,
+                        time_t *pExpiryTime)
 {
     gss_eap_attr_ctx *ctx;
     OM_uint32 major;
 
     assert(gssCtx != GSS_C_NO_CONTEXT);
-
-    *pAttrContext = NULL;
 
     major = gssEapAttrProvidersInit(minor);
     if (GSS_ERROR(major))
@@ -1066,9 +1065,8 @@ gssEapCreateAttrContext(OM_uint32 *minor,
         return major;
     }
 
-    gssCtx->expiryTime = ctx->getExpiryTime();
-
     *pAttrContext = ctx;
+    *pExpiryTime = ctx->getExpiryTime();
 
     *minor = 0;
     return GSS_S_COMPLETE;

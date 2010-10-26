@@ -274,7 +274,8 @@ OM_uint32
 gssEapCreateAttrContext(OM_uint32 *minor,
                         gss_cred_id_t acceptorCred,
                         gss_ctx_id_t acceptorCtx,
-                        struct gss_eap_attr_ctx **pAttrCtx);
+                        struct gss_eap_attr_ctx **pAttrCtx,
+                        time_t *pExpiryTime);
 
 OM_uint32
 gssEapInquireName(OM_uint32 *minor,
