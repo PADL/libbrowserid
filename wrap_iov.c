@@ -313,6 +313,8 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     }
 
     code = 0;
+    if (conf_state != NULL)
+        *conf_state = conf_req_flag;
 
 cleanup:
     if (code != 0)
