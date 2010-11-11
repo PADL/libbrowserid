@@ -18,7 +18,7 @@ When installing, be sure to edit $prefix/etc/gss/mech to register
 the EAP mechanisms. A sample configuration file is in this directory.
 
 Make sure your RADIUS library is configured to talk to the server of
-your choice.
+your choice: see the example radsec.conf in this directory.
 
 Testing
 =======
