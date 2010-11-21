@@ -245,6 +245,9 @@ rfc4121Flags(gss_ctx_id_t ctx, int receiving);
 void
 gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...);
 
+#define IS_WIRE_ERROR(err)              ((err) > GSSEAP_RESERVED && \
+                                         (err) <= GSSEAP_RADIUS_PROT_FAILURE)
+
 #ifdef __cplusplus
 }
 #endif

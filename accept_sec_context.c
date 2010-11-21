@@ -511,28 +511,12 @@ makeErrorToken(OM_uint32 *minor,
      * Only return error codes that the initiator could have caused,
      * to avoid information leakage.
      */
-    switch (minorStatus) {
-    case GSSEAP_WRONG_SIZE:
-    case GSSEAP_WRONG_MECH:
-    case GSSEAP_BAD_TOK_HEADER:
-    case GSSEAP_TOK_TRUNC:
-    case GSSEAP_BAD_DIRECTION:
-    case GSSEAP_WRONG_TOK_ID:
-    case GSSEAP_CRIT_EXT_UNAVAILABLE:
-    case GSSEAP_MISSING_REQUIRED_EXT:
-    case GSSEAP_KEY_UNAVAILABLE:
-    case GSSEAP_KEY_TOO_SHORT:
-    case GSSEAP_RADIUS_AUTH_FAILURE:
-    case GSSEAP_UNKNOWN_RADIUS_CODE:
-    case GSSEAP_MISSING_EAP_REQUEST:
-        break;
-    default:
-        if (IS_RADIUS_ERROR(minorStatus))
-            /* Squash RADIUS error codes */
-            minorStatus = GSSEAP_RADIUS_PROT_FAILURE;
-        else
-            /* Don't return system error codes */
-            return GSS_S_COMPLETE;
+    if (IS_RADIUS_ERROR(minorStatus)) {
+        /* Squash RADIUS error codes */
+        minorStatus = GSSEAP_RADIUS_PROT_FAILURE;
+    } else if (!IS_WIRE_ERROR(minorStatus)) {
+        /* Don't return non-wire error codes */
+        return GSS_S_COMPLETE;
     }
 
     minorStatus -= ERROR_TABLE_BASE_eapg;

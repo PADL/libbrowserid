@@ -616,7 +616,7 @@ eapGssSmInitError(OM_uint32 *minor,
     major = load_uint32_be(&p[0]);
     *minor = ERROR_TABLE_BASE_eapg + load_uint32_be(&p[4]);
 
-    if (!GSS_ERROR(major)) {
+    if (!GSS_ERROR(major) || !IS_WIRE_ERROR(*minor)) {
         major = GSS_S_FAILURE;
         *minor = GSSEAP_BAD_ERROR_TOKEN;
     }
