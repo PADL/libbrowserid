@@ -241,5 +241,10 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
     krb5_free_checksum_contents(krbContext, &cksum);
 #endif /* HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE */
 
+    if (!krb5_c_is_keyed_cksum(*cksumtype)) {
+        *minor = KRB5KRB_AP_ERR_INAPP_CKSUM;
+        return GSS_S_FAILURE;
+    }
+
     return GSS_S_COMPLETE;
 }
