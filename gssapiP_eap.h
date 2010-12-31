@@ -46,7 +46,9 @@
 /* GSS headers */
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_krb5.h>
+#ifndef HAVE_HEIMDAL_VERSION
 #include <gssapi/gssapi_ext.h>
+#endif
 #include "gssapi_eap.h"
 
 /* Kerberos headers */
@@ -89,7 +91,12 @@ extern "C" {
 struct gss_eap_saml_attr_ctx;
 struct gss_eap_attr_ctx;
 
-struct gss_name_struct {
+#ifdef HAVE_HEIMDAL_VERSION
+struct gss_name_t_desc_struct
+#else
+struct gss_name_struct
+#endif
+{
     GSSEAP_MUTEX mutex; /* mutex protects attrCtx */
     OM_uint32 flags;
     krb5_principal krbPrincipal; /* this is immutable */
@@ -103,7 +110,12 @@ struct gss_name_struct {
 #define CRED_FLAG_DEFAULT_CCACHE            0x00100000
 #define CRED_FLAG_PUBLIC_MASK               0x0000FFFF
 
-struct gss_cred_id_struct {
+#ifdef HAVE_HEIMDAL_VERSION
+struct gss_cred_id_t_desc_struct
+#else
+struct gss_cred_id_struct
+#endif
+{
     GSSEAP_MUTEX mutex;
     OM_uint32 flags;
     gss_name_t name;
@@ -167,7 +179,12 @@ struct gss_eap_acceptor_ctx {
     VALUE_PAIR *vps;
 };
 
-struct gss_ctx_id_struct {
+#ifdef HAVE_HEIMDAL_VERSION
+struct gss_ctx_id_t_desc_struct
+#else
+struct gss_ctx_id_struct
+#endif
+{
     GSSEAP_MUTEX mutex;
     enum gss_eap_state state;
     OM_uint32 flags;

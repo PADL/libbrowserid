@@ -61,7 +61,11 @@ static int
 gssEapChecksum(krb5_context context,
                krb5_cksumtype type,
                size_t rrc,
-               krb5_keyblock *key,
+#ifdef HAVE_HEIMDAL_VERSION
+               krb5_crypto crypto,
+#else
+               krb5_keyblock *crypto,
+#endif
                krb5_keyusage sign_usage,
                gss_iov_buffer_desc *iov,
                int iov_count,
@@ -74,13 +78,15 @@ gssEapChecksum(krb5_context context,
     krb5_crypto_iov *kiov;
     size_t kiov_count;
     int i = 0, j;
-    unsigned int k5_checksumlen;
+    size_t k5_checksumlen;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_cksumtype cksumtype;
+#endif
 
     if (verify)
         *valid = FALSE;
 
-    code = krb5_c_crypto_length(context, KRB_KEY_TYPE(key),
-                                KRB5_CRYPTO_TYPE_CHECKSUM, &k5_checksumlen);
+    code = krbCryptoLength(context, crypto, KRB5_CRYPTO_TYPE_CHECKSUM, &k5_checksumlen);
     if (code != 0)
         return code;
 
@@ -130,17 +136,28 @@ gssEapChecksum(krb5_context context,
     }
     i++;
 
+#ifdef HAVE_HEIMDAL_VERSION
+    if (verify) {
+        code = krb5_verify_checksum_iov(context, crypto, sign_usage,
+                                        kiov, kiov_count, &cksumtype);
+        *valid = (code == 0);
+    } else {
+        code = krb5_create_checksum_iov(context, crypto, sign_usage,
+                                        kiov, kiov_count, &cksumtype);
+    }
+#else
     if (verify) {
         krb5_boolean kvalid = FALSE;
 
-        code = krb5_c_verify_checksum_iov(context, type, key,
+        code = krb5_c_verify_checksum_iov(context, type, crypto,
                                           sign_usage, kiov, kiov_count, &kvalid);
 
         *valid = kvalid;
     } else {
-        code = krb5_c_make_checksum_iov(context, type, key,
+        code = krb5_c_make_checksum_iov(context, type, crypto,
                                         sign_usage, kiov, kiov_count);
     }
+#endif /* HAVE_HEIMDAL_VERSION */
 
     GSSEAP_FREE(kiov);
 
@@ -151,12 +168,16 @@ int
 gssEapSign(krb5_context context,
            krb5_cksumtype type,
            size_t rrc,
-           krb5_keyblock *key,
+#ifdef HAVE_HEIMDAL_VERSION
+           krb5_crypto crypto,
+#else
+           krb5_keyblock *crypto,
+#endif
            krb5_keyusage sign_usage,
            gss_iov_buffer_desc *iov,
            int iov_count)
 {
-    return gssEapChecksum(context, type, rrc, key,
+    return gssEapChecksum(context, type, rrc, crypto,
                           sign_usage, iov, iov_count, 0, NULL);
 }
 
@@ -164,13 +185,17 @@ int
 gssEapVerify(krb5_context context,
              krb5_cksumtype type,
              size_t rrc,
-             krb5_keyblock *key,
+#ifdef HAVE_HEIMDAL_VERSION
+             krb5_crypto crypto,
+#else
+             krb5_keyblock *crypto,
+#endif
              krb5_keyusage sign_usage,
              gss_iov_buffer_desc *iov,
              int iov_count,
              int *valid)
 {
-    return gssEapChecksum(context, type, rrc, key,
+    return gssEapChecksum(context, type, rrc, crypto,
                           sign_usage, iov, iov_count, 1, valid);
 }
 

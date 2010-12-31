@@ -197,10 +197,10 @@ setAcceptorIdentity(OM_uint32 *minor,
 
     krbPrinc = ctx->acceptorName->krbPrincipal;
     assert(krbPrinc != NULL);
-    assert(krb5_princ_size(krbContext, krbPrinc) >= 2);
+    assert(KRB_PRINC_LENGTH(krbPrinc) >= 2);
 
     /* Acceptor-Service-Name */
-    krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 0), &nameBuf);
+    krbPrincComponentToGssBuffer(krbPrinc, 0, &nameBuf);
 
     major = gssEapRadiusAddAvp(minor, vps,
                                PW_GSS_ACCEPTOR_SERVICE_NAME,
@@ -210,7 +210,7 @@ setAcceptorIdentity(OM_uint32 *minor,
         return major;
 
     /* Acceptor-Host-Name */
-    krbDataToGssBuffer(krb5_princ_component(krbContext, krbPrinc, 1), &nameBuf);
+    krbPrincComponentToGssBuffer(krbPrinc, 1, &nameBuf);
 
     major = gssEapRadiusAddAvp(minor, vps,
                                PW_GSS_ACCEPTOR_HOST_NAME,
@@ -219,13 +219,13 @@ setAcceptorIdentity(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    if (krb5_princ_size(krbContext, krbPrinc) > 2) {
+    if (KRB_PRINC_LENGTH(krbPrinc) > 2) {
         /* Acceptor-Service-Specific */
         krb5_principal_data ssiPrinc = *krbPrinc;
         char *ssi;
 
-        krb5_princ_size(krbContext, &ssiPrinc) -= 2;
-        krb5_princ_name(krbContext, &ssiPrinc) += 2;
+        KRB_PRINC_LENGTH(&ssiPrinc) -= 2;
+        KRB_PRINC_NAME(&ssiPrinc) += 2;
 
         *minor = krb5_unparse_name_flags(krbContext, &ssiPrinc,
                                          KRB5_PRINCIPAL_UNPARSE_NO_REALM, &ssi);
@@ -247,7 +247,7 @@ setAcceptorIdentity(OM_uint32 *minor,
         krb5_free_unparsed_name(krbContext, ssi);
     }
 
-    krbDataToGssBuffer(krb5_princ_realm(krbContext, krbPrinc), &nameBuf);
+    krbPrincRealmToGssBuffer(krbPrinc, &nameBuf);
     if (nameBuf.length != 0) {
         /* Acceptor-Realm-Name */
         major = gssEapRadiusAddAvp(minor, vps,

@@ -75,11 +75,14 @@ gssEapWrapIovLength(OM_uint32 *minor,
     gss_iov_buffer_t header, trailer, padding;
     size_t dataLength, assocDataLength;
     size_t gssHeaderLen, gssPadLen, gssTrailerLen;
-    unsigned int krbHeaderLen = 0, krbTrailerLen = 0, krbPadLen = 0;
+    size_t krbHeaderLen = 0, krbTrailerLen = 0, krbPadLen = 0;
     krb5_error_code code;
     krb5_context krbContext;
     int dce_style;
     size_t ec;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto = NULL;
+#endif
 
     if (qop_req != GSS_C_QOP_DEFAULT) {
         *minor = GSSEAP_UNKNOWN_QOP;
@@ -120,18 +123,24 @@ gssEapWrapIovLength(OM_uint32 *minor,
 
     gssHeaderLen = gssPadLen = gssTrailerLen = 0;
 
-    code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
-                                conf_req_flag ?
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_init(krbContext, &ctx->rfc3961Key, ETYPE_NULL, &krbCrypto);
+    if (code != 0)
+        return code;
+#endif
+
+    code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                           conf_req_flag ?
                                 KRB5_CRYPTO_TYPE_TRAILER : KRB5_CRYPTO_TYPE_CHECKSUM,
-                                &krbTrailerLen);
+                           &krbTrailerLen);
     if (code != 0) {
         *minor = code;
         return GSS_S_FAILURE;
     }
 
     if (conf_req_flag) {
-        code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
-                                    KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
+        code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                               KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
         if (code != 0) {
             *minor = code;
             return GSS_S_FAILURE;
@@ -143,9 +152,9 @@ gssEapWrapIovLength(OM_uint32 *minor,
         gssHeaderLen += krbHeaderLen; /* Kerb-Header */
         gssTrailerLen = 16 /* E(Header) */ + krbTrailerLen; /* Kerb-Trailer */
 
-        code = krb5_c_padding_length(krbContext, ctx->encryptionType,
-                                     dataLength - assocDataLength + 16 /* E(Header) */,
-                                     &krbPadLen);
+        code = krbPaddingLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                                dataLength - assocDataLength + 16 /* E(Header) */,
+                                &krbPadLen);
         if (code != 0) {
             *minor = code;
             return GSS_S_FAILURE;
@@ -153,7 +162,7 @@ gssEapWrapIovLength(OM_uint32 *minor,
 
         if (krbPadLen == 0 && dce_style) {
             /* Windows rejects AEAD tokens with non-zero EC */
-            code = krb5_c_block_size(krbContext, ctx->encryptionType, &ec);
+            code = krbBlockSize(krbContext, KRB_CRYPTO_CONTEXT(ctx), &ec);
             if (code != 0) {
                 *minor = code;
                 return GSS_S_FAILURE;

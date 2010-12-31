@@ -114,7 +114,11 @@ int
 gssEapSign(krb5_context context,
            krb5_cksumtype type,
            size_t rrc,
+#ifdef HAVE_HEIMDAL_VERSION
+           krb5_crypto crypto,
+#else
            krb5_keyblock *key,
+#endif
            krb5_keyusage sign_usage,
            gss_iov_buffer_desc *iov,
            int iov_count);
@@ -123,7 +127,11 @@ int
 gssEapVerify(krb5_context context,
              krb5_cksumtype type,
              size_t rrc,
+#ifdef HAVE_HEIMDAL_VERSION
+             krb5_crypto crypto,
+#else
              krb5_keyblock *key,
+#endif
              krb5_keyusage sign_usage,
              gss_iov_buffer_desc *iov,
              int iov_count,
@@ -202,15 +210,27 @@ int gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech);
 /* util_crypt.c */
 int
 gssEapEncrypt(krb5_context context, int dce_style, size_t ec,
-              size_t rrc, krb5_keyblock *key, int usage, krb5_pointer iv,
+              size_t rrc,
+#ifdef HAVE_HEIMDAL_VERSION
+              krb5_crypto crypto,
+#else
+              krb5_keyblock *key,
+#endif
+              int usage,
               gss_iov_buffer_desc *iov, int iov_count);
 
 int
 gssEapDecrypt(krb5_context context, int dce_style, size_t ec,
-              size_t rrc, krb5_keyblock *key, int usage, krb5_pointer iv,
+              size_t rrc,
+#ifdef HAVE_HEIMDAL_VERSION
+              krb5_crypto crypto,
+#else
+              krb5_keyblock *key,
+#endif
+              int usage,
               gss_iov_buffer_desc *iov, int iov_count);
 
-krb5_cryptotype
+int
 gssEapMapCryptoFlag(OM_uint32 type);
 
 gss_iov_buffer_t
@@ -279,14 +299,40 @@ gssEapVerifyExtensions(OM_uint32 *minor,
                        const gss_buffer_t buffer);
 
 /* util_krb.c */
+#ifdef HAVE_HEIMDAL_VERSION
+#define KRB_KEY_TYPE(key)       ((key)->keytype)
+#define KRB_KEY_DATA(key)       ((key)->keyvalue.data)
+#define KRB_KEY_LENGTH(key)     ((key)->keyvalue.length)
+#else
 #define KRB_KEY_TYPE(key)       ((key)->enctype)
 #define KRB_KEY_DATA(key)       ((key)->contents)
 #define KRB_KEY_LENGTH(key)     ((key)->length)
+#endif /* HAVE_HEIMDAL_VERSION */
+
 #define KRB_KEY_INIT(key)       do {        \
         KRB_KEY_TYPE(key) = ENCTYPE_NULL;   \
         KRB_KEY_DATA(key) = NULL;           \
         KRB_KEY_LENGTH(key) = 0;            \
     } while (0)
+
+#ifdef HAVE_HEIMDAL_VERSION
+#define KRB_PRINC_LENGTH(princ) ((princ)->name.name_string.len)
+#define KRB_PRINC_TYPE(princ)   ((princ)->name.name_type)
+#define KRB_PRINC_NAME(princ)   ((princ)->name.name_string.val)
+#define KRB_CRYPTO_CONTEXT(ctx) (krbCrypto)
+#else
+#define KRB_PRINC_LENGTH(princ) (krb5_princ_size(NULL, (princ)))
+#define KRB_PRINC_TYPE(princ)   (krb5_princ_type(NULL, (princ)))
+#define KRB_PRINC_NAME(princ)   (krb5_princ_name(NULL, (princ)))
+#define KRB_CRYPTO_CONTEXT(ctx) (&(ctx)->rfc3961Key)
+#endif /* HAVE_HEIMDAL_VERSION */
+
+#ifdef HAVE_HEIMDAL_VERSION
+#define GSS_IOV_BUFFER_FLAG_ALLOCATE    GSS_IOV_BUFFER_TYPE_FLAG_ALLOCATE
+#define GSS_IOV_BUFFER_FLAG_ALLOCATED   GSS_IOV_BUFFER_TYPE_FLAG_ALLOCATED
+
+#define GSS_S_CRED_UNAVAIL              GSS_S_FAILURE
+#endif
 
 #define GSSEAP_KRB_INIT(ctx) do {                   \
         OM_uint32 tmpMajor;                         \
@@ -304,6 +350,44 @@ OM_uint32
 rfc3961ChecksumTypeForKey(OM_uint32 *minor,
                           krb5_keyblock *key,
                           krb5_cksumtype *cksumtype);
+
+krb5_const_principal
+krbAnonymousPrincipal(void);
+
+krb5_error_code
+krbCryptoLength(krb5_context krbContext,
+#ifdef HAVE_HEIMDAL_VERSION
+                krb5_crypto krbCrypto,
+#else
+                krb5_keyblock *key,
+#endif
+                int type,
+                size_t *length);
+
+krb5_error_code
+krbPaddingLength(krb5_context krbContext,
+#ifdef HAVE_HEIMDAL_VERSION
+                 krb5_crypto krbCrypto,
+#else
+                 krb5_keyblock *key,
+#endif
+                 size_t dataLength,
+                 size_t *padLength);
+
+krb5_error_code
+krbBlockSize(krb5_context krbContext,
+#ifdef HAVE_HEIMDAL_VERSION
+                 krb5_crypto krbCrypto,
+#else
+                 krb5_keyblock *key,
+#endif
+                 size_t *blockSize);
+
+krb5_error_code
+krbEnctypeToString(krb5_context krbContext,
+                   krb5_enctype enctype,
+                   const char *prefix,
+                   gss_buffer_t string);
 
 /* util_lucid.c */
 OM_uint32
@@ -608,6 +692,30 @@ krbDataToGssBuffer(krb5_data *data, gss_buffer_t buffer)
 {
     buffer->value = (void *)data->data;
     buffer->length = data->length;
+}
+
+static inline void
+krbPrincComponentToGssBuffer(krb5_principal krbPrinc,
+                             int index, gss_buffer_t buffer)
+{
+#ifdef HAVE_HEIMDAL_VERSION
+    buffer->value = (void *)krbPrinc->name.name_string.val[index];
+    buffer->length = strlen((char *)buffer->value);
+#else
+    buffer->value = (void *)krb5_princ_component(NULL, krbPrinc, index)->data;
+    buffer->length = krb5_princ_component(NULL, krbPrinc, index)->length;
+#endif /* HAVE_HEIMDAL_VERSION */
+}
+
+static inline void
+krbPrincRealmToGssBuffer(krb5_principal krbPrinc, gss_buffer_t buffer)
+{
+#ifdef HAVE_HEIMDAL_VERSION
+    buffer->value = (void *)krbPrinc->realm;
+    buffer->length = strlen(krbPrinc->realm);
+#else
+    krbDataToGssBuffer(krb5_princ_realm(NULL, krbPrinc), buffer);
+#endif
 }
 
 static inline void

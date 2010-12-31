@@ -136,7 +136,7 @@ krbPrincipalToName(OM_uint32 *minor,
     name->krbPrincipal = *principal;
     *principal = NULL;
 
-    if (name->krbPrincipal->length > 1) {
+    if (KRB_PRINC_LENGTH(name->krbPrincipal) > 1) {
         name->flags |= NAME_FLAG_SERVICE;
     } else {
         name->flags |= NAME_FLAG_NAI;
@@ -201,7 +201,7 @@ importUserName(OM_uint32 *minor,
 
     if (nameBuffer == GSS_C_NO_BUFFER) {
         *minor = krb5_copy_principal(krbContext,
-                                     krb5_anonymous_principal(), &krbPrinc);
+                                     krbAnonymousPrincipal(), &krbPrinc);
         if (*minor != 0)
             return GSS_S_FAILURE;
     } else {
@@ -222,6 +222,30 @@ importUserName(OM_uint32 *minor,
     }
 
     GSSEAP_FREE(nameString);
+    return major;
+}
+
+static OM_uint32
+importAnonymousName(OM_uint32 *minor,
+                    const gss_buffer_t nameBuffer,
+                    gss_name_t *pName)
+{
+    OM_uint32 major;
+    krb5_context krbContext;
+    krb5_principal krbPrinc;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    *minor = krb5_copy_principal(krbContext, krbAnonymousPrincipal(),
+                                 &krbPrinc);
+    if (*minor != 0)
+        return GSS_S_FAILURE;
+
+    major = krbPrincipalToName(minor, &krbPrinc, pName);
+    if (GSS_ERROR(major)) {
+        krb5_free_principal(krbContext, krbPrinc);
+    }
+
     return major;
 }
 
@@ -361,6 +385,7 @@ gssEapImportName(OM_uint32 *minor,
         { GSS_EAP_NT_PRINCIPAL_NAME,        importUserName              },
         { GSS_C_NT_HOSTBASED_SERVICE,       importServiceName           },
         { GSS_C_NT_HOSTBASED_SERVICE_X,     importServiceName           },
+        { GSS_C_NT_ANONYMOUS,               importAnonymousName         },
         { GSS_C_NT_EXPORT_NAME,             importExportName            },
 #ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
         { GSS_C_NT_COMPOSITE_EXPORT,        importCompositeExportName   },
@@ -536,6 +561,7 @@ gssEapDisplayName(OM_uint32 *minor,
     OM_uint32 major;
     krb5_context krbContext;
     char *krbName;
+    gss_OID name_type;
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -560,8 +586,16 @@ gssEapDisplayName(OM_uint32 *minor,
 
     krb5_free_unparsed_name(krbContext, krbName);
 
+    if (KRB_PRINC_TYPE(name->krbPrincipal) == KRB5_NT_WELLKNOWN &&
+        krb5_principal_compare(krbContext,
+                               name->krbPrincipal, krbAnonymousPrincipal())) {
+        name_type = GSS_C_NT_ANONYMOUS;
+    } else {
+        name_type = GSS_EAP_NT_PRINCIPAL_NAME;
+    }
+
     if (output_name_type != NULL)
-        *output_name_type = GSS_EAP_NT_PRINCIPAL_NAME;
+        *output_name_type = name_type;
 
     return GSS_S_COMPLETE;
 }

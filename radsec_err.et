@@ -33,4 +33,6 @@
 # Placeholders only
 error_table rse
 
+error_code GSSEAP_RSE_OK,                       ""
+
 end

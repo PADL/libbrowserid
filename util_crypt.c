@@ -90,7 +90,12 @@
  */
 static krb5_error_code
 mapIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
-       krb5_enctype enctype, gss_iov_buffer_desc *iov,
+#ifdef HAVE_HEIMDAL_VERSION
+       krb5_crypto crypto,
+#else
+       krb5_keyblock *crypto,
+#endif
+       gss_iov_buffer_desc *iov,
        int iov_count, krb5_crypto_iov **pkiov,
        size_t *pkiov_count)
 {
@@ -99,7 +104,7 @@ mapIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
     int i = 0, j;
     size_t kiov_count;
     krb5_crypto_iov *kiov;
-    unsigned int k5_headerlen = 0, k5_trailerlen = 0;
+    size_t k5_headerlen = 0, k5_trailerlen = 0;
     size_t gss_headerlen, gss_trailerlen;
     krb5_error_code code;
 
@@ -112,13 +117,11 @@ mapIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
     assert(trailer == NULL || rrc == 0);
 
-    code = krb5_c_crypto_length(context, enctype, KRB5_CRYPTO_TYPE_HEADER,
-                                &k5_headerlen);
+    code = krbCryptoLength(context, crypto, KRB5_CRYPTO_TYPE_HEADER, &k5_headerlen);
     if (code != 0)
         return code;
 
-    code = krb5_c_crypto_length(context, enctype, KRB5_CRYPTO_TYPE_TRAILER,
-                                &k5_trailerlen);
+    code = krbCryptoLength(context, crypto, KRB5_CRYPTO_TYPE_TRAILER, &k5_trailerlen);
     if (code != 0)
         return code;
 
@@ -198,89 +201,83 @@ mapIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
 }
 
 int
-gssEapEncrypt(krb5_context context, int dce_style, size_t ec,
-              size_t rrc, krb5_keyblock *key, int usage, krb5_pointer iv,
-              gss_iov_buffer_desc *iov, int iov_count)
+gssEapEncrypt(krb5_context context,
+              int dce_style,
+              size_t ec,
+              size_t rrc,
+#ifdef HAVE_HEIMDAL_VERSION
+              krb5_crypto crypto,
+#else
+              krb5_keyblock *crypto,
+#endif
+              int usage,
+              gss_iov_buffer_desc *iov,
+              int iov_count)
 {
     krb5_error_code code;
-    size_t blocksize;
-    krb5_data ivd, *pivd;
     size_t kiov_count;
-    krb5_crypto_iov *kiov;
+    krb5_crypto_iov *kiov = NULL;
 
-    if (iv) {
-        code = krb5_c_block_size(context, KRB_KEY_TYPE(key), &blocksize);
-        if (code)
-            return(code);
+    code = mapIov(context, dce_style, ec, rrc, crypto,
+                  iov, iov_count, &kiov, &kiov_count);
+    if (code != 0)
+        goto cleanup;
 
-        ivd.length = blocksize;
-        ivd.data = GSSEAP_MALLOC(ivd.length);
-        if (ivd.data == NULL)
-            return ENOMEM;
-        memcpy(ivd.data, iv, ivd.length);
-        pivd = &ivd;
-    } else {
-        pivd = NULL;
-    }
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_encrypt_iov_ivec(context, crypto, usage, kiov, kiov_count, NULL);
+#else
+    code = krb5_c_encrypt_iov(context, crypto, usage, NULL, kiov, kiov_count);
+#endif
+    if (code != 0)
+        goto cleanup;
 
-    code = mapIov(context, dce_style, ec, rrc,
-                  KRB_KEY_TYPE(key), iov, iov_count,
-                  &kiov, &kiov_count);
-    if (code == 0) {
-        code = krb5_c_encrypt_iov(context, key, usage, pivd, kiov, kiov_count);
+cleanup:
+    if (kiov != NULL)
         GSSEAP_FREE(kiov);
-    }
-
-    if (pivd != NULL)
-        GSSEAP_FREE(pivd->data);
 
     return code;
 }
 
 int
-gssEapDecrypt(krb5_context context, int dce_style, size_t ec,
-              size_t rrc, krb5_keyblock *key, int usage, krb5_pointer iv,
-              gss_iov_buffer_desc *iov, int iov_count)
+gssEapDecrypt(krb5_context context,
+              int dce_style,
+              size_t ec,
+              size_t rrc,
+#ifdef HAVE_HEIMDAL_VERSION
+              krb5_crypto crypto,
+#else
+              krb5_keyblock *crypto,
+#endif
+              int usage,
+              gss_iov_buffer_desc *iov,
+              int iov_count)
 {
     krb5_error_code code;
-    size_t blocksize;
-    krb5_data ivd, *pivd;
     size_t kiov_count;
     krb5_crypto_iov *kiov;
 
-    if (iv) {
-        code = krb5_c_block_size(context, KRB_KEY_TYPE(key), &blocksize);
-        if (code)
-            return(code);
+    code = mapIov(context, dce_style, ec, rrc, crypto,
+                  iov, iov_count, &kiov, &kiov_count);
+    if (code != 0)
+        goto cleanup;
 
-        ivd.length = blocksize;
-        ivd.data = GSSEAP_MALLOC(ivd.length);
-        if (ivd.data == NULL)
-            return ENOMEM;
-        memcpy(ivd.data, iv, ivd.length);
-        pivd = &ivd;
-    } else {
-        pivd = NULL;
-    }
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_decrypt_iov_ivec(context, crypto, usage, kiov, kiov_count, NULL);
+#else
+    code = krb5_c_decrypt_iov(context, crypto, usage, NULL, kiov, kiov_count);
+#endif
 
-    code = mapIov(context, dce_style, ec, rrc,
-                  KRB_KEY_TYPE(key), iov, iov_count,
-                  &kiov, &kiov_count);
-    if (code == 0) {
-        code = krb5_c_decrypt_iov(context, key, usage, pivd, kiov, kiov_count);
+cleanup:
+    if (kiov != NULL)
         GSSEAP_FREE(kiov);
-    }
-
-    if (pivd != NULL)
-        GSSEAP_FREE(pivd->data);
 
     return code;
 }
 
-krb5_cryptotype
+int
 gssEapMapCryptoFlag(OM_uint32 type)
 {
-    krb5_cryptotype ktype;
+    int ktype;
 
     switch (GSS_IOV_BUFFER_TYPE(type)) {
     case GSS_IOV_BUFFER_TYPE_DATA:

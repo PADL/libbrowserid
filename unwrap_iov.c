@@ -67,13 +67,18 @@
 OM_uint32
 unwrapToken(OM_uint32 *minor,
             gss_ctx_id_t ctx,
+#ifdef HAVE_HEIMDAL_VERSION
+            krb5_crypto krbCrypto,
+#else
+            krb5_keyblock *unused __attribute__((__unused__)),
+#endif
             int *conf_state,
             gss_qop_t *qop_state,
             gss_iov_buffer_desc *iov,
             int iov_count,
             enum gss_eap_token_type toktype)
 {
-    OM_uint32 code;
+    OM_uint32 major = GSS_S_FAILURE, code;
     gss_iov_buffer_t header;
     gss_iov_buffer_t padding;
     gss_iov_buffer_t trailer;
@@ -86,6 +91,9 @@ unwrapToken(OM_uint32 *minor,
     int valid = 0;
     int conf_flag = 0;
     krb5_context krbContext;
+#ifdef HAVE_HEIMDAL_VERSION
+    int freeCrypto = (krbCrypto == NULL);
+#endif
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -99,8 +107,9 @@ unwrapToken(OM_uint32 *minor,
 
     padding = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_PADDING);
     if (padding != NULL && padding->buffer.length != 0) {
-        *minor = GSSEAP_BAD_PADDING_IOV;
-        return GSS_S_DEFECTIVE_TOKEN;
+        code = GSSEAP_BAD_PADDING_IOV;
+        major = GSS_S_DEFECTIVE_TOKEN;
+        goto cleanup;
     }
 
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
@@ -122,17 +131,28 @@ unwrapToken(OM_uint32 *minor,
     ptr = (unsigned char *)header->buffer.value;
 
     if (header->buffer.length < 16) {
-        *minor = GSSEAP_TOK_TRUNC;
-        return GSS_S_DEFECTIVE_TOKEN;
+        code = GSSEAP_TOK_TRUNC;
+        major = GSS_S_DEFECTIVE_TOKEN;
+        goto cleanup;
     }
 
     if ((ptr[2] & flags) != flags) {
-        *minor = GSSEAP_BAD_DIRECTION;
-        return GSS_S_BAD_SIG;
+        code = GSSEAP_BAD_DIRECTION;
+        major = GSS_S_BAD_SIG;
+        goto cleanup;
     }
 
+#ifdef HAVE_HEIMDAL_VERSION
+    if (krbCrypto == NULL) {
+        code = krb5_crypto_init(krbContext, &ctx->rfc3961Key,
+                                ETYPE_NULL, &krbCrypto);
+        if (code != 0)
+            goto cleanup;
+    }
+#endif
+
     if (toktype == TOK_TYPE_WRAP) {
-        unsigned int krbTrailerLen;
+        size_t krbTrailerLen;
 
         if (load_uint16_be(ptr) != TOK_TYPE_WRAP)
             goto defective;
@@ -143,15 +163,12 @@ unwrapToken(OM_uint32 *minor,
         rrc = load_uint16_be(ptr + 6);
         seqnum = load_uint64_be(ptr + 8);
 
-        code = krb5_c_crypto_length(krbContext,
-                                    ctx->encryptionType,
-                                    conf_flag ? KRB5_CRYPTO_TYPE_TRAILER :
-                                    KRB5_CRYPTO_TYPE_CHECKSUM,
-                                    &krbTrailerLen);
-        if (code != 0) {
-            *minor = code;
-            return GSS_S_FAILURE;
-        }
+        code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                               conf_flag ? KRB5_CRYPTO_TYPE_TRAILER :
+                                           KRB5_CRYPTO_TYPE_CHECKSUM,
+                               &krbTrailerLen);
+        if (code != 0)
+            goto cleanup;
 
         /* Deal with RRC */
         if (trailer == NULL) {
@@ -177,11 +194,11 @@ unwrapToken(OM_uint32 *minor,
             /* Decrypt */
             code = gssEapDecrypt(krbContext,
                                  ((ctx->gssFlags & GSS_C_DCE_STYLE) != 0),
-                                 ec, rrc, &ctx->rfc3961Key,
-                                 keyUsage, 0, iov, iov_count);
+                                 ec, rrc, KRB_CRYPTO_CONTEXT(ctx), keyUsage,
+                                 iov, iov_count);
             if (code != 0) {
-                *minor = code;
-                return GSS_S_BAD_SIG;
+                major = GSS_S_BAD_SIG;
+                goto cleanup;
             }
 
             /* Validate header integrity */
@@ -194,8 +211,9 @@ unwrapToken(OM_uint32 *minor,
                 || althdr[2] != ptr[2]
                 || althdr[3] != ptr[3]
                 || memcmp(althdr + 8, ptr + 8, 8) != 0) {
-                *minor = GSSEAP_BAD_WRAP_TOKEN;
-                return GSS_S_BAD_SIG;
+                code = GSSEAP_BAD_WRAP_TOKEN;
+                major = GSS_S_BAD_SIG;
+                goto cleanup;
             }
         } else {
             /* Verify checksum: note EC is checksum size here, not padding */
@@ -207,11 +225,11 @@ unwrapToken(OM_uint32 *minor,
             store_uint16_be(0, ptr + 6);
 
             code = gssEapVerify(krbContext, ctx->checksumType, rrc,
-                                &ctx->rfc3961Key, keyUsage,
+                                KRB_CRYPTO_CONTEXT(ctx), keyUsage,
                                 iov, iov_count, &valid);
             if (code != 0 || valid == FALSE) {
-                *minor = code;
-                return GSS_S_BAD_SIG;
+                major = GSS_S_BAD_SIG;
+                goto cleanup;
             }
         }
 
@@ -226,11 +244,11 @@ unwrapToken(OM_uint32 *minor,
         seqnum = load_uint64_be(ptr + 8);
 
         code = gssEapVerify(krbContext, ctx->checksumType, 0,
-                            &ctx->rfc3961Key, keyUsage,
+                            KRB_CRYPTO_CONTEXT(ctx), keyUsage,
                             iov, iov_count, &valid);
         if (code != 0 || valid == FALSE) {
-            *minor = code;
-            return GSS_S_BAD_SIG;
+            major = GSS_S_BAD_SIG;
+            goto cleanup;
         }
         code = sequenceCheck(minor, &ctx->seqState, seqnum);
     } else if (toktype == TOK_TYPE_DELETE_CONTEXT) {
@@ -241,17 +259,25 @@ unwrapToken(OM_uint32 *minor,
         goto defective;
     }
 
-    *minor = 0;
-
     if (conf_state != NULL)
         *conf_state = conf_flag;
 
-    return code;
+    code = 0;
+    major = GSS_S_COMPLETE;
+    goto cleanup;
 
 defective:
-    *minor = GSSEAP_BAD_WRAP_TOKEN;
+    code = GSSEAP_BAD_WRAP_TOKEN;
+    major = GSS_S_DEFECTIVE_TOKEN;
 
-    return GSS_S_DEFECTIVE_TOKEN;
+cleanup:
+    *minor = code;
+#ifdef HAVE_HEIMDAL_VERSION
+    if (freeCrypto && krbCrypto != NULL)
+        krb5_crypto_destroy(krbContext, krbCrypto);
+#endif
+
+    return major;
 }
 
 int
@@ -298,6 +324,9 @@ unwrapStream(OM_uint32 *minor,
     gss_iov_buffer_desc *tiov = NULL;
     gss_iov_buffer_t stream, data = NULL;
     gss_iov_buffer_t theader, tdata = NULL, tpadding, ttrailer;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto = NULL;
+#endif
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -367,10 +396,16 @@ unwrapStream(OM_uint32 *minor,
     ttrailer = &tiov[i++];
     ttrailer->type = GSS_IOV_BUFFER_TYPE_TRAILER;
 
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_init(krbContext, &ctx->rfc3961Key, ETYPE_NULL, &krbCrypto);
+    if (code != 0)
+        goto cleanup;
+#endif
+
     {
         size_t ec, rrc;
-        unsigned int krbHeaderLen = 0;
-        unsigned int krbTrailerLen = 0;
+        size_t krbHeaderLen = 0;
+        size_t krbTrailerLen = 0;
 
         conf_req_flag = ((ptr[0] & TOK_FLAG_WRAP_CONFIDENTIAL) != 0);
         ec = conf_req_flag ? load_uint16_be(ptr + 2) : 0;
@@ -385,19 +420,19 @@ unwrapStream(OM_uint32 *minor,
         }
 
         if (conf_req_flag) {
-            code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
-                                        KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
+            code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                                    KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
             if (code != 0)
                 goto cleanup;
             theader->buffer.length += krbHeaderLen; /* length validated later */
         }
 
         /* no PADDING for CFX, EC is used instead */
-        code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
-                                    conf_req_flag
-                                      ? KRB5_CRYPTO_TYPE_TRAILER
-                                      : KRB5_CRYPTO_TYPE_CHECKSUM,
-                                    &krbTrailerLen);
+        code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                               conf_req_flag
+                                  ? KRB5_CRYPTO_TYPE_TRAILER
+                                  : KRB5_CRYPTO_TYPE_CHECKSUM,
+                               &krbTrailerLen);
         if (code != 0)
             goto cleanup;
 
@@ -441,8 +476,8 @@ unwrapStream(OM_uint32 *minor,
 
     assert(i <= iov_count + 2);
 
-    major = unwrapToken(&code, ctx, conf_state, qop_state,
-                        tiov, i, toktype);
+    major = unwrapToken(&code, ctx, KRB_CRYPTO_CONTEXT(ctx),
+                        conf_state, qop_state, tiov, i, toktype);
     if (major == GSS_S_COMPLETE) {
         *data = *tdata;
     } else if (tdata->type & GSS_IOV_BUFFER_FLAG_ALLOCATED) {
@@ -455,6 +490,10 @@ unwrapStream(OM_uint32 *minor,
 cleanup:
     if (tiov != NULL)
         GSSEAP_FREE(tiov);
+#ifdef HAVE_HEIMDAL_VERSION
+    if (krbCrypto != NULL)
+        krb5_crypto_destroy(krbContext, krbCrypto);
+#endif
 
     *minor = code;
 
@@ -481,7 +520,9 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor,
         major = unwrapStream(minor, ctx, conf_state, qop_state,
                              iov, iov_count, toktype);
     } else {
-        major = unwrapToken(minor, ctx, conf_state, qop_state,
+        major = unwrapToken(minor, ctx,
+                            NULL, /* krbCrypto */
+                            conf_state, qop_state,
                             iov, iov_count, toktype);
     }
 

@@ -15,6 +15,7 @@ for dir in $check_krb5_dir /usr /usr/local ; do
      found_krb5="yes";
      KRB5_CFLAGS=`$dir/bin/krb5-config gssapi --cflags`;
      KRB5_LIBS=`$dir/bin/krb5-config gssapi --libs`;
+     COMPILE_ET="$dir/bin/compile_et";
      break;
    fi
 done
@@ -32,9 +33,11 @@ else
 	printf "Kerberos found in $krb5dir\n";
 	AC_SUBST(KRB5_CFLAGS)
 	AC_SUBST(KRB5_LIBS)
+	AC_SUBST(COMPILE_ET)
 	AC_CHECK_LIB(gssapi_krb5, GSS_C_NT_COMPOSITE_EXPORT, [AC_DEFINE_UNQUOTED([HAVE_GSS_C_NT_COMPOSITE_EXPORT], 1, [Define if GSS-API library supports recent naming extensions draft])], [], "$KRB5_LIBS")
 	AC_CHECK_LIB(gssapi_krb5, gss_inquire_attrs_for_mech, [AC_DEFINE_UNQUOTED([HAVE_GSS_INQUIRE_ATTRS_FOR_MECH], 1, [Define if GSS-API library supports RFC 5587])], [], "$KRB5_LIBS")
 	AC_CHECK_LIB(gssapi_krb5, gss_krb5_import_cred, [AC_DEFINE_UNQUOTED([HAVE_GSS_KRB5_IMPORT_CRED], 1, [Define if GSS-API library supports gss_krb5_import_cred])], [], "$KRB5_LIBS")
+	AC_CHECK_LIB(krb5, heimdal_version, [AC_DEFINE_UNQUOTED([HAVE_HEIMDAL_VERSION], 1, [Define if building against Heimdal Kerberos implementation])], [], "$KRB5_LIBS")
 fi
 ])dnl
 

@@ -275,7 +275,7 @@ static int
 isTicketGrantingServiceP(krb5_context krbContext,
                          krb5_const_principal principal)
 {
-    if (krb5_princ_size(krbContext, principal) == 2 &&
+    if (KRB_PRINC_LENGTH(principal) == 2 &&
         krb5_princ_component(krbContext, principal, 0)->length == 6 &&
         memcmp(krb5_princ_component(krbContext,
                                     principal, 0)->data, "krbtgt", 6) == 0)

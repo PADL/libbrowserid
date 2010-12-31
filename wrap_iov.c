@@ -98,9 +98,12 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
     unsigned char *tbuf = NULL;
     int keyUsage;
     size_t rrc = 0;
-    unsigned int gssHeaderLen, gssTrailerLen;
+    size_t gssHeaderLen, gssTrailerLen;
     size_t dataLen, assocDataLen;
     krb5_context krbContext;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto = NULL;
+#endif
 
     if (ctx->encryptionType == ENCTYPE_NULL) {
         *minor = GSSEAP_KEY_UNAVAILABLE;
@@ -135,32 +138,37 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
 
-    if (toktype == TOK_TYPE_WRAP && conf_req_flag) {
-        unsigned int krbHeaderLen, krbTrailerLen, krbPadLen;
-        size_t ec = 0;
-        size_t confDataLen = dataLen - assocDataLen;
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_init(krbContext, &ctx->rfc3961Key, ETYPE_NULL, &krbCrypto);
+    if (code != 0)
+        goto cleanup;
+#endif
 
-        code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
-                                    KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
+    if (toktype == TOK_TYPE_WRAP && conf_req_flag) {
+        size_t krbHeaderLen, krbTrailerLen, krbPadLen;
+        size_t ec = 0, confDataLen = dataLen - assocDataLen;
+
+        code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                               KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
         if (code != 0)
             goto cleanup;
 
-        code = krb5_c_padding_length(krbContext, ctx->encryptionType,
-                                     confDataLen + 16 /* E(Header) */,
-                                     &krbPadLen);
+        code = krbPaddingLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                                confDataLen + 16 /* E(Header) */,
+                                &krbPadLen);
         if (code != 0)
             goto cleanup;
 
         if (krbPadLen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE)) {
             /* Windows rejects AEAD tokens with non-zero EC */
-            code = krb5_c_block_size(krbContext, ctx->encryptionType, &ec);
+            code = krbBlockSize(krbContext, KRB_CRYPTO_CONTEXT(ctx), &ec);
             if (code != 0)
                 goto cleanup;
         } else
             ec = krbPadLen;
 
-        code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
-                                    KRB5_CRYPTO_TYPE_TRAILER, &krbTrailerLen);
+        code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                               KRB5_CRYPTO_TYPE_TRAILER, &krbTrailerLen);
         if (code != 0)
             goto cleanup;
 
@@ -221,8 +229,8 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
         code = gssEapEncrypt(krbContext,
                              ((ctx->gssFlags & GSS_C_DCE_STYLE) != 0),
-                             ec, rrc, &ctx->rfc3961Key,
-                             keyUsage, 0, iov, iov_count);
+                             ec, rrc, KRB_CRYPTO_CONTEXT(ctx),
+                             keyUsage, iov, iov_count);
         if (code != 0)
             goto cleanup;
 
@@ -235,9 +243,8 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
         gssHeaderLen = 16;
 
-        code = krb5_c_crypto_length(krbContext, ctx->encryptionType,
-                                    KRB5_CRYPTO_TYPE_CHECKSUM,
-                                    &gssTrailerLen);
+        code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
+                               KRB5_CRYPTO_TYPE_CHECKSUM, &gssTrailerLen);
         if (code != 0)
             goto cleanup;
 
@@ -288,8 +295,8 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         }
         store_uint64_be(ctx->sendSeq, outbuf + 8);
 
-        code = gssEapSign(krbContext, ctx->checksumType,
-                          rrc, &ctx->rfc3961Key, keyUsage,
+        code = gssEapSign(krbContext, ctx->checksumType, rrc,
+                          KRB_CRYPTO_CONTEXT(ctx), keyUsage,
                           iov, iov_count);
         if (code != 0)
             goto cleanup;
@@ -319,6 +326,10 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 cleanup:
     if (code != 0)
         gssEapReleaseIov(iov, iov_count);
+#ifdef HAVE_HEIMDAL_VERSION
+    if (krbCrypto != NULL)
+        krb5_crypto_destroy(krbContext, krbCrypto);
+#endif
 
     *minor = code;
 

@@ -93,7 +93,10 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
                        krb5_keyblock *pKey)
 {
     krb5_context krbContext;
-    krb5_data data, ns, t, prfOut;
+#ifndef HAVE_HEIMDAL_VERSION
+    krb5_data data;
+#endif
+    krb5_data ns, t, prfOut;
     krb5_keyblock kd;
     krb5_error_code code;
     size_t randomLength, keyLength, prfLength;
@@ -120,9 +123,6 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    data.length = MIN(inputKeyLength, randomLength);
-    data.data = (char *)inputKey;
-
     KRB_KEY_DATA(&kd) = GSSEAP_MALLOC(keyLength);
     if (KRB_KEY_DATA(&kd) == NULL) {
         code = ENOMEM;
@@ -131,7 +131,15 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
     KRB_KEY_LENGTH(&kd) = keyLength;
 
     /* Convert MSK into a Kerberos key */
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_random_to_key(krbContext, encryptionType, inputKey,
+                              MIN(inputKeyLength, randomLength), &kd);
+#else
+    data.length = MIN(inputKeyLength, randomLength);
+    data.data = (char *)inputKey;
+
     code = krb5_c_random_to_key(krbContext, encryptionType, &data, &kd);
+#endif
     if (code != 0)
         goto cleanup;
 
@@ -174,7 +182,12 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
      }
 
     /* Finally, convert PRF output into a new key which we will return */
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_random_to_key(krbContext, encryptionType,
+                              prfOut.data, prfOut.length, &kd);
+#else
     code = krb5_c_random_to_key(krbContext, encryptionType, &prfOut, &kd);
+#endif
     if (code != 0)
         goto cleanup;
 
@@ -236,7 +249,11 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
     if (*minor != 0)
         return GSS_S_FAILURE;
 
+#ifdef HAVE_HEIMDAL_VERSION
+    *cksumtype = cksum.cksumtype;
+#else
     *cksumtype = cksum.checksum_type;
+#endif
 
     krb5_free_checksum_contents(krbContext, &cksum);
 #endif /* HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE */
@@ -247,4 +264,154 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
     }
 
     return GSS_S_COMPLETE;
+}
+
+#ifdef HAVE_HEIMDAL_VERSION
+static heim_general_string krbAnonymousPrincipalComponents[] =
+    { KRB5_WELLKNOWN_NAME, KRB5_ANON_NAME };
+
+static const Principal krbAnonymousPrincipalData = {
+    { KRB5_NT_WELLKNOWN, { 2, krbAnonymousPrincipalComponents } },
+    "WELLKNOWN:ANONYMOUS"
+};
+#endif
+
+krb5_const_principal
+krbAnonymousPrincipal(void)
+{
+#ifdef HAVE_HEIMDAL_VERSION
+    return &krbAnonymousPrincipalData;
+#else
+    return krb5_anonymous_principal();
+#endif
+}
+
+krb5_error_code
+krbCryptoLength(krb5_context krbContext,
+#ifdef HAVE_HEIMDAL_VERSION
+                krb5_crypto krbCrypto,
+#else
+                krb5_keyblock *key,
+#endif
+                int type,
+                size_t *length)
+{
+#ifdef HAVE_HEIMDAL_VERSION
+    return krb5_crypto_length(krbContext, krbCrypto, type, length);
+#else
+    unsigned int len;
+    krb5_error_code code;
+
+    code = krb5_c_crypto_length(krbContext, KRB_KEY_TYPE(key), type, &len);
+    if (code == 0)
+        *length = (size_t)len;
+
+    return code;
+#endif
+}
+
+krb5_error_code
+krbPaddingLength(krb5_context krbContext,
+#ifdef HAVE_HEIMDAL_VERSION
+                 krb5_crypto krbCrypto,
+#else
+                 krb5_keyblock *key,
+#endif
+                 size_t dataLength,
+                 size_t *padLength)
+{
+    krb5_error_code code;
+#ifdef HAVE_HEIMDAL_VERSION
+    size_t headerLength, paddingLength;
+
+    code = krbCryptoLength(krbContext, krbCrypto,
+                           KRB5_CRYPTO_TYPE_HEADER, &headerLength);
+    if (code != 0)
+        return code;
+
+    dataLength += headerLength;
+
+    code = krb5_crypto_length(krbContext, krbCrypto,
+                              KRB5_CRYPTO_TYPE_PADDING, &paddingLength);
+    if (code != 0)
+        return code;
+
+    if (paddingLength != 0 && (dataLength % paddingLength) != 0)
+        *padLength = paddingLength - (dataLength % paddingLength);
+    else
+        *padLength = 0;
+
+    return 0;
+#else
+    unsigned int pad;
+
+    code = krb5_c_padding_length(krbContext, KRB_KEY_TYPE(key), dataLength, &pad);
+    if (code == 0)
+        *padLength = (size_t)pad;
+
+    return code;
+#endif /* HAVE_HEIMDAL_VERSION */
+}
+
+krb5_error_code
+krbBlockSize(krb5_context krbContext,
+#ifdef HAVE_HEIMDAL_VERSION
+                 krb5_crypto krbCrypto,
+#else
+                 krb5_keyblock *key,
+#endif
+                 size_t *blockSize)
+{
+#ifdef HAVE_HEIMDAL_VERSION
+    return krb5_crypto_getblocksize(krbContext, krbCrypto, blockSize);
+#else
+    return krb5_c_block_size(krbContext, KRB_KEY_TYPE(key), blockSize);
+#endif
+}
+
+krb5_error_code
+krbEnctypeToString(krb5_context krbContext,
+                   krb5_enctype enctype,
+                   const char *prefix,
+                   gss_buffer_t string)
+{
+    krb5_error_code code;
+#ifdef HAVE_HEIMDAL_VERSION
+    char *enctypeBuf = NULL;
+#else
+    char enctypeBuf[128];
+#endif
+    size_t prefixLength, enctypeLength;
+
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_enctype_to_string(krbContext, enctype, &enctypeBuf);
+#else
+    code = krb5_enctype_to_name(enctype, 0, enctypeBuf, sizeof(enctypeBuf));
+#endif
+    if (code != 0)
+        return code;
+
+    prefixLength = (prefix != NULL) ? strlen(prefix) : 0;
+    enctypeLength = strlen(enctypeBuf);
+
+    string->value = GSSEAP_MALLOC(prefixLength + enctypeLength + 1);
+    if (string->value == NULL) {
+#ifdef HAVE_HEIMDAL_VERSION
+        krb5_xfree(enctypeBuf);
+#endif
+        return ENOMEM;
+    }
+
+    if (prefixLength != 0)
+        memcpy(string->value, prefix, prefixLength);
+    memcpy((char *)string->value + prefixLength, enctypeBuf, enctypeLength);
+
+    string->length = prefixLength + enctypeLength;
+    ((char *)string->value)[string->length] = '\0';
+
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_xfree(enctypeBuf);
+#endif
+
+    return 0;
 }
