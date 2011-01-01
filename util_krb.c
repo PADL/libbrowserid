@@ -485,3 +485,101 @@ cleanup:
                                          adKdcIssued);
 #endif /* HAVE_HEIMDAL_VERSION */
 }
+
+krb5_error_code
+krbMakeCred(krb5_context krbContext,
+            krb5_auth_context authContext,
+            krb5_creds *creds,
+            krb5_data *data)
+{
+    krb5_error_code code;
+#ifdef HAVE_HEIMDAL_VERSION
+    KRB_CRED krbCred;
+    KrbCredInfo krbCredInfo;
+    krb5_keyblock *key;
+    krb5_crypto krbCrypto = NULL;
+    unsigned char *buf = NULL;
+    size_t buf_size, len;
+#else
+    krb5_data **d;
+#endif
+
+    memset(data, 0, sizeof(*data));
+    memset(&krbCred, 0, sizeof(krbCred));
+    memset(&krbCredInfo, 0, sizeof(krbCredInfo));
+
+    key = (authContext->local_subkey != NULL)
+          ? authContext->local_subkey
+          : authContext->keyblock;
+
+#ifdef HAVE_HEIMDAL_VERSION
+    krbCred.pvno = 5;
+    krbCred.msg_type = krb_cred;
+    krbCred.tickets.val = (Ticket *)GSSEAP_CALLOC(1, sizeof(Ticket));
+    if (krbCred.tickets.val == NULL) {
+        code = ENOMEM;
+        goto cleanup;
+    }
+    krbCred.tickets.len = 1;
+
+    code = decode_Ticket(creds->ticket.data,
+                         creds->ticket.length,
+                         krbCred.tickets.val, &len);
+    if (code != 0)
+        goto cleanup;
+
+    krbCredInfo.key         = creds->session;
+    krbCredInfo.prealm      = &creds->client->realm;
+    krbCredInfo.pname       = &creds->client->name;
+    krbCredInfo.flags       = &creds->flags.b;
+    krbCredInfo.authtime    = &creds->times.authtime;
+    krbCredInfo.starttime   = &creds->times.starttime;
+    krbCredInfo.endtime     = &creds->times.endtime;
+    krbCredInfo.renew_till  = &creds->times.renew_till;
+    krbCredInfo.srealm      = &creds->server->realm;
+    krbCredInfo.sname       = &creds->server->name;
+    krbCredInfo.caddr       = creds->addresses.len ? &creds->addresses : NULL;
+
+    ASN1_MALLOC_ENCODE(KrbCredInfo, buf, buf_size, &krbCredInfo, &len, code);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_crypto_init(krbContext, key, 0, &krbCrypto);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_encrypt_EncryptedData(krbContext,
+                                      krbCrypto,
+                                      KRB5_KU_KRB_CRED,
+                                      buf,
+                                      len,
+                                      0,
+                                      &krbCred.enc_part);
+    if (code != 0)
+        goto cleanup;
+
+    GSSEAP_FREE(buf);
+    buf = NULL;
+
+    ASN1_MALLOC_ENCODE(KRB_CRED, buf, buf_size, &krbCred, &len, code);
+    if (code != 0)
+        goto cleanup;
+
+cleanup:
+    if (buf != NULL)
+        GSSEAP_FREE(buf);
+    if (krbCrypto != NULL)
+        krb5_crypto_destroy(krbContext, krbCrypto);
+    free_KRB_CRED(&krbCred);
+
+    return code;
+#else
+    code = krb5_mk_1cred(krbContext, authContext, creds, &d);
+    if (code == 0) {
+        *data = **d;
+        GSSEAP_FREE(d);
+    }
+
+    return code;
+#endif /* HAVE_HEIMDAL_VERSION */
+}

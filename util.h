@@ -406,6 +406,12 @@ krbMakeAuthDataKdcIssued(krb5_context context,
 #endif
                          );
 
+krb5_error_code
+krbMakeCred(krb5_context context,
+            krb5_auth_context authcontext,
+            krb5_creds *creds,
+            krb5_data *data);
+
 /* util_lucid.c */
 OM_uint32
 gssEapExportLucidSecContext(OM_uint32 *minor,

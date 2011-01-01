@@ -35,6 +35,10 @@
 
 #include "config.h"
 
+#ifdef HAVE_HEIMDAL_VERSION
+#define KRB5_DEPRECATED         /* so we can use krb5_free_unparsed_name() */
+#endif
+
 #include <assert.h>
 #include <string.h>
 #include <errno.h>

@@ -124,6 +124,7 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
 
 OM_uint32
 gssEapGlueToMechName(OM_uint32 *minor,
+                     gss_ctx_id_t glueContext,
                      gss_name_t glueName,
                      gss_name_t *pMechName);
 

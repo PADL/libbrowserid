@@ -716,7 +716,7 @@ acceptReadyKrb(OM_uint32 *minor,
 {
     OM_uint32 major;
 
-    major = gssEapGlueToMechName(minor, initiator, &ctx->initiatorName);
+    major = gssEapGlueToMechName(minor, ctx, initiator, &ctx->initiatorName);
     if (GSS_ERROR(major))
         return major;
 

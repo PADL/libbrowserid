@@ -219,7 +219,7 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     krb5_ticket ticket;
     krb5_enc_tkt_part enc_part;
 #endif
-    krb5_data *ticketData = NULL, *credsData = NULL;
+    krb5_data *ticketData = NULL, credsData = { 0 };
     krb5_creds creds = { 0 };
     krb5_auth_context authContext = NULL;
 
@@ -354,11 +354,11 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    code = krb5_mk_1cred(krbContext, authContext, &creds, &credsData, NULL);
+    code = krbMakeCred(krbContext, authContext, &creds, &credsData);
     if (code != 0)
         goto cleanup;
 
-    krbDataToGssBuffer(credsData, credBuf);
+    krbDataToGssBuffer(&credsData, credBuf);
 
 cleanup:
 #ifdef HAVE_HEIMDAL_VERSION
@@ -378,8 +378,6 @@ cleanup:
     krb5_free_keyblock_contents(krbContext, &acceptorKey);
     krb5_free_data(krbContext, ticketData);
     krb5_auth_con_free(krbContext, authContext);
-    if (credsData != NULL)
-        GSSEAP_FREE(credsData);
 
     if (major == GSS_S_COMPLETE) {
         *minor = code;
@@ -643,9 +641,11 @@ cleanup:
     return major;
 }
 
+#ifndef HAVE_HEIMDAL_VERSION
 static gss_buffer_desc radiusAvpKrbAttr = {
     sizeof("urn:authdata-radius-avp") - 1, "urn:authdata-radius-avp"
 };
+#endif
 
 /*
  * Unfortunately extracting an AD-KDCIssued authorization data element
@@ -665,15 +665,46 @@ static gss_buffer_desc radiusAvpKrbAttr = {
  */
 static OM_uint32
 defrostAttrContext(OM_uint32 *minor,
+                   gss_ctx_id_t glueContext,
                    gss_name_t glueName,
                    gss_name_t mechName)
 {
     OM_uint32 major, tmpMinor;
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_OID_desc oid = { 0 };
+    gss_buffer_set_t authData = GSS_C_NO_BUFFER_SET;
+#else
     gss_buffer_desc authData = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc authDataDisplay = GSS_C_EMPTY_BUFFER;
     int more = -1;
     int authenticated, complete;
+#endif
 
+#ifdef HAVE_HEIMDAL_VERSION
+    major = composeOid(minor,
+                       GSS_KRB5_EXTRACT_AUTHZ_DATA_FROM_SEC_CONTEXT_X->elements,
+                       GSS_KRB5_EXTRACT_AUTHZ_DATA_FROM_SEC_CONTEXT_X->length,
+                       KRB5_AUTHDATA_RADIUS_AVP, &oid);
+    if (GSS_ERROR(major))
+        return major;
+
+    /* XXX we are assuming that this verifies AD-KDCIssued signature */
+    major = gssInquireSecContextByOid(minor, glueContext,
+                                      &oid, &authData);
+    if (major == GSS_S_COMPLETE) {
+        if (authData == GSS_C_NO_BUFFER_SET || authData->count != 1)
+            major = GSS_S_FAILURE;
+        else
+            major = gssEapImportAttrContext(minor, authData->elements, mechName);
+    } else if (major == GSS_S_FAILURE && *minor == ENOENT) {
+        /* This is the equivalent of GSS_S_UNAVAILABLE for MIT attr APIs */
+        *minor = 0;
+        major = GSS_S_COMPLETE;
+    }
+
+    gss_release_buffer_set(&tmpMinor, &authData);
+    GSSEAP_FREE(oid.elements);
+#else
     major = gssGetNameAttribute(minor, glueName, &radiusAvpKrbAttr,
                                 &authenticated, &complete,
                                 &authData, &authDataDisplay, &more);
@@ -688,6 +719,7 @@ defrostAttrContext(OM_uint32 *minor,
 
     gss_release_buffer(&tmpMinor, &authData);
     gss_release_buffer(&tmpMinor, &authDataDisplay);
+#endif /* HAVE_HEIMDAL_VERSION */
 
     return major;
 }
@@ -698,6 +730,7 @@ defrostAttrContext(OM_uint32 *minor,
  */
 OM_uint32
 gssEapGlueToMechName(OM_uint32 *minor,
+                     gss_ctx_id_t glueContext,
                      gss_name_t glueName,
                      gss_name_t *pMechName)
 {
@@ -715,7 +748,7 @@ gssEapGlueToMechName(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = defrostAttrContext(minor, glueName, *pMechName);
+    major = defrostAttrContext(minor, glueContext, glueName, *pMechName);
     if (GSS_ERROR(major))
         goto cleanup;
 
