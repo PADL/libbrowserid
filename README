@@ -2,7 +2,7 @@ Overview
 ========
 
 This is an implementation of the GSS EAP mechanism, as described in
-draft-howlett-eap-gss-xx.txt.
+draft-ietf-abfab-gss-eap-00.txt.
 
 Building
 ========
