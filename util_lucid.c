@@ -42,10 +42,90 @@ gssEapExportLucidSecContext(OM_uint32 *minor,
                             const gss_OID desiredObject,
                             gss_buffer_set_t *data_set)
 {
+    OM_uint32 major = GSS_S_COMPLETE;
+    int haveAcceptorSubkey =
+        ((rfc4121Flags(ctx, 0) & TOK_FLAG_ACCEPTOR_SUBKEY) != 0);
+    gss_buffer_desc rep;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_error_code code;
+    krb5_storage *sp;
+    krb5_data data = { 0 };
+
+    sp = krb5_storage_emem();
+    if (sp == NULL) {
+        code = ENOMEM;
+        goto cleanup;
+    }
+
+    code = krb5_store_int32(sp, 1);     /* version */
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_int32(sp, CTX_IS_INITIATOR(ctx));
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_int32(sp, ctx->expiryTime); 
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_int32(sp, 0);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_int32(sp, ctx->sendSeq);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_int32(sp, 0);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_int32(sp, ctx->recvSeq);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_int32(sp, 1);     /* is_cfx */
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_int32(sp, haveAcceptorSubkey);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_store_keyblock(sp, ctx->rfc3961Key);
+    if (code != 0)
+        goto cleanup;
+
+    if (haveAcceptorSubkey) {
+        code = krb5_store_keyblock(sp, ctx->rfc3961Key);
+        if (code != 0)
+            goto cleanup;
+    }
+
+    code = krb5_storage_to_data(sp, &data);
+    if (code != 0)
+        goto cleanup;
+
+    rep.length = data.length;
+    rep.value = data.data;
+
+    major = gss_add_buffer_set_member(minor, &rep, data_set);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
+    krb5_data_free(&data);
+
+    if (major == GSS_S_COMPLETE) {
+        *minor = code;
+        major = (code != 0) ? GSS_S_FAILURE : GSS_S_COMPLETE;
+    }
+
+    return major;
+#else
     gss_krb5_lucid_context_v1_t *lctx;
     gss_krb5_lucid_key_t *lkey = NULL;
-    OM_uint32 major;
-    gss_buffer_desc rep;
 
     lctx = (gss_krb5_lucid_context_v1_t *)GSSEAP_CALLOC(1, sizeof(*lctx));
     if (lctx == NULL) {
@@ -61,10 +141,9 @@ gssEapExportLucidSecContext(OM_uint32 *minor,
     lctx->recv_seq = ctx->recvSeq;
     lctx->protocol = 1;
 
-    lctx->cfx_kd.have_acceptor_subkey =
-        ((rfc4121Flags(ctx, 0) & TOK_FLAG_ACCEPTOR_SUBKEY) != 0);
+    lctx->cfx_kd.have_acceptor_subkey = haveAcceptorSubkey;
 
-    lkey = lctx->cfx_kd.have_acceptor_subkey
+    lkey = haveAcceptorSubkey
            ? &lctx->cfx_kd.ctx_key
            : &lctx->cfx_kd.acceptor_subkey;
 
@@ -97,4 +176,5 @@ cleanup:
     }
 
     return major;
+#endif /* HAVE_HEIMDAL_VERSION */
 }
