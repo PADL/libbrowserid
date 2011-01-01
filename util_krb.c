@@ -501,10 +501,11 @@ krbMakeCred(krb5_context krbContext,
     unsigned char *buf = NULL;
     size_t buf_size, len;
 #else
-    krb5_data **d;
+    krb5_data *d = NULL;
 #endif
 
     memset(data, 0, sizeof(*data));
+#ifdef HAVE_HEIMDAL_VERSION
     memset(&krbCred, 0, sizeof(krbCred));
     memset(&krbCredInfo, 0, sizeof(krbCredInfo));
 
@@ -512,7 +513,6 @@ krbMakeCred(krb5_context krbContext,
           ? authContext->local_subkey
           : authContext->keyblock;
 
-#ifdef HAVE_HEIMDAL_VERSION
     krbCred.pvno = 5;
     krbCred.msg_type = krb_cred;
     krbCred.tickets.val = (Ticket *)GSSEAP_CALLOC(1, sizeof(Ticket));
@@ -574,9 +574,9 @@ cleanup:
 
     return code;
 #else
-    code = krb5_mk_1cred(krbContext, authContext, creds, &d);
+    code = krb5_mk_1cred(krbContext, authContext, creds, &d, NULL);
     if (code == 0) {
-        *data = **d;
+        *data = *d;
         GSSEAP_FREE(d);
     }
 
