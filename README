@@ -11,6 +11,9 @@ In order to build this, a recent Kerberos implementation (MIT or
 Heimdal), Shibboleth, and EAP libraries are required, along with
 all of their dependencies.
 
+Note: not all SPIs are supported by the Heimdal mechanism glue,
+so not all features will be available.
+
 Installing
 ==========
 
