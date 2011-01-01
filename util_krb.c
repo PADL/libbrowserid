@@ -415,3 +415,73 @@ krbEnctypeToString(krb5_context krbContext,
 
     return 0;
 }
+
+krb5_error_code
+krbMakeAuthDataKdcIssued(krb5_context context,
+                         const krb5_keyblock *key,
+                         krb5_const_principal issuer,
+#ifdef HAVE_HEIMDAL_VERSION
+                         const AuthorizationData *authdata,
+                         AuthorizationData *adKdcIssued
+#else
+                         krb5_authdata *const *authdata,
+                         krb5_authdata ***adKdcIssued
+#endif
+                         )
+{
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_error_code code;
+    AD_KDCIssued kdcIssued;
+    AuthorizationDataElement adDatum;
+    unsigned char *buf;
+    size_t buf_size, len;
+    krb5_crypto crypto = NULL;
+
+    memset(&kdcIssued, 0, sizeof(kdcIssued));
+    memset(adKdcIssued, 0, sizeof(*adKdcIssued));
+
+    kdcIssued.i_realm = issuer->realm != NULL ? &issuer->realm : NULL;
+    kdcIssued.i_sname = &issuer->name;
+    kdcIssued.elements = *authdata;
+
+    ASN1_MALLOC_ENCODE(AuthorizationData, buf, buf_size, authdata, &len, code);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_crypto_init(context, key, 0, &crypto);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_create_checksum(context, crypto, KRB5_KU_AD_KDC_ISSUED,
+                                0, buf, buf_size, &kdcIssued.ad_checksum);
+    if (code != 0)
+        goto cleanup;
+
+    GSSEAP_FREE(buf);
+    buf = NULL;
+
+    ASN1_MALLOC_ENCODE(AD_KDCIssued, buf, buf_size, &kdcIssued, &len, code);
+    if (code != 0)
+        goto cleanup;
+
+    adDatum.ad_type = KRB5_AUTHDATA_KDC_ISSUED;
+    adDatum.ad_data.length = buf_size;
+    adDatum.ad_data.data = buf;
+
+    code = add_AuthorizationData(adKdcIssued, &adDatum);
+    if (code != 0)
+        goto cleanup;
+
+cleanup:
+    if (buf != NULL)
+        GSSEAP_FREE(buf);
+    if (crypto != NULL)
+        krb5_crypto_destroy(context, crypto);
+    free_Checksum(&kdcIssued.ad_checksum);
+
+    return code;
+#else
+    return krb5_make_authdata_kdc_issued(context, key, issuer, authdata,
+                                         adKdcIssued);
+#endif /* HAVE_HEIMDAL_VERSION */
+}

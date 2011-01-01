@@ -41,7 +41,7 @@ if test "x$reauth" = "xyes" ; then
   echo "Fast reauthentication protocol enabled"
   TARGET_CFLAGS="$TARGET_CFLAGS -DGSSEAP_ENABLE_REAUTH"
 fi
-AM_CONDITIONAL(GSSEAP_ENABLE_REAUTH, test "$reauth" = "yes")
+AM_CONDITIONAL(GSSEAP_ENABLE_REAUTH, test "x$reauth" != "xno")
 
 AC_SUBST(TARGET_CFLAGS)
 AC_SUBST(TARGET_LDFLAGS)

@@ -94,6 +94,7 @@ mech_eap_la_SOURCES =    			\
 if GSSEAP_ENABLE_REAUTH
 mech_eap_la_SOURCES += util_reauth.c
 
+if !HEIMDAL
 krb5pluginsdir = $(libdir)/krb5/plugins/authdata
 krb5plugins_LTLIBRARIES = radius_ad.la
 
@@ -103,6 +104,7 @@ radius_ad_la_LDFLAGS = -avoid-version -module \
 		       -export-symbols radius_ad.exports -no-undefined
 radius_ad_la_LIBADD  = @KRB5_LIBS@
 radius_ad_la_SOURCES = util_adshim.c
+endif
 endif
 
 gsseap_err.h: gsseap_err.et

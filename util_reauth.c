@@ -70,7 +70,11 @@ getAcceptorKey(krb5_context krbContext,
     krb5_error_code code;
     krb5_keytab keytab = NULL;
     krb5_keytab_entry ktent = { 0 };
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_kt_cursor cursor = { 0 };
+#else
     krb5_kt_cursor cursor = NULL;
+#endif
 
     *princ = NULL;
     memset(key, 0, sizeof(*key));
@@ -96,16 +100,27 @@ getAcceptorKey(krb5_context krbContext,
 
         while ((code = krb5_kt_next_entry(krbContext, keytab,
                                           &ktent, &cursor)) == 0) {
+#ifdef HAVE_HEIMDAL_VERSION
+            if (ktent.keyblock.keytype == ctx->encryptionType)
+                break;
+            else
+                krb5_kt_free_entry(krbContext, &ktent);
+#else
             if (ktent.key.enctype == ctx->encryptionType)
                 break;
             else
                 krb5_free_keytab_entry_contents(krbContext, &ktent);
+#endif
         }
     }
 
     if (code == 0) {
         *princ = ktent.principal;
+#ifdef HAVE_HEIMDAL_VERSION
+        *key = ktent.keyblock;
+#else
         *key = ktent.key;
+#endif
     }
 
 cleanup:
@@ -114,7 +129,11 @@ cleanup:
     krb5_kt_close(krbContext, keytab);
 
     if (code != 0)
+#ifdef HAVE_HEIMDAL_VERSION
+        krb5_kt_free_entry(krbContext, &ktent);
+#else
         krb5_free_keytab_entry_contents(krbContext, &ktent);
+#endif
 
     return code;
 }
@@ -124,12 +143,22 @@ freezeAttrContext(OM_uint32 *minor,
                   gss_name_t initiatorName,
                   krb5_const_principal acceptorPrinc,
                   krb5_keyblock *session,
-                  krb5_authdata ***authdata)
+#ifdef HAVE_HEIMDAL_VERSION
+                  krb5_authdata *authdata
+#else
+                  krb5_authdata ***authdata
+#endif
+                  )
 {
     OM_uint32 major, tmpMinor;
     krb5_error_code code;
     gss_buffer_desc attrBuf = GSS_C_EMPTY_BUFFER;
+#ifdef HAVE_HEIMDAL_VERSION
+    AuthorizationData authDataBuf, *authData = &authDataBuf;
+    AuthorizationDataElement authDatum = { 0 };
+#else
     krb5_authdata *authData[2], authDatum = { 0 };
+#endif
     krb5_context krbContext;
 
     GSSEAP_KRB_INIT(&krbContext);
@@ -139,13 +168,20 @@ freezeAttrContext(OM_uint32 *minor,
         return major;
 
     authDatum.ad_type = KRB5_AUTHDATA_RADIUS_AVP;
+#ifdef HAVE_HEIMDAL_VERSION
+    authDatum.ad_data.length = attrBuf.length;
+    authDatum.ad_data.data = attrBuf.value;
+    authData->len = 1;
+    authData->val = &authDatum;
+#else
     authDatum.length = attrBuf.length;
     authDatum.contents = attrBuf.value;
     authData[0] = &authDatum;
     authData[1] = NULL;
+#endif
 
-    code = krb5_make_authdata_kdc_issued(krbContext, session, acceptorPrinc,
-                                         authData, authdata);
+    code = krbMakeAuthDataKdcIssued(krbContext, session, acceptorPrinc,
+                                    authData, authdata);
     if (code != 0) {
         major = GSS_S_FAILURE;
         *minor = code;
@@ -170,27 +206,44 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     OM_uint32 major = GSS_S_COMPLETE;
     krb5_error_code code;
     krb5_context krbContext = NULL;
-    krb5_ticket ticket = { 0 };
     krb5_keyblock session = { 0 }, acceptorKey = { 0 };
-    krb5_enc_tkt_part enc_part = { 0 };
+    krb5_principal server = NULL;
+#ifdef HAVE_HEIMDAL_VERSION
+    Ticket ticket;
+    EncTicketPart enc_part;
+    AuthorizationData authData = { 0 };
+    krb5_crypto krbCrypto = NULL;
+    unsigned char *buf = NULL;
+    size_t buf_size, len;
+#else
+    krb5_ticket ticket;
+    krb5_enc_tkt_part enc_part;
+#endif
     krb5_data *ticketData = NULL, *credsData = NULL;
     krb5_creds creds = { 0 };
     krb5_auth_context authContext = NULL;
+
+    memset(&ticket, 0, sizeof(ticket));
+    memset(&enc_part, 0, sizeof(enc_part));
 
     credBuf->length = 0;
     credBuf->value = NULL;
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    code = getAcceptorKey(krbContext, ctx, cred,
-                          &ticket.server, &acceptorKey);
+    code = getAcceptorKey(krbContext, ctx, cred, &server, &acceptorKey);
     if (code == KRB5_KT_NOTFOUND) {
         *minor = code;
         return GSS_S_UNAVAILABLE;
     } else if (code != 0)
         goto cleanup;
 
-    enc_part.flags = TKT_FLG_INITIAL;
+#ifdef HAVE_HEIMDAL_VERSION
+    ticket.realm = server->realm;
+    ticket.sname = server->name;
+#else
+    ticket.server = server;
+#endif
 
     /*
      * Generate a random session key to place in the ticket and
@@ -201,16 +254,59 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
+#ifdef HAVE_HEIMDAL_VERSION
+    enc_part.flags.initial = 1;
+    enc_part.key = session;
+    enc_part.crealm = ctx->initiatorName->krbPrincipal->realm;
+    enc_part.cname = ctx->initiatorName->krbPrincipal->name;
+    enc_part.authtime = time(NULL);
+    enc_part.starttime = &enc_part.authtime;
+    enc_part.endtime = (ctx->expiryTime != 0)
+                       ? ctx->expiryTime : KRB_TIME_FOREVER;
+    enc_part.renew_till = NULL;
+    enc_part.authorization_data = &authData;
+
+    major = freezeAttrContext(minor, ctx->initiatorName, server,
+                              &session, &authData);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    ASN1_MALLOC_ENCODE(EncTicketPart, buf, buf_size, &enc_part, &len, code);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_crypto_init(krbContext, &acceptorKey, 0, &krbCrypto);
+    if (code != 0)
+        goto cleanup;
+
+    code = krb5_encrypt_EncryptedData(krbContext,
+                                      krbCrypto,
+                                      KRB5_KU_TICKET,
+                                      buf,
+                                      len,
+                                      0,
+                                      &ticket.enc_part);
+    if (code != 0)
+        goto cleanup;
+
+    GSSEAP_FREE(buf);
+    buf = NULL;
+
+    ASN1_MALLOC_ENCODE(Ticket, buf, buf_size, &ticket, &len, code);
+    if (code != 0)
+        goto cleanup;
+#else
+    enc_part.flags = TKT_FLG_INITIAL;
     enc_part.session = &session;
     enc_part.client = ctx->initiatorName->krbPrincipal;
     enc_part.times.authtime = time(NULL);
     enc_part.times.starttime = enc_part.times.authtime;
     enc_part.times.endtime = (ctx->expiryTime != 0)
                              ? ctx->expiryTime
-                             : KRB5_INT32_MAX;
+                             : KRB_TIME_FOREVER;
     enc_part.times.renew_till = 0;
 
-    major = freezeAttrContext(minor, ctx->initiatorName, ticket.server,
+    major = freezeAttrContext(minor, ctx->initiatorName, server,
                               &session, &enc_part.authorization_data);
     if (GSS_ERROR(major))
         goto cleanup;
@@ -224,14 +320,26 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     code = encode_krb5_ticket(&ticket, &ticketData);
     if (code != 0)
         goto cleanup;
+#endif /* HAVE_HEIMDAL_VERSION */
 
-    creds.client = enc_part.client;
-    creds.server = ticket.server;
+    creds.client = ctx->initiatorName->krbPrincipal;
+    creds.server = server;
+#ifdef HAVE_HEIMDAL_VERSION
+    creds.session = session;
+    creds.times.authtime = enc_part.authtime;
+    creds.times.starttime = *enc_part.starttime;
+    creds.times.endtime = enc_part.endtime;
+    creds.times.renew_till = 0;
+    creds.flags.b = enc_part.flags;
+    creds.ticket = *ticketData;
+    creds.authdata = authData;
+#else
     creds.keyblock = session;
     creds.times = enc_part.times;
     creds.ticket_flags = enc_part.flags;
     creds.ticket = *ticketData;
     creds.authdata = enc_part.authorization_data;
+#endif
 
     code = krb5_auth_con_init(krbContext, &authContext);
     if (code != 0)
@@ -253,19 +361,29 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     krbDataToGssBuffer(credsData, credBuf);
 
 cleanup:
+#ifdef HAVE_HEIMDAL_VERSION
+    if (krbCrypto != NULL)
+        krb5_crypto_destroy(krbContext, krbCrypto);
+    if (buf != NULL)
+        GSSEAP_FREE(buf);
+    free_AuthorizationData(&authData);
+    free_EncryptedData(&ticket.enc_part);
+#else
+    krb5_free_authdata(krbContext, enc_part.authorization_data);
     if (ticket.enc_part.ciphertext.data != NULL)
         GSSEAP_FREE(ticket.enc_part.ciphertext.data);
+#endif
     krb5_free_keyblock_contents(krbContext, &session);
+    krb5_free_principal(krbContext, server);
     krb5_free_keyblock_contents(krbContext, &acceptorKey);
     krb5_free_data(krbContext, ticketData);
     krb5_auth_con_free(krbContext, authContext);
-    krb5_free_authdata(krbContext, enc_part.authorization_data);
     if (credsData != NULL)
         GSSEAP_FREE(credsData);
 
     if (major == GSS_S_COMPLETE) {
         *minor = code;
-        major = code != 0 ? GSS_S_FAILURE : GSS_S_COMPLETE;
+        major = (code != 0) ? GSS_S_FAILURE : GSS_S_COMPLETE;
     }
 
     return major;
@@ -276,9 +394,14 @@ isTicketGrantingServiceP(krb5_context krbContext,
                          krb5_const_principal principal)
 {
     if (KRB_PRINC_LENGTH(principal) == 2 &&
+#ifdef HAVE_HEIMDAL_VERSION
+        strcmp(KRB_PRINC_NAME(principal)[0], "krbtgt") == 0
+#else
         krb5_princ_component(krbContext, principal, 0)->length == 6 &&
         memcmp(krb5_princ_component(krbContext,
-                                    principal, 0)->data, "krbtgt", 6) == 0)
+                                    principal, 0)->data, "krbtgt", 6) == 0
+#endif
+        )
         return TRUE;
 
     return FALSE;
@@ -296,7 +419,7 @@ reauthUseCredsCache(krb5_context krbContext,
 
     /* if reauth_use_ccache, use default credentials cache if ticket is for us */
     krb5_appdefault_boolean(krbContext, "eap_gss",
-                            krb5_princ_realm(krbContext, principal),
+                            KRB_PRINC_REALM(principal),
                             "reauth_use_ccache", 0, &reauthUseCCache);
 
     return reauthUseCCache;
@@ -444,7 +567,7 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
     krb5_free_principal(krbContext, cred->name->krbPrincipal);
     cred->name->krbPrincipal = canonPrinc;
 
-    if (creds[0]->times.endtime == KRB5_INT32_MAX)
+    if (creds[0]->times.endtime == KRB_TIME_FOREVER)
         cred->expiryTime = 0;
     else
         cred->expiryTime = creds[0]->times.endtime;
@@ -649,18 +772,52 @@ gssEapReauthComplete(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_buffer_set_t keyData = GSS_C_NO_BUFFER_SET;
+    krb5_context krbContext = NULL;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_storage *sp = NULL;
+#endif
+
+    GSSEAP_KRB_INIT(&krbContext);
 
     if (!oidEqual(mech, gss_mech_krb5)) {
         major = GSS_S_BAD_MECH;
         goto cleanup;
     }
 
-    /* Get the raw subsession key and encryption type*/
+    /* Get the raw subsession key and encryption type */
+#ifdef HAVE_HEIMDAL_VERSION
+#define KRB_GSS_SUBKEY_COUNT    1 /* encoded session key */
+    major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
+                                      GSS_KRB5_GET_SUBKEY_X, &keyData);
+#else
+#define KRB_GSS_SUBKEY_COUNT    2 /* raw session key, enctype OID */
     major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
                                       GSS_C_INQ_SSPI_SESSION_KEY, &keyData);
+#endif
     if (GSS_ERROR(major))
         goto cleanup;
 
+    if (keyData == GSS_C_NO_BUFFER_SET || keyData->count < KRB_GSS_SUBKEY_COUNT) {
+        *minor = GSSEAP_KEY_UNAVAILABLE;
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+
+#ifdef HAVE_HEIMDAL_VERSION
+    sp = krb5_storage_from_mem(keyData->elements[0].value,
+                               keyData->elements[0].length);
+    if (sp == NULL) {
+        *minor = ENOMEM;
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+
+    *minor = krb5_ret_keyblock(sp, &ctx->rfc3961Key);
+    if (*minor != 0) {
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+#else
     {
         gss_OID_desc oid;
         int suffix;
@@ -679,10 +836,7 @@ gssEapReauthComplete(OM_uint32 *minor,
     }
 
     {
-        krb5_context krbContext = NULL;
         krb5_keyblock key;
-
-        GSSEAP_KRB_INIT(&krbContext);
 
         KRB_KEY_LENGTH(&key) = keyData->elements[0].length;
         KRB_KEY_DATA(&key)   = keyData->elements[0].value;
@@ -695,6 +849,7 @@ gssEapReauthComplete(OM_uint32 *minor,
             goto cleanup;
         }
     }
+#endif /* HAVE_HEIMDAL_VERSION */
 
     major = rfc3961ChecksumTypeForKey(minor, &ctx->rfc3961Key,
                                       &ctx->checksumType);
@@ -716,6 +871,10 @@ gssEapReauthComplete(OM_uint32 *minor,
     major = GSS_S_COMPLETE;
 
 cleanup:
+#ifdef HAVE_HEIMDAL_VERSION
+    if (sp != NULL)
+        krb5_storage_free(sp);
+#endif
     gss_release_buffer_set(&tmpMinor, &keyData);
 
     return major;

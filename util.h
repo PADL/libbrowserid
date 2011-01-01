@@ -300,10 +300,12 @@ gssEapVerifyExtensions(OM_uint32 *minor,
 
 /* util_krb.c */
 #ifdef HAVE_HEIMDAL_VERSION
+#define KRB_TIME_FOREVER        ((time_t)~0L)
 #define KRB_KEY_TYPE(key)       ((key)->keytype)
 #define KRB_KEY_DATA(key)       ((key)->keyvalue.data)
 #define KRB_KEY_LENGTH(key)     ((key)->keyvalue.length)
 #else
+#define KRB_TIME_FOREVER        KRB5_INT32_MAX
 #define KRB_KEY_TYPE(key)       ((key)->enctype)
 #define KRB_KEY_DATA(key)       ((key)->contents)
 #define KRB_KEY_LENGTH(key)     ((key)->length)
@@ -319,11 +321,13 @@ gssEapVerifyExtensions(OM_uint32 *minor,
 #define KRB_PRINC_LENGTH(princ) ((princ)->name.name_string.len)
 #define KRB_PRINC_TYPE(princ)   ((princ)->name.name_type)
 #define KRB_PRINC_NAME(princ)   ((princ)->name.name_string.val)
+#define KRB_PRINC_REALM(princ)  ((princ)->realm)
 #define KRB_CRYPTO_CONTEXT(ctx) (krbCrypto)
 #else
 #define KRB_PRINC_LENGTH(princ) (krb5_princ_size(NULL, (princ)))
 #define KRB_PRINC_TYPE(princ)   (krb5_princ_type(NULL, (princ)))
 #define KRB_PRINC_NAME(princ)   (krb5_princ_name(NULL, (princ)))
+#define KRB_PRINC_REALM(princ)  (krb5_princ_realm(NULL, (princ)))
 #define KRB_CRYPTO_CONTEXT(ctx) (&(ctx)->rfc3961Key)
 #endif /* HAVE_HEIMDAL_VERSION */
 
@@ -388,6 +392,19 @@ krbEnctypeToString(krb5_context krbContext,
                    krb5_enctype enctype,
                    const char *prefix,
                    gss_buffer_t string);
+
+krb5_error_code
+krbMakeAuthDataKdcIssued(krb5_context context,
+                         const krb5_keyblock *key,
+                         krb5_const_principal issuer,
+#ifdef HAVE_HEIMDAL_VERSION
+                         const AuthorizationData *authdata,
+                         AuthorizationData *adKdcIssued
+#else
+                         krb5_authdata *const *authdata,
+                         krb5_authdata ***adKdcIssued
+#endif
+                         );
 
 /* util_lucid.c */
 OM_uint32
@@ -699,7 +716,7 @@ krbPrincComponentToGssBuffer(krb5_principal krbPrinc,
                              int index, gss_buffer_t buffer)
 {
 #ifdef HAVE_HEIMDAL_VERSION
-    buffer->value = (void *)krbPrinc->name.name_string.val[index];
+    buffer->value = (void *)KRB_PRINC_NAME(krbPrinc)[index];
     buffer->length = strlen((char *)buffer->value);
 #else
     buffer->value = (void *)krb5_princ_component(NULL, krbPrinc, index)->data;
@@ -711,10 +728,10 @@ static inline void
 krbPrincRealmToGssBuffer(krb5_principal krbPrinc, gss_buffer_t buffer)
 {
 #ifdef HAVE_HEIMDAL_VERSION
-    buffer->value = (void *)krbPrinc->realm;
-    buffer->length = strlen(krbPrinc->realm);
+    buffer->value = (void *)KRB_PRINC_REALM(krbPrinc);
+    buffer->length = strlen((char *)buffer->value);
 #else
-    krbDataToGssBuffer(krb5_princ_realm(NULL, krbPrinc), buffer);
+    krbDataToGssBuffer(KRB_PRINC_REALM(krbPrinc), buffer);
 #endif
 }
 
