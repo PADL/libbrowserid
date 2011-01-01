@@ -300,15 +300,41 @@ gssEapVerifyExtensions(OM_uint32 *minor,
 
 /* util_krb.c */
 #ifdef HAVE_HEIMDAL_VERSION
+
 #define KRB_TIME_FOREVER        ((time_t)~0L)
+
 #define KRB_KEY_TYPE(key)       ((key)->keytype)
 #define KRB_KEY_DATA(key)       ((key)->keyvalue.data)
 #define KRB_KEY_LENGTH(key)     ((key)->keyvalue.length)
+
+#define KRB_PRINC_LENGTH(princ) ((princ)->name.name_string.len)
+#define KRB_PRINC_TYPE(princ)   ((princ)->name.name_type)
+#define KRB_PRINC_NAME(princ)   ((princ)->name.name_string.val)
+#define KRB_PRINC_REALM(princ)  ((princ)->realm)
+
+#define KRB_KT_ENT_KEYBLOCK(e)  (&(e)->keyblock)
+#define KRB_KT_ENT_FREE(c, e)   krb5_kt_free_entry((c), (e))
+
+#define KRB_CRYPTO_CONTEXT(ctx) (krbCrypto)
+
 #else
+
 #define KRB_TIME_FOREVER        KRB5_INT32_MAX
+
 #define KRB_KEY_TYPE(key)       ((key)->enctype)
 #define KRB_KEY_DATA(key)       ((key)->contents)
 #define KRB_KEY_LENGTH(key)     ((key)->length)
+
+#define KRB_PRINC_LENGTH(princ) (krb5_princ_size(NULL, (princ)))
+#define KRB_PRINC_TYPE(princ)   (krb5_princ_type(NULL, (princ)))
+#define KRB_PRINC_NAME(princ)   (krb5_princ_name(NULL, (princ)))
+#define KRB_PRINC_REALM(princ)  (krb5_princ_realm(NULL, (princ)))
+
+#define KRB_KT_ENT_KEYBLOCK(e)  (&(e)->key)
+#define KRB_KT_ENT_FREE(c, e)   krb5_free_keytab_entry_contents((c), (e))
+
+#define KRB_CRYPTO_CONTEXT(ctx) (&(ctx)->rfc3961Key)
+
 #endif /* HAVE_HEIMDAL_VERSION */
 
 #define KRB_KEY_INIT(key)       do {        \
@@ -316,20 +342,6 @@ gssEapVerifyExtensions(OM_uint32 *minor,
         KRB_KEY_DATA(key) = NULL;           \
         KRB_KEY_LENGTH(key) = 0;            \
     } while (0)
-
-#ifdef HAVE_HEIMDAL_VERSION
-#define KRB_PRINC_LENGTH(princ) ((princ)->name.name_string.len)
-#define KRB_PRINC_TYPE(princ)   ((princ)->name.name_type)
-#define KRB_PRINC_NAME(princ)   ((princ)->name.name_string.val)
-#define KRB_PRINC_REALM(princ)  ((princ)->realm)
-#define KRB_CRYPTO_CONTEXT(ctx) (krbCrypto)
-#else
-#define KRB_PRINC_LENGTH(princ) (krb5_princ_size(NULL, (princ)))
-#define KRB_PRINC_TYPE(princ)   (krb5_princ_type(NULL, (princ)))
-#define KRB_PRINC_NAME(princ)   (krb5_princ_name(NULL, (princ)))
-#define KRB_PRINC_REALM(princ)  (krb5_princ_realm(NULL, (princ)))
-#define KRB_CRYPTO_CONTEXT(ctx) (&(ctx)->rfc3961Key)
-#endif /* HAVE_HEIMDAL_VERSION */
 
 #ifdef HAVE_HEIMDAL_VERSION
 #define GSS_IOV_BUFFER_FLAG_ALLOCATE    GSS_IOV_BUFFER_TYPE_FLAG_ALLOCATE

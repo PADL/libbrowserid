@@ -70,14 +70,11 @@ getAcceptorKey(krb5_context krbContext,
     krb5_error_code code;
     krb5_keytab keytab = NULL;
     krb5_keytab_entry ktent = { 0 };
-#ifdef HAVE_HEIMDAL_VERSION
-    krb5_kt_cursor cursor = { 0 };
-#else
-    krb5_kt_cursor cursor = NULL;
-#endif
+    krb5_kt_cursor cursor;
 
     *princ = NULL;
     memset(key, 0, sizeof(*key));
+    memset(&cursor, 0, sizeof(cursor));
 
     code = krb5_kt_default(krbContext, &keytab);
     if (code != 0)
@@ -100,40 +97,24 @@ getAcceptorKey(krb5_context krbContext,
 
         while ((code = krb5_kt_next_entry(krbContext, keytab,
                                           &ktent, &cursor)) == 0) {
-#ifdef HAVE_HEIMDAL_VERSION
-            if (ktent.keyblock.keytype == ctx->encryptionType)
+            if (KRB_KEY_TYPE(KRB_KT_ENT_KEYBLOCK(&ktent)) == ctx->encryptionType)
                 break;
             else
-                krb5_kt_free_entry(krbContext, &ktent);
-#else
-            if (ktent.key.enctype == ctx->encryptionType)
-                break;
-            else
-                krb5_free_keytab_entry_contents(krbContext, &ktent);
-#endif
+                KRB_KT_ENT_FREE(krbContext, &ktent);
         }
     }
 
     if (code == 0) {
         *princ = ktent.principal;
-#ifdef HAVE_HEIMDAL_VERSION
-        *key = ktent.keyblock;
-#else
-        *key = ktent.key;
-#endif
+        *key = *KRB_KT_ENT_KEYBLOCK(&ktent);
     }
 
 cleanup:
     if (cred == GSS_C_NO_CREDENTIAL || cred->name == GSS_C_NO_NAME)
         krb5_kt_end_seq_get(krbContext, keytab, &cursor);
     krb5_kt_close(krbContext, keytab);
-
     if (code != 0)
-#ifdef HAVE_HEIMDAL_VERSION
-        krb5_kt_free_entry(krbContext, &ktent);
-#else
-        krb5_free_keytab_entry_contents(krbContext, &ktent);
-#endif
+        KRB_KT_ENT_FREE(krbContext, &ktent);
 
     return code;
 }
@@ -152,14 +133,14 @@ freezeAttrContext(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     krb5_error_code code;
+    krb5_context krbContext;
     gss_buffer_desc attrBuf = GSS_C_EMPTY_BUFFER;
 #ifdef HAVE_HEIMDAL_VERSION
-    AuthorizationData authDataBuf, *authData = &authDataBuf;
+    krb5_authdata authDataBuf, *authData = &authDataBuf;
     AuthorizationDataElement authDatum = { 0 };
 #else
     krb5_authdata *authData[2], authDatum = { 0 };
 #endif
-    krb5_context krbContext;
 
     GSSEAP_KRB_INIT(&krbContext);
 
