@@ -440,8 +440,8 @@ krbMakeAuthDataKdcIssued(krb5_context context,
     memset(&kdcIssued, 0, sizeof(kdcIssued));
     memset(adKdcIssued, 0, sizeof(*adKdcIssued));
 
-    kdcIssued.i_realm = issuer->realm != NULL ? &issuer->realm : NULL;
-    kdcIssued.i_sname = &issuer->name;
+    kdcIssued.i_realm = issuer->realm != NULL ? (Realm *)&issuer->realm : NULL;
+    kdcIssued.i_sname = (PrincipalName *)&issuer->name;
     kdcIssued.elements = *authdata;
 
     ASN1_MALLOC_ENCODE(AuthorizationData, buf, buf_size, authdata, &len, code);
