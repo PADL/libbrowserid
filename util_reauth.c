@@ -125,9 +125,9 @@ freezeAttrContext(OM_uint32 *minor,
                   krb5_const_principal acceptorPrinc,
                   krb5_keyblock *session,
 #ifdef HAVE_HEIMDAL_VERSION
-                  krb5_authdata *authdata
+                  krb5_authdata *kdcIssuedAuthData
 #else
-                  krb5_authdata ***authdata
+                  krb5_authdata ***kdcIssuedAuthData
 #endif
                   )
 {
@@ -141,6 +141,8 @@ freezeAttrContext(OM_uint32 *minor,
 #else
     krb5_authdata *authData[2], authDatum = { 0 };
 #endif
+
+    memset(kdcIssuedAuthData, 0, sizeof(*kdcIssuedAuthData));
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -162,7 +164,7 @@ freezeAttrContext(OM_uint32 *minor,
 #endif
 
     code = krbMakeAuthDataKdcIssued(krbContext, session, acceptorPrinc,
-                                    authData, authdata);
+                                    authData, kdcIssuedAuthData);
     if (code != 0) {
         major = GSS_S_FAILURE;
         *minor = code;
