@@ -127,7 +127,7 @@ gssEapReleaseContext(OM_uint32 *minor,
     krb5_free_keyblock_contents(krbContext, &ctx->rfc3961Key);
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
-    gss_release_oid(&tmpMinor, &ctx->mechanismUsed);
+    gssEapReleaseOid(&tmpMinor, &ctx->mechanismUsed);
     sequenceFree(&tmpMinor, &ctx->seqState);
     gssEapReleaseCred(&tmpMinor, &ctx->defaultCred);
 

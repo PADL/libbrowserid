@@ -196,13 +196,15 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     EncTicketPart enc_part;
     AuthorizationData authData = { 0 };
     krb5_crypto krbCrypto = NULL;
-    unsigned char *buf = NULL;
-    size_t buf_size, len;
+    krb5_data ticketData = { 0 };
+    krb5_data encPartData = { 0 };
+    size_t len;
 #else
     krb5_ticket ticket;
     krb5_enc_tkt_part enc_part;
+    krb5_data *ticketData = NULL;
 #endif
-    krb5_data *ticketData = NULL, credsData = { 0 };
+    krb5_data credsData = { 0 };
     krb5_creds creds = { 0 };
     krb5_auth_context authContext = NULL;
 
@@ -232,12 +234,12 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
      * Generate a random session key to place in the ticket and
      * sign the "KDC-Issued" authorization data element.
      */
-    code = krb5_c_make_random_key(krbContext, ctx->encryptionType,
-                                  &session);
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_generate_random_keyblock(krbContext, ctx->encryptionType,
+                                         &session);
     if (code != 0)
         goto cleanup;
 
-#ifdef HAVE_HEIMDAL_VERSION
     enc_part.flags.initial = 1;
     enc_part.key = session;
     enc_part.crealm = ctx->initiatorName->krbPrincipal->realm;
@@ -254,7 +256,8 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    ASN1_MALLOC_ENCODE(EncTicketPart, buf, buf_size, &enc_part, &len, code);
+    ASN1_MALLOC_ENCODE(EncTicketPart, encPartData.data, encPartData.length,
+                       &enc_part, &len, code);
     if (code != 0)
         goto cleanup;
 
@@ -265,20 +268,23 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     code = krb5_encrypt_EncryptedData(krbContext,
                                       krbCrypto,
                                       KRB5_KU_TICKET,
-                                      buf,
-                                      len,
+                                      encPartData.data,
+                                      encPartData.length,
                                       0,
                                       &ticket.enc_part);
     if (code != 0)
         goto cleanup;
 
-    GSSEAP_FREE(buf);
-    buf = NULL;
-
-    ASN1_MALLOC_ENCODE(Ticket, buf, buf_size, &ticket, &len, code);
+    ASN1_MALLOC_ENCODE(Ticket, ticketData.data, ticketData.length,
+                       &ticket, &len, code);
     if (code != 0)
         goto cleanup;
 #else
+    code = krb5_c_make_random_key(krbContext, ctx->encryptionType,
+                                  &session);
+    if (code != 0)
+        goto cleanup;
+
     enc_part.flags = TKT_FLG_INITIAL;
     enc_part.session = &session;
     enc_part.client = ctx->initiatorName->krbPrincipal;
@@ -314,7 +320,7 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     creds.times.endtime = enc_part.endtime;
     creds.times.renew_till = 0;
     creds.flags.b = enc_part.flags;
-    creds.ticket = *ticketData;
+    creds.ticket = ticketData;
     creds.authdata = authData;
 #else
     creds.keyblock = session;
@@ -347,19 +353,19 @@ cleanup:
 #ifdef HAVE_HEIMDAL_VERSION
     if (krbCrypto != NULL)
         krb5_crypto_destroy(krbContext, krbCrypto);
-    if (buf != NULL)
-        GSSEAP_FREE(buf);
     free_AuthorizationData(&authData);
     free_EncryptedData(&ticket.enc_part);
+    krb5_data_free(&ticketData);
+    krb5_data_free(&encPartData);
 #else
     krb5_free_authdata(krbContext, enc_part.authorization_data);
     if (ticket.enc_part.ciphertext.data != NULL)
         GSSEAP_FREE(ticket.enc_part.ciphertext.data);
+    krb5_free_data(krbContext, ticketData);
 #endif
     krb5_free_keyblock_contents(krbContext, &session);
     krb5_free_principal(krbContext, server);
     krb5_free_keyblock_contents(krbContext, &acceptorKey);
-    krb5_free_data(krbContext, ticketData);
     krb5_auth_con_free(krbContext, authContext);
 
     if (major == GSS_S_COMPLETE) {
@@ -1000,7 +1006,9 @@ gssEapReauthInitialize(OM_uint32 *minor)
     NEXT_SYMBOL(gssDisplayNameNext,            "gss_display_name");
     NEXT_SYMBOL(gssImportNameNext,             "gss_import_name");
     NEXT_SYMBOL(gssStoreCredNext,              "gss_store_cred");
+#ifndef HAVE_HEIMDAL_VERSION
     NEXT_SYMBOL(gssGetNameAttributeNext,       "gss_get_name_attribute");
+#endif
 
     return major;
 }

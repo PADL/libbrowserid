@@ -439,6 +439,9 @@ gssEapInternalizeOid(const gss_OID oid,
                      gss_OID *const pInternalizedOid);
 
 OM_uint32
+gssEapReleaseOid(OM_uint32 *minor, gss_OID *oid);
+
+OM_uint32
 gssEapDefaultMech(OM_uint32 *minor,
                   gss_OID *oid);
 

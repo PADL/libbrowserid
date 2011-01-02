@@ -282,6 +282,23 @@ gssEapInternalizeOid(const gss_OID oid,
     return 1;
 }
 
+OM_uint32
+gssEapReleaseOid(OM_uint32 *minor, gss_OID *oid)
+{
+    gss_OID internalizedOid = GSS_C_NO_OID;
+
+    *minor = 0;
+
+    if (gssEapInternalizeOid(*oid, &internalizedOid)) {
+        /* OID was internalized, so we can mark it as "freed" */
+        *oid = GSS_C_NO_OID;
+        return GSS_S_COMPLETE;
+    }
+
+    /* we don't know about this OID */
+    return GSS_S_CONTINUE_NEEDED;
+}
+
 static gss_buffer_desc gssEapSaslMechs[] = {
     { sizeof("EAP") - 1,        "EAP",       }, /* not used */
     { sizeof("EAP-AES128") - 1, "EAP-AES128" },

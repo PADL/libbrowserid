@@ -498,8 +498,8 @@ krbMakeCred(krb5_context krbContext,
     KrbCredInfo krbCredInfo;
     krb5_keyblock *key;
     krb5_crypto krbCrypto = NULL;
-    unsigned char *buf = NULL;
-    size_t buf_size, len;
+    krb5_data credInfoData = { 0 };
+    size_t len;
 #else
     krb5_data *d = NULL;
 #endif
@@ -540,7 +540,8 @@ krbMakeCred(krb5_context krbContext,
     krbCredInfo.sname       = &creds->server->name;
     krbCredInfo.caddr       = creds->addresses.len ? &creds->addresses : NULL;
 
-    ASN1_MALLOC_ENCODE(KrbCredInfo, buf, buf_size, &krbCredInfo, &len, code);
+    ASN1_MALLOC_ENCODE(KrbCredInfo, credInfoData.data, credInfoData.length,
+                       &krbCredInfo, &len, code);
     if (code != 0)
         goto cleanup;
 
@@ -551,26 +552,23 @@ krbMakeCred(krb5_context krbContext,
     code = krb5_encrypt_EncryptedData(krbContext,
                                       krbCrypto,
                                       KRB5_KU_KRB_CRED,
-                                      buf,
-                                      len,
+                                      credInfoData.data,
+                                      credInfoData.length,
                                       0,
                                       &krbCred.enc_part);
     if (code != 0)
         goto cleanup;
 
-    GSSEAP_FREE(buf);
-    buf = NULL;
-
-    ASN1_MALLOC_ENCODE(KRB_CRED, buf, buf_size, &krbCred, &len, code);
+    ASN1_MALLOC_ENCODE(KRB_CRED, data->data, data->length,
+                       &krbCred, &len, code);
     if (code != 0)
         goto cleanup;
 
 cleanup:
-    if (buf != NULL)
-        GSSEAP_FREE(buf);
     if (krbCrypto != NULL)
         krb5_crypto_destroy(krbContext, krbCrypto);
     free_KRB_CRED(&krbCred);
+    krb5_data_free(&credInfoData);
 
     return code;
 #else
