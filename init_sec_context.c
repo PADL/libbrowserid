@@ -730,7 +730,7 @@ gss_init_sec_context(OM_uint32 *minor,
 
     sm = &eapGssInitiatorSm[ctx->state];
 
-    if (input_token != GSS_C_NO_BUFFER) {
+    if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {
         major = gssEapVerifyToken(minor, ctx, input_token,
                                   &tokType, &innerInputToken);
         if (GSS_ERROR(major))
