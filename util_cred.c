@@ -205,6 +205,7 @@ gssEapAcquireCred(OM_uint32 *minor,
         && !gssEapCanReauthP(cred, GSS_C_NO_NAME, timeReq)
 #endif
         major = GSS_S_CRED_UNAVAIL;
+        *minor = GSSEAP_MISSING_PASSWORD;
         goto cleanup;
     }
 

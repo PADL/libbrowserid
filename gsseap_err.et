@@ -75,6 +75,7 @@ error_code GSSEAP_BAD_USAGE,                    "Credential usage type is unknow
 error_code GSSEAP_CRED_USAGE_MISMATCH,          "Credential usage does not match requested usage"
 error_code GSSEAP_CRED_MECH_MISMATCH,           "Credential is not usable with this mechanism"
 error_code GSSEAP_BAD_CRED_OPTION,              "Bad credential option"
+error_code GSSEAP_MISSING_PASSWORD,             "Missing initiator credential password"
 
 #
 # Wrap/unwrap/PRF errors
