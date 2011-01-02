@@ -223,18 +223,14 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     } else if (code != 0)
         goto cleanup;
 
-#ifdef HAVE_HEIMDAL_VERSION
-    ticket.realm = server->realm;
-    ticket.sname = server->name;
-#else
-    ticket.server = server;
-#endif
-
     /*
      * Generate a random session key to place in the ticket and
      * sign the "KDC-Issued" authorization data element.
      */
 #ifdef HAVE_HEIMDAL_VERSION
+    ticket.realm = server->realm;
+    ticket.sname = server->name;
+
     code = krb5_generate_random_keyblock(krbContext, ctx->encryptionType,
                                          &session);
     if (code != 0)
@@ -280,6 +276,8 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 #else
+    ticket.server = server;
+
     code = krb5_c_make_random_key(krbContext, ctx->encryptionType,
                                   &session);
     if (code != 0)
