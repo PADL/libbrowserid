@@ -496,9 +496,11 @@ krbMakeCred(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
     KRB_CRED krbCred;
     KrbCredInfo krbCredInfo;
+    EncKrbCredPart encKrbCredPart;
     krb5_keyblock *key;
     krb5_crypto krbCrypto = NULL;
-    krb5_data credInfoData = { 0 };
+    krb5_data encKrbCredPartData;
+    krb5_replay_data rdata;
     size_t len;
 #else
     krb5_data *d = NULL;
@@ -506,12 +508,17 @@ krbMakeCred(krb5_context krbContext,
 
     memset(data, 0, sizeof(*data));
 #ifdef HAVE_HEIMDAL_VERSION
-    memset(&krbCred, 0, sizeof(krbCred));
-    memset(&krbCredInfo, 0, sizeof(krbCredInfo));
+    memset(&krbCred,        0, sizeof(krbCred));
+    memset(&krbCredInfo,    0, sizeof(krbCredInfo));
+    memset(&encKrbCredPart, 0, sizeof(encKrbCredPart));
+    memset(&rdata,          0, sizeof(rdata));
 
-    key = (authContext->local_subkey != NULL)
-          ? authContext->local_subkey
-          : authContext->keyblock;
+    if (authContext->local_subkey)
+        key = authContext->local_subkey;
+    else if (authContext->remote_subkey)
+        key = authContext->remote_subkey;
+    else
+        key = authContext->keyblock;
 
     krbCred.pvno = 5;
     krbCred.msg_type = krb_cred;
@@ -540,8 +547,28 @@ krbMakeCred(krb5_context krbContext,
     krbCredInfo.sname       = &creds->server->name;
     krbCredInfo.caddr       = creds->addresses.len ? &creds->addresses : NULL;
 
-    ASN1_MALLOC_ENCODE(KrbCredInfo, credInfoData.data, credInfoData.length,
-                       &krbCredInfo, &len, code);
+    encKrbCredPart.ticket_info.len = 1;
+    encKrbCredPart.ticket_info.val = &krbCredInfo;
+    if (authContext->flags & KRB5_AUTH_CONTEXT_DO_SEQUENCE) {
+        rdata.seq                  = authContext->local_seqnumber;
+        encKrbCredPart.nonce       = (int32_t *)&rdata.seq;
+    } else {
+        encKrbCredPart.nonce       = NULL;
+    }
+    if (authContext->flags & KRB5_AUTH_CONTEXT_DO_TIME) {
+        krb5_us_timeofday(krbContext, &rdata.timestamp, &rdata.usec);
+        encKrbCredPart.timestamp   = &rdata.timestamp;
+        encKrbCredPart.usec        = &rdata.usec;
+    } else {
+        encKrbCredPart.timestamp   = NULL;
+        encKrbCredPart.usec        = NULL;
+    }
+    encKrbCredPart.s_address       = authContext->local_address;
+    encKrbCredPart.r_address       = authContext->remote_address;
+
+    ASN1_MALLOC_ENCODE(EncKrbCredPart, encKrbCredPartData.data,
+                       encKrbCredPartData.length, &encKrbCredPart,
+                       &len, code);
     if (code != 0)
         goto cleanup;
 
@@ -552,8 +579,8 @@ krbMakeCred(krb5_context krbContext,
     code = krb5_encrypt_EncryptedData(krbContext,
                                       krbCrypto,
                                       KRB5_KU_KRB_CRED,
-                                      credInfoData.data,
-                                      credInfoData.length,
+                                      encKrbCredPartData.data,
+                                      encKrbCredPartData.length,
                                       0,
                                       &krbCred.enc_part);
     if (code != 0)
@@ -564,11 +591,14 @@ krbMakeCred(krb5_context krbContext,
     if (code != 0)
         goto cleanup;
 
+    if (authContext->flags & KRB5_AUTH_CONTEXT_DO_SEQUENCE)
+        authContext->local_seqnumber++;
+
 cleanup:
     if (krbCrypto != NULL)
         krb5_crypto_destroy(krbContext, krbCrypto);
     free_KRB_CRED(&krbCred);
-    krb5_data_free(&credInfoData);
+    krb5_data_free(&encKrbCredPartData);
 
     return code;
 #else
