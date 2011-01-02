@@ -671,7 +671,6 @@ gss_init_sec_context(OM_uint32 *minor,
     gss_buffer_desc innerInputToken;
     gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
     enum gss_eap_token_type tokType;
-    gss_cred_id_t defaultCred = GSS_C_NO_CREDENTIAL;
     int initialContextToken = 0;
 
     *minor = 0;
@@ -698,21 +697,21 @@ gss_init_sec_context(OM_uint32 *minor,
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (cred == GSS_C_NO_CREDENTIAL) {
-        if (ctx->initiatorCtx.defaultCred == GSS_C_NO_CREDENTIAL) {
+        if (ctx->defaultCred == GSS_C_NO_CREDENTIAL) {
             major = gssEapAcquireCred(minor,
                                       GSS_C_NO_NAME,
                                       GSS_C_NO_BUFFER,
                                       time_req,
                                       GSS_C_NO_OID_SET,
                                       GSS_C_INITIATE,
-                                      &defaultCred,
+                                      &ctx->defaultCred,
                                       NULL,
                                       NULL);
             if (GSS_ERROR(major))
                 goto cleanup;
         }
 
-        cred = ctx->initiatorCtx.defaultCred;
+        cred = ctx->defaultCred;
     }
 
     GSSEAP_MUTEX_LOCK(&cred->mutex);

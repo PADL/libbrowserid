@@ -80,9 +80,6 @@ gssEapAllocContext(OM_uint32 *minor,
 static void
 releaseInitiatorContext(struct gss_eap_initiator_ctx *ctx)
 {
-    OM_uint32 minor;
-
-    gssEapReleaseCred(&minor, &ctx->defaultCred);
     eap_peer_sm_deinit(ctx->eap);
 }
 
@@ -132,6 +129,7 @@ gssEapReleaseContext(OM_uint32 *minor,
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
     gss_release_oid(&tmpMinor, &ctx->mechanismUsed);
     sequenceFree(&tmpMinor, &ctx->seqState);
+    gssEapReleaseCred(&tmpMinor, &ctx->defaultCred);
 
     GSSEAP_MUTEX_DESTROY(&ctx->mutex);
 

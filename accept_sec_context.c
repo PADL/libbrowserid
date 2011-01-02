@@ -143,7 +143,7 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
 
     assert(ctx->acceptorName == GSS_C_NO_NAME);
 
-    if (cred != GSS_C_NO_CREDENTIAL && cred->name != GSS_C_NO_NAME) {
+    if (cred->name != GSS_C_NO_NAME) {
         major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
         if (GSS_ERROR(major))
             return major;
@@ -284,12 +284,10 @@ createRadiusHandle(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    if (cred != GSS_C_NO_CREDENTIAL) {
-        if (cred->radiusConfigFile != NULL)
-            configFile = cred->radiusConfigFile;
-        if (cred->radiusConfigStanza != NULL)
-            configStanza = cred->radiusConfigStanza;
-    }
+    if (cred->radiusConfigFile != NULL)
+        configFile = cred->radiusConfigFile;
+    if (cred->radiusConfigStanza != NULL)
+        configStanza = cred->radiusConfigStanza;
 
     ralloc.calloc  = GSSEAP_CALLOC;
     ralloc.malloc  = GSSEAP_MALLOC;
@@ -594,16 +592,25 @@ gss_accept_sec_context(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    /* Validate and lock credentials */
-    if (cred != GSS_C_NO_CREDENTIAL) {
-        GSSEAP_MUTEX_LOCK(&cred->mutex);
-
-        if ((cred->flags & CRED_FLAG_ACCEPT) == 0) {
-            *minor = GSSEAP_CRED_USAGE_MISMATCH;
-            major = GSS_S_NO_CRED;
-            goto cleanup;
+    if (cred == GSS_C_NO_CREDENTIAL) {
+        if (ctx->defaultCred == GSS_C_NO_CREDENTIAL) {
+            major = gssEapAcquireCred(minor,
+                                      GSS_C_NO_NAME,
+                                      GSS_C_NO_BUFFER,
+                                      GSS_C_INDEFINITE,
+                                      GSS_C_NO_OID_SET,
+                                      GSS_C_ACCEPT,
+                                      &ctx->defaultCred,
+                                      NULL,
+                                      NULL);
+            if (GSS_ERROR(major))
+                goto cleanup;
         }
+
+        cred = ctx->defaultCred;
     }
+
+    GSSEAP_MUTEX_LOCK(&cred->mutex);
 
     sm = &eapGssAcceptorSm[ctx->state];
 
@@ -720,7 +727,7 @@ acceptReadyKrb(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    if (cred != GSS_C_NO_CREDENTIAL && cred->name != GSS_C_NO_NAME) {
+    if (cred->name != GSS_C_NO_NAME) {
         major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
         if (GSS_ERROR(major))
             return major;
@@ -745,19 +752,15 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
                         gss_buffer_t outputToken)
 {
     OM_uint32 major, tmpMinor;
-    gss_cred_id_t krbCred = GSS_C_NO_CREDENTIAL;
     gss_name_t krbInitiator = GSS_C_NO_NAME;
     gss_OID mech = GSS_C_NO_OID;
     OM_uint32 gssFlags, timeRec = GSS_C_INDEFINITE;
 
     ctx->flags |= CTX_FLAG_KRB_REAUTH;
 
-    if (cred != GSS_C_NO_CREDENTIAL)
-        krbCred = cred->krbCred;
-
     major = gssAcceptSecContext(minor,
                                 &ctx->kerberosCtx,
-                                krbCred,
+                                cred->krbCred,
                                 inputToken,
                                 chanBindings,
                                 &krbInitiator,
