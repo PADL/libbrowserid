@@ -11,12 +11,12 @@ mech_eap_la_CFLAGS   = -g -Wall -fno-strict-aliasing \
 			@KRB5_CFLAGS@ @EAP_CFLAGS@ @RADSEC_CFLAGS@ @TARGET_CFLAGS@
 mech_eap_la_CXXFLAGS = -g -Wall \
 			@KRB5_CFLAGS@ @EAP_CFLAGS@ @RADSEC_CFLAGS@ \
-		        @SHIBSP_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @TARGET_CFLAGS@
+		        @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ @TARGET_CFLAGS@
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols mech_eap.exports -no-undefined \
 			@EAP_LDFLAGS@ @RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
-mech_eap_la_LIBADD   = @KRB5_LIBS@ @EAP_LIBS@ @RADSEC_LIBS@ @SHIBSP_LIBS@ \
-		       @SHIBRESOLVER_LIBS@
+mech_eap_la_LIBADD   = @KRB5_LIBS@ @EAP_LIBS@ @RADSEC_LIBS@ \
+		       @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @TARGET_LIBS@
 
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
