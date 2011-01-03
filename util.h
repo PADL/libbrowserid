@@ -343,13 +343,6 @@ gssEapVerifyExtensions(OM_uint32 *minor,
         KRB_KEY_LENGTH(key) = 0;            \
     } while (0)
 
-#ifdef HAVE_HEIMDAL_VERSION
-#define GSS_IOV_BUFFER_FLAG_ALLOCATE    GSS_IOV_BUFFER_TYPE_FLAG_ALLOCATE
-#define GSS_IOV_BUFFER_FLAG_ALLOCATED   GSS_IOV_BUFFER_TYPE_FLAG_ALLOCATED
-
-#define GSS_S_CRED_UNAVAIL              GSS_S_FAILURE
-#endif
-
 #define GSSEAP_KRB_INIT(ctx) do {                   \
         OM_uint32 tmpMajor;                         \
                                                     \
