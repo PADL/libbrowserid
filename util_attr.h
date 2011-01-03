@@ -37,11 +37,6 @@
 #ifndef _UTIL_ATTR_H_
 #define _UTIL_ATTR_H_ 1
 
-#ifdef HAVE_HEIMDAL_VERSION
-/* Removed in draft-ietf-kitten-gssapi-naming-exts-08 */
-typedef struct gss_any *gss_any_t;
-#endif
-
 #ifdef __cplusplus
 #include <string>
 #include <new>
