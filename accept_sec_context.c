@@ -349,7 +349,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     rconn = ctx->acceptorCtx.radConn;
 
-    if (rs_packet_create_acc_request(rconn, &req, NULL, NULL) != 0) {
+    if (rs_packet_create_auth_request(rconn, &req, NULL, NULL) != 0) {
         major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
         goto cleanup;
     }
