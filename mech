@@ -1,5 +1,6 @@
 #
-# Sample MIT mechanism glue configuration for EAP GSS mechanism.
+# Sample mechanism glue configuration for EAP GSS mechanism.
+#
 # Any encryption type supported by Kerberos can be defined as the
 # last element of the OID arc.
 #
