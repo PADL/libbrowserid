@@ -99,7 +99,7 @@ saveStatusInfoNoCopy(OM_uint32 minor, char *message)
     p->code = minor;
     p->message = message;
 
-    if (p != NULL)
+    if (next != NULL)
         *next = p;
     else
         GSSEAP_SETSPECIFIC(gssEapStatusInfoKey, p);
