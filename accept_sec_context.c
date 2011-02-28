@@ -381,6 +381,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     }
 
     rs_request_add_reqpkt(request, req);
+    req = NULL;
 
     if (rs_request_send(request, &resp) != 0) {
         major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
@@ -441,6 +442,8 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 cleanup:
     if (request != NULL)
         rs_request_destroy(request);
+    if (req != NULL)
+        rs_packet_destroy(req);
 
     return major;
 }
