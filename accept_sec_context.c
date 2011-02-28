@@ -439,7 +439,8 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     major = GSS_S_CONTINUE_NEEDED;
 
 cleanup:
-    rs_request_destroy(request);
+    if (request != NULL)
+        rs_request_destroy(request);
 
     return major;
 }
