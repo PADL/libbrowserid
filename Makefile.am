@@ -107,12 +107,12 @@ radius_ad_la_SOURCES = util_adshim.c
 endif
 endif
 
-gsseap_err.h: gsseap_err.et
+gsseap_err.h gsseap_err.c: gsseap_err.et
 	$(COMPILE_ET) $<
 
-gsseap_err.c: gsseap_err.h
 
-radsec_err.h: radsec_err.et
+
+radsec_err.h radsec_err.c: radsec_err.et
 	$(COMPILE_ET) $<
 
 radsec_err.c: radsec_err.h
