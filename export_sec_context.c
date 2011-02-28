@@ -48,8 +48,8 @@ gssEapExportPartialContext(OM_uint32 *minor,
     char serverBuf[MAXHOSTNAMELEN];
 
     if (ctx->acceptorCtx.radConn != NULL) {
-        if (rs_conn_get_current_server(ctx->acceptorCtx.radConn,
-                                       serverBuf, sizeof(serverBuf)) != 0) {
+        if (rs_conn_get_current_peer(ctx->acceptorCtx.radConn,
+                                     serverBuf, sizeof(serverBuf)) != 0) {
             return gssEapRadiusMapError(minor,
                                         rs_err_conn_pop(ctx->acceptorCtx.radConn));
         }

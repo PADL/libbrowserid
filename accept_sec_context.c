@@ -307,7 +307,7 @@ createRadiusHandle(OM_uint32 *minor,
     }
 
     if (actx->radServer != NULL) {
-        if (rs_conn_select_server(actx->radConn, actx->radServer) != 0) {
+        if (rs_conn_select_peer(actx->radConn, actx->radServer) != 0) {
             err = rs_err_conn_pop(actx->radConn);
             goto fail;
         }
@@ -349,7 +349,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     rconn = ctx->acceptorCtx.radConn;
 
-    if (rs_packet_create_auth_request(rconn, &req, NULL, NULL) != 0) {
+    if (rs_packet_create_authn_request(rconn, &req, NULL, NULL) != 0) {
         major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
         goto cleanup;
     }
@@ -375,8 +375,14 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         gss_release_buffer(&tmpMinor, &ctx->acceptorCtx.state);
     }
 
-    if (rs_request_create(rconn, &request) != 0 ||
-        rs_request_send(request, req, &resp) != 0) {
+    if (rs_request_create(rconn, &request) != 0) {
+        major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
+        goto cleanup;
+    }
+
+    rs_request_add_reqpkt(request, req);
+
+    if (rs_request_send(request, &resp) != 0) {
         major = gssEapRadiusMapError(minor, rs_err_conn_pop(rconn));
         goto cleanup;
     }
