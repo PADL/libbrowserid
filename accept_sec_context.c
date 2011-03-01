@@ -130,10 +130,7 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
                        gss_buffer_t outputToken)
 {
     OM_uint32 major;
-    union {
-        struct eap_hdr pdu;
-        unsigned char data[5];
-    } pkt;
+    struct wpabuf *reqData;
     gss_buffer_desc pktBuffer;
 
     if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0) {
@@ -149,19 +146,23 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
             return major;
     }
 
-    pkt.pdu.code = EAP_CODE_REQUEST;
-    pkt.pdu.identifier = 0;
-    pkt.pdu.length = htons(sizeof(pkt.data));
-    pkt.data[4] = EAP_TYPE_IDENTITY;
+    reqData = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_IDENTITY, 0,
+                            EAP_CODE_REQUEST, 0);
+    if (reqData == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
 
-    pktBuffer.length = sizeof(pkt.data);
-    pktBuffer.value = pkt.data;
+    pktBuffer.length = wpabuf_len(reqData);
+    pktBuffer.value = (void *)wpabuf_head(reqData);
 
     major = duplicateBuffer(minor, &pktBuffer, outputToken);
     if (GSS_ERROR(major))
         return major;
 
     ctx->state = GSSEAP_STATE_AUTHENTICATE;
+
+    wpabuf_free(reqData);
 
     *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
