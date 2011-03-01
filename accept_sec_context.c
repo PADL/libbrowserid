@@ -168,6 +168,47 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
 }
 
 /*
+ * Returns TRUE if the input token contains an EAP identity response.
+ */
+static int
+isIdentityResponseP(gss_buffer_t inputToken)
+{
+    struct wpabuf respData;
+
+    wpabuf_set(&respData, inputToken->value, inputToken->length);
+
+    return (eap_get_type(&respData) == EAP_TYPE_IDENTITY);
+}
+
+/*
+ * Pass the asserted initiator identity to the authentication server.
+ */
+static OM_uint32
+setInitiatorIdentity(OM_uint32 *minor,
+                     gss_buffer_t inputToken,
+                     VALUE_PAIR **vps)
+{
+    struct wpabuf respData;
+    const unsigned char *pos;
+    size_t len;
+    gss_buffer_desc nameBuf;
+
+    wpabuf_set(&respData, inputToken->value, inputToken->length);
+
+    pos = eap_hdr_validate(EAP_VENDOR_IETF, EAP_TYPE_IDENTITY,
+                           &respData, &len);
+    if (pos == NULL) {
+        *minor = GSSEAP_PEER_BAD_MESSAGE;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    nameBuf.value = (void *)pos;
+    nameBuf.length = len;
+
+    return gssEapRadiusAddAvp(minor, vps, PW_USER_NAME, 0, &nameBuf);
+}
+
+/*
  * Pass the asserted acceptor identity to the authentication server.
  */
 static OM_uint32
@@ -336,15 +377,13 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     struct rs_request *request = NULL;
     struct rs_packet *req = NULL, *resp = NULL;
     struct radius_packet *frreq, *frresp;
-    int sendAcceptorIdentity = 0;
+    int isIdentityResponse = isIdentityResponseP(inputToken);
 
     if (ctx->acceptorCtx.radContext == NULL) {
         /* May be NULL from an imported partial context */
         major = createRadiusHandle(minor, cred, ctx);
         if (GSS_ERROR(major))
             goto cleanup;
-
-        sendAcceptorIdentity = 1;
     }
 
     rconn = ctx->acceptorCtx.radConn;
@@ -355,7 +394,11 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     }
     frreq = rs_packet_frpkt(req);
 
-    if (sendAcceptorIdentity) {
+    if (isIdentityResponse) {
+        major = setInitiatorIdentity(minor, inputToken, &frreq->vps);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
         major = setAcceptorIdentity(minor, ctx, &frreq->vps);
         if (GSS_ERROR(major))
             goto cleanup;

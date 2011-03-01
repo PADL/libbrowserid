@@ -63,6 +63,7 @@
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>
 #include <eap_peer/eap_methods.h>
+#include <eap_common/eap_common.h>
 #include <wpabuf.h>
 
 /* FreeRADIUS headers */
