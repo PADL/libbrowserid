@@ -214,7 +214,7 @@ peerConfigInit(OM_uint32 *minor,
     krb5_context krbContext;
     struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
     krb5_error_code code;
-    char *identity;
+    char *identity, *anonymousIdentity;
 
     eapPeerConfig->identity = NULL;
     eapPeerConfig->identity_len = 0;
@@ -243,8 +243,14 @@ peerConfigInit(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
+    anonymousIdentity = strchr(identity, '@');
+    if (anonymousIdentity == NULL)
+        anonymousIdentity = "";
+
     eapPeerConfig->identity = (unsigned char *)identity;
     eapPeerConfig->identity_len = strlen(identity);
+    eapPeerConfig->anonymous_identity = (unsigned char *)anonymousIdentity;
+    eapPeerConfig->anonymous_identity_len = strlen(anonymousIdentity);
     eapPeerConfig->password = (unsigned char *)cred->password.value;
     eapPeerConfig->password_len = cred->password.length;
 

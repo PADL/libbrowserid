@@ -24,9 +24,30 @@ Make sure your RADIUS library is configured to talk to the server of
 your choice: see the example radsec.conf in this directory.
 
 On the RADIUS server side, you need to install dictionary.ukerna and
-include it from the main dictionary file. Your authentication policy
-also needs to echo the EAP username back to the acceptor if you want
-the acceptor to be able to identify the initiator.
+include it from the main dictionary file.
+
+If you want the acceptor be able to identify the user, the RADIUS
+server needs to echo back the EAP username from the inner tunnel;
+for privacy, mech_eap only sends the realm in the EAP Identity
+response. To configure this with FreeRADIUS, add:
+
+        update outer.reply {
+            User-Name = "%{request:User-Name}"
+        }
+
+to /etc/raddb/sites-enabled/inner-tunnel, and make sure that
+
+    virtual_server = "inner-tunnel"
+
+is set in eap.conf for the EAP types being used.
+
+To test the SAML assertion code path, you can place a fixed SAML
+assertion in the update reply block of the default configuration.
+
+        update reply {
+            SAML-AAA-Assertion = '<saml:Assertion ...'
+            SAML-AAA-Assertion += '...'
+        }
 
 Testing
 =======
