@@ -74,7 +74,9 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
         ctx->gssFlags |= GSS_C_ANON_FLAG;
     }
 
-    major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
+    major = gssEapImportName(minor, &nameBuf,
+                             (ctx->gssFlags & GSS_C_ANON_FLAG) ?
+                                GSS_C_NT_ANONYMOUS : GSS_C_NT_USER_NAME,
                              &ctx->initiatorName);
     if (GSS_ERROR(major))
         return major;
@@ -629,6 +631,9 @@ gss_accept_sec_context(OM_uint32 *minor,
 
     output_token->length = 0;
     output_token->value = NULL;
+
+    if (src_name != NULL)
+        *src_name = GSS_C_NO_NAME;
 
     if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
         *minor = GSSEAP_TOK_TRUNC;
