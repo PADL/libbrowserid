@@ -23,6 +23,11 @@ the EAP mechanisms. A sample configuration file is in this directory.
 Make sure your RADIUS library is configured to talk to the server of
 your choice: see the example radsec.conf in this directory.
 
+On the RADIUS server side, you need to install dictionary.ukerna and
+include it from the main dictionary file. Your authentication policy
+also needs to echo the EAP username back to the acceptor if you want
+the acceptor to be able to identify the initiator.
+
 Testing
 =======
 
