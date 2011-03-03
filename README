@@ -35,11 +35,11 @@ response. To configure this with FreeRADIUS, add:
             User-Name = "%{request:User-Name}"
         }
 
-to /etc/raddb/sites-enabled/inner-tunnel, and make sure that
+to $prefix/etc/raddb/sites-enabled/inner-tunnel, and ensure that
 
     virtual_server = "inner-tunnel"
 
-is set in eap.conf for the EAP types being used.
+is set in eap.conf for the desired EAP types.
 
 To test the SAML assertion code path, you can place a fixed SAML
 assertion in the update reply block of the default configuration.
@@ -48,6 +48,9 @@ assertion in the update reply block of the default configuration.
             SAML-AAA-Assertion = '<saml:Assertion ...'
             SAML-AAA-Assertion += '...'
         }
+
+You'll need to split it into multiple lines because of the RADIUS
+attribute size limit.
 
 Testing
 =======
