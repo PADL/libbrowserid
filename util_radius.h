@@ -165,7 +165,7 @@ gssEapRadiusMapError(OM_uint32 *minor,
 #define PW_SAML_AAA_ASSERTION               132
 
 #define IS_RADIUS_ERROR(code)               ((code) >= ERROR_TABLE_BASE_rse && \
-                                             (code) <= ERROR_TABLE_BASE_rse + RSE_SOME_ERROR)
+                                             (code) <= ERROR_TABLE_BASE_rse + RSE_TIMEOUT_IO)
 
 #ifdef __cplusplus
 }
