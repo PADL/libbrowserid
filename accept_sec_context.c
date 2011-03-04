@@ -184,13 +184,14 @@ isIdentityResponseP(gss_buffer_t inputToken)
 }
 
 /*
- * Pass the asserted initiator identity to the authentication server.
+ * Save the asserted initiator identity from the EAP identity response.
  */
 static OM_uint32
-setInitiatorIdentity(OM_uint32 *minor,
-                     gss_buffer_t inputToken,
-                     VALUE_PAIR **vps)
+importInitiatorIdentity(OM_uint32 *minor,
+                        gss_ctx_id_t ctx,
+                        gss_buffer_t inputToken)
 {
+    OM_uint32 tmpMinor;
     struct wpabuf respData;
     const unsigned char *pos;
     size_t len;
@@ -208,7 +209,43 @@ setInitiatorIdentity(OM_uint32 *minor,
     nameBuf.value = (void *)pos;
     nameBuf.length = len;
 
-    return gssEapRadiusAddAvp(minor, vps, PW_USER_NAME, 0, &nameBuf);
+    gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
+
+    return gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
+                            &ctx->initiatorName);
+}
+
+/*
+ * Pass the asserted initiator identity to the authentication server.
+ */
+static OM_uint32
+setInitiatorIdentity(OM_uint32 *minor,
+                     gss_ctx_id_t ctx,
+                     VALUE_PAIR **vps)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc nameBuf;
+
+    /*
+     * We should have got an EAP identity response, but if we didn't, then
+     * we will just avoid sending User-Name. Note that radsecproxy requires
+     * User-Name to be sent on every request (presumably so it can remain
+     * stateless).
+     */
+    if (ctx->initiatorName != GSS_C_NO_NAME) {
+        major = gssEapDisplayName(minor, ctx->initiatorName, &nameBuf, NULL);
+        if (GSS_ERROR(major))
+            return major;
+
+        major = gssEapRadiusAddAvp(minor, vps, PW_USER_NAME, 0, &nameBuf);
+        if (GSS_ERROR(major))
+            return major;
+
+        gss_release_buffer(&tmpMinor, &nameBuf);
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
 }
 
 /*
@@ -380,13 +417,18 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     struct rs_request *request = NULL;
     struct rs_packet *req = NULL, *resp = NULL;
     struct radius_packet *frreq, *frresp;
-    int isIdentityResponse = isIdentityResponseP(inputToken);
 
     if (ctx->acceptorCtx.radContext == NULL) {
         /* May be NULL from an imported partial context */
         major = createRadiusHandle(minor, cred, ctx);
         if (GSS_ERROR(major))
             goto cleanup;
+    }
+
+    if (isIdentityResponseP(inputToken)) {
+        major = importInitiatorIdentity(minor, ctx, inputToken);
+        if (GSS_ERROR(major))
+            return major;
     }
 
     rconn = ctx->acceptorCtx.radConn;
@@ -397,15 +439,13 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     }
     frreq = rs_packet_frpkt(req);
 
-    if (isIdentityResponse) {
-        major = setInitiatorIdentity(minor, inputToken, &frreq->vps);
-        if (GSS_ERROR(major))
-            goto cleanup;
+    major = setInitiatorIdentity(minor, ctx, &frreq->vps);
+    if (GSS_ERROR(major))
+        goto cleanup;
 
-        major = setAcceptorIdentity(minor, ctx, &frreq->vps);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
+    major = setAcceptorIdentity(minor, ctx, &frreq->vps);
+    if (GSS_ERROR(major))
+        goto cleanup;
 
     major = gssEapRadiusAddAvp(minor, &frreq->vps,
                                PW_EAP_MESSAGE, 0, inputToken);
