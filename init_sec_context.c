@@ -392,7 +392,7 @@ eapGssSmInitError(OM_uint32 *minor,
                   gss_channel_bindings_t chanBindings,
                   gss_buffer_t inputToken,
                   gss_buffer_t outputToken,
-                  int *transitionState)
+                  OM_uint32 *smFlags)
 {
     OM_uint32 major;
     unsigned char *p;
@@ -429,7 +429,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
                       gss_channel_bindings_t chanBindings,
                       gss_buffer_t inputToken,
                       gss_buffer_t outputToken,
-                      int *transitionState)
+                      OM_uint32 *smFlags)
 {
     OM_uint32 major, tmpMinor;
     gss_name_t mechTarget = GSS_C_NO_NAME;
@@ -481,10 +481,10 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
         major = gssEapReauthComplete(minor, ctx, cred, actualMech, timeRec);
         if (GSS_ERROR(major))
             goto cleanup;
-        ctx->state = GSSEAP_STATE_NEGO_EXT; /* skip */
+        ctx->state = GSSEAP_STATE_ACCEPTOR_EXTS;
     }
 
-    *transitionState = 1;
+    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
 
 cleanup:
     gssReleaseName(&tmpMinor, &mechTarget);
@@ -492,6 +492,30 @@ cleanup:
     return major;
 }
 #endif /* GSSEAP_ENABLE_REAUTH */
+
+#ifdef GSSEAP_DEBUG
+static OM_uint32
+eapGssSmInitVendorInfo(OM_uint32 *minor,
+                       gss_cred_id_t cred,
+                       gss_ctx_id_t ctx,
+                       gss_name_t target,
+                       gss_OID mech,
+                       OM_uint32 reqFlags,
+                       OM_uint32 timeReq,
+                       gss_channel_bindings_t chanBindings,
+                       gss_buffer_t inputToken,
+                       gss_buffer_t outputToken,
+                       OM_uint32 *smFlags)
+{
+    OM_uint32 major;
+
+    major = makeStringBuffer(minor, "JANET(UK)", outputToken);
+    if (GSS_ERROR(major))
+        return major;
+
+    return GSS_S_CONTINUE_NEEDED;
+}
+#endif
 
 static OM_uint32
 eapGssSmInitIdentity(OM_uint32 *minor,
@@ -504,18 +528,13 @@ eapGssSmInitIdentity(OM_uint32 *minor,
                      gss_channel_bindings_t chanBindings,
                      gss_buffer_t inputToken,
                      gss_buffer_t outputToken,
-                     int *transitionState)
+                     OM_uint32 *smFlags)
 {
     OM_uint32 major;
-    int initialContextToken;
+    struct eap_config eapConfig;
 
     assert((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
-
-    initialContextToken = (inputToken->length == 0);
-    if (!initialContextToken) {
-        *minor = GSSEAP_WRONG_SIZE;
-        return GSS_S_DEFECTIVE_TOKEN;
-    }
+    assert(inputToken == GSS_C_NO_BUFFER);
 
     major = initBegin(minor, cred, ctx, target, mech,
                       reqFlags, timeReq, chanBindings,
@@ -523,16 +542,31 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    outputToken->length = 0;
-    outputToken->value = NULL;
+    memset(&eapConfig, 0, sizeof(eapConfig));
 
+    ctx->initiatorCtx.eap = eap_peer_sm_init(ctx,
+                                             &gssEapPolicyCallbacks,
+                                             ctx,
+                                             &eapConfig);
+    if (ctx->initiatorCtx.eap == NULL) {
+        *minor = GSSEAP_PEER_SM_INIT_FAILURE;
+        return GSS_S_FAILURE;
+    }
+
+    ctx->flags |= CTX_FLAG_EAP_RESTART | CTX_FLAG_EAP_PORT_ENABLED;
+
+    /* poke EAP state machine */
+    if (eap_peer_sm_step(ctx->initiatorCtx.eap) != 0) {
+        *minor = GSSEAP_PEER_SM_STEP_FAILURE;
+        return GSS_S_FAILURE;
+    }
+
+    /* force sending of empty token */
     *minor = 0;
-    *transitionState = 1;
+    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_FORCE_SEND_TOKEN;
 
-    return GSS_S_COMPLETE;
+    return GSS_S_CONTINUE_NEEDED;
 }
-
-static struct wpabuf emptyWpaBuffer;
 
 static OM_uint32
 eapGssSmInitAuthenticate(OM_uint32 *minor,
@@ -545,47 +579,30 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
                          gss_channel_bindings_t chanBindings,
                          gss_buffer_t inputToken,
                          gss_buffer_t outputToken,
-                         int *transitionState)
+                         OM_uint32 *smFlags)
 {
     OM_uint32 major;
     OM_uint32 tmpMinor;
     int code;
     struct wpabuf *resp = NULL;
-    int initialContextToken;
 
     *minor = 0;
 
-    initialContextToken = (inputToken == GSS_C_NO_BUFFER ||
-                           inputToken->length == 0);
+    assert(inputToken != GSS_C_NO_BUFFER);
 
     major = peerConfigInit(minor, cred, ctx);
     if (GSS_ERROR(major))
         goto cleanup;
 
-    if (ctx->initiatorCtx.eap == NULL) {
-        struct eap_config eapConfig;
-
-        memset(&eapConfig, 0, sizeof(eapConfig));
-
-        ctx->initiatorCtx.eap = eap_peer_sm_init(ctx,
-                                                 &gssEapPolicyCallbacks,
-                                                 ctx,
-                                                 &eapConfig);
-        if (ctx->initiatorCtx.eap == NULL) {
-            major = GSS_S_FAILURE;
-            *minor = GSSEAP_PEER_SM_INIT_FAILURE;
-            goto cleanup;
-        }
-
-        ctx->flags |= CTX_FLAG_EAP_RESTART | CTX_FLAG_EAP_PORT_ENABLED;
-    }
+    assert(ctx->initiatorCtx.eap != NULL);
+    assert(ctx->flags & CTX_FLAG_EAP_PORT_ENABLED);
 
     ctx->flags |= CTX_FLAG_EAP_REQ; /* we have a Request from the acceptor */
 
-    major = GSS_S_CONTINUE_NEEDED;
-
     wpabuf_set(&ctx->initiatorCtx.reqData,
                inputToken->value, inputToken->length);
+
+    major = GSS_S_CONTINUE_NEEDED;
 
     code = eap_peer_sm_step(ctx->initiatorCtx.eap);
     if (ctx->flags & CTX_FLAG_EAP_RESP) {
@@ -598,12 +615,11 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
             goto cleanup;
 
         ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
-        *transitionState = 1;
+        major = GSS_S_CONTINUE_NEEDED;
+        *smFlags |= SM_FLAG_TRANSITION;
     } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
         major = GSS_S_DEFECTIVE_CREDENTIAL;
         *minor = GSSEAP_PEER_AUTH_FAILURE;
-    } else if (code == 0 && initialContextToken) {
-        /* */
     } else {
         major = GSS_S_DEFECTIVE_TOKEN;
         *minor = GSSEAP_PEER_BAD_MESSAGE;
@@ -614,7 +630,7 @@ cleanup:
         OM_uint32 tmpMajor;
         gss_buffer_desc respBuf;
 
-        assert(!GSS_ERROR(major));
+        assert(major == GSS_S_CONTINUE_NEEDED);
 
         respBuf.length = wpabuf_len(resp);
         respBuf.value = (void *)wpabuf_head(resp);
@@ -643,7 +659,7 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
                                gss_channel_bindings_t chanBindings,
                                gss_buffer_t inputToken,
                                gss_buffer_t outputToken,
-                               int *transitionState)
+                               OM_uint32 *smFlags)
 {
     OM_uint32 major;
     gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
@@ -674,7 +690,7 @@ eapGssSmInitReauthCreds(OM_uint32 *minor,
                         gss_channel_bindings_t chanBindings,
                         gss_buffer_t inputToken,
                         gss_buffer_t outputToken,
-                        int *transitionState)
+                        OM_uint32 *smFlags)
 {
     OM_uint32 major;
 
@@ -688,28 +704,45 @@ eapGssSmInitReauthCreds(OM_uint32 *minor,
 #endif /* GSSEAP_ENABLE_REAUTH */
 
 static OM_uint32
-eapGssSmInitNegoExtFinished(OM_uint32 *minor,
-                            gss_cred_id_t cred,
-                            gss_ctx_id_t ctx,
-                            gss_name_t target,
-                            gss_OID mech,
-                            OM_uint32 reqFlags,
-                            OM_uint32 timeReq,
-                            gss_channel_bindings_t chanBindings,
-                            gss_buffer_t inputToken,
-                            gss_buffer_t outputToken,
-                            int *transitionState)
+eapGssSmInitCompleteAcceptorExts(OM_uint32 *minor,
+                                 gss_cred_id_t cred,
+                                 gss_ctx_id_t ctx,
+                                 gss_name_t target,
+                                 gss_OID mech,
+                                 OM_uint32 reqFlags,
+                                 OM_uint32 timeReq,
+                                 gss_channel_bindings_t chanBindings,
+                                 gss_buffer_t inputToken,
+                                 gss_buffer_t outputToken,
+                                 OM_uint32 *smFlags)
 {
     *minor = 0;
-    *transitionState = 1;
+    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
     return GSS_S_COMPLETE;
 }
 
+static OM_uint32
+eapGssSmInitCompleteInitiatorExts(OM_uint32 *minor,
+                                  gss_cred_id_t cred,
+                                  gss_ctx_id_t ctx,
+                                  gss_name_t target,
+                                  gss_OID mech,
+                                  OM_uint32 reqFlags,
+                                  OM_uint32 timeReq,
+                                  gss_channel_bindings_t chanBindings,
+                                  gss_buffer_t inputToken,
+                                  gss_buffer_t outputToken,
+                                  OM_uint32 *smFlags)
+{
+    *minor = 0;
+    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
+    return GSS_S_CONTINUE_NEEDED;
+}
 static struct gss_eap_sm eapGssInitiatorSm[] = {
     {
         ITOK_TYPE_CONTEXT_ERR,
         ITOK_TYPE_NONE,
-        GSSEAP_STATE_ALL,
+        GSSEAP_STATE_ALL & ~(GSSEAP_STATE_INITIAL),
         1, /* critical */
         0, /* required */
         eapGssSmInitError,
@@ -722,6 +755,16 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         0, /* critical */
         0, /* required */
         eapGssSmInitGssReauth,
+    },
+#endif
+#if 0
+    {
+        ITOK_TYPE_NONE,
+        ITOK_TYPE_VENDOR_INFO,
+        GSSEAP_STATE_INITIAL,
+        0, /* critical */
+        0, /* required */
+        eapGssSmInitVendorInfo,
     },
 #endif
     {
@@ -743,16 +786,24 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
     {
         ITOK_TYPE_NONE,
         ITOK_TYPE_GSS_CHANNEL_BINDINGS,
-        GSSEAP_STATE_NEGO_EXT,
+        GSSEAP_STATE_INITIATOR_EXTS,
         1, /* critical */
         1, /* required */
         eapGssSmInitGssChannelBindings,
+    },
+    {
+        ITOK_TYPE_NONE,
+        ITOK_TYPE_NONE,
+        GSSEAP_STATE_INITIATOR_EXTS,
+        1, /* critical */
+        1, /* required */
+        eapGssSmInitCompleteInitiatorExts
     },
 #ifdef GSSEAP_ENABLE_REAUTH
     {
         ITOK_TYPE_REAUTH_CREDS,
         ITOK_TYPE_NONE,
-        GSSEAP_STATE_NEGO_EXT,
+        GSSEAP_STATE_ACCEPTOR_EXTS,
         0, /* critical */
         0, /* required */
         eapGssSmInitReauthCreds,
@@ -762,10 +813,10 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
     {
         ITOK_TYPE_NONE,
         ITOK_TYPE_NONE,
-        GSSEAP_STATE_NEGO_EXT,
+        GSSEAP_STATE_ACCEPTOR_EXTS,
         1, /* critical */
         1, /* required */
-        eapGssSmInitNegoExtFinished
+        eapGssSmInitCompleteAcceptorExts
     }
 };
 
@@ -786,7 +837,6 @@ gss_init_sec_context(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
-    int initialContextToken = 0;
 
     *minor = 0;
 
@@ -805,7 +855,6 @@ gss_init_sec_context(OM_uint32 *minor,
 
         ctx->flags |= CTX_FLAG_INITIATOR;
 
-        initialContextToken = 1;
         *context_handle = ctx;
     }
 

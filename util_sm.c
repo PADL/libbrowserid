@@ -36,6 +36,35 @@
 
 #include "gssapiP_eap.h"
 
+static const char *
+gssEapStateToString(enum gss_eap_state state)
+{
+    const char *s;
+
+    switch (state) {
+    case GSSEAP_STATE_INITIAL:
+        s = "INITIAL";
+        break;
+    case GSSEAP_STATE_AUTHENTICATE:
+        s = "AUTHENTICATE";
+        break;
+    case GSSEAP_STATE_INITIATOR_EXTS:
+        s = "INITIATOR_EXTS";
+        break;
+    case GSSEAP_STATE_ACCEPTOR_EXTS:
+        s = "ACCEPTOR_EXTS";
+        break;
+    case GSSEAP_STATE_ESTABLISHED:
+        s = "ESTABLISHED";
+        break;
+    default:
+        s = "INVALID";
+        break;
+    }
+
+    return s;
+}
+
 static OM_uint32
 makeErrorToken(OM_uint32 *minor,
                OM_uint32 majorStatus,
@@ -90,8 +119,9 @@ gssEapSmStep(OM_uint32 *minor,
     gss_buffer_set_t innerInputTokens = GSS_C_NO_BUFFER_SET;
     gss_buffer_set_t innerOutputTokens = GSS_C_NO_BUFFER_SET;
     OM_uint32 *inputTokenTypes = NULL, *outputTokenTypes = NULL;
+    unsigned int smFlags = 0;
     size_t i, j;
-    enum gss_eap_state inputState = ctx->state;
+    int initialContextToken = 0;
 
     assert(smCount > 0);
 
@@ -117,6 +147,8 @@ gssEapSmStep(OM_uint32 *minor,
         major = GSS_S_DEFECTIVE_TOKEN;
         *minor = GSSEAP_WRONG_SIZE;
         goto cleanup;
+    } else {
+        initialContextToken = 1;
     }
 
     if (ctx->state == GSSEAP_STATE_ESTABLISHED) {
@@ -131,6 +163,8 @@ gssEapSmStep(OM_uint32 *minor,
                                     &innerInputTokens, &inputTokenTypes);
     if (GSS_ERROR(major))
         goto cleanup;
+
+    assert(innerInputTokens != GSS_C_NO_BUFFER_SET);
 
     major = gss_create_empty_buffer_set(minor, &innerOutputTokens);
     if (GSS_ERROR(major))
@@ -161,8 +195,6 @@ gssEapSmStep(OM_uint32 *minor,
      * is reached.
      */
     do {
-        int transitionState = 0;
-
         major = GSS_S_COMPLETE;
 
         for (i = 0; i < smCount; i++) {
@@ -175,17 +207,17 @@ gssEapSmStep(OM_uint32 *minor,
             if ((smp->validStates & ctx->state) == 0)
                 continue;
 
-            if (innerInputTokens == GSS_C_NO_BUFFER_SET) {
-                processToken = ((smp->validStates & GSSEAP_STATE_INITIAL) != 0);
-            } else if (inputState != ctx->state) {
-                processToken = (smp->inputTokenType == ITOK_TYPE_NONE);
-            } else {
+            if (smp->inputTokenType == ITOK_TYPE_NONE || initialContextToken) {
+                processToken = 1;
+            } else if ((smFlags & SM_FLAG_TRANSITION) == 0) {
                 for (j = 0; j < innerInputTokens->count; j++) {
-                    processToken = (smp->inputTokenType == inputTokenTypes[j]);
-                    if (innerInputToken != GSS_C_NO_BUFFER && processToken) {
-                        major = GSS_S_DEFECTIVE_TOKEN;
-                        *minor = GSSEAP_DUPLICATE_ITOK;
-                        break;
+                    if ((inputTokenTypes[j] & ITOK_TYPE_MASK) == smp->inputTokenType) {
+                        processToken = 1;
+                        if (innerInputToken != GSS_C_NO_BUFFER) {
+                            major = GSS_S_DEFECTIVE_TOKEN;
+                            *minor = GSSEAP_DUPLICATE_ITOK;
+                            break;
+                        }
                     }
                     innerInputToken = &innerInputTokens->elements[j];
                     inputTokenType = &inputTokenTypes[j];
@@ -200,9 +232,11 @@ gssEapSmStep(OM_uint32 *minor,
 #endif
 
             if (processToken) {
+                smFlags = 0;
+
                 major = smp->processToken(minor, cred, ctx, target, mech, reqFlags,
                                          timeReq, chanBindings, innerInputToken,
-                                         &innerOutputToken, &transitionState);
+                                         &innerOutputToken, &smFlags);
                 if (GSS_ERROR(major))
                     break;
 
@@ -217,7 +251,7 @@ gssEapSmStep(OM_uint32 *minor,
                         outputTokenTypes[innerOutputTokens->count] |= ITOK_FLAG_CRITICAL;
                     innerOutputTokens->count++;
                 }
-                if (transitionState)
+                if (smFlags & SM_FLAG_STOP_EVAL)
                     break;
             } else if (smp->required && smp->inputTokenType != ITOK_TYPE_NONE) {
                 major = GSS_S_DEFECTIVE_TOKEN;
@@ -226,15 +260,21 @@ gssEapSmStep(OM_uint32 *minor,
             }
         }
 
-        if (GSS_ERROR(major) || !transitionState)
+        if (GSS_ERROR(major) || (smFlags & SM_FLAG_TRANSITION) == 0)
             break;
 
         assert(ctx->state < GSSEAP_STATE_ESTABLISHED);
 
+#ifdef GSSEAP_DEBUG
+        fprintf(stderr, "GSS-EAP: state transition %s->%s\n",
+                gssEapStateToString(ctx->state),
+                gssEapStateToString(GSSEAP_STATE_NEXT(ctx->state)));
+#endif
+
         ctx->state = GSSEAP_STATE_NEXT(ctx->state);
 
-        if (innerOutputTokens->count != 0) {
-            assert(major == GSS_S_CONTINUE_NEEDED);
+        if (innerOutputTokens->count != 0 || (smFlags & SM_FLAG_FORCE_SEND_TOKEN)) {
+            assert(major == GSS_S_CONTINUE_NEEDED || ctx->state == GSSEAP_STATE_ESTABLISHED);
             break; /* send any tokens if we have them */
         }
     } while (ctx->state != GSSEAP_STATE_ESTABLISHED);
@@ -242,7 +282,7 @@ gssEapSmStep(OM_uint32 *minor,
     assert(innerOutputTokens->count <= smCount);
 
     /* Check we understood all critical tokens */
-    if (!GSS_ERROR(major) && innerInputTokens != GSS_C_NO_BUFFER_SET) {
+    if (!GSS_ERROR(major)) {
         for (j = 0; j < innerInputTokens->count; j++) {
             if ((inputTokenTypes[j] & ITOK_FLAG_CRITICAL) &&
                 (inputTokenTypes[j] & ITOK_FLAG_VERIFIED) == 0) {
@@ -273,7 +313,7 @@ gssEapSmStep(OM_uint32 *minor,
 
 #ifdef GSSEAP_DEBUG
     for (i = 0; i < innerOutputTokens->count; i++) {
-        fprintf(stderr, "GSS-EAP: type %d length %zd value %p\n",
+        fprintf(stderr, "GSS-EAP: type %08x length %zd value %p\n",
                 outputTokenTypes[i],
                 innerOutputTokens->elements[i].length,
                 innerOutputTokens->elements[i].value);
@@ -298,7 +338,7 @@ gssEapSmStep(OM_uint32 *minor,
     }
 
     assert(GSS_ERROR(major) ||
-           (major == GSS_S_CONTINUE_NEEDED && ctx->state < GSSEAP_STATE_ESTABLISHED) ||
+           (major == GSS_S_CONTINUE_NEEDED && (ctx->state > GSSEAP_STATE_INITIAL && ctx->state < GSSEAP_STATE_ESTABLISHED)) ||
            (major == GSS_S_COMPLETE && ctx->state == GSSEAP_STATE_ESTABLISHED));
 
 cleanup:

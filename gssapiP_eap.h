@@ -143,9 +143,10 @@ struct gss_cred_id_struct
 enum gss_eap_state {
     GSSEAP_STATE_INITIAL        = 0x01,     /* initial state */
     GSSEAP_STATE_AUTHENTICATE   = 0x02,     /* exchange EAP messages */
-    GSSEAP_STATE_NEGO_EXT       = 0x04,     /* negotiate extensions */
-    GSSEAP_STATE_ESTABLISHED    = 0x08,     /* context established */
-    GSSEAP_STATE_ALL            = 0x0F
+    GSSEAP_STATE_INITIATOR_EXTS = 0x04,     /* initiator extensions */
+    GSSEAP_STATE_ACCEPTOR_EXTS  = 0x08,     /* acceptor extensions */
+    GSSEAP_STATE_ESTABLISHED    = 0x10,     /* context established */
+    GSSEAP_STATE_ALL            = 0x1F
 };
 
 #define GSSEAP_STATE_NEXT(s)    ((s) << 1)
@@ -167,8 +168,12 @@ struct gss_eap_sm {
                               gss_channel_bindings_t,
                               gss_buffer_t,
                               gss_buffer_t,
-                              int *);
+                              OM_uint32 *);
 };
+
+#define SM_FLAG_TRANSITION                  0x00000001
+#define SM_FLAG_FORCE_SEND_TOKEN            0x00000002
+#define SM_FLAG_STOP_EVAL                   0x00000004
 
 #define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == GSSEAP_STATE_ESTABLISHED)
 

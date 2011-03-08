@@ -307,6 +307,8 @@ der_read_length(unsigned char **buf, ssize_t *bufsize)
 size_t
 tokenSize(const gss_OID_desc *mech, size_t body_size)
 {
+    assert(mech != GSS_C_NO_OID);
+
     /* set body_size to sequence contents size */
     body_size += 4 + (size_t) mech->length;         /* NEED overflow check */
     return 1 + der_length_size(body_size) + body_size;

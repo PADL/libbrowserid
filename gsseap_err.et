@@ -95,6 +95,7 @@ error_code GSSEAP_BAD_PRF_KEY,                  "PRF key usage type is unknown"
 #
 error_code GSSEAP_LIBEAP_INIT_FAILURE,          "Failed to initialize EAP library"
 error_code GSSEAP_PEER_SM_INIT_FAILURE,         "Failed to create EAP state machine"
+error_code GSSEAP_PEER_SM_STEP_FAILURE,         "Failed to step EAP state machine"
 error_code GSSEAP_PEER_AUTH_FAILURE,            "EAP peer authentication failure"
 error_code GSSEAP_PEER_BAD_MESSAGE,             "Received bad EAP message"
 
