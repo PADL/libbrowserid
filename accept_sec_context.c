@@ -138,7 +138,7 @@ eapGssSmAcceptVendorInfo(OM_uint32 *minor,
                          gss_buffer_t outputToken,
                          OM_uint32 *smFlags)
 {
-    fprintf(stderr, "GSS-EAP: vendor %.*s\n",
+    fprintf(stderr, "GSS-EAP: vendor: %.*s\n",
             (int)inputToken->length, (char *)inputToken->value);
 
     return GSS_S_CONTINUE_NEEDED;
