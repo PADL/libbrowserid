@@ -124,6 +124,28 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     return GSS_S_COMPLETE;
 }
 
+#ifdef GSSEAP_DEBUG
+static OM_uint32
+eapGssSmAcceptVendorInfo(OM_uint32 *minor,
+                         gss_cred_id_t cred,
+                         gss_ctx_id_t ctx,
+                         gss_name_t target,
+                         gss_OID mech,
+                         OM_uint32 reqFlags,
+                         OM_uint32 timeReq,
+                         gss_channel_bindings_t chanBindings,
+                         gss_buffer_t inputToken,
+                         gss_buffer_t outputToken,
+                         OM_uint32 *smFlags)
+{
+    fprintf(stderr, "GSS-EAP: vendor %.*s\n",
+            (int)inputToken->length, (char *)inputToken->value);
+
+    return GSS_S_CONTINUE_NEEDED;
+}
+#endif
+
+
 /*
  * Emit a identity EAP request to force the initiator (peer) to identify
  * itself.
@@ -668,6 +690,15 @@ eapGssSmAcceptCompleteAcceptorExts(OM_uint32 *minor,
 }
 
 static struct gss_eap_sm eapGssAcceptorSm[] = {
+#ifdef GSSEAP_DEBUG
+    {
+        ITOK_TYPE_VENDOR_INFO,
+        ITOK_TYPE_NONE,
+        GSSEAP_STATE_INITIAL,
+        0,
+        eapGssSmAcceptVendorInfo,
+    },
+#endif
 #ifdef GSSEAP_ENABLE_REAUTH
     {
         ITOK_TYPE_REAUTH_REQ,
