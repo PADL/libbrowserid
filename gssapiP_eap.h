@@ -145,8 +145,9 @@ enum gss_eap_state {
     GSSEAP_STATE_AUTHENTICATE   = 0x02,     /* exchange EAP messages */
     GSSEAP_STATE_INITIATOR_EXTS = 0x04,     /* initiator extensions */
     GSSEAP_STATE_ACCEPTOR_EXTS  = 0x08,     /* acceptor extensions */
-    GSSEAP_STATE_ESTABLISHED    = 0x10,     /* context established */
-    GSSEAP_STATE_ALL            = 0x1F
+    GSSEAP_STATE_REAUTHENTICATE = 0x10,     /* GSS reauthentication messages */
+    GSSEAP_STATE_ESTABLISHED    = 0x20,     /* context established */
+    GSSEAP_STATE_ALL            = 0x3F
 };
 
 #define GSSEAP_STATE_NEXT(s)    ((s) << 1)

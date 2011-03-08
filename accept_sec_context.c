@@ -637,9 +637,15 @@ eapGssSmAcceptCompleteExts(OM_uint32 *minor,
                            OM_uint32 *smFlags)
 {
     *minor = 0;
-    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
-    return (ctx->state == GSSEAP_STATE_INITIATOR_EXTS) ?
-        GSS_S_CONTINUE_NEEDED : GSS_S_COMPLETE;
+
+    if (ctx->state == GSSEAP_STATE_INITIATOR_EXTS) {
+        *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
+        return GSS_S_CONTINUE_NEEDED;
+    } else {
+        ctx->state = GSSEAP_STATE_ESTABLISHED;
+        *smFlags |= SM_FLAG_STOP_EVAL;
+        return GSS_S_COMPLETE;
+    }
 }
 
 static struct gss_eap_sm eapGssAcceptorSm[] = {

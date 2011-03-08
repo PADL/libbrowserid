@@ -485,7 +485,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
             goto cleanup;
         ctx->state = GSSEAP_STATE_ESTABLISHED;
     } else {
-        *smFlags |= SM_FLAG_TRANSITION;
+        ctx->state = GSSEAP_STATE_REAUTHENTICATE;
     }
 
 cleanup:
@@ -719,9 +719,15 @@ eapGssSmInitCompleteExts(OM_uint32 *minor,
                          OM_uint32 *smFlags)
 {
     *minor = 0;
-    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
-    return (ctx->state == GSSEAP_STATE_INITIATOR_EXTS) ?
-        GSS_S_CONTINUE_NEEDED : GSS_S_COMPLETE;
+
+    if (ctx->state == GSSEAP_STATE_INITIATOR_EXTS) {
+        *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
+        return GSS_S_CONTINUE_NEEDED;
+    } else {
+        ctx->state = GSSEAP_STATE_ESTABLISHED;
+        *smFlags |= SM_FLAG_STOP_EVAL;
+        return GSS_S_COMPLETE;
+    }
 }
 
 static struct gss_eap_sm eapGssInitiatorSm[] = {
@@ -732,15 +738,6 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         SM_ITOK_FLAG_CRITICAL,
         eapGssSmInitError,
     },
-#ifdef GSSEAP_ENABLE_REAUTH
-    {
-        ITOK_TYPE_REAUTH_RESP,
-        ITOK_TYPE_REAUTH_REQ,
-        GSSEAP_STATE_INITIAL | GSSEAP_STATE_AUTHENTICATE,
-        0,
-        eapGssSmInitGssReauth,
-    },
-#endif
 #ifdef GSSEAP_DEBUG
     {
         ITOK_TYPE_NONE,
@@ -748,6 +745,15 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         GSSEAP_STATE_INITIAL,
         0,
         eapGssSmInitVendorInfo,
+    },
+#endif
+#ifdef GSSEAP_ENABLE_REAUTH
+    {
+        ITOK_TYPE_REAUTH_RESP,
+        ITOK_TYPE_REAUTH_REQ,
+        GSSEAP_STATE_INITIAL | GSSEAP_STATE_REAUTHENTICATE,
+        0,
+        eapGssSmInitGssReauth,
     },
 #endif
     {
