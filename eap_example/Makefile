@@ -2,16 +2,16 @@ ALL=eap_example
 
 all: $(ALL)
 
-ifndef CC
-CC=gcc
-endif
+
+CC=gcc -fPIC
+
 
 ifndef RANLIB
 RANLIB=ranlib
 endif
 
 ifndef CFLAGS
-CFLAGS = -MMD -O2 -Wall -g
+CFLAGS = -MMD -O2 -Wall -g -fPIC 
 endif
 
 
