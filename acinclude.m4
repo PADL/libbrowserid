@@ -9,7 +9,7 @@ AC_ARG_WITH(krb5,
        [Use krb5 (in specified installation directory)]),
     [check_krb5_dir="$withval"],
     [check_krb5_dir=])
-for dir in $check_krb5_dir /usr /usr/local ; do
+for dir in $check_krb5_dir $prefix /usr /usr/local ; do
    krb5dir="$dir"
    if test -x "$dir/bin/krb5-config"; then
      found_krb5="yes";
@@ -51,7 +51,7 @@ AC_ARG_WITH(eap,
        [Use eap (in specified installation directory)]),
     [check_eap_dir="$withval"],
     [check_eap_dir=])
-for dir in $check_eap_dir /usr /usr/local ; do
+for dir in $check_eap_dir $prefix /usr /usr/local ; do
    eapdir="$dir"
    if test -f "$dir/src/eap_peer/eap.h"; then
      found_eap="yes";
@@ -116,7 +116,7 @@ AC_ARG_WITH(shibsp,
        [Use shibspboleth (in specified installation directory)]),
     [check_shibsp_dir="$withval"],
     [check_shibsp_dir=])
-for dir in $check_shibsp_dir /usr /usr/local ; do
+for dir in $check_shibsp_dir $prefix /usr /usr/local ; do
    shibspdir="$dir"
    if test -f "$dir/include/shibsp/SPConfig.h"; then
      found_shibsp="yes";
@@ -154,7 +154,7 @@ AC_ARG_WITH(shibresolver,
        [Use Shibboleth resolver (in specified installation directory)]),
     [check_shibresolver_dir="$withval"],
     [check_shibresolver_dir=])
-for dir in $check_shibresolver_dir /usr /usr/local ; do
+for dir in $check_shibresolver_dir $prefix /usr /usr/local ; do
    shibresolverdir="$dir"
    if test -f "$dir/include/shibresolver/resolver.h"; then
      found_shibresolver="yes";
@@ -192,7 +192,7 @@ AC_ARG_WITH(radsec,
        [Use radsec (in specified installation directory)]),
     [check_radsec_dir="$withval"],
     [check_radsec_dir=])
-for dir in $check_radsec_dir /usr /usr/local ; do
+for dir in $check_radsec_dir $prefix /usr /usr/local ; do
    radsecdir="$dir"
    if test -f "$dir/include/radsec/radsec.h"; then
      found_radsec="yes";
