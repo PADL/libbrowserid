@@ -97,10 +97,15 @@ makeErrorToken(OM_uint32 *minor,
                OM_uint32 minorStatus,
                gss_buffer_set_t *outputToken)
 {
+    OM_uint32 major;
     unsigned char errorData[8];
     gss_buffer_desc errorBuffer;
 
     assert(GSS_ERROR(majorStatus));
+
+    major = gss_create_empty_buffer_set(minor, outputToken);
+    if (GSS_ERROR(major))
+        return major;
 
     /*
      * Only return error codes that the initiator could have caused,
@@ -122,7 +127,11 @@ makeErrorToken(OM_uint32 *minor,
     errorBuffer.length = sizeof(errorData);
     errorBuffer.value = errorData;
 
-    return gss_add_buffer_set_member(minor, &errorBuffer, outputToken);
+    major = gss_add_buffer_set_member(minor, &errorBuffer, outputToken);
+    if (GSS_ERROR(major))
+        return major;
+
+    return GSS_S_COMPLETE;
 }
 
 static OM_uint32
@@ -186,7 +195,7 @@ gssEapSmStep(OM_uint32 *minor,
              gss_channel_bindings_t chanBindings,
              gss_buffer_t inputToken,
              gss_buffer_t outputToken,
-             struct gss_eap_sm *sm,
+             struct gss_eap_sm *sm, /* ordered by state */
              size_t smCount)
 {
     OM_uint32 major, tmpMajor, tmpMinor;
@@ -262,16 +271,18 @@ gssEapSmStep(OM_uint32 *minor,
         } else if ((smFlags & SM_FLAG_TRANSITED) == 0) {
             for (j = 0; j < innerInputTokens->count; j++) {
                 if ((inputTokenTypes[j] & ITOK_TYPE_MASK) == smp->inputTokenType) {
-                    processToken = 1;
-                    if (innerInputToken != GSS_C_NO_BUFFER) {
+                    if (processToken) {
                         major = GSS_S_DEFECTIVE_TOKEN;
                         *minor = GSSEAP_DUPLICATE_ITOK;
                         break;
                     }
+                    processToken = 1;
+                    innerInputToken = &innerInputTokens->elements[j];
+                    inputTokenType = &inputTokenTypes[j];
                 }
-                innerInputToken = &innerInputTokens->elements[j];
-                inputTokenType = &inputTokenTypes[j];
             }
+            if (GSS_ERROR(major))
+                break;
         }
 
         if (processToken) {
@@ -345,7 +356,8 @@ gssEapSmStep(OM_uint32 *minor,
             goto cleanup;
         }
 
-        outputTokenTypes[0] = ITOK_TYPE_CONTEXT_ERR | ITOK_FLAG_CRITICAL;
+        if (innerOutputTokens->count != 0)
+            outputTokenTypes[0] = ITOK_TYPE_CONTEXT_ERR | ITOK_FLAG_CRITICAL;
     }
 
     /* Format composite output token */
