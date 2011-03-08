@@ -48,7 +48,8 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
                         OM_uint32 timeReq __attribute__((__unused__)),
                         gss_channel_bindings_t chanBindings,
                         gss_buffer_t inputToken,
-                        gss_buffer_t outputToken);
+                        gss_buffer_t outputToken,
+                        int *transitionState);
 #endif
 
 /*
@@ -137,7 +138,8 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
                        OM_uint32 timeReq __attribute__((__unused__)),
                        gss_channel_bindings_t chanBindings __attribute__((__unused__)),
                        gss_buffer_t inputToken,
-                       gss_buffer_t outputToken)
+                       gss_buffer_t outputToken,
+                       int *transitionState)
 {
     OM_uint32 major;
     struct wpabuf *reqData;
@@ -178,7 +180,9 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     wpabuf_free(reqData);
 
     *minor = 0;
-    return GSS_S_COMPLETE; /* advance state */
+    *transitionState = 1;
+
+    return GSS_S_CONTINUE_NEEDED;
 }
 
 /*
@@ -425,7 +429,8 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                            OM_uint32 timeReq __attribute__((__unused__)),
                            gss_channel_bindings_t chanBindings,
                            gss_buffer_t inputToken,
-                           gss_buffer_t outputToken)
+                           gss_buffer_t outputToken,
+                           int *transitionState)
 {
     OM_uint32 major, tmpMinor;
     struct rs_connection *rconn;
@@ -522,8 +527,6 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
                                    &ctx->acceptorCtx.state, TRUE);
         if (GSS_ERROR(major) && *minor != GSSEAP_NO_SUCH_ATTR)
             goto cleanup;
-
-        major = GSS_S_CONTINUE_NEEDED;
     } else {
         ctx->acceptorCtx.vps = frresp->vps;
         frresp->vps = NULL;
@@ -535,8 +538,11 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        major = GSS_S_COMPLETE; /* advance state */
+        *transitionState = 1;
     }
+
+    major = GSS_S_CONTINUE_NEEDED;
+    *minor = 0;
 
 cleanup:
     if (request != NULL)
@@ -557,7 +563,8 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
                                  OM_uint32 timeReq __attribute__((__unused__)),
                                  gss_channel_bindings_t chanBindings,
                                  gss_buffer_t inputToken,
-                                 gss_buffer_t outputToken)
+                                 gss_buffer_t outputToken,
+                                 int *transitionState)
 {
     OM_uint32 major, tmpMinor;
     gss_iov_buffer_desc iov[2];
@@ -578,9 +585,6 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
         !bufferEqual(&iov[0].buffer, &chanBindings->application_data)) {
         major = GSS_S_BAD_BINDINGS;
         *minor = GSSEAP_BINDINGS_MISMATCH;
-    } else {
-        major = GSS_S_CONTINUE_NEEDED; /* process additional extensions */
-        *minor = 0;
     }
 
     gss_release_buffer(&tmpMinor, &iov[0].buffer);
@@ -599,7 +603,8 @@ eapGssSmAcceptReauthCreds(OM_uint32 *minor,
                           OM_uint32 timeReq __attribute__((__unused__)),
                           gss_channel_bindings_t chanBindings __attribute__((__unused__)),
                           gss_buffer_t inputToken,
-                          gss_buffer_t outputToken)
+                          gss_buffer_t outputToken,
+                          int *transitionState)
 {
     OM_uint32 major;
 
@@ -611,8 +616,7 @@ eapGssSmAcceptReauthCreds(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    *minor = 0;
-    return GSS_S_CONTINUE_NEEDED; /* process additional extensions */
+    return major;
 }
 #endif
 
@@ -626,10 +630,12 @@ eapGssSmAcceptNegoExtFinished(OM_uint32 *minor,
                               OM_uint32 timeReq __attribute__((__unused__)),
                               gss_channel_bindings_t chanBindings __attribute__((__unused__)),
                               gss_buffer_t inputToken,
-                              gss_buffer_t outputToken)
+                              gss_buffer_t outputToken,
+                              int *transitionState)
 {
     *minor = 0;
-    return GSS_S_COMPLETE; /* advance state */
+    *transitionState = 1;
+    return GSS_S_COMPLETE;
 }
 
 static struct gss_eap_sm eapGssAcceptorSm[] = {
@@ -667,6 +673,7 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
         1, /* required */
         eapGssSmAcceptGssChannelBindings,
     },
+#ifdef GSSEAP_ENABLE_REAUTH
     {
         ITOK_TYPE_NONE,
         ITOK_TYPE_REAUTH_CREDS,
@@ -675,6 +682,7 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
         0, /* required */
         eapGssSmAcceptReauthCreds,
     },
+#endif
     {
         ITOK_TYPE_NONE,
         ITOK_TYPE_NONE,
@@ -835,7 +843,8 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
                         OM_uint32 timeReq __attribute__((__unused__)),
                         gss_channel_bindings_t chanBindings,
                         gss_buffer_t inputToken,
-                        gss_buffer_t outputToken)
+                        gss_buffer_t outputToken,
+                        int *transitionState)
 {
     OM_uint32 major, tmpMinor;
     gss_name_t krbInitiator = GSS_C_NO_NAME;
@@ -864,6 +873,7 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
     if (major == GSS_S_COMPLETE) {
         major = acceptReadyKrb(minor, ctx, cred,
                                krbInitiator, mech, timeRec);
+        *transitionState = 1;
     }
 
     ctx->gssFlags = gssFlags;

@@ -161,6 +161,8 @@ gssEapSmStep(OM_uint32 *minor,
      * is reached.
      */
     do {
+        int transitionState = 0;
+
         major = GSS_S_COMPLETE;
 
         for (i = 0; i < smCount; i++) {
@@ -200,7 +202,7 @@ gssEapSmStep(OM_uint32 *minor,
             if (processToken) {
                 major = smp->processToken(minor, cred, ctx, target, mech, reqFlags,
                                          timeReq, chanBindings, innerInputToken,
-                                         &innerOutputToken);
+                                         &innerOutputToken, &transitionState);
                 if (GSS_ERROR(major))
                     break;
 
@@ -215,7 +217,7 @@ gssEapSmStep(OM_uint32 *minor,
                         outputTokenTypes[innerOutputTokens->count] |= ITOK_FLAG_CRITICAL;
                     innerOutputTokens->count++;
                 }
-                if (major == GSS_S_COMPLETE)
+                if (transitionState)
                     break;
             } else if (smp->required && smp->inputTokenType != ITOK_TYPE_NONE) {
                 major = GSS_S_DEFECTIVE_TOKEN;
@@ -224,15 +226,15 @@ gssEapSmStep(OM_uint32 *minor,
             }
         }
 
-        if (major != GSS_S_COMPLETE)
-            break; /* GSS_S_CONTINUE_NEEDED or error */
+        if (GSS_ERROR(major) || !transitionState)
+            break;
 
         assert(ctx->state < GSSEAP_STATE_ESTABLISHED);
 
         ctx->state = GSSEAP_STATE_NEXT(ctx->state);
 
         if (innerOutputTokens->count != 0) {
-            major = GSS_S_CONTINUE_NEEDED;
+            assert(major == GSS_S_CONTINUE_NEEDED);
             break; /* send any tokens if we have them */
         }
     } while (ctx->state != GSSEAP_STATE_ESTABLISHED);

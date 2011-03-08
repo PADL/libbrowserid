@@ -391,7 +391,8 @@ eapGssSmInitError(OM_uint32 *minor,
                   OM_uint32 timeReq,
                   gss_channel_bindings_t chanBindings,
                   gss_buffer_t inputToken,
-                  gss_buffer_t outputToken)
+                  gss_buffer_t outputToken,
+                  int *transitionState)
 {
     OM_uint32 major;
     unsigned char *p;
@@ -427,7 +428,8 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
                       OM_uint32 timeReq,
                       gss_channel_bindings_t chanBindings,
                       gss_buffer_t inputToken,
-                      gss_buffer_t outputToken)
+                      gss_buffer_t outputToken,
+                      int *transitionState)
 {
     OM_uint32 major, tmpMinor;
     gss_name_t mechTarget = GSS_C_NO_NAME;
@@ -480,9 +482,9 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
         ctx->state = GSSEAP_STATE_NEGO_EXT; /* skip */
-    } else {
-        major = GSS_S_COMPLETE; /* advance state */
     }
+
+    *transitionState = 1;
 
 cleanup:
     gssReleaseName(&tmpMinor, &mechTarget);
@@ -501,7 +503,8 @@ eapGssSmInitIdentity(OM_uint32 *minor,
                      OM_uint32 timeReq,
                      gss_channel_bindings_t chanBindings,
                      gss_buffer_t inputToken,
-                     gss_buffer_t outputToken)
+                     gss_buffer_t outputToken,
+                     int *transitionState)
 {
     OM_uint32 major;
     int initialContextToken;
@@ -524,7 +527,9 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     outputToken->value = NULL;
 
     *minor = 0;
-    return GSS_S_COMPLETE; /* advance state */
+    *transitionState = 1;
+
+    return GSS_S_COMPLETE;
 }
 
 static struct wpabuf emptyWpaBuffer;
@@ -539,7 +544,8 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
                          OM_uint32 timeReq,
                          gss_channel_bindings_t chanBindings,
                          gss_buffer_t inputToken,
-                         gss_buffer_t outputToken)
+                         gss_buffer_t outputToken,
+                         int *transitionState)
 {
     OM_uint32 major;
     OM_uint32 tmpMinor;
@@ -576,6 +582,8 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
     ctx->flags |= CTX_FLAG_EAP_REQ; /* we have a Request from the acceptor */
 
+    major = GSS_S_CONTINUE_NEEDED;
+
     wpabuf_set(&ctx->initiatorCtx.reqData,
                inputToken->value, inputToken->length);
 
@@ -584,19 +592,18 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
         ctx->flags &= ~(CTX_FLAG_EAP_RESP);
 
         resp = eap_get_eapRespData(ctx->initiatorCtx.eap);
-        major = GSS_S_CONTINUE_NEEDED;
     } else if (ctx->flags & CTX_FLAG_EAP_SUCCESS) {
         major = initReady(minor, ctx, reqFlags);
         if (GSS_ERROR(major))
             goto cleanup;
 
         ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
-        major = GSS_S_COMPLETE; /* advance state */
+        *transitionState = 1;
     } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
         major = GSS_S_DEFECTIVE_CREDENTIAL;
         *minor = GSSEAP_PEER_AUTH_FAILURE;
     } else if (code == 0 && initialContextToken) {
-        major = GSS_S_CONTINUE_NEEDED;
+        /* */
     } else {
         major = GSS_S_DEFECTIVE_TOKEN;
         *minor = GSSEAP_PEER_BAD_MESSAGE;
@@ -635,7 +642,8 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
                                OM_uint32 timeReq,
                                gss_channel_bindings_t chanBindings,
                                gss_buffer_t inputToken,
-                               gss_buffer_t outputToken)
+                               gss_buffer_t outputToken,
+                               int *transitionState)
 {
     OM_uint32 major;
     gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
@@ -665,7 +673,8 @@ eapGssSmInitReauthCreds(OM_uint32 *minor,
                         OM_uint32 timeReq,
                         gss_channel_bindings_t chanBindings,
                         gss_buffer_t inputToken,
-                        gss_buffer_t outputToken)
+                        gss_buffer_t outputToken,
+                        int *transitionState)
 {
     OM_uint32 major;
 
@@ -688,10 +697,12 @@ eapGssSmInitNegoExtFinished(OM_uint32 *minor,
                             OM_uint32 timeReq,
                             gss_channel_bindings_t chanBindings,
                             gss_buffer_t inputToken,
-                            gss_buffer_t outputToken)
+                            gss_buffer_t outputToken,
+                            int *transitionState)
 {
     *minor = 0;
-    return GSS_S_COMPLETE; /* advance state */
+    *transitionState = 1;
+    return GSS_S_COMPLETE;
 }
 
 static struct gss_eap_sm eapGssInitiatorSm[] = {
@@ -713,7 +724,6 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         eapGssSmInitGssReauth,
     },
 #endif
-    /* first-leg extensions go here, they should return GSS_S_CONTINUE_NEEDED */
     {
         ITOK_TYPE_NONE,
         ITOK_TYPE_NONE,

@@ -166,7 +166,8 @@ struct gss_eap_sm {
                               OM_uint32,
                               gss_channel_bindings_t,
                               gss_buffer_t,
-                              gss_buffer_t);
+                              gss_buffer_t,
+                              int *);
 };
 
 #define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == GSSEAP_STATE_ESTABLISHED)
