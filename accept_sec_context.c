@@ -658,7 +658,7 @@ eapGssSmAcceptCompleteAcceptorExts(OM_uint32 *minor,
 {
     *minor = 0;
 
-    ctx->state = GSSEAP_STATE_ESTABLISHED;
+    gssEapSmTransition(ctx, GSSEAP_STATE_ESTABLISHED);
     *smFlags |= SM_FLAG_STOP_EVAL;
 
     return GSS_S_COMPLETE;
@@ -899,7 +899,7 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
         major = acceptReadyKrb(minor, ctx, cred,
                                krbInitiator, mech, timeRec);
         if (major == GSS_S_COMPLETE) {
-            ctx->state = GSSEAP_STATE_ESTABLISHED;
+            gssEapSmTransition(ctx, GSSEAP_STATE_ESTABLISHED);
             *smFlags |= SM_FLAG_STOP_EVAL;
         }
     }

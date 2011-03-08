@@ -68,6 +68,20 @@ gssEapStateToString(enum gss_eap_state state)
     return s;
 }
 
+void
+gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state)
+{
+    assert(state > ctx->state);
+    assert(state <= GSSEAP_STATE_ESTABLISHED);
+
+#ifdef GSSEAP_DEBUG
+    fprintf(stderr, "GSS-EAP: state transition %s->%s\n",
+            gssEapStateToString(ctx->state), gssEapStateToString(state));
+#endif
+
+    ctx->state = state;
+}
+
 static OM_uint32
 makeErrorToken(OM_uint32 *minor,
                OM_uint32 majorStatus,
@@ -267,15 +281,7 @@ gssEapSmStep(OM_uint32 *minor,
         if (GSS_ERROR(major) || (smFlags & SM_FLAG_TRANSITION) == 0)
             break;
 
-        assert(ctx->state < GSSEAP_STATE_ESTABLISHED);
-
-#ifdef GSSEAP_DEBUG
-        fprintf(stderr, "GSS-EAP: state transition %s->%s\n",
-                gssEapStateToString(ctx->state),
-                gssEapStateToString(GSSEAP_STATE_NEXT(ctx->state)));
-#endif
-
-        ctx->state = GSSEAP_STATE_NEXT(ctx->state);
+        gssEapSmTransition(ctx, GSSEAP_STATE_NEXT(ctx->state));
 
         if (innerOutputTokens->count != 0 || (smFlags & SM_FLAG_FORCE_SEND_TOKEN)) {
             assert(major == GSS_S_CONTINUE_NEEDED || ctx->state == GSSEAP_STATE_ESTABLISHED);

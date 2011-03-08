@@ -140,44 +140,6 @@ struct gss_cred_id_struct
 
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
-enum gss_eap_state {
-    GSSEAP_STATE_INITIAL        = 0x01,     /* initial state */
-    GSSEAP_STATE_AUTHENTICATE   = 0x02,     /* exchange EAP messages */
-    GSSEAP_STATE_INITIATOR_EXTS = 0x04,     /* initiator extensions */
-    GSSEAP_STATE_ACCEPTOR_EXTS  = 0x08,     /* acceptor extensions */
-    GSSEAP_STATE_REAUTHENTICATE = 0x10,     /* GSS reauthentication messages */
-    GSSEAP_STATE_ESTABLISHED    = 0x20,     /* context established */
-    GSSEAP_STATE_ALL            = 0x3F
-};
-
-#define GSSEAP_STATE_NEXT(s)    ((s) << 1)
-
-/* state machine entry */
-struct gss_eap_sm {
-    OM_uint32 inputTokenType;
-    OM_uint32 outputTokenType;
-    enum gss_eap_state validStates;
-    OM_uint32 itokFlags;
-    OM_uint32 (*processToken)(OM_uint32 *,
-                              gss_cred_id_t,
-                              gss_ctx_id_t,
-                              gss_name_t,
-                              gss_OID,
-                              OM_uint32,
-                              OM_uint32,
-                              gss_channel_bindings_t,
-                              gss_buffer_t,
-                              gss_buffer_t,
-                              OM_uint32 *);
-};
-
-#define SM_FLAG_TRANSITION                  0x00000001  /* transition to next state */
-#define SM_FLAG_FORCE_SEND_TOKEN            0x00000002  /* send token even if empty */
-#define SM_FLAG_STOP_EVAL                   0x00000004  /* no more handlers for this state */
-
-#define SM_ITOK_FLAG_CRITICAL               0x00000001  /* sent tokens marked critical */
-#define SM_ITOK_FLAG_REQUIRED               0x00000002  /* received tokens must be present */
-
 #define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == GSSEAP_STATE_ESTABLISHED)
 
 /* Initiator context flags */

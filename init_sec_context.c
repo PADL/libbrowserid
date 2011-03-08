@@ -483,9 +483,9 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
         major = gssEapReauthComplete(minor, ctx, cred, actualMech, timeRec);
         if (GSS_ERROR(major))
             goto cleanup;
-        ctx->state = GSSEAP_STATE_ESTABLISHED;
+        gssEapSmTransition(ctx, GSSEAP_STATE_ESTABLISHED);
     } else {
-        ctx->state = GSSEAP_STATE_REAUTHENTICATE;
+        gssEapSmTransition(ctx, GSSEAP_STATE_REAUTHENTICATE);
     }
 
 cleanup:
@@ -740,7 +740,7 @@ eapGssSmInitCompleteAcceptorExts(OM_uint32 *minor,
 {
     *minor = 0;
 
-    ctx->state = GSSEAP_STATE_ESTABLISHED;
+    gssEapSmTransition(ctx, GSSEAP_STATE_ESTABLISHED);
     *smFlags |= SM_FLAG_STOP_EVAL;
 
     return GSS_S_COMPLETE;
