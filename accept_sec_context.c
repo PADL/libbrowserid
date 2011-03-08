@@ -179,8 +179,9 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
 
     wpabuf_free(reqData);
 
+    GSSEAP_SM_TRANSITION_NEXT(ctx);
+
     *minor = 0;
-    *smFlags |= SM_FLAG_TRANSITION;
 
     return GSS_S_CONTINUE_NEEDED;
 }
@@ -538,7 +539,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        *smFlags |= SM_FLAG_TRANSITION;
+        GSSEAP_SM_TRANSITION_NEXT(ctx);
     }
 
     major = GSS_S_CONTINUE_NEEDED;
@@ -636,9 +637,9 @@ eapGssSmAcceptCompleteInitiatorExts(OM_uint32 *minor,
                                     gss_buffer_t outputToken,
                                     OM_uint32 *smFlags)
 {
-    *minor = 0;
+    GSSEAP_SM_TRANSITION_NEXT(ctx);
 
-    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
+    *minor = 0;
 
     return GSS_S_CONTINUE_NEEDED;
 }
@@ -656,10 +657,10 @@ eapGssSmAcceptCompleteAcceptorExts(OM_uint32 *minor,
                                    gss_buffer_t outputToken,
                                    OM_uint32 *smFlags)
 {
-    *minor = 0;
+    GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_ESTABLISHED);
 
-    gssEapSmTransition(ctx, GSSEAP_STATE_ESTABLISHED);
-    *smFlags |= SM_FLAG_STOP_EVAL;
+    *minor = 0;
+    *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
 
     return GSS_S_COMPLETE;
 }
@@ -899,8 +900,7 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
         major = acceptReadyKrb(minor, ctx, cred,
                                krbInitiator, mech, timeRec);
         if (major == GSS_S_COMPLETE) {
-            gssEapSmTransition(ctx, GSSEAP_STATE_ESTABLISHED);
-            *smFlags |= SM_FLAG_STOP_EVAL;
+            GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_ESTABLISHED);
         }
     }
 

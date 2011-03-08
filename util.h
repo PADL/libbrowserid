@@ -546,6 +546,15 @@ enum gss_eap_state {
 
 #define GSSEAP_STATE_NEXT(s)    ((s) << 1)
 
+#ifdef GSSEAP_DEBUG
+void gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state);
+#define GSSEAP_SM_TRANSITION(ctx, state)    gssEapSmTransition((ctx), (state))
+#else
+#define GSSEAP_SM_TRANSITION(ctx, state)    do { (ctx)->state = (state); } while (0)
+#endif
+
+#define GSSEAP_SM_TRANSITION_NEXT(ctx)      GSSEAP_SM_TRANSITION((ctx), GSSEAP_STATE_NEXT((ctx)->state))
+
 /* state machine entry */
 struct gss_eap_sm {
     OM_uint32 inputTokenType;
@@ -565,9 +574,8 @@ struct gss_eap_sm {
                               OM_uint32 *);
 };
 
-#define SM_FLAG_TRANSITION                  0x00000001  /* transition to next state */
-#define SM_FLAG_FORCE_SEND_TOKEN            0x00000002  /* send token even if empty */
-#define SM_FLAG_STOP_EVAL                   0x00000004  /* no more handlers for this state */
+#define SM_FLAG_FORCE_SEND_TOKEN            0x00000001  /* send token even if empty */
+#define SM_FLAG_STOP_EVAL                   0x00000002  /* no more handlers for this state */
 
 #define SM_ITOK_FLAG_CRITICAL               0x00000001  /* sent tokens marked critical */
 #define SM_ITOK_FLAG_REQUIRED               0x00000002  /* received tokens must be present */

@@ -477,15 +477,13 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
 
     ctx->gssFlags = gssFlags;
 
-    *smFlags |= SM_FLAG_STOP_EVAL;
-
     if (major == GSS_S_COMPLETE) {
         major = gssEapReauthComplete(minor, ctx, cred, actualMech, timeRec);
         if (GSS_ERROR(major))
             goto cleanup;
-        gssEapSmTransition(ctx, GSSEAP_STATE_ESTABLISHED);
+        GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_ESTABLISHED);
     } else {
-        gssEapSmTransition(ctx, GSSEAP_STATE_REAUTHENTICATE);
+        GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_REAUTHENTICATE);
     }
 
 cleanup:
@@ -563,9 +561,11 @@ eapGssSmInitIdentity(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
+    GSSEAP_SM_TRANSITION_NEXT(ctx);
+
     /* force sending of empty token */
     *minor = 0;
-    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_FORCE_SEND_TOKEN;
+    *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
 
     return GSS_S_CONTINUE_NEEDED;
 }
@@ -618,7 +618,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
         ctx->flags &= ~(CTX_FLAG_EAP_SUCCESS);
         major = GSS_S_CONTINUE_NEEDED;
-        *smFlags |= SM_FLAG_TRANSITION;
+        GSSEAP_SM_TRANSITION_NEXT(ctx);
     } else if (ctx->flags & CTX_FLAG_EAP_FAIL) {
         major = GSS_S_DEFECTIVE_CREDENTIAL;
         *minor = GSSEAP_PEER_AUTH_FAILURE;
@@ -718,9 +718,10 @@ eapGssSmInitCompleteInitiatorExts(OM_uint32 *minor,
                                   gss_buffer_t outputToken,
                                   OM_uint32 *smFlags)
 {
-    *minor = 0;
+    GSSEAP_SM_TRANSITION_NEXT(ctx);
 
-    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
+    *minor = 0;
+    *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
 
     return GSS_S_CONTINUE_NEEDED;
 }
@@ -738,10 +739,9 @@ eapGssSmInitCompleteAcceptorExts(OM_uint32 *minor,
                                  gss_buffer_t outputToken,
                                  OM_uint32 *smFlags)
 {
-    *minor = 0;
+    GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_ESTABLISHED);
 
-    gssEapSmTransition(ctx, GSSEAP_STATE_ESTABLISHED);
-    *smFlags |= SM_FLAG_STOP_EVAL;
+    *minor = 0;
 
     return GSS_S_COMPLETE;
 }
