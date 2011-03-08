@@ -446,9 +446,25 @@ gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
 bool
 gss_eap_radius_attr_provider::init(void)
 {
+    struct rs_context *radContext;
+
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_RADIUS,
                                        "urn:ietf:params:gss-eap:radius-avp",
                                        createAttrContext);
+
+#if 1
+    /*
+     * This hack is necessary in order to force the loading of the global
+     * dictionary, otherwise accepting reauthentication tokens fails unless
+     * the acceptor has already accepted a normal authentication token.
+     */
+    if (rs_context_create(&radContext, RS_DICT_FILE) != 0) {
+        return false;
+    }
+
+    rs_context_destroy(radContext);
+#endif
+
     return true;
 }
 
@@ -710,6 +726,7 @@ avpImport(VALUE_PAIR **pVp,
 fail:
     if (vp != NULL)
         pairbasicfree(vp);
+    *pVp = NULL;
     return false;
 }
 
