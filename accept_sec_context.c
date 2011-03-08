@@ -617,8 +617,10 @@ eapGssSmAcceptReauthCreds(OM_uint32 *minor,
      * fabricate a ticket from the initiator to ourselves.
      */
     major = gssEapMakeReauthCreds(minor, ctx, cred, outputToken);
-    if (GSS_ERROR(major))
-        return major;
+    if (major == GSS_S_UNAVAILABLE)
+        major = GSS_S_COMPLETE;
+    if (major == GSS_S_COMPLETE)
+        major = GSS_S_CONTINUE_NEEDED;
 
     return major;
 }
