@@ -51,7 +51,7 @@ AC_ARG_WITH(eap,
        [Use eap (in specified installation directory)]),
     [check_eap_dir="$withval"],
     [check_eap_dir=])
-for dir in $check_eap_dir $prefix /usr /usr/local ; do
+for dir in $check_eap_dir $prefix /usr /usr/local ../libeap ; do
    eapdir="$dir"
    if test -f "$dir/src/eap_peer/eap.h"; then
      found_eap="yes";
