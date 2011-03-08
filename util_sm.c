@@ -247,13 +247,14 @@ gssEapSmStep(OM_uint32 *minor,
                     innerOutputTokens->elements[innerOutputTokens->count] = innerOutputToken;
                     assert(smp->outputTokenType != ITOK_TYPE_NONE);
                     outputTokenTypes[innerOutputTokens->count] = smp->outputTokenType;
-                    if (smp->critical)
+                    if (smp->itokFlags & SM_ITOK_FLAG_CRITICAL)
                         outputTokenTypes[innerOutputTokens->count] |= ITOK_FLAG_CRITICAL;
                     innerOutputTokens->count++;
                 }
                 if (smFlags & SM_FLAG_STOP_EVAL)
                     break;
-            } else if (smp->required && smp->inputTokenType != ITOK_TYPE_NONE) {
+            } else if ((smp->itokFlags & SM_ITOK_FLAG_REQUIRED) &&
+                smp->inputTokenType != ITOK_TYPE_NONE) {
                 major = GSS_S_DEFECTIVE_TOKEN;
                 *minor = GSSEAP_MISSING_REQUIRED_ITOK;
                 break;
