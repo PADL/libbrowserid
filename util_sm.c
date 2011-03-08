@@ -45,6 +45,7 @@
                ((status) == GSS_S_COMPLETE && (ctx)->state == GSSEAP_STATE_ESTABLISHED)); \
     } while (0)
 
+#ifdef GSSEAP_DEBUG
 static const char *
 gssEapStateToString(enum gss_eap_state state)
 {
@@ -77,7 +78,6 @@ gssEapStateToString(enum gss_eap_state state)
     return s;
 }
 
-#ifdef GSSEAP_DEBUG
 void
 gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state)
 {
@@ -89,7 +89,7 @@ gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state)
 
     ctx->state = state;
 }
-#endif
+#endif /* GSSEAP_DEBUG */
 
 static OM_uint32
 makeErrorToken(OM_uint32 *minor,
@@ -329,7 +329,7 @@ gssEapSmStep(OM_uint32 *minor,
 
     assert(innerOutputTokens->count <= smCount);
 
-    /* Check we understood all critical tokens */
+    /* Check we understood all critical tokens sent by peer */
     if (!GSS_ERROR(major)) {
         for (j = 0; j < innerInputTokens->count; j++) {
             if ((inputTokenTypes[j] & ITOK_FLAG_CRITICAL) &&
@@ -341,7 +341,7 @@ gssEapSmStep(OM_uint32 *minor,
         }
     }
 
-    /* Emit an error token if we are the acceptor */
+    /* Optionaly emit an error token if we are the acceptor */
     if (GSS_ERROR(major)) {
         if (CTX_IS_INITIATOR(ctx))
             goto cleanup; /* return error directly to caller */
@@ -360,7 +360,7 @@ gssEapSmStep(OM_uint32 *minor,
             outputTokenTypes[0] = ITOK_TYPE_CONTEXT_ERR | ITOK_FLAG_CRITICAL;
     }
 
-    /* Format composite output token */
+    /* Format output token from inner tokens */
     if (innerOutputTokens->count != 0 ||            /* inner tokens to send */
         !CTX_IS_INITIATOR(ctx) ||                   /* any leg acceptor */
         ctx->state != GSSEAP_STATE_ESTABLISHED) {   /* non-last leg initiator */
