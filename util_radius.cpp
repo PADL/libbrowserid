@@ -708,7 +708,8 @@ avpImport(VALUE_PAIR **pVp,
     return true;
 
 fail:
-    pairbasicfree(vp);
+    if (vp != NULL)
+        pairbasicfree(vp);
     return false;
 }
 
