@@ -266,12 +266,24 @@ gssEapSmStep(OM_uint32 *minor,
         if ((smp->validStates & ctx->state) == 0)
             continue;
 
+        /*
+         * We special case the first call to gss_init_sec_context so that
+         * all token providers have the opportunity to generate an initial
+         * context token. Providers where inputTokenType is ITOK_TYPE_NONE
+         * are always called and generally act on state transition boundaries,
+         * for example to advance the state after a series of optional tokens
+         * (as is the case with the extension token exchange) or to generate
+         * a new token after the state was advanced by a provider which did
+         * not emit a token.
+         */
         if (smp->inputTokenType == ITOK_TYPE_NONE || initialContextToken) {
             processToken = 1;
         } else if ((smFlags & SM_FLAG_TRANSITED) == 0) {
+            /* Don't regurgitate a token which belonds to a previous state. */
             for (j = 0; j < innerInputTokens->count; j++) {
                 if ((inputTokenTypes[j] & ITOK_TYPE_MASK) == smp->inputTokenType) {
                     if (processToken) {
+                        /* Check for duplicate inner tokens */
                         major = GSS_S_DEFECTIVE_TOKEN;
                         *minor = GSSEAP_DUPLICATE_ITOK;
                         break;
@@ -321,6 +333,7 @@ gssEapSmStep(OM_uint32 *minor,
             }
         } else if ((smp->itokFlags & SM_ITOK_FLAG_REQUIRED) &&
             smp->inputTokenType != ITOK_TYPE_NONE) {
+            /* Check for required inner tokens */
             major = GSS_S_DEFECTIVE_TOKEN;
             *minor = GSSEAP_MISSING_REQUIRED_ITOK;
             break;
