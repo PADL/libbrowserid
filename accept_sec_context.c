@@ -624,28 +624,44 @@ eapGssSmAcceptReauthCreds(OM_uint32 *minor,
 #endif
 
 static OM_uint32
-eapGssSmAcceptCompleteExts(OM_uint32 *minor,
-                           gss_cred_id_t cred,
-                           gss_ctx_id_t ctx,
-                           gss_name_t target,
-                           gss_OID mech,
-                           OM_uint32 reqFlags,
-                           OM_uint32 timeReq,
-                           gss_channel_bindings_t chanBindings,
-                           gss_buffer_t inputToken,
-                           gss_buffer_t outputToken,
-                           OM_uint32 *smFlags)
+eapGssSmAcceptCompleteInitiatorExts(OM_uint32 *minor,
+                                    gss_cred_id_t cred,
+                                    gss_ctx_id_t ctx,
+                                    gss_name_t target,
+                                    gss_OID mech,
+                                    OM_uint32 reqFlags,
+                                    OM_uint32 timeReq,
+                                    gss_channel_bindings_t chanBindings,
+                                    gss_buffer_t inputToken,
+                                    gss_buffer_t outputToken,
+                                    OM_uint32 *smFlags)
 {
     *minor = 0;
 
-    if (ctx->state == GSSEAP_STATE_INITIATOR_EXTS) {
-        *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
-        return GSS_S_CONTINUE_NEEDED;
-    } else {
-        ctx->state = GSSEAP_STATE_ESTABLISHED;
-        *smFlags |= SM_FLAG_STOP_EVAL;
-        return GSS_S_COMPLETE;
-    }
+    *smFlags |= SM_FLAG_TRANSITION | SM_FLAG_STOP_EVAL;
+
+    return GSS_S_CONTINUE_NEEDED;
+}
+
+static OM_uint32
+eapGssSmAcceptCompleteAcceptorExts(OM_uint32 *minor,
+                                   gss_cred_id_t cred,
+                                   gss_ctx_id_t ctx,
+                                   gss_name_t target,
+                                   gss_OID mech,
+                                   OM_uint32 reqFlags,
+                                   OM_uint32 timeReq,
+                                   gss_channel_bindings_t chanBindings,
+                                   gss_buffer_t inputToken,
+                                   gss_buffer_t outputToken,
+                                   OM_uint32 *smFlags)
+{
+    *minor = 0;
+
+    ctx->state = GSSEAP_STATE_ESTABLISHED;
+    *smFlags |= SM_FLAG_STOP_EVAL;
+
+    return GSS_S_COMPLETE;
 }
 
 static struct gss_eap_sm eapGssAcceptorSm[] = {
@@ -684,7 +700,7 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
         ITOK_TYPE_NONE,
         GSSEAP_STATE_INITIATOR_EXTS,
         0,
-        eapGssSmAcceptCompleteExts,
+        eapGssSmAcceptCompleteInitiatorExts,
     },
 #ifdef GSSEAP_ENABLE_REAUTH
     {
@@ -700,7 +716,7 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
         ITOK_TYPE_NONE,
         GSSEAP_STATE_ACCEPTOR_EXTS,
         0,
-        eapGssSmAcceptCompleteExts
+        eapGssSmAcceptCompleteAcceptorExts
     },
 };
 
