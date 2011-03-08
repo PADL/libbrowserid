@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  */
 /*
- * Copyright 1993 by OpenVision Technologies, Inc.
+ * Portions Copyright 1993 by OpenVision Technologies, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software
  * and its documentation for any purpose is hereby granted without fee,
@@ -56,6 +56,149 @@
  */
 
 #include "gssapiP_eap.h"
+
+OM_uint32
+gssEapEncodeInnerTokens(OM_uint32 *minor,
+                        gss_buffer_set_t extensions,
+                        OM_uint32 *types,
+                        gss_buffer_t buffer)
+{
+    OM_uint32 major, tmpMinor;
+    size_t required = 0, i;
+    unsigned char *p;
+
+    buffer->value = NULL;
+    buffer->length = 0;
+
+    if (extensions != GSS_C_NO_BUFFER_SET) {
+        for (i = 0; i < extensions->count; i++) {
+            required += 8 + extensions->elements[i].length;
+        }
+    }
+
+    /*
+     * We must always return a non-NULL token otherwise the calling state
+     * machine assumes we are finished. Hence care in case malloc(0) does
+     * return NULL.
+     */
+    buffer->value = GSSEAP_MALLOC(required ? required : 1);
+    if (buffer->value == NULL) {
+        major = GSS_S_FAILURE;
+        *minor = ENOMEM;
+        goto cleanup;
+    }
+
+    buffer->length = required;
+    p = (unsigned char *)buffer->value;
+
+    if (extensions != GSS_C_NO_BUFFER_SET) {
+        for (i = 0; i < extensions->count; i++) {
+            gss_buffer_t extension = &extensions->elements[i];
+
+            assert((types[i] & ITOK_FLAG_VERIFIED) == 0); /* private flag */
+
+             /*
+              * Extensions are encoded as type-length-value, where the upper
+              * bit of the type indicates criticality.
+              */
+            store_uint32_be(types[i], &p[0]);
+            store_uint32_be(extension->length, &p[4]);
+            memcpy(&p[8], extension->value, extension->length);
+
+            p += 8 + extension->length;
+        }
+    }
+
+    assert(p == (unsigned char *)buffer->value + required);
+    assert(buffer->value != NULL);
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    if (GSS_ERROR(major)) {
+        gss_release_buffer(&tmpMinor, buffer);
+    }
+
+    return major;
+}
+
+OM_uint32
+gssEapDecodeInnerTokens(OM_uint32 *minor,
+                        const gss_buffer_t buffer,
+                        gss_buffer_set_t *pExtensions,
+                        OM_uint32 **pTypes)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_set_t extensions = GSS_C_NO_BUFFER_SET;
+    OM_uint32 *types = NULL;
+    unsigned char *p;
+    size_t remain;
+
+    *pExtensions = GSS_C_NO_BUFFER_SET;
+    *pTypes = NULL;
+
+    major = gss_create_empty_buffer_set(minor, &extensions);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (buffer->length == 0) {
+        major = GSS_S_COMPLETE;
+        goto cleanup;
+    }
+
+    p = (unsigned char *)buffer->value;
+    remain = buffer->length;
+
+    do {
+        OM_uint32 *ntypes;
+        gss_buffer_desc extension;
+
+        if (remain < 8) {
+            major = GSS_S_DEFECTIVE_TOKEN;
+            *minor = GSSEAP_TOK_TRUNC;
+            goto cleanup;
+        }
+
+        ntypes = GSSEAP_REALLOC(types,
+                                (extensions->count + 1) * sizeof(OM_uint32));
+        if (ntypes == NULL) {
+            major = GSS_S_FAILURE;
+            *minor = ENOMEM;
+            goto cleanup;
+        }
+        types = ntypes;
+
+        types[extensions->count] = load_uint32_be(&p[0]);
+        extension.length = load_uint32_be(&p[4]);
+
+        if (remain < 8 + extension.length) {
+            major = GSS_S_DEFECTIVE_TOKEN;
+            *minor = GSSEAP_TOK_TRUNC;
+            goto cleanup;
+        }
+        extension.value = &p[8];
+
+        major = gss_add_buffer_set_member(minor, &extension, &extensions);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        p      += 8 + extension.length;
+        remain -= 8 + extension.length;
+    } while (remain != 0);
+
+cleanup:
+    if (GSS_ERROR(major)) {
+        gss_release_buffer_set(&tmpMinor, &extensions);
+        if (types != NULL)
+            GSSEAP_FREE(types);
+    } else {
+        *pExtensions = extensions;
+        *pTypes = types;
+    }
+
+    return major;
+}
 
 /*
  * $Id: util_token.c 23457 2009-12-08 00:04:48Z tlyu $

@@ -154,13 +154,25 @@ enum gss_eap_token_type {
     TOK_TYPE_EXPORT_NAME             = 0x0401,  /* RFC 2743 exported name */
     TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,  /* exported composite name */
     TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
-    TOK_TYPE_EAP_RESP                = 0x0601,  /* EAP response */
-    TOK_TYPE_EAP_REQ                 = 0x0602,  /* EAP request */
-    TOK_TYPE_EXT_REQ                 = 0x0603,  /* GSS EAP extensions request */
-    TOK_TYPE_EXT_RESP                = 0x0604,  /* GSS EAP extensions response */
-    TOK_TYPE_GSS_REAUTH              = 0x0605,  /* GSS EAP fast reauthentication token */
-    TOK_TYPE_CONTEXT_ERR             = 0x0606,  /* context error */
+    TOK_TYPE_ESTABLISH_CONTEXT       = 0x0601,  /* establish context */
 };
+
+/* inner token types and flags */
+#define ITOK_TYPE_NONE                  0x00000000
+#define ITOK_TYPE_CONTEXT_ERR           0x00000001
+#define ITOK_TYPE_ACCEPTOR_NAME_REQ     0x00000002
+#define ITOK_TYPE_ACCEPTOR_NAME_RESP    0x00000003
+#define ITOK_TYPE_EAP_RESP              0x00000004
+#define ITOK_TYPE_EAP_REQ               0x00000005
+#define ITOK_TYPE_GSS_CHANNEL_BINDINGS  0x00000006
+#define ITOK_TYPE_REAUTH_CREDS          0x00000007
+#define ITOK_TYPE_REAUTH_REQ            0x00000008
+#define ITOK_TYPE_REAUTH_RESP           0x00000009
+
+#define ITOK_FLAG_CRITICAL              0x80000000  /* critical, wire flag */
+#define ITOK_FLAG_VERIFIED              0x40000000  /* verified, API flag */
+
+#define ITOK_TYPE_MASK                  (~(EXT_FLAG_CRITICAL | EXT_FLAG_VERIFIED))
 
 OM_uint32 gssEapAllocContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 OM_uint32 gssEapReleaseContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
@@ -259,44 +271,6 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
                        size_t keyLength,
                        krb5_enctype enctype,
                        krb5_keyblock *pKey);
-
-/* util_exts.c */
-#define EXT_FLAG_CRITICAL               0x80000000  /* critical, wire flag */
-#define EXT_FLAG_VERIFIED               0x40000000  /* verified, API flag */
-
-#define EXT_TYPE_GSS_CHANNEL_BINDINGS   0x00000000
-#define EXT_TYPE_REAUTH_CREDS           0x00000001
-#define EXT_TYPE_MASK                   (~(EXT_FLAG_CRITICAL | EXT_FLAG_VERIFIED))
-
-struct gss_eap_extension_provider {
-    OM_uint32 type;
-    int critical; /* client */
-    int required; /* server */
-    OM_uint32 (*make)(OM_uint32 *,
-                      gss_cred_id_t,
-                      gss_ctx_id_t,
-                      gss_channel_bindings_t,
-                      gss_buffer_t);
-    OM_uint32 (*verify)(OM_uint32 *,
-                        gss_cred_id_t,
-                        gss_ctx_id_t,
-                        gss_channel_bindings_t,
-                        const gss_buffer_t);
-};
-
-OM_uint32
-gssEapMakeExtensions(OM_uint32 *minor,
-                     gss_cred_id_t cred,
-                     gss_ctx_id_t ctx,
-                     gss_channel_bindings_t chanBindings,
-                     gss_buffer_t buffer);
-
-OM_uint32
-gssEapVerifyExtensions(OM_uint32 *minor,
-                       gss_cred_id_t cred,
-                       gss_ctx_id_t ctx,
-                       gss_channel_bindings_t chanBindings,
-                       const gss_buffer_t buffer);
 
 /* util_krb.c */
 #ifdef HAVE_HEIMDAL_VERSION
@@ -557,7 +531,35 @@ OM_uint32
 sequenceInit(OM_uint32 *minor, void **vqueue, uint64_t seqnum,
              int do_replay, int do_sequence, int wide_nums);
 
+/* util_sm.c */
+struct gss_eap_sm;
+
+OM_uint32
+gssEapSmStep(OM_uint32 *minor,
+             gss_cred_id_t cred,
+             gss_ctx_id_t ctx,
+             gss_name_t target,
+             gss_OID mech,
+             OM_uint32 reqFlags,
+             OM_uint32 timeReq,
+             gss_channel_bindings_t chanBindings,
+             gss_buffer_t inputToken,
+             gss_buffer_t outputToken,
+             struct gss_eap_sm *sm,
+             size_t smCount);
+
 /* util_token.c */
+OM_uint32
+gssEapEncodeInnerTokens(OM_uint32 *minor,
+                        gss_buffer_set_t extensions,
+                        OM_uint32 *types,
+                        gss_buffer_t buffer);
+OM_uint32
+gssEapDecodeInnerTokens(OM_uint32 *minor,
+                        const gss_buffer_t buffer,
+                        gss_buffer_set_t *pExtensions,
+                        OM_uint32 **pTypes);
+
 size_t
 tokenSize(const gss_OID_desc *mech, size_t body_size);
 

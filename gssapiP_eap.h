@@ -141,15 +141,32 @@ struct gss_cred_id_struct
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
 enum gss_eap_state {
-    GSSEAP_STATE_IDENTITY = 0,              /* identify peer */
-    GSSEAP_STATE_AUTHENTICATE,              /* exchange EAP messages */
-    GSSEAP_STATE_EXTENSIONS_REQ,            /* initiator extensions */
-    GSSEAP_STATE_EXTENSIONS_RESP,           /* acceptor extensions */
-    GSSEAP_STATE_ESTABLISHED,               /* context established */
-    GSSEAP_STATE_ERROR,                     /* context error */
-#ifdef GSSEAP_ENABLE_REAUTH
-    GSSEAP_STATE_KRB_REAUTH                 /* fast reauthentication */
-#endif
+    GSSEAP_STATE_INITIAL        = 0x01,     /* initial state */
+    GSSEAP_STATE_AUTHENTICATE   = 0x02,     /* exchange EAP messages */
+    GSSEAP_STATE_NEGO_EXT       = 0x04,     /* negotiate extensions */
+    GSSEAP_STATE_ESTABLISHED    = 0x08,     /* context established */
+    GSSEAP_STATE_ALL            = 0x0F
+};
+
+#define GSSEAP_STATE_NEXT(s)    ((s) << 1)
+
+/* state machine entry */
+struct gss_eap_sm {
+    OM_uint32 inputTokenType;
+    OM_uint32 outputTokenType;
+    enum gss_eap_state validStates;
+    int critical;
+    int required;
+    OM_uint32 (*processToken)(OM_uint32 *,
+                              gss_cred_id_t,
+                              gss_ctx_id_t,
+                              gss_name_t,
+                              gss_OID,
+                              OM_uint32,
+                              OM_uint32,
+                              gss_channel_bindings_t,
+                              gss_buffer_t,
+                              gss_buffer_t);
 };
 
 #define CTX_IS_ESTABLISHED(ctx)             ((ctx)->state == GSSEAP_STATE_ESTABLISHED)

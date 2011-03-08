@@ -74,7 +74,6 @@ mech_eap_la_SOURCES =    			\
 	util_cksum.c				\
 	util_cred.c				\
 	util_crypt.c				\
-	util_exts.c				\
 	util_krb.c				\
 	util_lucid.c				\
 	util_mech.c				\
@@ -84,6 +83,7 @@ mech_eap_la_SOURCES =    			\
 	util_radius.cpp				\
 	util_saml.cpp				\
 	util_shib.cpp				\
+	util_sm.c				\
 	util_token.c				\
 	verify_mic.c				\
 	wrap.c					\
@@ -113,8 +113,6 @@ endif
 
 gsseap_err.h gsseap_err.c: gsseap_err.et
 	$(COMPILE_ET) $<
-
-
 
 radsec_err.h radsec_err.c: radsec_err.et
 	$(COMPILE_ET) $<

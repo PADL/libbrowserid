@@ -57,7 +57,7 @@ gssEapAllocContext(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    ctx->state = GSSEAP_STATE_IDENTITY;
+    ctx->state = GSSEAP_STATE_INITIAL;
 
     /*
      * Integrity, confidentiality, sequencing and replay detection are
