@@ -91,8 +91,12 @@ mech_eap_la_SOURCES =    			\
 	wrap_iov_length.c			\
 	wrap_size_limit.c
 
+BUILT_SOURCES = gsseap_err.c radsec_err.c
+
 if GSSEAP_ENABLE_REAUTH
 mech_eap_la_SOURCES += util_reauth.c
+
+
 
 if !HEIMDAL
 krb5pluginsdir = $(libdir)/krb5/plugins/authdata
