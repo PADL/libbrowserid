@@ -574,9 +574,12 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     struct eap_config eapConfig;
 
     if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_REAUTHENTICATE) {
+        OM_uint32 tmpMinor;
+
         /* server didn't support reauthentication, sent EAP request */
-        GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_INITIAL);
+        gssDeleteSecContext(&tmpMinor, &ctx->kerberosCtx, GSS_C_NO_BUFFER);
         ctx->flags &= ~(CTX_FLAG_KRB_REAUTH);
+        GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_INITIAL);
         *smFlags |= SM_FLAG_RESTART;
     } else {
         *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
