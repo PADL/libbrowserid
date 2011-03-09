@@ -2,7 +2,7 @@ Overview
 ========
 
 This is an implementation of the GSS EAP mechanism, as described in
-draft-ietf-abfab-gss-eap-00.txt.
+draft-ietf-abfab-gss-eap-01.txt.
 
 Building
 ========
@@ -21,10 +21,13 @@ When installing, be sure to edit $prefix/etc/gss/mech to register
 the EAP mechanisms. A sample configuration file is in this directory.
 
 Make sure your RADIUS library is configured to talk to the server of
-your choice: see the example radsec.conf in this directory.
+your choice: see the example radsec.conf in this directory. If you
+want to use TCP or TLS, you'll need to run radsecproxy in front of
+your RADIUS server.
 
 On the RADIUS server side, you need to install dictionary.ukerna and
-include it from the main dictionary file.
+include it from the main dictionary file (assuming it has a dictionary
+format compatible with FreeRADIUS).
 
 If you want the acceptor be able to identify the user, the RADIUS
 server needs to echo back the EAP username from the inner tunnel;
@@ -39,7 +42,9 @@ to $prefix/etc/raddb/sites-enabled/inner-tunnel, and ensure that
 
     virtual_server = "inner-tunnel"
 
-is set in eap.conf for the desired EAP types.
+is set in eap.conf for the desired EAP types. Other than that,
+configuration of FreeRADIUS should be identical for other NAS
+applications.
 
 To test the SAML assertion code path, you can place a fixed SAML
 assertion in the update reply block of the default configuration.
@@ -69,3 +74,14 @@ Note: for SASL you will be prompted for a username and password.
 % client -C -p 5556 -s host -m EAP-AES128 <host>
 % server -c -p 5556 -s host -h <host>
 
+To test fast reauthentication support, add the following to
+/etc/krb5.conf:
+
+[appdefaults]
+        eap_gss = {
+                reauth_use_ccache = TRUE
+        }
+
+This will store a Kerberos ticket for a GSS-EAP authenticated user
+in a credentials cache, which can then be used for re-authentication
+to the same acceptor. You must have a valid keytab configured.
