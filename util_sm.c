@@ -329,12 +329,10 @@ gssEapSmStep(OM_uint32 *minor,
                 innerOutputTokens->count++;
             }
             /*
-             * Break out if explicitly requested, or if we made a state transition
-             * and have some tokens to send.
+             * Break out if we made a state transition and have some tokens to send.
              */
-            if ((smFlags & SM_FLAG_STOP_EVAL) ||
-                ((smFlags & SM_FLAG_TRANSITED) &&
-                 ((smFlags & SM_FLAG_FORCE_SEND_TOKEN) || innerOutputTokens->count != 0))) {
+            if ((smFlags & SM_FLAG_TRANSITED) &&
+                 ((smFlags & SM_FLAG_FORCE_SEND_TOKEN) || innerOutputTokens->count != 0)) {
                 SM_ASSERT_VALID(ctx, major);
                 break;
             }

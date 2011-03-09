@@ -577,10 +577,9 @@ struct gss_eap_sm {
 };
 
 /* state machine flags, set by handler */
-#define SM_FLAG_FORCE_SEND_TOKEN            0x00000001  /* send token even if empty */
-#define SM_FLAG_STOP_EVAL                   0x00000002  /* no more handlers for this state */
-#define SM_FLAG_RESTART                     0x00000004  /* restart state machine */
-#define SM_FLAG_OUTPUT_TOKEN_CRITICAL       0x00000008  /* output token is critical */
+#define SM_FLAG_FORCE_SEND_TOKEN            0x00000001  /* send token even if no inner tokens */
+#define SM_FLAG_RESTART                     0x00000002  /* restart state machine */
+#define SM_FLAG_OUTPUT_TOKEN_CRITICAL       0x00000004  /* output token is critical */
 
 /* state machine flags, set by state machine */
 #define SM_FLAG_INPUT_TOKEN_CRITICAL        0x40000000  /* input token was critical */
