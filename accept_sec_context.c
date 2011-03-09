@@ -962,9 +962,14 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
         if (major == GSS_S_COMPLETE) {
             GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_ESTABLISHED);
         }
+        ctx->gssFlags = gssFlags;
+    } else {
+        gssDeleteSecContext(&tmpMinor, &ctx->kerberosCtx, GSS_C_NO_BUFFER);
+        ctx->flags &= ~(CTX_FLAG_KRB_REAUTH);
+        GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_INITIAL);
+        *smFlags |= SM_FLAG_RESTART;
+        major = GSS_S_CONTINUE_NEEDED;
     }
-
-    ctx->gssFlags = gssFlags;
 
     gssReleaseName(&tmpMinor, &krbInitiator);
 
