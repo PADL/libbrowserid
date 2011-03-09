@@ -785,10 +785,10 @@ cleanup:
  */
 OM_uint32
 gssEapReauthComplete(OM_uint32 *minor,
-                    gss_ctx_id_t ctx,
-                    gss_cred_id_t cred,
-                    const gss_OID mech,
-                    OM_uint32 timeRec)
+                     gss_ctx_id_t ctx,
+                     gss_cred_id_t cred,
+                     const gss_OID mech,
+                     OM_uint32 timeRec)
 {
     OM_uint32 major, tmpMinor;
     gss_buffer_set_t keyData = GSS_C_NO_BUFFER_SET;
