@@ -81,6 +81,7 @@ gssEapStateToString(enum gss_eap_state state)
 void
 gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state)
 {
+    assert(state >= GSSEAP_STATE_INITIAL);
     assert(state <= GSSEAP_STATE_ESTABLISHED);
 
     fprintf(stderr, "GSS-EAP: state transition %s->%s\n",
