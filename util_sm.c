@@ -382,7 +382,7 @@ gssEapSmStep(OM_uint32 *minor,
     /* Format output token from inner tokens */
     if (innerOutputTokens->count != 0 ||            /* inner tokens to send */
         !CTX_IS_INITIATOR(ctx) ||                   /* any leg acceptor */
-        ctx->state != GSSEAP_STATE_ESTABLISHED) {   /* non-last leg initiator */
+        !CTX_IS_ESTABLISHED(ctx)) {                 /* non-last leg initiator */
         tmpMajor = gssEapEncodeInnerTokens(&tmpMinor, innerOutputTokens,
                                            outputTokenTypes, &unwrappedOutputToken);
         if (tmpMajor == GSS_S_COMPLETE) {
@@ -395,6 +395,9 @@ gssEapSmStep(OM_uint32 *minor,
             }
         }
     }
+
+    /* If the context is established, empty tokens only to be emitted by initiator */
+    assert(!CTX_IS_ESTABLISHED(ctx) || ((outputToken->length == 0) == CTX_IS_INITIATOR(ctx)));
 
     SM_ASSERT_VALID(ctx, major);
 
