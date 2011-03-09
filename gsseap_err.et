@@ -69,6 +69,7 @@ error_code GSSEAP_BAD_CONTEXT_OPTION,           "Bad context option"
 error_code GSSEAP_BAD_SERVICE_NAME,             "Name is not a valid service name"
 error_code GSSEAP_BAD_INITIATOR_NAME,           "Initiator identity must be a valid name"
 error_code GSSEAP_NO_HOSTNAME,                  "Could not determine local host name"
+error_code GSSEAP_NO_ACCEPTOR_NAME,             "Could not determine acceptor identity"
 
 #
 # Credential errors

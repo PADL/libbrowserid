@@ -124,6 +124,34 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     return GSS_S_COMPLETE;
 }
 
+static OM_uint32
+eapGssSmAcceptAcceptorName(OM_uint32 *minor,
+                           gss_cred_id_t cred,
+                           gss_ctx_id_t ctx,
+                           gss_name_t target,
+                           gss_OID mech,
+                           OM_uint32 reqFlags,
+                           OM_uint32 timeReq,
+                           gss_channel_bindings_t chanBindings,
+                           gss_buffer_t inputToken,
+                           gss_buffer_t outputToken,
+                           OM_uint32 *smFlags)
+{
+    OM_uint32 major;
+
+    /* XXX TODO import and validate name from inputToken */
+
+    if (ctx->acceptorName != GSS_C_NO_NAME) {
+        /* Send desired target name to acceptor */
+        major = gssEapDisplayName(minor, ctx->acceptorName,
+                                  outputToken, NULL);
+        if (GSS_ERROR(major))
+            return major;
+    }
+
+    return GSS_S_CONTINUE_NEEDED;
+}
+
 #ifdef GSSEAP_DEBUG
 static OM_uint32
 eapGssSmAcceptVendorInfo(OM_uint32 *minor,
@@ -175,14 +203,6 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0) {
         *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_DEFECTIVE_TOKEN;
-    }
-
-    assert(ctx->acceptorName == GSS_C_NO_NAME);
-
-    if (cred->name != GSS_C_NO_NAME) {
-        major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
-        if (GSS_ERROR(major))
-            return major;
     }
 
     reqData = eap_msg_alloc(EAP_VENDOR_IETF, EAP_TYPE_IDENTITY, 0,
@@ -690,6 +710,13 @@ eapGssSmAcceptCompleteAcceptorExts(OM_uint32 *minor,
 }
 
 static struct gss_eap_sm eapGssAcceptorSm[] = {
+    {
+        ITOK_TYPE_ACCEPTOR_NAME_REQ,
+        ITOK_TYPE_ACCEPTOR_NAME_RESP,
+        GSSEAP_STATE_INITIAL,
+        0,
+        eapGssSmAcceptAcceptorName
+    },
 #ifdef GSSEAP_DEBUG
     {
         ITOK_TYPE_VENDOR_INFO,
@@ -813,6 +840,12 @@ gss_accept_sec_context(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&cred->mutex);
 
+    if (cred->name != GSS_C_NO_NAME) {
+        major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
     major = gssEapSmStep(minor,
                          cred,
                          ctx,
@@ -877,12 +910,6 @@ acceptReadyKrb(OM_uint32 *minor,
     major = gssEapGlueToMechName(minor, ctx, initiator, &ctx->initiatorName);
     if (GSS_ERROR(major))
         return major;
-
-    if (cred->name != GSS_C_NO_NAME) {
-        major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
-        if (GSS_ERROR(major))
-            return major;
-    }
 
     major = gssEapReauthComplete(minor, ctx, cred, mech, timeRec);
     if (GSS_ERROR(major))
