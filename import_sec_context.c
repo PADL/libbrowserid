@@ -251,8 +251,8 @@ gssEapImportContext(OM_uint32 *minor,
     remain -= 16;
 
     /* Validate state */
-    if (ctx->state < GSSEAP_STATE_INITIAL ||
-        ctx->state > GSSEAP_STATE_ESTABLISHED)
+    if (GSSEAP_SM_STATE(ctx) < GSSEAP_STATE_INITIAL ||
+        GSSEAP_SM_STATE(ctx) > GSSEAP_STATE_ESTABLISHED)
         return GSS_S_DEFECTIVE_TOKEN;
 
     /* Only acceptor can export partial context tokens */

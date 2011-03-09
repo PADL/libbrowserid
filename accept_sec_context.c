@@ -850,7 +850,7 @@ gss_accept_sec_context(OM_uint32 *minor,
         }
     }
 
-    assert(ctx->state == GSSEAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
+    assert(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
     if (cred != GSS_C_NO_CREDENTIAL)

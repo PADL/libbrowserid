@@ -165,7 +165,7 @@ gssEapExportSecContext(OM_uint32 *minor,
     p = (unsigned char *)token->value;
 
     store_uint32_be(EAP_EXPORT_CONTEXT_V1, &p[0]);        /* version */
-    store_uint32_be(ctx->state,            &p[4]);
+    store_uint32_be(GSSEAP_SM_STATE(ctx),  &p[4]);
     store_uint32_be(ctx->flags,            &p[8]);
     store_uint32_be(ctx->gssFlags,         &p[12]);
     p = store_oid(ctx->mechanismUsed,      &p[16]);
