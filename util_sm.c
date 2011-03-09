@@ -301,6 +301,8 @@ gssEapSmStep(OM_uint32 *minor,
             enum gss_eap_state oldState = ctx->state;
 
             smFlags = 0;
+            if (inputTokenType != NULL && (*inputTokenType & ITOK_FLAG_CRITICAL))
+                smFlags |= SM_FLAG_INPUT_TOKEN_CRITICAL;
 
             major = smp->processToken(minor, cred, ctx, target, mech, reqFlags,
                                       timeReq, chanBindings, innerInputToken,
@@ -321,7 +323,7 @@ gssEapSmStep(OM_uint32 *minor,
                 innerOutputTokens->elements[innerOutputTokens->count] = innerOutputToken;
                 assert(smp->outputTokenType != ITOK_TYPE_NONE);
                 outputTokenTypes[innerOutputTokens->count] = smp->outputTokenType;
-                if (smp->itokFlags & SM_ITOK_FLAG_CRITICAL)
+                if (smFlags & SM_FLAG_OUTPUT_TOKEN_CRITICAL)
                     outputTokenTypes[innerOutputTokens->count] |= ITOK_FLAG_CRITICAL;
                 innerOutputTokens->count++;
             }

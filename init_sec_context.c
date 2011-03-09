@@ -686,6 +686,8 @@ cleanup:
             major = tmpMajor;
             *minor = tmpMinor;
         }
+
+        *smFlags |= SM_FLAG_OUTPUT_TOKEN_CRITICAL;
     }
 
     wpabuf_set(&ctx->initiatorCtx.reqData, NULL, 0);
@@ -721,6 +723,8 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
     assert(outputToken->value != NULL);
 
     *minor = 0;
+    *smFlags |= SM_FLAG_OUTPUT_TOKEN_CRITICAL;
+
     return GSS_S_CONTINUE_NEEDED;
 }
 
@@ -797,7 +801,7 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         ITOK_TYPE_CONTEXT_ERR,
         ITOK_TYPE_NONE,
         GSSEAP_STATE_ALL & ~(GSSEAP_STATE_INITIAL),
-        SM_ITOK_FLAG_CRITICAL,
+        0,
         eapGssSmInitError
     },
     {
@@ -829,21 +833,21 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         ITOK_TYPE_NONE,
         ITOK_TYPE_NONE,
         GSSEAP_STATE_INITIAL | GSSEAP_STATE_REAUTHENTICATE,
-        SM_ITOK_FLAG_CRITICAL | SM_ITOK_FLAG_REQUIRED,
+        SM_ITOK_FLAG_REQUIRED,
         eapGssSmInitIdentity
     },
     {
         ITOK_TYPE_EAP_REQ,
         ITOK_TYPE_EAP_RESP,
         GSSEAP_STATE_AUTHENTICATE,
-        SM_ITOK_FLAG_CRITICAL | SM_ITOK_FLAG_REQUIRED,
+        SM_ITOK_FLAG_REQUIRED,
         eapGssSmInitAuthenticate
     },
     {
         ITOK_TYPE_NONE,
         ITOK_TYPE_GSS_CHANNEL_BINDINGS,
         GSSEAP_STATE_INITIATOR_EXTS,
-        SM_ITOK_FLAG_CRITICAL | SM_ITOK_FLAG_REQUIRED,
+        SM_ITOK_FLAG_REQUIRED,
         eapGssSmInitGssChannelBindings
     },
     {

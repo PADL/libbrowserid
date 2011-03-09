@@ -224,6 +224,7 @@ eapGssSmAcceptIdentity(OM_uint32 *minor,
     GSSEAP_SM_TRANSITION_NEXT(ctx);
 
     *minor = 0;
+    *smFlags |= SM_FLAG_OUTPUT_TOKEN_CRITICAL;
 
     return GSS_S_CONTINUE_NEEDED;
 }
@@ -541,8 +542,8 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     frresp = rs_packet_frpkt(resp);
     switch (frresp->code) {
-    case PW_AUTHENTICATION_ACK:
     case PW_ACCESS_CHALLENGE:
+    case PW_AUTHENTICATION_ACK:
         break;
     case PW_AUTHENTICATION_REJECT:
         *minor = GSSEAP_RADIUS_AUTH_FAILURE;
@@ -586,6 +587,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
 
     major = GSS_S_CONTINUE_NEEDED;
     *minor = 0;
+    *smFlags |= SM_FLAG_OUTPUT_TOKEN_CRITICAL;
 
 cleanup:
     if (request != NULL)
@@ -739,21 +741,21 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
         ITOK_TYPE_NONE,
         ITOK_TYPE_EAP_REQ,
         GSSEAP_STATE_INITIAL,
-        SM_ITOK_FLAG_CRITICAL | SM_ITOK_FLAG_REQUIRED,
+        SM_ITOK_FLAG_REQUIRED,
         eapGssSmAcceptIdentity,
     },
     {
         ITOK_TYPE_EAP_RESP,
         ITOK_TYPE_EAP_REQ,
         GSSEAP_STATE_AUTHENTICATE,
-        SM_ITOK_FLAG_CRITICAL | SM_ITOK_FLAG_REQUIRED,
+        SM_ITOK_FLAG_REQUIRED,
         eapGssSmAcceptAuthenticate
     },
     {
         ITOK_TYPE_GSS_CHANNEL_BINDINGS,
         ITOK_TYPE_NONE,
         GSSEAP_STATE_INITIATOR_EXTS,
-        SM_ITOK_FLAG_CRITICAL | SM_ITOK_FLAG_REQUIRED,
+        SM_ITOK_FLAG_REQUIRED,
         eapGssSmAcceptGssChannelBindings,
     },
     {
