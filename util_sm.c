@@ -81,11 +81,11 @@ gssEapStateToString(enum gss_eap_state state)
 void
 gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state)
 {
-    assert(state > ctx->state);
     assert(state <= GSSEAP_STATE_ESTABLISHED);
 
     fprintf(stderr, "GSS-EAP: state transition %s->%s\n",
-            gssEapStateToString(ctx->state), gssEapStateToString(state));
+            gssEapStateToString(GSSEAP_SM_STATE(ctx)),
+            gssEapStateToString(state));
 
     ctx->state = state;
 }
@@ -236,7 +236,7 @@ gssEapSmStep(OM_uint32 *minor,
         initialContextToken = 1;
     }
 
-    if (ctx->state == GSSEAP_STATE_ESTABLISHED) {
+    if (CTX_IS_ESTABLISHED(ctx)) {
         major = GSS_S_BAD_STATUS;
         *minor = GSSEAP_CONTEXT_ESTABLISHED;
         goto cleanup;
@@ -310,8 +310,12 @@ gssEapSmStep(OM_uint32 *minor,
 
             if (inputTokenType != NULL)
                 *inputTokenType |= ITOK_FLAG_VERIFIED;
-            if (ctx->state != oldState)
+            if (smFlags & SM_FLAG_RESTART) {
+                assert(ctx->state < oldState);
+                i = 0;
+            } else if (ctx->state != oldState) {
                 smFlags |= SM_FLAG_TRANSITED;
+            }
 
             if (innerOutputToken.value != NULL) {
                 innerOutputTokens->elements[innerOutputTokens->count] = innerOutputToken;

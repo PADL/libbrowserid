@@ -438,7 +438,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
 
     assert(cred != GSS_C_NO_CREDENTIAL);
 
-    if (ctx->state == GSSEAP_STATE_INITIAL) {
+    if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_INITIAL) {
         if (!gssEapCanReauthP(cred, target, timeReq))
             return GSS_S_CONTINUE_NEEDED;
 
@@ -533,6 +533,15 @@ eapGssSmInitIdentity(OM_uint32 *minor,
     OM_uint32 major;
     struct eap_config eapConfig;
 
+    if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_REAUTHENTICATE) {
+        /* server didn't support reauthentication, sent EAP request */
+        GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_INITIAL);
+        ctx->flags &= ~(CTX_FLAG_KRB_REAUTH);
+        *smFlags |= SM_FLAG_RESTART;
+    } else {
+        *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
+    }
+
     assert((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
     assert(inputToken == GSS_C_NO_BUFFER);
 
@@ -563,9 +572,7 @@ eapGssSmInitIdentity(OM_uint32 *minor,
 
     GSSEAP_SM_TRANSITION_NEXT(ctx);
 
-    /* force sending of empty token */
     *minor = 0;
-    *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
 
     return GSS_S_CONTINUE_NEEDED;
 }
@@ -775,7 +782,7 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
     {
         ITOK_TYPE_NONE,
         ITOK_TYPE_NONE,
-        GSSEAP_STATE_INITIAL,
+        GSSEAP_STATE_INITIAL | GSSEAP_STATE_REAUTHENTICATE,
         SM_ITOK_FLAG_CRITICAL | SM_ITOK_FLAG_REQUIRED,
         eapGssSmInitIdentity,
     },
@@ -910,7 +917,7 @@ gss_init_sec_context(OM_uint32 *minor,
     if (time_rec != NULL)
         gssEapContextTime(&tmpMinor, ctx, time_rec);
 
-    assert(ctx->state == GSSEAP_STATE_ESTABLISHED || major == GSS_S_CONTINUE_NEEDED);
+    assert(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
     if (cred != GSS_C_NO_CREDENTIAL)
