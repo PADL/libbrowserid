@@ -965,7 +965,8 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
             GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_ESTABLISHED);
         }
         ctx->gssFlags = gssFlags;
-    } else {
+    } else if ((*smFlags & SM_FLAG_INPUT_TOKEN_CRITICAL) == 0) {
+        /* pretend reauthentication attempt never happened */
         gssDeleteSecContext(&tmpMinor, &ctx->kerberosCtx, GSS_C_NO_BUFFER);
         ctx->flags &= ~(CTX_FLAG_KRB_REAUTH);
         GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_INITIAL);
