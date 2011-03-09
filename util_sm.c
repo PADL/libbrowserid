@@ -313,12 +313,10 @@ gssEapSmStep(OM_uint32 *minor,
 
             if (inputTokenType != NULL)
                 *inputTokenType |= ITOK_FLAG_VERIFIED;
-            if (smFlags & SM_FLAG_RESTART) {
-                assert(ctx->state < oldState);
-                i = 0;
-            } else if (ctx->state != oldState) {
+            if (ctx->state < oldState)
+                i = 0; /* restart */
+            else if (ctx->state != oldState)
                 smFlags |= SM_FLAG_TRANSITED;
-            }
 
             if (innerOutputToken.value != NULL) {
                 innerOutputTokens->elements[innerOutputTokens->count] = innerOutputToken;

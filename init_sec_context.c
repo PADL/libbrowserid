@@ -580,7 +580,6 @@ eapGssSmInitIdentity(OM_uint32 *minor,
         gssDeleteSecContext(&tmpMinor, &ctx->kerberosCtx, GSS_C_NO_BUFFER);
         ctx->flags &= ~(CTX_FLAG_KRB_REAUTH);
         GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_INITIAL);
-        *smFlags |= SM_FLAG_RESTART;
     } else {
         *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
     }
