@@ -459,7 +459,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
                               &ctx->kerberosCtx,
                               mechTarget,
                               (gss_OID)gss_mech_krb5,
-                              reqFlags,
+                              reqFlags | GSS_C_MUTUAL_FLAG,
                               timeReq,
                               chanBindings,
                               inputToken,
@@ -473,6 +473,8 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
     ctx->gssFlags = gssFlags;
 
     if (major == GSS_S_COMPLETE) {
+        assert(GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_REAUTHENTICATE);
+
         major = gssEapReauthComplete(minor, ctx, cred, actualMech, timeRec);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -735,9 +737,11 @@ eapGssSmInitReauthCreds(OM_uint32 *minor,
 {
     OM_uint32 major;
 
-    major = gssEapStoreReauthCreds(minor, ctx, cred, inputToken);
-    if (GSS_ERROR(major))
-        return major;
+    if (ctx->gssFlags & GSS_C_MUTUAL_FLAG) {
+        major = gssEapStoreReauthCreds(minor, ctx, cred, inputToken);
+        if (GSS_ERROR(major))
+            return major;
+    }
 
     *minor = 0;
     return GSS_S_CONTINUE_NEEDED;
