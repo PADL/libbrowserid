@@ -7,9 +7,9 @@ gssdir = $(libdir)/gss
 gss_LTLIBRARIES = mech_eap.la
 
 mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
-mech_eap_la_CFLAGS   = -g -Wall -fno-strict-aliasing \
+mech_eap_la_CFLAGS   = -g -Wunused-parameter -Wall -fno-strict-aliasing \
 			@KRB5_CFLAGS@ @EAP_CFLAGS@ @RADSEC_CFLAGS@ @TARGET_CFLAGS@
-mech_eap_la_CXXFLAGS = -g -Wall \
+mech_eap_la_CXXFLAGS = -g -Wunused-parameter -Wall \
 			@KRB5_CFLAGS@ @EAP_CFLAGS@ @RADSEC_CFLAGS@ \
 		        @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ @TARGET_CFLAGS@
 mech_eap_la_LDFLAGS  = -avoid-version -module \
