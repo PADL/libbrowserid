@@ -50,13 +50,6 @@ Edit $prefix/etc/raddb/users to add your test user and password:
 
     bob@PROJECT-MOONSHOT.ORG Cleartext-Password := secret 
 
-Edit $prefix/etc/raddb/attrs to permit the release of keying attributes,
-by commenting out or removing the following:
-
-    #      MS-MPPE-Recv-Key =* ANY,
-    #      MS-MPPE-Send-Key =* ANY,
-    #      MS-CHAP-MPPE-Keys =* ANY,
-
 Add an entry for your acceptor to $prefix/etc/raddb/clients.conf:
 
     client somehost {
