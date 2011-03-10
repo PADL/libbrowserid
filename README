@@ -17,42 +17,93 @@ so not all features will be available.
 Installing
 ==========
 
+GSS mechglue
+------------
+
 When installing, be sure to edit $prefix/etc/gss/mech to register
 the EAP mechanisms. A sample configuration file is in this directory.
+You may need to specify an absolute path.
+
+RADIUS client library
+---------------------
 
 Make sure your RADIUS library is configured to talk to the server of
 your choice: see the example radsec.conf in this directory. If you
 want to use TCP or TLS, you'll need to run radsecproxy in front of
 your RADIUS server.
 
+RADIUS server
+-------------
+
+These instructions apply to FreeRADIUS only, which is downloadable
+from http://freeradius.org/. After configure, make, install, do the
+following:
+
 On the RADIUS server side, you need to install dictionary.ukerna and
-include it from the main dictionary file (assuming it has a dictionary
-format compatible with FreeRADIUS).
+include it from the main dictionary file. Do this by adding:
+
+    $INCLUDE dictionary.ukerna
+
+to $prefix/share/freeradius/dictionary.
+
+Edit $prefix/etc/raddb/users to add your test user and password:
+
+    bob@PROJECT-MOONSHOT.ORG Cleartext-Password := secret 
+
+Edit $prefix/etc/raddb/attrs to permit the release of keying attributes,
+by commenting out or removing the following:
+
+    #      MS-MPPE-Recv-Key =* ANY,
+    #      MS-MPPE-Send-Key =* ANY,
+    #      MS-CHAP-MPPE-Keys =* ANY,
+
+Add an entry for your acceptor to $prefix/etc/raddb/clients.conf:
+
+    client somehost {
+        ipaddr = 127.0.0.1
+        secret = testing123
+        require_message_authenticator = yes
+    }
+
+Edit $prefix/etc/raddb/eap.conf and set:
+
+    eap {
+...
+        default_eap_type = ttls
+...
+        tls {
+            certdir = ...
+            cadir = ...
+            private_key_file = ...
+            certificate_file = ...
+        }
+        ttls {
+            default_eap_type = mschapv2
+            copy_request_to_tunnel = no
+            use_tunneled_reply = no
+            virtual_server = "inner-tunnel"
+        }
+...
+    }
+
+to enable EAP-TTLS.
 
 If you want the acceptor be able to identify the user, the RADIUS
 server needs to echo back the EAP username from the inner tunnel;
 for privacy, mech_eap only sends the realm in the EAP Identity
 response. To configure this with FreeRADIUS, add:
 
-        update outer.reply {
-            User-Name = "%{request:User-Name}"
-        }
+    update outer.reply {
+        User-Name = "%{request:User-Name}"
+    }
 
-to $prefix/etc/raddb/sites-enabled/inner-tunnel, and ensure that
+If you want to add a SAML assertion, do this with "update reply"
+in $prefix/etc/raddb/sites-available/default:
 
-    virtual_server = "inner-tunnel"
-
-is set in eap.conf for the desired EAP types. Other than that,
-configuration of FreeRADIUS should be identical for other NAS
-applications.
-
-To test the SAML assertion code path, you can place a fixed SAML
-assertion in the update reply block of the default configuration.
-
-        update reply {
-            SAML-AAA-Assertion = '<saml:Assertion ...'
-            SAML-AAA-Assertion += '...'
-        }
+    update reply {
+        SAML-AAA-Assertion = '<saml:Assertion ...'
+        SAML-AAA-Assertion += '...'
+    }
 
 You'll need to split it into multiple lines because of the RADIUS
 attribute size limit.
