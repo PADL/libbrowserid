@@ -672,10 +672,11 @@ avpImport(VALUE_PAIR **pVp,
     remain -= 4;
 
     da = dict_attrbyvalue(attrid);
-    if (da == NULL)
-        goto fail;
-
-    vp = pairalloc(da);
+    if (da != NULL) {
+        vp = pairalloc(da);
+    } else {
+        vp = paircreate(attrid, PW_TYPE_STRING);
+    }
     if (vp == NULL) {
         throw new std::bad_alloc;
         goto fail;
