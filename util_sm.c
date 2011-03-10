@@ -208,6 +208,7 @@ gssEapSmStep(OM_uint32 *minor,
     unsigned int smFlags = 0;
     size_t i, j;
     int initialContextToken = 0;
+    enum gss_eap_token_type tokType;
 
     assert(smCount > 0);
 
@@ -217,14 +218,13 @@ gssEapSmStep(OM_uint32 *minor,
     outputToken->value = NULL;
 
     if (inputToken != GSS_C_NO_BUFFER && inputToken->length != 0) {
-        enum gss_eap_token_type tokType;
-
         major = gssEapVerifyToken(minor, ctx, inputToken, &tokType,
                                   &unwrappedInputToken);
         if (GSS_ERROR(major))
             goto cleanup;
 
-        if (tokType != TOK_TYPE_ESTABLISH_CONTEXT) {
+        if (tokType != (CTX_IS_INITIATOR(ctx)
+                    ? TOK_TYPE_ACCEPTOR_CONTEXT : TOK_TYPE_INITIATOR_CONTEXT)) {
             major = GSS_S_DEFECTIVE_TOKEN;
             *minor = GSSEAP_WRONG_TOK_ID;
             goto cleanup;
@@ -383,8 +383,13 @@ gssEapSmStep(OM_uint32 *minor,
         tmpMajor = gssEapEncodeInnerTokens(&tmpMinor, innerOutputTokens,
                                            outputTokenTypes, &unwrappedOutputToken);
         if (tmpMajor == GSS_S_COMPLETE) {
+            if (CTX_IS_INITIATOR(ctx))
+                tokType = TOK_TYPE_INITIATOR_CONTEXT;
+            else
+                tokType = TOK_TYPE_ACCEPTOR_CONTEXT;
+
             tmpMajor = gssEapMakeToken(&tmpMinor, ctx, &unwrappedOutputToken,
-                                       TOK_TYPE_ESTABLISH_CONTEXT, outputToken);
+                                       tokType, outputToken);
             if (GSS_ERROR(tmpMajor)) {
                 major = tmpMajor;
                 *minor = tmpMinor;

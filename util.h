@@ -154,7 +154,8 @@ enum gss_eap_token_type {
     TOK_TYPE_EXPORT_NAME             = 0x0401,  /* RFC 2743 exported name */
     TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,  /* exported composite name */
     TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
-    TOK_TYPE_ESTABLISH_CONTEXT       = 0x0601,  /* establish context */
+    TOK_TYPE_INITIATOR_CONTEXT       = 0x0601,  /* initiator-sent context token */
+    TOK_TYPE_ACCEPTOR_CONTEXT        = 0x0602,  /* acceptor-sent context token */
 };
 
 /* inner token types and flags */
