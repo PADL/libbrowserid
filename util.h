@@ -553,7 +553,7 @@ enum gss_eap_state {
 void gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state);
 #define GSSEAP_SM_TRANSITION(ctx, state)    gssEapSmTransition((ctx), (state))
 #else
-#define GSSEAP_SM_TRANSITION(ctx, state)    do { (ctx)->state = (state); } while (0)
+#define GSSEAP_SM_TRANSITION(ctx, newstate)    do { (ctx)->state = (newstate); } while (0)
 #endif
 
 #define GSSEAP_SM_TRANSITION_NEXT(ctx)      GSSEAP_SM_TRANSITION((ctx), GSSEAP_STATE_NEXT(GSSEAP_SM_STATE((ctx))))
