@@ -479,8 +479,10 @@ gssEapRadiusAddAvp(OM_uint32 *minor,
         VALUE_PAIR *vp;
         size_t n = remain;
 
-        if (n > MAX_STRING_LEN)
-            n = MAX_STRING_LEN;
+	/*There's an extra byte of padding; RADIUS AVPS can only
+	 * be 253 octets*/
+        if (n > MAX_STRING_LEN-1)
+            n = MAX_STRING_LEN-1;
 
         vp = paircreate(attrid, PW_TYPE_OCTETS);
         if (vp == NULL) {
