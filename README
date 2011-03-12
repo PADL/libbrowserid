@@ -39,12 +39,14 @@ These instructions apply to FreeRADIUS only, which is downloadable
 from http://freeradius.org/. After configure, make, install, do the
 following:
 
-On the RADIUS server side, you need to install dictionary.ukerna and
-include it from the main dictionary file. Do this by adding:
+On the RADIUS server side, you need to install dictionary.ukerna to
+$prefix/etc/raddb and include it from the main dictionary file, by
+adding:
 
     $INCLUDE dictionary.ukerna
 
-to $prefix/share/freeradius/dictionary.
+to $prefix/etc/raddb/dictionary. Make sure these files are world-
+readable; they weren't in my installation.
 
 Edit $prefix/etc/raddb/users to add your test user and password:
 
