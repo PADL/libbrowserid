@@ -50,7 +50,7 @@ readable; they weren't in my installation.
 
 Edit $prefix/etc/raddb/users to add your test user and password:
 
-    bob@PROJECT-MOONSHOT.ORG Cleartext-Password := secret 
+    bob@PROJECT-MOONSHOT.ORG Cleartext-Password := secret
 
 Add an entry for your acceptor to $prefix/etc/raddb/clients.conf:
 
