@@ -575,9 +575,6 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         ctx->acceptorCtx.vps = frresp->vps;
         frresp->vps = NULL;
 
-        rs_conn_destroy(ctx->acceptorCtx.radConn);
-        ctx->acceptorCtx.radConn = NULL;
-
         major = acceptReadyEap(minor, ctx, cred);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -594,6 +591,12 @@ cleanup:
         rs_request_destroy(request);
     if (req != NULL)
         rs_packet_destroy(req);
+    if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_INITIATOR_EXTS) {
+        assert(major == GSS_S_CONTINUE_NEEDED);
+
+        rs_conn_destroy(ctx->acceptorCtx.radConn);
+        ctx->acceptorCtx.radConn = NULL;
+    }
 
     return major;
 }
