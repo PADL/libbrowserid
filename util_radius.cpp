@@ -791,7 +791,7 @@ gssEapRadiusMapError(OM_uint32 *minor,
 
     *minor = ERROR_TABLE_BASE_rse + code;
 
-    gssEapSaveStatusInfo(*minor, "%s", rs_err_msg(err, 0));
+    gssEapSaveStatusInfo(*minor, "%s", rs_err_msg(err));
     rs_err_free(err);
 
     return GSS_S_FAILURE;
