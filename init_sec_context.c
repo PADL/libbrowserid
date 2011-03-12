@@ -573,18 +573,17 @@ eapGssSmInitIdentity(OM_uint32 *minor,
 {
     struct eap_config eapConfig;
 
+#ifdef GSSEAP_ENABLE_REAUTH
     if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_REAUTHENTICATE) {
         OM_uint32 tmpMinor;
 
         /* server didn't support reauthentication, sent EAP request */
-#ifdef GSSEAP_ENABLE_REAUTH
         gssDeleteSecContext(&tmpMinor, &ctx->kerberosCtx, GSS_C_NO_BUFFER);
-#endif
         ctx->flags &= ~(CTX_FLAG_KRB_REAUTH);
         GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_INITIAL);
-    } else {
+    } else
+#endif
         *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
-    }
 
     assert((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
     assert(inputToken == GSS_C_NO_BUFFER);
@@ -833,7 +832,10 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
     {
         ITOK_TYPE_NONE,
         ITOK_TYPE_NONE,
-        GSSEAP_STATE_INITIAL | GSSEAP_STATE_REAUTHENTICATE,
+#ifdef GSSEAP_ENABLE_REAUTH
+        GSSEAP_STATE_REAUTHENTICATE |
+#endif
+        GSSEAP_STATE_INITIAL,
         SM_ITOK_FLAG_REQUIRED,
         eapGssSmInitIdentity
     },

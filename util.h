@@ -540,7 +540,9 @@ enum gss_eap_state {
     GSSEAP_STATE_AUTHENTICATE   = 0x02,     /* exchange EAP messages */
     GSSEAP_STATE_INITIATOR_EXTS = 0x04,     /* initiator extensions */
     GSSEAP_STATE_ACCEPTOR_EXTS  = 0x08,     /* acceptor extensions */
+#ifdef GSSEAP_ENABLE_REAUTH
     GSSEAP_STATE_REAUTHENTICATE = 0x10,     /* GSS reauthentication messages */
+#endif
     GSSEAP_STATE_ESTABLISHED    = 0x20,     /* context established */
     GSSEAP_STATE_ALL            = 0x3F
 };
