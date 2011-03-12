@@ -624,7 +624,7 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
     major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
                                     iov, 2, TOK_TYPE_WRAP);
     if (GSS_ERROR(major))
-        return GSS_S_BAD_BINDINGS;
+        return major;
 
     if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS &&
         !bufferEqual(&iov[0].buffer, &chanBindings->application_data)) {
