@@ -591,6 +591,8 @@ cleanup:
         rs_request_destroy(request);
     if (req != NULL)
         rs_packet_destroy(req);
+    if (resp != NULL)
+        rs_packet_destroy(resp);
     if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_INITIATOR_EXTS) {
         assert(major == GSS_S_CONTINUE_NEEDED);
 
