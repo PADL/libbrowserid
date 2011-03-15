@@ -44,6 +44,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <time.h>
 #include <sys/param.h>
 
