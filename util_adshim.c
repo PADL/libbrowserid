@@ -49,31 +49,33 @@ static krb5_data radius_ad_attr = {
     KV5M_DATA, sizeof("urn:authdata-radius-avp") - 1, "urn:authdata-radius-avp" };
 
 static krb5_error_code
-radius_ad_init(krb5_context kcontext, void **plugin_context)
+radius_ad_init(krb5_context kcontext GSSEAP_UNUSED,
+               void **plugin_context)
 {
     *plugin_context = 0;
     return 0;
 }
 
 static void
-radius_ad_flags(krb5_context kcontext,
-                void *plugin_context,
-                krb5_authdatatype ad_type,
+radius_ad_flags(krb5_context kcontext GSSEAP_UNUSED,
+                void *plugin_context GSSEAP_UNUSED,
+                krb5_authdatatype ad_type GSSEAP_UNUSED,
                 krb5_flags *flags)
 {
     *flags = AD_USAGE_KDC_ISSUED | AD_INFORMATIONAL;
 }
 
 static void
-radius_ad_fini(krb5_context kcontext, void *plugin_context)
+radius_ad_fini(krb5_context kcontext GSSEAP_UNUSED,
+               void *plugin_context GSSEAP_UNUSED)
 {
     return;
 }
 
 static krb5_error_code
-radius_ad_request_init(krb5_context kcontext,
-                       struct _krb5_authdata_context *context,
-                       void *plugin_context,
+radius_ad_request_init(krb5_context kcontext GSSEAP_UNUSED,
+                       struct _krb5_authdata_context *context GSSEAP_UNUSED,
+                       void *plugin_context GSSEAP_UNUSED,
                        void **request_context)
 {
     struct radius_ad_context *ctx;
@@ -89,10 +91,10 @@ radius_ad_request_init(krb5_context kcontext,
 
 static krb5_error_code
 radius_ad_export_authdata(krb5_context kcontext,
-                          struct _krb5_authdata_context *context,
-                          void *plugin_context,
+                          struct _krb5_authdata_context *context GSSEAP_UNUSED,
+                          void *plugin_context GSSEAP_UNUSED,
                           void *request_context,
-                          krb5_flags usage,
+                          krb5_flags usage GSSEAP_UNUSED,
                           krb5_authdata ***out_authdata)
 {
     struct radius_ad_context *radius_ad = (struct radius_ad_context *)request_context;
@@ -111,12 +113,12 @@ radius_ad_export_authdata(krb5_context kcontext,
 
 static krb5_error_code
 radius_ad_import_authdata(krb5_context kcontext,
-                          struct _krb5_authdata_context *context,
-                          void *plugin_context,
+                          struct _krb5_authdata_context *context GSSEAP_UNUSED,
+                          void *plugin_context GSSEAP_UNUSED,
                           void *request_context,
                           krb5_authdata **authdata,
                           krb5_boolean kdc_issued_flag,
-                          krb5_const_principal issuer)
+                          krb5_const_principal issuer GSSEAP_UNUSED)
 {
     struct radius_ad_context *radius_ad = (struct radius_ad_context *)request_context;
 
@@ -140,8 +142,8 @@ radius_ad_import_authdata(krb5_context kcontext,
 
 static void
 radius_ad_request_fini(krb5_context kcontext,
-                       struct _krb5_authdata_context *context,
-                       void *plugin_context,
+                       struct _krb5_authdata_context *context GSSEAP_UNUSED,
+                       void *plugin_context GSSEAP_UNUSED,
                        void *request_context)
 {
     struct radius_ad_context *radius_ad = (struct radius_ad_context *)request_context;
@@ -153,15 +155,15 @@ radius_ad_request_fini(krb5_context kcontext,
 }
 
 static krb5_error_code
-radius_ad_get_attribute(krb5_context kcontext,
-                        struct _krb5_authdata_context *context,
-                        void *plugin_context,
+radius_ad_get_attribute(krb5_context kcontext GSSEAP_UNUSED,
+                        struct _krb5_authdata_context *context GSSEAP_UNUSED,
+                        void *plugin_context GSSEAP_UNUSED,
                         void *request_context,
                         const krb5_data *attribute,
                         krb5_boolean *authenticated,
                         krb5_boolean *complete,
                         krb5_data *value,
-                        krb5_data *display_value,
+                        krb5_data *display_value GSSEAP_UNUSED,
                         int *more)
 {
     struct radius_ad_context *radius_ad = (struct radius_ad_context *)request_context;
@@ -189,11 +191,11 @@ radius_ad_get_attribute(krb5_context kcontext,
 }
 
 static krb5_error_code
-radius_ad_copy(krb5_context kcontext,
-               struct _krb5_authdata_context *context,
-               void *plugin_context,
+radius_ad_copy(krb5_context kcontext GSSEAP_UNUSED,
+               struct _krb5_authdata_context *context GSSEAP_UNUSED,
+               void *plugin_context GSSEAP_UNUSED,
                void *request_context,
-               void *dst_plugin_context,
+               void *dst_plugin_context GSSEAP_UNUSED,
                void *dst_request_context)
 {
     struct radius_ad_context *radius_ad_src =

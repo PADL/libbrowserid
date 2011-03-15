@@ -39,7 +39,7 @@
 static OM_uint32
 setCredRadiusConfigFile(OM_uint32 *minor,
                         gss_cred_id_t cred,
-                        const gss_OID oid,
+                        const gss_OID oid GSSEAP_UNUSED,
                         const gss_buffer_t buffer)
 {
     OM_uint32 major;
@@ -63,7 +63,7 @@ setCredRadiusConfigFile(OM_uint32 *minor,
 static OM_uint32
 setCredRadiusConfigStanza(OM_uint32 *minor,
                           gss_cred_id_t cred,
-                          const gss_OID oid,
+                          const gss_OID oid GSSEAP_UNUSED,
                           const gss_buffer_t buffer)
 {
     OM_uint32 major;
@@ -87,7 +87,7 @@ setCredRadiusConfigStanza(OM_uint32 *minor,
 static OM_uint32
 setCredFlag(OM_uint32 *minor,
             gss_cred_id_t cred,
-            const gss_OID oid,
+            const gss_OID oid GSSEAP_UNUSED,
             const gss_buffer_t buffer)
 {
     OM_uint32 flags;

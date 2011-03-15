@@ -39,7 +39,7 @@
 static OM_uint32
 inquireSessionKey(OM_uint32 *minor,
                   const gss_ctx_id_t ctx,
-                  const gss_OID desired_object,
+                  const gss_OID desired_object GSSEAP_UNUSED,
                   gss_buffer_set_t *dataSet)
 {
     OM_uint32 major, tmpMinor;

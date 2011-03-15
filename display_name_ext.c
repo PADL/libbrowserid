@@ -38,8 +38,8 @@
 
 OM_uint32
 gss_display_name_ext(OM_uint32 *minor,
-                     gss_name_t name,
-                     gss_OID display_as_name_type,
+                     gss_name_t name GSSEAP_UNUSED,
+                     gss_OID display_as_name_type GSSEAP_UNUSED,
                      gss_buffer_t display_name)
 {
     *minor = 0;

@@ -111,7 +111,7 @@ OM_uint32
 gssEapAcquireCred(OM_uint32 *minor,
                   const gss_name_t desiredName,
                   const gss_buffer_t password,
-                  OM_uint32 timeReq,
+                  OM_uint32 timeReq GSSEAP_UNUSED,
                   const gss_OID_set desiredMechs,
                   int credUsage,
                   gss_cred_id_t *pCred,

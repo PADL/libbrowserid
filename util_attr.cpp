@@ -425,7 +425,7 @@ struct eap_gss_get_attr_types_args {
 };
 
 static bool
-addAttribute(const gss_eap_attr_provider *provider,
+addAttribute(const gss_eap_attr_provider *provider GSSEAP_UNUSED,
              const gss_buffer_t attribute,
              void *data)
 {
@@ -760,8 +760,8 @@ gss_eap_attr_ctx::composeAttributeName(unsigned int type,
 OM_uint32
 gssEapInquireName(OM_uint32 *minor,
                   gss_name_t name,
-                  int *name_is_MN,
-                  gss_OID *MN_mech,
+                  int *name_is_MN GSSEAP_UNUSED,
+                  gss_OID *MN_mech GSSEAP_UNUSED,
                   gss_buffer_set_t *attrs)
 {
     if (name->attrCtx == NULL) {
@@ -1029,6 +1029,7 @@ gssEapReleaseAttrContext(OM_uint32 *minor,
     if (name->attrCtx != NULL)
         delete name->attrCtx;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -1043,7 +1044,7 @@ gssEapCreateAttrContext(OM_uint32 *minor,
                         struct gss_eap_attr_ctx **pAttrContext,
                         time_t *pExpiryTime)
 {
-    gss_eap_attr_ctx *ctx;
+    gss_eap_attr_ctx *ctx = NULL;
     OM_uint32 major;
 
     assert(gssCtx != GSS_C_NO_CONTEXT);
@@ -1052,22 +1053,26 @@ gssEapCreateAttrContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
+    *minor = GSSEAP_ATTR_CONTEXT_FAILURE;
+    major = GSS_S_FAILURE;
+
     try {
         ctx = new gss_eap_attr_ctx();
-        if (!ctx->initFromGssContext(gssCred, gssCtx)) {
+        if (ctx->initFromGssContext(gssCred, gssCtx)) {
+            *minor = 0;
+            major = GSS_S_COMPLETE;
+        } else {
             delete ctx;
-            *minor = GSSEAP_ATTR_CONTEXT_FAILURE;
-            return GSS_S_FAILURE;
         }
     } catch (std::exception &e) {
-        major = ctx->mapException(minor, e);
-        delete ctx;
-        return major;
+        if (ctx != NULL)
+            major = ctx->mapException(minor, e);
     }
 
-    *pAttrContext = ctx;
-    *pExpiryTime = ctx->getExpiryTime();
+    if (major == GSS_S_COMPLETE) {
+        *pAttrContext = ctx;
+        *pExpiryTime = ctx->getExpiryTime();
+    }
 
-    *minor = 0;
-    return GSS_S_COMPLETE;
+    return major;
 }

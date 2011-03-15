@@ -157,7 +157,8 @@ gss_display_status(OM_uint32 *minor,
         return GSS_S_BAD_MECH;
     }
 
-    if (status_type != GSS_C_MECH_CODE) {
+    if (status_type != GSS_C_MECH_CODE ||
+        *message_context != 0) {
         /* we rely on the mechglue for GSS_C_GSS_CODE */
         *minor = 0;
         return GSS_S_BAD_STATUS;

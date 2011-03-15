@@ -370,7 +370,12 @@ krbBlockSize(krb5_context krbContext,
 }
 
 krb5_error_code
-krbEnctypeToString(krb5_context krbContext,
+krbEnctypeToString(
+#ifdef HAVE_HEIMDAL_VERSION
+                   krb5_context krbContext,
+#else
+                   krb5_context krbContext GSSEAP_UNUSED,
+#endif
                    krb5_enctype enctype,
                    const char *prefix,
                    gss_buffer_t string)
