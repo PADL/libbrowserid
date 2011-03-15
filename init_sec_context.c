@@ -898,6 +898,7 @@ gss_init_sec_context(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
+    int initialContextToken = 0;
 
     *minor = 0;
 
@@ -915,13 +916,7 @@ gss_init_sec_context(OM_uint32 *minor,
             return major;
 
         ctx->flags |= CTX_FLAG_INITIATOR;
-
-        major = initBegin(minor, cred, ctx, target_name, mech_type,
-                          req_flags, time_req, input_chan_bindings);
-        if (GSS_ERROR(major)) {
-            gssEapReleaseContext(minor, &ctx);
-            return major;
-        }
+        initialContextToken = 1;
 
         *context_handle = ctx;
     }
@@ -948,11 +943,19 @@ gss_init_sec_context(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&cred->mutex);
 
-
     if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
         major = GSS_S_NO_CRED;
         *minor = GSSEAP_CRED_USAGE_MISMATCH;
         goto cleanup;
+    }
+
+    if (initialContextToken) {
+        major = initBegin(minor, cred, ctx, target_name, mech_type,
+                          req_flags, time_req, input_chan_bindings);
+        if (GSS_ERROR(major)) {
+            gssEapReleaseContext(minor, &ctx);
+            return major;
+        }
     }
 
     major = gssEapSmStep(minor,
