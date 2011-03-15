@@ -80,12 +80,12 @@ int eap_peer_method_unload(struct eap_method *method);
 
 #else /* CONFIG_DYNAMIC_EAP_METHODS */
 
-static inline int eap_peer_method_load(const char *so)
+static inline int eap_peer_method_load(const char *so UNUSED)
 {
 	return 0;
 }
 
-static inline int eap_peer_method_unload(struct eap_method *method)
+static inline int eap_peer_method_unload(struct eap_method *method UNUSED)
 {
 	return 0;
 }

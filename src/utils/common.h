@@ -337,9 +337,11 @@ static inline unsigned int wpa_swap_32(unsigned int v)
 #ifdef __GNUC__
 #define PRINTF_FORMAT(a,b) __attribute__ ((format (printf, (a), (b))))
 #define STRUCT_PACKED __attribute__ ((packed))
+#define UNUSED __attribute__ ((unused))
 #else
 #define PRINTF_FORMAT(a,b)
 #define STRUCT_PACKED
+#define UNUSED
 #endif
 
 
