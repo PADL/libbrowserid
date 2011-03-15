@@ -282,7 +282,7 @@ gssEapImportNameInternal(OM_uint32 *minor,
     remain = nameBuffer->length;
 
     if (flags & EXPORT_NAME_FLAG_OID) {
-        if (remain < 6 + GSS_EAP_MECHANISM->length + 4)
+        if (remain < 6 + GSS_EAP_MECHANISM->length)
             return GSS_S_BAD_NAME;
 
         if (flags & EXPORT_NAME_FLAG_COMPOSITE)
@@ -312,6 +312,7 @@ gssEapImportNameInternal(OM_uint32 *minor,
     }
 
     /* NAME_LEN */
+    CHECK_REMAIN(4);
     len = load_uint32_be(p);
     UPDATE_REMAIN(4);
 
