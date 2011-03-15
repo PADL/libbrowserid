@@ -120,6 +120,9 @@ gssEapAcquireCred(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_cred_id_t cred;
+#ifdef GSSEAP_DEBUG
+    gss_buffer_desc envPassword;
+#endif
 
     /* XXX TODO validate with changed set_cred_option API */
     *pCred = GSS_C_NO_CREDENTIAL;
@@ -189,6 +192,15 @@ gssEapAcquireCred(OM_uint32 *minor,
         cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
     }
 
+#ifdef GSSEAP_DEBUG
+    if (password == GSS_C_NO_BUFFER &&
+        (envPassword.value = getenv("GSSEAP_CREDS")) != NULL) {
+        envPassword.length = strlen((char *)envPassword.value);
+        major = duplicateBuffer(minor, &envPassword, &cred->password);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    } else
+#endif /* GSSEAP_DEBUG */
     if (password != GSS_C_NO_BUFFER) {
         major = duplicateBuffer(minor, password, &cred->password);
         if (GSS_ERROR(major))
