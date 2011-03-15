@@ -111,6 +111,7 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
 
     GSSEAP_KRB_INIT(&krbContext);
     krb5_free_principal(krbContext, name->krbPrincipal);
+    gssEapReleaseOid(&tmpMinor, &name->mechanismUsed);
 
     gssEapReleaseAttrContext(&tmpMinor, name);
 
@@ -282,7 +283,10 @@ gssEapImportNameInternal(OM_uint32 *minor,
     remain = nameBuffer->length;
 
     if (flags & EXPORT_NAME_FLAG_OID) {
-        if (remain < 6 + GSS_EAP_MECHANISM->length)
+        gss_OID_desc mech;
+
+        /* TOK_ID || MECH_OID_LEN || MECH_OID */
+        if (remain < 6)
             return GSS_S_BAD_NAME;
 
         if (flags & EXPORT_NAME_FLAG_COMPOSITE)
@@ -297,18 +301,34 @@ gssEapImportNameInternal(OM_uint32 *minor,
 
         /* MECH_OID_LEN */
         len = load_uint16_be(p);
-        if (len != 2 + GSS_EAP_MECHANISM->length)
+        if (len < 2)
             return GSS_S_BAD_NAME;
         UPDATE_REMAIN(2);
 
         /* MECH_OID */
         if (p[0] != 0x06)
             return GSS_S_BAD_NAME;
-        if (p[1] != GSS_EAP_MECHANISM->length)
-            return GSS_S_BAD_MECH;
-        if (memcmp(&p[2], GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length))
-            return GSS_S_BAD_MECH;
-        UPDATE_REMAIN(2 + GSS_EAP_MECHANISM->length);
+
+        mech.length = p[1];
+        mech.elements = &p[2];
+
+        CHECK_REMAIN(mech.length);
+
+        if (!gssEapIsMechanismOid(&mech)) {
+            major = GSS_S_BAD_NAME;
+            *minor = GSSEAP_WRONG_MECH;
+            goto cleanup;
+        }
+
+        if (oidEqual(&mech, GSS_EAP_MECHANISM)) {
+            name->mechanismUsed = GSS_C_NO_OID;
+        } else if (!gssEapInternalizeOid(&mech, &name->mechanismUsed)) {
+            major = duplicateOid(minor, &mech, &name->mechanismUsed);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+
+        UPDATE_REMAIN(2 + mech.length);
     }
 
     /* NAME_LEN */
@@ -379,7 +399,8 @@ OM_uint32
 gssEapImportName(OM_uint32 *minor,
                  const gss_buffer_t nameBuffer,
                  gss_OID nameType,
-                 gss_name_t *name)
+                 gss_OID mechType,
+                 gss_name_t *pName)
 {
     struct gss_eap_name_import_provider nameTypes[] = {
         { GSS_C_NT_USER_NAME,               importUserName              },
@@ -393,18 +414,36 @@ gssEapImportName(OM_uint32 *minor,
 #endif
     };
     size_t i;
-
-    *name = GSS_C_NO_NAME;
+    OM_uint32 major = GSS_S_BAD_NAMETYPE;
+    OM_uint32 tmpMinor;
+    gss_name_t name = GSS_C_NO_NAME;
 
     if (nameType == GSS_C_NO_OID)
         nameType = nameTypes[0].oid;
 
     for (i = 0; i < sizeof(nameTypes) / sizeof(nameTypes[0]); i++) {
-        if (oidEqual(nameTypes[i].oid, nameType))
-            return nameTypes[i].import(minor, nameBuffer, name);
+        if (oidEqual(nameTypes[i].oid, nameType)) {
+            major = nameTypes[i].import(minor, nameBuffer, &name);
+            break;
+        }
     }
 
-    return GSS_S_BAD_NAMETYPE;
+    if (major == GSS_S_COMPLETE &&
+        mechType != GSS_C_NO_OID) {
+        assert(gssEapIsConcreteMechanismOid(mechType));
+        assert(name->mechanismUsed == GSS_C_NO_OID);
+
+        if (!gssEapInternalizeOid(mechType, &name->mechanismUsed)) {
+            major = duplicateOid(minor, mechType, &name->mechanismUsed);
+        }
+    }
+
+    if (GSS_ERROR(major))
+        gssEapReleaseName(&tmpMinor, &name);
+    else
+        *pName = name;
+
+    return major;
 }
 
 OM_uint32
@@ -428,9 +467,15 @@ gssEapExportNameInternal(OM_uint32 *minor,
     size_t krbNameLen, exportedNameLen;
     unsigned char *p;
     gss_buffer_desc attrs = GSS_C_EMPTY_BUFFER;
+    gss_OID mech;
 
     exportedName->length = 0;
     exportedName->value = NULL;
+
+    if (name->mechanismUsed != GSS_C_NO_OID)
+        mech = name->mechanismUsed;
+    else
+        mech = GSS_EAP_MECHANISM;
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -443,7 +488,7 @@ gssEapExportNameInternal(OM_uint32 *minor,
 
     exportedNameLen = 0;
     if (flags & EXPORT_NAME_FLAG_OID) {
-        exportedNameLen += 6 + GSS_EAP_MECHANISM->length;
+        exportedNameLen += 6 + mech->length;
     }
     exportedNameLen += 4 + krbNameLen;
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
@@ -470,14 +515,14 @@ gssEapExportNameInternal(OM_uint32 *minor,
                         : TOK_TYPE_EXPORT_NAME,
                         p);
         p += 2;
-        store_uint16_be(GSS_EAP_MECHANISM->length + 2, p);
+        store_uint16_be(mech->length + 2, p);
         p += 2;
 
         /* MECH_OID */
         *p++ = 0x06;
-        *p++ = GSS_EAP_MECHANISM->length & 0xff;
-        memcpy(p, GSS_EAP_MECHANISM->elements, GSS_EAP_MECHANISM->length);
-        p += GSS_EAP_MECHANISM->length;
+        *p++ = mech->length & 0xff;
+        memcpy(p, mech->elements, mech->length);
+        p += mech->length;
     }
 
     /* NAME_LEN */
@@ -526,6 +571,22 @@ gssEapDuplicateName(OM_uint32 *minor,
     major = gssEapAllocName(minor, &name);
     if (GSS_ERROR(major)) {
         return major;
+    }
+
+    if (input_name->mechanismUsed == GSS_C_NO_OID) {
+        name->mechanismUsed = GSS_C_NO_OID;
+    } else if (gssEapIsConcreteMechanismOid(input_name->mechanismUsed)) {
+        if (!gssEapInternalizeOid(input_name->mechanismUsed,
+                                  &name->mechanismUsed)) {
+            major = duplicateOid(minor, input_name->mechanismUsed,
+                                 &name->mechanismUsed);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+    } else {
+        major = GSS_S_BAD_MECH;
+        *minor = GSSEAP_WRONG_MECH;
+        goto cleanup;
     }
 
     name->flags = input_name->flags;

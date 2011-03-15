@@ -543,7 +543,9 @@ eapGssSmInitAcceptorName(OM_uint32 *minor,
                ctx->acceptorName == GSS_C_NO_NAME) {
         /* Accept target name hint from acceptor */
         major = gssEapImportName(minor, inputToken,
-                                 GSS_C_NT_USER_NAME, &ctx->acceptorName);
+                                 GSS_C_NT_USER_NAME,
+                                 ctx->mechanismUsed,
+                                 &ctx->acceptorName);
         if (GSS_ERROR(major))
             return major;
     }

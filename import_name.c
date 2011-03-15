@@ -43,5 +43,5 @@ gss_import_name(OM_uint32 *minor,
                 gss_name_t *output_name)
 {
     return gssEapImportName(minor, import_name_buffer,
-                            input_name_type, output_name);
+                            input_name_type, GSS_C_NO_OID, output_name);
 }
