@@ -152,6 +152,8 @@ sequenceCheck(OM_uint32 *minor,
     int i;
     uint64_t expected;
 
+    *minor = 0;
+
     q = (queue *) (*vqueue);
 
     if (!q->do_replay && !q->do_sequence)
@@ -241,6 +243,7 @@ sequenceFree(OM_uint32 *minor, void **vqueue)
 
     *vqueue = NULL;
 
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 
@@ -248,7 +251,7 @@ sequenceFree(OM_uint32 *minor, void **vqueue)
  * These support functions are for the serialization routines
  */
 size_t
-sequenceSize(void *vqueue)
+sequenceSize(void *vqueue GSSEAP_UNUSED)
 {
     return sizeof(queue);
 }

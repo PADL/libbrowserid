@@ -38,7 +38,7 @@
 
 OM_uint32
 gss_inquire_mechs_for_name(OM_uint32 *minor,
-                           const gss_name_t input_name,
+                           const gss_name_t input_name GSSEAP_UNUSED,
                            gss_OID_set *mech_types)
 {
     return gssEapIndicateMechs(minor, mech_types);

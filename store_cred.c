@@ -36,7 +36,7 @@ OM_uint32
 gss_store_cred(OM_uint32 *minor,
                const gss_cred_id_t cred,
                gss_cred_usage_t input_usage,
-               const gss_OID desired_mech,
+               const gss_OID desired_mech GSSEAP_UNUSED,
                OM_uint32 overwrite_cred,
                OM_uint32 default_cred,
                gss_OID_set *elements_stored,

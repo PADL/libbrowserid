@@ -43,7 +43,7 @@
  */
 OM_uint32
 gss_add_cred(OM_uint32 *minor,
-             gss_cred_id_t input_cred_handle,
+             gss_cred_id_t input_cred_handle GSSEAP_UNUSED,
              gss_name_t desired_name,
              gss_OID desired_mech,
              gss_cred_usage_t cred_usage,

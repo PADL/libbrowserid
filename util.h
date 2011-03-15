@@ -75,6 +75,12 @@ extern "C" {
 #define MIN(_a,_b)  ((_a)<(_b)?(_a):(_b))
 #endif
 
+#if !(defined(__cplusplus)) || (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
+#define GSSEAP_UNUSED __attribute__ ((__unused__)) 
+#else
+#define GSSEAP_UNUSED
+#endif
+
 /* util_buffer.c */
 OM_uint32
 makeStringBuffer(OM_uint32 *minor,

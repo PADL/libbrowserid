@@ -375,7 +375,7 @@ cleanup:
 }
 
 static int
-isTicketGrantingServiceP(krb5_context krbContext,
+isTicketGrantingServiceP(krb5_context krbContext GSSEAP_UNUSED,
                          krb5_const_principal principal)
 {
     if (KRB_PRINC_LENGTH(principal) == 2 &&
@@ -652,7 +652,11 @@ static gss_buffer_desc radiusAvpKrbAttr = {
  */
 static OM_uint32
 defrostAttrContext(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
                    gss_ctx_id_t glueContext,
+#else
+                   gss_ctx_id_t glueContext GSSEAP_UNUSED,
+#endif
                    gss_name_t glueName,
                    gss_name_t mechName)
 {
@@ -786,7 +790,7 @@ cleanup:
 OM_uint32
 gssEapReauthComplete(OM_uint32 *minor,
                      gss_ctx_id_t ctx,
-                     gss_cred_id_t cred,
+                     gss_cred_id_t cred GSSEAP_UNUSED,
                      const gss_OID mech,
                      OM_uint32 timeRec)
 {

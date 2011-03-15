@@ -70,7 +70,7 @@ unwrapToken(OM_uint32 *minor,
 #ifdef HAVE_HEIMDAL_VERSION
             krb5_crypto krbCrypto,
 #else
-            krb5_keyblock *unused,
+            krb5_keyblock *unused GSSEAP_UNUSED,
 #endif
             int *conf_state,
             gss_qop_t *qop_state,

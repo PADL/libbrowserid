@@ -194,7 +194,7 @@ gss_eap_saml_assertion_provider::getAttributeTypes(gss_eap_attr_enumeration_cb a
 }
 
 bool
-gss_eap_saml_assertion_provider::setAttribute(int complete,
+gss_eap_saml_assertion_provider::setAttribute(int complete GSSEAP_UNUSED,
                                               const gss_buffer_t attr,
                                               const gss_buffer_t value)
 {
@@ -207,7 +207,7 @@ gss_eap_saml_assertion_provider::setAttribute(int complete,
 }
 
 bool
-gss_eap_saml_assertion_provider::deleteAttribute(const gss_buffer_t value)
+gss_eap_saml_assertion_provider::deleteAttribute(const gss_buffer_t value GSSEAP_UNUSED)
 {
     delete m_assertion;
     m_assertion = NULL;
@@ -260,7 +260,7 @@ gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
                                               int *authenticated,
                                               int *complete,
                                               gss_buffer_t value,
-                                              gss_buffer_t display_value,
+                                              gss_buffer_t display_value GSSEAP_UNUSED,
                                               int *more) const
 {
     string str;
@@ -289,7 +289,7 @@ gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
 
 gss_any_t
 gss_eap_saml_assertion_provider::mapToAny(int authenticated,
-                                          gss_buffer_t type_id) const
+                                          gss_buffer_t type_id GSSEAP_UNUSED) const
 {
     if (authenticated && !m_authenticated)
         return (gss_any_t)NULL;
@@ -298,7 +298,7 @@ gss_eap_saml_assertion_provider::mapToAny(int authenticated,
 }
 
 void
-gss_eap_saml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id,
+gss_eap_saml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
                                                        gss_any_t input) const
 {
     delete ((saml2::Assertion *)input);
@@ -491,7 +491,7 @@ decomposeAttributeName(const gss_buffer_t attr)
 }
 
 bool
-gss_eap_saml_attr_provider::setAttribute(int complete,
+gss_eap_saml_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
                                          const gss_buffer_t attr,
                                          const gss_buffer_t value)
 {
@@ -683,15 +683,15 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 }
 
 gss_any_t
-gss_eap_saml_attr_provider::mapToAny(int authenticated,
-                                     gss_buffer_t type_id) const
+gss_eap_saml_attr_provider::mapToAny(int authenticated GSSEAP_UNUSED,
+                                     gss_buffer_t type_id GSSEAP_UNUSED) const
 {
     return (gss_any_t)NULL;
 }
 
 void
-gss_eap_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
-                                                  gss_any_t input) const
+gss_eap_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
+                                                  gss_any_t input GSSEAP_UNUSED) const
 {
 }
 
@@ -747,5 +747,7 @@ gssEapSamlAttrProvidersFinalize(OM_uint32 *minor)
 {
     gss_eap_saml_attr_provider::finalize();
     gss_eap_saml_assertion_provider::finalize();
+
+    *minor = 0;
     return GSS_S_COMPLETE;
 }

@@ -38,7 +38,7 @@
 
 OM_uint32
 gss_add_cred_with_password(OM_uint32 *minor,
-                           const gss_cred_id_t input_cred_handle,
+                           const gss_cred_id_t input_cred_handle GSSEAP_UNUSED,
                            const gss_name_t desired_name,
                            const gss_OID desired_mech,
                            const gss_buffer_t password,

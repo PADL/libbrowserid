@@ -75,50 +75,73 @@ public:
     }
 
     virtual bool initFromExistingContext(const gss_eap_attr_ctx *manager,
-                                         const gss_eap_attr_provider *ctx)
+                                         const gss_eap_attr_provider *ctx GSSEAP_UNUSED)
     {
         return initWithManager(manager);
     }
 
     virtual bool initFromGssContext(const gss_eap_attr_ctx *manager,
-                                    const gss_cred_id_t cred,
-                                    const gss_ctx_id_t ctx)
+                                    const gss_cred_id_t cred GSSEAP_UNUSED,
+                                    const gss_ctx_id_t ctx GSSEAP_UNUSED)
     {
         return initWithManager(manager);
     }
 
-    virtual bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const
+    virtual bool getAttributeTypes(gss_eap_attr_enumeration_cb GSSEAP_UNUSED,
+                                   void *data GSSEAP_UNUSED) const
     {
         return false;
     }
 
-    virtual bool setAttribute(int complete,
-                              const gss_buffer_t attr,
-                              const gss_buffer_t value) { return false; }
-    virtual bool deleteAttribute(const gss_buffer_t value) { return false; }
-    virtual bool getAttribute(const gss_buffer_t attr,
-                              int *authenticated,
-                              int *complete,
-                              gss_buffer_t value,
-                              gss_buffer_t display_value,
-                              int *more) const { return false; }
+    virtual bool setAttribute(int complete GSSEAP_UNUSED,
+                              const gss_buffer_t attr GSSEAP_UNUSED,
+                              const gss_buffer_t value GSSEAP_UNUSED)
+    {
+        return false;
+    }
 
-    virtual gss_any_t mapToAny(int authenticated,
-                               gss_buffer_t type_id) const { return NULL; }
-    virtual void releaseAnyNameMapping(gss_buffer_t type_id,
-                                       gss_any_t input) const {}
+    virtual bool deleteAttribute(const gss_buffer_t value GSSEAP_UNUSED)
+    {
+        return false;
+    }
 
-    virtual void exportToBuffer(gss_buffer_t buffer) const {}
+    virtual bool getAttribute(const gss_buffer_t attr GSSEAP_UNUSED,
+                              int *authenticated GSSEAP_UNUSED,
+                              int *complete GSSEAP_UNUSED,
+                              gss_buffer_t value GSSEAP_UNUSED,
+                              gss_buffer_t display_value GSSEAP_UNUSED,
+                              int *more GSSEAP_UNUSED) const
+    {
+        return false;
+    }
+
+    virtual gss_any_t mapToAny(int authenticated GSSEAP_UNUSED,
+                               gss_buffer_t type_id GSSEAP_UNUSED) const
+    {
+        return NULL;
+    }
+    virtual void releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
+                                       gss_any_t input GSSEAP_UNUSED) const
+    {
+    }
+
+    virtual void exportToBuffer(gss_buffer_t buffer GSSEAP_UNUSED) const
+    {
+    }
+
     virtual bool initFromBuffer(const gss_eap_attr_ctx *manager,
-                                const gss_buffer_t buffer)
+                                const gss_buffer_t buffer GSSEAP_UNUSED)
     {
         return initWithManager(manager);
     }
 
     virtual time_t getExpiryTime(void) const { return 0; }
 
-    virtual OM_uint32 mapException(OM_uint32 *minor, std::exception &e) const
-    { return GSS_S_CONTINUE_NEEDED; }
+    virtual OM_uint32 mapException(OM_uint32 *minor GSSEAP_UNUSED,
+                                   std::exception &e GSSEAP_UNUSED) const
+    {
+        return GSS_S_CONTINUE_NEEDED;
+    }
 
     static bool init(void) { return true; }
     static void finalize(void) {}

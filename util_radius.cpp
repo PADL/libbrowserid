@@ -263,7 +263,7 @@ getAttributeId(const gss_buffer_t attr)
 }
 
 bool
-gss_eap_radius_attr_provider::setAttribute(int complete,
+gss_eap_radius_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
                                            uint32_t attrid,
                                            const gss_buffer_t value)
 {
@@ -428,7 +428,7 @@ gss_eap_radius_attr_provider::getAttribute(uint16_t attribute,
 
 gss_any_t
 gss_eap_radius_attr_provider::mapToAny(int authenticated,
-                                       gss_buffer_t type_id) const
+                                       gss_buffer_t type_id GSSEAP_UNUSED) const
 {
     if (authenticated && !m_authenticated)
         return (gss_any_t)NULL;
@@ -437,7 +437,7 @@ gss_eap_radius_attr_provider::mapToAny(int authenticated,
 }
 
 void
-gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id,
+gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
                                                     gss_any_t input) const
 {
     pairfree((VALUE_PAIR **)&input);
@@ -606,6 +606,8 @@ OM_uint32
 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
 {
     gss_eap_radius_attr_provider::finalize();
+
+    *minor = 0;
     return GSS_S_COMPLETE;
 }
 

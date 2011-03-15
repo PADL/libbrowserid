@@ -227,7 +227,7 @@ importUserName(OM_uint32 *minor,
 
 static OM_uint32
 importAnonymousName(OM_uint32 *minor,
-                    const gss_buffer_t nameBuffer,
+                    const gss_buffer_t nameBuffer GSSEAP_UNUSED,
                     gss_name_t *pName)
 {
     OM_uint32 major;
