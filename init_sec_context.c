@@ -952,10 +952,8 @@ gss_init_sec_context(OM_uint32 *minor,
     if (initialContextToken) {
         major = initBegin(minor, cred, ctx, target_name, mech_type,
                           req_flags, time_req, input_chan_bindings);
-        if (GSS_ERROR(major)) {
-            gssEapReleaseContext(minor, &ctx);
-            return major;
-        }
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
 
     major = gssEapSmStep(minor,
