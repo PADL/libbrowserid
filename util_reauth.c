@@ -721,7 +721,7 @@ defrostAttrContext(OM_uint32 *minor,
  */
 OM_uint32
 gssEapGlueToMechName(OM_uint32 *minor,
-                     gss_ctx_id_t glueContext,
+                     gss_ctx_id_t ctx,
                      gss_name_t glueName,
                      gss_name_t *pMechName)
 {
@@ -739,7 +739,7 @@ gssEapGlueToMechName(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = defrostAttrContext(minor, glueContext, glueName, *pMechName);
+    major = defrostAttrContext(minor, ctx->kerberosCtx, glueName, *pMechName);
     if (GSS_ERROR(major))
         goto cleanup;
 
