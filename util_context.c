@@ -192,16 +192,9 @@ gssEapVerifyToken(OM_uint32 *minor,
         return major;
 
     if (ctx->mechanismUsed == GSS_C_NO_OID) {
-        if (!gssEapIsConcreteMechanismOid(oid)) {
-            *minor = GSSEAP_WRONG_MECH;
-            return GSS_S_BAD_MECH;
-        }
-
-        if (!gssEapInternalizeOid(oid, &ctx->mechanismUsed)) {
-            major = duplicateOid(minor, oid, &ctx->mechanismUsed);
-            if (GSS_ERROR(major))
-                return major;
-        }
+        major = gssEapCanonicalizeOid(minor, oid, 0, &ctx->mechanismUsed);
+        if (GSS_ERROR(major))
+            return major;
     }
 
     innerInputToken->length = bodySize;
