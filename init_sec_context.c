@@ -362,15 +362,10 @@ initBegin(OM_uint32 *minor,
         GSSEAP_MUTEX_UNLOCK(&target->mutex);
     }
 
-    if (mech == GSS_C_NULL_OID) {
-        major = gssEapDefaultMech(minor, &ctx->mechanismUsed);
-    } else if (gssEapIsConcreteMechanismOid(mech)) {
-        if (!gssEapInternalizeOid(mech, &ctx->mechanismUsed))
-            major = duplicateOid(minor, mech, &ctx->mechanismUsed);
-    } else {
-        major = GSS_S_BAD_MECH;
-        *minor = GSSEAP_WRONG_MECH;
-    }
+    major = gssEapCanonicalizeOid(minor,
+                                  mech,
+                                  OID_FLAG_NULL_VALID | OID_FLAG_MAP_NULL_TO_DEFAULT_MECH,
+                                  &ctx->mechanismUsed);
     if (GSS_ERROR(major))
         return major;
 
@@ -974,8 +969,14 @@ gss_init_sec_context(OM_uint32 *minor,
         goto cleanup;
 
     if (actual_mech_type != NULL) {
-        if (!gssEapInternalizeOid(ctx->mechanismUsed, actual_mech_type))
-            duplicateOid(&tmpMinor, ctx->mechanismUsed, actual_mech_type);
+        OM_uint32 tmpMajor;
+
+        tmpMajor = gssEapCanonicalizeOid(&tmpMinor, ctx->mechanismUsed, 0, actual_mech_type);
+        if (GSS_ERROR(tmpMajor)) {
+            major = tmpMajor;
+            *minor = tmpMinor;
+            goto cleanup;
+        }
     }
     if (ret_flags != NULL)
         *ret_flags = ctx->gssFlags;

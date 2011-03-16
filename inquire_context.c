@@ -84,11 +84,9 @@ gss_inquire_context(OM_uint32 *minor,
     }
 
     if (mech_type != NULL) {
-        if (!gssEapInternalizeOid(ctx->mechanismUsed, mech_type)) {
-            major = duplicateOid(minor, ctx->mechanismUsed, mech_type);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        }
+        major = gssEapCanonicalizeOid(minor, ctx->mechanismUsed, 0, mech_type);
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
 
     if (ctx_flags != NULL) {

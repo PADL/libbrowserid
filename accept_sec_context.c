@@ -871,8 +871,14 @@ gss_accept_sec_context(OM_uint32 *minor,
         goto cleanup;
 
     if (mech_type != NULL) {
-        if (!gssEapInternalizeOid(ctx->mechanismUsed, mech_type))
-            duplicateOid(&tmpMinor, ctx->mechanismUsed, mech_type);
+        OM_uint32 tmpMajor;
+
+        tmpMajor = gssEapCanonicalizeOid(&tmpMinor, ctx->mechanismUsed, 0, mech_type);
+        if (GSS_ERROR(tmpMajor)) {
+            major = tmpMajor;
+            *minor = tmpMinor;
+            goto cleanup;
+        }
     }
     if (ret_flags != NULL)
         *ret_flags = ctx->gssFlags;

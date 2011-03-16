@@ -121,16 +121,9 @@ importMechanismOid(OM_uint32 *minor,
 
     oidBuf.elements = &p[4];
 
-    if (!gssEapIsConcreteMechanismOid(&oidBuf)) {
-        *minor = GSSEAP_WRONG_MECH;
-        return GSS_S_BAD_MECH;
-    }
-
-    if (!gssEapInternalizeOid(&oidBuf, pOid)) {
-        major = duplicateOid(minor, &oidBuf, pOid);
-        if (GSS_ERROR(major))
-            return major;
-    }
+    major = gssEapCanonicalizeOid(minor, &oidBuf, 0, pOid);
+    if (GSS_ERROR(major))
+        return major;
 
     *pBuf    += 4 + oidBuf.length;
     *pRemain -= 4 + oidBuf.length;

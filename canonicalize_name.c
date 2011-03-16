@@ -56,7 +56,7 @@ gss_canonicalize_name(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&input_name->mutex);
 
-    major = gssEapDuplicateName(minor, input_name, output_name);
+    major = gssEapCanonicalizeName(minor, input_name, mech_type, output_name);
 
     GSSEAP_MUTEX_UNLOCK(&input_name->mutex);
 

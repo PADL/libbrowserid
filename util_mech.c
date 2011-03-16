@@ -71,6 +71,10 @@ gss_OID GSS_EAP_MECHANISM                            = &gssEapMechOids[0];
 gss_OID GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapMechOids[1];
 gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM    = &gssEapMechOids[2];
 
+static int
+internalizeOid(const gss_OID oid,
+               gss_OID *const pInternalizedOid);
+
 /*
  * Returns TRUE is the OID is a concrete mechanism OID, that is, one
  * with a Kerberos enctype as the last element.
@@ -167,7 +171,7 @@ gssEapEnctypeToOid(OM_uint32 *minor,
                        enctype,
                        oid);
     if (major == GSS_S_COMPLETE) {
-        gssEapInternalizeOid(oid, pOid);
+        internalizeOid(oid, pOid);
         *pOid = oid;
     } else {
         GSSEAP_FREE(oid->elements);
@@ -240,7 +244,7 @@ gssEapDefaultMech(OM_uint32 *minor,
         return GSS_S_BAD_MECH;
     }
 
-    if (!gssEapInternalizeOid(&mechs->elements[0], oid)) {
+    if (!internalizeOid(&mechs->elements[0], oid)) {
         /* don't double-free if we didn't internalize it */
         mechs->elements[0].length = 0;
         mechs->elements[0].elements = NULL;
@@ -252,9 +256,9 @@ gssEapDefaultMech(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
-int
-gssEapInternalizeOid(const gss_OID oid,
-                     gss_OID *const pInternalizedOid)
+static int
+internalizeOid(const gss_OID oid,
+               gss_OID *const pInternalizedOid)
 {
     int i;
 
@@ -289,7 +293,7 @@ gssEapReleaseOid(OM_uint32 *minor, gss_OID *oid)
 
     *minor = 0;
 
-    if (gssEapInternalizeOid(*oid, &internalizedOid)) {
+    if (internalizeOid(*oid, &internalizedOid)) {
         /* OID was internalized, so we can mark it as "freed" */
         *oid = GSS_C_NO_OID;
         return GSS_S_COMPLETE;
@@ -297,6 +301,47 @@ gssEapReleaseOid(OM_uint32 *minor, gss_OID *oid)
 
     /* we don't know about this OID */
     return GSS_S_CONTINUE_NEEDED;
+}
+
+OM_uint32
+gssEapCanonicalizeOid(OM_uint32 *minor,
+                      const gss_OID oid,
+                      OM_uint32 flags,
+                      gss_OID *pOid)
+{
+    OM_uint32 major;
+    int mapToNull = 0;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+    *pOid = GSS_C_NULL_OID;
+
+    if (oid == GSS_C_NULL_OID) {
+        if ((flags & OID_FLAG_NULL_VALID) == 0) {
+            *minor = GSSEAP_WRONG_MECH;
+            return GSS_S_BAD_MECH;
+        } else if (flags & OID_FLAG_MAP_NULL_TO_DEFAULT_MECH) {
+            return gssEapDefaultMech(minor, pOid);
+        }
+    } else if (oidEqual(oid, GSS_EAP_MECHANISM)) {
+        if ((flags & OID_FLAG_FAMILY_MECH_VALID) == 0) {
+            *minor = GSSEAP_WRONG_MECH;
+            return GSS_S_BAD_MECH;
+        } else if (flags & OID_FLAG_MAP_FAMILY_MECH_TO_NULL) {
+            mapToNull = 1;
+        }
+    } else if (!gssEapIsConcreteMechanismOid(oid)) {
+        *minor = GSSEAP_WRONG_MECH;
+        return GSS_S_BAD_MECH;
+    }
+
+    if (!mapToNull && oid != GSS_C_NO_OID) {
+        if (!internalizeOid(oid, pOid))
+            major = duplicateOid(minor, oid, pOid);
+    }
+
+    assert(!GSS_ERROR(major));
+    return major;
 }
 
 static gss_buffer_desc gssEapSaslMechs[] = {

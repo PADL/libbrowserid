@@ -276,6 +276,7 @@ gssEapImportNameInternal(OM_uint32 *minor,
     gss_buffer_desc buf;
     enum gss_eap_token_type tokType;
     gss_name_t name = GSS_C_NO_NAME;
+    gss_OID mechanismUsed = GSS_C_NO_OID;
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -314,19 +315,13 @@ gssEapImportNameInternal(OM_uint32 *minor,
 
         CHECK_REMAIN(mech.length);
 
-        if (!gssEapIsMechanismOid(&mech)) {
-            major = GSS_S_BAD_NAME;
-            *minor = GSSEAP_WRONG_MECH;
+        major = gssEapCanonicalizeOid(minor,
+                                      &mech,
+                                      OID_FLAG_FAMILY_MECH_VALID |
+                                        OID_FLAG_MAP_FAMILY_MECH_TO_NULL,
+                                      &mechanismUsed);
+        if (GSS_ERROR(major))
             goto cleanup;
-        }
-
-        if (oidEqual(&mech, GSS_EAP_MECHANISM)) {
-            name->mechanismUsed = GSS_C_NO_OID;
-        } else if (!gssEapInternalizeOid(&mech, &name->mechanismUsed)) {
-            major = duplicateOid(minor, &mech, &name->mechanismUsed);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        }
 
         UPDATE_REMAIN(2 + mech.length);
     }
@@ -346,6 +341,9 @@ gssEapImportNameInternal(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+    name->mechanismUsed = mechanismUsed;
+    mechanismUsed = GSS_C_NO_OID;
+
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
         gss_buffer_desc buf;
 
@@ -361,10 +359,12 @@ gssEapImportNameInternal(OM_uint32 *minor,
     *minor = 0;
 
 cleanup:
-    if (GSS_ERROR(major))
+    if (GSS_ERROR(major)) {
+        gssEapReleaseOid(&tmpMinor, &mechanismUsed);
         gssEapReleaseName(&tmpMinor, &name);
-    else
+    } else {
         *pName = name;
+    }
 
     return major;
 }
@@ -433,9 +433,7 @@ gssEapImportName(OM_uint32 *minor,
         assert(gssEapIsConcreteMechanismOid(mechType));
         assert(name->mechanismUsed == GSS_C_NO_OID);
 
-        if (!gssEapInternalizeOid(mechType, &name->mechanismUsed)) {
-            major = duplicateOid(minor, mechType, &name->mechanismUsed);
-        }
+        major = gssEapCanonicalizeOid(minor, mechType, 0, &name->mechanismUsed);
     }
 
     if (GSS_ERROR(major))
@@ -553,13 +551,15 @@ cleanup:
 }
 
 OM_uint32
-gssEapDuplicateName(OM_uint32 *minor,
-                    const gss_name_t input_name,
-                    gss_name_t *dest_name)
+gssEapCanonicalizeName(OM_uint32 *minor,
+                       const gss_name_t input_name,
+                       const gss_OID mech_type,
+                       gss_name_t *dest_name)
 {
     OM_uint32 major, tmpMinor;
     krb5_context krbContext;
     gss_name_t name;
+    gss_OID mech_used;
 
     if (input_name == GSS_C_NO_NAME) {
         *minor = EINVAL;
@@ -573,21 +573,17 @@ gssEapDuplicateName(OM_uint32 *minor,
         return major;
     }
 
-    if (input_name->mechanismUsed == GSS_C_NO_OID) {
-        name->mechanismUsed = GSS_C_NO_OID;
-    } else if (gssEapIsConcreteMechanismOid(input_name->mechanismUsed)) {
-        if (!gssEapInternalizeOid(input_name->mechanismUsed,
-                                  &name->mechanismUsed)) {
-            major = duplicateOid(minor, input_name->mechanismUsed,
-                                 &name->mechanismUsed);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        }
-    } else {
-        major = GSS_S_BAD_MECH;
-        *minor = GSSEAP_WRONG_MECH;
+    if (mech_type != GSS_C_NO_OID)
+        mech_used = mech_type;
+    else
+        mech_used = input_name->mechanismUsed;
+
+    major = gssEapCanonicalizeOid(minor,
+                                  mech_used,
+                                  OID_FLAG_NULL_VALID,
+                                  &name->mechanismUsed);
+    if (GSS_ERROR(major))
         goto cleanup;
-    }
 
     name->flags = input_name->flags;
 
@@ -612,6 +608,15 @@ cleanup:
     }
 
     return major;
+}
+
+OM_uint32
+gssEapDuplicateName(OM_uint32 *minor,
+                    const gss_name_t input_name,
+                    gss_name_t *dest_name)
+{
+    return gssEapCanonicalizeName(minor, input_name,
+                                  GSS_C_NO_OID, dest_name);
 }
 
 OM_uint32
