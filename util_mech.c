@@ -322,6 +322,8 @@ gssEapCanonicalizeOid(OM_uint32 *minor,
             return GSS_S_BAD_MECH;
         } else if (flags & OID_FLAG_MAP_NULL_TO_DEFAULT_MECH) {
             return gssEapDefaultMech(minor, pOid);
+        } else {
+            mapToNull = 1;
         }
     } else if (oidEqual(oid, GSS_EAP_MECHANISM)) {
         if ((flags & OID_FLAG_FAMILY_MECH_VALID) == 0) {
@@ -335,12 +337,11 @@ gssEapCanonicalizeOid(OM_uint32 *minor,
         return GSS_S_BAD_MECH;
     }
 
-    if (!mapToNull && oid != GSS_C_NO_OID) {
+    if (!mapToNull) {
         if (!internalizeOid(oid, pOid))
             major = duplicateOid(minor, oid, pOid);
     }
 
-    assert(!GSS_ERROR(major));
     return major;
 }
 
