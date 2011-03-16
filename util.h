@@ -467,7 +467,6 @@ OM_uint32 gssEapExportNameInternal(OM_uint32 *minor,
 OM_uint32 gssEapImportName(OM_uint32 *minor,
                            const gss_buffer_t input_name_buffer,
                            gss_OID input_name_type,
-                           gss_OID input_mech_type,
                            gss_name_t *output_name);
 OM_uint32 gssEapImportNameInternal(OM_uint32 *minor,
                                    const gss_buffer_t input_name_buffer,

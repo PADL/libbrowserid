@@ -184,13 +184,7 @@ gssEapAcquireCred(OM_uint32 *minor,
         }
 
         if (nameBuf.length != 0) {
-            gss_OID mech = GSS_C_NO_OID;
-
-            if (cred->mechanisms != GSS_C_NO_OID_SET &&
-                cred->mechanisms->count == 1)
-                mech = &cred->mechanisms->elements[0];
-
-            major = gssEapImportName(minor, &nameBuf, nameType, mech, &cred->name);
+            major = gssEapImportName(minor, &nameBuf, nameType, &cred->name);
             if (GSS_ERROR(major))
                 goto cleanup;
         }

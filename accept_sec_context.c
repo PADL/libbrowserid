@@ -82,7 +82,6 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     major = gssEapImportName(minor, &nameBuf,
                              (ctx->gssFlags & GSS_C_ANON_FLAG) ?
                                 GSS_C_NT_ANONYMOUS : GSS_C_NT_USER_NAME,
-                             ctx->mechanismUsed,
                              &ctx->initiatorName);
     if (GSS_ERROR(major))
         return major;
@@ -273,7 +272,7 @@ importInitiatorIdentity(OM_uint32 *minor,
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);
 
     return gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
-                            ctx->mechanismUsed, &ctx->initiatorName);
+                            &ctx->initiatorName);
 }
 
 /*
