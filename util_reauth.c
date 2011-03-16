@@ -735,7 +735,7 @@ gssEapGlueToMechName(OM_uint32 *minor,
         goto cleanup;
 
     major = gssEapImportName(minor, &nameBuf, GSS_C_NT_USER_NAME,
-                             pMechName);
+                             ctx->mechanismUsed, pMechName);
     if (GSS_ERROR(major))
         goto cleanup;
 
