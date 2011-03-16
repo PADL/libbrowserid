@@ -200,6 +200,7 @@ gssEapAcquireCred(OM_uint32 *minor,
 
 #ifdef GSSEAP_DEBUG
     if (password == GSS_C_NO_BUFFER &&
+        (cred->flags & CRED_FLAG_DEFAULT_IDENTITY) &&
         (envPassword.value = getenv("GSSEAP_CREDS")) != NULL) {
         envPassword.length = strlen((char *)envPassword.value);
         major = duplicateBuffer(minor, &envPassword, &cred->password);
