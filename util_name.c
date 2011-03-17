@@ -417,6 +417,7 @@ gssEapImportName(OM_uint32 *minor,
         { GSS_C_NT_HOSTBASED_SERVICE_X,     importServiceName           },
         { GSS_C_NT_ANONYMOUS,               importAnonymousName         },
         { GSS_C_NT_EXPORT_NAME,             importExportName            },
+        { GSS_KRB5_NT_PRINCIPAL_NAME,       importUserName              },
 #ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
         { GSS_C_NT_COMPOSITE_EXPORT,        importCompositeExportName   },
 #endif
