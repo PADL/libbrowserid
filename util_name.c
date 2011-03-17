@@ -399,20 +399,20 @@ importCompositeExportName(OM_uint32 *minor,
 #endif
 
 struct gss_eap_name_import_provider {
-    gss_OID oid;
+    gss_const_OID oid;
     OM_uint32 (*import)(OM_uint32 *, const gss_buffer_t, gss_name_t *);
 };
 
 OM_uint32
 gssEapImportName(OM_uint32 *minor,
                  const gss_buffer_t nameBuffer,
-                 gss_OID nameType,
-                 gss_OID mechType,
+                 const gss_OID nameType,
+                 const gss_OID mechType,
                  gss_name_t *pName)
 {
     struct gss_eap_name_import_provider nameTypes[] = {
-        { GSS_C_NT_USER_NAME,               importUserName              },
         { GSS_EAP_NT_EAP_NAME,              importUserName              },
+        { GSS_C_NT_USER_NAME,               importUserName              },
         { GSS_C_NT_HOSTBASED_SERVICE,       importServiceName           },
         { GSS_C_NT_HOSTBASED_SERVICE_X,     importServiceName           },
         { GSS_C_NT_ANONYMOUS,               importAnonymousName         },
@@ -426,11 +426,9 @@ gssEapImportName(OM_uint32 *minor,
     OM_uint32 tmpMinor;
     gss_name_t name = GSS_C_NO_NAME;
 
-    if (nameType == GSS_C_NO_OID)
-        nameType = nameTypes[0].oid;
-
     for (i = 0; i < sizeof(nameTypes) / sizeof(nameTypes[0]); i++) {
-        if (oidEqual(nameTypes[i].oid, nameType)) {
+        if (oidEqual(nameTypes[i].oid,
+                     nameType == GSS_C_NO_OID ? GSS_EAP_NT_EAP_NAME : nameType)) {
             major = nameTypes[i].import(minor, nameBuffer, &name);
             break;
         }
