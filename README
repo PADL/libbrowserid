@@ -132,3 +132,7 @@ To test fast reauthentication support, add the following to
 This will store a Kerberos ticket for a GSS-EAP authenticated user
 in a credentials cache, which can then be used for re-authentication
 to the same acceptor. You must have a valid keytab configured.
+
+You can also set a default realm in [appdefaults]; the Kerberos
+default realm is never used by mech_eap (or at least, that is the
+intention), so if unspecified you must always qualify names.
