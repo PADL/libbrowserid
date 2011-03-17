@@ -210,7 +210,9 @@ importUserName(OM_uint32 *minor,
         if (GSS_ERROR(major))
             return major;
 
-        *minor = krb5_parse_name(krbContext, nameString, &krbPrinc);
+        *minor = krb5_parse_name_flags(krbContext, nameString,
+                                       KRB5_PRINCIPAL_PARSE_REQUIRE_REALM,
+                                       &krbPrinc);
         if (*minor != 0) {
             GSSEAP_FREE(nameString);
             return GSS_S_FAILURE;
