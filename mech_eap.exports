@@ -41,6 +41,7 @@ gss_set_sec_context_option
 gss_store_cred
 gss_unwrap
 gss_unwrap_iov
+gss_userok
 gss_verify_mic
 gss_wrap
 gss_wrap_iov

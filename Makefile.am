@@ -68,6 +68,7 @@ mech_eap_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
+	userok.c				\
 	util_attr.cpp				\
 	util_buffer.c				\
 	util_context.c				\
