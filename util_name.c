@@ -196,19 +196,17 @@ importUserName(OM_uint32 *minor,
     OM_uint32 major;
     krb5_context krbContext;
     krb5_principal krbPrinc;
-    char *nameString, *realm;
+    char *nameString, *realm = NULL;
     int flags = 0;
+    krb5_error_code code;
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    realm = getenv("GSSEAP_DEFAULT_REALM");
-    if (realm != NULL) {
-        *minor = krb5_set_default_realm(krbContext, realm);
-        if (*minor != 0)
-            return GSS_S_FAILURE;
-    } else {
+    code = krb5_get_default_realm(krbContext, &realm);
+    if (code != 0 || realm == NULL)
         flags |= KRB5_PRINCIPAL_PARSE_REQUIRE_REALM;
-    }
+    else
+        krb5_free_default_realm(krbContext, realm);
 
     if (nameBuffer == GSS_C_NO_BUFFER) {
         *minor = krb5_copy_principal(krbContext,

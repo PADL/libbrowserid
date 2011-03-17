@@ -54,6 +54,38 @@ createKrbContextKey(void)
     GSSEAP_KEY_CREATE(&krbContextKey, destroyKrbContext);
 }
 
+static krb5_error_code
+initKrbContext(krb5_context *pKrbContext)
+{
+    krb5_context krbContext;
+    krb5_error_code code;
+    char *defaultRealm = NULL;
+
+    *pKrbContext = NULL;
+
+    code = krb5_init_context(&krbContext);
+    if (code != 0)
+        goto cleanup;
+
+    krb5_appdefault_string(krbContext, "eap_gss",
+                           NULL, "default_realm", "", &defaultRealm);
+
+    code = krb5_set_default_realm(krbContext, defaultRealm);
+    if (code != 0)
+        goto cleanup;
+
+    *pKrbContext = krbContext;
+
+cleanup:
+    if (code != 0 && krbContext != NULL)
+        krb5_free_context(krbContext);
+
+    if (defaultRealm != NULL)
+        GSSEAP_FREE(defaultRealm);
+
+    return code;
+}
+
 OM_uint32
 gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
 {
@@ -63,7 +95,7 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
 
     *context = GSSEAP_GETSPECIFIC(krbContextKey);
     if (*context == NULL) {
-        *minor = krb5_init_context(context);
+        *minor = initKrbContext(context);
         if (*minor == 0) {
             if (GSSEAP_SETSPECIFIC(krbContextKey, *context) != 0) {
                 *minor = errno;
