@@ -49,7 +49,7 @@ gss_inquire_names_for_mech(OM_uint32 *minor,
 #ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
         GSS_C_NT_COMPOSITE_EXPORT,
 #endif
-        GSS_EAP_NT_PRINCIPAL_NAME,
+        GSS_EAP_NT_EAP_NAME,
         GSS_C_NT_ANONYMOUS,
     };
     size_t i;

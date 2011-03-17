@@ -271,8 +271,8 @@ internalizeOid(const gss_OID oid,
     }
 
     if (*pInternalizedOid == GSS_C_NO_OID) {
-        if (oidEqual(oid, GSS_EAP_NT_PRINCIPAL_NAME))
-            *pInternalizedOid = (const gss_OID)GSS_EAP_NT_PRINCIPAL_NAME;
+        if (oidEqual(oid, GSS_EAP_NT_EAP_NAME))
+            *pInternalizedOid = (const gss_OID)GSS_EAP_NT_EAP_NAME;
     }
 
     if (*pInternalizedOid == GSS_C_NO_OID) {

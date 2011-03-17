@@ -49,6 +49,6 @@ gss_wrap_iov_length
 gss_wrap_size_limit
 GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM
 GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM
-GSS_EAP_NT_PRINCIPAL_NAME
+GSS_EAP_NT_EAP_NAME
 gssspi_acquire_cred_with_password
 gssspi_set_cred_option

@@ -59,12 +59,12 @@
 
 #include "gssapiP_eap.h"
 
-static gss_OID_desc gssEapNtPrincipalName = {
+static gss_OID_desc gssEapNtEapName = {
     /* 1.3.6.1.4.1.5322.22.2.1  */
     10, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x02\x01"
 };
 
-gss_OID GSS_EAP_NT_PRINCIPAL_NAME = &gssEapNtPrincipalName;
+gss_OID GSS_EAP_NT_EAP_NAME = &gssEapNtEapName;
 
 OM_uint32
 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName)
@@ -412,7 +412,7 @@ gssEapImportName(OM_uint32 *minor,
 {
     struct gss_eap_name_import_provider nameTypes[] = {
         { GSS_C_NT_USER_NAME,               importUserName              },
-        { GSS_EAP_NT_PRINCIPAL_NAME,        importUserName              },
+        { GSS_EAP_NT_EAP_NAME,              importUserName              },
         { GSS_C_NT_HOSTBASED_SERVICE,       importServiceName           },
         { GSS_C_NT_HOSTBASED_SERVICE_X,     importServiceName           },
         { GSS_C_NT_ANONYMOUS,               importAnonymousName         },
@@ -666,7 +666,7 @@ gssEapDisplayName(OM_uint32 *minor,
                                name->krbPrincipal, krbAnonymousPrincipal())) {
         name_type = GSS_C_NT_ANONYMOUS;
     } else {
-        name_type = GSS_EAP_NT_PRINCIPAL_NAME;
+        name_type = GSS_EAP_NT_EAP_NAME;
     }
 
     if (output_name_type != NULL)

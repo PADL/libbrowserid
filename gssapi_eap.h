@@ -48,7 +48,7 @@ extern gss_OID GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM;
 /*
  * Mechanism name OID.
  */
-extern gss_OID GSS_EAP_NT_PRINCIPAL_NAME;
+extern gss_OID GSS_EAP_NT_EAP_NAME;
 
 /*
  * The libradsec configuration file; defaults to radsec.conf
