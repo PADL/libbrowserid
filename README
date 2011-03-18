@@ -133,6 +133,14 @@ This will store a Kerberos ticket for a GSS-EAP authenticated user
 in a credentials cache, which can then be used for re-authentication
 to the same acceptor. You must have a valid keytab configured.
 
+In this testing phase of Moonshot, it's also possible to store a
+default identity and credential in a file. The format consists of
+the string representation of the initiator identity and the password,
+separated by newlines. The default location of this file is
+.gss_eap_id in the user's home directory, however the GSSEAP_IDENTITY
+environment variable can be used to set an alternate location.
+
 You can also set a default realm in [appdefaults]; the Kerberos
 default realm is never used by mech_eap (or at least, that is the
-intention), so if unspecified you must always qualify names.
+intention), so if unspecified you must always qualify names. It should
+generally not be necessary to specify this.
