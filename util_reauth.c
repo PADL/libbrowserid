@@ -217,11 +217,10 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     GSSEAP_KRB_INIT(&krbContext);
 
     code = getAcceptorKey(krbContext, ctx, cred, &server, &acceptorKey);
-    if (code == KRB5_KT_NOTFOUND) {
+    if (code != 0) {
         *minor = code;
         return GSS_S_UNAVAILABLE;
-    } else if (code != 0)
-        goto cleanup;
+    }
 
     /*
      * Generate a random session key to place in the ticket and
