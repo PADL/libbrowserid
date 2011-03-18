@@ -199,17 +199,13 @@ peerConfigInit(OM_uint32 *minor,
                gss_cred_id_t cred,
                gss_ctx_id_t ctx)
 {
-    OM_uint32 major;
     krb5_context krbContext;
     struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
-    gss_buffer_desc identity = GSS_C_EMPTY_BUFFER;
-    gss_buffer_desc anonymousIdentity = GSS_C_EMPTY_BUFFER;
-    ssize_t i;
+    krb5_error_code code;
+    char *identity, *anonymousIdentity;
 
     eapPeerConfig->identity = NULL;
     eapPeerConfig->identity_len = 0;
-    eapPeerConfig->anonymous_identity = NULL;
-    eapPeerConfig->anonymous_identity_len = 0;
     eapPeerConfig->password = NULL;
     eapPeerConfig->password_len = 0;
 
@@ -229,29 +225,20 @@ peerConfigInit(OM_uint32 *minor,
         return GSS_S_BAD_NAME;
     }
 
-    major = gssEapDisplayName(minor, cred->name, &identity, NULL);
-    if (GSS_ERROR(major))
-        return major;
-
-    assert(identity.length > 0);
-
-    for (i = identity.length - 1; i >= 0; i--) {
-        unsigned char *p = (unsigned char *)identity.value + i;
-
-        if (*p == '@') {
-            anonymousIdentity.length = identity.length - i;
-            anonymousIdentity.value = p;
-            break;
-        }
+    code = krb5_unparse_name(krbContext, cred->name->krbPrincipal, &identity);
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_FAILURE;
     }
 
-    if (anonymousIdentity.length == 0)
-        anonymousIdentity.value = "";
+    anonymousIdentity = strchr(identity, '@');
+    if (anonymousIdentity == NULL)
+        anonymousIdentity = "";
 
-    eapPeerConfig->identity = (unsigned char *)identity.value;
-    eapPeerConfig->identity_len = identity.length;
-    eapPeerConfig->anonymous_identity = (unsigned char *)anonymousIdentity.value;
-    eapPeerConfig->anonymous_identity_len = anonymousIdentity.length;
+    eapPeerConfig->identity = (unsigned char *)identity;
+    eapPeerConfig->identity_len = strlen(identity);
+    eapPeerConfig->anonymous_identity = (unsigned char *)anonymousIdentity;
+    eapPeerConfig->anonymous_identity_len = strlen(anonymousIdentity);
     eapPeerConfig->password = (unsigned char *)cred->password.value;
     eapPeerConfig->password_len = cred->password.length;
 
@@ -263,9 +250,12 @@ static OM_uint32
 peerConfigFree(OM_uint32 *minor,
                gss_ctx_id_t ctx)
 {
+    krb5_context krbContext;
     struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
 
-    GSSEAP_FREE(eapPeerConfig->identity);
+    GSSEAP_KRB_INIT(&krbContext);
+
+    krb5_free_unparsed_name(krbContext, (char *)eapPeerConfig->identity);
 
     *minor = 0;
     return GSS_S_COMPLETE;

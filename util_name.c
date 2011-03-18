@@ -689,7 +689,6 @@ gssEapDisplayName(OM_uint32 *minor,
     krb5_context krbContext;
     char *krbName;
     gss_OID name_type;
-    int flags = 0;
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -701,20 +700,7 @@ gssEapDisplayName(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
     }
 
-    /*
-     * According to draft-ietf-abfab-gss-eap-01, when the realm is
-     * absent the trailing '@' is not included.
-     */
-#ifdef HAVE_HEIMDAL_VERSION
-    if (KRB_PRINC_REALM(name->krbPrincipal) == NULL ||
-        KRB_PRINC_REALM(name->krBPrincipal)[0] == '\0')
-#else
-    if (KRB_PRINC_REALM(name->krbPrincipal)->length == 0)
-#endif
-        flags |= KRB5_PRINCIPAL_UNPARSE_NO_REALM;
-
-    *minor = krb5_unparse_name_flags(krbContext, name->krbPrincipal,
-                                     flags, &krbName);
+    *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
     if (*minor != 0) {
         return GSS_S_FAILURE;
     }
