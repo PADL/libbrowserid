@@ -141,8 +141,8 @@ readDefaultIdentityAndCreds(OM_uint32 *minor,
 
     fp = fopen(ccacheName, "r");
     if (fp == NULL) {
-        *minor = GSSEAP_NO_DEFAULT_CRED;
         major = GSS_S_CRED_UNAVAIL;
+        *minor = GSSEAP_NO_DEFAULT_CRED;
         goto cleanup;
     }
 
@@ -245,12 +245,12 @@ gssEapAcquireCred(OM_uint32 *minor,
 
     if (cred->flags & CRED_FLAG_INITIATE) {
         major = readDefaultIdentityAndCreds(minor, &defaultIdentity, &defaultCreds);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        major = gssEapImportName(minor, &defaultIdentity, GSS_C_NT_USER_NAME,
-                                 nameMech, &defaultIdentityName);
-        if (GSS_ERROR(major))
+        if (major == GSS_S_COMPLETE) {
+            major = gssEapImportName(minor, &defaultIdentity, GSS_C_NT_USER_NAME,
+                                     nameMech, &defaultIdentityName);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        } else if (major != GSS_S_CRED_UNAVAIL)
             goto cleanup;
     }
 
@@ -296,6 +296,12 @@ gssEapAcquireCred(OM_uint32 *minor,
             if (GSS_ERROR(major))
                 goto cleanup;
         } else if (cred->flags & CRED_FLAG_INITIATE) {
+            if (defaultIdentityName == GSS_C_NO_NAME) {
+                major = GSS_S_CRED_UNAVAIL;
+                *minor = GSSEAP_NO_DEFAULT_IDENTITY;
+                goto cleanup;
+            }
+
             cred->name = defaultIdentityName;
             defaultIdentityName = GSS_C_NO_NAME;
         }
@@ -310,7 +316,8 @@ gssEapAcquireCred(OM_uint32 *minor,
             goto cleanup;
 
         cred->flags |= CRED_FLAG_PASSWORD;
-    } else if (defaultCreds.value != NULL) {
+    } else if (defaultCreds.value != NULL &&
+        (cred->flags & CRED_FLAG_DEFAULT_IDENTITY)) {
         cred->password = defaultCreds;
 
         defaultCreds.length = 0;
