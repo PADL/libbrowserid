@@ -216,10 +216,17 @@ importServiceName(OM_uint32 *minor,
     return major;
 }
 
+#define IMPORT_FLAG_DEFAULT_REALM           0x1
+
+/*
+ * Import an EAP name, possibly appending the default GSS EAP realm,
+ * and taking care to avoid appending the default Kerberos realm.
+ */
 static OM_uint32
-importUserName(OM_uint32 *minor,
-               const gss_buffer_t nameBuffer,
-               gss_name_t *pName)
+importEapNameFlags(OM_uint32 *minor,
+                   const gss_buffer_t nameBuffer,
+                   OM_uint32 importFlags,
+                   gss_name_t *pName)
 {
     OM_uint32 major;
     krb5_context krbContext;
@@ -250,7 +257,7 @@ importUserName(OM_uint32 *minor,
                                      KRB5_PRINCIPAL_PARSE_REQUIRE_REALM, &krbPrinc);
         if (code == KRB5_PARSE_MALFORMED) {
             char *defaultRealm = NULL;
-            int flags = 0;
+            int parseFlags = 0;
 
             /*
              * We need an explicit appdefaults check because, at least with MIT
@@ -259,12 +266,13 @@ importUserName(OM_uint32 *minor,
              * We want to make sure that the default Kerberos realm does not end
              * up accidentally appended to an unqualified name.
              */
-            gssEapGetDefaultRealm(krbContext, &defaultRealm);
+            if (importFlags & IMPORT_FLAG_DEFAULT_REALM)
+                gssEapGetDefaultRealm(krbContext, &defaultRealm);
 
             if (defaultRealm == NULL)
-                flags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
+                parseFlags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
 
-            code = krb5_parse_name_flags(krbContext, nameString, flags, &krbPrinc);
+            code = krb5_parse_name_flags(krbContext, nameString, parseFlags, &krbPrinc);
 
             if (defaultRealm != NULL)
                 GSSEAP_FREE(defaultRealm);
@@ -288,27 +296,27 @@ importUserName(OM_uint32 *minor,
 }
 
 static OM_uint32
+importEapName(OM_uint32 *minor,
+              const gss_buffer_t nameBuffer,
+              gss_name_t *pName)
+{
+    return importEapNameFlags(minor, nameBuffer, 0, pName);
+}
+
+static OM_uint32
+importUserName(OM_uint32 *minor,
+               const gss_buffer_t nameBuffer,
+               gss_name_t *pName)
+{
+    return importEapNameFlags(minor, nameBuffer, IMPORT_FLAG_DEFAULT_REALM, pName);
+}
+
+static OM_uint32
 importAnonymousName(OM_uint32 *minor,
                     const gss_buffer_t nameBuffer GSSEAP_UNUSED,
                     gss_name_t *pName)
 {
-    OM_uint32 major;
-    krb5_context krbContext;
-    krb5_principal krbPrinc;
-
-    GSSEAP_KRB_INIT(&krbContext);
-
-    *minor = krb5_copy_principal(krbContext, krbAnonymousPrincipal(),
-                                 &krbPrinc);
-    if (*minor != 0)
-        return GSS_S_FAILURE;
-
-    major = krbPrincipalToName(minor, &krbPrinc, pName);
-    if (GSS_ERROR(major)) {
-        krb5_free_principal(krbContext, krbPrinc);
-    }
-
-    return major;
+    return importEapNameFlags(minor, GSS_C_NO_BUFFER, 0, pName);
 }
 
 #define UPDATE_REMAIN(n)    do {            \
@@ -398,7 +406,7 @@ gssEapImportNameInternal(OM_uint32 *minor,
     buf.value = p;
     UPDATE_REMAIN(len);
 
-    major = importUserName(minor, &buf, &name);
+    major = importEapNameFlags(minor, &buf, 0, &name);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -464,7 +472,7 @@ gssEapImportName(OM_uint32 *minor,
                  gss_name_t *pName)
 {
     struct gss_eap_name_import_provider nameTypes[] = {
-        { GSS_EAP_NT_EAP_NAME,              importUserName              },
+        { GSS_EAP_NT_EAP_NAME,              importEapName               },
         { GSS_C_NT_USER_NAME,               importUserName              },
         { GSS_C_NT_HOSTBASED_SERVICE,       importServiceName           },
         { GSS_C_NT_HOSTBASED_SERVICE_X,     importServiceName           },
@@ -520,9 +528,8 @@ gssEapExportNameInternal(OM_uint32 *minor,
                          unsigned int flags)
 {
     OM_uint32 major = GSS_S_FAILURE, tmpMinor;
-    krb5_context krbContext;
-    char *krbName = NULL;
-    size_t krbNameLen, exportedNameLen;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+    size_t exportedNameLen;
     unsigned char *p;
     gss_buffer_desc attrs = GSS_C_EMPTY_BUFFER;
     gss_OID mech;
@@ -535,20 +542,15 @@ gssEapExportNameInternal(OM_uint32 *minor,
     else
         mech = GSS_EAP_MECHANISM;
 
-    GSSEAP_KRB_INIT(&krbContext);
-
-    *minor = krb5_unparse_name(krbContext, name->krbPrincipal, &krbName);
-    if (*minor != 0) {
-        major = GSS_S_FAILURE;
+    major = gssEapDisplayName(minor, name, &nameBuf, NULL);
+    if (GSS_ERROR(major))
         goto cleanup;
-    }
-    krbNameLen = strlen(krbName);
 
     exportedNameLen = 0;
     if (flags & EXPORT_NAME_FLAG_OID) {
         exportedNameLen += 6 + mech->length;
     }
-    exportedNameLen += 4 + krbNameLen;
+    exportedNameLen += 4 + nameBuf.length;
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
         major = gssEapExportAttrContext(minor, name, &attrs);
         if (GSS_ERROR(major))
@@ -584,12 +586,12 @@ gssEapExportNameInternal(OM_uint32 *minor,
     }
 
     /* NAME_LEN */
-    store_uint32_be(krbNameLen, p);
+    store_uint32_be(nameBuf.length, p);
     p += 4;
 
     /* NAME */
-    memcpy(p, krbName, krbNameLen);
-    p += krbNameLen;
+    memcpy(p, nameBuf.value, nameBuf.length);
+    p += nameBuf.length;
 
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
         memcpy(p, attrs.value, attrs.length);
@@ -603,9 +605,9 @@ gssEapExportNameInternal(OM_uint32 *minor,
 
 cleanup:
     gss_release_buffer(&tmpMinor, &attrs);
+    gss_release_buffer(&tmpMinor, &nameBuf);
     if (GSS_ERROR(major))
         gss_release_buffer(&tmpMinor, exportedName);
-    krb5_free_unparsed_name(krbContext, krbName);
 
     return major;
 }
