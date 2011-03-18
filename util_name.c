@@ -155,9 +155,10 @@ importServiceName(OM_uint32 *minor,
                   gss_name_t *pName)
 {
     OM_uint32 major;
+    krb5_error_code code;
     krb5_context krbContext;
     krb5_principal krbPrinc;
-    char *service, *host;
+    char *service, *host, *realm = NULL;
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -171,20 +172,32 @@ importServiceName(OM_uint32 *minor,
         host++;
     }
 
-    /* XXX this is probably NOT what we want to be doing */
-    if (krb5_sname_to_principal(krbContext, host, service,
-                                KRB5_NT_SRV_HST, &krbPrinc) != 0) {
-        GSSEAP_FREE(service);
-        *minor = GSSEAP_BAD_SERVICE_NAME;
-        return GSS_S_FAILURE;
-    }
+    krb5_get_default_realm(krbContext, &realm);
 
-    major = krbPrincipalToName(minor, &krbPrinc, pName);
-    if (GSS_ERROR(major)) {
-        krb5_free_principal(krbContext, krbPrinc);
+    code = krb5_build_principal(krbContext,
+                                &krbPrinc,
+                                realm != NULL ? strlen(realm) : 0,
+                                realm != NULL ? realm : "",
+                                service,
+                                host,
+                                NULL);
+
+    if (realm != NULL)
+        krb5_free_default_realm(krbContext, realm);
+
+    if (code == 0) {
+        KRB_PRINC_TYPE(krbPrinc) = KRB5_NT_SRV_HST;
+
+        major = krbPrincipalToName(minor, &krbPrinc, pName);
+        if (GSS_ERROR(major))
+            krb5_free_principal(krbContext, krbPrinc);
+    } else {
+        major = GSS_S_FAILURE;
+        *minor = GSSEAP_BAD_SERVICE_NAME;
     }
 
     GSSEAP_FREE(service);
+
     return major;
 }
 
