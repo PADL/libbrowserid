@@ -202,7 +202,10 @@ gssEapAcquireCred(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_cred_id_t cred;
+    gss_buffer_desc defaultIdentity = GSS_C_EMPTY_BUFFER;
+    gss_name_t defaultIdentityName = GSS_C_NO_NAME;
     gss_buffer_desc defaultCreds = GSS_C_EMPTY_BUFFER;
+    gss_OID nameMech = GSS_C_NO_OID;
 
     /* XXX TODO validate with changed set_cred_option API */
     *pCred = GSS_C_NO_CREDENTIAL;
@@ -228,6 +231,29 @@ gssEapAcquireCred(OM_uint32 *minor,
         break;
     }
 
+    major = gssEapValidateMechs(minor, desiredMechs);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = duplicateOidSet(minor, desiredMechs, &cred->mechanisms);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (cred->mechanisms != GSS_C_NO_OID_SET &&
+        cred->mechanisms->count == 1)
+        nameMech = &cred->mechanisms->elements[0];
+
+    if (cred->flags & CRED_FLAG_INITIATE) {
+        major = readDefaultIdentityAndCreds(minor, &defaultIdentity, &defaultCreds);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gssEapImportName(minor, &defaultIdentity, GSS_C_NT_USER_NAME,
+                                 nameMech, &defaultIdentityName);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
     if (desiredName != GSS_C_NO_NAME) {
         GSSEAP_MUTEX_LOCK(&desiredName->mutex);
 
@@ -238,12 +264,22 @@ gssEapAcquireCred(OM_uint32 *minor,
         }
 
         GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
-    } else {
-        gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-        gss_OID nameType = GSS_C_NO_OID;
-        char serviceName[5 + MAXHOSTNAMELEN];
 
+        if (defaultIdentityName != GSS_C_NO_NAME) {
+            int nameEqual;
+
+            major = gssEapCompareName(minor, desiredName,
+                                      defaultIdentityName, &nameEqual);
+            if (GSS_ERROR(major))
+                goto cleanup;
+            else if (nameEqual)
+                cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
+        }
+    } else {
         if (cred->flags & CRED_FLAG_ACCEPT) {
+            gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+            char serviceName[5 + MAXHOSTNAMELEN];
+
             /* default host-based service is host@localhost */
             memcpy(serviceName, "host@", 5);
             if (gethostname(&serviceName[5], MAXHOSTNAMELEN) != 0) {
@@ -255,32 +291,18 @@ gssEapAcquireCred(OM_uint32 *minor,
             nameBuf.value = serviceName;
             nameBuf.length = strlen((char *)nameBuf.value);
 
-            nameType = GSS_C_NT_HOSTBASED_SERVICE;
+            major = gssEapImportName(minor, &nameBuf, GSS_C_NT_HOSTBASED_SERVICE,
+                                     nameMech, &cred->name);
+            if (GSS_ERROR(major))
+                goto cleanup;
         } else if (cred->flags & CRED_FLAG_INITIATE) {
-            major = readDefaultIdentityAndCreds(minor, &nameBuf, &defaultCreds);
-            if (GSS_ERROR(major))
-                goto cleanup;
-
-            nameType = GSS_C_NT_USER_NAME;
+            cred->name = defaultIdentityName;
+            defaultIdentityName = GSS_C_NO_NAME;
         }
-
-        if (nameBuf.length != 0) {
-            gss_OID mech = GSS_C_NO_OID;
-
-            if (cred->mechanisms != GSS_C_NO_OID_SET &&
-                cred->mechanisms->count == 1)
-                mech = &cred->mechanisms->elements[0];
-
-            major = gssEapImportName(minor, &nameBuf, nameType, mech, &cred->name);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        }
-
-        if (nameBuf.value != serviceName)
-            gss_release_buffer(&tmpMinor, &nameBuf);
-
         cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
     }
+
+    assert(cred->name != GSS_C_NO_NAME);
 
     if (password != GSS_C_NO_BUFFER) {
         major = duplicateBuffer(minor, password, &cred->password);
@@ -309,14 +331,6 @@ gssEapAcquireCred(OM_uint32 *minor,
         goto cleanup;
     }
 
-    major = gssEapValidateMechs(minor, desiredMechs);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = duplicateOidSet(minor, desiredMechs, &cred->mechanisms);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
     if (pActualMechs != NULL) {
         major = duplicateOidSet(minor, cred->mechanisms, pActualMechs);
         if (GSS_ERROR(major))
@@ -334,6 +348,8 @@ gssEapAcquireCred(OM_uint32 *minor,
 cleanup:
     if (GSS_ERROR(major))
         gssEapReleaseCred(&tmpMinor, &cred);
+    gssEapReleaseName(&tmpMinor, &defaultIdentityName);
+    gss_release_buffer(&tmpMinor, &defaultIdentity);
     if (defaultCreds.value != NULL) {
         memset(defaultCreds.value, 0, defaultCreds.length);
         gss_release_buffer(&tmpMinor, &defaultCreds);

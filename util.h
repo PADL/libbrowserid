@@ -491,6 +491,12 @@ gssEapDisplayName(OM_uint32 *minor,
                   gss_buffer_t output_name_buffer,
                   gss_OID *output_name_type);
 
+OM_uint32
+gssEapCompareName(OM_uint32 *minor,
+                  gss_name_t name1,
+                  gss_name_t name2,
+                  int *name_equal);
+
 /* util_oid.c */
 OM_uint32
 composeOid(OM_uint32 *minor_status,
