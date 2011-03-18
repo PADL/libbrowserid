@@ -191,7 +191,7 @@ gsseap_set_cred_flag(OM_uint32 *minor,
     store_uint32_be(flag, buf);
     buf[4] = (clear != 0);
 
-    return gssspi_set_cred_option(minor, cred,
+    return gssspi_set_cred_option(minor, &cred,
                                   GSS_EAP_CRED_SET_CRED_FLAG, &value);
 }
 #endif
