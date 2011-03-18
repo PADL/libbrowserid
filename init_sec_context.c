@@ -203,8 +203,7 @@ peerConfigInit(OM_uint32 *minor,
     krb5_context krbContext;
     struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
     gss_buffer_desc identity = GSS_C_EMPTY_BUFFER;
-    gss_buffer_desc anonymousIdentity = GSS_C_EMPTY_BUFFER;
-    ssize_t i;
+    gss_buffer_desc realm = GSS_C_EMPTY_BUFFER;
 
     eapPeerConfig->identity = NULL;
     eapPeerConfig->identity_len = 0;
@@ -229,29 +228,29 @@ peerConfigInit(OM_uint32 *minor,
         return GSS_S_BAD_NAME;
     }
 
+    /* identity */
     major = gssEapDisplayName(minor, cred->name, &identity, NULL);
     if (GSS_ERROR(major))
         return major;
 
-    assert(identity.length > 0);
-
-    for (i = identity.length - 1; i >= 0; i--) {
-        unsigned char *p = (unsigned char *)identity.value + i;
-
-        if (*p == '@') {
-            anonymousIdentity.length = identity.length - i;
-            anonymousIdentity.value = p;
-            break;
-        }
-    }
-
-    if (anonymousIdentity.length == 0)
-        anonymousIdentity.value = "";
-
     eapPeerConfig->identity = (unsigned char *)identity.value;
     eapPeerConfig->identity_len = identity.length;
-    eapPeerConfig->anonymous_identity = (unsigned char *)anonymousIdentity.value;
-    eapPeerConfig->anonymous_identity_len = anonymousIdentity.length;
+
+    krbPrincRealmToGssBuffer(cred->name->krbPrincipal, &realm);
+
+    /* anonymous_identity */
+    eapPeerConfig->anonymous_identity = GSSEAP_MALLOC(realm.length + 2);
+    if (eapPeerConfig->anonymous_identity == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    eapPeerConfig->anonymous_identity[0] = '@';
+    memcpy(eapPeerConfig->anonymous_identity + 1, realm.value, realm.length);
+    eapPeerConfig->anonymous_identity[1 + realm.length] = '\0';
+    eapPeerConfig->anonymous_identity_len = 1 + realm.length;
+
+    /* password */
     eapPeerConfig->password = (unsigned char *)cred->password.value;
     eapPeerConfig->password_len = cred->password.length;
 
@@ -265,7 +264,17 @@ peerConfigFree(OM_uint32 *minor,
 {
     struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
 
-    GSSEAP_FREE(eapPeerConfig->identity);
+    if (eapPeerConfig->identity != NULL) {
+        GSSEAP_FREE(eapPeerConfig->identity);
+        eapPeerConfig->identity = NULL;
+        eapPeerConfig->identity_len = 0;
+    }
+
+    if (eapPeerConfig->anonymous_identity != NULL) {
+        GSSEAP_FREE(eapPeerConfig->anonymous_identity);
+        eapPeerConfig->anonymous_identity = NULL;
+        eapPeerConfig->anonymous_identity_len = 0;
+    }
 
     *minor = 0;
     return GSS_S_COMPLETE;
