@@ -289,9 +289,10 @@ gssEapAcquireCred(OM_uint32 *minor,
 
         cred->flags |= CRED_FLAG_PASSWORD;
     } else if (defaultCreds.value != NULL) {
-        major = duplicateBuffer(minor, &defaultCreds, &cred->password);
-        if (GSS_ERROR(major))
-            goto cleanup;
+        cred->password = defaultCreds;
+
+        defaultCreds.length = 0;
+        defaultCreds.value = NULL;
 
         cred->flags |= CRED_FLAG_PASSWORD;
     } else if (cred->flags & CRED_FLAG_INITIATE) {
@@ -333,6 +334,10 @@ gssEapAcquireCred(OM_uint32 *minor,
 cleanup:
     if (GSS_ERROR(major))
         gssEapReleaseCred(&tmpMinor, &cred);
+    if (defaultCreds.value != NULL) {
+        memset(defaultCreds.value, 0, defaultCreds.length);
+        gss_release_buffer(&tmpMinor, &defaultCreds);
+    }
 
     return major;
 }
