@@ -149,6 +149,17 @@ krbPrincipalToName(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+static krb5_error_code
+gssEapGetDefaultRealm(krb5_context krbContext, char **defaultRealm)
+{
+    *defaultRealm = NULL;
+
+    krb5_appdefault_string(krbContext, "eap_gss",
+                           NULL, "default_realm", "", defaultRealm);
+
+    return (*defaultRealm != NULL) ? 0 : KRB5_CONFIG_NODEFREALM;
+}
+
 static OM_uint32
 importServiceName(OM_uint32 *minor,
                   const gss_buffer_t nameBuffer,
@@ -172,7 +183,7 @@ importServiceName(OM_uint32 *minor,
         host++;
     }
 
-    krb5_get_default_realm(krbContext, &realm);
+    gssEapGetDefaultRealm(krbContext, &realm);
 
     code = krb5_build_principal(krbContext,
                                 &krbPrinc,
@@ -181,9 +192,6 @@ importServiceName(OM_uint32 *minor,
                                 service,
                                 host,
                                 NULL);
-
-    if (realm != NULL)
-        krb5_free_default_realm(krbContext, realm);
 
     if (code == 0) {
         KRB_PRINC_TYPE(krbPrinc) = KRB5_NT_SRV_HST;
@@ -196,6 +204,8 @@ importServiceName(OM_uint32 *minor,
         *minor = GSSEAP_BAD_SERVICE_NAME;
     }
 
+    if (realm != NULL)
+        GSSEAP_FREE(realm);
     GSSEAP_FREE(service);
 
     return major;
@@ -208,42 +218,67 @@ importUserName(OM_uint32 *minor,
 {
     OM_uint32 major;
     krb5_context krbContext;
-    krb5_principal krbPrinc;
-    char *nameString, *realm = NULL;
-    int flags = 0;
+    krb5_principal krbPrinc = NULL;
     krb5_error_code code;
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    code = krb5_get_default_realm(krbContext, &realm);
-    if (code != 0 || realm == NULL)
-        flags |= KRB5_PRINCIPAL_PARSE_REQUIRE_REALM;
-    else
-        krb5_free_default_realm(krbContext, realm);
-
     if (nameBuffer == GSS_C_NO_BUFFER) {
-        *minor = krb5_copy_principal(krbContext,
-                                     krbAnonymousPrincipal(), &krbPrinc);
-        if (*minor != 0)
+        code = krb5_copy_principal(krbContext,
+                                   krbAnonymousPrincipal(), &krbPrinc);
+        if (code != 0) {
+            *minor = code;
             return GSS_S_FAILURE;
+        }
     } else {
+        char *nameString;
+
         major = bufferToString(minor, nameBuffer, &nameString);
         if (GSS_ERROR(major))
             return major;
 
-        *minor = krb5_parse_name_flags(krbContext, nameString, flags, &krbPrinc);
-        if (*minor != 0) {
-            GSSEAP_FREE(nameString);
+        /*
+         * First, attempt to parse the name on the assumption that it includes
+         * a qualifying realm.
+         */
+        code = krb5_parse_name_flags(krbContext, nameString,
+                                     KRB5_PRINCIPAL_PARSE_REQUIRE_REALM, &krbPrinc);
+        if (code == KRB5_PARSE_MALFORMED) {
+            char *defaultRealm = NULL;
+            int flags = 0;
+
+            /*
+             * We need an explicit appdefaults check because, at least with MIT
+             * Kerberos, setting the context realm to NULL will reset it to the
+             * default Kerberos realm after the second call to get_default_realm.
+             * We want to make sure that the default Kerberos realm does not end
+             * up accidentally appended to an unqualified name.
+             */
+            gssEapGetDefaultRealm(krbContext, &defaultRealm);
+
+            if (defaultRealm == NULL || defaultRealm[0] == '\0')
+                flags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
+
+            code = krb5_parse_name_flags(krbContext, nameString, flags, &krbPrinc);
+
+            if (defaultRealm != NULL)
+                GSSEAP_FREE(defaultRealm);
+        }
+
+        GSSEAP_FREE(nameString);
+
+        if (code != 0) {
+            *minor = code;
             return GSS_S_FAILURE;
         }
     }
 
-    major = krbPrincipalToName(minor, &krbPrinc, pName);
-    if (GSS_ERROR(major)) {
-        krb5_free_principal(krbContext, krbPrinc);
-    }
+    assert(krbPrinc != NULL);
 
-    GSSEAP_FREE(nameString);
+    major = krbPrincipalToName(minor, &krbPrinc, pName);
+    if (GSS_ERROR(major))
+        krb5_free_principal(krbContext, krbPrinc);
+
     return major;
 }
 

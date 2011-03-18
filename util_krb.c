@@ -70,9 +70,11 @@ initKrbContext(krb5_context *pKrbContext)
     krb5_appdefault_string(krbContext, "eap_gss",
                            NULL, "default_realm", "", &defaultRealm);
 
-    code = krb5_set_default_realm(krbContext, defaultRealm);
-    if (code != 0)
-        goto cleanup;
+    if (defaultRealm != NULL && defaultRealm[0] != '\0') {
+        code = krb5_set_default_realm(krbContext, defaultRealm);
+        if (code != 0)
+            goto cleanup;
+    }
 
     *pKrbContext = krbContext;
 
