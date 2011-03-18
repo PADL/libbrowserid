@@ -220,7 +220,6 @@ importServiceName(OM_uint32 *minor,
 
 /*
  * Import an EAP name, possibly appending the default GSS EAP realm,
- * and taking care to avoid appending the default Kerberos realm.
  */
 static OM_uint32
 importEapNameFlags(OM_uint32 *minor,
@@ -251,7 +250,9 @@ importEapNameFlags(OM_uint32 *minor,
 
         /*
          * First, attempt to parse the name on the assumption that it includes
-         * a qualifying realm.
+         * a qualifying realm. This allows us to avoid accidentally appending
+         * the default Kerberos realm to an unqualified name. (A bug in MIT
+         * Kerberos prevents the default realm being set to an empty value.)
          */
         code = krb5_parse_name_flags(krbContext, nameString,
                                      KRB5_PRINCIPAL_PARSE_REQUIRE_REALM, &krbPrinc);
@@ -259,16 +260,11 @@ importEapNameFlags(OM_uint32 *minor,
             char *defaultRealm = NULL;
             int parseFlags = 0;
 
-            /*
-             * We need an explicit appdefaults check because, at least with MIT
-             * Kerberos, setting the context realm to NULL will reset it to the
-             * default Kerberos realm after the second call to get_default_realm.
-             * We want to make sure that the default Kerberos realm does not end
-             * up accidentally appended to an unqualified name.
-             */
+            /* Possibly append the default EAP realm if required */
             if (importFlags & IMPORT_FLAG_DEFAULT_REALM)
                 gssEapGetDefaultRealm(krbContext, &defaultRealm);
 
+            /* If no default realm, leave the realm empty in the parsed name */
             if (defaultRealm == NULL)
                 parseFlags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
 
