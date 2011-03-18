@@ -654,9 +654,8 @@ defrostAttrContext(OM_uint32 *minor,
 #ifdef HAVE_HEIMDAL_VERSION
                    gss_ctx_id_t glueContext,
 #else
-                   gss_ctx_id_t glueContext GSSEAP_UNUSED,
-#endif
                    gss_name_t glueName,
+#endif
                    gss_name_t mechName)
 {
     OM_uint32 major, tmpMinor;
@@ -738,7 +737,13 @@ gssEapGlueToMechName(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = defrostAttrContext(minor, ctx->kerberosCtx, glueName, *pMechName);
+    major = defrostAttrContext(minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                               ctx->kerberosCtx,
+#else
+                               glueName,
+#endif
+                               *pMechName);
     if (GSS_ERROR(major))
         goto cleanup;
 

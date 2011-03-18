@@ -79,9 +79,6 @@ gssEapChecksum(krb5_context context,
     size_t kiov_count;
     int i = 0, j;
     size_t k5_checksumlen;
-#ifdef HAVE_HEIMDAL_VERSION
-    krb5_cksumtype cksumtype;
-#endif
 
     if (verify)
         *valid = FALSE;
@@ -139,11 +136,11 @@ gssEapChecksum(krb5_context context,
 #ifdef HAVE_HEIMDAL_VERSION
     if (verify) {
         code = krb5_verify_checksum_iov(context, crypto, sign_usage,
-                                        kiov, kiov_count, &cksumtype);
+                                        kiov, kiov_count, &type);
         *valid = (code == 0);
     } else {
         code = krb5_create_checksum_iov(context, crypto, sign_usage,
-                                        kiov, kiov_count, &cksumtype);
+                                        kiov, kiov_count, &type);
     }
 #else
     if (verify) {

@@ -705,7 +705,7 @@ gssEapDisplayName(OM_uint32 *minor,
      */
 #ifdef HAVE_HEIMDAL_VERSION
     if (KRB_PRINC_REALM(name->krbPrincipal) == NULL ||
-        KRB_PRINC_REALM(name->krBPrincipal)[0] == '\0')
+        KRB_PRINC_REALM(name->krbPrincipal)[0] == '\0')
 #else
     if (KRB_PRINC_REALM(name->krbPrincipal)->length == 0)
 #endif
