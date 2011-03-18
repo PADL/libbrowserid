@@ -157,6 +157,11 @@ gssEapGetDefaultRealm(krb5_context krbContext, char **defaultRealm)
     krb5_appdefault_string(krbContext, "eap_gss",
                            NULL, "default_realm", "", defaultRealm);
 
+    if (*defaultRealm != NULL && (*defaultRealm)[0] == '\0') {
+        GSSEAP_FREE(*defaultRealm);
+        *defaultRealm = NULL;
+    }
+
     return (*defaultRealm != NULL) ? 0 : KRB5_CONFIG_NODEFREALM;
 }
 
@@ -256,7 +261,7 @@ importUserName(OM_uint32 *minor,
              */
             gssEapGetDefaultRealm(krbContext, &defaultRealm);
 
-            if (defaultRealm == NULL || defaultRealm[0] == '\0')
+            if (defaultRealm == NULL)
                 flags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
 
             code = krb5_parse_name_flags(krbContext, nameString, flags, &krbPrinc);
