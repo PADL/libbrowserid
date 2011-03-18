@@ -161,7 +161,6 @@ gssEapAcquireCred(OM_uint32 *minor,
     } else {
         gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
         gss_OID nameType = GSS_C_NO_OID;
-        char loginName[256];
 
         if (cred->flags & CRED_FLAG_ACCEPT) {
             char serviceName[5 + MAXHOSTNAMELEN] = "host@";
@@ -179,9 +178,8 @@ gssEapAcquireCred(OM_uint32 *minor,
             nameType = GSS_C_NT_HOSTBASED_SERVICE;
         } else if (cred->flags & CRED_FLAG_INITIATE) {
             /* XXX FIXME temporary implementation */
-            snprintf(loginName, sizeof(loginName), "%s@", getlogin());
-            nameBuf.value = loginName;
-            nameBuf.length = strlen(loginName);
+            nameBuf.value = getlogin();
+            nameBuf.length = strlen((char *)nameBuf.value);
 
             nameType = GSS_C_NT_USER_NAME;
         }
