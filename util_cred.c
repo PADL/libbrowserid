@@ -114,7 +114,7 @@ readDefaultIdentityAndCreds(OM_uint32 *minor,
                             gss_buffer_t defaultIdentity,
                             gss_buffer_t defaultCreds)
 {
-    OM_uint32 major;
+    OM_uint32 major, tmpMinor;
     FILE *fp = NULL;
     char pwbuf[BUFSIZ], buf[BUFSIZ];
     char *ccacheName;
@@ -185,6 +185,11 @@ readDefaultIdentityAndCreds(OM_uint32 *minor,
 cleanup:
     if (fp != NULL)
         fclose(fp);
+
+    if (GSS_ERROR(major)) {
+        gss_release_buffer(&tmpMinor, defaultIdentity);
+        gss_release_buffer(&tmpMinor, defaultCreds);
+    }
 
     return major;
 }
