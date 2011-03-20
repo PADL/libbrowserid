@@ -51,7 +51,9 @@
 /* GSS headers */
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_krb5.h>
-#ifndef HAVE_HEIMDAL_VERSION
+#ifdef HAVE_HEIMDAL_VERSION
+typedef struct gss_any *gss_any_t;
+#else
 #include <gssapi/gssapi_ext.h>
 #endif
 #include "gssapi_eap.h"
