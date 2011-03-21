@@ -459,7 +459,16 @@ gss_eap_radius_attr_provider::init(void)
      * dictionary, otherwise accepting reauthentication tokens fails unless
      * the acceptor has already accepted a normal authentication token.
      */
-    if (rs_context_create(&radContext, RS_DICT_FILE) != 0) {
+    if (rs_context_create(&radContext) != 0)
+        return false;
+
+    if (rs_context_read_config(radContext, RS_CONFIG_FILE) != 0) {
+        rs_context_destroy(radContext);
+        return false;
+    }
+
+    if (rs_context_init_freeradius_dict(radContext, NULL)) {
+        rs_context_destroy(radContext);
         return false;
     }
 

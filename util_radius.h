@@ -149,7 +149,6 @@ gssEapRadiusMapError(OM_uint32 *minor,
                      struct rs_error *err);
 
 #define RS_CONFIG_FILE      SYSCONFDIR "/radsec.conf"
-#define RS_DICT_FILE        SYSCONFDIR "/raddb/dictionary"
 
 #define VENDORPEC_MS                        311 /* RFC 2548 */
 

@@ -421,7 +421,7 @@ createRadiusHandle(OM_uint32 *minor,
     assert(actx->radContext == NULL);
     assert(actx->radConn == NULL);
 
-    if (rs_context_create(&actx->radContext, RS_DICT_FILE) != 0) {
+    if (rs_context_create(&actx->radContext) != 0) {
         *minor = GSSEAP_RADSEC_CONTEXT_FAILURE;
         return GSS_S_FAILURE;
     }
@@ -439,6 +439,11 @@ createRadiusHandle(OM_uint32 *minor,
     rs_context_set_alloc_scheme(actx->radContext, &ralloc);
 
     if (rs_context_read_config(actx->radContext, configFile) != 0) {
+        err = rs_err_ctx_pop(actx->radContext);
+        goto fail;
+    }
+
+    if (rs_context_init_freeradius_dict(actx->radContext, NULL) != 0) {
         err = rs_err_ctx_pop(actx->radContext);
         goto fail;
     }
