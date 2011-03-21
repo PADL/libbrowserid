@@ -149,20 +149,15 @@ krbPrincipalToName(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
-static krb5_error_code
-gssEapGetDefaultRealm(krb5_context krbContext, char **defaultRealm)
+static char *
+gssEapGetDefaultRealm(krb5_context krbContext)
 {
-    *defaultRealm = NULL;
+    char *defaultRealm = NULL;
 
     krb5_appdefault_string(krbContext, "eap_gss",
-                           NULL, "default_realm", "", defaultRealm);
+                           NULL, "default_realm", "", &defaultRealm);
 
-    if (*defaultRealm != NULL && (*defaultRealm)[0] == '\0') {
-        GSSEAP_FREE(*defaultRealm);
-        *defaultRealm = NULL;
-    }
-
-    return (*defaultRealm != NULL) ? 0 : KRB5_CONFIG_NODEFREALM;
+    return defaultRealm;
 }
 
 static OM_uint32
@@ -188,7 +183,7 @@ importServiceName(OM_uint32 *minor,
         host++;
     }
 
-    gssEapGetDefaultRealm(krbContext, &realm);
+    realm = gssEapGetDefaultRealm(krbContext);
 
     code = krb5_build_principal(krbContext,
                                 &krbPrinc,
@@ -262,13 +257,21 @@ importEapNameFlags(OM_uint32 *minor,
 
             /* Possibly append the default EAP realm if required */
             if (importFlags & IMPORT_FLAG_DEFAULT_REALM)
-                gssEapGetDefaultRealm(krbContext, &defaultRealm);
+                defaultRealm = gssEapGetDefaultRealm(krbContext);
 
             /* If no default realm, leave the realm empty in the parsed name */
-            if (defaultRealm == NULL)
+            if (defaultRealm == NULL || defaultRealm[0] == '\0')
                 parseFlags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
 
             code = krb5_parse_name_flags(krbContext, nameString, parseFlags, &krbPrinc);
+
+#ifdef HAVE_HEIMDAL_VERSION
+            if (code == 0 && KRB_PRINC_REALM(krbPrinc) == NULL) {
+                KRB_PRINC_REALM(krbPrinc) = GSSEAP_CALLOC(1, sizeof(char));
+                if (KRB_PRINC_REALM(krbPrinc) == NULL)
+                    code = ENOMEM;
+            }
+#endif
 
             if (defaultRealm != NULL)
                 GSSEAP_FREE(defaultRealm);
