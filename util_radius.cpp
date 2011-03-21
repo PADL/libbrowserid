@@ -440,7 +440,8 @@ void
 gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
                                                     gss_any_t input) const
 {
-    pairfree((VALUE_PAIR **)&input);
+    VALUE_PAIR *vp = (VALUE_PAIR *)input;
+    pairfree(&vp);
 }
 
 bool
