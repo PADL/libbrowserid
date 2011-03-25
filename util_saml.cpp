@@ -444,12 +444,16 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
             const_cast<const saml2::AttributeStatement*>(*s)->getAttributes();
 
         for (vector<saml2::Attribute*>::const_iterator a = attrs.begin(); a != attrs.end(); ++a) {
-            const XMLCh *attributeName = (*a)->getName();
-            const XMLCh *attributeNameFormat = (*a)->getNameFormat();
+            const XMLCh *attributeName, *attributeNameFormat;
             XMLCh *qualifiedName;
             XMLCh space[2] = { ' ', 0 };
             gss_buffer_desc utf8;
             bool ret;
+
+            attributeName = (*a)->getName();
+            attributeNameFormat = (*a)->getNameFormat();
+            if (attributeNameFormat == NULL || attributeNameFormat[0] == '\0')
+                attributeNameFormat = saml2::Attribute::UNSPECIFIED;
 
             qualifiedName = new XMLCh[XMLString::stringLen(attributeNameFormat) + 1 +
                                       XMLString::stringLen(attributeName) + 1];
@@ -619,8 +623,15 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
             const_cast<const saml2::AttributeStatement*>(*s)->getAttributes();
 
         for (vector<saml2::Attribute *>::const_iterator a = attrs.begin(); a != attrs.end(); ++a) {
-            if (XMLString::equals((*a)->getNameFormat(), components->elementAt(0)) &&
-                XMLString::equals((*a)->getName(), components->elementAt(1))) {
+            const XMLCh *attributeName, *attributeNameFormat;
+
+            attributeName = (*a)->getName();
+            attributeNameFormat = (*a)->getNameFormat();
+            if (attributeNameFormat == NULL || attributeNameFormat[0] == '\0')
+                attributeNameFormat = saml2::Attribute::UNSPECIFIED;
+
+            if (XMLString::equals(attributeNameFormat, components->elementAt(0)) &&
+                XMLString::equals(attributeName, components->elementAt(1))) {
                 ret = *a;
                 break;
             }
