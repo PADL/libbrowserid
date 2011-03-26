@@ -333,6 +333,9 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
         didInit[type] = true;
     }
 
+    if (ret == false)
+        return ret;
+
     /*
      * The call the initFromGssContext methods for attribute
      * providers that can initialize themselves from other
