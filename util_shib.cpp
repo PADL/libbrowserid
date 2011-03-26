@@ -401,7 +401,7 @@ gss_eap_shib_attr_provider::exportToBuffer(gss_buffer_t buffer) const
     }
 
     ostringstream sink;
-    sink << attrs;
+    sink << obj;
     string str = sink.str();
 
     duplicateBuffer(str, buffer);

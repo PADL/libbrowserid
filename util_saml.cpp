@@ -307,37 +307,15 @@ gss_eap_saml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSE
 void
 gss_eap_saml_assertion_provider::exportToBuffer(gss_buffer_t buffer) const
 {
-    ostringstream sink;
-    string str;
-
     buffer->length = 0;
     buffer->value = NULL;
-
-    if (m_assertion == NULL)
-        return;
-
-    sink << *m_assertion;
-    str = sink.str();
-
-    duplicateBuffer(str, buffer);
 }
 
 bool
-gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
-                                                const gss_buffer_t buffer)
+gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx GSSEAP_UNUSED,
+                                                const gss_buffer_t buffer GSSEAP_UNUSED)
 {
-    if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
-        return false;
-
-    if (buffer->length == 0)
-        return true;
-
-    assert(m_assertion == NULL);
-
-    setAssertion(buffer);
-    /* TODO XXX how to propagate authenticated flag? */
-
-    return true;
+    return false;
 }
 
 bool
@@ -714,10 +692,10 @@ gss_eap_saml_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 }
 
 bool
-gss_eap_saml_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
-                                           const gss_buffer_t buffer)
+gss_eap_saml_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx GSSEAP_UNUSED,
+                                           const gss_buffer_t buffer GSSEAP_UNUSED)
 {
-    return gss_eap_attr_provider::initFromBuffer(ctx, buffer);
+    return false;
 }
 
 bool

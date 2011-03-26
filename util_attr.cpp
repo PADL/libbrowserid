@@ -265,6 +265,17 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
     return ret;
 }
 
+#define UPDATE_REMAIN(n)    do {                \
+        p += (n);                               \
+        remain -= (n);                          \
+    } while (0)
+
+#define CHECK_REMAIN(n)     do {                \
+        if (remain < (n)) {                     \
+            return false;                       \
+        }                                       \
+    } while (0)
+
 /*
  * Initialize a context from an exported context or name token
  */
@@ -272,32 +283,61 @@ bool
 gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
 {
     bool ret;
-    gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
-    gss_buffer_desc primaryBuf;
+    size_t remain = buffer->length;
+    unsigned char *p = (unsigned char *)buffer->value;
+    bool didInit[ATTR_TYPE_MAX + 1];
 
-    if (buffer->length < 4)
-        return false;
+    memset(didInit, 0, sizeof(didInit));
 
-    m_flags = load_uint32_be(buffer->value);
+    /* flags */
+    CHECK_REMAIN(4);
+    m_flags = load_uint32_be(p);
+    UPDATE_REMAIN(4);
 
-    primaryBuf.length = buffer->length - 4;
-    primaryBuf.value = (char *)buffer->value + 4;
-
-    ret = primaryProvider->initFromBuffer(this, &primaryBuf);
-    if (ret == false)
-        return ret;
-
-    for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
+    while (remain) {
+        OM_uint32 type;
+        gss_buffer_desc providerToken;
         gss_eap_attr_provider *provider;
 
-        if (!providerEnabled(i)) {
-            releaseProvider(i);
+        /* TLV encoding of provider type, length, value */
+        CHECK_REMAIN(4);
+        type = load_uint32_be(p);
+        UPDATE_REMAIN(4);
+
+        CHECK_REMAIN(4);
+        providerToken.length = load_uint32_be(p);
+        UPDATE_REMAIN(4);
+
+        CHECK_REMAIN(providerToken.length);
+        providerToken.value = p;
+        UPDATE_REMAIN(providerToken.length);
+
+        if (type < ATTR_TYPE_MIN || type > ATTR_TYPE_MAX ||
+            didInit[type])
+            return false;
+
+        if (!providerEnabled(type)) {
+            releaseProvider(type);
             continue;
         }
 
-        provider = m_providers[i];
-        if (provider == primaryProvider)
+        provider = m_providers[type];
+
+        ret = provider->initFromBuffer(this, &providerToken);
+        if (ret == false) {
+            releaseProvider(type);
+            break;
+        }
+        didInit[type] = true;
+    }
+
+    for (size_t i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider;
+
+        if (didInit[i])
             continue;
+
+        provider = m_providers[i];
 
         ret = provider->initFromGssContext(this,
                                            GSS_C_NO_CREDENTIAL,
@@ -555,23 +595,47 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
-    const gss_eap_attr_provider *primaryProvider = getPrimaryProvider();
-    gss_buffer_desc tmp;
-    unsigned char *p;
     OM_uint32 tmpMinor;
+    gss_buffer_desc providerTokens[ATTR_TYPE_MAX + 1];
+    size_t length = 4; /* m_flags */
+    unsigned char *p;
 
-    primaryProvider->exportToBuffer(&tmp);
+    memset(providerTokens, 0, sizeof(providerTokens));
 
-    buffer->length = 4 + tmp.length;
-    buffer->value = GSSEAP_MALLOC(buffer->length);
+    for (size_t i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider = m_providers[i];
+
+        if (provider == NULL)
+            continue;
+
+        provider->exportToBuffer(&providerTokens[i]);
+
+        if (providerTokens[i].value != NULL)
+            length += 8 + providerTokens[i].length;
+    }
+
+    buffer->length = length;
+    buffer->value = GSSEAP_MALLOC(length);
     if (buffer->value == NULL)
         throw new std::bad_alloc;
 
     p = (unsigned char *)buffer->value;
     store_uint32_be(m_flags, p);
-    memcpy(p + 4, tmp.value, tmp.length);
+    p += 4;
 
-    gss_release_buffer(&tmpMinor, &tmp);
+    for (size_t i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
+        if (providerTokens[i].value == NULL)
+            continue;
+
+        store_uint32_be(i, p);
+        p += 4;
+        store_uint32_be(providerTokens[i].length, p);
+        p += 4;
+        memcpy(p, providerTokens[i].value, providerTokens[i].length);
+        p += providerTokens[i].length;
+
+        gss_release_buffer(&tmpMinor, &providerTokens[i]);
+    }
 }
 
 /*
