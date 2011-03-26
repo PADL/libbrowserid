@@ -38,6 +38,7 @@
 
 #include <typeinfo>
 #include <string>
+#include <sstream>
 #include <exception>
 #include <new>
 
@@ -273,86 +274,67 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
     return ret;
 }
 
-#define UPDATE_REMAIN(n)    do {                \
-        p += (n);                               \
-        remain -= (n);                          \
-    } while (0)
+static DDF
+findSourceForProvider(DDF &sources, const char *key)
+{
+    DDF source = sources.first();
 
-#define CHECK_REMAIN(n)     do {                \
-        if (remain < (n)) {                     \
-            return false;                       \
-        }                                       \
-    } while (0)
+    while (!source.isnull()) {
+        DDF obj = source.getmember(key);
 
-/*
- * Initialize a context from an exported context or name token
- */
+        if (strcmp(key, source.name()) == 0)
+            break;
+
+        source = sources.next();
+    }
+
+    return source;
+}
+
 bool
-gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
+gss_eap_attr_ctx::unmarshallAndInit(DDF &obj)
 {
     bool ret = false;
-    size_t remain = buffer->length;
-    unsigned char *p = (unsigned char *)buffer->value;
-    bool didInit[ATTR_TYPE_MAX + 1];
+    bool foundSource[ATTR_TYPE_MAX + 1];
     unsigned int type;
 
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++)
-        didInit[type] = false;
+        foundSource[type] = false;
 
-    /* flags */
-    CHECK_REMAIN(4);
-    m_flags = load_uint32_be(p);
-    UPDATE_REMAIN(4);
+    if (obj["version"].integer() != 1)
+        return false;
 
-    while (remain) {
-        OM_uint32 type;
-        gss_buffer_desc providerToken;
-        gss_eap_attr_provider *provider;
+    m_flags = obj["flags"].integer();
 
-        /* TLV encoding of provider type, length, value */
-        CHECK_REMAIN(4);
-        type = load_uint32_be(p);
-        UPDATE_REMAIN(4);
+    DDF sources = obj["sources"];
 
-        CHECK_REMAIN(4);
-        providerToken.length = load_uint32_be(p);
-        UPDATE_REMAIN(4);
-
-        CHECK_REMAIN(providerToken.length);
-        providerToken.value = p;
-        UPDATE_REMAIN(providerToken.length);
-
-        if (type < ATTR_TYPE_MIN || type > ATTR_TYPE_MAX ||
-            didInit[type])
-            return false;
-
+    /* Initialize providers from serialized state */
+    for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++) {
         if (!providerEnabled(type)) {
             releaseProvider(type);
             continue;
         }
 
-        provider = m_providers[type];
+        gss_eap_attr_provider *provider = m_providers[type];
+        const char *key = provider->marshallingKey();
+        if (key == NULL)
+            continue;
 
-        ret = provider->initFromBuffer(this, &providerToken);
-        if (ret == false) {
+        DDF source = findSourceForProvider(sources, key);
+        if (source.isnull() ||
+            !provider->unmarshallAndInit(this, source)) {
             releaseProvider(type);
-            break;
+            return false;
         }
-        didInit[type] = true;
+
+        foundSource[type] = true;
     }
 
-    if (ret == false)
-        return ret;
-
-    /*
-     * The call the initFromGssContext methods for attribute
-     * providers that can initialize themselves from other
-     * providers.
-     */
+    /* Initialize remaining providers from initialized providers */ 
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++) {
         gss_eap_attr_provider *provider;
 
-        if (didInit[type] || !providerEnabled(type))
+        if (foundSource[type] || !providerEnabled(type))
             continue;
 
         provider = m_providers[type];
@@ -367,6 +349,58 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
     }
 
     return true;
+}
+
+DDF
+gss_eap_attr_ctx::marshall(void) const
+{
+    DDF obj(NULL);
+    unsigned int i;
+
+    obj.addmember("version").integer(1);
+    obj.addmember("flags").integer(m_flags);
+
+    DDF sources = obj.addmember("sources").list();
+
+    for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
+        gss_eap_attr_provider *provider = m_providers[i];
+
+        if (provider == NULL)
+            continue; /* provider not initialised */
+
+        const char *key = provider->marshallingKey();
+        if (key == NULL)
+            continue; /* provider does not have state */
+
+        DDF source = provider->marshall();
+        sources.add(source.name(key));
+    }
+
+    return obj;
+}
+
+/*
+ * Initialize a context from an exported context or name token
+ */
+bool
+gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
+{
+    bool ret;
+
+    if (buffer->length == 0)
+        return false;
+
+    DDF obj(NULL);
+    std::string str((const char *)buffer->value, buffer->length);
+    std::istringstream source(str);
+
+    source >> obj;
+
+    ret = unmarshallAndInit(obj);
+
+    obj.destroy();
+
+    return ret;
 }
 
 gss_eap_attr_ctx::~gss_eap_attr_ctx(void)
@@ -601,51 +635,15 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
-    OM_uint32 tmpMinor;
-    gss_buffer_desc providerTokens[ATTR_TYPE_MAX + 1];
-    size_t length = 4; /* m_flags */
-    unsigned char *p;
-    unsigned int i;
+    DDF obj = marshall();
+    std::ostringstream sink;
 
-    for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        providerTokens[i].length = 0;
-        providerTokens[i].value = NULL;
-    }
+    sink << obj;
+    std::string str = sink.str();
 
-    for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider = m_providers[i];
+    duplicateBuffer(str, buffer);
 
-        if (provider == NULL)
-            continue;
-
-        provider->exportToBuffer(&providerTokens[i]);
-
-        if (providerTokens[i].value != NULL)
-            length += 8 + providerTokens[i].length;
-    }
-
-    buffer->length = length;
-    buffer->value = GSSEAP_MALLOC(length);
-    if (buffer->value == NULL)
-        throw new std::bad_alloc;
-
-    p = (unsigned char *)buffer->value;
-    store_uint32_be(m_flags, p);
-    p += 4;
-
-    for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        if (providerTokens[i].value == NULL)
-            continue;
-
-        store_uint32_be(i, p);
-        p += 4;
-        store_uint32_be(providerTokens[i].length, p);
-        p += 4;
-        memcpy(p, providerTokens[i].value, providerTokens[i].length);
-        p += providerTokens[i].length;
-
-        gss_release_buffer(&tmpMinor, &providerTokens[i]);
-    }
+    obj.destroy();
 }
 
 /*

@@ -41,6 +41,10 @@
 #include <string>
 #include <new>
 
+#include <shibsp/remoting/ddf.h>
+
+using namespace shibsp;
+
 struct gss_eap_attr_provider;
 struct gss_eap_attr_ctx;
 
@@ -121,6 +125,7 @@ public:
     {
         return NULL;
     }
+
     virtual void releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
                                        gss_any_t input GSSEAP_UNUSED) const
     {
@@ -131,14 +136,20 @@ public:
         return NULL;
     }
 
-    virtual void exportToBuffer(gss_buffer_t buffer GSSEAP_UNUSED) const
+    virtual const char *marshallingKey(void) const
     {
+        return NULL;
     }
 
-    virtual bool initFromBuffer(const gss_eap_attr_ctx *manager,
-                                const gss_buffer_t buffer GSSEAP_UNUSED)
+    virtual bool unmarshallAndInit(const gss_eap_attr_ctx *manager,
+                                   DDF &object GSSEAP_UNUSED)
     {
         return initWithManager(manager);
+    }
+
+    virtual DDF marshall(void) const
+    {
+        return DDF(NULL);
     }
 
     virtual time_t getExpiryTime(void) const { return 0; }
@@ -241,6 +252,9 @@ private:
 
     unsigned int attributePrefixToType(const gss_buffer_t prefix) const;
     gss_buffer_desc attributeTypeToPrefix(unsigned int type) const;
+
+    bool unmarshallAndInit(DDF &object);
+    DDF marshall(void) const;
 
     gss_eap_attr_provider *getPrimaryProvider(void) const;
 

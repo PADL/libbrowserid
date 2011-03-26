@@ -67,10 +67,11 @@ public:
                                gss_any_t input) const;
 
     const char *prefix(void) const;
+    const char *marshallingKey(void) const;
 
-    void exportToBuffer(gss_buffer_t buffer) const;
-    bool initFromBuffer(const gss_eap_attr_ctx *ctx,
-                        const gss_buffer_t buffer);
+    bool unmarshallAndInit(const gss_eap_attr_ctx *manager,
+                           DDF &object GSSEAP_UNUSED);
+    DDF marshall(void) const;
 
     bool getAttribute(uint32_t attribute,
                       int *authenticated,

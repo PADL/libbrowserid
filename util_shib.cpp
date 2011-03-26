@@ -385,60 +385,43 @@ gss_eap_shib_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UN
 }
 
 const char *
+<<<<<<< HEAD
 gss_eap_shib_attr_provider::prefix(void) const
 {
     return NULL;
+=======
+gss_eap_shib_attr_provider::marshallingKey(void) const
+{
+    return "local";
+>>>>>>> eef7b3b... get DDF marshalling working
 }
 
-void
-gss_eap_shib_attr_provider::exportToBuffer(gss_buffer_t buffer) const
+DDF
+gss_eap_shib_attr_provider::marshall(void) const
 {
     DDF obj(NULL);
-    DDF attrs(NULL);
 
-    buffer->length = 0;
-    buffer->value = NULL;
-
-    obj.addmember("version").integer(1);
     obj.addmember("authenticated").integer(m_authenticated);
 
-    attrs = obj.addmember("attributes").list();
+    DDF attrs = obj.addmember("attributes").list();
     for (vector<Attribute*>::const_iterator a = m_attributes.begin();
          a != m_attributes.end(); ++a) {
         DDF attr = (*a)->marshall();
         attrs.add(attr);
     }
 
-    ostringstream sink;
-    sink << obj;
-    string str = sink.str();
-
-    duplicateBuffer(str, buffer);
-
-    attrs.destroy();
+    return obj;
 }
 
 bool
-gss_eap_shib_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
-                                           const gss_buffer_t buffer)
+gss_eap_shib_attr_provider::unmarshallAndInit(const gss_eap_attr_ctx *ctx,
+                                              DDF &obj)
 {
-    if (!gss_eap_attr_provider::initFromBuffer(ctx, buffer))
+    if (!gss_eap_attr_provider::unmarshallAndInit(ctx, obj))
         return false;
-
-    if (buffer->length == 0)
-        return true;
 
     assert(m_authenticated == false);
     assert(m_attributes.size() == 0);
-
-    DDF obj(NULL);
-    string str((const char *)buffer->value, buffer->length);
-    istringstream source(str);
-
-    source >> obj;
-
-    if (obj["version"].integer() != 1)
-        return false;
 
     m_authenticated = (obj["authenticated"].integer() != 0);
 
@@ -449,8 +432,6 @@ gss_eap_shib_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
         m_attributes.push_back(attribute);
         attr = attrs.next();
     }
-
-    attrs.destroy();
 
     return true;
 }
