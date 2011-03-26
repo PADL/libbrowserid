@@ -156,9 +156,10 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
 {
     const gss_eap_saml_assertion_provider *saml;
     const gss_eap_radius_attr_provider *radius;
-    //gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-    //OM_uint32 minor;
-
+#if 0
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+    OM_uint32 minor;
+#endif
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
@@ -169,17 +170,19 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
 
     auto_ptr<ShibbolethResolver> resolver(ShibbolethResolver::create());
 
-    // For now, leave ApplicationID defaulted.
-    // Later on, we could allow this via config option to the mechanism
-    // or rely on an SPRequest interface to pass in a URI identifying the
-    // acceptor.
     /*
+     * For now, leave ApplicationID defaulted.
+     * Later on, we could allow this via config option to the mechanism
+     * or rely on an SPRequest interface to pass in a URI identifying the
+     * acceptor.
+     */
+#if 0
     if (gssCred != GSS_C_NO_CREDENTIAL &&
         gssEapDisplayName(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE) {
         resolver->setApplicationID((const char *)nameBuf.value);
         gss_release_buffer(&minor, &nameBuf);
     }
-    */
+#endif
 
     m_authenticated = false;
 
