@@ -77,11 +77,10 @@ public:
                                gss_any_t input) const;
 
     const char *prefix(void) const;
-
-    const char *marshallingKey(void) const;
-    bool unmarshallAndInit(const gss_eap_attr_ctx *manager,
-                           DDF &object GSSEAP_UNUSED);
-    DDF marshall(void) const;
+    const char *name(void) const;
+    bool initWithJsonObject(const gss_eap_attr_ctx *manager,
+                           json_t *obj);
+    json_t *jsonRepresentation(void) const;
 
     static bool init(void);
     static void finalize(void);

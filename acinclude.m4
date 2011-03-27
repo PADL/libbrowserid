@@ -220,3 +220,41 @@ else
 	AC_SUBST(RADSEC_LIBS)
 fi
 ])dnl
+
+AC_DEFUN([AX_CHECK_JANSSON],
+[AC_MSG_CHECKING(for jansson)
+JANSSON_DIR=
+found_jansson="no"
+AC_ARG_WITH(jansson,
+    AC_HELP_STRING([--with-jansson],
+       [Use jansson (in specified installation directory)]),
+    [check_jansson_dir="$withval"],
+    [check_jansson_dir=])
+for dir in $check_jansson_dir $prefix /usr /usr/local ; do
+   janssondir="$dir"
+   if test -f "$dir/include/jansson.h"; then
+     found_jansson="yes";
+     JANSSON_DIR="${janssondir}"
+     JANSSON_CFLAGS="-I$janssondir/include";
+     break;
+   fi
+done
+AC_MSG_RESULT($found_jansson)
+if test x_$found_jansson != x_yes; then
+   AC_MSG_ERROR([
+----------------------------------------------------------------------
+  Cannot find jansson libraries.
+
+  Please install libjansson or specify installation directory with
+  --with-jansson=(dir).
+----------------------------------------------------------------------
+])
+else
+	printf "jansson found in $janssondir\n";
+	JANSSON_LIBS="-ljansson";
+	JANSSON_LDFLAGS="-L$janssondir/lib";
+	AC_SUBST(JANSSON_CFLAGS)
+	AC_SUBST(JANSSON_LDFLAGS)
+	AC_SUBST(JANSSON_LIBS)
+fi
+])dnl

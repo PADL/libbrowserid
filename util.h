@@ -846,6 +846,7 @@ gssBufferToKrbData(gss_buffer_t buffer, krb5_data *data)
 #endif
 
 #include "util_attr.h"
+#include "util_base64.h"
 #ifdef GSSEAP_ENABLE_REAUTH
 #include "util_reauth.h"
 #endif

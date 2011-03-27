@@ -16,7 +16,7 @@ mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols mech_eap.exports -no-undefined \
 			@EAP_LDFLAGS@ @RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
 mech_eap_la_LIBADD   = @KRB5_LIBS@ @EAP_LIBS@ @RADSEC_LIBS@ \
-		       @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@
+		       @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
 
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
@@ -70,6 +70,7 @@ mech_eap_la_SOURCES =    			\
 	unwrap_iov.c				\
 	userok.c				\
 	util_attr.cpp				\
+	util_base64.c				\
 	util_buffer.c				\
 	util_context.c				\
 	util_cksum.c				\

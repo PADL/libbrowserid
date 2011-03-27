@@ -40,6 +40,7 @@
 #include <string>
 #include <sstream>
 #include <exception>
+#include <stdexcept>
 #include <new>
 
 /* lazy initialisation */
@@ -274,55 +275,43 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
     return ret;
 }
 
-static DDF
-findSourceForProvider(DDF &sources, const char *key)
-{
-    DDF source = sources.first();
-
-    while (!source.isnull()) {
-        DDF obj = source.getmember(key);
-
-        if (strcmp(key, source.name()) == 0)
-            break;
-
-        source = sources.next();
-    }
-
-    return source;
-}
-
 bool
-gss_eap_attr_ctx::unmarshallAndInit(DDF &obj)
+gss_eap_attr_ctx::initWithJsonObject(json_t *obj)
 {
     bool ret = false;
     bool foundSource[ATTR_TYPE_MAX + 1];
     unsigned int type;
+    json_t *sources;
 
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++)
         foundSource[type] = false;
 
-    if (obj["version"].integer() != 1)
+    if (json_integer_value(json_object_get(obj, "version")) != 1)
         return false;
 
-    m_flags = obj["flags"].integer();
+    m_flags = json_integer_value(json_object_get(obj, "flags"));
 
-    DDF sources = obj["sources"];
+    sources = json_object_get(obj, "sources");
 
     /* Initialize providers from serialized state */
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++) {
+        gss_eap_attr_provider *provider;
+        const char *key;
+        json_t *source;
+
         if (!providerEnabled(type)) {
             releaseProvider(type);
             continue;
         }
 
-        gss_eap_attr_provider *provider = m_providers[type];
-        const char *key = provider->marshallingKey();
+        provider = m_providers[type];
+        key = provider->name();
         if (key == NULL)
             continue;
 
-        DDF source = findSourceForProvider(sources, key);
-        if (source.isnull() ||
-            !provider->unmarshallAndInit(this, source)) {
+        source = json_object_get(sources, key);
+        if (source != NULL &&
+            !provider->initWithJsonObject(this, source)) {
             releaseProvider(type);
             return false;
         }
@@ -330,7 +319,7 @@ gss_eap_attr_ctx::unmarshallAndInit(DDF &obj)
         foundSource[type] = true;
     }
 
-    /* Initialize remaining providers from initialized providers */ 
+    /* Initialize remaining providers from initialized providers */
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++) {
         gss_eap_attr_provider *provider;
 
@@ -351,30 +340,44 @@ gss_eap_attr_ctx::unmarshallAndInit(DDF &obj)
     return true;
 }
 
-DDF
-gss_eap_attr_ctx::marshall(void) const
+json_t *
+gss_eap_attr_ctx::jsonRepresentation(void) const
 {
-    DDF obj(NULL);
+    json_t *obj, *sources;
     unsigned int i;
 
-    obj.addmember("version").integer(1);
-    obj.addmember("flags").integer(m_flags);
+    obj = json_object();
+    if (obj == NULL) {
+        throw new std::bad_alloc;
+    }
 
-    DDF sources = obj.addmember("sources").list();
+    /* FIXME check json_object_set_new return value */
+    json_object_set_new(obj, "version", json_integer(1));
+    json_object_set_new(obj, "flags", json_integer(m_flags));
+
+    sources = json_object();
+    if (sources == NULL) {
+        json_decref(obj);
+        throw new std::bad_alloc;
+    }
 
     for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_eap_attr_provider *provider = m_providers[i];
+        gss_eap_attr_provider *provider;
+        const char *key;
 
+        provider = m_providers[i];
         if (provider == NULL)
             continue; /* provider not initialised */
 
-        const char *key = provider->marshallingKey();
+        key = provider->name();
         if (key == NULL)
             continue; /* provider does not have state */
 
-        DDF source = provider->marshall();
-        sources.add(source.name(key));
+        json_t *source = provider->jsonRepresentation();
+        json_object_set_new(sources, key, source);
     }
+
+    json_object_set_new(obj, "sources", sources);
 
     return obj;
 }
@@ -385,20 +388,24 @@ gss_eap_attr_ctx::marshall(void) const
 bool
 gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
 {
+    OM_uint32 major, minor;
     bool ret;
+    char *s;
+    json_error_t error;
+    json_t *obj;
 
-    if (buffer->length == 0)
+    major = bufferToString(&minor, buffer, &s);
+    if (GSS_ERROR(major))
         return false;
 
-    DDF obj(NULL);
-    std::string str((const char *)buffer->value, buffer->length);
-    std::istringstream source(str);
+    obj = json_loads(s, 0, &error);
+    if (obj != NULL) {
+        ret = initWithJsonObject(obj);
+        json_decref(obj);
+    } else
+        ret = false;
 
-    source >> obj;
-
-    ret = unmarshallAndInit(obj);
-
-    obj.destroy();
+    GSSEAP_FREE(s);
 
     return ret;
 }
@@ -536,10 +543,8 @@ gss_eap_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
     unsigned int i;
 
     major = gss_create_empty_buffer_set(&minor, attrs);
-    if (GSS_ERROR(major)) {
+    if (GSS_ERROR(major))
         throw new std::bad_alloc;
-        return false;
-    }
 
     args.attrs = *attrs;
 
@@ -635,15 +640,33 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
 void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
-    DDF obj = marshall();
-    std::ostringstream sink;
+    OM_uint32 minor;
+    json_t *obj;
+    char *s;
 
-    sink << obj;
-    std::string str = sink.str();
+    obj = jsonRepresentation();
+    if (obj == NULL) {
+        std::string error("gss_eap_attr_ctx::exportToBuffer::jsonRepresentation");
+        throw new std::runtime_error(error); /* XXX */
+    }
 
-    duplicateBuffer(str, buffer);
+#if 0
+    json_dumpf(obj, stdout, JSON_INDENT(3));
+#endif
 
-    obj.destroy();
+    s = json_dumps(obj, JSON_COMPACT);
+    if (s == NULL) {
+        json_decref(obj);
+        std::string error("gss_eap_attr_ctx::exportToBuffer: json_dumps");
+        throw new std::runtime_error(error); /* XXX */
+    }
+
+    if (GSS_ERROR(makeStringBuffer(&minor, s, buffer))) {
+        json_decref(obj);
+        throw new std::bad_alloc;
+    }
+
+    json_decref(obj);
 }
 
 /*

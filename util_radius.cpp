@@ -36,8 +36,6 @@
 
 #include "gssapiP_eap.h"
 
-#include <xercesc/util/Base64.hpp>
-
 /* stuff that should be provided by libradsec/libfreeradius-radius */
 #define VENDORATTR(vendor, attr)            (((vendor) << 16) | (attr))
 
@@ -505,7 +503,7 @@ gssEapRadiusAddAvp(OM_uint32 *minor,
         VALUE_PAIR *vp;
         size_t n = remain;
 
-	/*
+        /*
          * There's an extra byte of padding; RADIUS AVPs can only
          * be 253 octets.
          */
@@ -621,12 +619,18 @@ gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
-static DDF
-avpMarshall(const VALUE_PAIR *vp)
+static json_t *
+avpToJson(const VALUE_PAIR *vp)
 {
-    DDF obj(NULL);
+    json_t *obj = json_object();
 
-    obj.addmember("type").integer(vp->attribute);
+    if (obj == NULL) {
+        throw new std::bad_alloc;
+        return NULL;
+    }
+
+    /* FIXME check json_object_set_new return value */
+    json_object_set_new(obj, "type", json_integer(vp->attribute));
 
     assert(vp->length <= MAX_STRING_LEN);
 
@@ -634,20 +638,21 @@ avpMarshall(const VALUE_PAIR *vp)
     case PW_TYPE_INTEGER:
     case PW_TYPE_IPADDR:
     case PW_TYPE_DATE:
-        obj.addmember("value").integer(vp->lvalue);
+        json_object_set_new(obj, "value", json_integer(vp->lvalue));
         break;
     case PW_TYPE_STRING:
-        obj.addmember("value").string(vp->vp_strvalue);
+        json_object_set_new(obj, "value", json_string(vp->vp_strvalue));
         break;
     default: {
-        XMLSize_t len;
-        XMLByte *b64 = xercesc::Base64::encode(vp->vp_octets, vp->length, &len);
+        char *b64;
 
-        if (b64[len - 1] == '\n')
-            b64[--len] = '\0'; /* XXX there may be embedded newlines */
+        if (base64Encode(vp->vp_octets, vp->length, &b64) < 0) {
+            json_decref(obj);
+            throw new std::bad_alloc;
+        }
 
-        obj.addmember("value").string((char *)b64);
-        delete b64;
+        json_object_set_new(obj, "value", json_string(b64));
+        GSSEAP_FREE(b64);
         break;
     }
     }
@@ -656,14 +661,19 @@ avpMarshall(const VALUE_PAIR *vp)
 }
 
 static bool
-avpUnmarshall(VALUE_PAIR **pVp, DDF &obj)
+jsonToAvp(VALUE_PAIR **pVp, json_t *obj)
 {
     VALUE_PAIR *vp = NULL;
     DICT_ATTR *da;
     uint32_t attrid;
+    json_t *type, *value;
 
-    attrid = obj["type"].integer();
+    type = json_object_get(obj, "type");
+    value = json_object_get(obj, "value");
+    if (type == NULL || value == NULL)
+        goto fail;
 
+    attrid = json_integer_value(type);
     da = dict_attrbyvalue(attrid);
     if (da != NULL) {
         vp = pairalloc(da);
@@ -680,12 +690,13 @@ avpUnmarshall(VALUE_PAIR **pVp, DDF &obj)
     case PW_TYPE_IPADDR:
     case PW_TYPE_DATE:
         vp->length = 4;
-        vp->lvalue = obj["value"].integer();;
+        vp->lvalue = json_integer_value(value);
         break;
     case PW_TYPE_STRING: {
-        const char *str = obj["value"].string();
-        size_t len = strlen(str);
-        if (str == NULL || len >= MAX_STRING_LEN)
+        const char *str = json_string_value(value);
+        size_t len;
+
+        if (str == NULL || (len = strlen(str)) >= MAX_STRING_LEN)
             goto fail;
 
         vp->length = len;
@@ -694,18 +705,20 @@ avpUnmarshall(VALUE_PAIR **pVp, DDF &obj)
     }
     case PW_TYPE_OCTETS:
     default: {
-        XMLSize_t len;
-        const XMLByte *b64 = (const XMLByte *)obj["value"].string();
-        XMLByte *data = xercesc::Base64::decode(b64, &len);
-        if (data == NULL || len >= MAX_STRING_LEN) {
-            delete data;
+        const char *str = json_string_value(value);
+        int len;
+
+        /* this optimization requires base64Decode only understand packed encoding */
+        if (str == NULL ||
+            strlen(str) >= BASE64_EXPAND(MAX_STRING_LEN))
             goto fail;
-        }
+
+        len = base64Decode(str, vp->vp_octets);
+        if (len < 0)
+            goto fail;
 
         vp->length = len;
-        memcpy(vp->vp_octets, data, len);
         vp->vp_octets[len] = '\0';
-        delete data;
         break;
     }
     }
@@ -722,33 +735,33 @@ fail:
 }
 
 const char *
-gss_eap_radius_attr_provider::marshallingKey(void) const
+gss_eap_radius_attr_provider::name(void) const
 {
     return "radius";
 }
 
 bool
-gss_eap_radius_attr_provider::unmarshallAndInit(const gss_eap_attr_ctx *ctx,
-                                                DDF &obj)
+gss_eap_radius_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
+                                                json_t *obj)
 {
     VALUE_PAIR **pNext = &m_vps;
+    json_t *attrs;
+    size_t i;
 
-    if (!gss_eap_attr_provider::unmarshallAndInit(ctx, obj))
+    if (!gss_eap_attr_provider::initWithJsonObject(ctx, obj))
         return false;
 
-    DDF attrs = obj["attributes"];
-    DDF attr = attrs.first();
+    attrs = json_object_get(obj, "attributes");
 
-    while (!attr.isnull()) {
+    for (i = 0; i < json_array_size(attrs); i++) {
+        json_t *attr = json_array_get(attrs, i);
         VALUE_PAIR *vp;
 
-        if (!avpUnmarshall(&vp, attr))
+        if (!jsonToAvp(&vp, attr))
             return false;
 
         *pNext = vp;
         pNext = &vp->next;
-
-        attr = attrs.next();
     }
 
     return true;
@@ -760,16 +773,27 @@ gss_eap_radius_attr_provider::prefix(void) const
     return "urn:ietf:params:gss-eap:radius-avp";
 }
 
-DDF
-gss_eap_radius_attr_provider::marshall(void) const
+json_t *
+gss_eap_radius_attr_provider::jsonRepresentation(void) const
 {
-    DDF obj(NULL);
-    DDF attrs = obj.structure().addmember("attributes").list();
+    json_t *obj, *attrs;
+
+    attrs = json_array();
+    if (attrs == NULL)
+        throw new std::bad_alloc;
 
     for (VALUE_PAIR *vp = m_vps; vp != NULL; vp = vp->next) {
-        DDF attr = avpMarshall(vp);
-        attrs.add(attr);
+        json_t *attr = avpToJson(vp);
+        json_array_append_new(attrs, attr);
     }
+
+    obj = json_object();
+    if (obj == NULL) {
+        json_decref(attrs);
+        throw new std::bad_alloc;
+    }
+
+    json_object_set_new(obj, "attributes", attrs);
 
     return obj;
 }
