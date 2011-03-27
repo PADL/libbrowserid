@@ -76,6 +76,8 @@ public:
     void releaseAnyNameMapping(gss_buffer_t type_id,
                                gss_any_t input) const;
 
+    const char *prefix(void) const;
+
     void exportToBuffer(gss_buffer_t buffer) const;
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
@@ -87,6 +89,10 @@ public:
 
     static gss_eap_attr_provider *createAttrContext(void);
 
+    std::vector<shibsp::Attribute *> getAttributes(void) const {
+        return m_attributes;
+    }
+
 private:
     static shibsp::Attribute *
         duplicateAttribute(const shibsp::Attribute *src);
@@ -95,10 +101,6 @@ private:
 
     ssize_t getAttributeIndex(const gss_buffer_t attr) const;
     const shibsp::Attribute *getAttribute(const gss_buffer_t attr) const;
-
-    std::vector<shibsp::Attribute *> getAttributes(void) const {
-        return m_attributes;
-    }
 
     bool authenticated(void) const { return m_authenticated; }
 

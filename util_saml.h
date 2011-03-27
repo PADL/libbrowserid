@@ -74,7 +74,9 @@ public:
     void releaseAnyNameMapping(gss_buffer_t type_id,
                                gss_any_t input) const;
 
+    const char *prefix(void) const;
     void exportToBuffer(gss_buffer_t buffer) const;
+
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,
                         const gss_buffer_t buffer);
 
@@ -128,6 +130,8 @@ public:
                        gss_buffer_t type_id) const;
     void releaseAnyNameMapping(gss_buffer_t type_id,
                                gss_any_t input) const;
+
+    const char *prefix(void) const;
 
     void exportToBuffer(gss_buffer_t buffer) const;
     bool initFromBuffer(const gss_eap_attr_ctx *ctx,

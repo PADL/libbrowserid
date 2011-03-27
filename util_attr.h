@@ -45,7 +45,8 @@ struct gss_eap_attr_provider;
 struct gss_eap_attr_ctx;
 
 typedef bool
-(*gss_eap_attr_enumeration_cb)(const gss_eap_attr_provider *source,
+(*gss_eap_attr_enumeration_cb)(const gss_eap_attr_ctx *ctx,
+                               const gss_eap_attr_provider *source,
                                const gss_buffer_t attribute,
                                void *data);
 
@@ -125,6 +126,11 @@ public:
     {
     }
 
+    virtual const char *prefix(void) const
+    {
+        return NULL;
+    }
+
     virtual void exportToBuffer(gss_buffer_t buffer GSSEAP_UNUSED) const
     {
     }
@@ -194,12 +200,9 @@ public:
     void exportToBuffer(gss_buffer_t buffer) const;
     bool initFromBuffer(const gss_buffer_t buffer);
 
-    static unsigned int
-    attributePrefixToType(const gss_buffer_t prefix);
-
-    static const gss_buffer_t
-    attributeTypeToPrefix(unsigned int type);
-
+    static std::string
+    composeAttributeName(const gss_buffer_t prefix,
+                         const gss_buffer_t suffix);
     static void
     decomposeAttributeName(const gss_buffer_t attribute,
                            gss_buffer_t prefix,
@@ -208,28 +211,23 @@ public:
     composeAttributeName(const gss_buffer_t prefix,
                          const gss_buffer_t suffix,
                          gss_buffer_t attribute);
-    static void
+
+    std::string
+    composeAttributeName(unsigned int type,
+                         const gss_buffer_t suffix);
+    void
     decomposeAttributeName(const gss_buffer_t attribute,
                            unsigned int *type,
-                           gss_buffer_t suffix);
-    static void
+                           gss_buffer_t suffix) const;
+    void
     composeAttributeName(unsigned int type,
                          const gss_buffer_t suffix,
-                         gss_buffer_t attribute);
-
-    static std::string
-    composeAttributeName(const gss_buffer_t prefix,
-                         const gss_buffer_t suffix);
-    static std::string
-    composeAttributeName(unsigned int type,
-                         const gss_buffer_t suffix);
+                         gss_buffer_t attribute) const;
 
     gss_eap_attr_provider *getProvider(unsigned int type) const;
-    gss_eap_attr_provider *getProvider(const gss_buffer_t prefix) const;
 
     static void
     registerProvider(unsigned int type,
-                     const char *prefix,
                      gss_eap_attr_create_provider factory);
     static void
     unregisterProvider(unsigned int type);
@@ -240,6 +238,9 @@ public:
 private:
     bool providerEnabled(unsigned int type) const;
     void releaseProvider(unsigned int type);
+
+    unsigned int attributePrefixToType(const gss_buffer_t prefix) const;
+    gss_buffer_desc attributeTypeToPrefix(unsigned int type) const;
 
     gss_eap_attr_provider *getPrimaryProvider(void) const;
 

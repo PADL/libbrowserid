@@ -186,7 +186,7 @@ gss_eap_saml_assertion_provider::getAttributeTypes(gss_eap_attr_enumeration_cb a
 
     /* just add the prefix */
     if (m_assertion != NULL)
-        ret = addAttribute(this, GSS_C_NO_BUFFER, data);
+        ret = addAttribute(m_manager, this, GSS_C_NO_BUFFER, data);
     else
         ret = true;
 
@@ -304,6 +304,12 @@ gss_eap_saml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSE
     delete ((saml2::Assertion *)input);
 }
 
+const char *
+gss_eap_saml_assertion_provider::prefix(void) const
+{
+    return "urn:ietf:params:gss-eap:saml-aaa-assertion";
+}
+
 void
 gss_eap_saml_assertion_provider::exportToBuffer(gss_buffer_t buffer) const
 {
@@ -321,9 +327,7 @@ gss_eap_saml_assertion_provider::initFromBuffer(const gss_eap_attr_ctx *ctx GSSE
 bool
 gss_eap_saml_assertion_provider::init(void)
 {
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML_ASSERTION,
-                                       "urn:ietf:params:gss-eap:saml-aaa-assertion",
-                                       createAttrContext);
+    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML_ASSERTION, createAttrContext);
     return true;
 }
 
@@ -442,7 +446,7 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
             utf8.value = (void *)toUTF8(qualifiedName);
             utf8.length = strlen((char *)utf8.value);
 
-            ret = addAttribute(this, &utf8, data);
+            ret = addAttribute(m_manager, this, &utf8, data);
 
             delete qualifiedName;
 
@@ -684,6 +688,12 @@ gss_eap_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UN
 {
 }
 
+const char *
+gss_eap_saml_attr_provider::prefix(void) const
+{
+    return "urn:ietf:params:gss-eap:saml-attr";
+}
+
 void
 gss_eap_saml_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 {
@@ -701,9 +711,7 @@ gss_eap_saml_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx GSSEAP_UN
 bool
 gss_eap_saml_attr_provider::init(void)
 {
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML,
-                                       "urn:ietf:params:gss-eap:saml-attr",
-                                       createAttrContext);
+    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML, createAttrContext);
     return true;
 }
 

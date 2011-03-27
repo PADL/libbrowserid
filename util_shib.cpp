@@ -103,12 +103,13 @@ gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *mana
 }
 
 bool
-addRadiusAttribute(const gss_eap_attr_provider *provider,
+addRadiusAttribute(const gss_eap_attr_ctx *manager,
+                   const gss_eap_attr_provider *provider,
                    const gss_buffer_t attribute,
                    void *data)
 {
-    const gss_eap_shib_attr_provider *shib;
     const gss_eap_radius_attr_provider *radius;
+    const gss_eap_shib_attr_provider *shib;
     int authenticated, complete, more = -1;
     vector <string> attributeIds(1);
     SimpleAttribute *a;
@@ -119,7 +120,7 @@ addRadiusAttribute(const gss_eap_attr_provider *provider,
     assert(radius != NULL && shib != NULL);
 
     string attributeName =
-        gss_eap_attr_ctx::composeAttributeName(ATTR_TYPE_RADIUS, attribute);
+        manager->composeAttributeName(ATTR_TYPE_RADIUS, attribute);
 
     attributeIds.push_back(attributeName);
     a = new SimpleAttribute(attributeIds);
@@ -202,7 +203,9 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
         m_attributes = resolver->getResolvedAttributes();
         resolver->getResolvedAttributes().clear();
     } catch (exception &e) {
-        //fprintf(stderr, "%s", e.what());
+#if 0
+        fprintf(stderr, "%s", e.what());
+#endif
     }
 
     return true;
@@ -278,7 +281,7 @@ gss_eap_shib_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
         attribute.value = (void *)((*a)->getId());
         attribute.length = strlen((char *)attribute.value);
 
-        if (!addAttribute(this, &attribute, data))
+        if (!addAttribute(m_manager, this, &attribute, data))
             return false;
     }
 
@@ -381,6 +384,12 @@ gss_eap_shib_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UN
     delete v;
 }
 
+const char *
+gss_eap_shib_attr_provider::prefix(void) const
+{
+    return NULL;
+}
+
 void
 gss_eap_shib_attr_provider::exportToBuffer(gss_buffer_t buffer) const
 {
@@ -452,7 +461,7 @@ gss_eap_shib_attr_provider::init(void)
     if (!ShibbolethResolver::init())
         return false;
 
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_LOCAL, NULL, createAttrContext);
+    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_LOCAL, createAttrContext);
 
     return true;
 }

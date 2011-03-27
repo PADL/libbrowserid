@@ -95,14 +95,12 @@ gssEapAttrProvidersFinalize(OM_uint32 *minor)
 }
 
 static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX + 1];
-static gss_buffer_desc gssEapAttrPrefixes[ATTR_TYPE_MAX + 1];
 
 /*
  * Register a provider for a particular type and prefix
  */
 void
 gss_eap_attr_ctx::registerProvider(unsigned int type,
-                                   const char *prefix,
                                    gss_eap_attr_create_provider factory)
 {
     assert(type <= ATTR_TYPE_MAX);
@@ -110,13 +108,6 @@ gss_eap_attr_ctx::registerProvider(unsigned int type,
     assert(gssEapAttrFactories[type] == NULL);
 
     gssEapAttrFactories[type] = factory;
-    if (prefix != NULL) {
-        gssEapAttrPrefixes[type].value = (void *)prefix;
-        gssEapAttrPrefixes[type].length = strlen(prefix);
-    } else {
-        gssEapAttrPrefixes[type].value = NULL;
-        gssEapAttrPrefixes[type].length = 0;
-    }
 }
 
 /*
@@ -128,8 +119,6 @@ gss_eap_attr_ctx::unregisterProvider(unsigned int type)
     assert(type <= ATTR_TYPE_MAX);
 
     gssEapAttrFactories[type] = NULL;
-    gssEapAttrPrefixes[type].value = NULL;
-    gssEapAttrPrefixes[type].length = 0;
 }
 
 /*
@@ -156,12 +145,22 @@ gss_eap_attr_ctx::gss_eap_attr_ctx(void)
  * Convert an attribute prefix to a type
  */
 unsigned int
-gss_eap_attr_ctx::attributePrefixToType(const gss_buffer_t prefix)
+gss_eap_attr_ctx::attributePrefixToType(const gss_buffer_t prefix) const
 {
     unsigned int i;
 
     for (i = ATTR_TYPE_MIN; i < ATTR_TYPE_MAX; i++) {
-        if (bufferEqual(&gssEapAttrPrefixes[i], prefix))
+        const char *pprefix;
+
+        if (!providerEnabled(i))
+            continue;
+
+        pprefix = m_providers[i]->prefix();
+        if (pprefix == NULL)
+            continue;
+
+        if (strlen(pprefix) == prefix->length &&
+            memcmp(pprefix, prefix->value, prefix->length) == 0)
             return i;
     }
 
@@ -171,13 +170,22 @@ gss_eap_attr_ctx::attributePrefixToType(const gss_buffer_t prefix)
 /*
  * Convert a type to an attribute prefix
  */
-const gss_buffer_t
-gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type)
+gss_buffer_desc
+gss_eap_attr_ctx::attributeTypeToPrefix(unsigned int type) const
 {
-    if (type < ATTR_TYPE_MIN || type >= ATTR_TYPE_MAX)
-        return GSS_C_NO_BUFFER;
+    gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
 
-    return &gssEapAttrPrefixes[type];
+    if (type < ATTR_TYPE_MIN || type >= ATTR_TYPE_MAX)
+        return prefix;
+
+    if (!providerEnabled(type))
+        return prefix;
+
+    prefix.value = (void *)m_providers[type]->prefix();
+    if (prefix.value != NULL)
+        prefix.length = strlen((char *)prefix.value);
+
+    return prefix;
 }
 
 bool
@@ -378,19 +386,6 @@ gss_eap_attr_ctx::getProvider(unsigned int type) const
 }
 
 /*
- * Locate provider for a given prefix
- */
-gss_eap_attr_provider *
-gss_eap_attr_ctx::getProvider(const gss_buffer_t prefix) const
-{
-    unsigned int type;
-
-    type = attributePrefixToType(prefix);
-
-    return m_providers[type];
-}
-
-/*
  * Get primary provider. Only the primary provider is serialised when
  * gss_export_sec_context() or gss_export_name_composite() is called.
  */
@@ -475,7 +470,8 @@ struct eap_gss_get_attr_types_args {
 };
 
 static bool
-addAttribute(const gss_eap_attr_provider *provider GSSEAP_UNUSED,
+addAttribute(const gss_eap_attr_ctx *manager,
+             const gss_eap_attr_provider *provider GSSEAP_UNUSED,
              const gss_buffer_t attribute,
              void *data)
 {
@@ -484,7 +480,7 @@ addAttribute(const gss_eap_attr_provider *provider GSSEAP_UNUSED,
     OM_uint32 major, minor;
 
     if (args->type != ATTR_TYPE_LOCAL) {
-        gss_eap_attr_ctx::composeAttributeName(args->type, attribute, &qualified);
+        manager->composeAttributeName(args->type, attribute, &qualified);
         major = gss_add_buffer_set_member(&minor, &qualified, &args->attrs);
         gss_release_buffer(&minor, &qualified);
     } else {
@@ -759,7 +755,7 @@ gss_eap_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
 void
 gss_eap_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
                                          unsigned int *type,
-                                         gss_buffer_t suffix)
+                                         gss_buffer_t suffix) const
 {
     gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
 
@@ -796,9 +792,9 @@ std::string
 gss_eap_attr_ctx::composeAttributeName(unsigned int type,
                                        const gss_buffer_t suffix)
 {
-    const gss_buffer_t prefix = attributeTypeToPrefix(type);
+    gss_buffer_desc prefix = attributeTypeToPrefix(type);
 
-    return composeAttributeName(prefix, suffix);
+    return composeAttributeName(&prefix, suffix);
 }
 
 /*
@@ -825,11 +821,11 @@ gss_eap_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
 void
 gss_eap_attr_ctx::composeAttributeName(unsigned int type,
                                        const gss_buffer_t suffix,
-                                       gss_buffer_t attribute)
+                                       gss_buffer_t attribute) const
 {
-    gss_buffer_t prefix = attributeTypeToPrefix(type);
+    gss_buffer_desc prefix = attributeTypeToPrefix(type);
 
-    return composeAttributeName(prefix, suffix, attribute);
+    return composeAttributeName(&prefix, suffix, attribute);
 }
 
 /*

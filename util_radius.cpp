@@ -223,7 +223,7 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
         attribute.value = attrid;
         attribute.length = strlen(attrid);
 
-        if (!addAttribute(this, &attribute, data))
+        if (!addAttribute(m_manager, this, &attribute, data))
             return false;
 
         seen.push_back(std::string(vp->name));
@@ -449,9 +449,7 @@ gss_eap_radius_attr_provider::init(void)
 {
     struct rs_context *radContext;
 
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_RADIUS,
-                                       "urn:ietf:params:gss-eap:radius-avp",
-                                       createAttrContext);
+    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_RADIUS, createAttrContext);
 
 #if 1
     /*
@@ -764,6 +762,12 @@ gss_eap_radius_attr_provider::initFromBuffer(const gss_eap_attr_ctx *ctx,
     } while (remain != 0);
 
     return true;
+}
+
+const char *
+gss_eap_radius_attr_provider::prefix(void) const
+{
+    return "urn:ietf:params:gss-eap:radius-avp";
 }
 
 void
