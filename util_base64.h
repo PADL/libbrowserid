@@ -36,16 +36,6 @@
 #ifndef _UTIL_BASE64_H_
 #define _UTIL_BASE64_H_
 
-#ifndef ROKEN_LIB_FUNCTION
-#ifdef _WIN32
-#define ROKEN_LIB_FUNCTION
-#define ROKEN_LIB_CALL __cdecl
-#else
-#define ROKEN_LIB_FUNCTION
-#define ROKEN_LIB_CALL
-#endif
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
