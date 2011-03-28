@@ -453,8 +453,9 @@ gss_OID
 gssEapSaslNameToOid(const gss_buffer_t name);
 
 /* util_name.c */
-#define EXPORT_NAME_FLAG_OID        0x1
-#define EXPORT_NAME_FLAG_COMPOSITE  0x2
+#define EXPORT_NAME_FLAG_OID                    0x1
+#define EXPORT_NAME_FLAG_COMPOSITE              0x2
+#define EXPORT_NAME_FLAG_DISABLE_LOCAL_ATTRS    0x4
 
 OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);
@@ -464,7 +465,7 @@ OM_uint32 gssEapExportName(OM_uint32 *minor,
 OM_uint32 gssEapExportNameInternal(OM_uint32 *minor,
                                    const gss_name_t name,
                                    gss_buffer_t exportedName,
-                                   unsigned int flags);
+                                   OM_uint32 flags);
 OM_uint32 gssEapImportName(OM_uint32 *minor,
                            const gss_buffer_t input_name_buffer,
                            const gss_OID input_name_type,
@@ -473,7 +474,7 @@ OM_uint32 gssEapImportName(OM_uint32 *minor,
 OM_uint32 gssEapImportNameInternal(OM_uint32 *minor,
                                    const gss_buffer_t input_name_buffer,
                                    gss_name_t *output_name,
-                                   unsigned int flags);
+                                   OM_uint32 flags);
 OM_uint32
 gssEapDuplicateName(OM_uint32 *minor,
                     const gss_name_t input_name,

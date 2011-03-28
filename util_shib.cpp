@@ -157,9 +157,11 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
 {
     const gss_eap_saml_assertion_provider *saml;
     const gss_eap_radius_attr_provider *radius;
+    gss_buffer_desc exportedCtx = GSS_C_EMPTY_BUFFER;
+    OM_uint32 major, minor;
+
 #if 0
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-    OM_uint32 minor;
 #endif
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
         return false;
@@ -186,6 +188,12 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
 #endif
 
     m_authenticated = false;
+
+    major = gssEapExportSecContext(&minor, gssCtx, &exportedCtx,
+                                   EXPORT_CTX_FLAG_DISABLE_LOCAL_ATTRS);
+    if (major == GSS_S_COMPLETE) {
+        gss_release_buffer(&minor, &exportedCtx);
+    }
 
     if (radius != NULL) {
         radius->getAttributeTypes(addRadiusAttribute, (void *)this);

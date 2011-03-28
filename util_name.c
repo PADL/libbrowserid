@@ -335,7 +335,7 @@ OM_uint32
 gssEapImportNameInternal(OM_uint32 *minor,
                          const gss_buffer_t nameBuffer,
                          gss_name_t *pName,
-                         unsigned int flags)
+                         OM_uint32 flags)
 {
     OM_uint32 major, tmpMinor;
     krb5_context krbContext;
@@ -524,7 +524,7 @@ OM_uint32
 gssEapExportNameInternal(OM_uint32 *minor,
                          const gss_name_t name,
                          gss_buffer_t exportedName,
-                         unsigned int flags)
+                         OM_uint32 flags)
 {
     OM_uint32 major = GSS_S_FAILURE, tmpMinor;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
@@ -551,7 +551,12 @@ gssEapExportNameInternal(OM_uint32 *minor,
     }
     exportedNameLen += 4 + nameBuf.length;
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
-        major = gssEapExportAttrContext(minor, name, &attrs);
+        OM_uint32 attrFlags = 0;
+
+        if (flags & EXPORT_NAME_FLAG_DISABLE_LOCAL_ATTRS)
+            attrFlags |= ATTR_FLAG_DISABLE_LOCAL;
+
+        major = gssEapExportAttrContext(minor, name, &attrs, attrFlags);
         if (GSS_ERROR(major))
             goto cleanup;
         exportedNameLen += attrs.length;

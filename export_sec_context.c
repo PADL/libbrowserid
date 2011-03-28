@@ -50,8 +50,12 @@ gssEapExportPartialContext(OM_uint32 *minor,
     if (ctx->acceptorCtx.radConn != NULL) {
         if (rs_conn_get_current_peer(ctx->acceptorCtx.radConn,
                                      serverBuf, sizeof(serverBuf)) != 0) {
+#if 0
             return gssEapRadiusMapError(minor,
                                         rs_err_conn_pop(ctx->acceptorCtx.radConn));
+#else
+            serverBuf[0] = '\0'; /* not implemented yet */
+#endif
         }
         serverLen = strlen(serverBuf);
     }
@@ -95,10 +99,11 @@ cleanup:
     return major;
 }
 
-static OM_uint32
+OM_uint32
 gssEapExportSecContext(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
-                       gss_buffer_t token)
+                       gss_buffer_t token,
+                       OM_uint32 flags)
 {
     OM_uint32 major, tmpMinor;
     size_t length;
@@ -118,12 +123,17 @@ gssEapExportSecContext(OM_uint32 *minor,
     key.value  = KRB_KEY_DATA(&ctx->rfc3961Key);
 
     if (ctx->initiatorName != GSS_C_NO_NAME) {
+        OM_uint32 nameFlags = EXPORT_NAME_FLAG_COMPOSITE;
+
+        if (flags & EXPORT_CTX_FLAG_DISABLE_LOCAL_ATTRS)
+            nameFlags |= EXPORT_NAME_FLAG_DISABLE_LOCAL_ATTRS;
+
         major = gssEapExportNameInternal(minor, ctx->initiatorName,
-                                         &initiatorName,
-                                         EXPORT_NAME_FLAG_COMPOSITE);
+                                         &initiatorName, nameFlags);
         if (GSS_ERROR(major))
             goto cleanup;
     }
+
     if (ctx->acceptorName != GSS_C_NO_NAME) {
         major = gssEapExportNameInternal(minor, ctx->acceptorName,
                                          &acceptorName,
@@ -224,7 +234,7 @@ gss_export_sec_context(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    major = gssEapExportSecContext(minor, ctx, interprocess_token);
+    major = gssEapExportSecContext(minor, ctx, interprocess_token, 0);
     if (GSS_ERROR(major)) {
         GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
         return major;

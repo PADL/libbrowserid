@@ -146,7 +146,7 @@ freezeAttrContext(OM_uint32 *minor,
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    major = gssEapExportAttrContext(minor, initiatorName, &attrBuf);
+    major = gssEapExportAttrContext(minor, initiatorName, &attrBuf, 0);
     if (GSS_ERROR(major))
         return major;
 
