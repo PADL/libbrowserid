@@ -31,7 +31,7 @@
  */
 
 /*
- * JSON object wrapper with toll-free DDF bridging.
+ * JSON object wrapper with not-entirely-toll-free DDF bridging.
  */
 
 #ifndef _UTIL_JSON_H_
