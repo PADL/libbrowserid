@@ -130,7 +130,7 @@ namespace gss_eap {
         friend class JSONIterator;
 
         json_t *get(void) const {
-            return m_obj ? json_incref(m_obj) : json_null();
+            return json_incref(m_obj);
         }
 
         void set(json_t *obj) {
@@ -144,7 +144,6 @@ namespace gss_eap {
 
         json_t *m_obj;
     };
-
 }
 
 #endif /* __cplusplus */
