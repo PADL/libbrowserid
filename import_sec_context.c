@@ -58,7 +58,15 @@ gssEapImportPartialContext(OM_uint32 *minor,
     unsigned char *p = *pBuf;
     size_t remain = *pRemain;
     gss_buffer_desc buf;
-    size_t serverLen;
+    size_t ctxLength, serverLen;
+
+    /* Length of partial RADIUS context */
+    CHECK_REMAIN(4);
+    ctxLength = load_uint32_be(p);
+    UPDATE_REMAIN(4);
+
+    CHECK_REMAIN(ctxLength);
+    remain = ctxLength; /* check against partial context length */
 
     /* Selected RADIUS server */
     CHECK_REMAIN(4);
@@ -96,8 +104,12 @@ gssEapImportPartialContext(OM_uint32 *minor,
         UPDATE_REMAIN(buf.length);
     }
 
+#ifdef GSSEAP_DEBUG
+    assert(remain == 0);
+#endif
+
     *pBuf = p;
-    *pRemain = remain;
+    *pRemain -= 4 + ctxLength;
 
     return GSS_S_COMPLETE;
 }
