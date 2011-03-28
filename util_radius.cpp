@@ -619,18 +619,10 @@ gssEapRadiusAttrProviderFinalize(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
-static json_t *
+static JSONObject
 avpToJson(const VALUE_PAIR *vp)
 {
-    json_t *obj = json_object();
-
-    if (obj == NULL) {
-        throw new std::bad_alloc;
-        return NULL;
-    }
-
-    /* FIXME check json_object_set_new return value */
-    json_object_set_new(obj, "type", json_integer(vp->attribute));
+    JSONObject obj;
 
     assert(vp->length <= MAX_STRING_LEN);
 
@@ -638,42 +630,41 @@ avpToJson(const VALUE_PAIR *vp)
     case PW_TYPE_INTEGER:
     case PW_TYPE_IPADDR:
     case PW_TYPE_DATE:
-        json_object_set_new(obj, "value", json_integer(vp->lvalue));
+        obj.set("value", vp->lvalue);
         break;
     case PW_TYPE_STRING:
-        json_object_set_new(obj, "value", json_string(vp->vp_strvalue));
+        obj.set("value", vp->vp_strvalue);
         break;
     default: {
         char *b64;
 
-        if (base64Encode(vp->vp_octets, vp->length, &b64) < 0) {
-            json_decref(obj);
+        if (base64Encode(vp->vp_octets, vp->length, &b64) < 0)
             throw new std::bad_alloc;
-        }
 
-        json_object_set_new(obj, "value", json_string(b64));
+        obj.set("value", b64);
         GSSEAP_FREE(b64);
         break;
     }
     }
 
+    obj.set("type", vp->attribute);
+
     return obj;
 }
 
 static bool
-jsonToAvp(VALUE_PAIR **pVp, json_t *obj)
+jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
 {
     VALUE_PAIR *vp = NULL;
     DICT_ATTR *da;
     uint32_t attrid;
-    json_t *type, *value;
 
-    type = json_object_get(obj, "type");
-    value = json_object_get(obj, "value");
-    if (type == NULL || value == NULL)
+    JSONObject type = obj["type"];
+    JSONObject value = obj["value"];
+    if (type.isnull() || value.isnull())
         goto fail;
 
-    attrid = json_integer_value(type);
+    attrid = type.integer();
     da = dict_attrbyvalue(attrid);
     if (da != NULL) {
         vp = pairalloc(da);
@@ -690,10 +681,10 @@ jsonToAvp(VALUE_PAIR **pVp, json_t *obj)
     case PW_TYPE_IPADDR:
     case PW_TYPE_DATE:
         vp->length = 4;
-        vp->lvalue = json_integer_value(value);
+        vp->lvalue = value.integer();
         break;
     case PW_TYPE_STRING: {
-        const char *str = json_string_value(value);
+        const char *str = value.string();
         size_t len;
 
         if (str == NULL || (len = strlen(str)) >= MAX_STRING_LEN)
@@ -705,7 +696,7 @@ jsonToAvp(VALUE_PAIR **pVp, json_t *obj)
     }
     case PW_TYPE_OCTETS:
     default: {
-        const char *str = json_string_value(value);
+        const char *str = value.string();
         int len;
 
         /* this optimization requires base64Decode only understand packed encoding */
@@ -742,19 +733,18 @@ gss_eap_radius_attr_provider::name(void) const
 
 bool
 gss_eap_radius_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
-                                                json_t *obj)
+                                                 JSONObject &obj)
 {
     VALUE_PAIR **pNext = &m_vps;
-    json_t *attrs;
-    size_t i;
 
     if (!gss_eap_attr_provider::initWithJsonObject(ctx, obj))
         return false;
 
-    attrs = json_object_get(obj, "attributes");
+    JSONObject attrs = obj["attributes"];
+    size_t nelems = attrs.size();
 
-    for (i = 0; i < json_array_size(attrs); i++) {
-        json_t *attr = json_array_get(attrs, i);
+    for (size_t i = 0; i < nelems; i++) {
+        JSONObject attr = attrs[i];
         VALUE_PAIR *vp;
 
         if (!jsonToAvp(&vp, attr))
@@ -773,27 +763,17 @@ gss_eap_radius_attr_provider::prefix(void) const
     return "urn:ietf:params:gss-eap:radius-avp";
 }
 
-json_t *
+JSONObject
 gss_eap_radius_attr_provider::jsonRepresentation(void) const
 {
-    json_t *obj, *attrs;
-
-    attrs = json_array();
-    if (attrs == NULL)
-        throw new std::bad_alloc;
+    JSONObject obj, attrs = JSONObject::array();
 
     for (VALUE_PAIR *vp = m_vps; vp != NULL; vp = vp->next) {
-        json_t *attr = avpToJson(vp);
-        json_array_append_new(attrs, attr);
+        JSONObject attr = avpToJson(vp);
+        attrs.append(attr);
     }
 
-    obj = json_object();
-    if (obj == NULL) {
-        json_decref(attrs);
-        throw new std::bad_alloc;
-    }
-
-    json_object_set_new(obj, "attributes", attrs);
+    obj.set("attributes", attrs);
 
     return obj;
 }

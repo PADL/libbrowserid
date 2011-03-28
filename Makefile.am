@@ -76,6 +76,7 @@ mech_eap_la_SOURCES =    			\
 	util_cksum.c				\
 	util_cred.c				\
 	util_crypt.c				\
+	util_json.cpp				\
 	util_krb.c				\
 	util_lucid.c				\
 	util_mech.c				\

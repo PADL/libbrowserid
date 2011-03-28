@@ -396,156 +396,44 @@ gss_eap_shib_attr_provider::name(void) const
     return "local";
 }
 
-static json_t *
-ddfToJson(DDF &ddf)
-{
-    json_t *json;
-
-    if (ddf.isstruct()) {
-        DDF elem = ddf.first();
-        json = json_array();
-        if (json == NULL)
-            throw new std::bad_alloc;
-
-        while (!elem.isnull()) {
-            if (json_array_append_new(json, ddfToJson(elem)) != 0) {
-                json_decref(json);
-                throw new std::bad_alloc;
-            }
-
-            elem = ddf.next();
-        }
-    } else if (ddf.islist()) {
-        DDF elem = ddf.first();
-        json = json_object();
-        if (json == NULL)
-            throw new std::bad_alloc;
-
-        while (!elem.isnull()) {
-            if (json_object_set(json, elem.name(), ddfToJson(elem)) != 0) {
-                json_decref(json);
-                throw new std::bad_alloc;
-            }
-
-            elem = ddf.next();
-        }
-    } else if (ddf.isstring()) {
-        json = json_string(ddf.string());
-    } else if (ddf.isint()) {
-        json = json_integer(ddf.integer());
-    } else if (ddf.isfloat()) {
-        json = json_real(ddf.floating());
-    } else if (ddf.isempty() || ddf.ispointer()) {
-        json = json_object();
-    } else if (ddf.isnull()) {
-        json = json_null();
-    } else {
-        assert(0 && "Invalid DDF object");
-    }
-
-    if (json == NULL)
-        throw new std::bad_alloc;
-
-    return json;
-}
-
-static DDF
-jsonToDdf(json_t *json)
-{
-    DDF ddf(NULL);
-
-    switch (json_typeof(json)) {
-    case JSON_OBJECT: {
-        void *iter = json_object_iter(json);
-
-        while (iter != NULL) {
-            const char *key = json_object_iter_key(iter);
-            json_t *value = json_object_iter_value(iter);
-            ddf.add(jsonToDdf(value).name(key));
-            iter = json_object_iter_next(json, iter);
-        }
-        break;
-    }
-    case JSON_ARRAY: {
-        size_t i;
-
-        for (i = 0; i < json_array_size(json); i++) {
-            DDF value = jsonToDdf(json_array_get(json, i));
-            ddf.add(value);
-        }
-        break;
-    }
-    case JSON_STRING:
-        ddf.string(json_string_value(json));
-        break;
-    case JSON_INTEGER:
-        ddf.integer(json_integer_value(json));
-        break;
-    case JSON_REAL:
-        ddf.floating(json_real_value(json));
-        break;
-    case JSON_TRUE:
-        ddf.integer(1L);
-        break;
-    case JSON_FALSE:
-        ddf.integer(0L);
-        break;
-    case JSON_NULL:
-        break;
-    }
-
-    return ddf;
-}
-
-json_t *
+JSONObject
 gss_eap_shib_attr_provider::jsonRepresentation(void) const
 {
-    json_t *obj, *attrs;
+    JSONObject obj;
 
-    obj = json_object();
-    if (obj == NULL)
-        throw new std::bad_alloc;
+    obj.set("authenticated", m_authenticated);
 
-    /* FIXME check json_object_set_new return value */
-    json_object_set_new(obj, "authenticated", json_integer(m_authenticated));
-
-    attrs = json_array();
-    if (attrs == NULL) {
-        json_decref(obj);
-        throw new std::bad_alloc;
-    }
+    JSONObject attrs = JSONObject::array();
 
     for (vector<Attribute*>::const_iterator a = m_attributes.begin();
          a != m_attributes.end(); ++a) {
         DDF attr = (*a)->marshall();
-        /* FIXME check json_array_append_new return value */
-        json_array_append_new(attrs, ddfToJson(attr));
+        JSONObject jobj(attr);
+        attrs.append(jobj);
     }
 
-    json_object_set_new(obj, "attributes", attrs);
+    obj.set("attributes", attrs);
 
     return obj;
 }
 
 bool
 gss_eap_shib_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
-                                              json_t *obj)
+                                               JSONObject &obj)
 {
-    size_t i;
-    json_t *attrs;
-
     if (!gss_eap_attr_provider::initWithJsonObject(ctx, obj))
         return false;
 
     assert(m_authenticated == false);
     assert(m_attributes.size() == 0);
 
-    m_authenticated = json_integer_value(json_object_get(obj, "authenticated"));
+    m_authenticated = obj["authenticated"].integer();
 
-    attrs = json_object_get(obj, "attributes");
+    JSONObject attrs = obj["attributes"];
+    size_t nelems = attrs.size();
 
-    for (i = 0; i < json_array_size(attrs); i++) {
-        DDF attr = jsonToDdf(json_array_get(attrs, i));
+    for (size_t i = 0; i < nelems; i++) {
+        DDF attr = attrs.get(i).ddf();
         Attribute *attribute = Attribute::unmarshall(attr);
         m_attributes.push_back(attribute);
     }

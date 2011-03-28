@@ -276,28 +276,26 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
 }
 
 bool
-gss_eap_attr_ctx::initWithJsonObject(json_t *obj)
+gss_eap_attr_ctx::initWithJsonObject(JSONObject &obj)
 {
     bool ret = false;
     bool foundSource[ATTR_TYPE_MAX + 1];
     unsigned int type;
-    json_t *sources;
 
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++)
         foundSource[type] = false;
 
-    if (json_integer_value(json_object_get(obj, "version")) != 1)
+    if (obj["version"].integer() != 1)
         return false;
 
-    m_flags = json_integer_value(json_object_get(obj, "flags"));
+    m_flags = obj["flags"].integer();
 
-    sources = json_object_get(obj, "sources");
+    JSONObject sources = obj["sources"];
 
     /* Initialize providers from serialized state */
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++) {
         gss_eap_attr_provider *provider;
         const char *key;
-        json_t *source;
 
         if (!providerEnabled(type)) {
             releaseProvider(type);
@@ -309,8 +307,8 @@ gss_eap_attr_ctx::initWithJsonObject(json_t *obj)
         if (key == NULL)
             continue;
 
-        source = json_object_get(sources, key);
-        if (source != NULL &&
+        JSONObject source = sources.get(key);
+        if (!source.isnull() &&
             !provider->initWithJsonObject(this, source)) {
             releaseProvider(type);
             return false;
@@ -340,26 +338,14 @@ gss_eap_attr_ctx::initWithJsonObject(json_t *obj)
     return true;
 }
 
-json_t *
+JSONObject
 gss_eap_attr_ctx::jsonRepresentation(void) const
 {
-    json_t *obj, *sources;
+    JSONObject obj, sources;
     unsigned int i;
 
-    obj = json_object();
-    if (obj == NULL) {
-        throw new std::bad_alloc;
-    }
-
-    /* FIXME check json_object_set_new return value */
-    json_object_set_new(obj, "version", json_integer(1));
-    json_object_set_new(obj, "flags", json_integer(m_flags));
-
-    sources = json_object();
-    if (sources == NULL) {
-        json_decref(obj);
-        throw new std::bad_alloc;
-    }
+    obj.set("version", 1);
+    obj.set("flags", m_flags);
 
     for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
@@ -373,11 +359,11 @@ gss_eap_attr_ctx::jsonRepresentation(void) const
         if (key == NULL)
             continue; /* provider does not have state */
 
-        json_t *source = provider->jsonRepresentation();
-        json_object_set_new(sources, key, source);
+        JSONObject source = provider->jsonRepresentation();
+        sources.set(key, source);
     }
 
-    json_object_set_new(obj, "sources", sources);
+    obj.set("sources", sources);
 
     return obj;
 }
@@ -392,16 +378,14 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
     bool ret;
     char *s;
     json_error_t error;
-    json_t *obj;
 
     major = bufferToString(&minor, buffer, &s);
     if (GSS_ERROR(major))
         return false;
 
-    obj = json_loads(s, 0, &error);
-    if (obj != NULL) {
+    JSONObject obj = JSONObject::load(s, 0, &error);
+    if (!obj.isnull()) {
         ret = initWithJsonObject(obj);
-        json_decref(obj);
     } else
         ret = false;
 
@@ -641,32 +625,16 @@ void
 gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
     OM_uint32 minor;
-    json_t *obj;
     char *s;
 
-    obj = jsonRepresentation();
-    if (obj == NULL) {
-        std::string error("gss_eap_attr_ctx::exportToBuffer::jsonRepresentation");
-        throw new std::runtime_error(error); /* XXX */
-    }
+    JSONObject obj = jsonRepresentation();
 
-#if 0
-    json_dumpf(obj, stdout, JSON_INDENT(3));
-#endif
+    obj.dump(stdout, JSON_INDENT(3));
 
-    s = json_dumps(obj, JSON_COMPACT);
-    if (s == NULL) {
-        json_decref(obj);
-        std::string error("gss_eap_attr_ctx::exportToBuffer: json_dumps");
-        throw new std::runtime_error(error); /* XXX */
-    }
+    s = obj.dump(JSON_COMPACT);
 
-    if (GSS_ERROR(makeStringBuffer(&minor, s, buffer))) {
-        json_decref(obj);
+    if (GSS_ERROR(makeStringBuffer(&minor, s, buffer)))
         throw new std::bad_alloc;
-    }
-
-    json_decref(obj);
 }
 
 /*

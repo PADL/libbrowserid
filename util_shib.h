@@ -79,8 +79,8 @@ public:
     const char *prefix(void) const;
     const char *name(void) const;
     bool initWithJsonObject(const gss_eap_attr_ctx *manager,
-                           json_t *obj);
-    json_t *jsonRepresentation(void) const;
+                            JSONObject &obj);
+    JSONObject jsonRepresentation(void) const;
 
     static bool init(void);
     static void finalize(void);

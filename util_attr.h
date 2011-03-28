@@ -41,7 +41,7 @@
 #include <string>
 #include <new>
 
-#include <jansson.h>
+using namespace gss_eap;
 
 struct gss_eap_attr_provider;
 struct gss_eap_attr_ctx;
@@ -142,15 +142,15 @@ public:
     }
 
     virtual bool initWithJsonObject(const gss_eap_attr_ctx *manager,
-                                    json_t *object GSSEAP_UNUSED)
+                                    JSONObject &object GSSEAP_UNUSED)
     {
         return initWithManager(manager);
     }
 
 
-    virtual json_t *jsonRepresentation(void) const
+    virtual JSONObject jsonRepresentation(void) const
     {
-        return NULL;
+        return JSONObject::null();
     }
 
     virtual time_t getExpiryTime(void) const { return 0; }
@@ -254,8 +254,8 @@ private:
     unsigned int attributePrefixToType(const gss_buffer_t prefix) const;
     gss_buffer_desc attributeTypeToPrefix(unsigned int type) const;
 
-    bool initWithJsonObject(json_t *object);
-    json_t *jsonRepresentation(void) const;
+    bool initWithJsonObject(JSONObject &object);
+    JSONObject jsonRepresentation(void) const;
 
     gss_eap_attr_provider *getPrimaryProvider(void) const;
 

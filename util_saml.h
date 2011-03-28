@@ -77,11 +77,11 @@ public:
     const char *prefix(void) const;
     const char *name(void) const { return NULL; }
     bool initWithJsonObject(const gss_eap_attr_ctx *manager GSSEAP_UNUSED,
-                           json_t *object GSSEAP_UNUSED) {
+                           JSONObject &object GSSEAP_UNUSED) {
         return false;
     }
-    json_t *jsonRepresentation(void) const {
-        return NULL;
+    JSONObject jsonRepresentation(void) const {
+        return JSONObject::null();
     }
 
     opensaml::saml2::Assertion *initAssertion(void);
@@ -140,11 +140,11 @@ public:
         return NULL;
     }
     bool initWithJsonObject(const gss_eap_attr_ctx *manager GSSEAP_UNUSED,
-                           json_t *object GSSEAP_UNUSED) {
+                            JSONObject &object GSSEAP_UNUSED) {
         return false;
     }
-    json_t *jsonRepresentation(void) const {
-        return NULL;
+    JSONObject jsonRepresentation(void) const {
+        return JSONObject::null();
     }
 
     bool getAttribute(const gss_buffer_t attr,
