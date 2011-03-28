@@ -46,7 +46,7 @@
 
 using namespace shibsp;
 
-namespace gss_eap {
+namespace gss_eap_util {
     class JSONObject;
 
     class JSONIterator {

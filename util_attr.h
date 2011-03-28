@@ -41,7 +41,7 @@
 #include <string>
 #include <new>
 
-using namespace gss_eap;
+using namespace gss_eap_util;
 
 struct gss_eap_attr_provider;
 struct gss_eap_attr_ctx;
