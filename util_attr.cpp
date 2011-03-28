@@ -629,7 +629,9 @@ gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 
     JSONObject obj = jsonRepresentation();
 
+#if 0
     obj.dump(stdout, JSON_INDENT(3));
+#endif
 
     s = obj.dump(JSON_COMPACT);
 
