@@ -296,9 +296,8 @@ gssEapImportContext(OM_uint32 *minor,
      * The partial context should only be expected for unestablished
      * acceptor contexts.
      */
-    if (!CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx)) {
-        assert((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
-
+    if (!CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx) &&
+        (ctx->flags & CTX_FLAG_KRB_REAUTH) == 0) {
         major = gssEapImportPartialContext(minor, &p, &remain, ctx);
         if (GSS_ERROR(major))
             return major;
