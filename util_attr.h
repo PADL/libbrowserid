@@ -254,7 +254,7 @@ private:
     gss_buffer_desc attributeTypeToPrefix(unsigned int type) const;
 
     bool initWithJsonObject(JSONObject &object);
-    JSONObject jsonRepresentation(uint32_t flags) const;
+    JSONObject jsonRepresentation(uint32_t flags = 0) const;
 
     gss_eap_attr_provider *getPrimaryProvider(void) const;
 

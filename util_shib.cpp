@@ -103,60 +103,11 @@ gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *mana
 }
 
 bool
-addRadiusAttribute(const gss_eap_attr_ctx *manager,
-                   const gss_eap_attr_provider *provider,
-                   const gss_buffer_t attribute,
-                   void *data)
-{
-    const gss_eap_radius_attr_provider *radius;
-    const gss_eap_shib_attr_provider *shib;
-    int authenticated, complete, more = -1;
-    vector <string> attributeIds(1);
-    SimpleAttribute *a;
-
-    radius = static_cast<const gss_eap_radius_attr_provider *>(provider);
-    shib = static_cast<const gss_eap_shib_attr_provider *>(data);
-
-    assert(radius != NULL && shib != NULL);
-
-    string attributeName =
-        manager->composeAttributeName(ATTR_TYPE_RADIUS, attribute);
-
-    attributeIds.push_back(attributeName);
-    a = new SimpleAttribute(attributeIds);
-    if (a == NULL)
-        return false;
-
-    while (more != 0) {
-        gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
-        OM_uint32 minor;
-
-        if (!radius->getAttribute(attribute,
-                                  &authenticated,
-                                  &complete,
-                                  &value,
-                                  NULL,
-                                  &more))
-            return false;
-
-        string attributeValue((char *)value.value, value.length);
-        a->getValues().push_back(attributeValue);
-
-        gss_release_buffer(&minor, &value);
-    }
-
-    shib->getAttributes().push_back(a);
-
-    return true;
-}
-
-bool
 gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
                                                const gss_cred_id_t gssCred,
                                                const gss_ctx_id_t gssCtx)
 {
     const gss_eap_saml_assertion_provider *saml;
-    const gss_eap_radius_attr_provider *radius;
     gss_buffer_desc exportedCtx = GSS_C_EMPTY_BUFFER;
     OM_uint32 major, minor;
 
@@ -168,8 +119,6 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
 
     saml = static_cast<const gss_eap_saml_assertion_provider *>
         (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
-    radius = static_cast<const gss_eap_radius_attr_provider *>
-        (m_manager->getProvider(ATTR_TYPE_RADIUS));
 
     auto_ptr<ShibbolethResolver> resolver(ShibbolethResolver::create());
 
@@ -187,23 +136,18 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     }
 #endif
 
-    m_authenticated = false;
-
     major = gssEapExportSecContext(&minor, gssCtx, &exportedCtx,
                                    EXPORT_CTX_FLAG_DISABLE_LOCAL_ATTRS);
     if (major == GSS_S_COMPLETE) {
+        resolver->addToken(&exportedCtx);
         gss_release_buffer(&minor, &exportedCtx);
     }
 
-    if (radius != NULL) {
-        radius->getAttributeTypes(addRadiusAttribute, (void *)this);
-        m_authenticated = radius->authenticated();
-    }
+    m_authenticated = true;
 
     if (saml != NULL && saml->getAssertion() != NULL) {
         resolver->addToken(saml->getAssertion());
-        if (m_authenticated)
-            m_authenticated = saml->authenticated();
+        m_authenticated = saml->authenticated();
     }
 
     try {
