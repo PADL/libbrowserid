@@ -339,7 +339,7 @@ gss_eap_attr_ctx::initWithJsonObject(JSONObject &obj)
 }
 
 JSONObject
-gss_eap_attr_ctx::jsonRepresentation(uint32_t flags) const
+gss_eap_attr_ctx::jsonRepresentation(void) const
 {
     JSONObject obj, sources;
     unsigned int i;
@@ -350,10 +350,6 @@ gss_eap_attr_ctx::jsonRepresentation(uint32_t flags) const
     for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
         gss_eap_attr_provider *provider;
         const char *key;
-
-        if (i == ATTR_TYPE_LOCAL &&
-            (flags & ATTR_FLAG_DISABLE_LOCAL))
-            continue; /* reentrancy workaround */
 
         provider = m_providers[i];
         if (provider == NULL)
@@ -626,13 +622,12 @@ gss_eap_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
  * Export attribute context to buffer
  */
 void
-gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer,
-                                 uint32_t flags) const
+gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
 {
     OM_uint32 minor;
     char *s;
 
-    JSONObject obj = jsonRepresentation(flags);
+    JSONObject obj = jsonRepresentation();
 
 #if 0
     obj.dump(stdout, JSON_INDENT(3));
@@ -973,8 +968,7 @@ gssEapSetNameAttribute(OM_uint32 *minor,
 OM_uint32
 gssEapExportAttrContext(OM_uint32 *minor,
                         gss_name_t name,
-                        gss_buffer_t buffer,
-                        OM_uint32 flags)
+                        gss_buffer_t buffer)
 {
     if (name->attrCtx == NULL) {
         buffer->length = 0;
@@ -987,7 +981,7 @@ gssEapExportAttrContext(OM_uint32 *minor,
         return GSS_S_UNAVAILABLE;
 
     try {
-        name->attrCtx->exportToBuffer(buffer, flags);
+        name->attrCtx->exportToBuffer(buffer);
     } catch (std::exception &e) {
         return name->attrCtx->mapException(minor, e);
     }

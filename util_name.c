@@ -551,12 +551,7 @@ gssEapExportNameInternal(OM_uint32 *minor,
     }
     exportedNameLen += 4 + nameBuf.length;
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
-        OM_uint32 attrFlags = 0;
-
-        if (flags & EXPORT_NAME_FLAG_DISABLE_LOCAL_ATTRS)
-            attrFlags |= ATTR_FLAG_DISABLE_LOCAL;
-
-        major = gssEapExportAttrContext(minor, name, &attrs, attrFlags);
+        major = gssEapExportAttrContext(minor, name, &attrs);
         if (GSS_ERROR(major))
             goto cleanup;
         exportedNameLen += attrs.length;

@@ -102,8 +102,7 @@ cleanup:
 OM_uint32
 gssEapExportSecContext(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
-                       gss_buffer_t token,
-                       OM_uint32 flags)
+                       gss_buffer_t token)
 {
     OM_uint32 major, tmpMinor;
     size_t length;
@@ -123,13 +122,9 @@ gssEapExportSecContext(OM_uint32 *minor,
     key.value  = KRB_KEY_DATA(&ctx->rfc3961Key);
 
     if (ctx->initiatorName != GSS_C_NO_NAME) {
-        OM_uint32 nameFlags = EXPORT_NAME_FLAG_COMPOSITE;
-
-        if (flags & EXPORT_CTX_FLAG_DISABLE_LOCAL_ATTRS)
-            nameFlags |= EXPORT_NAME_FLAG_DISABLE_LOCAL_ATTRS;
-
         major = gssEapExportNameInternal(minor, ctx->initiatorName,
-                                         &initiatorName, nameFlags);
+                                         &initiatorName,
+                                         EXPORT_NAME_FLAG_COMPOSITE);
         if (GSS_ERROR(major))
             goto cleanup;
     }
@@ -233,7 +228,7 @@ gss_export_sec_context(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    major = gssEapExportSecContext(minor, ctx, interprocess_token, 0);
+    major = gssEapExportSecContext(minor, ctx, interprocess_token);
     if (GSS_ERROR(major)) {
         GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
         return major;

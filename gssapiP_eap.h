@@ -263,13 +263,10 @@ gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...);
                                          (err) <= GSSEAP_RADIUS_PROT_FAILURE)
 
 /* export_sec_context.c */
-#define EXPORT_CTX_FLAG_DISABLE_LOCAL_ATTRS     0x1
-
 OM_uint32
 gssEapExportSecContext(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
-                       gss_buffer_t token,
-                       OM_uint32 flags);
+                       gss_buffer_t token);
 
 
 #ifdef __cplusplus

@@ -59,6 +59,8 @@ typedef bool
 #define ATTR_TYPE_MIN               ATTR_TYPE_RADIUS
 #define ATTR_TYPE_MAX               ATTR_TYPE_LOCAL
 
+#define ATTR_FLAG_DISABLE_LOCAL     0x00000001
+
 /*
  * Attribute provider: this represents a source of attributes derived
  * from the security context.
@@ -207,8 +209,7 @@ public:
     void releaseAnyNameMapping(gss_buffer_t type_id,
                                gss_any_t input) const;
 
-    void exportToBuffer(gss_buffer_t buffer,
-                        uint32_t flags) const;
+    void exportToBuffer(gss_buffer_t buffer) const;
     bool initFromBuffer(const gss_buffer_t buffer);
 
     static std::string
@@ -254,7 +255,7 @@ private:
     gss_buffer_desc attributeTypeToPrefix(unsigned int type) const;
 
     bool initWithJsonObject(JSONObject &object);
-    JSONObject jsonRepresentation(uint32_t flags = 0) const;
+    JSONObject jsonRepresentation(void) const;
 
     gss_eap_attr_provider *getPrimaryProvider(void) const;
 
@@ -302,8 +303,6 @@ struct gss_eap_attr_ctx;
 extern "C" {
 #endif
 
-#define ATTR_FLAG_DISABLE_LOCAL     0x00000001
-
 /*
  * C wrappers for attribute context functions. These match their
  * GSS naming extension equivalents. The caller is required to
@@ -349,8 +348,7 @@ gssEapSetNameAttribute(OM_uint32 *minor,
 OM_uint32
 gssEapExportAttrContext(OM_uint32 *minor,
                         gss_name_t name,
-                        gss_buffer_t buffer,
-                        OM_uint32 flags);
+                        gss_buffer_t buffer);
 
 OM_uint32
 gssEapImportAttrContext(OM_uint32 *minor,
