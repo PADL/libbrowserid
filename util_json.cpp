@@ -51,20 +51,21 @@
 
 #define JSON_CHECK_CONTAINER() do {                             \
         if (!json_is_object(m_obj) && !json_is_array(m_obj)) {  \
-            std::string s("JSONObject object is not a container");   \
+            std::string s("JSONObject is not a container");     \
             throw new std::runtime_error(s);                    \
         }                                                       \
     } while (0)
+
 #define JSON_CHECK_OBJECT() do {                                \
         if (!json_is_object(m_obj)) {                           \
-            std::string s("JSONObject object is not a dictionary");   \
+            std::string s("JSONObject is not a dictionary");    \
             throw new std::runtime_error(s);                    \
         }                                                       \
     } while (0)
 
 #define JSON_CHECK_ARRAY() do {                                 \
         if (!json_is_array(m_obj)) {                            \
-            std::string s("JSONObject object is not an array");       \
+            std::string s("JSONObject is not an array");        \
             throw new std::runtime_error(s);                    \
         }                                                       \
     } while (0)
