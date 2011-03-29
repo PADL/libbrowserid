@@ -146,18 +146,8 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
                                                const gss_cred_id_t gssCred,
                                                const gss_ctx_id_t gssCtx)
 {
-    const gss_eap_saml_assertion_provider *saml;
-    gss_buffer_desc mechContext = GSS_C_EMPTY_BUFFER;
-    OM_uint32 major, minor;
-#if 0
-    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-#endif
-
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
         return false;
-
-    saml = static_cast<const gss_eap_saml_assertion_provider *>
-        (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
 
     auto_ptr<ShibbolethResolver> resolver(ShibbolethResolver::create());
 
@@ -168,6 +158,7 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
      * acceptor.
      */
 #if 0
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
     if (gssCred != GSS_C_NO_CREDENTIAL &&
         gssEapDisplayName(&minor, gssCred->name, &nameBuf, NULL) == GSS_S_COMPLETE) {
         resolver->setApplicationID((const char *)nameBuf.value);
@@ -175,12 +166,17 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     }
 #endif
 
+    gss_buffer_desc mechContext = GSS_C_EMPTY_BUFFER;
+    OM_uint32 major, minor;
     major = exportMechSecContext(&minor, gssCtx, &mechContext);
     if (major == GSS_S_COMPLETE) {
         resolver->addToken(&mechContext);
         gss_release_buffer(&minor, &mechContext);
     }
 
+    const gss_eap_saml_assertion_provider *saml;
+    saml = static_cast<const gss_eap_saml_assertion_provider *>
+        (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     if (saml != NULL && saml->getAssertion() != NULL) {
         resolver->addToken(saml->getAssertion());
     }
