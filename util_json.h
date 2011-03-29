@@ -70,15 +70,15 @@ namespace gss_eap_util {
         static JSONObject object(void);
         static JSONObject array(void);
         static JSONObject null(void);
+        static JSONObject ddf(DDF &value);
 
         char *dump(size_t flags = 0) const;
-        void dump(FILE *fp, size_t flags = 0) const;
+        void dump(FILE *fp, size_t flags = JSON_INDENT(4)) const;
 
         json_type type(void) const { return json_typeof(m_obj); }
         size_t size(void) const;
 
         JSONObject(void);
-        JSONObject(DDF &value);
         JSONObject(const char *value);
         JSONObject(json_int_t value);
         JSONObject(double value);
@@ -140,7 +140,7 @@ namespace gss_eap_util {
             }
         }
 
-        JSONObject(json_t *obj, bool retain);
+        JSONObject(json_t *obj, bool retain = true);
 
         json_t *m_obj;
     };

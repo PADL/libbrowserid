@@ -330,36 +330,41 @@ JSONObject::isnull(void) const
     return json_is_null(m_obj);
 }
 
-JSONObject::JSONObject(DDF &ddf)
+JSONObject
+JSONObject::ddf(DDF &ddf)
 {
     if (ddf.isstruct()) {
-        DDF elem = ddf.first();
-        JSONObject jobj = JSONObject::array();
-
-        while (!elem.isnull()) {
-            JSONObject jtmp(elem);
-            jobj.append(jtmp);
-            elem = ddf.next();
-        }
-    } else if (ddf.islist()) {
         DDF elem = ddf.first();
         JSONObject jobj = JSONObject::object();
 
         while (!elem.isnull()) {
-            JSONObject jtmp(elem);
+            JSONObject jtmp = JSONObject::ddf(elem);
             jobj.set(elem.name(), jtmp);
             elem = ddf.next();
         }
+
+        return jobj;
+    } else if (ddf.islist()) {
+        DDF elem = ddf.first();
+        JSONObject jobj = JSONObject::array();
+
+        while (!elem.isnull()) {
+            JSONObject jtmp = JSONObject::ddf(elem);
+            jobj.append(jtmp);
+            elem = ddf.next();
+        }
+
+        return jobj;
     } else if (ddf.isstring()) {
-        JSONObject(ddf.string());
+        return JSONObject(ddf.string());
     } else if (ddf.isint()) {
-        JSONObject((json_int_t)ddf.integer());
+        return JSONObject((json_int_t)ddf.integer());
     } else if (ddf.isfloat()) {
-        JSONObject(ddf.floating());
+        return JSONObject(ddf.floating());
     } else if (ddf.isempty() || ddf.ispointer()) {
-        JSONObject::object();
+        return JSONObject::object();
     } else if (ddf.isnull()) {
-        JSONObject::null();
+        return JSONObject::null();
     }
 
     std::string s("Unbridgeable DDF object");
@@ -378,7 +383,7 @@ JSONObject::ddf(void) const
         do {
             const char *key = iter.key();
             DDF value = iter.value().ddf();
-            ddf.add(value.name(key));
+            ddf.addmember(key).swap(value);
         } while (iter.next());
         break;
     }
@@ -410,7 +415,7 @@ JSONObject::ddf(void) const
         break;
     }
 
-    return DDF(NULL);
+    return ddf;
 }
 
 JSONIterator::JSONIterator(const JSONObject &obj)

@@ -407,16 +407,20 @@ gss_eap_shib_attr_provider::jsonRepresentation(void) const
     if (m_initialized == false)
         return obj; /* don't export incomplete context */
 
-    JSONObject attrs = JSONObject::array();
+    JSONObject jattrs = JSONObject::array();
 
     for (vector<Attribute*>::const_iterator a = m_attributes.begin();
          a != m_attributes.end(); ++a) {
-        DDF attr = (*a)->marshall();
-        JSONObject jobj(attr);
-        attrs.append(jobj);
+        try {
+            DDF attr = (*a)->marshall();
+            JSONObject jattr = JSONObject::ddf(attr);
+            jattrs.append(jattr);
+        } catch (AttributeException &e) {
+            /* XXX FIXME ignore attribute exceptions? */
+        }
     }
 
-    obj.set("attributes", attrs);
+    obj.set("attributes", jattrs);
 
     obj.set("authenticated", m_authenticated);
 
@@ -433,13 +437,19 @@ gss_eap_shib_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
     assert(m_authenticated == false);
     assert(m_attributes.size() == 0);
 
-    JSONObject attrs = obj["attributes"];
-    size_t nelems = attrs.size();
+    JSONObject jattrs = obj["attributes"];
+    size_t nelems = jattrs.size();
 
     for (size_t i = 0; i < nelems; i++) {
-        DDF attr = attrs.get(i).ddf();
-        Attribute *attribute = Attribute::unmarshall(attr);
-        m_attributes.push_back(attribute);
+        JSONObject jattr = jattrs.get(i);
+
+        try {
+            DDF attr = jattr.ddf();
+            Attribute *attribute = Attribute::unmarshall(attr);
+            m_attributes.push_back(attribute);
+        } catch (AttributeException &e) {
+            return false;
+        }
     }
 
     m_authenticated = obj["authenticated"].integer();

@@ -636,7 +636,7 @@ gss_eap_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
     JSONObject obj = jsonRepresentation();
 
 #if 0
-    obj.dump(stdout, JSON_INDENT(3));
+    obj.dump(stdout);
 #endif
 
     s = obj.dump(JSON_COMPACT);
@@ -679,14 +679,15 @@ gss_eap_attr_ctx::mapException(OM_uint32 *minor, std::exception &e) const
     OM_uint32 major;
 
     /* Errors we handle ourselves */
-    major = GSS_S_FAILURE;
-
     if (typeid(e) == typeid(std::bad_alloc)) {
         *minor = ENOMEM;
         goto cleanup;
     } else if (typeid(e) == typeid(std::runtime_error)) {
         major = GSS_S_BAD_NAME;
         *minor = GSSEAP_BAD_ATTR_TOKEN;
+        goto cleanup;
+    } else if (this == NULL) {
+        major = GSS_S_FAILURE;
         goto cleanup;
     }
 
