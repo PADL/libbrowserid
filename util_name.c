@@ -355,8 +355,10 @@ gssEapImportNameInternal(OM_uint32 *minor,
         gss_OID_desc mech;
 
         /* TOK_ID || MECH_OID_LEN || MECH_OID */
-        if (remain < 6)
+        if (remain < 6) {
+            *minor = GSSEAP_BAD_NAME_TOKEN;
             return GSS_S_BAD_NAME;
+        }
 
         if (flags & EXPORT_NAME_FLAG_COMPOSITE)
             tokType = TOK_TYPE_EXPORT_NAME_COMPOSITE;
@@ -364,19 +366,25 @@ gssEapImportNameInternal(OM_uint32 *minor,
             tokType = TOK_TYPE_EXPORT_NAME;
 
         /* TOK_ID */
-        if (load_uint16_be(p) != tokType)
+        if (load_uint16_be(p) != tokType) {
+            *minor = GSSEAP_WRONG_TOK_ID;
             return GSS_S_BAD_NAME;
+        }
         UPDATE_REMAIN(2);
 
         /* MECH_OID_LEN */
         len = load_uint16_be(p);
-        if (len < 2)
+        if (len < 2) {
+            *minor = GSSEAP_BAD_NAME_TOKEN;
             return GSS_S_BAD_NAME;
+        }
         UPDATE_REMAIN(2);
 
         /* MECH_OID */
-        if (p[0] != 0x06)
+        if (p[0] != 0x06) {
+            *minor = GSSEAP_BAD_NAME_TOKEN;
             return GSS_S_BAD_NAME;
+        }
 
         mech.length = p[1];
         mech.elements = &p[2];
