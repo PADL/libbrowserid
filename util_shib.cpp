@@ -183,7 +183,6 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
 
     if (saml != NULL && saml->getAssertion() != NULL) {
         resolver->addToken(saml->getAssertion());
-        m_authenticated = saml->authenticated();
     }
 
     try {
@@ -193,6 +192,7 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     } catch (exception &e) {
     }
 
+    m_authenticated = true;
     m_initialized = true;
 
     return true;
