@@ -670,7 +670,8 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
     if (da != NULL) {
         vp = pairalloc(da);
     } else {
-        vp = paircreate(attrid, PW_TYPE_STRING);
+        /* Assume unknown attributes are octet strings */
+        vp = paircreate(attrid, PW_TYPE_OCTETS);
     }
     if (vp == NULL) {
         throw new std::bad_alloc;
@@ -713,12 +714,22 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
         if (len >= BASE64_EXPAND(MAX_STRING_LEN))
             goto fail;
 
+        /*
+         * If the attribute is unknown, we don't know its syntax; assume
+         * it is an octet string and, if that fails to decode, a string.
+         */
         len = base64Decode(str, vp->vp_octets);
-        if (len < 0)
-            goto fail;
-
-        vp->length = len;
-        vp->vp_octets[len] = '\0';
+        if (len < 0) {
+            if (da == NULL) {
+                assert(len < MAX_STRING_LEN);
+                vp->length = len;
+                memcpy(vp->vp_strvalue, str, len + 1);
+            } else
+                goto fail;
+        } else {
+            vp->length = len;
+            vp->vp_octets[len] = '\0';
+        }
         break;
     }
     }
