@@ -105,13 +105,49 @@ gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *mana
     return true;
 }
 
+static OM_uint32
+exportMechSecContext(OM_uint32 *minor,
+                     gss_ctx_id_t gssCtx,
+                     gss_buffer_t mechContext)
+{
+    OM_uint32 major;
+    gss_buffer_desc exportedCtx;
+    unsigned char *p;
+
+    assert(gssCtx->mechanismUsed != GSS_C_NO_OID);
+
+    major = gssEapExportSecContext(minor, gssCtx, &exportedCtx);
+    if (GSS_ERROR(major))
+        return major;
+
+    /*
+     * gss_import_sec_context expects the exported security context token
+     * to be tagged with the mechanism OID; in Heimdal and MIT, this is
+     * done by the mechglue, so if we are subverting the mechglue we need
+     * to add it ourselves.
+     */
+    mechContext->length = 4 + gssCtx->mechanismUsed->length + exportedCtx.length;
+    mechContext->value = p = (unsigned char *)GSSEAP_MALLOC(mechContext->length);
+    if (mechContext->value == NULL) {
+        gss_release_buffer(minor, &exportedCtx);
+        throw new std::bad_alloc;
+    }
+
+    p = store_oid(gssCtx->mechanismUsed, p);
+    memcpy(p, exportedCtx.value, exportedCtx.length);
+
+    gss_release_buffer(minor, &exportedCtx);
+
+    return GSS_S_COMPLETE;
+}
+
 bool
 gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
                                                const gss_cred_id_t gssCred,
                                                const gss_ctx_id_t gssCtx)
 {
     const gss_eap_saml_assertion_provider *saml;
-    gss_buffer_desc exportedCtx = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc mechContext = GSS_C_EMPTY_BUFFER;
     OM_uint32 major, minor;
 #if 0
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
@@ -139,10 +175,10 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     }
 #endif
 
-    major = gssEapExportSecContext(&minor, gssCtx, &exportedCtx);
+    major = exportMechSecContext(&minor, gssCtx, &mechContext);
     if (major == GSS_S_COMPLETE) {
-        resolver->addToken(&exportedCtx);
-        gss_release_buffer(&minor, &exportedCtx);
+        resolver->addToken(&mechContext);
+        gss_release_buffer(&minor, &mechContext);
     }
 
     if (saml != NULL && saml->getAssertion() != NULL) {
