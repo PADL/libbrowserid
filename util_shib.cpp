@@ -113,10 +113,10 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
     const gss_eap_saml_assertion_provider *saml;
     gss_buffer_desc exportedCtx = GSS_C_EMPTY_BUFFER;
     OM_uint32 major, minor;
-
 #if 0
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
 #endif
+
     if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
         return false;
 
@@ -155,9 +155,6 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
         m_attributes = resolver->getResolvedAttributes();
         resolver->getResolvedAttributes().clear();
     } catch (exception &e) {
-#if 0
-        fprintf(stderr, "%s", e.what());
-#endif
     }
 
     m_initialized = true;
