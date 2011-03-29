@@ -680,6 +680,7 @@ gss_eap_attr_ctx::mapException(OM_uint32 *minor, std::exception &e) const
 
     /* Errors we handle ourselves */
     if (typeid(e) == typeid(std::bad_alloc)) {
+        major = GSS_S_FAILURE;
         *minor = ENOMEM;
         goto cleanup;
     } else if (typeid(e) == typeid(std::runtime_error)) {
