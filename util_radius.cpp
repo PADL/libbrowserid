@@ -661,7 +661,8 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
 
     JSONObject type = obj["type"];
     JSONObject value = obj["value"];
-    if (type.isnull() || value.isnull())
+
+    if (!type.isInteger())
         goto fail;
 
     attrid = type.integer();
@@ -680,14 +681,20 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
     case PW_TYPE_INTEGER:
     case PW_TYPE_IPADDR:
     case PW_TYPE_DATE:
+        if (!value.isInteger())
+            goto fail;
+
         vp->length = 4;
         vp->lvalue = value.integer();
         break;
     case PW_TYPE_STRING: {
-        const char *str = value.string();
-        size_t len;
+        if (!value.isString())
+            goto fail;
 
-        if (str == NULL || (len = strlen(str)) >= MAX_STRING_LEN)
+        const char *str = value.string();
+        size_t len = strlen(str);
+
+        if (len >= MAX_STRING_LEN)
             goto fail;
 
         vp->length = len;
@@ -696,12 +703,14 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
     }
     case PW_TYPE_OCTETS:
     default: {
+        if (!value.isString())
+            goto fail;
+
         const char *str = value.string();
-        int len;
+        size_t len = strlen(str);
 
         /* this optimization requires base64Decode only understand packed encoding */
-        if (str == NULL ||
-            strlen(str) >= BASE64_EXPAND(MAX_STRING_LEN))
+        if (len >= BASE64_EXPAND(MAX_STRING_LEN))
             goto fail;
 
         len = base64Decode(str, vp->vp_octets);

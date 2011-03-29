@@ -324,12 +324,6 @@ JSONObject::number(void) const
     return json_number_value(m_obj);
 }
 
-bool
-JSONObject::isnull(void) const
-{
-    return json_is_null(m_obj);
-}
-
 JSONObject
 JSONObject::ddf(DDF &ddf)
 {
@@ -416,6 +410,41 @@ JSONObject::ddf(void) const
     }
 
     return ddf;
+}
+
+bool JSONObject::isObject(void) const
+{
+    return json_is_object(m_obj);
+}
+
+bool JSONObject::isArray(void) const
+{
+    return json_is_array(m_obj);
+}
+
+bool JSONObject::isString(void) const
+{
+    return json_is_string(m_obj);
+}
+
+bool JSONObject::isInteger(void) const
+{
+    return json_is_integer(m_obj);
+}
+
+bool JSONObject::isNumber(void) const
+{
+    return json_is_number(m_obj);
+}
+
+bool JSONObject::isBoolean(void) const
+{
+    return json_is_boolean(m_obj);
+}
+
+bool JSONObject::isNull(void) const
+{
+    return json_is_null(m_obj);
 }
 
 JSONIterator::JSONIterator(const JSONObject &obj)

@@ -314,7 +314,7 @@ gss_eap_attr_ctx::initWithJsonObject(JSONObject &obj)
             continue;
 
         JSONObject source = sources.get(key);
-        if (!source.isnull() &&
+        if (!source.isNull() &&
             !provider->initWithJsonObject(this, source)) {
             releaseProvider(type);
             return false;
@@ -390,7 +390,7 @@ gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
         return false;
 
     JSONObject obj = JSONObject::load(s, 0, &error);
-    if (!obj.isnull()) {
+    if (!obj.isNull()) {
         ret = initWithJsonObject(obj);
     } else
         ret = false;

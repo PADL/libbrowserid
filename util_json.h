@@ -105,8 +105,15 @@ namespace gss_eap_util {
         json_int_t integer(void) const;
         double real(void) const;
         double number(void) const;
-        bool isnull(void) const;
         DDF ddf(void) const;
+
+        bool isObject(void) const;
+        bool isArray(void) const;
+        bool isString(void) const;
+        bool isInteger(void) const;
+        bool isNumber(void) const;
+        bool isBoolean(void) const;
+        bool isNull(void) const;
 
         ~JSONObject(void)
         {
