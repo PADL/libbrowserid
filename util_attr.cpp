@@ -55,11 +55,17 @@ gssEapAttrProvidersInitInternal(void)
     assert(gssEapAttrProvidersInitStatus == GSS_S_UNAVAILABLE);
 
     major = gssEapRadiusAttrProviderInit(&minor);
-    if (major == GSS_S_COMPLETE)
-        major = gssEapSamlAttrProvidersInit(&minor);
-    if (major == GSS_S_COMPLETE)
-        major = gssEapLocalAttrProviderInit(&minor);
+    if (GSS_ERROR(major))
+        goto cleanup;
 
+    major = gssEapSamlAttrProvidersInit(&minor);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    /* Allow Shibboleth initialization failure to be non-fatal */
+    gssEapLocalAttrProviderInit(&minor);
+
+cleanup:
 #ifdef GSSEAP_DEBUG
     assert(major == GSS_S_COMPLETE);
 #endif
