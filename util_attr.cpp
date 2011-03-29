@@ -882,8 +882,10 @@ gssEapGetNameAttribute(OM_uint32 *minor,
                        gss_buffer_t display_value,
                        int *more)
 {
-    *authenticated = 0;
-    *complete = 0;
+    if (authenticated != NULL)
+        *authenticated = 0;
+    if (complete != NULL)
+        *complete = 0;
 
     if (value != NULL) {
         value->length = 0;
