@@ -754,6 +754,8 @@ gss_eap_radius_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
         pNext = &vp->next;
     }
 
+    m_authenticated = obj["authenticated"].integer();
+
     return true;
 }
 
@@ -774,6 +776,8 @@ gss_eap_radius_attr_provider::jsonRepresentation(void) const
     }
 
     obj.set("attributes", attrs);
+
+    obj.set("authenticated", m_authenticated);
 
     return obj;
 }
