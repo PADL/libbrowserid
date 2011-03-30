@@ -484,6 +484,8 @@ gss_eap_shib_attr_provider::mapException(OM_uint32 *minor,
     else
         return GSS_S_CONTINUE_NEEDED;
 
+    gssEapSaveStatusInfo(*minor, "%s", e.what());
+
     return GSS_S_FAILURE;
 }
 
