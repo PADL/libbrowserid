@@ -49,6 +49,24 @@ using namespace shibsp;
 namespace gss_eap_util {
     class JSONObject;
 
+    class JSONException : public std::exception {
+    public:
+        JSONException(json_t *obj = NULL, json_type type = JSON_NULL);
+
+        ~JSONException(void) throw() {
+            json_decref(m_obj);
+        }
+
+        virtual const char *what(void) const throw() {
+            return m_reason.c_str();
+        }
+
+    private:
+        json_t *m_obj;
+        json_type m_type;
+        std::string m_reason;
+    };
+
     class JSONIterator {
     public:
         JSONIterator(const JSONObject &obj);

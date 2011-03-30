@@ -189,7 +189,7 @@ copyAvps(const VALUE_PAIR *src)
         vpcopy = paircopyvp(vp);
         if (vpcopy == NULL) {
             pairfree(&dst);
-            throw new std::bad_alloc;
+            throw std::bad_alloc();
             return NULL;
         }
         *pDst = vpcopy;
@@ -639,7 +639,7 @@ avpToJson(const VALUE_PAIR *vp)
         char *b64;
 
         if (base64Encode(vp->vp_octets, vp->length, &b64) < 0)
-            throw new std::bad_alloc;
+            throw std::bad_alloc();
 
         obj.set("value", b64);
         GSSEAP_FREE(b64);
@@ -674,7 +674,7 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
         vp = paircreate(attrid, PW_TYPE_OCTETS);
     }
     if (vp == NULL) {
-        throw new std::bad_alloc;
+        throw std::bad_alloc();
         goto fail;
     }
 
@@ -722,6 +722,7 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
         size_t valueLen = base64Decode(str, vp->vp_octets);
         if (valueLen < 0) {
             if (da == NULL && stringLen < MAX_STRING_LEN) {
+                vp->type = PW_TYPE_STRING;
                 vp->length = stringLen;
                 memcpy(vp->vp_strvalue, str, stringLen + 1);
             } else

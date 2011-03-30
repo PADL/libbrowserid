@@ -130,7 +130,7 @@ exportMechSecContext(OM_uint32 *minor,
     mechContext->value = p = (unsigned char *)GSSEAP_MALLOC(mechContext->length);
     if (mechContext->value == NULL) {
         gss_release_buffer(minor, &exportedCtx);
-        throw new std::bad_alloc;
+        throw std::bad_alloc();
     }
 
     p = store_oid(gssCtx->mechanismUsed, p);
@@ -186,6 +186,7 @@ gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
         m_attributes = resolver->getResolvedAttributes();
         resolver->getResolvedAttributes().clear();
     } catch (exception &e) {
+        return false;
     }
 
     m_authenticated = true;
@@ -407,13 +408,9 @@ gss_eap_shib_attr_provider::jsonRepresentation(void) const
 
     for (vector<Attribute*>::const_iterator a = m_attributes.begin();
          a != m_attributes.end(); ++a) {
-        try {
-            DDF attr = (*a)->marshall();
-            JSONObject jattr = JSONObject::ddf(attr);
-            jattrs.append(jattr);
-        } catch (AttributeException &e) {
-            /* XXX FIXME ignore attribute exceptions? */
-        }
+        DDF attr = (*a)->marshall();
+        JSONObject jattr = JSONObject::ddf(attr);
+        jattrs.append(jattr);
     }
 
     obj.set("attributes", jattrs);
@@ -439,13 +436,9 @@ gss_eap_shib_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
     for (size_t i = 0; i < nelems; i++) {
         JSONObject jattr = jattrs.get(i);
 
-        try {
-            DDF attr = jattr.ddf();
-            Attribute *attribute = Attribute::unmarshall(attr);
-            m_attributes.push_back(attribute);
-        } catch (AttributeException &e) {
-            return false;
-        }
+        DDF attr = jattr.ddf();
+        Attribute *attribute = Attribute::unmarshall(attr);
+        m_attributes.push_back(attribute);
     }
 
     m_authenticated = obj["authenticated"].integer();

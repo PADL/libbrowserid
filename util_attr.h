@@ -281,7 +281,7 @@ duplicateBuffer(gss_buffer_desc &src, gss_buffer_t dst)
     OM_uint32 minor;
 
     if (GSS_ERROR(duplicateBuffer(&minor, &src, dst)))
-        throw new std::bad_alloc();
+        throw std::bad_alloc();
 }
 
 static inline void

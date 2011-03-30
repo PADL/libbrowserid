@@ -40,39 +40,37 @@
 #include <string>
 #include <sstream>
 #include <exception>
-#include <stdexcept>
 #include <new>
 
 #define JSON_INIT(obj) do {                                     \
         if ((obj) == NULL)                                      \
-            throw new std::bad_alloc;                           \
+            throw std::bad_alloc();                             \
         m_obj = (obj);                                          \
     } while (0)
 
 #define JSON_CHECK_CONTAINER() do {                             \
         if (!json_is_object(m_obj) && !json_is_array(m_obj)) {  \
             std::string s("JSONObject is not a container");     \
-            throw new std::runtime_error(s);                    \
+            throw JSONException(m_obj);                         \
         }                                                       \
     } while (0)
 
 #define JSON_CHECK_OBJECT() do {                                \
         if (!json_is_object(m_obj)) {                           \
             std::string s("JSONObject is not a dictionary");    \
-            throw new std::runtime_error(s);                    \
+            throw JSONException(m_obj, JSON_OBJECT);            \
         }                                                       \
     } while (0)
 
 #define JSON_CHECK_ARRAY() do {                                 \
         if (!json_is_array(m_obj)) {                            \
-            std::string s("JSONObject is not an array");        \
-            throw new std::runtime_error(s);                    \
+            throw JSONException(m_obj, JSON_ARRAY);             \
         }                                                       \
     } while (0)
 
-#define JSON_CHECK(s) do {              \
-        if ((s) != 0)                   \
-            throw new std::bad_alloc;   \
+#define JSON_CHECK(s) do {                                      \
+        if ((s) != 0)                                           \
+            throw JSONException();                              \
     } while (0)
 
 JSONObject
@@ -101,7 +99,7 @@ JSONObject::dump(size_t flags) const
     char *s = json_dumps(m_obj, flags);
 
     if (s == NULL)
-        throw new std::bad_alloc;
+        throw std::bad_alloc();
 
     return s;
 }
@@ -112,7 +110,7 @@ JSONObject::dump(FILE *fp, size_t flags) const
     int r = json_dumpf(m_obj, fp, flags);
 
     if (r != 0)
-        throw new std::bad_alloc;
+        throw std::bad_alloc();
 }
 
 size_t
@@ -362,7 +360,7 @@ JSONObject::ddf(DDF &ddf)
     }
 
     std::string s("Unbridgeable DDF object");
-    throw new std::runtime_error(s);
+    throw JSONException();
 }
 
 DDF
@@ -475,4 +473,39 @@ JSONIterator::next(void)
 {
     m_iter = json_object_iter_next(m_obj, m_iter);
     return m_iter != NULL;
+}
+
+JSONException::JSONException(json_t *obj, json_type type)
+{
+    char *s = NULL;
+    const char *t;
+
+    m_obj = json_incref(obj);
+    m_type = type;
+
+    if (obj != NULL)
+        s = json_dumps(m_obj, 0);
+
+    switch (type) {
+    case JSON_OBJECT:   t = "OBJECT";   break;
+    case JSON_ARRAY:    t = "ARRAY";    break;
+    case JSON_STRING:   t = "STRING";   break;
+    case JSON_INTEGER:  t = "INTEGER";  break;
+    case JSON_REAL:     t = "REAL";     break;
+    case JSON_TRUE:     t = "TRUE";     break;
+    case JSON_FALSE:    t = "FALSE";    break;
+    case JSON_NULL:     t = "NULL";     break;
+    default:            t = "UNKNOWN";  break;
+    }
+
+    if (obj != NULL) {
+        m_reason = "Invalid JSON object: " + std::string(s);
+        if (type != JSON_NULL)
+            m_reason += " (excepted type " + std::string(t) + ")";
+    } else {
+        m_reason = "Internal JSON error";
+    }
+
+    if (s != NULL)
+        GSSEAP_FREE(s);
 }
