@@ -190,7 +190,6 @@ copyAvps(const VALUE_PAIR *src)
         if (vpcopy == NULL) {
             pairfree(&dst);
             throw std::bad_alloc();
-            return NULL;
         }
         *pDst = vpcopy;
         pDst = &vpcopy->next;
@@ -673,10 +672,8 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
         /* Assume unknown attributes are octet strings */
         vp = paircreate(attrid, PW_TYPE_OCTETS);
     }
-    if (vp == NULL) {
+    if (vp == NULL)
         throw std::bad_alloc();
-        goto fail;
-    }
 
     switch (vp->type) {
     case PW_TYPE_INTEGER:
