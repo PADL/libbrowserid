@@ -708,27 +708,27 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
             goto fail;
 
         const char *str = value.string();
-        size_t len = strlen(str);
+        size_t stringLen = strlen(str);
 
         /* this optimization requires base64Decode only understand packed encoding */
-        if (len >= BASE64_EXPAND(MAX_STRING_LEN))
+        if (stringLen >= BASE64_EXPAND(MAX_STRING_LEN))
             goto fail;
 
         /*
          * If the attribute is unknown, we don't know its syntax; assume
-         * it is an octet string and, if that fails to decode, a string.
+         * it is an octet string and, if that fails to decode and will
+         * fit, a string.
          */
-        len = base64Decode(str, vp->vp_octets);
-        if (len < 0) {
-            if (da == NULL) {
-                assert(len < MAX_STRING_LEN);
-                vp->length = len;
-                memcpy(vp->vp_strvalue, str, len + 1);
+        size_t valueLen = base64Decode(str, vp->vp_octets);
+        if (valueLen < 0) {
+            if (da == NULL && stringLen < MAX_STRING_LEN) {
+                vp->length = stringLen;
+                memcpy(vp->vp_strvalue, str, stringLen + 1);
             } else
                 goto fail;
         } else {
-            vp->length = len;
-            vp->vp_octets[len] = '\0';
+            vp->length = valueLen;
+            vp->vp_octets[valueLen] = '\0';
         }
         break;
     }
