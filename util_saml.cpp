@@ -73,7 +73,7 @@ gss_eap_saml_assertion_provider::~gss_eap_saml_assertion_provider(void)
 }
 
 bool
-gss_eap_saml_assertion_provider::initFromExistingContext(const gss_eap_attr_ctx *manager,
+gss_eap_saml_assertion_provider::initWithExistingContext(const gss_eap_attr_ctx *manager,
                                                          const gss_eap_attr_provider *ctx)
 {
     /* Then we may be creating from an existing attribute context */
@@ -81,7 +81,7 @@ gss_eap_saml_assertion_provider::initFromExistingContext(const gss_eap_attr_ctx 
 
     assert(m_assertion == NULL);
 
-    if (!gss_eap_attr_provider::initFromExistingContext(manager, ctx))
+    if (!gss_eap_attr_provider::initWithExistingContext(manager, ctx))
         return false;
 
     saml = static_cast<const gss_eap_saml_assertion_provider *>(ctx);
@@ -91,7 +91,7 @@ gss_eap_saml_assertion_provider::initFromExistingContext(const gss_eap_attr_ctx 
 }
 
 bool
-gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
+gss_eap_saml_assertion_provider::initWithGssContext(const gss_eap_attr_ctx *manager,
                                                     const gss_cred_id_t gssCred,
                                                     const gss_ctx_id_t gssCtx)
 {
@@ -102,7 +102,7 @@ gss_eap_saml_assertion_provider::initFromGssContext(const gss_eap_attr_ctx *mana
 
     assert(m_assertion == NULL);
 
-    if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
+    if (!gss_eap_attr_provider::initWithGssContext(manager, gssCred, gssCtx))
         return false;
 
     /*

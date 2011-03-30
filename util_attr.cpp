@@ -219,7 +219,7 @@ gss_eap_attr_ctx::releaseProvider(unsigned int type)
  * Initialize a context from an existing context.
  */
 bool
-gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
+gss_eap_attr_ctx::initWithExistingContext(const gss_eap_attr_ctx *manager)
 {
     bool ret = true;
 
@@ -235,7 +235,7 @@ gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
 
         provider = m_providers[i];
 
-        ret = provider->initFromExistingContext(this,
+        ret = provider->initWithExistingContext(this,
                                                 manager->m_providers[i]);
         if (ret == false) {
             releaseProvider(i);
@@ -250,7 +250,7 @@ gss_eap_attr_ctx::initFromExistingContext(const gss_eap_attr_ctx *manager)
  * Initialize a context from a GSS credential and context.
  */
 bool
-gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
+gss_eap_attr_ctx::initWithGssContext(const gss_cred_id_t cred,
                                      const gss_ctx_id_t ctx)
 {
     bool ret = true;
@@ -270,7 +270,7 @@ gss_eap_attr_ctx::initFromGssContext(const gss_cred_id_t cred,
 
         provider = m_providers[i];
 
-        ret = provider->initFromGssContext(this, cred, ctx);
+        ret = provider->initWithGssContext(this, cred, ctx);
         if (ret == false) {
             releaseProvider(i);
             break;
@@ -331,7 +331,7 @@ gss_eap_attr_ctx::initWithJsonObject(JSONObject &obj)
 
         provider = m_providers[type];
 
-        ret = provider->initFromGssContext(this,
+        ret = provider->initWithGssContext(this,
                                            GSS_C_NO_CREDENTIAL,
                                            GSS_C_NO_CONTEXT);
         if (ret == false) {
@@ -377,7 +377,7 @@ gss_eap_attr_ctx::jsonRepresentation(void) const
  * Initialize a context from an exported context or name token
  */
 bool
-gss_eap_attr_ctx::initFromBuffer(const gss_buffer_t buffer)
+gss_eap_attr_ctx::initWithBuffer(const gss_buffer_t buffer)
 {
     OM_uint32 major, minor;
     bool ret;
@@ -1014,7 +1014,7 @@ gssEapImportAttrContext(OM_uint32 *minor,
     try {
         ctx = new gss_eap_attr_ctx();
 
-        if (ctx->initFromBuffer(buffer)) {
+        if (ctx->initWithBuffer(buffer)) {
             name->attrCtx = ctx;
             major = GSS_S_COMPLETE;
             *minor = 0;
@@ -1056,7 +1056,7 @@ gssEapDuplicateAttrContext(OM_uint32 *minor,
     try {
         ctx = new gss_eap_attr_ctx();
 
-        if (ctx->initFromExistingContext(in->attrCtx)) {
+        if (ctx->initWithExistingContext(in->attrCtx)) {
             out->attrCtx = ctx;
             major = GSS_S_COMPLETE;
             *minor = 0;
@@ -1161,7 +1161,7 @@ gssEapCreateAttrContext(OM_uint32 *minor,
     try {
         ctx = new gss_eap_attr_ctx();
 
-        if (ctx->initFromGssContext(gssCred, gssCtx)) {
+        if (ctx->initWithGssContext(gssCred, gssCtx)) {
             major = GSS_S_COMPLETE;
             *minor = 0;
         } else {

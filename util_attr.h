@@ -77,13 +77,13 @@ public:
         return true;
     }
 
-    virtual bool initFromExistingContext(const gss_eap_attr_ctx *manager,
+    virtual bool initWithExistingContext(const gss_eap_attr_ctx *manager,
                                          const gss_eap_attr_provider *ctx GSSEAP_UNUSED)
     {
         return initWithManager(manager);
     }
 
-    virtual bool initFromGssContext(const gss_eap_attr_ctx *manager,
+    virtual bool initWithGssContext(const gss_eap_attr_ctx *manager,
                                     const gss_cred_id_t cred GSSEAP_UNUSED,
                                     const gss_ctx_id_t ctx GSSEAP_UNUSED)
     {
@@ -187,8 +187,8 @@ public:
     gss_eap_attr_ctx(void);
     ~gss_eap_attr_ctx(void);
 
-    bool initFromExistingContext(const gss_eap_attr_ctx *manager);
-    bool initFromGssContext(const gss_cred_id_t cred,
+    bool initWithExistingContext(const gss_eap_attr_ctx *manager);
+    bool initWithGssContext(const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
     bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
@@ -210,7 +210,7 @@ public:
                                gss_any_t input) const;
 
     void exportToBuffer(gss_buffer_t buffer) const;
-    bool initFromBuffer(const gss_buffer_t buffer);
+    bool initWithBuffer(const gss_buffer_t buffer);
 
     static std::string
     composeAttributeName(const gss_buffer_t prefix,

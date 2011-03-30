@@ -83,12 +83,12 @@ gss_eap_shib_attr_provider::~gss_eap_shib_attr_provider(void)
 }
 
 bool
-gss_eap_shib_attr_provider::initFromExistingContext(const gss_eap_attr_ctx *manager,
+gss_eap_shib_attr_provider::initWithExistingContext(const gss_eap_attr_ctx *manager,
                                                     const gss_eap_attr_provider *ctx)
 {
     const gss_eap_shib_attr_provider *shib;
 
-    if (!gss_eap_attr_provider::initFromExistingContext(manager, ctx)) {
+    if (!gss_eap_attr_provider::initWithExistingContext(manager, ctx)) {
         return false;
     }
 
@@ -142,11 +142,11 @@ exportMechSecContext(OM_uint32 *minor,
 }
 
 bool
-gss_eap_shib_attr_provider::initFromGssContext(const gss_eap_attr_ctx *manager,
+gss_eap_shib_attr_provider::initWithGssContext(const gss_eap_attr_ctx *manager,
                                                const gss_cred_id_t gssCred,
                                                const gss_ctx_id_t gssCtx)
 {
-    if (!gss_eap_attr_provider::initFromGssContext(manager, gssCred, gssCtx))
+    if (!gss_eap_attr_provider::initWithGssContext(manager, gssCred, gssCtx))
         return false;
 
     auto_ptr<ShibbolethResolver> resolver(ShibbolethResolver::create());

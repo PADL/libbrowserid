@@ -44,9 +44,9 @@ public:
     gss_eap_radius_attr_provider(void);
     ~gss_eap_radius_attr_provider(void);
 
-    bool initFromExistingContext(const gss_eap_attr_ctx *source,
+    bool initWithExistingContext(const gss_eap_attr_ctx *source,
                                  const gss_eap_attr_provider *ctx);
-    bool initFromGssContext(const gss_eap_attr_ctx *source,
+    bool initWithGssContext(const gss_eap_attr_ctx *source,
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
