@@ -125,16 +125,17 @@ getStatusInfo(OM_uint32 minor)
 void
 gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...)
 {
-    char *s;
+    char *s = NULL;
     int n;
     va_list ap;
 
-    va_start(ap, format);
-    n = vasprintf(&s, format, ap);
-    va_end(ap);
+    if (format != NULL) {
+        va_start(ap, format);
+        n = vasprintf(&s, format, ap);
+        va_end(ap);
+    }
 
-    if (n >= 0)
-        saveStatusInfoNoCopy(minor, s);
+    saveStatusInfoNoCopy(minor, s);
 }
 
 OM_uint32
