@@ -245,7 +245,7 @@ importEapNameFlags(OM_uint32 *minor,
          * Kerberos prevents the default realm being set to an empty value.)
          */
         code = krb5_parse_name_flags(krbContext, nameString,
-                                  KRB5_PRINCIPAL_PARSE_REQUIRE_REALM, &krbPrinc);
+                                     KRB5_PRINCIPAL_PARSE_REQUIRE_REALM, &krbPrinc);
     }
 
     if (code == KRB5_PARSE_MALFORMED) {
