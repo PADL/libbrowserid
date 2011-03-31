@@ -72,7 +72,7 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
 
     major = gssEapRadiusGetRawAvp(minor, ctx->acceptorCtx.vps,
                                   PW_USER_NAME, 0, &vp);
-    if (major == GSS_S_COMPLETE) {
+    if (major == GSS_S_COMPLETE && vp->length) {
         nameBuf.length = vp->length;
         nameBuf.value = vp->vp_strvalue;
     } else {
