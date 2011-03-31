@@ -1,3 +1,7 @@
 - integration with initiator-side EAP channel bindings
 - integration with final supplicant architecture
 - test Heimdal port
+
+- fix ABNF: no slash in the case where there is no host
+- specify anonymous behaviour: use empty name
+

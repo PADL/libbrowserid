@@ -337,9 +337,6 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
                           krb5_keyblock *key,
                           krb5_cksumtype *cksumtype);
 
-krb5_const_principal
-krbAnonymousPrincipal(void);
-
 krb5_error_code
 krbCryptoLength(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION

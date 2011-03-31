@@ -226,19 +226,14 @@ importEapNameFlags(OM_uint32 *minor,
     krb5_context krbContext;
     krb5_principal krbPrinc = NULL;
     krb5_error_code code;
+    char *nameString;
 
     GSSEAP_KRB_INIT(&krbContext);
 
     if (nameBuffer == GSS_C_NO_BUFFER) {
-        code = krb5_copy_principal(krbContext,
-                                   krbAnonymousPrincipal(), &krbPrinc);
-        if (code != 0) {
-            *minor = code;
-            return GSS_S_FAILURE;
-        }
+        nameString = "";
+        code = KRB5_PARSE_MALFORMED;
     } else {
-        char *nameString;
-
         major = bufferToString(minor, nameBuffer, &nameString);
         if (GSS_ERROR(major))
             return major;
@@ -250,39 +245,41 @@ importEapNameFlags(OM_uint32 *minor,
          * Kerberos prevents the default realm being set to an empty value.)
          */
         code = krb5_parse_name_flags(krbContext, nameString,
-                                     KRB5_PRINCIPAL_PARSE_REQUIRE_REALM, &krbPrinc);
-        if (code == KRB5_PARSE_MALFORMED) {
-            char *defaultRealm = NULL;
-            int parseFlags = 0;
+                                  KRB5_PRINCIPAL_PARSE_REQUIRE_REALM, &krbPrinc);
+    }
 
-            /* Possibly append the default EAP realm if required */
-            if (importFlags & IMPORT_FLAG_DEFAULT_REALM)
-                defaultRealm = gssEapGetDefaultRealm(krbContext);
+    if (code == KRB5_PARSE_MALFORMED) {
+        char *defaultRealm = NULL;
+        int parseFlags = 0;
 
-            /* If no default realm, leave the realm empty in the parsed name */
-            if (defaultRealm == NULL || defaultRealm[0] == '\0')
-                parseFlags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
+        /* Possibly append the default EAP realm if required */
+        if (importFlags & IMPORT_FLAG_DEFAULT_REALM)
+            defaultRealm = gssEapGetDefaultRealm(krbContext);
 
-            code = krb5_parse_name_flags(krbContext, nameString, parseFlags, &krbPrinc);
+        /* If no default realm, leave the realm empty in the parsed name */
+        if (defaultRealm == NULL || defaultRealm[0] == '\0')
+            parseFlags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
+
+        code = krb5_parse_name_flags(krbContext, nameString, parseFlags, &krbPrinc);
 
 #ifdef HAVE_HEIMDAL_VERSION
-            if (code == 0 && KRB_PRINC_REALM(krbPrinc) == NULL) {
-                KRB_PRINC_REALM(krbPrinc) = GSSEAP_CALLOC(1, sizeof(char));
-                if (KRB_PRINC_REALM(krbPrinc) == NULL)
-                    code = ENOMEM;
-            }
+        if (code == 0 && KRB_PRINC_REALM(krbPrinc) == NULL) {
+            KRB_PRINC_REALM(krbPrinc) = GSSEAP_CALLOC(1, sizeof(char));
+            if (KRB_PRINC_REALM(krbPrinc) == NULL)
+                code = ENOMEM;
+        }
 #endif
 
-            if (defaultRealm != NULL)
-                GSSEAP_FREE(defaultRealm);
-        }
+        if (defaultRealm != NULL)
+            GSSEAP_FREE(defaultRealm);
+    }
 
+    if (nameBuffer != GSS_C_NO_BUFFER)
         GSSEAP_FREE(nameString);
 
-        if (code != 0) {
-            *minor = code;
-            return GSS_S_FAILURE;
-        }
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_FAILURE;
     }
 
     assert(krbPrinc != NULL);
@@ -736,9 +733,7 @@ gssEapDisplayName(OM_uint32 *minor,
 
     krb5_free_unparsed_name(krbContext, krbName);
 
-    if (KRB_PRINC_TYPE(name->krbPrincipal) == KRB5_NT_WELLKNOWN &&
-        krb5_principal_compare(krbContext,
-                               name->krbPrincipal, krbAnonymousPrincipal())) {
+    if (KRB_PRINC_LENGTH(name->krbPrincipal) == 0) {
         name_type = GSS_C_NT_ANONYMOUS;
     } else {
         name_type = GSS_EAP_NT_EAP_NAME;

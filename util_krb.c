@@ -300,26 +300,6 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
-#ifdef HAVE_HEIMDAL_VERSION
-static heim_general_string krbAnonymousPrincipalComponents[] =
-    { KRB5_WELLKNOWN_NAME, KRB5_ANON_NAME };
-
-static const Principal krbAnonymousPrincipalData = {
-    { KRB5_NT_WELLKNOWN, { 2, krbAnonymousPrincipalComponents } },
-    "WELLKNOWN:ANONYMOUS"
-};
-#endif
-
-krb5_const_principal
-krbAnonymousPrincipal(void)
-{
-#ifdef HAVE_HEIMDAL_VERSION
-    return &krbAnonymousPrincipalData;
-#else
-    return krb5_anonymous_principal();
-#endif
-}
-
 krb5_error_code
 krbCryptoLength(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
