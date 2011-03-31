@@ -733,7 +733,7 @@ gssEapDisplayName(OM_uint32 *minor,
 
     krb5_free_unparsed_name(krbContext, krbName);
 
-    if (KRB_PRINC_LENGTH(name->krbPrincipal) == 0) {
+    if (output_name_buffer->length == 0) {
         name_type = GSS_C_NT_ANONYMOUS;
     } else {
         name_type = GSS_EAP_NT_EAP_NAME;
