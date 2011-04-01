@@ -415,18 +415,16 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
 
         for (vector<saml2::Attribute*>::const_iterator a = attrs.begin(); a != attrs.end(); ++a) {
             const XMLCh *attributeName, *attributeNameFormat;
-            XMLCh *qualifiedName;
             XMLCh space[2] = { ' ', 0 };
             gss_buffer_desc utf8;
-            bool ret;
 
             attributeName = (*a)->getName();
             attributeNameFormat = (*a)->getNameFormat();
             if (attributeNameFormat == NULL || attributeNameFormat[0] == '\0')
                 attributeNameFormat = saml2::Attribute::UNSPECIFIED;
 
-            qualifiedName = new XMLCh[XMLString::stringLen(attributeNameFormat) + 1 +
-                                      XMLString::stringLen(attributeName) + 1];
+            XMLCh qualifiedName[XMLString::stringLen(attributeNameFormat) + 1 +
+                                XMLString::stringLen(attributeName) + 1];
             XMLString::copyString(qualifiedName, attributeNameFormat);
             XMLString::catString(qualifiedName, space);
             XMLString::catString(qualifiedName, attributeName);
@@ -434,12 +432,8 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
             utf8.value = (void *)toUTF8(qualifiedName);
             utf8.length = strlen((char *)utf8.value);
 
-            ret = addAttribute(m_manager, this, &utf8, data);
-
-            delete qualifiedName;
-
-            if (!ret)
-                return ret;
+            if (!addAttribute(m_manager, this, &utf8, data))
+                return false;
         }
     }
 
@@ -449,12 +443,13 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
 static BaseRefVectorOf<XMLCh> *
 decomposeAttributeName(const gss_buffer_t attr)
 {
-    XMLCh *qualifiedAttr = new XMLCh[attr->length + 1];
-    XMLString::transcode((const char *)attr->value, qualifiedAttr, attr->length);
+    BaseRefVectorOf<XMLCh> *components;
+    string str((const char *)attr->value, attr->length);
+    XMLCh qualifiedAttr[str.length() + 1];
 
-    BaseRefVectorOf<XMLCh> *components = XMLString::tokenizeString(qualifiedAttr);
+    XMLString::transcode(str.c_str(), qualifiedAttr, str.length());
 
-    delete qualifiedAttr;
+    components = XMLString::tokenizeString(qualifiedAttr);
 
     if (components->size() != 2) {
         delete components;
