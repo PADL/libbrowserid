@@ -735,6 +735,8 @@ gssEapDisplayName(OM_uint32 *minor,
 
     if (output_name_buffer->length == 0) {
         name_type = GSS_C_NT_ANONYMOUS;
+    } else if (name->flags & NAME_FLAG_NAI) {
+        name_type = GSS_C_NT_USER_NAME;
     } else {
         name_type = GSS_EAP_NT_EAP_NAME;
     }
