@@ -283,7 +283,11 @@ gss_eap_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
 
     XMLHelper::serialize(m_assertion->marshall((DOMDocument *)NULL), str);
 
-    duplicateBuffer(str, value);
+    if (value != NULL)
+        duplicateBuffer(str, value);
+    if (display_value != NULL)
+        duplicateBuffer(str, display_value);
+
     *more = 0;
 
     return true;
