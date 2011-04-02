@@ -449,11 +449,9 @@ decomposeAttributeName(const gss_buffer_t attr)
 {
     BaseRefVectorOf<XMLCh> *components;
     string str((const char *)attr->value, attr->length);
-    XMLCh qualifiedAttr[str.length() + 1];
+    auto_ptr_XMLCh qualifiedAttr(str.c_str());
 
-    XMLString::transcode(str.c_str(), qualifiedAttr, str.length());
-
-    components = XMLString::tokenizeString(qualifiedAttr);
+    components = XMLString::tokenizeString(qualifiedAttr.get());
 
     if (components->size() != 2) {
         delete components;
@@ -461,6 +459,25 @@ decomposeAttributeName(const gss_buffer_t attr)
     }
 
     return components;
+}
+
+static bool
+isNotPrintable(const gss_buffer_t value)
+{
+    size_t i;
+    char *p = (char *)value->value;
+
+    if (isgraph(p[0]) &&
+        isgraph(p[value->length - 1]))
+    {
+        for (i = 0; p[i]; i++) {
+            if (!isascii(p[i]) || !isprint(p[i]))
+                return true;
+        }
+        return false;
+    }
+
+    return true;
 }
 
 bool
@@ -492,11 +509,19 @@ gss_eap_saml_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
     attribute->setNameFormat(components->elementAt(0));
     attribute->setName(components->elementAt(1));
 
-    XMLCh *xmlValue = new XMLCh[value->length + 1];
-    XMLString::transcode((const char *)value->value, xmlValue, attr->length);
-
     attributeValue = saml2::AttributeValueBuilder::buildAttributeValue();
-    attributeValue->setTextContent(xmlValue);
+    if (isNotPrintable(value)) {
+        char *b64;
+
+        if (base64Encode(value->value, value->length, &b64))
+            return false;
+
+        auto_ptr_XMLCh unistr(b64);
+        attributeValue->setTextContent(unistr.get());
+    } else {
+        auto_ptr_XMLCh unistr((char *)value->value);
+        attributeValue->setTextContent(unistr.get());
+    }
 
     attribute->getAttributeValues().push_back(attributeValue);
 
@@ -504,7 +529,6 @@ gss_eap_saml_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
     attributeStatement->getAttributes().push_back(attribute);
 
     delete components;
-    delete xmlValue;
 
     return true;
 }
