@@ -46,7 +46,7 @@ pos(char c)
     return -1;
 }
 
-int
+ssize_t
 base64Encode(const void *data, int size, char **str)
 {
     char *s, *p;
@@ -88,7 +88,7 @@ base64Encode(const void *data, int size, char **str)
     }
     *p = 0;
     *str = s;
-    return (int) strlen(s);
+    return strlen(s);
 }
 
 #define DECODE_ERROR 0xffffffff
@@ -115,7 +115,7 @@ token_decode(const char *token)
     return (marker << 24) | val;
 }
 
-int
+ssize_t
 base64Decode(const char *str, void *data)
 {
     const char *p;
@@ -134,4 +134,20 @@ base64Decode(const char *str, void *data)
 	    *q++ = val & 0xff;
     }
     return q - (unsigned char *) data;
+}
+
+int
+base64Valid(const char *str)
+{
+    const char *p;
+    int valid = 1;
+
+    for (p = str; *p && (*p == '=' || strchr(base64_chars, *p)); p += 4) {
+	unsigned int val = token_decode(p);
+	if (val == DECODE_ERROR) {
+            valid = 0;
+	    break;
+        }
+    }
+    return valid;
 }

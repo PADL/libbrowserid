@@ -669,8 +669,9 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
     if (da != NULL) {
         vp = pairalloc(da);
     } else {
-        /* Assume unknown attributes are octet strings */
-        vp = paircreate(attrid, PW_TYPE_OCTETS);
+        int type = base64Valid(value.string()) ?
+            PW_TYPE_OCTETS : PW_TYPE_STRING;
+        vp = paircreate(attrid, type);
     }
     if (vp == NULL)
         throw std::bad_alloc();
@@ -705,29 +706,17 @@ jsonToAvp(VALUE_PAIR **pVp, JSONObject &obj)
             goto fail;
 
         const char *str = value.string();
-        size_t stringLen = strlen(str);
+        ssize_t len = strlen(str);
 
         /* this optimization requires base64Decode only understand packed encoding */
-        if (stringLen >= BASE64_EXPAND(MAX_STRING_LEN))
+        if (len >= BASE64_EXPAND(MAX_STRING_LEN))
             goto fail;
 
-        /*
-         * If the attribute is unknown, we don't know its syntax; assume
-         * it is an octet string and, if that fails to decode and will
-         * fit, a string.
-         */
-        size_t valueLen = base64Decode(str, vp->vp_octets);
-        if (valueLen < 0) {
-            if (da == NULL && stringLen < MAX_STRING_LEN) {
-                vp->type = PW_TYPE_STRING;
-                vp->length = stringLen;
-                memcpy(vp->vp_strvalue, str, stringLen + 1);
-            } else
-                goto fail;
-        } else {
-            vp->length = valueLen;
-            vp->vp_octets[valueLen] = '\0';
-        }
+        len = base64Decode(str, vp->vp_octets);
+        if (len < 0)
+            goto fail;
+
+        vp->length = len;
         break;
     }
     }

@@ -40,11 +40,14 @@
 extern "C" {
 #endif
 
-int
+ssize_t
 base64Encode(const void *, int, char **);
 
-int
+ssize_t
 base64Decode(const char *, void *);
+
+int
+base64Valid(const char *str);
 
 #define BASE64_EXPAND(n)        (n * 4 / 3 + 4)
 
