@@ -671,8 +671,27 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 #endif
     if (av != NULL) {
         if (value != NULL) {
-            value->value = toUTF8(av->getTextContent(), true);
-            value->length = strlen((char *)value->value);
+            char *stringValue = toUTF8(av->getTextContent(), true);
+            size_t stringValueLen = strlen(stringValue);
+
+            if (base64Valid(stringValue)) {
+                ssize_t binaryLen;
+
+                value->value = GSSEAP_MALLOC(stringValueLen);
+                if (value->value == NULL)
+                    throw new std::bad_alloc;
+
+                binaryLen = base64Decode(stringValue, value->value);
+                if (binaryLen < 0) {
+                    GSSEAP_FREE(value->value);
+                    value->value = NULL;
+                    return false;
+                }
+                value->length = binaryLen;
+            } else {
+                value->value = stringValue;
+                value->length = stringValueLen;
+            }
         }
         if (display_value != NULL) {
             display_value->value = toUTF8(av->getTextContent(), true);
