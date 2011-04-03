@@ -662,7 +662,7 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 
     if (i == -1)
         i = 0;
-    else if (i >= nvalues)
+    if (i >= nvalues)
         return false;
 #ifdef __APPLE__
     av = (const saml2::AttributeValue *)((void *)(a->getAttributeValues().at(i)));

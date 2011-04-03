@@ -331,7 +331,7 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
 
     if (i == -1)
         i = 0;
-    else if (i >= nvalues)
+    if (i >= nvalues)
         return false;
 
     buf.value = (void *)shibAttr->getSerializedValues()[*more].c_str();
