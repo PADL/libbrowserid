@@ -678,16 +678,20 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
                 ssize_t binaryLen;
 
                 value->value = GSSEAP_MALLOC(stringValueLen);
-                if (value->value == NULL)
+                if (value->value == NULL) {
+                    GSSEAP_FREE(stringValue);
                     throw new std::bad_alloc;
+                }
 
                 binaryLen = base64Decode(stringValue, value->value);
                 if (binaryLen < 0) {
                     GSSEAP_FREE(value->value);
+                    GSSEAP_FREE(stringValue);
                     value->value = NULL;
                     return false;
                 }
                 value->length = binaryLen;
+                GSSEAP_FREE(stringValue);
             } else {
                 value->value = stringValue;
                 value->length = stringValueLen;
