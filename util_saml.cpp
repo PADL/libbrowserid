@@ -57,6 +57,9 @@ using namespace opensaml;
 using namespace xercesc;
 using namespace std;
 
+static const XMLCh
+base64Binary[] = {'b','a','s','e','6','4','B','i','n','a','r','y',0};
+
 /*
  * gss_eap_saml_assertion_provider is for retrieving the underlying
  * assertion.
@@ -462,7 +465,7 @@ decomposeAttributeName(const gss_buffer_t attr)
 }
 
 static bool
-isNotPrintable(const gss_buffer_t value)
+isNotPrintableP(const gss_buffer_t value)
 {
     size_t i;
     char *p = (char *)value->value;
@@ -510,10 +513,14 @@ gss_eap_saml_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
     attribute->setName(components->elementAt(1));
 
     attributeValue = saml2::AttributeValueBuilder::buildAttributeValue();
-    if (isNotPrintable(value)) {
+    if (isNotPrintableP(value)) {
+        /* XXX FIXME where is setSchemaType()? */
+        xmltooling::QName base64SchemaType(xmlconstants::XSD_NS,
+                                           base64Binary,
+                                           xmlconstants::XSD_PREFIX);
         char *b64;
 
-        if (base64Encode(value->value, value->length, &b64))
+        if (base64Encode(value->value, value->length, &b64) < 0)
             return false;
 
         auto_ptr_XMLCh unistr(b64);
@@ -641,6 +648,29 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
     return (ret != NULL);
 }
 
+static bool
+isBase64EncodedAttributeValueP(const saml2::AttributeValue *av)
+{
+    const xmltooling::QName *type = av->getSchemaType();
+
+    if (type == NULL)
+        return false;
+
+    if (!type->hasNamespaceURI() ||
+        !XMLString::equals(type->getNamespaceURI(), xmlconstants::XSD_NS))
+        return false;
+
+    if (!type->hasPrefix() ||
+        !XMLString::equals(type->getPrefix(), xmlconstants::XSD_PREFIX))
+        return false;
+
+    if (!type->hasLocalPart() ||
+        !XMLString::equals(type->getLocalPart(), base64Binary))
+        return false;
+
+    return true;
+}
+
 bool
 gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
                                          int *authenticated,
@@ -670,12 +700,14 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
     av = dynamic_cast<const saml2::AttributeValue *>(a->getAttributeValues().at(i));
 #endif
     if (av != NULL) {
+        bool base64Encoded = isBase64EncodedAttributeValueP(av);
+
         if (value != NULL) {
             char *stringValue = toUTF8(av->getTextContent(), true);
             size_t stringValueLen = strlen(stringValue);
 
-            if (base64Valid(stringValue)) {
-                ssize_t binaryLen;
+            if (base64Encoded) {
+                ssize_t octetLen;
 
                 value->value = GSSEAP_MALLOC(stringValueLen);
                 if (value->value == NULL) {
@@ -683,21 +715,21 @@ gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
                     throw new std::bad_alloc;
                 }
 
-                binaryLen = base64Decode(stringValue, value->value);
-                if (binaryLen < 0) {
+                octetLen = base64Decode(stringValue, value->value);
+                if (octetLen < 0) {
                     GSSEAP_FREE(value->value);
                     GSSEAP_FREE(stringValue);
                     value->value = NULL;
                     return false;
                 }
-                value->length = binaryLen;
+                value->length = octetLen;
                 GSSEAP_FREE(stringValue);
             } else {
                 value->value = stringValue;
                 value->length = stringValueLen;
             }
         }
-        if (display_value != NULL) {
+        if (display_value != NULL && base64Encoded == false) {
             display_value->value = toUTF8(av->getTextContent(), true);
             display_value->length = strlen((char *)value->value);
         }
