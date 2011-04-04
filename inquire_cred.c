@@ -45,6 +45,7 @@ gss_inquire_cred(OM_uint32 *minor,
                  gss_OID_set *mechanisms)
 {
     OM_uint32 major;
+    time_t now, lifetime;
 
     if (cred == NULL) {
         *minor = EINVAL;
@@ -57,21 +58,6 @@ gss_inquire_cred(OM_uint32 *minor,
         major = gssEapDuplicateName(minor, cred->name, name);
         if (GSS_ERROR(major))
             goto cleanup;
-    }
-
-    if (pLifetime != NULL) {
-        time_t now, lifetime;
-
-        if (cred->expiryTime == 0) {
-            lifetime = GSS_C_INDEFINITE;
-        } else  {
-            now = time(NULL);
-            lifetime = now - cred->expiryTime;
-            if (lifetime < 0)
-                lifetime = 0;
-        }
-
-        *pLifetime = lifetime;
     }
 
     if (cred_usage != NULL) {
@@ -97,6 +83,25 @@ gss_inquire_cred(OM_uint32 *minor,
             major = gssEapIndicateMechs(minor, mechanisms);
         if (GSS_ERROR(major))
             goto cleanup;
+    }
+
+    if (cred->expiryTime == 0) {
+        lifetime = GSS_C_INDEFINITE;
+    } else  {
+        now = time(NULL);
+        lifetime = now - cred->expiryTime;
+        if (lifetime < 0)
+            lifetime = 0;
+    }
+
+    if (pLifetime != NULL) {
+        *pLifetime = lifetime;
+    }
+
+    if (lifetime == 0) {
+        major = GSS_S_CREDENTIALS_EXPIRED;
+        *minor = GSSEAP_CRED_EXPIRED;
+        goto cleanup;
     }
 
     major = GSS_S_COMPLETE;

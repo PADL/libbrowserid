@@ -121,6 +121,11 @@ acceptReadyEap(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     if (GSS_ERROR(major))
         return major;
 
+    if (ctx->expiryTime < time(NULL)) {
+        *minor = GSSEAP_CRED_EXPIRED;
+        return GSS_S_CREDENTIALS_EXPIRED;
+    }
+
     *minor = 0;
     return GSS_S_COMPLETE;
 }

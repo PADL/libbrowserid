@@ -78,10 +78,10 @@ error_code GSSEAP_BAD_NAME_TOKEN,               "Name token is malformed or corr
 error_code GSSEAP_BAD_USAGE,                    "Credential usage type is unknown"
 error_code GSSEAP_CRED_USAGE_MISMATCH,          "Credential usage does not match requested usage"
 error_code GSSEAP_CRED_MECH_MISMATCH,           "Credential is not usable with this mechanism"
+error_code GSSEAP_CRED_EXPIRED,                 "Attributes indicate credentials have expired"
 error_code GSSEAP_BAD_CRED_OPTION,              "Bad credential option"
 error_code GSSEAP_NO_DEFAULT_IDENTITY,          "Default credentials identity unavailable"
 error_code GSSEAP_NO_DEFAULT_CRED,              "Missing default password or other credentials"
-
 #
 # Wrap/unwrap/PRF errors
 #
