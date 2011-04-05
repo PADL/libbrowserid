@@ -464,25 +464,6 @@ decomposeAttributeName(const gss_buffer_t attr)
     return components;
 }
 
-static bool
-isNotPrintableP(const gss_buffer_t value)
-{
-    size_t i;
-    char *p = (char *)value->value;
-
-    if (isgraph(p[0]) &&
-        isgraph(p[value->length - 1]))
-    {
-        for (i = 0; p[i]; i++) {
-            if (!isascii(p[i]) || !isprint(p[i]))
-                return true;
-        }
-        return false;
-    }
-
-    return true;
-}
-
 bool
 gss_eap_saml_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
                                          const gss_buffer_t attr,
@@ -513,22 +494,8 @@ gss_eap_saml_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
     attribute->setName(components->elementAt(1));
 
     attributeValue = saml2::AttributeValueBuilder::buildAttributeValue();
-    if (isNotPrintableP(value)) {
-        /* XXX FIXME where is setSchemaType()? */
-        xmltooling::QName base64SchemaType(xmlconstants::XSD_NS,
-                                           base64Binary,
-                                           xmlconstants::XSD_PREFIX);
-        char *b64;
-
-        if (base64Encode(value->value, value->length, &b64) < 0)
-            return false;
-
-        auto_ptr_XMLCh unistr(b64);
-        attributeValue->setTextContent(unistr.get());
-    } else {
-        auto_ptr_XMLCh unistr((char *)value->value);
-        attributeValue->setTextContent(unistr.get());
-    }
+    auto_ptr_XMLCh unistr((char *)value->value, value->length);
+    attributeValue->setTextContent(unistr.get());
 
     attribute->getAttributeValues().push_back(attributeValue);
 
@@ -658,10 +625,6 @@ isBase64EncodedAttributeValueP(const saml2::AttributeValue *av)
 
     if (!type->hasNamespaceURI() ||
         !XMLString::equals(type->getNamespaceURI(), xmlconstants::XSD_NS))
-        return false;
-
-    if (!type->hasPrefix() ||
-        !XMLString::equals(type->getPrefix(), xmlconstants::XSD_PREFIX))
         return false;
 
     if (!type->hasLocalPart() ||
