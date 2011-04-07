@@ -105,8 +105,8 @@ if !HEIMDAL
 krb5pluginsdir = $(libdir)/krb5/plugins/authdata
 krb5plugins_LTLIBRARIES = radius_ad.la
 
-radius_ad_la_CFLAGS  = -g -Wall -fno-strict-aliasing \
-			  @EAP_CFLAGS@ @KRB5_CFLAGS@ @TARGET_CFLAGS@
+radius_ad_la_CFLAGS  = -Werror -Wall -Wunused-parameter \
+			@KRB5_CFLAGS@ @EAP_CFLAGS@ @RADSEC_CFLAGS@ @TARGET_CFLAGS@
 radius_ad_la_LDFLAGS = -avoid-version -module \
 		       -export-symbols radius_ad.exports -no-undefined
 radius_ad_la_LIBADD  = @KRB5_LIBS@
