@@ -339,7 +339,6 @@ gssEapImportNameInternal(OM_uint32 *minor,
     unsigned char *p;
     size_t len, remain;
     gss_buffer_desc buf;
-    enum gss_eap_token_type tokType;
     gss_name_t name = GSS_C_NO_NAME;
     gss_OID mechanismUsed = GSS_C_NO_OID;
 
@@ -350,6 +349,8 @@ gssEapImportNameInternal(OM_uint32 *minor,
 
     if (flags & EXPORT_NAME_FLAG_OID) {
         gss_OID_desc mech;
+        enum gss_eap_token_type tokType;
+        uint16_t wireTokType;
 
         /* TOK_ID || MECH_OID_LEN || MECH_OID */
         if (remain < 6) {
@@ -363,7 +364,15 @@ gssEapImportNameInternal(OM_uint32 *minor,
             tokType = TOK_TYPE_EXPORT_NAME;
 
         /* TOK_ID */
-        if (load_uint16_be(p) != tokType) {
+        wireTokType = load_uint16_be(p);
+
+        if ((flags & EXPORT_NAME_FLAG_ALLOW_COMPOSITE) &&
+            wireTokType == TOK_TYPE_EXPORT_NAME_COMPOSITE) {
+            tokType = TOK_TYPE_EXPORT_NAME_COMPOSITE;
+            flags |= EXPORT_NAME_FLAG_COMPOSITE;
+        }
+
+        if (wireTokType != tokType) {
             *minor = GSSEAP_WRONG_TOK_ID;
             return GSS_S_BAD_NAME;
         }
@@ -448,7 +457,8 @@ importExportName(OM_uint32 *minor,
                  gss_name_t *name)
 {
     return gssEapImportNameInternal(minor, nameBuffer, name,
-                                    EXPORT_NAME_FLAG_OID);
+                                    EXPORT_NAME_FLAG_OID |
+                                    EXPORT_NAME_FLAG_ALLOW_COMPOSITE);
 }
 
 #ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
