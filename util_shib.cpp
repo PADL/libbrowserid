@@ -105,42 +105,6 @@ gss_eap_shib_attr_provider::initWithExistingContext(const gss_eap_attr_ctx *mana
     return true;
 }
 
-static OM_uint32
-exportMechSecContext(OM_uint32 *minor,
-                     gss_ctx_id_t gssCtx,
-                     gss_buffer_t mechContext)
-{
-    OM_uint32 major;
-    gss_buffer_desc exportedCtx;
-    unsigned char *p;
-
-    assert(gssCtx->mechanismUsed != GSS_C_NO_OID);
-
-    major = gssEapExportSecContext(minor, gssCtx, &exportedCtx);
-    if (GSS_ERROR(major))
-        return major;
-
-    /*
-     * gss_import_sec_context expects the exported security context token
-     * to be tagged with the mechanism OID; in Heimdal and MIT, this is
-     * done by the mechglue, so if we are subverting the mechglue we need
-     * to add it ourselves.
-     */
-    mechContext->length = 4 + gssCtx->mechanismUsed->length + exportedCtx.length;
-    mechContext->value = p = (unsigned char *)GSSEAP_MALLOC(mechContext->length);
-    if (mechContext->value == NULL) {
-        gss_release_buffer(minor, &exportedCtx);
-        throw std::bad_alloc();
-    }
-
-    p = store_oid(gssCtx->mechanismUsed, p);
-    memcpy(p, exportedCtx.value, exportedCtx.length);
-
-    gss_release_buffer(minor, &exportedCtx);
-
-    return GSS_S_COMPLETE;
-}
-
 bool
 gss_eap_shib_attr_provider::initWithGssContext(const gss_eap_attr_ctx *manager,
                                                const gss_cred_id_t gssCred,
@@ -166,12 +130,15 @@ gss_eap_shib_attr_provider::initWithGssContext(const gss_eap_attr_ctx *manager,
     }
 #endif
 
-    gss_buffer_desc mechContext = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc mechName = GSS_C_EMPTY_BUFFER;
     OM_uint32 major, minor;
-    major = exportMechSecContext(&minor, gssCtx, &mechContext);
+
+    major = gssEapExportNameInternal(&minor, gssCtx->initiatorName, &mechName,
+                                     EXPORT_NAME_FLAG_OID |
+                                     EXPORT_NAME_FLAG_COMPOSITE);
     if (major == GSS_S_COMPLETE) {
-        resolver->addToken(&mechContext);
-        gss_release_buffer(&minor, &mechContext);
+        resolver->addToken(&mechName);
+        gss_release_buffer(&minor, &mechName);
     }
 
     const gss_eap_saml_assertion_provider *saml;
