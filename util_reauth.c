@@ -739,7 +739,7 @@ gssEapGlueToMechName(OM_uint32 *minor,
 
     major = defrostAttrContext(minor,
 #ifdef HAVE_HEIMDAL_VERSION
-                               ctx->kerberosCtx,
+                               ctx->reauthCtx,
 #else
                                glueName,
 #endif
@@ -815,11 +815,11 @@ gssEapReauthComplete(OM_uint32 *minor,
     /* Get the raw subsession key and encryption type */
 #ifdef HAVE_HEIMDAL_VERSION
 #define KRB_GSS_SUBKEY_COUNT    1 /* encoded session key */
-    major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
+    major = gssInquireSecContextByOid(minor, ctx->reauthCtx,
                                       GSS_KRB5_GET_SUBKEY_X, &keyData);
 #else
 #define KRB_GSS_SUBKEY_COUNT    2 /* raw session key, enctype OID */
-    major = gssInquireSecContextByOid(minor, ctx->kerberosCtx,
+    major = gssInquireSecContextByOid(minor, ctx->reauthCtx,
                                       GSS_C_INQ_SSPI_SESSION_KEY, &keyData);
 #endif
     if (GSS_ERROR(major))

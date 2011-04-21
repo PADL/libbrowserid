@@ -201,8 +201,8 @@ struct gss_ctx_id_struct
         struct gss_eap_acceptor_ctx  acceptor;
         #define acceptorCtx          ctxU.acceptor
 #ifdef GSSEAP_ENABLE_REAUTH
-        gss_ctx_id_t                 kerberos;
-        #define kerberosCtx          ctxU.kerberos
+        gss_ctx_id_t                 reauth;
+        #define reauthCtx            ctxU.reauth
 #endif
     } ctxU;
 };

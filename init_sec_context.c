@@ -472,7 +472,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
 
     major = gssInitSecContext(minor,
                               cred->krbCred,
-                              &ctx->kerberosCtx,
+                              &ctx->reauthCtx,
                               mechTarget,
                               (gss_OID)gss_mech_krb5,
                               reqFlags | GSS_C_MUTUAL_FLAG,
@@ -596,7 +596,7 @@ eapGssSmInitIdentity(OM_uint32 *minor,
         OM_uint32 tmpMinor;
 
         /* server didn't support reauthentication, sent EAP request */
-        gssDeleteSecContext(&tmpMinor, &ctx->kerberosCtx, GSS_C_NO_BUFFER);
+        gssDeleteSecContext(&tmpMinor, &ctx->reauthCtx, GSS_C_NO_BUFFER);
         ctx->flags &= ~(CTX_FLAG_KRB_REAUTH);
         GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_INITIAL);
     } else
