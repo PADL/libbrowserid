@@ -972,7 +972,7 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
 
     major = gssAcceptSecContext(minor,
                                 &ctx->reauthCtx,
-                                cred->krbCred,
+                                cred->reauthCred,
                                 inputToken,
                                 chanBindings,
                                 &krbInitiator,

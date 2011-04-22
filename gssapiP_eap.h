@@ -135,7 +135,7 @@ struct gss_cred_id_struct
     char *radiusConfigStanza;
 #ifdef GSSEAP_ENABLE_REAUTH
     krb5_ccache krbCredCache;
-    gss_cred_id_t krbCred;
+    gss_cred_id_t reauthCred;
 #endif
 };
 

@@ -65,9 +65,9 @@ gss_store_cred(OM_uint32 *minor,
     *minor = 0;
 
 #ifdef GSSEAP_ENABLE_REAUTH
-    if (cred->krbCred != GSS_C_NO_CREDENTIAL) {
+    if (cred->reauthCred != GSS_C_NO_CREDENTIAL) {
         major = gssStoreCred(minor,
-                             cred->krbCred,
+                             cred->reauthCred,
                              input_usage,
                              (gss_OID)gss_mech_krb5,
                              overwrite_cred,

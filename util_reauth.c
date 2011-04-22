@@ -454,7 +454,7 @@ getDefaultReauthCredentials(OM_uint32 *minor,
     ccache = NULL;
 
     major = gss_krb5_import_cred(minor, cred->krbCredCache, NULL, NULL,
-                                 &cred->krbCred);
+                                 &cred->reauthCred);
 
 cleanup:
     if (major == GSS_S_CRED_UNAVAIL)
@@ -572,7 +572,7 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
             krb5_cc_destroy(krbContext, cred->krbCredCache);
             cred->krbCredCache = NULL;
         }
-        gssReleaseCred(minor, &cred->krbCred);
+        gssReleaseCred(minor, &cred->reauthCred);
     }
 
     if (cred->krbCredCache == NULL) {
@@ -607,7 +607,7 @@ gssEapStoreReauthCreds(OM_uint32 *minor,
     }
 
     major = gss_krb5_import_cred(minor, cred->krbCredCache, NULL, NULL,
-                                 &cred->krbCred);
+                                 &cred->reauthCred);
     if (GSS_ERROR(major))
         goto cleanup;
 
