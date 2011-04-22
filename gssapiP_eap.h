@@ -160,11 +160,9 @@ struct gss_cred_id_struct
 
 struct gss_eap_initiator_ctx {
     unsigned int idleWhile;
-#ifndef __cplusplus
     struct eap_peer_config eapPeerConfig;
     struct eap_sm *eap;
     struct wpabuf reqData;
-#endif
 };
 
 struct gss_eap_acceptor_ctx {
