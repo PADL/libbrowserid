@@ -1,0 +1,9 @@
+- gss_xxx routines acquire lock, gssXxx don't
+
+- git
+
+If you do want to update with a rebase, deletethe branch from the
+server first then push the rebased branch
+
+to delete a branch from a server git push origin :branch_to_del
+
