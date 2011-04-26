@@ -1,7 +1,7 @@
 AC_PREREQ([2.61])
 AC_INIT([mech_eap], [0.1], [bugs@project-moonshot.org])
 dnl AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([silent-rules])
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
 
@@ -47,10 +47,10 @@ AM_CONDITIONAL(GSSEAP_ENABLE_REAUTH, test "x$reauth" != "xno")
 AC_SUBST(TARGET_CFLAGS)
 AC_SUBST(TARGET_LDFLAGS)
 AX_CHECK_KRB5
-AX_CHECK_EAP
+dnl AX_CHECK_EAP
 AX_CHECK_SHIBSP
 AX_CHECK_SHIBRESOLVER
 AX_CHECK_RADSEC
 AX_CHECK_JANSSON
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile libeap/Makefile mech_eap/Makefile])
 AC_OUTPUT
