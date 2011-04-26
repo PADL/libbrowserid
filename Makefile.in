@@ -1,2 +1,0 @@
-all install:
-	cd eap_example&&$(MAKE) CC='gcc -fPIC'
