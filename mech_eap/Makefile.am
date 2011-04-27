@@ -23,6 +23,7 @@ mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
 
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
+	authorize_localname.c			\
 	acquire_cred.c				\
 	acquire_cred_with_password.c		\
 	add_cred.c				\
@@ -71,7 +72,6 @@ mech_eap_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
-	userok.c				\
 	util_attr.cpp				\
 	util_base64.c				\
 	util_buffer.c				\
