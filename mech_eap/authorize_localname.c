@@ -36,11 +36,11 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32 KRB5_CALLCONV
-gss_userok(OM_uint32 *minor,
-           const gss_name_t name GSSEAP_UNUSED,
-           const char *user GSSEAP_UNUSED,
-           int *user_ok)
+OM_uint32
+gssspi_authorize_localname(OM_uint32 *minor,
+                           const gss_name_t name GSSEAP_UNUSED,
+                           gss_const_buffer_t local_user GSSEAP_UNUSED,
+                           gss_const_OID local_nametype GSSEAP_UNUSED)
 {
     /*
      * The MIT mechglue will fallback to comparing names in the absence
@@ -50,6 +50,5 @@ gss_userok(OM_uint32 *minor,
      */
 
     *minor = 0;
-    *user_ok = 0;
-    return GSS_S_COMPLETE;
+    return GSS_S_UNAUTHORIZED;
 }

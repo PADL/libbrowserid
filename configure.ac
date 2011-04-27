@@ -1,7 +1,8 @@
 AC_PREREQ([2.61])
 AC_INIT([mech_eap], [0.1], [bugs@project-moonshot.org])
 dnl AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([silent-rules])
+dnl AM_INIT_AUTOMAKE([silent-rules])
+AM_INIT_AUTOMAKE
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
 

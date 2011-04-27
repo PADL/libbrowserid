@@ -1,4 +1,7 @@
-#! /bin/sh
+#!/bin/sh
+#
+# Regenerate autotools files.
+#
 
 PATH=/usr/local/bin:$PATH
 

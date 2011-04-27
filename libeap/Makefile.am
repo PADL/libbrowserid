@@ -64,8 +64,10 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/radiotap.c \
 	src/utils/trace.c \
 	src/utils/uuid.c \
-	 src/utils/wpa_debug.c \
-	src/utils/wpabuf.c
+	src/utils/wpa_debug.c \
+	src/utils/wpabuf.c \
+	src/utils/os_unix.c
+
 CRYPTO_SRCS = \
     src/crypto/aes-cbc.c \
     src/crypto/aes-ctr.c \
@@ -119,6 +121,6 @@ TLS_SRCS = \
     src/tls/tlsv1_server_write.c \
     src/tls/x509v3.c
 
-libeap_la_SOURCES = $(SOURCES_BOTH) $(UTILS_SRCS) $(CRYPTO_SRCS) $(TLS_SRCS)
+libeap_la_SOURCES = $(SOURCES_BOTH) $(SOURCES_peer) $(UTILS_SRCS) $(CRYPTO_SRCS) $(TLS_SRCS)
 
 noinst_LTLIBRARIES = libeap.la

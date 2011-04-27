@@ -4,7 +4,8 @@ gssincludedir = $(includedir)/gssapi
 gssinclude_HEADERS = gssapi_eap.h
 
 EAP_CFLAGS = -I$(srcdir)/../libeap/src -I$(srcdir)/../libeap/src/common -I$(srcdir)/../libeap/src/eap_common  \
-    -I$(srcdir)/../libeap/src/utils -DIEEE8021X_EAPOL
+	-I$(srcdir)/../libeap/src/utils \
+	-DEAP_TLS -DEAP_PEAP -DEAP_TTLS -DEAP_MD5 -DEAP_MSCHAPv2 -DEAP_GTC -DEAP_OTP -DEAP_LEAP -DEAP_PSK -DEAP_PAX -DEAP_SAKE -DEAP_GPSK -DEAP_GPSK_SHA256 -DEAP_SERVER_IDENTITY -DEAP_SERVER_TLS -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DEAP_SERVER_MD5 -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_GTC -DEAP_SERVER_PSK -DEAP_SERVER_PAX -DEAP_SERVER_SAKE -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256 -DIEEE8021X_EAPOL
 
 gssdir = $(libdir)/gss
 gss_LTLIBRARIES = mech_eap.la
@@ -17,12 +18,13 @@ mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter \
 		        @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols mech_eap.exports -no-undefined \
-			@EAP_LDFLAGS@ @RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
+			@RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
 mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
 		       @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
 
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
+	authorize_localname.c			\
 	acquire_cred.c				\
 	acquire_cred_with_password.c		\
 	add_cred.c				\
@@ -71,7 +73,6 @@ mech_eap_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
-	userok.c				\
 	util_attr.cpp				\
 	util_base64.c				\
 	util_buffer.c				\
@@ -109,7 +110,7 @@ krb5pluginsdir = $(libdir)/krb5/plugins/authdata
 krb5plugins_LTLIBRARIES = radius_ad.la
 
 radius_ad_la_CFLAGS  = -Werror -Wall -Wunused-parameter \
-			@KRB5_CFLAGS@ @EAP_CFLAGS@ @RADSEC_CFLAGS@ @TARGET_CFLAGS@
+			@KRB5_CFLAGS@ $(EAP_CFLAGS) @RADSEC_CFLAGS@ @TARGET_CFLAGS@
 radius_ad_la_LDFLAGS = -avoid-version -module \
 		       -export-symbols radius_ad.exports -no-undefined
 radius_ad_la_LIBADD  = @KRB5_LIBS@
