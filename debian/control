@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Sam Hartman <hartmans@debian.org>
 Build-Depends: debhelper (>= 7.0.50~), autotools-dev, libshibsp-dev (>= 1.5+dfsg~moonshot1), 
     libradsec-dev, libkrb5-dev (>= 1.9), 
-    libshib-resolver-dev, libjansson-dev
+    libshib-resolver-dev, libjansson-dev, libfreeradius-dev
 Standards-Version: 3.9.1
 Homepage: http://www.project-moonshot.org/
 Vcs-Git: http://www.project-moonshot.org/git/moonshot.git
