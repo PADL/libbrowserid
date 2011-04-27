@@ -1,0 +1,5 @@
+moonshot-gss-eap (0.1+20110427-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 27 Apr 2011 08:53:16 -0400
