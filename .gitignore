@@ -1,8 +1,2 @@
-Makefile.in
-aclocal.m4
 autom4te.cache
-configure
-config.*
-ltmain.sh
-libtool
-depcomp
+
