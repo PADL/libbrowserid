@@ -18,6 +18,8 @@
 #include "md5.h"
 #include "crypto.h"
 
+#undef hmac_md5_vector_non_fips_allow
+#undef hmac_md5_non_fips_allow
 
 /**
  * hmac_md5_vector_non_fips_allow - HMAC-MD5 over data vector (RFC 2104)
