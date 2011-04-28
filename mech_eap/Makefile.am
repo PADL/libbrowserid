@@ -4,7 +4,8 @@ gssincludedir = $(includedir)/gssapi
 gssinclude_HEADERS = gssapi_eap.h
 
 EAP_CFLAGS = -I$(srcdir)/../libeap/src -I$(srcdir)/../libeap/src/common -I$(srcdir)/../libeap/src/eap_common  \
-    -I$(srcdir)/../libeap/src/utils -DIEEE8021X_EAPOL
+	-I$(srcdir)/../libeap/src/utils \
+	-DEAP_TLS -DEAP_PEAP -DEAP_TTLS -DEAP_MD5 -DEAP_MSCHAPv2 -DEAP_GTC -DEAP_OTP -DEAP_LEAP -DEAP_PSK -DEAP_PAX -DEAP_SAKE -DEAP_GPSK -DEAP_GPSK_SHA256 -DEAP_SERVER_IDENTITY -DEAP_SERVER_TLS -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DEAP_SERVER_MD5 -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_GTC -DEAP_SERVER_PSK -DEAP_SERVER_PAX -DEAP_SERVER_SAKE -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256 -DIEEE8021X_EAPOL
 
 gssdir = $(libdir)/gss
 gss_LTLIBRARIES = mech_eap.la
@@ -23,11 +24,11 @@ mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
 
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
-	authorize_localname.c			\
 	acquire_cred.c				\
 	acquire_cred_with_password.c		\
 	add_cred.c				\
 	add_cred_with_password.c		\
+	authorize_localname.c			\
 	canonicalize_name.c			\
 	compare_name.c				\
 	context_time.c				\
