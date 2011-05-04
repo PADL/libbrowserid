@@ -1,4 +1,4 @@
-moonshot-gss-eap (0.1+20110427-3) unstable; urgency=low
+moonshot-gss-eap (0.1+20110427-5) unstable; urgency=low
 
   * Enable TLS in libeap
 
