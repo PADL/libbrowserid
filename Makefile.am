@@ -26,7 +26,7 @@ SOURCES_peer += src/eap_peer/eap.c
 SOURCES_peer += src/eap_common/eap_common.c
 SOURCES_peer += src/eap_peer/eap_methods.c
 SOURCES_peer += src/eap_peer/eap_tls_common.c
-CFLAGS += -DEAP_TLS
+-CFLAGS += -DEAP_TLS
 CFLAGS += -DEAP_PEAP
 CFLAGS += -DEAP_TTLS
 CFLAGS += -DEAP_MD5
@@ -56,6 +56,8 @@ CFLAGS += -DCONFIG_IPV6
 
 CFLAGS += -DCONFIG_INTERNAL_LIBTOMMATH
 CFLAGS += -DCONFIG_CRYPTO_INTERNAL
+CFLAGS += -DCONFIG_TLS_INTERNAL_CLIENT
+CFLAGS += -DCONFIG_TLS_INTERNAL_SERVER
 
 
 UTILS_SRCS = src/utils/base64.c \
