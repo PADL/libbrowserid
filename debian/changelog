@@ -1,3 +1,15 @@
+moonshot-gss-eap (0.1+20110427-3) unstable; urgency=low
+
+  * Enable TLS in libeap
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 04 May 2011 18:42:08 -0400
+
+moonshot-gss-eap (0.1+20110427-2) unstable; urgency=low
+
+  * Force mutual authentication
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 04 May 2011 14:59:46 -0400
+
 moonshot-gss-eap (0.1+20110427-1) unstable; urgency=low
 
   * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
