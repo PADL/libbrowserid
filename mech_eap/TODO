@@ -4,4 +4,4 @@
 
 - fix ABNF: no slash in the case where there is no host
 - specify anonymous behaviour: use empty name
-
+- always intern OIDs so they never need to be freed
