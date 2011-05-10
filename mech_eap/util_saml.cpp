@@ -363,7 +363,7 @@ gss_eap_saml_attr_provider::getAssertion(int *authenticated,
     if (pAssertion != NULL)
         *pAssertion = NULL;
 
-    saml = static_cast<const gss_eap_saml_assertion_provider *>
+    saml = static_cast< gss_eap_saml_assertion_provider *>
         (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     if (saml == NULL)
         return false;
