@@ -1,3 +1,10 @@
+moonshot-gss-eap (0.1+20110427-6) unstable; urgency=low
+
+  * Don't cast get_provider to const when not ssigning to a const
+    variable
+
+ -- Sam Hartman <hartmans@debian.org>  Mon, 09 May 2011 20:15:34 -0400
+
 moonshot-gss-eap (0.1+20110427-5) unstable; urgency=low
 
   * Enable TLS in libeap
