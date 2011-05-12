@@ -183,7 +183,7 @@ gssEapIndicateMechs(OM_uint32 *minor,
                     gss_OID_set *mechs)
 {
     krb5_context krbContext;
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major;
     krb5_enctype *etypes;
     int i;
 
@@ -202,6 +202,9 @@ gssEapIndicateMechs(OM_uint32 *minor,
 
     for (i = 0; etypes[i] != ENCTYPE_NULL; i++) {
         gss_OID mechOid;
+#ifndef HAVE_HEIMDAL_VERSION
+        OM_uint32 tmpMinor;
+#endif
 
         /* XXX currently we aren't equipped to encode these enctypes */
         if (etypes[i] < 0 || etypes[i] > 127)
@@ -215,7 +218,9 @@ gssEapIndicateMechs(OM_uint32 *minor,
         if (GSS_ERROR(major))
             break;
 
+#ifndef HAVE_HEIMDAL_VERSION
         gss_release_oid(&tmpMinor, &mechOid);
+#endif
     }
 
     GSSEAP_FREE(etypes);
