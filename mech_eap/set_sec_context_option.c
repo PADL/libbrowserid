@@ -50,11 +50,16 @@ gss_set_sec_context_option(OM_uint32 *minor,
                            const gss_buffer_t value)
 {
     OM_uint32 major;
-    gss_ctx_id_t ctx = *pCtx;
+    gss_ctx_id_t ctx;
     int i;
 
     major = GSS_S_UNAVAILABLE;
     *minor = GSSEAP_BAD_CONTEXT_OPTION;
+
+    if (pCtx == NULL)
+        ctx = GSS_C_NO_CONTEXT;
+    else
+        ctx = *pCtx;
 
     if (ctx != GSS_C_NO_CONTEXT)
         GSSEAP_MUTEX_LOCK(&ctx->mutex);
@@ -67,9 +72,9 @@ gss_set_sec_context_option(OM_uint32 *minor,
         }
     }
 
-    if (*pCtx == NULL)
+    if (pCtx != NULL && *pCtx == NULL)
         *pCtx = ctx;
-    else
+    else if (ctx != GSS_C_NO_CONTEXT)
         GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;
