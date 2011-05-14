@@ -31,30 +31,39 @@
  */
 
 /*
- * Wrapper for acquiring a credential handle using a password.
+ * Wrapper for acquiring a credential handle.
  */
 
 #include "gssapiP_eap.h"
 
 OM_uint32
-gssspi_acquire_cred_with_password(OM_uint32 *minor,
-                                  const gss_name_t desired_name,
-                                  const gss_buffer_t password,
-                                  OM_uint32 time_req,
-                                  const gss_OID_set desired_mechs,
-                                  gss_cred_usage_t cred_usage,
-                                  gss_cred_id_t *output_cred_handle,
-                                  gss_OID_set *actual_mechs,
-                                  OM_uint32 *time_rec)
+gss_acquire_cred_ext
+           (OM_uint32 *minor,
+            const gss_name_t desired_name,
+            gss_const_OID credential_type,
+            const void *credential_data,
+            OM_uint32 time_req,
+            gss_const_OID desired_mech,
+            gss_cred_usage_t cred_usage,
+            gss_cred_id_t *output_cred_handle
+           )
 {
-    return gssEapAcquireCred(minor,
-                             desired_name,
-                             &gssEapPasswordCredType,
-                             password,
-                             time_req,
-                             desired_mechs,
-                             cred_usage,
-                             output_cred_handle,
-                             actual_mechs,
-                             time_rec);
+    OM_uint32 major;
+    gss_OID_set_desc mechs;
+
+    mechs.count = 1;
+    mechs.elements = (gss_OID)desired_mech;
+
+    major = gssEapAcquireCred(minor,
+                              desired_name,
+                              credential_type,
+                              credential_data,
+                              time_req,
+                              &mechs,
+                              cred_usage,
+                              output_cred_handle,
+                              NULL,
+                              NULL);
+
+    return major;
 }

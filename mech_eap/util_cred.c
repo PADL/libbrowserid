@@ -38,6 +38,9 @@
 
 #include <pwd.h>
 
+const gss_OID_desc gssEapPasswordCredType =
+    { 7, "\x2a\x85\x70\x2b\x0d\x81\x48" };
+
 OM_uint32
 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
@@ -197,7 +200,8 @@ cleanup:
 OM_uint32
 gssEapAcquireCred(OM_uint32 *minor,
                   const gss_name_t desiredName,
-                  const gss_buffer_t password,
+                  gss_const_OID credType,
+                  const void *credData,
                   OM_uint32 timeReq GSSEAP_UNUSED,
                   const gss_OID_set desiredMechs,
                   int credUsage,
@@ -211,9 +215,20 @@ gssEapAcquireCred(OM_uint32 *minor,
     gss_name_t defaultIdentityName = GSS_C_NO_NAME;
     gss_buffer_desc defaultCreds = GSS_C_EMPTY_BUFFER;
     gss_OID nameMech = GSS_C_NO_OID;
+    gss_buffer_t password = GSS_C_NO_BUFFER;
 
     /* XXX TODO validate with changed set_cred_option API */
     *pCred = GSS_C_NO_CREDENTIAL;
+
+    if (credType != GSS_C_NO_OID) {
+        if (oidEqual(credType, &gssEapPasswordCredType)) {
+            password = (gss_buffer_t)credData;
+        } else {
+            major = GSS_S_CRED_UNAVAIL;
+            *minor = GSSEAP_BAD_CRED_TYPE;
+            goto cleanup;
+        }
+    }
 
     major = gssEapAllocCred(minor, &cred);
     if (GSS_ERROR(major))
