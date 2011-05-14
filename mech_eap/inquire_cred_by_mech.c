@@ -37,14 +37,15 @@
 #include "gssapiP_eap.h"
 
 OM_uint32
-gss_inquire_cred(OM_uint32 *minor,
-                 gss_cred_id_t cred,
-                 gss_name_t *name,
-                 OM_uint32 *pLifetime,
-                 gss_cred_usage_t *cred_usage,
-                 gss_OID_set *mechanisms)
+gss_inquire_cred_by_mech(OM_uint32 *minor,
+                         gss_cred_id_t cred,
+                         gss_OID mech_type,
+                         gss_name_t *name,
+                         OM_uint32 *pInitiatorLifetime,
+                         OM_uint32 *pAcceptorLifetime,
+                         gss_cred_usage_t *cred_usage)
 {
-    OM_uint32 major;
+    OM_uint32 major, lifetime;
 
     if (cred == NULL) {
         *minor = EINVAL;
@@ -53,8 +54,22 @@ gss_inquire_cred(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&cred->mutex);
 
-    major = gssEapInquireCred(minor, cred, name, pLifetime, cred_usage, mechanisms);
+    if (!gssEapCredAvailable(cred, mech_type)) {
+        major = GSS_S_BAD_MECH;
+        *minor = GSSEAP_CRED_MECH_MISMATCH;
+        goto cleanup;
+    }
 
+    major = gssEapInquireCred(minor, cred, name, &lifetime, cred_usage, NULL);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (pInitiatorLifetime != NULL)
+        *pInitiatorLifetime = (cred->flags & CRED_FLAG_INITIATE) ? lifetime : 0;
+    if (pAcceptorLifetime != NULL)
+        *pAcceptorLifetime = (cred->flags & CRED_FLAG_ACCEPT) ? lifetime : 0;
+
+cleanup:
     GSSEAP_MUTEX_UNLOCK(&cred->mutex);
 
     return major;

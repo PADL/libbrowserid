@@ -222,6 +222,14 @@ gssEapAcquireCred(OM_uint32 *minor,
 
 int gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech);
 
+OM_uint32
+gssEapInquireCred(OM_uint32 *minor,
+                  gss_cred_id_t cred,
+                  gss_name_t *name,
+                  OM_uint32 *pLifetime,
+                  gss_cred_usage_t *cred_usage,
+                  gss_OID_set *mechanisms);
+
 /* util_crypt.c */
 int
 gssEapEncrypt(krb5_context context, int dce_style, size_t ec,

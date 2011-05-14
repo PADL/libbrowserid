@@ -22,6 +22,7 @@ gss_init_sec_context
 gss_inquire_attrs_for_mech
 gss_inquire_context
 gss_inquire_cred
+gss_inquire_cred_by_mech
 gss_inquire_cred_by_oid
 gss_inquire_mechs_for_name
 gss_inquire_mech_for_saslname
