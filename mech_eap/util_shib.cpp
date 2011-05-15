@@ -304,7 +304,22 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
     buf.value = (void *)shibAttr->getSerializedValues()[*more].c_str();
     buf.length = strlen((char *)buf.value);
 
-    if (buf.length != 0) {
+    if (base64Valid((char *)buf.value)) {
+        ssize_t octetLen;
+
+        value->value = GSSEAP_MALLOC(buf.length);
+        if (value->value == NULL)
+            throw std::bad_alloc();
+
+        octetLen = base64Decode((char *)buf.value, value->value);
+        if (octetLen < 0) {
+            GSSEAP_FREE(value->value);
+            value->value = NULL;
+            return false;
+        }
+
+        value->length = octetLen;
+    } else if (buf.length != 0) {
         if (value != NULL)
             duplicateBuffer(buf, value);
 
