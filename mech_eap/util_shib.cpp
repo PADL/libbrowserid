@@ -315,7 +315,7 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
     if (authenticated != NULL)
         *authenticated = m_authenticated;
     if (complete != NULL)
-        *complete = false;
+        *complete = true;
 
     if (nvalues > ++i)
         *more = i;
