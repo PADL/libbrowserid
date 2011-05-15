@@ -122,7 +122,9 @@ base64Decode(const char *str, void *data)
     unsigned char *q;
 
     q = data;
-    for (p = str; *p && (*p == '=' || strchr(base64_chars, *p)); p += 4) {
+    p = str;
+
+    while (*p && *p && (*p == '=' || strchr(base64_chars, *p))) {
 	unsigned int val = token_decode(p);
 	unsigned int marker = (val >> 24) & 0xff;
 	if (val == DECODE_ERROR)
@@ -132,6 +134,9 @@ base64Decode(const char *str, void *data)
 	    *q++ = (val >> 8) & 0xff;
 	if (marker < 1)
 	    *q++ = val & 0xff;
+	p += 4;
+	if (*p == '\n')
+	    p++;
     }
     return q - (unsigned char *) data;
 }
