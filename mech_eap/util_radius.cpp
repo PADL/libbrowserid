@@ -155,7 +155,17 @@ isInternalAttributeP(uint16_t attrid, uint16_t vendor)
 
     switch (vendor) {
     case VENDORPEC_UKERNA:
-        bInternalAttribute = true;
+        switch (attrid) {
+        case PW_GSS_ACCEPTOR_SERVICE_NAME:
+        case PW_GSS_ACCEPTOR_HOST_NAME:
+        case PW_GSS_ACCEPTOR_SERVICE_SPECIFIC:
+        case PW_GSS_ACCEPTOR_REALM_NAME:
+        case PW_SAML_AAA_ASSERTION:
+            bInternalAttribute = true;
+            break;
+        default:
+            break;
+        }
         break;
     default:
         break;
@@ -168,6 +178,20 @@ static bool
 isInternalAttributeP(uint32_t attribute)
 {
     return isInternalAttributeP(ATTRID(attribute), VENDOR(attribute));
+}
+
+static bool
+isFragmentedAttributeP(uint16_t attrid, uint16_t vendor)
+{
+    /* A bit of a hack for the PAC for now. Should be configurable. */
+    return (vendor == VENDORPEC_UKERNA) &&
+        !isInternalAttributeP(attrid, vendor);
+}
+
+static bool
+isFragmentedAttributeP(uint32_t attribute)
+{
+    return isFragmentedAttributeP(ATTRID(attribute), VENDOR(attribute));
 }
 
 /*
@@ -349,6 +373,16 @@ gss_eap_radius_attr_provider::getAttribute(uint32_t attrid,
 
     if (i == -1)
         i = 0;
+
+    if (isSecretAttributeP(attrid) || isInternalAttributeP(attrid)) {
+        return false;
+    } else if (isFragmentedAttributeP(attrid)) {
+        return getFragmentedAttribute(ATTRID(attrid),
+                                      VENDOR(attrid),
+                                      authenticated,
+                                      complete,
+                                      value);
+    }
 
     for (vp = pairfind(m_vps, attrid);
          vp != NULL;
@@ -557,8 +591,10 @@ gssEapRadiusGetAvp(OM_uint32 *minor,
     unsigned char *p;
     uint32_t attr = VENDORATTR(vendor, attribute);
 
-    buffer->length = 0;
-    buffer->value = NULL;
+    if (buffer != GSS_C_NO_BUFFER) {
+        buffer->length = 0;
+        buffer->value = NULL;
+    }
 
     vp = pairfind(vps, attr);
     if (vp == NULL) {
@@ -566,23 +602,25 @@ gssEapRadiusGetAvp(OM_uint32 *minor,
         return GSS_S_UNAVAILABLE;
     }
 
-    do {
-        buffer->length += vp->length;
-    } while (concat && (vp = pairfind(vp->next, attr)) != NULL);
+    if (buffer != GSS_C_NO_BUFFER) {
+        do {
+            buffer->length += vp->length;
+        } while (concat && (vp = pairfind(vp->next, attr)) != NULL);
 
-    buffer->value = GSSEAP_MALLOC(buffer->length);
-    if (buffer->value == NULL) {
-        *minor = ENOMEM;
-        return GSS_S_FAILURE;
-    }
+        buffer->value = GSSEAP_MALLOC(buffer->length);
+        if (buffer->value == NULL) {
+            *minor = ENOMEM;
+            return GSS_S_FAILURE;
+        }
 
-    p = (unsigned char *)buffer->value;
+        p = (unsigned char *)buffer->value;
 
-    for (vp = pairfind(vps, attr);
-         concat && vp != NULL;
-         vp = pairfind(vp->next, attr)) {
-        memcpy(p, vp->vp_octets, vp->length);
-        p += vp->length;
+        for (vp = pairfind(vps, attr);
+             concat && vp != NULL;
+             vp = pairfind(vp->next, attr)) {
+            memcpy(p, vp->vp_octets, vp->length);
+            p += vp->length;
+        }
     }
 
     *minor = 0;
