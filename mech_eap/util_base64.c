@@ -144,15 +144,18 @@ base64Decode(const char *str, void *data)
 int
 base64Valid(const char *str)
 {
-    const char *p;
+    const char *p = str;
     int valid = 1;
 
-    for (p = str; *p && (*p == '=' || strchr(base64_chars, *p)); p += 4) {
+    while (*p && *p && (*p == '=' || strchr(base64_chars, *p))) {
 	unsigned int val = token_decode(p);
 	if (val == DECODE_ERROR) {
             valid = 0;
 	    break;
         }
+	p += 4;
+	if (*p == '\n')
+	    p++;
     }
     return valid;
 }
