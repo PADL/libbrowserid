@@ -45,10 +45,6 @@
 #define MA_SUPPORTED(ma)    MA_ADD((ma), mech_attrs)
 #define MA_KNOWN(ma)        MA_ADD((ma), known_mech_attrs)
 
-#ifndef HAVE_GSS_INQUIRE_ATTRS_FOR_MECH
-typedef const gss_OID_desc *gss_const_OID;
-#endif
-
 OM_uint32
 gss_inquire_attrs_for_mech(OM_uint32 *minor,
                            gss_const_OID mech_oid,

@@ -58,6 +58,10 @@ typedef struct gss_any *gss_any_t;
 #endif
 #include "gssapi_eap.h"
 
+#ifndef HAVE_GSS_INQUIRE_ATTRS_FOR_MECH
+typedef const gss_OID_desc *gss_const_OID;
+#endif
+
 /* Kerberos headers */
 #include <krb5.h>
 
