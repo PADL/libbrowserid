@@ -3,7 +3,8 @@ Notes on using Moonshot with Samba4. Replace paths as appropriate.
 Samba
 -----
 
-* Download Samba4 and apply patches for mechanism agnosticism
+* Download Samba4 and apply patches for mechanism agnosticism which are
+  available at http://www.padl.com/~lukeh/samba/
 * Join Samba as a member server or domain controller (only tested former)
 * Extract local service principal key to keytab (currently there do not
   appear to be tools to do this, but you can get the cleartext password
