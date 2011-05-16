@@ -434,13 +434,18 @@ gss_eap_shib_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
 bool
 gss_eap_shib_attr_provider::init(void)
 {
-    if (SPConfig::getConfig().getFeatures() == 0 &&
-        ShibbolethResolver::init() == false)
-        return false;
+    bool ret = false;
 
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_LOCAL, createAttrContext);
+    try {
+        if (SPConfig::getConfig().getFeatures() == 0)
+            ret = ShibbolethResolver::init();
+    } catch (exception &e) {
+    }
 
-    return true;
+    if (ret)
+        gss_eap_attr_ctx::registerProvider(ATTR_TYPE_LOCAL, createAttrContext);
+
+    return ret;
 }
 
 void
