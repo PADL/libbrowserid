@@ -405,7 +405,8 @@ gss_eap_radius_attr_provider::getAttribute(uint32_t attrid,
         duplicateBuffer(valueBuf, value);
     }
 
-    if (display_value != GSS_C_NO_BUFFER) {
+    if (display_value != GSS_C_NO_BUFFER &&
+        vp->type != PW_TYPE_OCTETS) {
         char displayString[MAX_STRING_LEN];
         gss_buffer_desc displayBuf;
 
