@@ -304,8 +304,9 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
     buf.value = (void *)shibAttr->getSerializedValues()[*more].c_str();
     buf.length = strlen((char *)buf.value);
 
-    /* FIXME treating all valid base64 values as binary is bad */
-    if (base64Valid((char *)buf.value)) {
+    /* XXX hack until we have proper binary attribute support */
+    if (attr->length == sizeof("urn:mspac:") - 1 &&
+        memcmp(attr->value, "urn:mspac:", attr->length) == 0) {
         ssize_t octetLen;
 
         value->value = GSSEAP_MALLOC(buf.length);
