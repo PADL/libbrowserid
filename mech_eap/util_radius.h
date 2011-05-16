@@ -95,6 +95,10 @@ public:
                                 int *authenticated,
                                 int *complete,
                                 gss_buffer_t value) const;
+    bool getFragmentedAttribute(uint32_t attrid,
+                                int *authenticated,
+                                int *complete,
+                                gss_buffer_t value) const;
 
     bool authenticated(void) const { return m_authenticated; }
 

@@ -377,8 +377,7 @@ gss_eap_radius_attr_provider::getAttribute(uint32_t attrid,
     if (isSecretAttributeP(attrid) || isInternalAttributeP(attrid)) {
         return false;
     } else if (isFragmentedAttributeP(attrid)) {
-        return getFragmentedAttribute(ATTRID(attrid),
-                                      VENDOR(attrid),
+        return getFragmentedAttribute(attrid,
                                       authenticated,
                                       complete,
                                       value);
@@ -442,6 +441,16 @@ gss_eap_radius_attr_provider::getFragmentedAttribute(uint16_t attribute,
         *complete = true;
 
     return !GSS_ERROR(major);
+}
+
+bool
+gss_eap_radius_attr_provider::getFragmentedAttribute(uint32_t attrid,
+                                                     int *authenticated,
+                                                     int *complete,
+                                                     gss_buffer_t value) const
+{
+    return getFragmentedAttribute(ATTRID(attrid), VENDOR(attrid),
+                                  authenticated, complete, value);
 }
 
 bool
