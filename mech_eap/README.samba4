@@ -1,24 +1,29 @@
-Notes on using Moonshot with Samba4.
+Notes on using Moonshot with Samba4. Replace paths as appropriate.
 
 Samba
 -----
 
-* Download Samba4 and apply patches for mechanism agnosticism.
-* Join Samba as a member server or domain controller (only tested former):
+* Download Samba4 and apply patches for mechanism agnosticism
+* Join Samba as a member server or domain controller (only tested former)
+* Extract local service principal key to keytab (currently there do not
+  appear to be tools to do this, but you can get the cleartext password
+  from /usr/local/samba/private/secrets.ldb)
 
 Shibboleth
 ----------
 
-* Add to attribute-map.xml:
+* Add a mapping from the PAC RADIUS attribute to urn:mspac: in the file
+  /usr/local/etc/shibboleth/attribute-map.xml:
 
-    <GSSAPIAttribute name="urn:ietf:params:gss-eap:radius-avp urn:x-radius:1679163525"
-                     id="urn:mspac:" binary="true"/>
+  <GSSAPIAttribute name="urn:ietf:params:gss-eap:radius-avp urn:x-radius:1679163525"
+                   id="urn:mspac:" binary="true"/>
 
 FreeRADIUS
 ----------
 
 Install the rlm_mspac module and configure per below.
 
+* Install dictionary.ukerna so MS-Windows-Auth-Data is defined
 * Create /usr/local/etc/raddb/modules/mspac with the following:
 
     mspac {
@@ -26,12 +31,11 @@ Install the rlm_mspac module and configure per below.
         spn = host/host.fqdn@KERBEROS.REALM
     }       
 
-* Add mspac to instantiate in radiusd.conf
-* Add mspac to post-auth in sites-enabled/inner-tunnel
+* Add mspac to instantiate stanza in radiusd.conf
+* Add mspac to post-auth stanza in sites-enabled/inner-tunnel
 
 You will need to have a TGT for the host service principal before starting
-radiusd. It's possible to extract the password by editing secrets.ldb, which
-you can put in a keytab.
+radiusd. It's easiest to do this with kinit -k.
 
 Testing
 -------
@@ -39,7 +43,7 @@ Testing
 The Samba server doesn't require any specific command line arguments, although
 on OS X it was necessary to start it with -M single to function under gdb.
 
-For the client, the mechanism can be specified on the command line:
+For the client, the GSS EAP mechanism can be specified on the command line:
 
 smbclient --password samba --mechanism 1.3.6.1.4.1.5322.22.1.18 '\\host\share'".
 
