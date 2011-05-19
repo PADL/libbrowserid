@@ -770,6 +770,33 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
     return GSS_S_CONTINUE_NEEDED;
 }
 
+static OM_uint32
+eapGssSmInitInitiatorMIC(OM_uint32 *minor,
+                         gss_cred_id_t cred GSSEAP_UNUSED,
+                         gss_ctx_id_t ctx,
+                         gss_name_t target GSSEAP_UNUSED,
+                         gss_OID mech GSSEAP_UNUSED,
+                         OM_uint32 reqFlags GSSEAP_UNUSED,
+                         OM_uint32 timeReq GSSEAP_UNUSED,
+                         gss_channel_bindings_t chanBindings GSSEAP_UNUSED,
+                         gss_buffer_t inputToken GSSEAP_UNUSED,
+                         gss_buffer_t outputToken,
+                         OM_uint32 *smFlags)
+{
+    OM_uint32 major;
+
+    major = gssEapMakeTokenMIC(minor, ctx, outputToken);
+    if (GSS_ERROR(major))
+        return major;
+
+    GSSEAP_SM_TRANSITION_NEXT(ctx);
+
+    *minor = 0;
+    *smFlags |= SM_FLAG_OUTPUT_TOKEN_CRITICAL;
+
+    return GSS_S_CONTINUE_NEEDED;
+}
+ 
 #ifdef GSSEAP_ENABLE_REAUTH
 static OM_uint32
 eapGssSmInitReauthCreds(OM_uint32 *minor,
@@ -798,39 +825,24 @@ eapGssSmInitReauthCreds(OM_uint32 *minor,
 #endif /* GSSEAP_ENABLE_REAUTH */
 
 static OM_uint32
-eapGssSmInitCompleteInitiatorExts(OM_uint32 *minor,
-                                  gss_cred_id_t cred GSSEAP_UNUSED,
-                                  gss_ctx_id_t ctx,
-                                  gss_name_t target GSSEAP_UNUSED,
-                                  gss_OID mech GSSEAP_UNUSED,
-                                  OM_uint32 reqFlags GSSEAP_UNUSED,
-                                  OM_uint32 timeReq GSSEAP_UNUSED,
-                                  gss_channel_bindings_t chanBindings GSSEAP_UNUSED,
-                                  gss_buffer_t inputToken GSSEAP_UNUSED,
-                                  gss_buffer_t outputToken GSSEAP_UNUSED,
-                                  OM_uint32 *smFlags)
+eapGssSmInitAcceptorMIC(OM_uint32 *minor,
+                        gss_cred_id_t cred GSSEAP_UNUSED,
+                        gss_ctx_id_t ctx,
+                        gss_name_t target GSSEAP_UNUSED,
+                        gss_OID mech GSSEAP_UNUSED,
+                        OM_uint32 reqFlags GSSEAP_UNUSED,
+                        OM_uint32 timeReq GSSEAP_UNUSED,
+                        gss_channel_bindings_t chanBindings GSSEAP_UNUSED,
+                        gss_buffer_t inputToken,
+                        gss_buffer_t outputToken GSSEAP_UNUSED,
+                        OM_uint32 *smFlags GSSEAP_UNUSED)
 {
-    GSSEAP_SM_TRANSITION_NEXT(ctx);
+    OM_uint32 major;
 
-    *minor = 0;
-    *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
+    major = gssEapVerifyTokenMIC(minor, ctx, inputToken);
+    if (GSS_ERROR(major))
+        return major;
 
-    return GSS_S_CONTINUE_NEEDED;
-}
-
-static OM_uint32
-eapGssSmInitCompleteAcceptorExts(OM_uint32 *minor,
-                                 gss_cred_id_t cred GSSEAP_UNUSED,
-                                 gss_ctx_id_t ctx,
-                                 gss_name_t target GSSEAP_UNUSED,
-                                 gss_OID mech GSSEAP_UNUSED,
-                                 OM_uint32 reqFlags GSSEAP_UNUSED,
-                                 OM_uint32 timeReq GSSEAP_UNUSED,
-                                 gss_channel_bindings_t chanBindings GSSEAP_UNUSED,
-                                 gss_buffer_t inputToken GSSEAP_UNUSED,
-                                 gss_buffer_t outputToken GSSEAP_UNUSED,
-                                 OM_uint32 *smFlags GSSEAP_UNUSED)
-{
     GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_ESTABLISHED);
 
     *minor = 0;
@@ -904,10 +916,10 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
     },
     {
         ITOK_TYPE_NONE,
-        ITOK_TYPE_NONE,
+        ITOK_TYPE_INITIATOR_MIC,
         GSSEAP_STATE_INITIATOR_EXTS,
-        0,
-        eapGssSmInitCompleteInitiatorExts
+        SM_ITOK_FLAG_REQUIRED,
+        eapGssSmInitInitiatorMIC
     },
 #ifdef GSSEAP_ENABLE_REAUTH
     {
@@ -920,11 +932,11 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
 #endif
     /* other extensions go here */
     {
-        ITOK_TYPE_NONE,
+        ITOK_TYPE_ACCEPTOR_MIC,
         ITOK_TYPE_NONE,
         GSSEAP_STATE_ACCEPTOR_EXTS,
-        0,
-        eapGssSmInitCompleteAcceptorExts
+        SM_ITOK_FLAG_REQUIRED,
+        eapGssSmInitAcceptorMIC
     }
 };
 
