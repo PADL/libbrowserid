@@ -227,3 +227,129 @@ gssEapContextTime(OM_uint32 *minor,
 
     return GSS_S_COMPLETE;
 }
+
+static OM_uint32
+gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
+                           gss_ctx_id_t ctx,
+                           gss_buffer_t tokenMIC,
+                           int verifyMIC)
+{
+    OM_uint32 major;
+    gss_iov_buffer_desc *iov;
+    size_t i = 0, j;
+    enum gss_eap_token_type tokType;
+    OM_uint32 micTokType;
+    unsigned char wireTokType[2];
+    unsigned char *innerTokTypes;
+    const struct gss_eap_token_buffer_set *tokens;
+
+    tokens = verifyMIC ? ctx->inputTokens : ctx->outputTokens;
+
+    assert(tokens != NULL);
+
+    iov = GSSEAP_CALLOC(2 + (2 * tokens->buffers.count) + 1, sizeof(*iov));
+    if (iov == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    innerTokTypes = GSSEAP_MALLOC(4 * tokens->buffers.count);
+    if (innerTokTypes == NULL) {
+        GSSEAP_FREE(iov);
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    /* Mechanism OID */
+    assert(ctx->mechanismUsed != GSS_C_NO_OID);
+    iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[i].buffer.length = ctx->mechanismUsed->length;
+    iov[i].buffer.value = ctx->mechanismUsed->elements;
+    i++;
+
+    /* Token type */
+    if (CTX_IS_INITIATOR(ctx) ^ verifyMIC) {
+        tokType = TOK_TYPE_INITIATOR_CONTEXT;
+        micTokType = ITOK_TYPE_INITIATOR_MIC;
+    } else {
+        tokType = TOK_TYPE_ACCEPTOR_CONTEXT;
+        micTokType = ITOK_TYPE_ACCEPTOR_MIC;
+    }
+    store_uint16_be(tokType, wireTokType);
+
+    iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[i].buffer.length = sizeof(wireTokType);
+    iov[i].buffer.value = wireTokType;
+    i++;
+
+    for (j = 0; j < tokens->buffers.count; j++) {
+        if (verifyMIC &&
+            (tokens->types[j] & ITOK_TYPE_MASK) == micTokType)
+            continue; /* will use this slot for trailer */
+
+        iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
+        iov[i].buffer.length = 4;
+        iov[i].buffer.value = &innerTokTypes[j * 4];
+        store_uint32_be(tokens->types[j] & ~(ITOK_FLAG_VERIFIED),
+                        iov[i].buffer.value);
+        i++;
+
+        iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
+        iov[i].buffer = tokens->buffers.elements[j];
+        i++;
+    }
+
+    if (verifyMIC) {
+        assert(tokenMIC->length >= 16);
+
+        assert(i < 2 + (2 * tokens->buffers.count));
+
+        iov[i].type = GSS_IOV_BUFFER_TYPE_HEADER;
+        iov[i].buffer.length = 16;
+        iov[i].buffer.value = tokenMIC->value;
+        i++;
+
+        iov[i].type = GSS_IOV_BUFFER_TYPE_TRAILER;
+        iov[i].buffer.length = tokenMIC->length - 16;
+        iov[i].buffer.value = (unsigned char *)tokenMIC->value + 16;
+        i++;
+
+        major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
+                                        iov, i, TOK_TYPE_MIC);
+    } else {
+        iov[i++].type = GSS_IOV_BUFFER_TYPE_HEADER | GSS_IOV_BUFFER_FLAG_ALLOCATE;
+        major = gssEapWrapOrGetMIC(minor, ctx, FALSE, NULL,
+                                   iov, i, TOK_TYPE_MIC);
+        if (!GSS_ERROR(major))
+            *tokenMIC = iov[i - 1].buffer;
+    }
+
+    gssEapReleaseIov(iov, tokens->buffers.count);
+    GSSEAP_FREE(innerTokTypes);
+
+    return major;
+}
+
+OM_uint32
+gssEapMakeTokenMIC(OM_uint32 *minor,
+                   gss_ctx_id_t ctx,
+                   gss_buffer_t tokenMIC)
+{
+    tokenMIC->length = 0;
+    tokenMIC->value = NULL;
+
+    return gssEapMakeOrVerifyTokenMIC(minor, ctx, tokenMIC, FALSE);
+}
+
+OM_uint32
+gssEapVerifyTokenMIC(OM_uint32 *minor,
+                     gss_ctx_id_t ctx,
+                     const gss_buffer_t tokenMIC)
+{
+    if (tokenMIC->length < 16) {
+        *minor = GSSEAP_TOK_TRUNC;
+        return GSS_S_BAD_SIG;
+    }
+
+    return gssEapMakeOrVerifyTokenMIC(minor, ctx, tokenMIC, TRUE);
+}
