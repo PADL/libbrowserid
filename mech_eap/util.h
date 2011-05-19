@@ -177,7 +177,9 @@ enum gss_eap_token_type {
 #define ITOK_TYPE_REAUTH_RESP           0x00000009 /* optional */
 #define ITOK_TYPE_VERSION_INFO          0x0000000A /* optional */
 #define ITOK_TYPE_VENDOR_INFO           0x0000000B /* optional */
-#define ITOK_TYPE_GSS_FLAGS             0x0000000C
+#define ITOK_TYPE_GSS_FLAGS             0x0000000C /* optional */
+#define ITOK_TYPE_INITIATOR_MIC         0x0000000D /* critical, required, if not reauth */
+#define ITOK_TYPE_ACCEPTOR_MIC          0x0000000E /* TBD */
 
 #define ITOK_FLAG_CRITICAL              0x80000000  /* critical, wire flag */
 #define ITOK_FLAG_VERIFIED              0x40000000  /* verified, API flag */
@@ -207,6 +209,16 @@ OM_uint32
 gssEapContextTime(OM_uint32 *minor,
                   gss_ctx_id_t context_handle,
                   OM_uint32 *time_rec);
+
+OM_uint32
+gssEapMakeTokenMIC(OM_uint32 *minor,
+                   gss_ctx_id_t ctx,
+                   gss_buffer_t tokenMIC);
+
+OM_uint32
+gssEapVerifyTokenMIC(OM_uint32 *minor,
+                     gss_ctx_id_t ctx,
+                     const gss_buffer_t tokenMIC);
 
 /* util_cred.c */
 OM_uint32 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred);
@@ -641,16 +653,29 @@ void
 gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state);
 
 /* util_token.c */
+struct gss_eap_token_buffer_set {
+    gss_buffer_set_desc buffers; /* pointers only */
+    OM_uint32 *types;
+};
+
 OM_uint32
 gssEapEncodeInnerTokens(OM_uint32 *minor,
-                        gss_buffer_set_t extensions,
-                        OM_uint32 *types,
+                        struct gss_eap_token_buffer_set *tokens,
                         gss_buffer_t buffer);
 OM_uint32
 gssEapDecodeInnerTokens(OM_uint32 *minor,
                         const gss_buffer_t buffer,
-                        gss_buffer_set_t *pExtensions,
-                        OM_uint32 **pTypes);
+                        struct gss_eap_token_buffer_set *tokens);
+
+OM_uint32
+gssEapReleaseInnerTokens(OM_uint32 *minor,
+                         struct gss_eap_token_buffer_set *tokens,
+                         int freeBuffers);
+
+OM_uint32
+gssEapAllocInnerTokens(OM_uint32 *minor,
+                       size_t count,
+                       struct gss_eap_token_buffer_set *tokens);
 
 size_t
 tokenSize(const gss_OID_desc *mech, size_t body_size);

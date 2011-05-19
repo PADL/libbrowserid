@@ -207,6 +207,8 @@ struct gss_ctx_id_struct
         #define reauthCtx            ctxU.reauth
 #endif
     } ctxU;
+    const struct gss_eap_token_buffer_set *inputTokens;
+    const struct gss_eap_token_buffer_set *outputTokens;
 };
 
 #define TOK_FLAG_SENDER_IS_ACCEPTOR         0x01

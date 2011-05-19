@@ -59,8 +59,7 @@
 
 OM_uint32
 gssEapEncodeInnerTokens(OM_uint32 *minor,
-                        gss_buffer_set_t extensions,
-                        OM_uint32 *types,
+                        struct gss_eap_token_buffer_set *tokens,
                         gss_buffer_t buffer)
 {
     OM_uint32 major, tmpMinor;
@@ -70,10 +69,8 @@ gssEapEncodeInnerTokens(OM_uint32 *minor,
     buffer->value = NULL;
     buffer->length = 0;
 
-    if (extensions != GSS_C_NO_BUFFER_SET) {
-        for (i = 0; i < extensions->count; i++) {
-            required += 8 + extensions->elements[i].length;
-        }
+    for (i = 0; i < tokens->buffers.count; i++) {
+        required += 8 + tokens->buffers.elements[i].length;
     }
 
     /*
@@ -91,22 +88,20 @@ gssEapEncodeInnerTokens(OM_uint32 *minor,
     buffer->length = required;
     p = (unsigned char *)buffer->value;
 
-    if (extensions != GSS_C_NO_BUFFER_SET) {
-        for (i = 0; i < extensions->count; i++) {
-            gss_buffer_t extension = &extensions->elements[i];
+    for (i = 0; i < tokens->buffers.count; i++) {
+        gss_buffer_t tokenBuffer = &tokens->buffers.elements[i];
 
-            assert((types[i] & ITOK_FLAG_VERIFIED) == 0); /* private flag */
+        assert((tokens->types[i] & ITOK_FLAG_VERIFIED) == 0); /* private flag */
 
-             /*
-              * Extensions are encoded as type-length-value, where the upper
-              * bit of the type indicates criticality.
-              */
-            store_uint32_be(types[i], &p[0]);
-            store_uint32_be(extension->length, &p[4]);
-            memcpy(&p[8], extension->value, extension->length);
+         /*
+          * Extensions are encoded as type-length-value, where the upper
+          * bit of the type indicates criticality.
+          */
+        store_uint32_be(tokens->types[i], &p[0]);
+        store_uint32_be(tokenBuffer->length, &p[4]);
+        memcpy(&p[8], tokenBuffer->value, tokenBuffer->length);
 
-            p += 8 + extension->length;
-        }
+        p += 8 + tokenBuffer->length;
     }
 
     assert(p == (unsigned char *)buffer->value + required);
@@ -126,21 +121,15 @@ cleanup:
 OM_uint32
 gssEapDecodeInnerTokens(OM_uint32 *minor,
                         const gss_buffer_t buffer,
-                        gss_buffer_set_t *pExtensions,
-                        OM_uint32 **pTypes)
+                        struct gss_eap_token_buffer_set *tokens)
 {
     OM_uint32 major, tmpMinor;
-    gss_buffer_set_t extensions = GSS_C_NO_BUFFER_SET;
-    OM_uint32 *types = NULL;
     unsigned char *p;
     size_t remain;
 
-    *pExtensions = GSS_C_NO_BUFFER_SET;
-    *pTypes = NULL;
-
-    major = gss_create_empty_buffer_set(minor, &extensions);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    tokens->buffers.count = 0;
+    tokens->buffers.elements = NULL;
+    tokens->types = NULL;
 
     if (buffer->length == 0) {
         major = GSS_S_COMPLETE;
@@ -152,7 +141,7 @@ gssEapDecodeInnerTokens(OM_uint32 *minor,
 
     do {
         OM_uint32 *ntypes;
-        gss_buffer_desc extension;
+        gss_buffer_desc tokenBuffer, *newTokenBuffers;
 
         if (remain < 8) {
             major = GSS_S_DEFECTIVE_TOKEN;
@@ -160,42 +149,48 @@ gssEapDecodeInnerTokens(OM_uint32 *minor,
             goto cleanup;
         }
 
-        ntypes = GSSEAP_REALLOC(types,
-                                (extensions->count + 1) * sizeof(OM_uint32));
+        ntypes = GSSEAP_REALLOC(tokens->types,
+                                (tokens->buffers.count + 1) * sizeof(OM_uint32));
         if (ntypes == NULL) {
             major = GSS_S_FAILURE;
             *minor = ENOMEM;
             goto cleanup;
         }
-        types = ntypes;
+        tokens->types = ntypes;
 
-        types[extensions->count] = load_uint32_be(&p[0]);
-        extension.length = load_uint32_be(&p[4]);
+        tokens->types[tokens->buffers.count] = load_uint32_be(&p[0]);
+        tokenBuffer.length = load_uint32_be(&p[4]);
 
-        if (remain < 8 + extension.length) {
+        if (remain < 8 + tokenBuffer.length) {
             major = GSS_S_DEFECTIVE_TOKEN;
             *minor = GSSEAP_TOK_TRUNC;
             goto cleanup;
         }
-        extension.value = &p[8];
+        tokenBuffer.value = &p[8];
 
-        major = gss_add_buffer_set_member(minor, &extension, &extensions);
-        if (GSS_ERROR(major))
+        newTokenBuffers = GSSEAP_REALLOC(tokens->buffers.elements,
+                                         (tokens->buffers.count + 1) * sizeof(gss_buffer_desc));
+        if (newTokenBuffers == NULL) {
+            major = GSS_S_FAILURE;
+            *minor = ENOMEM;
             goto cleanup;
+        }
 
-        p      += 8 + extension.length;
-        remain -= 8 + extension.length;
+        tokens->buffers.elements = newTokenBuffers;
+        tokens->buffers.elements[tokens->buffers.count] = tokenBuffer;
+        tokens->buffers.count++;
+
+        p      += 8 + tokenBuffer.length;
+        remain -= 8 + tokenBuffer.length;
+
     } while (remain != 0);
 
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
 cleanup:
-    if (GSS_ERROR(major)) {
-        gss_release_buffer_set(&tmpMinor, &extensions);
-        if (types != NULL)
-            GSSEAP_FREE(types);
-    } else {
-        *pExtensions = extensions;
-        *pTypes = types;
-    }
+    if (GSS_ERROR(major))
+        gssEapReleaseInnerTokens(&tmpMinor, tokens, 0);
 
     return major;
 }
@@ -411,6 +406,73 @@ verifyTokenHeader(OM_uint32 *minor,
 
     *buf_in = buf;
     *body_size = toksize;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+gssEapAllocInnerTokens(OM_uint32 *minor,
+                       size_t count,
+                       struct gss_eap_token_buffer_set *tokens)
+{
+    OM_uint32 major;
+
+    tokens->buffers.count = 0;
+    tokens->buffers.elements = (gss_buffer_desc *)GSSEAP_CALLOC(count, sizeof(gss_buffer_desc));
+    if (tokens->buffers.elements == NULL) {
+        major = GSS_S_FAILURE;
+        *minor = ENOMEM;
+        goto cleanup;
+    }
+
+    tokens->types = (OM_uint32 *)GSSEAP_CALLOC(count, sizeof(OM_uint32));
+    if (tokens->types == NULL) {
+        major = GSS_S_FAILURE;
+        *minor = ENOMEM;
+        goto cleanup;
+    }
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    if (GSS_ERROR(major)) {
+        if (tokens->buffers.elements != NULL) {
+            GSSEAP_FREE(tokens->buffers.elements);
+            tokens->buffers.elements = NULL;
+        }
+        if (tokens->types != NULL) {
+            GSSEAP_FREE(tokens->types);
+            tokens->types = NULL;
+        }
+    }
+
+    return major;
+}
+
+OM_uint32
+gssEapReleaseInnerTokens(OM_uint32 *minor,
+                         struct gss_eap_token_buffer_set *tokens,
+                         int freeBuffers)
+{
+    OM_uint32 tmpMinor;
+    size_t i;
+
+    if (tokens->buffers.elements != NULL) {
+        if (freeBuffers) {
+            for (i = 0; i < tokens->buffers.count; i++)
+                gss_release_buffer(&tmpMinor, &tokens->buffers.elements[i]);
+        }
+        GSSEAP_FREE(tokens->buffers.elements);
+        tokens->buffers.elements = NULL;
+    }
+    tokens->buffers.count = 0;
+
+    if (tokens->types != NULL) {
+        GSSEAP_FREE(tokens->types);
+        tokens->types = NULL;
+    }
 
     *minor = 0;
     return GSS_S_COMPLETE;
