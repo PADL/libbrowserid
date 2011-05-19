@@ -177,11 +177,14 @@ enum gss_eap_token_type {
 #define ITOK_TYPE_REAUTH_RESP           0x00000009 /* optional */
 #define ITOK_TYPE_VERSION_INFO          0x0000000A /* optional */
 #define ITOK_TYPE_VENDOR_INFO           0x0000000B /* optional */
+#define ITOK_TYPE_GSS_FLAGS             0x0000000C
 
 #define ITOK_FLAG_CRITICAL              0x80000000  /* critical, wire flag */
 #define ITOK_FLAG_VERIFIED              0x40000000  /* verified, API flag */
 
 #define ITOK_TYPE_MASK                  (~(ITOK_FLAG_CRITICAL | ITOK_FLAG_VERIFIED))
+
+#define GSSEAP_WIRE_FLAGS_MASK          GSS_C_MUTUAL_FLAG
 
 OM_uint32 gssEapAllocContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 OM_uint32 gssEapReleaseContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);

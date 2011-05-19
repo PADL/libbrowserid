@@ -715,6 +715,30 @@ cleanup:
 }
 
 static OM_uint32
+eapGssSmInitGssFlags(OM_uint32 *minor,
+                     gss_cred_id_t cred GSSEAP_UNUSED,
+                     gss_ctx_id_t ctx,
+                     gss_name_t target GSSEAP_UNUSED,
+                     gss_OID mech GSSEAP_UNUSED,
+                     OM_uint32 reqFlags GSSEAP_UNUSED,
+                     OM_uint32 timeReq GSSEAP_UNUSED,
+                     gss_channel_bindings_t chanBindings GSSEAP_UNUSED,
+                     gss_buffer_t inputToken GSSEAP_UNUSED,
+                     gss_buffer_t outputToken,
+                     OM_uint32 *smFlags GSSEAP_UNUSED)
+{
+    unsigned char wireFlags[4];
+    gss_buffer_desc flagsBuf;
+
+    store_uint32_be(ctx->gssFlags & GSSEAP_WIRE_FLAGS_MASK, wireFlags);
+
+    flagsBuf.length = sizeof(wireFlags);
+    flagsBuf.value = wireFlags;
+
+    return duplicateBuffer(minor, &flagsBuf, outputToken);
+}
+
+static OM_uint32
 eapGssSmInitGssChannelBindings(OM_uint32 *minor,
                                gss_cred_id_t cred GSSEAP_UNUSED,
                                gss_ctx_id_t ctx,
@@ -863,6 +887,13 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         GSSEAP_STATE_AUTHENTICATE,
         SM_ITOK_FLAG_REQUIRED,
         eapGssSmInitAuthenticate
+    },
+    {
+        ITOK_TYPE_NONE,
+        ITOK_TYPE_GSS_FLAGS,
+        GSSEAP_STATE_INITIATOR_EXTS,
+        0,
+        eapGssSmInitGssFlags
     },
     {
         ITOK_TYPE_NONE,
