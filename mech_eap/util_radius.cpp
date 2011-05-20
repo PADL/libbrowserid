@@ -490,11 +490,11 @@ gss_eap_radius_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_
 bool
 gss_eap_radius_attr_provider::init(void)
 {
-    struct rs_context *radContext;
-
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_RADIUS, createAttrContext);
 
-#if 1
+#ifdef GSSEAP_ENABLE_REAUTH
+    struct rs_context *radContext;
+
     /*
      * This hack is necessary in order to force the loading of the global
      * dictionary, otherwise accepting reauthentication tokens fails unless
