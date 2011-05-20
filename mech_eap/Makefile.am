@@ -25,7 +25,6 @@ mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
 	acquire_cred.c				\
-	acquire_cred_ext.c			\
 	acquire_cred_with_password.c		\
 	add_cred.c				\
 	add_cred_with_password.c		\
