@@ -206,16 +206,13 @@ gssEapContextTime(OM_uint32 *minor,
                   OM_uint32 *time_rec);
 
 /* util_cred.c */
-extern const gss_OID_desc gssEapPasswordCredType;
-
 OM_uint32 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 OM_uint32 gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 
 OM_uint32
 gssEapAcquireCred(OM_uint32 *minor,
                   const gss_name_t desiredName,
-                  gss_const_OID credType,
-                  const void *credData,
+                  const gss_buffer_t password,
                   OM_uint32 timeReq,
                   const gss_OID_set desiredMechs,
                   int cred_usage,

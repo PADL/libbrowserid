@@ -943,7 +943,6 @@ gss_init_sec_context(OM_uint32 *minor,
         if (ctx->defaultCred == GSS_C_NO_CREDENTIAL) {
             major = gssEapAcquireCred(minor,
                                       GSS_C_NO_NAME,
-                                      GSS_C_NO_OID,
                                       GSS_C_NO_BUFFER,
                                       time_req,
                                       GSS_C_NO_OID_SET,

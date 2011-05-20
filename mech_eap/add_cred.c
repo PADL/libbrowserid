@@ -71,7 +71,6 @@ gss_add_cred(OM_uint32 *minor,
 
     major = gssEapAcquireCred(minor,
                               desired_name,
-                              GSS_C_NO_OID,
                               GSS_C_NO_BUFFER,
                               time_req,
                               &mechs,

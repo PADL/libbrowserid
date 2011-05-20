@@ -67,7 +67,6 @@ gss_add_cred_with_password(OM_uint32 *minor,
 
     major = gssEapAcquireCred(minor,
                               desired_name,
-                              &gssEapPasswordCredType,
                               password,
                               time_req,
                               &mechs,
