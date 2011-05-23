@@ -54,6 +54,7 @@
 #include <saml/saml2/core/Assertions.h>
 
 #include <shibsp/exceptions.h>
+#include <shibsp/attribute/BinaryAttribute.h>
 #include <shibsp/attribute/SimpleAttribute.h>
 #include <shibresolver/resolver.h>
 
@@ -193,7 +194,7 @@ gss_eap_shib_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
 {
     string attrStr((char *)attr->value, attr->length);
     vector <string> ids(1, attrStr);
-    SimpleAttribute *a = new SimpleAttribute(ids);
+    BinaryAttribute *a = new BinaryAttribute(ids);
 
     assert(m_initialized);
 
@@ -283,7 +284,8 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
                                          int *more) const
 {
     const Attribute *shibAttr = NULL;
-    gss_buffer_desc buf;
+    gss_buffer_desc valueBuf = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc displayValueBuf = GSS_C_EMPTY_BUFFER;
     int nvalues, i = *more;
 
     assert(m_initialized);
@@ -301,39 +303,30 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
     if (i >= nvalues)
         return false;
 
-    buf.value = (void *)shibAttr->getSerializedValues()[*more].c_str();
-    buf.length = strlen((char *)buf.value);
+    if (typeid(*shibAttr) == typeid(BinaryAttribute)) {
+        const BinaryAttribute *binaryAttr =
+            dynamic_cast<const BinaryAttribute *>(shibAttr);
+        std::string str = binaryAttr->getValues()[*more];
 
-    /* XXX hack until we have proper binary attribute support */
-    if (attr->length == sizeof("urn:mspac:") - 1 &&
-        memcmp(attr->value, "urn:mspac:", attr->length) == 0) {
-        ssize_t octetLen;
+        valueBuf.value = (void *)str.data();
+        valueBuf.length = str.size();
+    } else {
+        std::string str = shibAttr->getSerializedValues()[*more];
 
-        value->value = GSSEAP_MALLOC(buf.length);
-        if (value->value == NULL)
-            throw std::bad_alloc();
+        valueBuf.value = (void *)str.c_str();
+        valueBuf.length = str.length();
 
-        octetLen = base64Decode((char *)buf.value, value->value);
-        if (octetLen < 0) {
-            GSSEAP_FREE(value->value);
-            value->value = NULL;
-            return false;
-        }
-
-        value->length = octetLen;
-    } else if (buf.length != 0) {
-        if (value != NULL)
-            duplicateBuffer(buf, value);
-
-        if (display_value != NULL)
-            duplicateBuffer(buf, display_value);
+        displayValueBuf = valueBuf;
     }
 
     if (authenticated != NULL)
         *authenticated = m_authenticated;
     if (complete != NULL)
         *complete = true;
-
+    if (value != NULL)
+        duplicateBuffer(valueBuf, value);
+    if (display_value != NULL)
+        duplicateBuffer(displayValueBuf, display_value);
     if (nvalues > ++i)
         *more = i;
 
