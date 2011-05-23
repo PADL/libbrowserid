@@ -284,6 +284,7 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
                                          int *more) const
 {
     const Attribute *shibAttr = NULL;
+    const BinaryAttribute *binaryAttr;
     gss_buffer_desc valueBuf = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc displayValueBuf = GSS_C_EMPTY_BUFFER;
     int nvalues, i = *more;
@@ -303,9 +304,8 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
     if (i >= nvalues)
         return false;
 
-    if (typeid(*shibAttr) == typeid(BinaryAttribute)) {
-        const BinaryAttribute *binaryAttr =
-            dynamic_cast<const BinaryAttribute *>(shibAttr);
+    binaryAttr = dynamic_cast<const BinaryAttribute *>(shibAttr);
+    if (binaryAttr != NULL) {
         std::string str = binaryAttr->getValues()[*more];
 
         valueBuf.value = (void *)str.data();
