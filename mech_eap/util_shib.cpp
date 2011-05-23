@@ -54,8 +54,9 @@
 #include <saml/saml2/core/Assertions.h>
 
 #include <shibsp/exceptions.h>
-#include <shibsp/attribute/BinaryAttribute.h>
 #include <shibsp/attribute/SimpleAttribute.h>
+#include <shibsp/attribute/BinaryAttribute.h>
+#include <shibsp/attribute/ScopedAttribute.h>
 #include <shibresolver/resolver.h>
 
 #include <sstream>
@@ -316,7 +317,12 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
         valueBuf.value = (void *)str.c_str();
         valueBuf.length = str.length();
 
-        displayValueBuf = valueBuf;
+        const SimpleAttribute *simpleAttr =
+            dynamic_cast<const SimpleAttribute *>(shibAttr);
+        const ScopedAttribute *scopedAttr =
+            dynamic_cast<const ScopedAttribute *>(shibAttr);
+        if (simpleAttr != NULL || scopedAttr != NULL)
+            displayValueBuf = valueBuf;
     }
 
     if (authenticated != NULL)
