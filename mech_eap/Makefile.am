@@ -17,7 +17,7 @@ mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter \
 			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ \
 		        @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
-			-export-symbols mech_eap.exports -no-undefined \
+			-export-symbols $(srcdir)/mech_eap.exports -no-undefined \
 			@RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
 mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
 		       @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
