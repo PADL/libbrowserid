@@ -42,11 +42,15 @@
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
+#if !defined(WIN32)
 #include <unistd.h>
+#endif
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#if !defined(WIN32)
 #include <sys/param.h>
+#endif
 
 /* GSS headers */
 #include <gssapi/gssapi.h>
