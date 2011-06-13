@@ -336,7 +336,7 @@ cleanup:
     return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_wrap_iov(OM_uint32 *minor,
              gss_ctx_id_t ctx,
              int conf_req_flag,

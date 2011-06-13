@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_add_cred_with_password(OM_uint32 *minor,
                            const gss_cred_id_t input_cred_handle GSSEAP_UNUSED,
                            const gss_name_t desired_name,

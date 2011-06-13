@@ -897,7 +897,7 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
     }
 };
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_init_sec_context(OM_uint32 *minor,
                      gss_cred_id_t cred,
                      gss_ctx_id_t *context_handle,

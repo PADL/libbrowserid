@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_inquire_cred(OM_uint32 *minor,
                  gss_cred_id_t cred,
                  gss_name_t *name,

@@ -208,7 +208,7 @@ cleanup:
     return major;
 }
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_export_sec_context(OM_uint32 *minor,
                        gss_ctx_id_t *context_handle,
                        gss_buffer_t interprocess_token)

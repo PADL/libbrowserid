@@ -43,7 +43,7 @@ static struct {
 } setCtxOps[] = {
 };
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_set_sec_context_option(OM_uint32 *minor,
                            gss_ctx_id_t *pCtx,
                            const gss_OID desired_object,

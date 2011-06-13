@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_display_name(OM_uint32 *minor,
                  gss_name_t name,
                  gss_buffer_t output_name_buffer,

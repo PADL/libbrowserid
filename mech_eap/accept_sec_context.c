@@ -807,7 +807,7 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
 #define ACCEPTOR_PARAM(p) UNUSED_PARAM(p)
 #endif
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_accept_sec_context(OM_uint32 *ACCEPTOR_PARAM(minor),
                        gss_ctx_id_t *ACCEPTOR_PARAM(context_handle),
                        gss_cred_id_t ACCEPTOR_PARAM(cred),

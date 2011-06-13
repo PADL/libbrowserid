@@ -138,7 +138,7 @@ gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...)
     saveStatusInfoNoCopy(minor, s);
 }
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_display_status(OM_uint32 *minor,
                    OM_uint32 status_value,
                    int status_type,

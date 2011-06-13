@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 KRB5_CALLCONV
 gss_get_mic(OM_uint32 *minor,
             gss_ctx_id_t ctx,
             gss_qop_t qop_req,
