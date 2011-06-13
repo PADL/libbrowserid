@@ -36,7 +36,18 @@
 
 #include "gssapiP_eap.h"
 
+#if defined(WIN32)
+///This didn't work for me when Visual Studio 2005 Express is used:
+///#include <Shlobj.h>
+#include <ShFolder.h>
+
+#if !defined(snprintf)
+#define snprintf  _snprintf
+#endif
+
+#else
 #include <pwd.h>
+#endif
 #include <stdio.h> /* for BUFSIZ */
 
 OM_uint32
@@ -117,9 +128,12 @@ readDefaultIdentityAndCreds(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     FILE *fp = NULL;
-    char pwbuf[BUFSIZ], buf[BUFSIZ];
+    char buf[BUFSIZ];
     char *ccacheName;
+#if !defined(WIN32)
+    char pwbuf[BUFSIZ];
     struct passwd *pw = NULL, pwd;
+#endif
 
     defaultIdentity->length = 0;
     defaultIdentity->value = NULL;
@@ -129,6 +143,7 @@ readDefaultIdentityAndCreds(OM_uint32 *minor,
 
     ccacheName = getenv("GSSEAP_IDENTITY");
     if (ccacheName == NULL) {
+#if !defined(WIN32)
         if (getpwuid_r(getuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) != 0 ||
             pw == NULL || pw->pw_dir == NULL) {
             major = GSS_S_CRED_UNAVAIL;
@@ -138,6 +153,23 @@ readDefaultIdentityAndCreds(OM_uint32 *minor,
 
         snprintf(buf, sizeof(buf), "%s/.gss_eap_id", pw->pw_dir);
         ccacheName = buf;
+#else
+	TCHAR szPath[MAX_PATH];
+
+	if(!SUCCEEDED(SHGetFolderPath(NULL,
+				      CSIDL_APPDATA, /* |CSIDL_FLAG_CREATE */
+				      NULL, /* User access token */
+				      0,    /* == SHGFP_TYPE_CURRENT from ShlObj.h */
+				      szPath))) {
+            major = GSS_S_CRED_UNAVAIL;
+////Needs to be correctly converted from the GetLastError();
+            *minor = errno;
+            goto cleanup;
+	}
+
+        snprintf(buf, sizeof(buf), "%s/.gss_eap_id", szPath);
+        ccacheName = buf;
+#endif
     }
 
     fp = fopen(ccacheName, "r");
