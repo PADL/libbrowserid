@@ -36,12 +36,14 @@
 
 #include "gssapiP_eap.h"
 
+#ifdef HAVE_SETCTXOPS /* Windows doesn't like zero-sized arrays; define this when we actually have any of these */
 static struct {
     gss_OID_desc oid;
     OM_uint32 (*setOption)(OM_uint32 *, gss_ctx_id_t *pCtx,
                            const gss_OID, const gss_buffer_t);
 } setCtxOps[] = {
 };
+#endif
 
 OM_uint32 KRB5_CALLCONV
 gss_set_sec_context_option(OM_uint32 *minor,
@@ -64,6 +66,7 @@ gss_set_sec_context_option(OM_uint32 *minor,
     if (ctx != GSS_C_NO_CONTEXT)
         GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
+#ifdef HAVE_SETCTXOPS
     for (i = 0; i < sizeof(setCtxOps) / sizeof(setCtxOps[0]); i++) {
         if (oidEqual(&setCtxOps[i].oid, desired_object)) {
             major = (*setCtxOps[i].setOption)(minor, &ctx,
@@ -71,6 +74,7 @@ gss_set_sec_context_option(OM_uint32 *minor,
             break;
         }
     }
+#endif
 
     if (pCtx != NULL && *pCtx == NULL)
         *pCtx = ctx;

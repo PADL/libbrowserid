@@ -36,12 +36,14 @@
 
 #include "gssapiP_eap.h"
 
+#ifdef HAVE_INQUIRECREDOPS /* Windows doesn't like zero-sized arrays; define this when we actually have any of these */
 static struct {
     gss_OID_desc oid;
     OM_uint32 (*inquire)(OM_uint32 *, const gss_cred_id_t,
                          const gss_OID, gss_buffer_set_t *);
 } inquireCredOps[] = {
 };
+#endif
 
 OM_uint32 KRB5_CALLCONV
 gss_inquire_cred_by_oid(OM_uint32 *minor,
@@ -64,6 +66,7 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
     major = GSS_S_UNAVAILABLE;
     *minor = GSSEAP_BAD_CRED_OPTION;
 
+#ifdef HAVE_INQUIRECREDOPS
     for (i = 0; i < sizeof(inquireCredOps) / sizeof(inquireCredOps[0]); i++) {
         if (oidEqual(&inquireCredOps[i].oid, desired_object)) {
             major = (*inquireCredOps[i].inquire)(minor, cred_handle,
@@ -71,6 +74,7 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
             break;
         }
     }
+#endif
 
     GSSEAP_MUTEX_UNLOCK(&cred_handle->mutex);
 
