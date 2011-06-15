@@ -36,7 +36,7 @@
  */
 
 #include "gssapiP_eap.h"
-
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 #ifdef GSSEAP_ENABLE_REAUTH
 static OM_uint32
 eapGssSmAcceptGssReauth(OM_uint32 *minor,
@@ -799,20 +799,28 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
         eapGssSmAcceptCompleteAcceptorExts
     },
 };
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
+
+#ifdef GSSEAP_ENABLE_ACCEPTOR
+#define ACCEPTOR_PARAM(p) p
+#else
+#define ACCEPTOR_PARAM(p) UNUSED_PARAM(p)
+#endif
 
 OM_uint32
-gss_accept_sec_context(OM_uint32 *minor,
-                       gss_ctx_id_t *context_handle,
-                       gss_cred_id_t cred,
-                       gss_buffer_t input_token,
-                       gss_channel_bindings_t input_chan_bindings,
-                       gss_name_t *src_name,
-                       gss_OID *mech_type,
-                       gss_buffer_t output_token,
-                       OM_uint32 *ret_flags,
-                       OM_uint32 *time_rec,
-                       gss_cred_id_t *delegated_cred_handle)
+gss_accept_sec_context(OM_uint32 *ACCEPTOR_PARAM(minor),
+                       gss_ctx_id_t *ACCEPTOR_PARAM(context_handle),
+                       gss_cred_id_t ACCEPTOR_PARAM(cred),
+                       gss_buffer_t ACCEPTOR_PARAM(input_token),
+                       gss_channel_bindings_t ACCEPTOR_PARAM(input_chan_bindings),
+                       gss_name_t *ACCEPTOR_PARAM(src_name),
+                       gss_OID *ACCEPTOR_PARAM(mech_type),
+                       gss_buffer_t ACCEPTOR_PARAM(output_token),
+                       OM_uint32 *ACCEPTOR_PARAM(ret_flags),
+                       OM_uint32 *ACCEPTOR_PARAM(time_rec),
+                       gss_cred_id_t *ACCEPTOR_PARAM(delegated_cred_handle))
 {
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
 
@@ -838,7 +846,7 @@ gss_accept_sec_context(OM_uint32 *minor,
     }
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
-
+	
     if (cred == GSS_C_NO_CREDENTIAL) {
         if (ctx->defaultCred == GSS_C_NO_CREDENTIAL) {
             major = gssEapAcquireCred(minor,
@@ -919,8 +927,12 @@ cleanup:
         gssEapReleaseContext(&tmpMinor, context_handle);
 
     return major;
+#else
+	return GSS_S_UNAVAILABLE;
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 }
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 #ifdef GSSEAP_ENABLE_REAUTH
 static OM_uint32
 acceptReadyKrb(OM_uint32 *minor,
@@ -1002,3 +1014,4 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
     return major;
 }
 #endif /* GSSEAP_ENABLE_REAUTH */
+#endif /* GSSEAP_ENABLE_ACCEPTOR */

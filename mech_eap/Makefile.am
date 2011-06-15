@@ -74,23 +74,18 @@ mech_eap_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
-	util_attr.cpp				\
 	util_base64.c				\
 	util_buffer.c				\
 	util_context.c				\
 	util_cksum.c				\
 	util_cred.c				\
 	util_crypt.c				\
-	util_json.cpp				\
 	util_krb.c				\
 	util_lucid.c				\
 	util_mech.c				\
 	util_name.c				\
 	util_oid.c				\
 	util_ordering.c				\
-	util_radius.cpp				\
-	util_saml.cpp				\
-	util_shib.cpp				\
 	util_sm.c				\
 	util_token.c				\
 	verify_mic.c				\
@@ -101,10 +96,12 @@ mech_eap_la_SOURCES =    			\
 
 BUILT_SOURCES = gsseap_err.c radsec_err.c
 
+if GSSEAP_ENABLE_ACCEPTOR
+mech_eap_la_SOURCES += util_attr.c util_json.c util_radius.c util_shib.c util_saml.c
+endif
+
 if GSSEAP_ENABLE_REAUTH
 mech_eap_la_SOURCES += util_reauth.c
-
-
 
 if !HEIMDAL
 krb5pluginsdir = $(libdir)/krb5/plugins/authdata
@@ -118,6 +115,7 @@ radius_ad_la_LIBADD  = @KRB5_LIBS@
 radius_ad_la_SOURCES = util_adshim.c
 endif
 endif
+
 
 gsseap_err.h gsseap_err.c: gsseap_err.et
 	$(COMPILE_ET) $<

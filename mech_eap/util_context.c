@@ -84,6 +84,7 @@ releaseInitiatorContext(struct gss_eap_initiator_ctx *ctx)
     eap_peer_sm_deinit(ctx->eap);
 }
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 static void
 releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
 {
@@ -99,6 +100,7 @@ releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
     if (ctx->vps != NULL)
         gssEapRadiusFreeAvps(&tmpMinor, &ctx->vps);
 }
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
 OM_uint32
 gssEapReleaseContext(OM_uint32 *minor,
@@ -122,7 +124,9 @@ gssEapReleaseContext(OM_uint32 *minor,
     if (CTX_IS_INITIATOR(ctx)) {
         releaseInitiatorContext(&ctx->initiatorCtx);
     } else {
+#ifdef GSSEAP_ENABLE_ACCEPTOR
         releaseAcceptorContext(&ctx->acceptorCtx);
+#endif
     }
 
     krb5_free_keyblock_contents(krbContext, &ctx->rfc3961Key);

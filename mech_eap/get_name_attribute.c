@@ -46,6 +46,7 @@ gss_get_name_attribute(OM_uint32 *minor,
                        gss_buffer_t display_value,
                        int *more)
 {
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     OM_uint32 major;
 
     *minor = 0;
@@ -64,4 +65,7 @@ gss_get_name_attribute(OM_uint32 *minor,
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
     return major;
+#else
+	return GSS_S_UNAVAILABLE;
+#endif
 }

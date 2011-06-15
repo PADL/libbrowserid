@@ -851,8 +851,10 @@ gssBufferToKrbData(gss_buffer_t buffer, krb5_data *data)
 }
 #endif
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 #include "util_json.h"
 #include "util_attr.h"
+#endif
 #include "util_base64.h"
 #ifdef GSSEAP_ENABLE_REAUTH
 #include "util_reauth.h"

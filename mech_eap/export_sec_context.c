@@ -36,7 +36,7 @@
  */
 
 #include "gssapiP_eap.h"
-
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 static OM_uint32
 gssEapExportPartialContext(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
@@ -46,7 +46,6 @@ gssEapExportPartialContext(OM_uint32 *minor,
     size_t length, serverLen = 0;
     unsigned char *p;
     char serverBuf[MAXHOSTNAMELEN];
-
     if (ctx->acceptorCtx.radConn != NULL) {
         if (rs_conn_get_current_peer(ctx->acceptorCtx.radConn,
                                      serverBuf, sizeof(serverBuf)) != 0) {
@@ -59,7 +58,6 @@ gssEapExportPartialContext(OM_uint32 *minor,
         }
         serverLen = strlen(serverBuf);
     }
-
     length = 4 + serverLen + 4 + ctx->acceptorCtx.state.length;
 
     token->value = GSSEAP_MALLOC(length);
@@ -98,6 +96,7 @@ cleanup:
 
     return major;
 }
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
 OM_uint32
 gssEapExportSecContext(OM_uint32 *minor,
@@ -136,7 +135,7 @@ gssEapExportSecContext(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
     }
-
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     /*
      * The partial context is only transmitted for unestablished acceptor
      * contexts.
@@ -147,6 +146,7 @@ gssEapExportSecContext(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
     }
+#endif
 
     length  = 16;                               /* version, state, flags, */
     length += 4 + ctx->mechanismUsed->length;   /* mechanismUsed */

@@ -41,6 +41,7 @@ gss_delete_name_attribute(OM_uint32 *minor,
                           gss_name_t name,
                           gss_buffer_t attr)
 {
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     OM_uint32 major;
 
     *minor = 0;
@@ -57,4 +58,7 @@ gss_delete_name_attribute(OM_uint32 *minor,
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
     return major;
+#else
+	return GSS_S_UNAVAILABLE;
+#endif
 }

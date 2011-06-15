@@ -112,8 +112,9 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     GSSEAP_KRB_INIT(&krbContext);
     krb5_free_principal(krbContext, name->krbPrincipal);
     gssEapReleaseOid(&tmpMinor, &name->mechanismUsed);
-
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     gssEapReleaseAttrContext(&tmpMinor, name);
+#endif
 
     GSSEAP_MUTEX_DESTROY(&name->mutex);
     GSSEAP_FREE(name);
@@ -431,8 +432,11 @@ gssEapImportNameInternal(OM_uint32 *minor,
 
         buf.length = remain;
         buf.value = p;
-
+#ifdef GSSEAP_ENABLE_ACCEPTOR
         major = gssEapImportAttrContext(minor, &buf, name);
+#else
+		major = GSS_S_UNAVAILABLE;
+#endif
         if (GSS_ERROR(major))
             goto cleanup;
     }
@@ -566,7 +570,11 @@ gssEapExportNameInternal(OM_uint32 *minor,
     }
     exportedNameLen += 4 + nameBuf.length;
     if (flags & EXPORT_NAME_FLAG_COMPOSITE) {
+#ifdef GSSEAP_ENABLE_ACCEPTOR
         major = gssEapExportAttrContext(minor, name, &attrs);
+#else
+		major = GSS_S_UNAVAILABLE;
+#endif
         if (GSS_ERROR(major))
             goto cleanup;
         exportedNameLen += attrs.length;
@@ -671,7 +679,11 @@ gssEapCanonicalizeName(OM_uint32 *minor,
     }
 
     if (input_name->attrCtx != NULL) {
+#ifdef GSSEAP_ENABLE_ACCEPTOR
         major = gssEapDuplicateAttrContext(minor, input_name, name);
+#else
+		major = GSS_S_UNAVAILABLE;
+#endif
         if (GSS_ERROR(major))
             goto cleanup;
     }

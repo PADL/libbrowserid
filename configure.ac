@@ -2,12 +2,13 @@ AC_PREREQ([2.61])
 AC_INIT([mech_eap], [0.1], [bugs@project-moonshot.org])
 dnl AC_CONFIG_MACRO_DIR([m4])
 dnl AM_INIT_AUTOMAKE([silent-rules])
+AC_USE_SYSTEM_EXTENSIONS
+AC_GNU_SOURCE
 AM_INIT_AUTOMAKE
-AM_MAINTAINTER_MODE()
+AM_MAINTAINER_MODE()
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
 
-AC_GNU_SOURCE
 AC_PROG_CC
 AC_PROG_CXX
 AC_CONFIG_HEADERS([config.h])
@@ -45,6 +46,23 @@ if test "x$reauth" = "xyes" ; then
   TARGET_CFLAGS="$TARGET_CFLAGS -DGSSEAP_ENABLE_REAUTH"
 fi
 AM_CONDITIONAL(GSSEAP_ENABLE_REAUTH, test "x$reauth" != "xno")
+
+acceptor=yes
+AC_ARG_ENABLE(acceptor,
+  [  --enable-acceptor whether to enable acceptor codepaths: yes/no; default yes ],
+  [ if test "x$enableval" = "xyes" -o "x$enableval" = "xno" ; then
+      acceptor=$enableval
+    else
+      echo "--enable-acceptor argument must be yes or no"
+      exit -1
+    fi
+  ])
+
+if test "x$acceptor" = "xyes" ; then
+  echo "acceptor enabled"
+  TARGET_CFLAGS="$TARGET_CFLAGS -DGSSEAP_ENABLE_ACCEPTOR"
+fi
+AM_CONDITIONAL(GSSEAP_ENABLE_ACCEPTOR, test "x$acceptor" != "xno")
 
 AC_SUBST(TARGET_CFLAGS)
 AC_SUBST(TARGET_LDFLAGS)

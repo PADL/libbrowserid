@@ -37,8 +37,7 @@
 #include "gssapiP_eap.h"
 
 #include <pwd.h>
-#include <stdio.h> // for BUFSIZ
-
+#include <stdio.h> /* for BUFSIZ */
 
 OM_uint32
 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
