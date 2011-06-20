@@ -61,7 +61,7 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_ 1
 
-#if !defined(WIN32)
+#if defined(HAVE_SYS_PARAM_H)
 #include <sys/param.h>
 #endif
 #include <string.h>
@@ -69,13 +69,20 @@
 
 #include <krb5.h>
 
+///#if defined(HAVE_STDINT_H)
+///#include <stdint.h>
+///#endif
+
+///#if defined(WIN32)
+///#define INLINE  __inline
+///#else
+///#define INLINE	inline
+///#endif
+
 #if defined(WIN32)
-#define INLINE  __inline
-typedef unsigned __int16 uint16_t;
-typedef unsigned __int32 uint32_t;
-#else
-#define INLINE	inline
+#define inline  __inline
 #endif
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -107,14 +114,14 @@ duplicateBuffer(OM_uint32 *minor,
                 const gss_buffer_t src,
                 gss_buffer_t dst);
 
-static INLINE int
+static inline int
 bufferEqual(const gss_buffer_t b1, const gss_buffer_t b2)
 {
     return (b1->length == b2->length &&
             memcmp(b1->value, b2->value, b2->length) == 0);
 }
 
-static INLINE int
+static inline int
 bufferEqualString(const gss_buffer_t b1, const char *s)
 {
     gss_buffer_desc b2;
@@ -538,7 +545,7 @@ duplicateOidSet(OM_uint32 *minor,
                 const gss_OID_set src,
                 gss_OID_set *dst);
 
-static INLINE int
+static inline int
 oidEqual(const gss_OID_desc *o1, const gss_OID_desc *o2)
 {
     if (o1 == GSS_C_NO_OID)
@@ -709,7 +716,7 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_ONCE_INITIALIZER         PTHREAD_ONCE_INIT
 
 /* Helper functions */
-static INLINE void
+static inline void
 store_uint16_be(uint16_t val, void *vp)
 {
     unsigned char *p = (unsigned char *)vp;
@@ -718,7 +725,7 @@ store_uint16_be(uint16_t val, void *vp)
     p[1] = (val      ) & 0xff;
 }
 
-static INLINE uint16_t
+static inline uint16_t
 load_uint16_be(const void *cvp)
 {
     const unsigned char *p = (const unsigned char *)cvp;
@@ -726,7 +733,7 @@ load_uint16_be(const void *cvp)
     return (p[1] | (p[0] << 8));
 }
 
-static INLINE void
+static inline void
 store_uint32_be(uint32_t val, void *vp)
 {
     unsigned char *p = (unsigned char *)vp;
@@ -737,7 +744,7 @@ store_uint32_be(uint32_t val, void *vp)
     p[3] = (val      ) & 0xff;
 }
 
-static INLINE uint32_t
+static inline uint32_t
 load_uint32_be(const void *cvp)
 {
     const unsigned char *p = (const unsigned char *)cvp;
@@ -747,7 +754,7 @@ load_uint32_be(const void *cvp)
             | ((uint32_t) p[0] << 24));
 }
 
-static INLINE void
+static inline void
 store_uint64_be(uint64_t val, void *vp)
 {
     unsigned char *p = (unsigned char *)vp;
@@ -762,7 +769,7 @@ store_uint64_be(uint64_t val, void *vp)
     p[7] = (unsigned char)((val      ) & 0xff);
 }
 
-static INLINE uint64_t
+static inline uint64_t
 load_uint64_be(const void *cvp)
 {
     const unsigned char *p = (const unsigned char *)cvp;
@@ -770,7 +777,7 @@ load_uint64_be(const void *cvp)
     return ((uint64_t)load_uint32_be(p) << 32) | load_uint32_be(p + 4);
 }
 
-static INLINE unsigned char *
+static inline unsigned char *
 store_buffer(gss_buffer_t buffer, void *vp, int wide_nums)
 {
     unsigned char *p = (unsigned char *)vp;
@@ -791,7 +798,7 @@ store_buffer(gss_buffer_t buffer, void *vp, int wide_nums)
     return p;
 }
 
-static INLINE unsigned char *
+static inline unsigned char *
 load_buffer(const void *cvp, size_t length, gss_buffer_t buffer)
 {
     buffer->length = 0;
@@ -803,7 +810,7 @@ load_buffer(const void *cvp, size_t length, gss_buffer_t buffer)
     return (unsigned char *)cvp + length;
 }
 
-static INLINE unsigned char *
+static inline unsigned char *
 store_oid(gss_OID oid, void *vp)
 {
     gss_buffer_desc buf;
@@ -819,14 +826,14 @@ store_oid(gss_OID oid, void *vp)
     return store_buffer(&buf, vp, FALSE);
 }
 
-static INLINE void
+static inline void
 krbDataToGssBuffer(krb5_data *data, gss_buffer_t buffer)
 {
     buffer->value = (void *)data->data;
     buffer->length = data->length;
 }
 
-static INLINE void
+static inline void
 krbPrincComponentToGssBuffer(krb5_principal krbPrinc,
                              int index, gss_buffer_t buffer)
 {
@@ -839,7 +846,7 @@ krbPrincComponentToGssBuffer(krb5_principal krbPrinc,
 #endif /* HAVE_HEIMDAL_VERSION */
 }
 
-static INLINE void
+static inline void
 krbPrincRealmToGssBuffer(krb5_principal krbPrinc, gss_buffer_t buffer)
 {
 #ifdef HAVE_HEIMDAL_VERSION
@@ -850,7 +857,7 @@ krbPrincRealmToGssBuffer(krb5_principal krbPrinc, gss_buffer_t buffer)
 #endif
 }
 
-static INLINE void
+static inline void
 gssBufferToKrbData(gss_buffer_t buffer, krb5_data *data)
 {
     data->data = (char *)buffer->value;

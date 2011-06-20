@@ -42,13 +42,13 @@
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
-#if !defined(WIN32)
+#if defined(HAVE_UNISTD_H)
 #include <unistd.h>
 #endif
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
-#if !defined(WIN32)
+#if defined(HAVE_SYS_PARAM_H)
 #include <sys/param.h>
 #endif
 
