@@ -85,6 +85,13 @@ extern "C" {
 #endif
 #include <freeradius/libradius.h>
 #include <freeradius/radius.h>
+
+////Because freeradius/autoconf.h is evil!
+////#undef uint16_t
+////#undef uint32_t
+////#undef uint8_t
+#undef pid_t
+
 #include <radsec/radsec.h>
 #include <radsec/request.h>
 #ifdef __cplusplus

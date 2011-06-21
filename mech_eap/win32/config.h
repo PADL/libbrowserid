@@ -47,6 +47,13 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 /* #undef HAVE_UNISTD_H */
 
+#define SYSCONFDIR  "c:\\Program Files\\Moonshot\\etc"
+
+////This messes up freeradius, if defined here
+///#if !defined(snprintf)
+///#define snprintf  _snprintf
+///#endif
+
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
 #define LT_OBJDIR ".libs/"
