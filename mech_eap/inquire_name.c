@@ -64,7 +64,11 @@ gss_inquire_name(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     major = gssEapInquireName(minor, name, name_is_MN, MN_mech, attrs);
+#else
+    major = GSS_S_UNAVAILABLE;
+#endif
 
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
