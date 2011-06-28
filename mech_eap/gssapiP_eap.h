@@ -70,6 +70,7 @@ typedef const gss_OID_desc *gss_const_OID;
 #include <krb5.h>
 
 /* EAP headers */
+#include <includes.h>
 #include <common.h>
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>
