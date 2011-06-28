@@ -114,10 +114,13 @@ makeErrorToken(OM_uint32 *minor,
      * Only return error codes that the initiator could have caused,
      * to avoid information leakage.
      */
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     if (IS_RADIUS_ERROR(minorStatus)) {
         /* Squash RADIUS error codes */
         minorStatus = GSSEAP_RADIUS_PROT_FAILURE;
-    } else if (!IS_WIRE_ERROR(minorStatus)) {
+    } else 
+#endif 
+	if (!IS_WIRE_ERROR(minorStatus)) {
         /* Don't return non-wire error codes */
         return GSS_S_COMPLETE;
     }
