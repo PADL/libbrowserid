@@ -74,6 +74,10 @@ gss_set_sec_context_option(OM_uint32 *minor,
             break;
         }
     }
+#else
+    (void)i;
+    (void)desired_object;
+    (void)value;
 #endif
 
     if (pCtx != NULL && *pCtx == NULL)

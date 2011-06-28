@@ -74,6 +74,9 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
             break;
         }
     }
+#else
+    (void)i;
+    (void)desired_object;
 #endif
 
     GSSEAP_MUTEX_UNLOCK(&cred_handle->mutex);
