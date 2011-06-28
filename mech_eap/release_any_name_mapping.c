@@ -49,7 +49,12 @@ gss_release_any_name_mapping(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     major = gssEapReleaseAnyNameMapping(minor, name, type_id, input);
+#else
+    (void)type_id;
+    major = GSS_S_COMPLETE;
+#endif
 
     *input = NULL;
 

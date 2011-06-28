@@ -50,7 +50,13 @@ gss_map_name_to_any(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&name->mutex);
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     major = gssEapMapNameToAny(minor, name, authenticated, type_id, output);
+#else
+    (void)authenticated;
+    (void)type_id;
+    major = GSS_S_COMPLETE;
+#endif
 
     GSSEAP_MUTEX_UNLOCK(&name->mutex);
 
