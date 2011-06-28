@@ -37,9 +37,10 @@
 #include "gssapiP_eap.h"
 
 #if defined(WIN32)
-///This didn't work for me when Visual Studio 2005 Express is used:
-///#include <Shlobj.h>
-#include <ShFolder.h>
+/*This didn't work for me(Alexey) when Visual Studio 2005 Express is used: */
+#include <Shlobj.h>
+/*This didn't work for me(Kevin) when Visual Studio 2010 Express is used: */
+/*#include <ShFolder.h>*/
 
 #if !defined(snprintf)
 #define snprintf  _snprintf
