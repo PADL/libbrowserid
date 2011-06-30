@@ -36,22 +36,11 @@
 
 #include "gssapiP_eap.h"
 
-static GSSEAP_THREAD_ONCE krbContextKeyOnce = GSSEAP_ONCE_INITIALIZER;
-static GSSEAP_THREAD_KEY krbContextKey;
-
-static void
-destroyKrbContext(void *arg)
+void
+gssEapDestroyKrbContext(krb5_context context)
 {
-    krb5_context context = (krb5_context)arg;
-
     if (context != NULL)
         krb5_free_context(context);
-}
-
-static void
-createKrbContextKey(void)
-{
-    GSSEAP_KEY_CREATE(&krbContextKey, destroyKrbContext);
 }
 
 static krb5_error_code
@@ -91,22 +80,20 @@ cleanup:
 OM_uint32
 gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
 {
+    struct gss_eap_thread_local_data* tld;
     *minor = 0;
 
-    GSSEAP_ONCE(&krbContextKeyOnce, createKrbContextKey);
-
-    *context = GSSEAP_GETSPECIFIC(krbContextKey);
-    if (*context == NULL) {
-        *minor = initKrbContext(context);
-        if (*minor == 0) {
-            if (GSSEAP_SETSPECIFIC(krbContextKey, *context) != 0) {
-                *minor = errno;
-                krb5_free_context(*context);
-                *context = NULL;
+    tld = gssEapGetThreadLocalData();
+    if (tld)
+    {
+        *context = tld->context;
+        if (*context == NULL) {
+            *minor = initKrbContext(context);
+            if (*minor == 0) {
+                tld->context = *context;
             }
         }
     }
-
     return *minor == 0 ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
 

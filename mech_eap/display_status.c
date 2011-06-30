@@ -36,31 +36,22 @@
 
 #include "gssapiP_eap.h"
 
-static GSSEAP_THREAD_ONCE gssEapStatusInfoKeyOnce = GSSEAP_ONCE_INITIALIZER;
-static GSSEAP_THREAD_KEY gssEapStatusInfoKey;
-
 struct gss_eap_status_info {
     OM_uint32 code;
     char *message;
     struct gss_eap_status_info *next;
 };
 
-static void
-destroyStatusInfo(void *arg)
+void
+gssEapDestroyStatusInfo(struct gss_eap_status_info* p)
 {
-    struct gss_eap_status_info *p = arg, *next;
+    struct gss_eap_status_info *next;
 
-    for (p = arg; p != NULL; p = next) {
+    for (; p != NULL; p = next) {
         next = p->next;
         GSSEAP_FREE(p->message);
         GSSEAP_FREE(p);
     }
-}
-
-static void
-createStatusInfoKey(void)
-{
-    GSSEAP_KEY_CREATE(&gssEapStatusInfoKey, destroyStatusInfo);
 }
 
 /*
@@ -73,23 +64,23 @@ createStatusInfoKey(void)
 static void
 saveStatusInfoNoCopy(OM_uint32 minor, char *message)
 {
-    struct gss_eap_status_info **next = NULL, *p;
+    struct gss_eap_status_info **next = NULL, *p=NULL;
 
-    GSSEAP_ONCE(&gssEapStatusInfoKeyOnce, createStatusInfoKey);
-
-    p = GSSEAP_GETSPECIFIC(gssEapStatusInfoKey);
-    for (; p != NULL; p = p->next) {
-        if (p->code == minor) {
-            /* Set message in-place */
-            if (p->message != NULL)
-                GSSEAP_FREE(p->message);
-            p->message = message;
-            return;
+    struct gss_eap_thread_local_data* tld = gssEapGetThreadLocalData();
+    if (tld != NULL) {
+        for (p = tld->status_info; p != NULL; p = p->next) {
+            if (p->code == minor) {
+                /* Set message in-place */
+                if (p->message != NULL)
+                    GSSEAP_FREE(p->message);
+                p->message = message;
+                return;
+            }
+            next = &p->next;
         }
-        next = &p->next;
-    }
 
-    p = GSSEAP_CALLOC(1, sizeof(*p));
+        p = GSSEAP_CALLOC(1, sizeof(*p));
+    }
     if (p == NULL) {
         if (message != NULL)
             GSSEAP_FREE(message);
@@ -102,23 +93,22 @@ saveStatusInfoNoCopy(OM_uint32 minor, char *message)
     if (next != NULL)
         *next = p;
     else
-        GSSEAP_SETSPECIFIC(gssEapStatusInfoKey, p);
+        tld->status_info = p;
 }
 
 static const char *
 getStatusInfo(OM_uint32 minor)
 {
     struct gss_eap_status_info *p;
-
-    GSSEAP_ONCE(&gssEapStatusInfoKeyOnce, createStatusInfoKey);
-
-    for (p = GSSEAP_GETSPECIFIC(gssEapStatusInfoKey);
-         p != NULL;
-         p = p->next) {
-        if (p->code == minor)
-            return p->message;
+    struct gss_eap_thread_local_data *tld=gssEapGetThreadLocalData();
+    if (tld != NULL) {
+        for (p = tld->status_info;
+             p != NULL;
+             p = p->next) {
+            if (p->code == minor)
+                return p->message;
+        }
     }
-
     return NULL;
 }
 

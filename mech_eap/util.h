@@ -64,25 +64,17 @@
 #if defined(HAVE_SYS_PARAM_H)
 #include <sys/param.h>
 #endif
+#if defined(HAVE_STDINT_H)
+#include <stdint.h>
+#endif
 #include <string.h>
 #include <errno.h>
 
 #include <krb5.h>
 
-///#if defined(HAVE_STDINT_H)
-///#include <stdint.h>
-///#endif
-
-///#if defined(WIN32)
-///#define INLINE  __inline
-///#else
-///#define INLINE	inline
-///#endif
-
 #if defined(WIN32)
 #define inline  __inline
 #endif
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -99,12 +91,30 @@ extern "C" {
 #endif
 
 #if !defined(WIN32)
-#define GSSEAP_CONSTRUCTOR  __attribute__((constructor)
+#define GSSEAP_CONSTRUCTOR  __attribute__((constructor))
 #define GSSEAP_DESTRUCTOR   __attribute__((destructor))
 #else
 #define GSSEAP_CONSTRUCTOR
 #define GSSEAP_DESTRUCTOR
 #endif
+
+/* thread local storage */
+struct gss_eap_status_info;
+
+struct gss_eap_thread_local_data
+{
+	krb5_context context;
+	struct gss_eap_status_info* status_info;
+};
+
+struct gss_eap_thread_local_data* 
+gssEapGetThreadLocalData();
+
+void 
+gssEapDestroyStatusInfo(struct gss_eap_status_info* status);
+
+void 
+gssEapDestroyKrbContext(krb5_context context);
 
 /* util_buffer.c */
 OM_uint32
@@ -704,6 +714,22 @@ verifyTokenHeader(OM_uint32 *minor,
         return GSS_S_FAILURE;                           \
     } while (0)
 
+#ifdef WIN32
+#include <winbase.h>
+#define GSSEAP_MUTEX                    CRITICAL_SECTION
+// wrapper for EnterCriticalSection() to provide return value
+inline int win32_mutex_init(CRITICAL_SECTION* m)
+{
+	EnterCriticalSection(m);
+	return 0;
+}
+
+#define GSSEAP_MUTEX_INIT(m)            win32_mutex_init((m))
+#define GSSEAP_MUTEX_DESTROY(m)         DeleteCriticalSection((m))
+#define GSSEAP_MUTEX_LOCK(m)            EnterCriticalSection((m))
+#define GSSEAP_MUTEX_UNLOCK(m)          LeaveCriticalSection((m))
+
+#else
 #include <pthread.h>
 
 #define GSSEAP_MUTEX                    pthread_mutex_t
@@ -722,6 +748,7 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_THREAD_ONCE              pthread_once_t
 #define GSSEAP_ONCE(o, i)               pthread_once((o), (i))
 #define GSSEAP_ONCE_INITIALIZER         PTHREAD_ONCE_INIT
+#endif
 
 /* Helper functions */
 static inline void
