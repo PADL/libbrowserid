@@ -38,16 +38,17 @@
 #endif
 #if defined(HAS_VA_COPY) || defined(va_copy)
 /* Do nothing.  */
-#elif defined(CAN_COPY_VA_LIST)
-#define va_copy(dest, src)      ((dest) = (src))
 #else
+#define va_copy(dest, src)      ((dest) = (src))
+#endif
+#if 0 /* Given that this used to specify 'memcmp' instead of 'memcpy', it is safe to say it has not really been tested and we should not use it */
 /* Assume array type, but still simply copyable.
 
    There is, theoretically, the possibility that va_start will
    allocate some storage pointed to by the va_list, and in that case
    we'll just lose.  If anyone cares, we could try to devise a test
    for that case.  */
-#define va_copy(dest, src)      memcmp(dest, src, sizeof(va_list))
+#define va_copy(dest, src)      memcpy(dest, src, sizeof(va_list)) /* was 'memcmp' which is almost certainly not right...*/
 #endif
 
 /* On error: BSD: Set *ret to NULL.  GNU: *ret is undefined.
@@ -69,6 +70,12 @@ vasprintf(char **ret, const char *format, va_list ap)
         if (nstr == NULL)
             goto fail;
         str = nstr;
+
+        /* In theory, by c99 rules, vsnprintf() may destructively modify the passed in va_list.  Therefore, we va_copy it first.
+         * In practice, the va_list _isn't_ modified on windows and windows does not provide a native va_copy(), but the va_list 
+         * is just a pointer, which is why the va_copy() we defined above works.  If there were a platform where vsnprintf, etc,
+         * destructively modified the va_list _and_ it didn't define a va_copy() macro _and_ it didn't have a vasprintf(), 
+         * we could be in trouble.  But I don't think I'll be losing any sleep. */
         va_copy(ap2, ap);
         len2 = vsnprintf(str, len, format, ap2);
         va_end(ap2);
