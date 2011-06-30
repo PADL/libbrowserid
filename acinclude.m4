@@ -9,7 +9,14 @@ AC_ARG_WITH(krb5,
        [Use krb5 (in specified installation directory)]),
     [check_krb5_dir="$withval"],
     [check_krb5_dir=])
-for dir in $check_krb5_dir $prefix /usr /usr/local ; do
+AM_COND_IF(TARGET_WINDOWS,[
+   found_krb5="yes"
+   krb5dir=$check_krb5_dir
+   KRB5_CFLAGS=-I"$check_krb5_dir/include"
+   KRB5_LIBS="-L$check_krb5_dir/lib/ -lkrb5_32 -lgssapi32"
+   COMPILE_ET=
+],
+[for dir in $check_krb5_dir $prefix /usr /usr/local ; do
    krb5dir="$dir"
    if test -x "$dir/bin/krb5-config"; then
      found_krb5="yes";
@@ -18,7 +25,7 @@ for dir in $check_krb5_dir $prefix /usr /usr/local ; do
      COMPILE_ET="$dir/bin/compile_et";
      break;
    fi
-done
+done])
 AC_MSG_RESULT($found_krb5)
 if test x_$found_krb5 != x_yes; then
    AC_MSG_ERROR([
@@ -182,6 +189,15 @@ else
 	AC_SUBST(SHIBRESOLVER_LIBS)
 fi
 ])dnl
+
+AC_DEFUN([AX_CHECK_WINDOWS],
+[AC_MSG_CHECKING(for windows)
+target_windows="no"
+AC_CHECK_HEADER(windows.h,[target_windows="yes"],[target_windows="no"])
+AC_MSG_RESULT($target_windows)
+AM_CONDITIONAL(TARGET_WINDOWS,test "x$target_windows" == "xyes")
+])dnl
+
 
 AC_DEFUN([AX_CHECK_RADSEC],
 [AC_MSG_CHECKING(for radsec)

@@ -5,13 +5,16 @@ dnl AM_INIT_AUTOMAKE([silent-rules])
 AC_USE_SYSTEM_EXTENSIONS
 AC_GNU_SOURCE
 AM_INIT_AUTOMAKE
+AM_PROG_CC_C_O
 AM_MAINTAINER_MODE()
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static win32-dll])
 
-AC_PROG_CC
+dnl AC_PROG_CC
 AC_PROG_CXX
 AC_CONFIG_HEADERS([config.h])
+AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h)
+AC_REPLACE_FUNCS(vasprintf)
 
 dnl Check if we're on Solaris and set CFLAGS accordingly
 dnl AC_CANONICAL_TARGET
@@ -66,7 +69,8 @@ AM_CONDITIONAL(GSSEAP_ENABLE_ACCEPTOR, test "x$acceptor" != "xno")
 
 AC_SUBST(TARGET_CFLAGS)
 AC_SUBST(TARGET_LDFLAGS)
-dnl AX_CHECK_KRB5
+AX_CHECK_WINDOWS
+AX_CHECK_KRB5
 AM_CONDITIONAL(HEIMDAL, test "x$heimdal" != "xno")
 dnl AX_CHECK_EAP
 if test "x$acceptor" = "xyes" ; then

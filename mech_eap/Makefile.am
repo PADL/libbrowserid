@@ -4,23 +4,30 @@ gssincludedir = $(includedir)/gssapi
 gssinclude_HEADERS = gssapi_eap.h
 
 EAP_CFLAGS = -I$(srcdir)/../libeap/src -I$(srcdir)/../libeap/src/common -I$(srcdir)/../libeap/src/eap_common  \
-	-I$(srcdir)/../libeap/src/utils \
-	-DEAP_TLS -DEAP_PEAP -DEAP_TTLS -DEAP_MD5 -DEAP_MSCHAPv2 -DEAP_GTC -DEAP_OTP -DEAP_LEAP -DEAP_PSK -DEAP_PAX -DEAP_SAKE -DEAP_GPSK -DEAP_GPSK_SHA256 -DEAP_SERVER_IDENTITY -DEAP_SERVER_TLS -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DEAP_SERVER_MD5 -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_GTC -DEAP_SERVER_PSK -DEAP_SERVER_PAX -DEAP_SERVER_SAKE -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256 -DIEEE8021X_EAPOL
+	-I$(srcdir)/../libeap/src/utils
 
 gssdir = $(libdir)/gss
 gss_LTLIBRARIES = mech_eap.la
+if TARGET_WINDOWS
+EAP_CFLAGS += -DCONFIG_WIN32_DEFAULTS -DUSE_INTERNAL_CRYPTO
+OS_LIBS = -lshell32 -ladvapi32 -lws2_32 -lcomerr32
+mech_eap_la_CFLAGS   = -Zi
+mech_eap_la_CXXFLAGS = -Zi
+else
+EAP_CFLAGS += -DEAP_TLS -DEAP_PEAP -DEAP_TTLS -DEAP_MD5 -DEAP_MSCHAPv2 -DEAP_GTC -DEAP_OTP -DEAP_LEAP -DEAP_PSK -DEAP_PAX -DEAP_SAKE -DEAP_GPSK -DEAP_GPSK_SHA256 -DEAP_SERVER_IDENTITY -DEAP_SERVER_TLS -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DEAP_SERVER_MD5 -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_GTC -DEAP_SERVER_PSK -DEAP_SERVER_PAX -DEAP_SERVER_SAKE -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256 -DIEEE8021X_EAPOL
+OS_LIBS =
+mech_eap_la_CFLAGS   = -Werror -Wall -Wunused-parameter
+mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
+endif
 
 mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
-mech_eap_la_CFLAGS   = -Werror -Wall -Wunused-parameter \
-			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
-mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter \
-			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ \
-		        @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
+mech_eap_la_CFLAGS   += @KRB5_CFLAGS@ @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
+mech_eap_la_CXXFLAGS += @KRB5_CFLAGS@ @RADSEC_CFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols $(srcdir)/mech_eap.exports -no-undefined \
 			@RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
 mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
-		       @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
+		       @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@ $(OS_LIBS) $(LTLIBOBJS)
 
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
@@ -87,6 +94,7 @@ mech_eap_la_SOURCES =    			\
 	util_oid.c				\
 	util_ordering.c				\
 	util_sm.c				\
+	util_tld.c				\
 	util_token.c				\
 	verify_mic.c				\
 	wrap.c					\
@@ -97,7 +105,7 @@ mech_eap_la_SOURCES =    			\
 BUILT_SOURCES = gsseap_err.c radsec_err.c
 
 if GSSEAP_ENABLE_ACCEPTOR
-mech_eap_la_SOURCES += util_attr.c util_json.c util_radius.c util_shib.c util_saml.c
+mech_eap_la_SOURCES += util_attr.cpp util_json.cpp util_radius.cpp util_shib.cpp util_saml.cpp
 endif
 
 if GSSEAP_ENABLE_REAUTH
@@ -116,7 +124,9 @@ radius_ad_la_SOURCES = util_adshim.c
 endif
 endif
 
-
+if TARGET_WINDOWS
+mech_eap_la_LDFLAGS += -debug
+else
 gsseap_err.h gsseap_err.c: gsseap_err.et
 	$(COMPILE_ET) $<
 
@@ -127,4 +137,4 @@ radsec_err.c: radsec_err.h
 
 clean-generic:
 	rm -f gsseap_err.[ch] radsec_err.[ch]
-
+endif
