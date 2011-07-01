@@ -195,7 +195,7 @@ AC_DEFUN([AX_CHECK_WINDOWS],
 target_windows="no"
 AC_CHECK_HEADER(windows.h,[target_windows="yes"],[target_windows="no"])
 AC_MSG_RESULT($target_windows)
-AM_CONDITIONAL(TARGET_WINDOWS,test "x$target_windows" == "xyes")
+AM_CONDITIONAL(TARGET_WINDOWS,test "x$target_windows" = "xyes")
 ])dnl
 
 
