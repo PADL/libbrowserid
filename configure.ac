@@ -7,7 +7,7 @@ AC_GNU_SOURCE
 AM_INIT_AUTOMAKE
 AM_PROG_CC_C_O
 AM_MAINTAINER_MODE()
-LT_PREREQ([2.2])
+LT_PREREQ([2.4])
 LT_INIT([dlopen disable-static win32-dll])
 
 dnl AC_PROG_CC
