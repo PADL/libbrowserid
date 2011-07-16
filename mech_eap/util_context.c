@@ -235,29 +235,37 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
                            int verifyMIC)
 {
     OM_uint32 major;
-    gss_iov_buffer_desc *iov;
+    gss_iov_buffer_desc *iov = NULL;
     size_t i = 0, j;
     enum gss_eap_token_type tokType;
     OM_uint32 micTokType;
     unsigned char wireTokType[2];
-    unsigned char *innerTokTypes;
+    unsigned char *innerTokTypes = NULL, *innerTokLengths = NULL;
     const struct gss_eap_token_buffer_set *tokens;
 
     tokens = verifyMIC ? ctx->inputTokens : ctx->outputTokens;
 
     assert(tokens != NULL);
 
-    iov = GSSEAP_CALLOC(2 + (2 * tokens->buffers.count) + 1, sizeof(*iov));
+    iov = GSSEAP_CALLOC(2 + (3 * tokens->buffers.count) + 1, sizeof(*iov));
     if (iov == NULL) {
+        major = GSS_S_FAILURE;
         *minor = ENOMEM;
-        return GSS_S_FAILURE;
+        goto cleanup;
     }
 
     innerTokTypes = GSSEAP_MALLOC(4 * tokens->buffers.count);
     if (innerTokTypes == NULL) {
-        GSSEAP_FREE(iov);
         *minor = ENOMEM;
-        return GSS_S_FAILURE;
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+
+    innerTokLengths = GSSEAP_MALLOC(4 * tokens->buffers.count);
+    if (innerTokLengths == NULL) {
+        major = GSS_S_FAILURE;
+        *minor = ENOMEM;
+        goto cleanup;
     }
 
     /* Mechanism OID */
@@ -295,6 +303,13 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
         i++;
 
         iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
+        iov[i].buffer.length = 4;
+        iov[i].buffer.value = &innerTokLengths[j * 4];
+        store_uint32_be(tokens->buffers.elements[j].length,
+                        iov[i].buffer.value);
+        i++;
+
+        iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
         iov[i].buffer = tokens->buffers.elements[j];
         i++;
     }
@@ -324,8 +339,13 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
             *tokenMIC = iov[i - 1].buffer;
     }
 
-    gssEapReleaseIov(iov, tokens->buffers.count);
-    GSSEAP_FREE(innerTokTypes);
+cleanup:
+    if (iov != NULL)
+        gssEapReleaseIov(iov, tokens->buffers.count);
+    if (innerTokTypes != NULL)
+        GSSEAP_FREE(innerTokTypes);
+    if (innerTokLengths != NULL)
+        GSSEAP_FREE(innerTokLengths);
 
     return major;
 }
