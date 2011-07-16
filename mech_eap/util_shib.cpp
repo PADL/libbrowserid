@@ -436,8 +436,7 @@ gss_eap_shib_attr_provider::init(void)
     bool ret = false;
 
     try {
-        if (SPConfig::getConfig().getFeatures() == 0)
-            ret = ShibbolethResolver::init();
+        ret = ShibbolethResolver::init();
     } catch (exception &e) {
     }
 
