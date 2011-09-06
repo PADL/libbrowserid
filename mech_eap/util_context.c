@@ -317,7 +317,7 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
     if (verifyMIC) {
         assert(tokenMIC->length >= 16);
 
-        assert(i < 2 + (2 * tokens->buffers.count));
+        assert(i < 2 + (3 * tokens->buffers.count));
 
         iov[i].type = GSS_IOV_BUFFER_TYPE_HEADER;
         iov[i].buffer.length = 16;
