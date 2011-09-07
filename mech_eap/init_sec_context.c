@@ -195,15 +195,14 @@ extern int wpa_debug_level;
 #endif
 
 static OM_uint32
-peerConfigInit(OM_uint32 *minor,
-               gss_cred_id_t cred,
-               gss_ctx_id_t ctx)
+peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     OM_uint32 major;
     krb5_context krbContext;
     struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
     gss_buffer_desc identity = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc realm = GSS_C_EMPTY_BUFFER;
+    gss_cred_id_t cred = ctx->cred;
 
     eapPeerConfig->identity = NULL;
     eapPeerConfig->identity_len = 0;
@@ -253,6 +252,11 @@ peerConfigInit(OM_uint32 *minor,
     /* password */
     eapPeerConfig->password = (unsigned char *)cred->password.value;
     eapPeerConfig->password_len = cred->password.length;
+
+    /* certs */
+    eapPeerConfig->ca_cert = (unsigned char *)cred->caCertificate.value;
+    eapPeerConfig->subject_match = (unsigned char *)cred->subjectNameConstraint.value;
+    eapPeerConfig->altsubject_match = (unsigned char *)cred->subjectAltNameConstraint.value;
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -341,7 +345,6 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx, OM_uint32 reqFlags)
 
 static OM_uint32
 initBegin(OM_uint32 *minor,
-          gss_cred_id_t cred,
           gss_ctx_id_t ctx,
           gss_name_t target,
           gss_OID mech,
@@ -350,6 +353,7 @@ initBegin(OM_uint32 *minor,
           gss_channel_bindings_t chanBindings GSSEAP_UNUSED)
 {
     OM_uint32 major;
+    gss_cred_id_t cred = ctx->cred;
 
     assert(cred != GSS_C_NO_CREDENTIAL);
 
@@ -634,7 +638,7 @@ eapGssSmInitIdentity(OM_uint32 *minor,
 
 static OM_uint32
 eapGssSmInitAuthenticate(OM_uint32 *minor,
-                         gss_cred_id_t cred,
+                         gss_cred_id_t cred GSSEAP_UNUSED,
                          gss_ctx_id_t ctx,
                          gss_name_t target GSSEAP_UNUSED,
                          gss_OID mech GSSEAP_UNUSED,
@@ -653,7 +657,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
     assert(inputToken != GSS_C_NO_BUFFER);
 
-    major = peerConfigInit(minor, cred, ctx);
+    major = peerConfigInit(minor, ctx);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -938,34 +942,24 @@ gss_init_sec_context(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    if (cred == GSS_C_NO_CREDENTIAL) {
-        if (ctx->defaultCred == GSS_C_NO_CREDENTIAL) {
-            major = gssEapAcquireCred(minor,
-                                      GSS_C_NO_NAME,
-                                      GSS_C_NO_BUFFER,
-                                      time_req,
-                                      GSS_C_NO_OID_SET,
-                                      GSS_C_INITIATE,
-                                      &ctx->defaultCred,
-                                      NULL,
-                                      NULL);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        }
+    if (cred != GSS_C_NO_CREDENTIAL)
+        GSSEAP_MUTEX_LOCK(&cred->mutex);
 
-        cred = ctx->defaultCred;
+    if (ctx->cred == GSS_C_NO_CREDENTIAL) {
+        major = gssEapResolveInitiatorCred(minor, cred, target_name, &ctx->cred);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        assert(ctx->cred != GSS_C_NO_CREDENTIAL);
     }
 
-    GSSEAP_MUTEX_LOCK(&cred->mutex);
+    GSSEAP_MUTEX_LOCK(&ctx->cred->mutex);
 
-    if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
-        major = GSS_S_NO_CRED;
-        *minor = GSSEAP_CRED_USAGE_MISMATCH;
-        goto cleanup;
-    }
+    assert(ctx->cred->flags & CRED_FLAG_RESOLVED);
+    assert(ctx->cred->flags & CRED_FLAG_INITIATE);
 
     if (initialContextToken) {
-        major = initBegin(minor, cred, ctx, target_name, mech_type,
+        major = initBegin(minor, ctx, target_name, mech_type,
                           req_flags, time_req, input_chan_bindings);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -1006,6 +1000,8 @@ gss_init_sec_context(OM_uint32 *minor,
 cleanup:
     if (cred != GSS_C_NO_CREDENTIAL)
         GSSEAP_MUTEX_UNLOCK(&cred->mutex);
+    if (ctx->cred != GSS_C_NO_CREDENTIAL)
+        GSSEAP_MUTEX_UNLOCK(&ctx->cred->mutex);
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     if (GSS_ERROR(major))

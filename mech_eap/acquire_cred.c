@@ -46,7 +46,7 @@ gss_acquire_cred(OM_uint32 *minor,
                  gss_OID_set *actual_mechs,
                  OM_uint32 *time_rec)
 {
-    return gssEapAcquireCred(minor, desired_name, GSS_C_NO_BUFFER,
+    return gssEapAcquireCred(minor, desired_name,
                              time_req, desired_mechs, cred_usage,
                              output_cred_handle, actual_mechs, time_rec);
 }

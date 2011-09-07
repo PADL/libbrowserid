@@ -118,9 +118,9 @@ struct gss_name_struct
 
 #define CRED_FLAG_INITIATE                  0x00010000
 #define CRED_FLAG_ACCEPT                    0x00020000
-#define CRED_FLAG_DEFAULT_IDENTITY          0x00040000
-#define CRED_FLAG_PASSWORD                  0x00080000
-#define CRED_FLAG_DEFAULT_CCACHE            0x00100000
+#define CRED_FLAG_PASSWORD                  0x00040000
+#define CRED_FLAG_DEFAULT_CCACHE            0x00080000
+#define CRED_FLAG_RESOLVED                  0x00100000
 #define CRED_FLAG_PUBLIC_MASK               0x0000FFFF
 
 #ifdef HAVE_HEIMDAL_VERSION
@@ -132,11 +132,15 @@ struct gss_cred_id_struct
     GSSEAP_MUTEX mutex;
     OM_uint32 flags;
     gss_name_t name;
+    gss_name_t target; /* for initiator */
     gss_buffer_desc password;
     gss_OID_set mechanisms;
     time_t expiryTime;
-    char *radiusConfigFile;
-    char *radiusConfigStanza;
+    gss_buffer_desc radiusConfigFile;
+    gss_buffer_desc radiusConfigStanza;
+    gss_buffer_desc caCertificate;
+    gss_buffer_desc subjectNameConstraint;
+    gss_buffer_desc subjectAltNameConstraint;
 #ifdef GSSEAP_ENABLE_REAUTH
     krb5_ccache krbCredCache;
     gss_cred_id_t reauthCred;
@@ -196,7 +200,7 @@ struct gss_ctx_id_struct
     time_t expiryTime;
     uint64_t sendSeq, recvSeq;
     void *seqState;
-    gss_cred_id_t defaultCred;
+    gss_cred_id_t cred;
     union {
         struct gss_eap_initiator_ctx initiator;
         #define initiatorCtx         ctxU.initiator

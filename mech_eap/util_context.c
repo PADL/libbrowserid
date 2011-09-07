@@ -130,7 +130,7 @@ gssEapReleaseContext(OM_uint32 *minor,
     gssEapReleaseName(&tmpMinor, &ctx->acceptorName);
     gssEapReleaseOid(&tmpMinor, &ctx->mechanismUsed);
     sequenceFree(&tmpMinor, &ctx->seqState);
-    gssEapReleaseCred(&tmpMinor, &ctx->defaultCred);
+    gssEapReleaseCred(&tmpMinor, &ctx->cred);
 
     GSSEAP_MUTEX_DESTROY(&ctx->mutex);
 
