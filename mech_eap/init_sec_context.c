@@ -647,7 +647,6 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 {
     OM_uint32 major;
     OM_uint32 tmpMinor;
-    int code;
     struct wpabuf *resp = NULL;
 
     *minor = 0;
@@ -668,7 +667,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
     major = GSS_S_CONTINUE_NEEDED;
 
-    code = eap_peer_sm_step(ctx->initiatorCtx.eap);
+    eap_peer_sm_step(ctx->initiatorCtx.eap);
     if (ctx->flags & CTX_FLAG_EAP_RESP) {
         ctx->flags &= ~(CTX_FLAG_EAP_RESP);
 
