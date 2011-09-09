@@ -431,10 +431,10 @@ createRadiusHandle(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    if (cred->radiusConfigFile != NULL)
-        configFile = cred->radiusConfigFile;
-    if (cred->radiusConfigStanza != NULL)
-        configStanza = cred->radiusConfigStanza;
+    if (cred->radiusConfigFile.value != NULL)
+        configFile = (const char *)cred->radiusConfigFile.value;
+    if (cred->radiusConfigStanza.value != NULL)
+        configStanza = (const char *)cred->radiusConfigStanza.value;
 
     ralloc.calloc  = GSSEAP_CALLOC;
     ralloc.malloc  = GSSEAP_MALLOC;
@@ -898,30 +898,31 @@ gss_accept_sec_context(OM_uint32 *minor,
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (cred == GSS_C_NO_CREDENTIAL) {
-        if (ctx->defaultCred == GSS_C_NO_CREDENTIAL) {
+        if (ctx->cred == GSS_C_NO_CREDENTIAL) {
             major = gssEapAcquireCred(minor,
                                       GSS_C_NO_NAME,
-                                      GSS_C_NO_BUFFER,
                                       GSS_C_INDEFINITE,
                                       GSS_C_NO_OID_SET,
                                       GSS_C_ACCEPT,
-                                      &ctx->defaultCred,
+                                      &ctx->cred,
                                       NULL,
                                       NULL);
             if (GSS_ERROR(major))
                 goto cleanup;
         }
 
-        cred = ctx->defaultCred;
+        cred = ctx->cred;
     }
 
     GSSEAP_MUTEX_LOCK(&cred->mutex);
 
-    if (cred->name != GSS_C_NO_NAME) {
-        major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
+    /*
+     * Calling gssEapInquireCred() forces the default acceptor credential name
+     * to be resolved.
+     */
+    major = gssEapInquireCred(minor, cred, &ctx->acceptorName, NULL, NULL, NULL);
+    if (GSS_ERROR(major))
+        goto cleanup;
 
     major = gssEapSmStep(minor,
                          cred,

@@ -47,7 +47,21 @@ gssspi_acquire_cred_with_password(OM_uint32 *minor,
                                   gss_OID_set *actual_mechs,
                                   OM_uint32 *time_rec)
 {
-    return gssEapAcquireCred(minor, desired_name, password,
-                             time_req, desired_mechs, cred_usage,
-                             output_cred_handle, actual_mechs, time_rec);
+    OM_uint32 major, tmpMinor;
+
+    major = gssEapAcquireCred(minor, desired_name,
+                              time_req, desired_mechs, cred_usage,
+                              output_cred_handle, actual_mechs, time_rec);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssEapSetCredPassword(minor, *output_cred_handle, password);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
+    if (GSS_ERROR(major))
+        gssEapReleaseCred(&tmpMinor, output_cred_handle);
+
+    return major;
 }

@@ -85,6 +85,7 @@ mech_eap_la_SOURCES =    			\
 	util_krb.c				\
 	util_lucid.c				\
 	util_mech.c				\
+	util_moonshot.c				\
 	util_name.c				\
 	util_oid.c				\
 	util_ordering.c				\

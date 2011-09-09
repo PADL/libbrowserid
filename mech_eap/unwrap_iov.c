@@ -319,7 +319,7 @@ unwrapStream(OM_uint32 *minor,
     unsigned char *ptr;
     OM_uint32 code = 0, major = GSS_S_FAILURE;
     krb5_context krbContext;
-    int conf_req_flag, toktype2;
+    int conf_req_flag;
     int i = 0, j;
     gss_iov_buffer_desc *tiov = NULL;
     gss_iov_buffer_t stream, data = NULL;
@@ -346,8 +346,7 @@ unwrapStream(OM_uint32 *minor,
     }
 
     ptr = (unsigned char *)stream->buffer.value;
-    toktype2 = load_uint16_be(ptr);
-    ptr += 2;
+    ptr += 2; /* skip token type */
 
     tiov = (gss_iov_buffer_desc *)GSSEAP_CALLOC((size_t)iov_count + 2,
                                                 sizeof(gss_iov_buffer_desc));

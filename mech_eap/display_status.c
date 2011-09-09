@@ -132,6 +132,8 @@ gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...)
     if (format != NULL) {
         va_start(ap, format);
         n = vasprintf(&s, format, ap);
+        if (n == -1)
+            s = NULL;
         va_end(ap);
     }
 

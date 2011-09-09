@@ -50,7 +50,7 @@ gss_add_cred_with_password(OM_uint32 *minor,
                            OM_uint32 *initiator_time_rec,
                            OM_uint32 *acceptor_time_rec)
 {
-    OM_uint32 major;
+    OM_uint32 major, tmpMinor;
     OM_uint32 time_req, time_rec = 0;
     gss_OID_set_desc mechs;
 
@@ -67,18 +67,27 @@ gss_add_cred_with_password(OM_uint32 *minor,
 
     major = gssEapAcquireCred(minor,
                               desired_name,
-                              password,
                               time_req,
                               &mechs,
                               cred_usage,
                               output_cred_handle,
                               actual_mechs,
                               &time_rec);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssEapSetCredPassword(minor, *output_cred_handle, password);
+    if (GSS_ERROR(major))
+        goto cleanup;
 
     if (initiator_time_rec != NULL)
         *initiator_time_rec = time_rec;
     if (acceptor_time_rec != NULL)
         *acceptor_time_rec = time_rec;
+
+cleanup:
+    if (GSS_ERROR(major))
+        gssEapReleaseCred(&tmpMinor, output_cred_handle);
 
     return major;
 }

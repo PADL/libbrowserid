@@ -76,7 +76,7 @@ extern "C" {
 #endif
 
 #if !(defined(__cplusplus)) || (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
-#define GSSEAP_UNUSED __attribute__ ((__unused__)) 
+#define GSSEAP_UNUSED __attribute__ ((__unused__))
 #else
 #define GSSEAP_UNUSED
 #endif
@@ -87,6 +87,13 @@ makeStringBuffer(OM_uint32 *minor,
                  const char *string,
                  gss_buffer_t buffer);
 
+#define makeStringBufferOrCleanup(src, dst)             \
+    do {                                                \
+        major = makeStringBuffer((minor), (src), (dst));\
+        if (GSS_ERROR(major))                           \
+            goto cleanup;                               \
+    } while (0)
+
 OM_uint32
 bufferToString(OM_uint32 *minor,
                const gss_buffer_t buffer,
@@ -96,6 +103,13 @@ OM_uint32
 duplicateBuffer(OM_uint32 *minor,
                 const gss_buffer_t src,
                 gss_buffer_t dst);
+
+#define duplicateBufferOrCleanup(src, dst)              \
+    do {                                                \
+        major = duplicateBuffer((minor), (src), (dst)); \
+        if (GSS_ERROR(major))                           \
+            goto cleanup;                               \
+    } while (0)
 
 static inline int
 bufferEqual(const gss_buffer_t b1, const gss_buffer_t b2)
@@ -224,16 +238,34 @@ gssEapVerifyTokenMIC(OM_uint32 *minor,
 OM_uint32 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 OM_uint32 gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 
+gss_OID
+gssEapPrimaryMechForCred(gss_cred_id_t cred);
+
 OM_uint32
 gssEapAcquireCred(OM_uint32 *minor,
                   const gss_name_t desiredName,
-                  const gss_buffer_t password,
                   OM_uint32 timeReq,
                   const gss_OID_set desiredMechs,
                   int cred_usage,
                   gss_cred_id_t *pCred,
                   gss_OID_set *pActualMechs,
                   OM_uint32 *timeRec);
+
+OM_uint32
+gssEapSetCredPassword(OM_uint32 *minor,
+                      gss_cred_id_t cred,
+                      const gss_buffer_t password);
+
+OM_uint32
+gssEapSetCredService(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     const gss_name_t target);
+
+OM_uint32
+gssEapResolveInitiatorCred(OM_uint32 *minor,
+                           const gss_cred_id_t cred,
+                           const gss_name_t target,
+                           gss_cred_id_t *resolvedCred);
 
 int gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech);
 
@@ -471,6 +503,17 @@ gssEapOidToSaslName(const gss_OID oid);
 
 gss_OID
 gssEapSaslNameToOid(const gss_buffer_t name);
+
+/* util_moonshot.c */
+OM_uint32
+libMoonshotResolveDefaultIdentity(OM_uint32 *minor,
+                                  const gss_cred_id_t cred,
+                                  gss_name_t *pName);
+
+OM_uint32
+libMoonshotResolveInitiatorCred(OM_uint32 *minor,
+                                gss_cred_id_t cred,
+                                const gss_name_t targetName);
 
 /* util_name.c */
 #define EXPORT_NAME_FLAG_OID                    0x1

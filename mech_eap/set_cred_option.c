@@ -42,7 +42,7 @@ setCredRadiusConfigFile(OM_uint32 *minor,
                         const gss_OID oid GSSEAP_UNUSED,
                         const gss_buffer_t buffer)
 {
-    OM_uint32 major;
+    OM_uint32 major, tmpMinor;
     gss_buffer_desc configFileBuffer = GSS_C_EMPTY_BUFFER;
 
     if (buffer != GSS_C_NO_BUFFER && buffer->length != 0) {
@@ -51,10 +51,8 @@ setCredRadiusConfigFile(OM_uint32 *minor,
             return major;
     }
 
-    if (cred->radiusConfigFile != NULL)
-        GSSEAP_FREE(cred->radiusConfigFile);
-
-    cred->radiusConfigFile = (char *)configFileBuffer.value;
+    gss_release_buffer(&tmpMinor, &cred->radiusConfigFile);
+    cred->radiusConfigFile = configFileBuffer;
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -66,7 +64,7 @@ setCredRadiusConfigStanza(OM_uint32 *minor,
                           const gss_OID oid GSSEAP_UNUSED,
                           const gss_buffer_t buffer)
 {
-    OM_uint32 major;
+    OM_uint32 major, tmpMinor;
     gss_buffer_desc configStanzaBuffer = GSS_C_EMPTY_BUFFER;
 
     if (buffer != GSS_C_NO_BUFFER && buffer->length != 0) {
@@ -75,10 +73,8 @@ setCredRadiusConfigStanza(OM_uint32 *minor,
             return major;
     }
 
-    if (cred->radiusConfigStanza != NULL)
-        GSSEAP_FREE(cred->radiusConfigStanza);
-
-    cred->radiusConfigStanza = (char *)configStanzaBuffer.value;
+    gss_release_buffer(&tmpMinor, &cred->radiusConfigStanza);
+    cred->radiusConfigStanza = configStanzaBuffer;
 
     *minor = 0;
     return GSS_S_COMPLETE;

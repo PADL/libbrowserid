@@ -64,6 +64,18 @@ gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     return GSS_S_COMPLETE;
 }
 
+static void
+zeroAndReleasePassword(gss_buffer_t password)
+{
+    if (password->value != NULL) {
+        memset(password->value, 0, password->length);
+        GSSEAP_FREE(password->value);
+    }
+
+    password->value = NULL;
+    password->length = 0;
+}
+
 OM_uint32
 gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
@@ -78,16 +90,15 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     GSSEAP_KRB_INIT(&krbContext);
 
     gssEapReleaseName(&tmpMinor, &cred->name);
+    gssEapReleaseName(&tmpMinor, &cred->target);
 
-    if (cred->password.value != NULL) {
-        memset(cred->password.value, 0, cred->password.length);
-        GSSEAP_FREE(cred->password.value);
-    }
+    zeroAndReleasePassword(&cred->password);
 
-    if (cred->radiusConfigFile != NULL)
-        GSSEAP_FREE(cred->radiusConfigFile);
-    if (cred->radiusConfigStanza != NULL)
-        GSSEAP_FREE(cred->radiusConfigStanza);
+    gss_release_buffer(&tmpMinor, &cred->radiusConfigFile);
+    gss_release_buffer(&tmpMinor, &cred->radiusConfigStanza);
+    gss_release_buffer(&tmpMinor, &cred->caCertificate);
+    gss_release_buffer(&tmpMinor, &cred->subjectNameConstraint);
+    gss_release_buffer(&tmpMinor, &cred->subjectAltNameConstraint);
 
 #ifdef GSSEAP_ENABLE_REAUTH
     if (cred->krbCredCache != NULL) {
@@ -110,21 +121,24 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 }
 
 static OM_uint32
-readDefaultIdentityAndCreds(OM_uint32 *minor,
-                            gss_buffer_t defaultIdentity,
-                            gss_buffer_t defaultCreds)
+readStaticIdentityFile(OM_uint32 *minor,
+                       gss_buffer_t defaultIdentity,
+                       gss_buffer_t defaultPassword)
 {
     OM_uint32 major, tmpMinor;
     FILE *fp = NULL;
     char pwbuf[BUFSIZ], buf[BUFSIZ];
     char *ccacheName;
     struct passwd *pw = NULL, pwd;
+    int i = 0;
 
     defaultIdentity->length = 0;
     defaultIdentity->value = NULL;
 
-    defaultCreds->length = 0;
-    defaultCreds->value = NULL;
+    if (defaultPassword != GSS_C_NO_BUFFER) {
+        defaultPassword->length = 0;
+        defaultPassword->value = NULL;
+    }
 
     ccacheName = getenv("GSSEAP_IDENTITY");
     if (ccacheName == NULL) {
@@ -161,16 +175,20 @@ readDefaultIdentityAndCreds(OM_uint32 *minor,
                 break;
         }
 
-        if (defaultIdentity->value == NULL)
+        if (i == 0)
             dst = defaultIdentity;
-        else if (defaultCreds->value == NULL)
-            dst = defaultCreds;
+        else if (i == 1)
+            dst = defaultPassword;
         else
             break;
 
-        major = duplicateBuffer(minor, &src, dst);
-        if (GSS_ERROR(major))
-            goto cleanup;
+        if (dst != GSS_C_NO_BUFFER) {
+            major = duplicateBuffer(minor, &src, dst);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+
+        i++;
     }
 
     if (defaultIdentity->length == 0) {
@@ -188,16 +206,29 @@ cleanup:
 
     if (GSS_ERROR(major)) {
         gss_release_buffer(&tmpMinor, defaultIdentity);
-        gss_release_buffer(&tmpMinor, defaultCreds);
+        zeroAndReleasePassword(defaultPassword);
     }
 
+    memset(buf, 0, sizeof(buf));
+
     return major;
+}
+
+gss_OID
+gssEapPrimaryMechForCred(gss_cred_id_t cred)
+{
+    gss_OID nameMech = GSS_C_NO_OID;
+
+    if (cred->mechanisms != GSS_C_NO_OID_SET &&
+        cred->mechanisms->count == 1)
+        nameMech = &cred->mechanisms->elements[0];
+
+    return nameMech;
 }
 
 OM_uint32
 gssEapAcquireCred(OM_uint32 *minor,
                   const gss_name_t desiredName,
-                  const gss_buffer_t password,
                   OM_uint32 timeReq GSSEAP_UNUSED,
                   const gss_OID_set desiredMechs,
                   int credUsage,
@@ -207,10 +238,6 @@ gssEapAcquireCred(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_cred_id_t cred;
-    gss_buffer_desc defaultIdentity = GSS_C_EMPTY_BUFFER;
-    gss_name_t defaultIdentityName = GSS_C_NO_NAME;
-    gss_buffer_desc defaultCreds = GSS_C_EMPTY_BUFFER;
-    gss_OID nameMech = GSS_C_NO_OID;
 
     /* XXX TODO validate with changed set_cred_option API */
     *pCred = GSS_C_NO_CREDENTIAL;
@@ -244,21 +271,6 @@ gssEapAcquireCred(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    if (cred->mechanisms != GSS_C_NO_OID_SET &&
-        cred->mechanisms->count == 1)
-        nameMech = &cred->mechanisms->elements[0];
-
-    if (cred->flags & CRED_FLAG_INITIATE) {
-        major = readDefaultIdentityAndCreds(minor, &defaultIdentity, &defaultCreds);
-        if (major == GSS_S_COMPLETE) {
-            major = gssEapImportName(minor, &defaultIdentity, GSS_C_NT_USER_NAME,
-                                     nameMech, &defaultIdentityName);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        } else if (major != GSS_S_CRED_UNAVAIL)
-            goto cleanup;
-    }
-
     if (desiredName != GSS_C_NO_NAME) {
         GSSEAP_MUTEX_LOCK(&desiredName->mutex);
 
@@ -269,78 +281,6 @@ gssEapAcquireCred(OM_uint32 *minor,
         }
 
         GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
-
-        if (defaultIdentityName != GSS_C_NO_NAME) {
-            int nameEqual;
-
-            major = gssEapCompareName(minor, desiredName,
-                                      defaultIdentityName, &nameEqual);
-            if (GSS_ERROR(major))
-                goto cleanup;
-            else if (nameEqual)
-                cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
-        }
-    } else {
-        if (cred->flags & CRED_FLAG_ACCEPT) {
-            gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
-            char serviceName[5 + MAXHOSTNAMELEN];
-
-            /* default host-based service is host@localhost */
-            memcpy(serviceName, "host@", 5);
-            if (gethostname(&serviceName[5], MAXHOSTNAMELEN) != 0) {
-                major = GSS_S_FAILURE;
-                *minor = GSSEAP_NO_HOSTNAME;
-                goto cleanup;
-            }
-
-            nameBuf.value = serviceName;
-            nameBuf.length = strlen((char *)nameBuf.value);
-
-            major = gssEapImportName(minor, &nameBuf, GSS_C_NT_HOSTBASED_SERVICE,
-                                     nameMech, &cred->name);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        } else if (cred->flags & CRED_FLAG_INITIATE) {
-            if (defaultIdentityName == GSS_C_NO_NAME) {
-                major = GSS_S_CRED_UNAVAIL;
-                *minor = GSSEAP_NO_DEFAULT_IDENTITY;
-                goto cleanup;
-            }
-
-            cred->name = defaultIdentityName;
-            defaultIdentityName = GSS_C_NO_NAME;
-        }
-        cred->flags |= CRED_FLAG_DEFAULT_IDENTITY;
-    }
-
-    assert(cred->name != GSS_C_NO_NAME);
-
-    if (password != GSS_C_NO_BUFFER) {
-        major = duplicateBuffer(minor, password, &cred->password);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        cred->flags |= CRED_FLAG_PASSWORD;
-    } else if (defaultCreds.value != NULL &&
-        (cred->flags & CRED_FLAG_DEFAULT_IDENTITY)) {
-        cred->password = defaultCreds;
-
-        defaultCreds.length = 0;
-        defaultCreds.value = NULL;
-
-        cred->flags |= CRED_FLAG_PASSWORD;
-    } else if (cred->flags & CRED_FLAG_INITIATE) {
-        /*
-         * OK, here we need to ask the supplicant if we have creds or it
-         * will acquire them, so GS2 can know whether to prompt for a
-         * password or not.
-         */
-#if 0
-        && !gssEapCanReauthP(cred, GSS_C_NO_NAME, timeReq)
-#endif
-        major = GSS_S_CRED_UNAVAIL;
-        *minor = GSSEAP_NO_DEFAULT_CRED;
-        goto cleanup;
     }
 
     if (pActualMechs != NULL) {
@@ -360,12 +300,6 @@ gssEapAcquireCred(OM_uint32 *minor,
 cleanup:
     if (GSS_ERROR(major))
         gssEapReleaseCred(&tmpMinor, &cred);
-    gssEapReleaseName(&tmpMinor, &defaultIdentityName);
-    gss_release_buffer(&tmpMinor, &defaultIdentity);
-    if (defaultCreds.value != NULL) {
-        memset(defaultCreds.value, 0, defaultCreds.length);
-        gss_release_buffer(&tmpMinor, &defaultCreds);
-    }
 
     return major;
 }
@@ -390,6 +324,72 @@ gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech)
     return present;
 }
 
+static OM_uint32
+staticIdentityFileResolveDefaultIdentity(OM_uint32 *minor,
+                                         const gss_cred_id_t cred,
+                                         gss_name_t *pName)
+{
+    OM_uint32 major, tmpMinor;
+    gss_OID nameMech = gssEapPrimaryMechForCred(cred);
+    gss_buffer_desc defaultIdentity = GSS_C_EMPTY_BUFFER;
+
+    *pName = GSS_C_NO_NAME;
+
+    major = readStaticIdentityFile(minor, &defaultIdentity, GSS_C_NO_BUFFER);
+    if (major == GSS_S_COMPLETE) {
+        major = gssEapImportName(minor, &defaultIdentity, GSS_C_NT_USER_NAME,
+                                 nameMech, pName);
+    }
+
+    gss_release_buffer(&tmpMinor, &defaultIdentity);
+
+    return major;
+}
+
+static OM_uint32
+gssEapResolveCredIdentity(OM_uint32 *minor,
+                          gss_cred_id_t cred)
+{
+    OM_uint32 major;
+    gss_OID nameMech = gssEapPrimaryMechForCred(cred);
+
+    if (cred->name != GSS_C_NO_NAME) {
+        *minor = 0;
+        return GSS_S_COMPLETE;
+    }
+
+    if (cred->flags & CRED_FLAG_ACCEPT) {
+        gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+        char serviceName[5 + MAXHOSTNAMELEN];
+
+        /* default host-based service is host@localhost */
+        memcpy(serviceName, "host@", 5);
+        if (gethostname(&serviceName[5], MAXHOSTNAMELEN) != 0) {
+            *minor = GSSEAP_NO_HOSTNAME;
+            return GSS_S_FAILURE;
+        }
+
+        nameBuf.value = serviceName;
+        nameBuf.length = strlen((char *)nameBuf.value);
+
+        major = gssEapImportName(minor, &nameBuf, GSS_C_NT_HOSTBASED_SERVICE,
+                                 nameMech, &cred->name);
+        if (GSS_ERROR(major))
+            return major;
+    } else if (cred->flags & CRED_FLAG_INITIATE) {
+#ifdef HAVE_MOONSHOT_GET_IDENTITY
+        major = libMoonshotResolveDefaultIdentity(minor, cred, &cred->name);
+        if (major == GSS_S_CRED_UNAVAIL)
+#endif
+            major = staticIdentityFileResolveDefaultIdentity(minor, cred, &cred->name);
+        if (major != GSS_S_CRED_UNAVAIL)
+            return major;
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
 OM_uint32
 gssEapInquireCred(OM_uint32 *minor,
                   gss_cred_id_t cred,
@@ -402,9 +402,16 @@ gssEapInquireCred(OM_uint32 *minor,
     time_t now, lifetime;
 
     if (name != NULL) {
-        major = gssEapDuplicateName(minor, cred->name, name);
+        major = gssEapResolveCredIdentity(minor, cred);
         if (GSS_ERROR(major))
-            return major;
+            goto cleanup;
+
+        if (cred->name != GSS_C_NO_NAME) {
+            major = gssEapDuplicateName(minor, cred->name, name);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        } else
+            *name = GSS_C_NO_NAME;
     }
 
     if (cred_usage != NULL) {
@@ -429,7 +436,7 @@ gssEapInquireCred(OM_uint32 *minor,
         else
             major = gssEapIndicateMechs(minor, mechanisms);
         if (GSS_ERROR(major))
-            return major;
+            goto cleanup;
     }
 
     if (cred->expiryTime == 0) {
@@ -446,12 +453,233 @@ gssEapInquireCred(OM_uint32 *minor,
     }
 
     if (lifetime == 0) {
+        major = GSS_S_CREDENTIALS_EXPIRED;
         *minor = GSSEAP_CRED_EXPIRED;
-        return GSS_S_CREDENTIALS_EXPIRED;
+        goto cleanup;
     }
 
     major = GSS_S_COMPLETE;
     *minor = 0;
+
+cleanup:
+    return major;
+}
+
+OM_uint32
+gssEapSetCredPassword(OM_uint32 *minor,
+                      gss_cred_id_t cred,
+                      const gss_buffer_t password)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc newPassword = GSS_C_EMPTY_BUFFER;
+
+    if (cred->flags & CRED_FLAG_RESOLVED) {
+        major = GSS_S_FAILURE;
+        *minor = GSSEAP_CRED_RESOLVED;
+        goto cleanup;
+    }
+
+    if (password != GSS_C_NO_BUFFER) {
+        major = duplicateBuffer(minor, password, &newPassword);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        cred->flags |= CRED_FLAG_PASSWORD;
+    } else {
+        cred->flags &= ~(CRED_FLAG_PASSWORD);
+    }
+
+    gss_release_buffer(&tmpMinor, &cred->password);
+    cred->password = newPassword;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    return major;
+}
+
+static OM_uint32
+gssEapDuplicateCred(OM_uint32 *minor,
+                    const gss_cred_id_t src,
+                    gss_cred_id_t *pDst)
+{
+    OM_uint32 major, tmpMinor;
+    gss_cred_id_t dst = GSS_C_NO_CREDENTIAL;
+
+    *pDst = GSS_C_NO_CREDENTIAL;
+
+    major = gssEapAllocCred(minor, &dst);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    dst->flags = src->flags;
+
+    if (src->name != GSS_C_NO_NAME) {
+        major = gssEapDuplicateName(minor, src->name, &dst->name);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if (src->target != GSS_C_NO_NAME) {
+        major = gssEapDuplicateName(minor, src->target, &dst->target);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if (src->password.value != NULL) {
+        major = duplicateBuffer(minor, &src->password, &dst->password);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    major = duplicateOidSet(minor, src->mechanisms, &dst->mechanisms);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    dst->expiryTime = src->expiryTime;
+
+    if (src->radiusConfigFile.value != NULL)
+        duplicateBufferOrCleanup(&src->radiusConfigFile, &dst->radiusConfigFile);
+    if (src->radiusConfigStanza.value != NULL)
+        duplicateBufferOrCleanup(&src->radiusConfigStanza, &dst->radiusConfigStanza);
+    if (src->caCertificate.value != NULL)
+        duplicateBufferOrCleanup(&src->caCertificate, &dst->caCertificate);
+    if (src->subjectNameConstraint.value != NULL)
+        duplicateBufferOrCleanup(&src->subjectNameConstraint, &dst->subjectNameConstraint);
+    if (src->subjectAltNameConstraint.value != NULL)
+        duplicateBufferOrCleanup(&src->subjectAltNameConstraint, &dst->subjectAltNameConstraint);
+
+#ifdef GSSEAP_ENABLE_REAUTH
+    /* XXX krbCredCache, reauthCred */
+#endif
+
+    *pDst = dst;
+    dst = GSS_C_NO_CREDENTIAL;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    gssEapReleaseCred(&tmpMinor, &dst);
+
+    return major;
+}
+
+static OM_uint32
+staticIdentityFileResolveInitiatorCred(OM_uint32 *minor, gss_cred_id_t cred)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc defaultIdentity = GSS_C_EMPTY_BUFFER;
+    gss_name_t defaultIdentityName = GSS_C_NO_NAME;
+    gss_buffer_desc defaultPassword = GSS_C_EMPTY_BUFFER;
+    int isDefaultIdentity = FALSE;
+
+    major = readStaticIdentityFile(minor, &defaultIdentity, &defaultPassword);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssEapImportName(minor, &defaultIdentity, GSS_C_NT_USER_NAME,
+                             gssEapPrimaryMechForCred(cred), &defaultIdentityName);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if (defaultIdentityName == GSS_C_NO_NAME) {
+        if (cred->name == GSS_C_NO_NAME) {
+            major = GSS_S_CRED_UNAVAIL;
+            *minor = GSSEAP_NO_DEFAULT_IDENTITY;
+            goto cleanup;
+        }
+    } else {
+        if (cred->name == GSS_C_NO_NAME) {
+            cred->name = defaultIdentityName;
+            defaultIdentityName = GSS_C_NO_NAME;
+            isDefaultIdentity = TRUE;
+        } else {
+            major = gssEapCompareName(minor, cred->name,
+                                      defaultIdentityName, &isDefaultIdentity);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+    }
+
+    if (isDefaultIdentity &&
+        (cred->flags & CRED_FLAG_PASSWORD) == 0) {
+        major = gssEapSetCredPassword(minor, cred, &defaultPassword);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+cleanup:
+    gssEapReleaseName(&tmpMinor, &defaultIdentityName);
+    zeroAndReleasePassword(&defaultPassword);
+    gss_release_buffer(&tmpMinor, &defaultIdentity);
+
+    return major;
+}
+
+OM_uint32
+gssEapResolveInitiatorCred(OM_uint32 *minor,
+                           const gss_cred_id_t cred,
+                           const gss_name_t targetName
+#ifndef HAVE_MOONSHOT_GET_IDENTITY
+                                                       GSSEAP_UNUSED
+#endif
+                           ,
+                           gss_cred_id_t *pResolvedCred)
+{
+    OM_uint32 major, tmpMinor;
+    gss_cred_id_t resolvedCred = GSS_C_NO_CREDENTIAL;
+
+    if (cred == GSS_C_NO_CREDENTIAL) {
+        major = gssEapAcquireCred(minor,
+                                  GSS_C_NO_NAME,
+                                  GSS_C_INDEFINITE,
+                                  GSS_C_NO_OID_SET,
+                                  GSS_C_INITIATE,
+                                  &resolvedCred,
+                                  NULL,
+                                  NULL);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    } else {
+        if ((cred->flags & CRED_FLAG_INITIATE) == 0) {
+            major = GSS_S_NO_CRED;
+            *minor = GSSEAP_CRED_USAGE_MISMATCH;
+            goto cleanup;
+        }
+
+        major = gssEapDuplicateCred(minor, cred, &resolvedCred);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if ((resolvedCred->flags & CRED_FLAG_RESOLVED) == 0) {
+#ifdef HAVE_MOONSHOT_GET_IDENTITY
+        major = libMoonshotResolveInitiatorCred(minor, resolvedCred, targetName);
+        if (major == GSS_S_CRED_UNAVAIL)
+#endif
+            major = staticIdentityFileResolveInitiatorCred(minor, resolvedCred);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        if ((resolvedCred->flags & CRED_FLAG_PASSWORD) == 0) {
+            major = GSS_S_CRED_UNAVAIL;
+            *minor = GSSEAP_NO_DEFAULT_CRED;
+            goto cleanup;
+        }
+
+        resolvedCred->flags |= CRED_FLAG_RESOLVED;
+    }
+
+    *pResolvedCred = resolvedCred;
+    resolvedCred = GSS_C_NO_CREDENTIAL;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    gssEapReleaseCred(&tmpMinor, &resolvedCred);
 
     return major;
 }
