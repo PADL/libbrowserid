@@ -1,12 +1,5 @@
 - integration with initiator-side EAP channel bindings
-- integration with final supplicant architecture
-- test Heimdal port
-
-- fix ABNF: no slash in the case where there is no host
 - always intern OIDs so they never need to be freed
-
-- handle many-to-many Shibboleth attribute mappings; need to encode
-  both attribute and value index into more
+- handle many-to-many Shibboleth attribute mappings; need to encode both attribute and value index into more
 - add --with-xerces option
-- proper acquire_cred_ext implementation
-- MIC on flags token (merge ext-mic branch)
+- proper acquire_cred_ext implementation pending specification
