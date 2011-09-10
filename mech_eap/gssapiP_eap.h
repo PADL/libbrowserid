@@ -224,6 +224,36 @@ struct gss_ctx_id_struct
 #define KEY_USAGE_INITIATOR_SEAL            24
 #define KEY_USAGE_INITIATOR_SIGN            25
 
+/* accept_sec_context.c */
+OM_uint32
+gssEapAcceptSecContext(OM_uint32 *minor,
+                       gss_ctx_id_t ctx,
+                       gss_cred_id_t cred,
+                       gss_buffer_t input_token,
+                       gss_channel_bindings_t input_chan_bindings,
+                       gss_name_t *src_name,
+                       gss_OID *mech_type,
+                       gss_buffer_t output_token,
+                       OM_uint32 *ret_flags,
+                       OM_uint32 *time_rec,
+                       gss_cred_id_t *delegated_cred_handle);
+
+/* init_sec_context.c */
+OM_uint32
+gssEapInitSecContext(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     gss_ctx_id_t ctx,
+                     gss_name_t target_name,
+                     gss_OID mech_type,
+                     OM_uint32 req_flags,
+                     OM_uint32 time_req,
+                     gss_channel_bindings_t input_chan_bindings,
+                     gss_buffer_t input_token,
+                     gss_OID *actual_mech_type,
+                     gss_buffer_t output_token,
+                     OM_uint32 *ret_flags,
+                     OM_uint32 *time_rec);
+
 /* wrap_iov.c */
 OM_uint32
 gssEapWrapOrGetMIC(OM_uint32 *minor,

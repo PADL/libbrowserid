@@ -858,9 +858,9 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
     },
 };
 
-OM_uint32 GSSAPI_CALLCONV
-gss_accept_sec_context(OM_uint32 *minor,
-                       gss_ctx_id_t *context_handle,
+OM_uint32
+gssEapAcceptSecContext(OM_uint32 *minor,
+                       gss_ctx_id_t ctx,
                        gss_cred_id_t cred,
                        gss_buffer_t input_token,
                        gss_channel_bindings_t input_chan_bindings,
@@ -872,30 +872,6 @@ gss_accept_sec_context(OM_uint32 *minor,
                        gss_cred_id_t *delegated_cred_handle)
 {
     OM_uint32 major, tmpMinor;
-    gss_ctx_id_t ctx = *context_handle;
-
-    *minor = 0;
-
-    output_token->length = 0;
-    output_token->value = NULL;
-
-    if (src_name != NULL)
-        *src_name = GSS_C_NO_NAME;
-
-    if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
-        *minor = GSSEAP_TOK_TRUNC;
-        return GSS_S_DEFECTIVE_TOKEN;
-    }
-
-    if (ctx == GSS_C_NO_CONTEXT) {
-        major = gssEapAllocContext(minor, &ctx);
-        if (GSS_ERROR(major))
-            return major;
-
-        *context_handle = ctx;
-    }
-
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (cred == GSS_C_NO_CREDENTIAL) {
         if (ctx->cred == GSS_C_NO_CREDENTIAL) {
@@ -972,10 +948,6 @@ gss_accept_sec_context(OM_uint32 *minor,
 cleanup:
     if (cred != GSS_C_NO_CREDENTIAL)
         GSSEAP_MUTEX_UNLOCK(&cred->mutex);
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
-
-    if (GSS_ERROR(major))
-        gssEapReleaseContext(&tmpMinor, context_handle);
 
     return major;
 }
@@ -1061,3 +1033,62 @@ eapGssSmAcceptGssReauth(OM_uint32 *minor,
     return major;
 }
 #endif /* GSSEAP_ENABLE_REAUTH */
+
+OM_uint32 GSSAPI_CALLCONV
+gss_accept_sec_context(OM_uint32 *minor,
+                       gss_ctx_id_t *context_handle,
+                       gss_cred_id_t cred,
+                       gss_buffer_t input_token,
+                       gss_channel_bindings_t input_chan_bindings,
+                       gss_name_t *src_name,
+                       gss_OID *mech_type,
+                       gss_buffer_t output_token,
+                       OM_uint32 *ret_flags,
+                       OM_uint32 *time_rec,
+                       gss_cred_id_t *delegated_cred_handle)
+{
+    OM_uint32 major, tmpMinor;
+    gss_ctx_id_t ctx = *context_handle;
+
+    *minor = 0;
+
+    output_token->length = 0;
+    output_token->value = NULL;
+
+    if (src_name != NULL)
+        *src_name = GSS_C_NO_NAME;
+
+    if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
+        *minor = GSSEAP_TOK_TRUNC;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    if (ctx == GSS_C_NO_CONTEXT) {
+        major = gssEapAllocContext(minor, &ctx);
+        if (GSS_ERROR(major))
+            return major;
+
+        *context_handle = ctx;
+    }
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    major = gssEapAcceptSecContext(minor,
+                                   ctx,
+                                   cred,
+                                   input_token,
+                                   input_chan_bindings,
+                                   src_name,
+                                   mech_type,
+                                   output_token,
+                                   ret_flags,
+                                   time_rec,
+                                   delegated_cred_handle);
+
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    if (GSS_ERROR(major))
+        gssEapReleaseContext(&tmpMinor, context_handle);
+
+    return major;
+}

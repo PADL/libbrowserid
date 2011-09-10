@@ -58,6 +58,7 @@ gssEapAllocContext(OM_uint32 *minor,
     }
 
     ctx->state = GSSEAP_STATE_INITIAL;
+    ctx->mechanismUsed = GSS_C_NO_OID;
 
     /*
      * Integrity, confidentiality, sequencing and replay detection are
@@ -149,6 +150,8 @@ gssEapMakeToken(OM_uint32 *minor,
                 gss_buffer_t outputToken)
 {
     unsigned char *p;
+
+    assert(ctx->mechanismUsed != GSS_C_NO_OID);
 
     outputToken->length = tokenSize(ctx->mechanismUsed, innerToken->length);
     outputToken->value = GSSEAP_MALLOC(outputToken->length);
