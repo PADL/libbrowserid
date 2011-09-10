@@ -71,6 +71,13 @@ extern gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_STANZA;
 extern gss_OID GSS_EAP_CRED_SET_CRED_FLAG;
 
 /*
+ * Password; for mechanism glues that do not support
+ * gss_acquire_cred_with_password(), this can be set
+ * on an existing credentials handle.
+ */
+extern gss_OID GSS_EAP_CRED_SET_CRED_PASSWORD;
+
+/*
  * Credentials flag indicating the local attributes
  * processing should be skipped.
  */

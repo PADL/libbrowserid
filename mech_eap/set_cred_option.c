@@ -112,6 +112,15 @@ setCredFlag(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+static OM_uint32
+setCredPassword(OM_uint32 *minor,
+                gss_cred_id_t cred,
+                const gss_OID oid GSSEAP_UNUSED,
+                const gss_buffer_t buffer)
+{
+    return gssEapSetCredPassword(minor, cred, buffer);
+}
+
 static struct {
     gss_OID_desc oid;
     OM_uint32 (*setOption)(OM_uint32 *, gss_cred_id_t cred,
@@ -132,11 +141,17 @@ static struct {
         { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x03\x03\x03" },
         setCredFlag,
     },
+    /* 1.3.6.1.4.1.5322.22.3.3.4 */
+    {
+        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x03\x03\x04" },
+        setCredPassword,
+    },
 };
 
 gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE     = &setCredOps[0].oid;
 gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_STANZA   = &setCredOps[1].oid;
 gss_OID GSS_EAP_CRED_SET_CRED_FLAG              = &setCredOps[2].oid;
+gss_OID GSS_EAP_CRED_SET_CRED_PASSWORD          = &setCredOps[3].oid;
 
 OM_uint32 GSSAPI_CALLCONV
 gssspi_set_cred_option(OM_uint32 *minor,
