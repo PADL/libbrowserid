@@ -165,8 +165,8 @@ gssEapInitLibRadsec(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
-static void gssEapInitiatorInit(void) __attribute__((constructor));
-static void gssEapFinalize(void) __attribute__((destructor));
+static void gssEapInitiatorInit(void) GSSEAP_CONSTRUCTOR;
+static void gssEapFinalize(void) GSSEAP_DESTRUCTOR;
 
 static void
 gssEapInitiatorInit(void)

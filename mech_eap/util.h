@@ -748,6 +748,9 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSAPI_CALLCONV                 KRB5_CALLCONV
 #endif
 
+#define GSSEAP_CONSTRUCTOR              __attribute__((constructor))
+#define GSSEAP_DESTRUCTOR               __attribute__((destructor))
+
 #define GSSEAP_NOT_IMPLEMENTED          do {            \
         assert(0 && "not implemented");                 \
         *minor = ENOSYS;                                \
