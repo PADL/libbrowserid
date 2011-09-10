@@ -36,7 +36,7 @@
  * Wrapper for retrieving a naming attribute.
  */
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_get_name_attribute(OM_uint32 *minor,
                        gss_name_t name,
                        gss_buffer_t attr,

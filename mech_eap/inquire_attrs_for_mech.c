@@ -45,7 +45,7 @@
 #define MA_SUPPORTED(ma)    MA_ADD((ma), mech_attrs)
 #define MA_KNOWN(ma)        MA_ADD((ma), known_mech_attrs)
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_inquire_attrs_for_mech(OM_uint32 *minor,
                            gss_const_OID mech_oid,
                            gss_OID_set *mech_attrs,

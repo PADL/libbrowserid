@@ -858,7 +858,7 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
     },
 };
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_accept_sec_context(OM_uint32 *minor,
                        gss_ctx_id_t *context_handle,
                        gss_cred_id_t cred,

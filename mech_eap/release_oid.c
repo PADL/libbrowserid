@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_internal_release_oid(OM_uint32 *minor,
                          gss_OID *oid)
 {

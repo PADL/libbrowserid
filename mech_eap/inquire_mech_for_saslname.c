@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_inquire_saslname_for_mech(OM_uint32 *minor,
                               const gss_OID mech,
                               gss_buffer_t sasl_mech_name,

@@ -138,7 +138,7 @@ gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_FILE     = &setCredOps[0].oid;
 gss_OID GSS_EAP_CRED_SET_RADIUS_CONFIG_STANZA   = &setCredOps[1].oid;
 gss_OID GSS_EAP_CRED_SET_CRED_FLAG              = &setCredOps[2].oid;
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gssspi_set_cred_option(OM_uint32 *minor,
                        gss_cred_id_t *pCred,
                        const gss_OID desired_object,

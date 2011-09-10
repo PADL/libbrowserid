@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gssspi_authorize_localname(OM_uint32 *minor,
                            const gss_name_t name GSSEAP_UNUSED,
                            gss_const_buffer_t local_user GSSEAP_UNUSED,

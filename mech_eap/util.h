@@ -744,6 +744,10 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_FREE                     free
 #define GSSEAP_REALLOC                  realloc
 
+#ifndef GSSAPI_CALLCONV
+#define GSSAPI_CALLCONV                 KRB5_CALLCONV
+#endif
+
 #define GSSEAP_NOT_IMPLEMENTED          do {            \
         assert(0 && "not implemented");                 \
         *minor = ENOSYS;                                \

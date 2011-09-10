@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_inquire_names_for_mech(OM_uint32 *minor,
                            gss_OID mechanism,
                            gss_OID_set *ret_name_types)

@@ -59,7 +59,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_pseudo_random(OM_uint32 *minor,
                   gss_ctx_id_t ctx,
                   int prf_key,

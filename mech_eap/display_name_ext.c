@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_display_name_ext(OM_uint32 *minor,
                      gss_name_t name GSSEAP_UNUSED,
                      gss_OID display_as_name_type GSSEAP_UNUSED,

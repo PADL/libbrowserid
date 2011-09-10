@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_release_cred(OM_uint32 *minor,
                  gss_cred_id_t *cred_handle)
 {

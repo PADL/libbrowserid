@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_inquire_cred_by_mech(OM_uint32 *minor,
                          gss_cred_id_t cred,
                          gss_OID mech_type,

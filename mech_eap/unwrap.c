@@ -36,7 +36,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_unwrap(OM_uint32 *minor,
            gss_ctx_id_t ctx,
            gss_buffer_t input_message_buffer,

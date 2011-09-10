@@ -36,11 +36,12 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32 gss_inquire_name(OM_uint32 *minor,
-                           gss_name_t name,
-                           int *name_is_MN,
-                           gss_OID *MN_mech,
-                           gss_buffer_set_t *attrs)
+OM_uint32 GSSAPI_CALLCONV
+gss_inquire_name(OM_uint32 *minor,
+                 gss_name_t name,
+                 int *name_is_MN,
+                 gss_OID *MN_mech,
+                 gss_buffer_set_t *attrs)
 {
     OM_uint32 major, tmpMinor;
 

@@ -325,7 +325,7 @@ gssEapImportContext(OM_uint32 *minor,
     return major;
 }
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_import_sec_context(OM_uint32 *minor,
                        gss_buffer_t interprocess_token,
                        gss_ctx_id_t *context_handle)

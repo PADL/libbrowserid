@@ -32,7 +32,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_store_cred(OM_uint32 *minor,
                const gss_cred_id_t cred,
                gss_cred_usage_t input_usage,

@@ -32,7 +32,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_map_name_to_any(OM_uint32 *minor,
                     gss_name_t name,
                     int authenticated,

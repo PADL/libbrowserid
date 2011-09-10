@@ -32,7 +32,7 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gssspi_mech_invoke(OM_uint32 *minor,
                    const gss_OID desired_mech,
                    const gss_OID desired_object,

@@ -43,7 +43,7 @@ static struct {
 } inquireCredOps[] = {
 };
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_inquire_cred_by_oid(OM_uint32 *minor,
                         const gss_cred_id_t cred_handle,
                         const gss_OID desired_object,

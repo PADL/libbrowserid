@@ -104,7 +104,7 @@ static struct {
     },
 };
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_inquire_sec_context_by_oid(OM_uint32 *minor,
                                const gss_ctx_id_t ctx,
                                const gss_OID desired_object,

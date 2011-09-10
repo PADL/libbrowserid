@@ -528,7 +528,7 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor,
     return major;
 }
 
-OM_uint32
+OM_uint32 GSSAPI_CALLCONV
 gss_unwrap_iov(OM_uint32 *minor,
                gss_ctx_id_t ctx,
                int *conf_state,
