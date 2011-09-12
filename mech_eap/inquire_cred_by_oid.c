@@ -36,22 +36,25 @@
 
 #include "gssapiP_eap.h"
 
+#if 0
 static struct {
     gss_OID_desc oid;
     OM_uint32 (*inquire)(OM_uint32 *, const gss_cred_id_t,
                          const gss_OID, gss_buffer_set_t *);
 } inquireCredOps[] = {
 };
+#endif
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_cred_by_oid(OM_uint32 *minor,
                         const gss_cred_id_t cred_handle,
-                        const gss_OID desired_object,
+                        const gss_OID desired_object GSSEAP_UNUSED,
                         gss_buffer_set_t *data_set)
 {
     OM_uint32 major;
+#if 0
     int i;
-
+#endif
     *data_set = GSS_C_NO_BUFFER_SET;
 
     if (cred_handle == GSS_C_NO_CREDENTIAL) {
@@ -64,6 +67,7 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
     major = GSS_S_UNAVAILABLE;
     *minor = GSSEAP_BAD_CRED_OPTION;
 
+#if 0
     for (i = 0; i < sizeof(inquireCredOps) / sizeof(inquireCredOps[0]); i++) {
         if (oidEqual(&inquireCredOps[i].oid, desired_object)) {
             major = (*inquireCredOps[i].inquire)(minor, cred_handle,
@@ -71,6 +75,7 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
             break;
         }
     }
+#endif
 
     GSSEAP_MUTEX_UNLOCK(&cred_handle->mutex);
 

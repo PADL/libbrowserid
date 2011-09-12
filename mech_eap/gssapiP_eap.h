@@ -42,11 +42,19 @@
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
+#endif
+#ifdef HAVE_STDARG_H
 #include <stdarg.h>
+#endif
 #include <time.h>
+#ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
+#endif
 
 /* GSS headers */
 #include <gssapi/gssapi.h>
@@ -66,6 +74,7 @@ typedef const gss_OID_desc *gss_const_OID;
 #include <krb5.h>
 
 /* EAP headers */
+#include <includes.h>
 #include <common.h>
 #include <eap_peer/eap.h>
 #include <eap_peer/eap_config.h>

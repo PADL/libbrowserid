@@ -36,22 +36,26 @@
 
 #include "gssapiP_eap.h"
 
+#if 0
 static struct {
     gss_OID_desc oid;
     OM_uint32 (*setOption)(OM_uint32 *, gss_ctx_id_t *pCtx,
                            const gss_OID, const gss_buffer_t);
 } setCtxOps[] = {
 };
+#endif
 
 OM_uint32 GSSAPI_CALLCONV
 gss_set_sec_context_option(OM_uint32 *minor,
                            gss_ctx_id_t *pCtx,
-                           const gss_OID desired_object,
-                           const gss_buffer_t value)
+                           const gss_OID desired_object GSSEAP_UNUSED,
+                           const gss_buffer_t value GSSEAP_UNUSED)
 {
     OM_uint32 major;
     gss_ctx_id_t ctx;
+#if 0
     int i;
+#endif
 
     major = GSS_S_UNAVAILABLE;
     *minor = GSSEAP_BAD_CONTEXT_OPTION;
@@ -64,6 +68,7 @@ gss_set_sec_context_option(OM_uint32 *minor,
     if (ctx != GSS_C_NO_CONTEXT)
         GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
+#if 0
     for (i = 0; i < sizeof(setCtxOps) / sizeof(setCtxOps[0]); i++) {
         if (oidEqual(&setCtxOps[i].oid, desired_object)) {
             major = (*setCtxOps[i].setOption)(minor, &ctx,
@@ -71,6 +76,7 @@ gss_set_sec_context_option(OM_uint32 *minor,
             break;
         }
     }
+#endif
 
     if (pCtx != NULL && *pCtx == NULL)
         *pCtx = ctx;

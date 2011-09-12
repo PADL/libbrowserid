@@ -61,11 +61,21 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_ 1
 
+#ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
 #include <string.h>
 #include <errno.h>
 
 #include <krb5.h>
+
+#ifdef WIN32
+#define inline __inline
+#define snprintf _snprintf
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,7 +85,7 @@ extern "C" {
 #define MIN(_a,_b)  ((_a)<(_b)?(_a):(_b))
 #endif
 
-#if !(defined(__cplusplus)) || (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
+#if !defined(WIN32) && (!(defined(__cplusplus)) || (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)))
 #define GSSEAP_UNUSED __attribute__ ((__unused__))
 #else
 #define GSSEAP_UNUSED
@@ -748,8 +758,13 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSAPI_CALLCONV                 KRB5_CALLCONV
 #endif
 
+#ifdef WIN32
+#define GSSEAP_CONSTRUCTOR
+#define GSSEAP_DESTRUCTOR
+#else
 #define GSSEAP_CONSTRUCTOR              __attribute__((constructor))
 #define GSSEAP_DESTRUCTOR               __attribute__((destructor))
+#endif
 
 #define GSSEAP_NOT_IMPLEMENTED          do {            \
         assert(0 && "not implemented");                 \
@@ -757,10 +772,24 @@ verifyTokenHeader(OM_uint32 *minor,
         return GSS_S_FAILURE;                           \
     } while (0)
 
+#ifdef WIN32
+
+#include <winbase.h>
+
+#define GSSEAP_MUTEX                    CRITICAL_SECTION
+
+#define GSSEAP_MUTEX_INIT(m)            (InitializeCriticalSection((m)), 0)
+#define GSSEAP_MUTEX_DESTROY(m)         DeleteCriticalSection((m))
+#define GSSEAP_MUTEX_LOCK(m)            EnterCriticalSection((m))
+#define GSSEAP_MUTEX_UNLOCK(m)          LeaveCriticalSection((m))
+
+/* XXX yet to implement thread-local wrappers */
+
+#else
+
 #include <pthread.h>
 
 #define GSSEAP_MUTEX                    pthread_mutex_t
-#define GSSEAP_MUTEX_INITIALIZER        PTHREAD_MUTEX_INITIALIZER
 
 #define GSSEAP_MUTEX_INIT(m)            pthread_mutex_init((m), NULL)
 #define GSSEAP_MUTEX_DESTROY(m)         pthread_mutex_destroy((m))
@@ -775,6 +804,8 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_THREAD_ONCE              pthread_once_t
 #define GSSEAP_ONCE(o, i)               pthread_once((o), (i))
 #define GSSEAP_ONCE_INITIALIZER         PTHREAD_ONCE_INIT
+
+#endif /* WIN32 */
 
 /* Helper functions */
 static inline void
