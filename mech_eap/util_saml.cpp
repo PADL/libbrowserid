@@ -46,6 +46,7 @@
 #include <xmltooling/util/DateTime.h>
 
 #include <saml/exceptions.h>
+#include <saml/SAMLConfig.h>
 #include <saml/saml1/core/Assertions.h>
 #include <saml/saml2/core/Assertions.h>
 #include <saml/saml2/metadata/Metadata.h>
@@ -322,8 +323,17 @@ gss_eap_saml_assertion_provider::prefix(void) const
 bool
 gss_eap_saml_assertion_provider::init(void)
 {
-    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML_ASSERTION, createAttrContext);
-    return true;
+    bool ret = false;
+
+    try {
+        ret = SAMLConfig::getConfig().init();
+    } catch (exception &e) {
+    }
+
+    if (ret)
+        gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML_ASSERTION, createAttrContext);
+
+    return ret;
 }
 
 void

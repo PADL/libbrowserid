@@ -129,7 +129,7 @@ AC_MSG_RESULT($found_shibsp)
 if test x_$found_shibsp != x_yes; then
    AC_MSG_ERROR([
 ----------------------------------------------------------------------
-  Cannot find Shibboleth/OpenSAML libraries.
+  Cannot find Shibboleth libraries.
 
   Please install Shibboleth or specify installation directory with
   --with-shibsp=(dir).
@@ -137,11 +137,12 @@ if test x_$found_shibsp != x_yes; then
 ])
 else
 	printf "Shibboleth found in $shibspdir\n";
-	SHIBSP_LIBS="-lshibsp  -lsaml -lxml-security-c -lxmltooling -lxerces-c";
+	SHIBSP_LIBS="-lshibsp -lsaml -lxml-security-c -lxmltooling -lxerces-c";
 	SHIBSP_LDFLAGS="-L$shibspdir/lib";
 	AC_SUBST(SHIBSP_CXXFLAGS)
 	AC_SUBST(SHIBSP_LDFLAGS)
 	AC_SUBST(SHIBSP_LIBS)
+	AC_DEFINE_UNQUOTED([HAVE_SHIBSP], 1, [Define is Shibboleth SP is available])
 fi
 ])dnl
 
@@ -154,6 +155,7 @@ AC_ARG_WITH(shibresolver,
        [Use Shibboleth resolver (in specified installation directory)]),
     [check_shibresolver_dir="$withval"],
     [check_shibresolver_dir=])
+if test x_$check_shibresolver_dir != x_no; then
 for dir in $check_shibresolver_dir $prefix /usr /usr/local ; do
    shibresolverdir="$dir"
    if test -f "$dir/include/shibresolver/resolver.h"; then
@@ -163,11 +165,14 @@ for dir in $check_shibresolver_dir $prefix /usr /usr/local ; do
      break;
    fi
 done
+fi
 AC_MSG_RESULT($found_shibresolver)
+if test x_$check_shibresolver_dir != x_no; then
 if test x_$found_shibresolver != x_yes; then
-   AC_MSG_ERROR([
+   AC_MSG_WARN([
 ----------------------------------------------------------------------
-  Cannot find Shibboleth resolver libraries.
+  Cannot find Shibboleth resolver libraries, building without
+  Shibboleth support.
 
   Please install Shibboleth or specify installation directory with
   --with-shibresolver=(dir).
@@ -180,7 +185,54 @@ else
 	AC_SUBST(SHIBRESOLVER_CXXFLAGS)
 	AC_SUBST(SHIBRESOLVER_LDFLAGS)
 	AC_SUBST(SHIBRESOLVER_LIBS)
+	AC_DEFINE_UNQUOTED([HAVE_SHIBRESOLVER], 1, [Define is Shibboleth resolver is available])
 fi
+fi
+AM_CONDITIONAL(SHIBRESOLVER, test "x_$check_shibresolver_dir" != "x_no")
+])dnl
+
+AC_DEFUN([AX_CHECK_OPENSAML],
+[AC_MSG_CHECKING(for OpenSAML implementation)
+OPENSAML_DIR=
+found_opensaml="no"
+AC_ARG_WITH(opensaml,
+    AC_HELP_STRING([--with-opensaml],
+       [Use OpenSAML (in specified installation directory)]),
+    [check_opensaml_dir="$withval"],
+    [check_opensaml_dir=])
+if test x_$check_opensaml_dir != x_no; then
+for dir in $check_opensaml_dir $prefix /usr /usr/local ; do
+   opensamldir="$dir"
+   if test -f "$dir/include/saml/Assertion.h"; then
+     found_opensaml="yes";
+     OPENSAML_DIR="${opensamldir}"
+     OPENSAML_CXXFLAGS="-I$opensamldir/include";
+     break;
+   fi
+done
+fi
+AC_MSG_RESULT($found_opensaml)
+if test x_$check_opensaml_dir != x_no; then
+if test x_$found_opensaml != x_yes; then
+   AC_MSG_WARN([
+----------------------------------------------------------------------
+  Cannot find OpenSAML libraries, building without OpenSAML support.
+
+  Please install OpenSAML or specify installation directory with
+  --with-opensaml=(dir).
+----------------------------------------------------------------------
+])
+else
+	printf "OpenSAML found in $opensamldir\n";
+	OPENSAML_LIBS="-lsaml -lxml-security-c -lxmltooling -lxerces-c";
+	OPENSAML_LDFLAGS="-L$opensamldir/lib";
+	AC_SUBST(OPENSAML_CXXFLAGS)
+	AC_SUBST(OPENSAML_LDFLAGS)
+	AC_SUBST(OPENSAML_LIBS)
+	AC_DEFINE_UNQUOTED([HAVE_OPENSAML], 1, [Define is OpenSAML is available])
+fi
+fi
+AM_CONDITIONAL(OPENSAML, test "x_$check_opensaml_dir" != "x_no")
 ])dnl
 
 AC_DEFUN([AX_CHECK_RADSEC],

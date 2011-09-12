@@ -57,12 +57,16 @@ gssEapAttrProvidersInitInternal(void)
     if (GSS_ERROR(major))
         goto cleanup;
 
+#ifdef HAVE_OPENSAML
     major = gssEapSamlAttrProvidersInit(&minor);
     if (GSS_ERROR(major))
         goto cleanup;
+#endif
 
+#ifdef HAVE_SHIBRESOLVER
     /* Allow Shibboleth initialization failure to be non-fatal */
     gssEapLocalAttrProviderInit(&minor);
+#endif
 
 cleanup:
 #ifdef GSSEAP_DEBUG
@@ -86,19 +90,19 @@ gssEapAttrProvidersInit(OM_uint32 *minor)
 OM_uint32
 gssEapAttrProvidersFinalize(OM_uint32 *minor)
 {
-    OM_uint32 major = GSS_S_COMPLETE;
-
     if (gssEapAttrProvidersInitStatus == GSS_S_COMPLETE) {
-        major = gssEapLocalAttrProviderFinalize(minor);
-        if (major == GSS_S_COMPLETE)
-            major = gssEapSamlAttrProvidersFinalize(minor);
-        if (major == GSS_S_COMPLETE)
-            major = gssEapRadiusAttrProviderFinalize(minor);
+#ifdef HAVE_SHIBRESOLVER
+        gssEapLocalAttrProviderFinalize(minor);
+#endif
+#ifdef HAVE_OPENSAML
+        gssEapSamlAttrProvidersFinalize(minor);
+#endif
+        gssEapRadiusAttrProviderFinalize(minor);
 
         gssEapAttrProvidersInitStatus = GSS_S_UNAVAILABLE;
     }
 
-    return major;
+    return GSS_S_COMPLETE;
 }
 
 static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX + 1];

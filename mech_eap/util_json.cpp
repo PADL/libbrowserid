@@ -322,6 +322,7 @@ JSONObject::number(void) const
     return json_number_value(m_obj);
 }
 
+#ifdef HAVE_SHIBRESOLVER
 JSONObject
 JSONObject::ddf(DDF &ddf)
 {
@@ -409,6 +410,7 @@ JSONObject::ddf(void) const
 
     return ddf;
 }
+#endif /* HAVE_SHIBRESOLVER */
 
 bool JSONObject::isObject(void) const
 {

@@ -15,12 +15,13 @@ mech_eap_la_CFLAGS   = -Werror -Wall -Wunused-parameter \
 			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter \
 			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ \
-		        @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
+		        @OPENSAML_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ \
+			@TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols mech_eap.exports -no-undefined \
 			@RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
 mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
-		       @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
+		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
 
 mech_eap_la_SOURCES =    			\
 	accept_sec_context.c			\
@@ -90,8 +91,6 @@ mech_eap_la_SOURCES =    			\
 	util_oid.c				\
 	util_ordering.c				\
 	util_radius.cpp				\
-	util_saml.cpp				\
-	util_shib.cpp				\
 	util_sm.c				\
 	util_token.c				\
 	verify_mic.c				\
@@ -99,6 +98,14 @@ mech_eap_la_SOURCES =    			\
 	wrap_iov.c				\
 	wrap_iov_length.c			\
 	wrap_size_limit.c
+
+if OPENSAML
+mech_eap_la_SOURCES += util_saml.cpp
+endif
+
+if SHIBRESOLVER
+mech_eap_la_SOURCES += util_shib.cpp
+endif
 
 BUILT_SOURCES = gsseap_err.c radsec_err.c
 

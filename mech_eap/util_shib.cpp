@@ -49,7 +49,13 @@
  * Local attribute provider implementation.
  */
 
+#include "gssapiP_eap.h"
+
 #include <xmltooling/XMLObject.h>
+#ifndef HAVE_OPENSAML
+#include <xmltooling/XMLToolingConfig.h>
+#include <xmltooling/util/ParserPool.h>
+#endif
 
 #include <saml/saml2/core/Assertions.h>
 
@@ -61,14 +67,16 @@
 
 #include <sstream>
 
-#include "gssapiP_eap.h"
-
 using namespace shibsp;
 using namespace shibresolver;
-using namespace opensaml::saml2md;
-using namespace opensaml;
 using namespace xmltooling;
 using namespace std;
+#ifdef HAVE_OPENSAML
+using namespace opensaml::saml2md;
+using namespace opensaml;
+#else
+using namespace xercesc;
+#endif
 
 gss_eap_shib_attr_provider::gss_eap_shib_attr_provider(void)
 {
@@ -143,12 +151,33 @@ gss_eap_shib_attr_provider::initWithGssContext(const gss_eap_attr_ctx *manager,
         gss_release_buffer(&minor, &mechName);
     }
 
+#ifdef HAVE_OPENSAML
     const gss_eap_saml_assertion_provider *saml;
     saml = static_cast<const gss_eap_saml_assertion_provider *>
         (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     if (saml != NULL && saml->getAssertion() != NULL) {
         resolver->addToken(saml->getAssertion());
     }
+#else
+    /* If no OpenSAML, parse the XML assertion explicitly */
+    const gss_eap_radius_attr_provider *radius;
+    int authenticated, complete;
+    gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
+
+    radius = static_cast<const gss_eap_radius_attr_provider *>
+        (m_manager->getProvider(ATTR_TYPE_RADIUS));
+    if (radius != NULL &&
+        radius->getFragmentedAttribute(PW_SAML_AAA_ASSERTION,
+                                       VENDORPEC_UKERNA,
+                                       &authenticated, &complete, &value)) {
+        string str((char *)value.value, value.length);
+        istringstream istream(str);
+        DOMDocument *doc = XMLToolingConfig::getConfig().getParser().parse(istream);
+        const XMLObjectBuilder *b = XMLObjectBuilder::getBuilder(doc->getDocumentElement());
+        resolver->addToken(b->buildFromDocument(doc));
+        gss_release_buffer(&minor, &value);
+    }
+#endif /* HAVE_OPENSAML */
 
     try {
         resolver->resolve();

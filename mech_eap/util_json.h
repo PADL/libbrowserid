@@ -42,9 +42,11 @@
 #include <new>
 
 #include <jansson.h>
-#include <shibsp/remoting/ddf.h>
 
+#ifdef HAVE_SHIBRESOLVER
+#include <shibsp/remoting/ddf.h>
 using namespace shibsp;
+#endif
 
 namespace gss_eap_util {
     class JSONObject;
@@ -88,7 +90,9 @@ namespace gss_eap_util {
         static JSONObject object(void);
         static JSONObject array(void);
         static JSONObject null(void);
+#ifdef HAVE_SHIBRESOLVER
         static JSONObject ddf(DDF &value);
+#endif
 
         char *dump(size_t flags = 0) const;
         void dump(FILE *fp, size_t flags = JSON_INDENT(4)) const;
@@ -123,7 +127,9 @@ namespace gss_eap_util {
         json_int_t integer(void) const;
         double real(void) const;
         double number(void) const;
+#ifdef HAVE_SHIBRESOLVER
         DDF ddf(void) const;
+#endif
 
         bool isObject(void) const;
         bool isArray(void) const;
