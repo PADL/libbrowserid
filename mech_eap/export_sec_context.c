@@ -37,6 +37,7 @@
 
 #include "gssapiP_eap.h"
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 static OM_uint32
 gssEapExportPartialContext(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
@@ -98,6 +99,7 @@ cleanup:
 
     return major;
 }
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
 OM_uint32
 gssEapExportSecContext(OM_uint32 *minor,
@@ -137,6 +139,7 @@ gssEapExportSecContext(OM_uint32 *minor,
             goto cleanup;
     }
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     /*
      * The partial context is only transmitted for unestablished acceptor
      * contexts.
@@ -147,6 +150,7 @@ gssEapExportSecContext(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
     }
+#endif
 
     length  = 16;                               /* version, state, flags, */
     length += 4 + ctx->mechanismUsed->length;   /* mechanismUsed */

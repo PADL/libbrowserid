@@ -47,17 +47,40 @@ if test "x$reauth" = "xyes" ; then
 fi
 AM_CONDITIONAL(GSSEAP_ENABLE_REAUTH, test "x$reauth" != "xno")
 
+acceptor=yes
+AC_ARG_ENABLE(acceptor,
+  [  --enable-acceptor whether to enable acceptor codepaths: yes/no; default yes ],
+  [ if test "x$enableval" = "xyes" -o "x$enableval" = "xno" ; then
+      acceptor=$enableval
+    else
+      echo "--enable-acceptor argument must be yes or no"
+      exit -1
+    fi
+  ])
+
+if test "x$acceptor" = "xyes" ; then
+  echo "acceptor enabled"
+  TARGET_CFLAGS="$TARGET_CFLAGS -DGSSEAP_ENABLE_ACCEPTOR"
+fi
+AM_CONDITIONAL(GSSEAP_ENABLE_ACCEPTOR, test "x$acceptor" != "xno")
+
 AC_SUBST(TARGET_CFLAGS)
 AC_SUBST(TARGET_LDFLAGS)
 AX_CHECK_KRB5
-dnl AX_CHECK_EAP
 AX_CHECK_OPENSAML
+AM_CONDITIONAL(OPENSAML, test "x_$check_opensaml_dir" != "x_no")
+
 AX_CHECK_SHIBRESOLVER
+AM_CONDITIONAL(SHIBRESOLVER, test "x_$check_shibresolver_dir" != "x_no")
 if test x_$found_shibresolver = x_yes; then
   AX_CHECK_SHIBSP
 fi
-AX_CHECK_RADSEC
-AX_CHECK_JANSSON
+
+if test "x$acceptor" = "xyes" ; then
+  AX_CHECK_RADSEC
+  AX_CHECK_JANSSON
+fi
+
 AX_CHECK_LIBMOONSHOT
 AC_CONFIG_FILES([Makefile libeap/Makefile mech_eap/Makefile])
 AC_OUTPUT

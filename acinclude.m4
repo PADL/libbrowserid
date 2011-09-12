@@ -188,7 +188,6 @@ else
 	AC_DEFINE_UNQUOTED([HAVE_SHIBRESOLVER], 1, [Define is Shibboleth resolver is available])
 fi
 fi
-AM_CONDITIONAL(SHIBRESOLVER, test "x_$check_shibresolver_dir" != "x_no")
 ])dnl
 
 AC_DEFUN([AX_CHECK_OPENSAML],
@@ -232,7 +231,6 @@ else
 	AC_DEFINE_UNQUOTED([HAVE_OPENSAML], 1, [Define is OpenSAML is available])
 fi
 fi
-AM_CONDITIONAL(OPENSAML, test "x_$check_opensaml_dir" != "x_no")
 ])dnl
 
 AC_DEFUN([AX_CHECK_RADSEC],

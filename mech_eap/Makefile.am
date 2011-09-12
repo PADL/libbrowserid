@@ -7,6 +7,12 @@ EAP_CFLAGS = -I$(srcdir)/../libeap/src -I$(srcdir)/../libeap/src/common -I$(srcd
 	-I$(srcdir)/../libeap/src/utils \
 	-DEAP_TLS -DEAP_PEAP -DEAP_TTLS -DEAP_MD5 -DEAP_MSCHAPv2 -DEAP_GTC -DEAP_OTP -DEAP_LEAP -DEAP_PSK -DEAP_PAX -DEAP_SAKE -DEAP_GPSK -DEAP_GPSK_SHA256 -DEAP_SERVER_IDENTITY -DEAP_SERVER_TLS -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DEAP_SERVER_MD5 -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_GTC -DEAP_SERVER_PSK -DEAP_SERVER_PAX -DEAP_SERVER_SAKE -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256 -DIEEE8021X_EAPOL
 
+if GSSEAP_ENABLE_ACCEPTOR
+GSSEAP_EXPORTS = mech_eap.exports
+else
+GSSEAP_EXPORTS = mech_eap-noacceptor.exports
+endif
+
 gssdir = $(libdir)/gss
 gss_LTLIBRARIES = mech_eap.la
 
@@ -18,13 +24,12 @@ mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter \
 		        @OPENSAML_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ \
 			@TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
-			-export-symbols mech_eap.exports -no-undefined \
+			-export-symbols $(GSSEAP_EXPORTS) -no-undefined \
 			@RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
 mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
 		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
 
 mech_eap_la_SOURCES =    			\
-	accept_sec_context.c			\
 	acquire_cred.c				\
 	acquire_cred_with_password.c		\
 	add_cred.c				\
@@ -33,7 +38,6 @@ mech_eap_la_SOURCES =    			\
 	canonicalize_name.c			\
 	compare_name.c				\
 	context_time.c				\
-	delete_name_attribute.c			\
 	delete_sec_context.c			\
 	display_name.c				\
 	display_name_ext.c			\
@@ -41,10 +45,8 @@ mech_eap_la_SOURCES =    			\
 	duplicate_name.c			\
 	eap_mech.c				\
 	export_name.c				\
-	export_name_composite.c			\
 	export_sec_context.c			\
 	get_mic.c				\
-	get_name_attribute.c			\
 	gsseap_err.c				\
 	import_name.c				\
 	import_sec_context.c			\
@@ -57,32 +59,26 @@ mech_eap_la_SOURCES =    			\
 	inquire_cred_by_oid.c			\
 	inquire_mech_for_saslname.c		\
 	inquire_mechs_for_name.c		\
-	inquire_name.c				\
 	inquire_names_for_mech.c		\
 	inquire_saslname_for_mech.c		\
 	inquire_sec_context_by_oid.c		\
-	map_name_to_any.c			\
 	process_context_token.c			\
 	pseudo_random.c				\
 	radsec_err.c				\
-	release_any_name_mapping.c		\
 	release_cred.c				\
 	release_name.c				\
 	release_oid.c				\
-	set_name_attribute.c			\
 	set_cred_option.c			\
 	set_sec_context_option.c		\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
-	util_attr.cpp				\
 	util_base64.c				\
 	util_buffer.c				\
 	util_context.c				\
 	util_cksum.c				\
 	util_cred.c				\
 	util_crypt.c				\
-	util_json.cpp				\
 	util_krb.c				\
 	util_lucid.c				\
 	util_mech.c				\
@@ -90,7 +86,6 @@ mech_eap_la_SOURCES =    			\
 	util_name.c				\
 	util_oid.c				\
 	util_ordering.c				\
-	util_radius.cpp				\
 	util_sm.c				\
 	util_token.c				\
 	verify_mic.c				\
@@ -98,6 +93,20 @@ mech_eap_la_SOURCES =    			\
 	wrap_iov.c				\
 	wrap_iov_length.c			\
 	wrap_size_limit.c
+
+if GSSEAP_ENABLE_ACCEPTOR
+
+mech_eap_la_SOURCES +=				\
+	accept_sec_context.c			\
+	delete_name_attribute.c			\
+	export_name_composite.c			\
+	get_name_attribute.c			\
+	map_name_to_any.c			\
+	release_any_name_mapping.c		\
+	set_name_attribute.c			\
+	util_attr.cpp				\
+	util_json.cpp				\
+	util_radius.cpp
 
 if OPENSAML
 mech_eap_la_SOURCES += util_saml.cpp
@@ -107,12 +116,12 @@ if SHIBRESOLVER
 mech_eap_la_SOURCES += util_shib.cpp
 endif
 
+endif
+
 BUILT_SOURCES = gsseap_err.c radsec_err.c
 
 if GSSEAP_ENABLE_REAUTH
 mech_eap_la_SOURCES += util_reauth.c
-
-
 
 if !HEIMDAL
 krb5pluginsdir = $(libdir)/krb5/plugins/authdata

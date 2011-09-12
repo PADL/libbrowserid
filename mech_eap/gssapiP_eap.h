@@ -122,7 +122,9 @@ struct gss_name_struct
     OM_uint32 flags;
     gss_OID mechanismUsed; /* this is immutable */
     krb5_principal krbPrincipal; /* this is immutable */
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     struct gss_eap_attr_ctx *attrCtx;
+#endif
 };
 
 #define CRED_FLAG_INITIATE                  0x00010000
