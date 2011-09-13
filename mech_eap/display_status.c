@@ -115,6 +115,22 @@ getStatusInfo(OM_uint32 minor)
 void
 gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...)
 {
+#ifdef WIN32
+    OM_uint32 tmpMajor, tmpMinor;
+    char buf[BUFSIZ];
+    gss_buffer_desc s = GSS_C_EMPTY_BUFFER;
+    va_list ap;
+
+    if (format != NULL) {
+        va_start(ap, format);
+        snprintf(buf, sizeof(buf), format, ap);
+        va_end(ap);
+    }
+
+    tmpMajor = makeStringBuffer(&tmpMinor, buf, &s);
+    if (!GSS_ERROR(tmpMajor))
+        saveStatusInfoNoCopy(minor, (char *)s.value);
+#else
     char *s = NULL;
     int n;
     va_list ap;
@@ -128,6 +144,7 @@ gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...)
     }
 
     saveStatusInfoNoCopy(minor, s);
+#endif /* WIN32 */
 }
 
 OM_uint32 GSSAPI_CALLCONV
