@@ -776,6 +776,8 @@ verifyTokenHeader(OM_uint32 *minor,
 
 #include <winbase.h>
 
+#define GSSEAP_GET_LAST_ERROR()		(GetLastError())
+
 #define GSSEAP_MUTEX                    CRITICAL_SECTION
 
 #define GSSEAP_MUTEX_INIT(m)            (InitializeCriticalSection((m)), 0)
@@ -785,9 +787,15 @@ verifyTokenHeader(OM_uint32 *minor,
 
 /* XXX yet to implement thread-local wrappers */
 
+#define GSSEAP_THREAD_ONCE              INIT_ONCE
+#define GSSEAP_ONCE(o, i)               InitOnceExecuteOnce((o), (i))
+#define GSSEAP_ONCE_INITIALIZER         INIT_ONCE_STATIC_INIT
+
 #else
 
 #include <pthread.h>
+
+#define GSSEAP_GET_LAST_ERROR()		(errno)
 
 #define GSSEAP_MUTEX                    pthread_mutex_t
 

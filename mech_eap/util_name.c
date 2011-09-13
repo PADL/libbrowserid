@@ -81,7 +81,7 @@ gssEapAllocName(OM_uint32 *minor, gss_name_t *pName)
     }
 
     if (GSSEAP_MUTEX_INIT(&name->mutex) != 0) {
-        *minor = errno;
+        *minor = GSSEAP_GET_LAST_ERROR();
         gssEapReleaseName(&tmpMinor, &name);
         return GSS_S_FAILURE;
     }

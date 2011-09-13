@@ -52,7 +52,7 @@ gssEapAllocContext(OM_uint32 *minor,
     }
 
     if (GSSEAP_MUTEX_INIT(&ctx->mutex) != 0) {
-        *minor = errno;
+        *minor = GSSEAP_GET_LAST_ERROR();
         gssEapReleaseContext(&tmpMinor, &ctx);
         return GSS_S_FAILURE;
     }

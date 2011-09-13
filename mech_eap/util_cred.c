@@ -57,7 +57,7 @@ gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     }
 
     if (GSSEAP_MUTEX_INIT(&cred->mutex) != 0) {
-        *minor = errno;
+        *minor = GSSEAP_GET_LAST_ERROR();
         gssEapReleaseCred(&tmpMinor, &cred);
         return GSS_S_FAILURE;
     }
@@ -167,7 +167,7 @@ readStaticIdentityFile(OM_uint32 *minor,
         if (getpwuid_r(getuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) != 0 ||
             pw == NULL || pw->pw_dir == NULL) {
             major = GSS_S_CRED_UNAVAIL;
-            *minor = errno;
+            *minor = GSSEAP_GET_LAST_ERROR();
             goto cleanup;
         }
 
