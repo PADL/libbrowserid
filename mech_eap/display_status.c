@@ -147,13 +147,10 @@ gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...)
 #endif /* WIN32 */
 }
 
-OM_uint32 GSSAPI_CALLCONV
-gss_display_status(OM_uint32 *minor,
-                   OM_uint32 status_value,
-                   int status_type,
-                   gss_OID mech_type,
-                   OM_uint32 *message_context,
-                   gss_buffer_t status_string)
+OM_uint32
+gssEapDisplayStatus(OM_uint32 *minor,
+                    OM_uint32 status_value,
+                    gss_buffer_t status_string)
 {
     OM_uint32 major;
     krb5_context krbContext = NULL;
@@ -161,18 +158,6 @@ gss_display_status(OM_uint32 *minor,
 
     status_string->length = 0;
     status_string->value = NULL;
-
-    if (!gssEapIsMechanismOid(mech_type)) {
-        *minor = GSSEAP_WRONG_MECH;
-        return GSS_S_BAD_MECH;
-    }
-
-    if (status_type != GSS_C_MECH_CODE ||
-        *message_context != 0) {
-        /* we rely on the mechglue for GSS_C_GSS_CODE */
-        *minor = 0;
-        return GSS_S_BAD_STATUS;
-    }
 
     errMsg = getStatusInfo(status_value);
     if (errMsg == NULL) {
@@ -193,4 +178,27 @@ gss_display_status(OM_uint32 *minor,
         krb5_free_error_message(krbContext, errMsg);
 
     return major;
+}
+
+OM_uint32 GSSAPI_CALLCONV
+gss_display_status(OM_uint32 *minor,
+                   OM_uint32 status_value,
+                   int status_type,
+                   gss_OID mech_type,
+                   OM_uint32 *message_context,
+                   gss_buffer_t status_string)
+{
+    if (!gssEapIsMechanismOid(mech_type)) {
+        *minor = GSSEAP_WRONG_MECH;
+        return GSS_S_BAD_MECH;
+    }
+
+    if (status_type != GSS_C_MECH_CODE ||
+        *message_context != 0) {
+        /* we rely on the mechglue for GSS_C_GSS_CODE */
+        *minor = 0;
+        return GSS_S_BAD_STATUS;
+    }
+
+    return gssEapDisplayStatus(minor, status_value, status_string);
 }
