@@ -36,7 +36,9 @@
 
 #include "gssapiP_eap.h"
 
-#ifndef WIN32
+#ifdef WIN32
+#include <shlobj.h>
+#else
 #include <pwd.h>
 #endif
 
@@ -129,10 +131,13 @@ readStaticIdentityFile(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     FILE *fp = NULL;
-    char pwbuf[BUFSIZ], buf[BUFSIZ];
+    char buf[BUFSIZ];
     char *ccacheName;
-    struct passwd *pw = NULL, pwd;
     int i = 0;
+#ifndef WIN32
+    struct passwd *pw = NULL, pwd;
+    char pwbuf[BUFSIZ];
+#endif
 
     defaultIdentity->length = 0;
     defaultIdentity->value = NULL;

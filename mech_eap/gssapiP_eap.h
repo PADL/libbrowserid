@@ -56,6 +56,13 @@
 #include <sys/param.h>
 #endif
 
+#ifdef WIN32
+#ifndef MAXHOSTNAMELEN
+# include <WinSock2.h>
+# define MAXHOSTNAMELEN NI_MAXHOST
+#endif
+#endif
+
 /* GSS headers */
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_krb5.h>
