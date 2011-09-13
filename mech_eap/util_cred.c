@@ -36,7 +36,9 @@
 
 #include "gssapiP_eap.h"
 
+#ifndef WIN32
 #include <pwd.h>
+#endif
 
 OM_uint32
 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
@@ -142,6 +144,21 @@ readStaticIdentityFile(OM_uint32 *minor,
 
     ccacheName = getenv("GSSEAP_IDENTITY");
     if (ccacheName == NULL) {
+#ifdef WIN32
+        TCHAR szPath[MAX_PATH];
+
+        if (!SUCCEEDED(SHGetFolderPath(NULL,
+                                       CSIDL_APPDATA, /* |CSIDL_FLAG_CREATE */
+                                       NULL, /* User access token */
+                                       0,
+                                       szPath))) {
+            major = GSS_S_CRED_UNAVAIL;
+            *minor = GetLastError();
+            goto cleanup;
+        }
+
+        snprintf(buf, sizeof(buf), "%s/.gss_eap_id", szPath);
+#else
         if (getpwuid_r(getuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) != 0 ||
             pw == NULL || pw->pw_dir == NULL) {
             major = GSS_S_CRED_UNAVAIL;
@@ -150,6 +167,7 @@ readStaticIdentityFile(OM_uint32 *minor,
         }
 
         snprintf(buf, sizeof(buf), "%s/.gss_eap_id", pw->pw_dir);
+#endif /* WIN32 */
         ccacheName = buf;
     }
 
