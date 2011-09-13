@@ -94,6 +94,7 @@ GCOPTS=-I$(SRCDIR) \
 	-I$(SRCDIR)/src/crypto \
 	-I$(SRCDIR)/src/tls \
 	-I$(OBJ) \
+	-D__func__=__FUNCTION__ \
 	-DEAP_TLS \
 	-DEAP_PEAP \
 	-DEAP_TTLS \
@@ -121,7 +122,6 @@ GCOPTS=-I$(SRCDIR) \
 	-DEAP_SERVER_GPSK_SHA256 \
 	-DIEEE8021X_EAPOL \
 	-DCONFIG_NATIVE_WINDOWS \
-	-DCONFIG_IPV6 \
 	-DCONFIG_INTERNAL_LIBTOMMATH \
 	-DCONFIG_CRYPTO_INTERNAL\
 	-DCONFIG_TLS_INTERNAL_CLIENT
@@ -129,7 +129,6 @@ GCOPTS=-I$(SRCDIR) \
 UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
 	src/utils/ip_addr.c \
-	src/utils/radiotap.c \
 	src/utils/trace.c \
 	src/utils/uuid.c \
 	src/utils/wpa_debug.c \
@@ -139,7 +138,6 @@ UTILS_SRCS = src/utils/base64.c \
 UTILS_OBJS = $(OBJ)\utils\base64.obj \
 	$(OBJ)\utils\common.obj \
 	$(OBJ)\utils\ip_addr.obj \
-	$(OBJ)\utils\radiotap.obj \
 	$(OBJ)\utils\trace.obj \
 	$(OBJ)\utils\uuid.obj \
 	$(OBJ)\utils\wpa_debug.obj \
