@@ -86,6 +86,7 @@ mech_eap_la_SOURCES =    			\
 	util_oid.c				\
 	util_ordering.c				\
 	util_sm.c				\
+	util_tld.c				\
 	util_token.c				\
 	verify_mic.c				\
 	wrap.c					\

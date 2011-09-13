@@ -956,6 +956,23 @@ gssBufferToKrbData(gss_buffer_t buffer, krb5_data *data)
     data->length = buffer->length;
 }
 
+/* util_tld.c */
+struct gss_eap_status_info;
+
+struct gss_eap_thread_local_data {
+    krb5_context krbContext;
+    struct gss_eap_status_info *statusInfo;
+};
+
+struct gss_eap_thread_local_data *
+gssEapGetThreadLocalData(void);
+
+void
+gssEapDestroyStatusInfo(struct gss_eap_status_info *status);
+
+void
+gssEapDestroyKrbContext(krb5_context context);
+
 #ifdef __cplusplus
 }
 #endif
