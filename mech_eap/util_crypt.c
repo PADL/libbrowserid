@@ -191,7 +191,7 @@ mapIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
      */
     kiov[i].flags = KRB5_CRYPTO_TYPE_TRAILER;
     kiov[i].data.length = k5_trailerlen;
-    kiov[i].data.data = kiov[i - 1].data.data + ec + 16; /* E(Header) */
+    kiov[i].data.data = (unsigned char *)kiov[i - 1].data.data + ec + 16; /* E(Header) */
     i++;
 
     *pkiov = kiov;

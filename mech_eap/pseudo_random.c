@@ -134,7 +134,7 @@ gss_pseudo_random(OM_uint32 *minor,
         goto cleanup;
     }
 
-    memcpy(ns.data + 4, prf_in->value, prf_in->length);
+    memcpy((unsigned char *)ns.data + 4, prf_in->value, prf_in->length);
     i = 0;
     p = (unsigned char *)prf_out->value;
     while (desired_output_len > 0) {
