@@ -33,92 +33,98 @@ RELDIR=libeap
 
 !include ../windows/NTMakefile.w32 
 
-AM_CPPFLAGS = -I$(srcdir)/src -I$(srcdir)/eap_example -I$(srcdir)/src/utils 
-
 #
 # Common object files
 #
-SOURCES_BOTH = src\eap_common\eap_peap_common.c
-SOURCES_BOTH += src\eap_common\eap_psk_common.c
-SOURCES_BOTH += src\eap_common\eap_pax_common.c
-SOURCES_BOTH += src\eap_common\eap_sake_common.c
-SOURCES_BOTH += src\eap_common\eap_gpsk_common.c
-SOURCES_BOTH += src\eap_common\chap.c
+SOURCES_BOTH = src\eap_common\eap_peap_common.c \
+	src\eap_common\eap_psk_common.c \
+	src\eap_common\eap_pax_common.c \
+	src\eap_common\eap_sake_common.c \
+	src\eap_common\eap_gpsk_common.c \
+	src\eap_common/eap_common.c \
+	src\eap_common\chap.c
 
-OBJS_BOTH = $(OBJ)/eap_peap_common.obj
-OBJS_BOTH += $(OBJ)/eap_psk_common.obj
-OBJS_BOTH += $(OBJ)/eap_pax_common.obj
-OBJS_BOTH += $(OBJ)/eap_sake_common.obj
-OBJS_BOTH += $(OBJ)/eap_gpsk_common.obj
-OBJS_BOTH += $(OBJ)/chap.obj
+OBJS_BOTH = $(OBJ)\eap_common\eap_peap_common.obj \
+	$(OBJ)\eap_common\eap_psk_common.obj \
+	$(OBJ)\eap_common\eap_pax_common.obj \
+	$(OBJ)\eap_common\eap_sake_common.obj \
+	$(OBJ)\eap_common\eap_gpsk_common.obj \
+	$(OBJ)\eap_common\eap_common.obj \
+	$(OBJ)\eap_common\chap.obj
 
-SOURCES_peer = src/eap_peer/eap_tls.c
-SOURCES_peer += src/eap_peer/eap_peap.c
-SOURCES_peer += src/eap_peer/eap_ttls.c
-SOURCES_peer += src/eap_peer/eap_md5.c
-SOURCES_peer += src/eap_peer/eap_mschapv2.c
-SOURCES_peer += src/eap_peer/mschapv2.c
-SOURCES_peer += src/eap_peer/eap_otp.c
-SOURCES_peer += src/eap_peer/eap_gtc.c
-SOURCES_peer += src/eap_peer/eap_leap.c
-SOURCES_peer += src/eap_peer/eap_psk.c
-SOURCES_peer += src/eap_peer/eap_pax.c
-SOURCES_peer += src/eap_peer/eap_sake.c
-SOURCES_peer += src/eap_peer/eap_gpsk.c
-SOURCES_peer += src/eap_peer/eap.c
-SOURCES_peer += src/eap_common/eap_common.c
-SOURCES_peer += src/eap_peer/eap_methods.c
-SOURCES_peer += src/eap_peer/eap_tls_common.c
+SOURCES_peer = src/eap_peer/eap_tls.c \
+	src/eap_peer/eap_peap.c \
+	src/eap_peer/eap_ttls.c \
+	src/eap_peer/eap_md5.c \
+	src/eap_peer/eap_mschapv2.c \
+	src/eap_peer/mschapv2.c \
+	src/eap_peer/eap_otp.c \
+	src/eap_peer/eap_gtc.c \
+	src/eap_peer/eap_leap.c \
+	src/eap_peer/eap_psk.c \
+	src/eap_peer/eap_pax.c \
+	src/eap_peer/eap_sake.c \
+	src/eap_peer/eap_gpsk.c \
+	src/eap_peer/eap.c \
+	src/eap_peer/eap_methods.c \
+	src/eap_peer/eap_tls_common.c
 
-OBJS_peer = $(OBJ)/eap_tls.obj
-OBJS_peer += $(OBJ)/eap_peap.obj
-OBJS_peer += $(OBJ)/eap_ttls.obj
-OBJS_peer += $(OBJ)/eap_md5.obj
-OBJS_peer += $(OBJ)/eap_mschapv2.obj
-OBJS_peer += $(OBJ)/mschapv2.obj
-OBJS_peer += $(OBJ)\eap_otp.obj
-OBJS_peer += $(OBJ)\eap_gtc.obj
-OBJS_peer += $(OBJ)\eap_leap.obj
-OBJS_peer += $(OBJ)\eap_psk.obj
-OBJS_peer += $(OBJ)\eap_pax.obj
-OBJS_peer += $(OBJ)\eap_sake.obj
-OBJS_peer += $(OBJ)\eap_gpsk.obj
-OBJS_peer += $(OBJ)\eap.obj
-OBJS_peer += $(OBJ)\eap_common.obj
-OBJS_peer += $(OBJ)\eap_methods.obj
-OBJS_peer += $(OBJ)\eap_tls_common.obj
+OBJS_peer = $(OBJ)\eap_peer\eap_tls.obj \
+	$(OBJ)\eap_peer\eap_peap.obj \
+	$(OBJ)\eap_peer\eap_ttls.obj \
+	$(OBJ)\eap_peer\eap_md5.obj \
+	$(OBJ)\eap_peer\eap_mschapv2.obj \
+	$(OBJ)\eap_peer\mschapv2.obj \
+	$(OBJ)\eap_peer\eap_otp.obj \
+	$(OBJ)\eap_peer\eap_gtc.obj \
+	$(OBJ)\eap_peer\eap_leap.obj \
+	$(OBJ)\eap_peer\eap_psk.obj \
+	$(OBJ)\eap_peer\eap_pax.obj \
+	$(OBJ)\eap_peer\eap_sake.obj \
+	$(OBJ)\eap_peer\eap_gpsk.obj \
+	$(OBJ)\eap_peer\eap.obj \
+	$(OBJ)\eap_common\eap_common.obj \
+	$(OBJ)\eap_peer\eap_methods.obj \
+	$(OBJ)\eap_peer\eap_tls_common.obj
 
-CFLAGS += -DEAP_TLS
-CFLAGS += -DEAP_PEAP
-CFLAGS += -DEAP_TTLS
-CFLAGS += -DEAP_MD5
-CFLAGS += -DEAP_MSCHAPv2
-CFLAGS += -DEAP_GTC
-CFLAGS += -DEAP_OTP
-CFLAGS += -DEAP_LEAP
-CFLAGS += -DEAP_PSK
-CFLAGS += -DEAP_PAX
-CFLAGS += -DEAP_SAKE
-CFLAGS += -DEAP_GPSK -DEAP_GPSK_SHA256
-
-CFLAGS += -DEAP_SERVER_IDENTITY
-CFLAGS += -DEAP_SERVER_TLS
-CFLAGS += -DEAP_SERVER_PEAP
-CFLAGS += -DEAP_SERVER_TTLS
-CFLAGS += -DEAP_SERVER_MD5
-CFLAGS += -DEAP_SERVER_MSCHAPV2
-CFLAGS += -DEAP_SERVER_GTC
-CFLAGS += -DEAP_SERVER_PSK
-CFLAGS += -DEAP_SERVER_PAX
-CFLAGS += -DEAP_SERVER_SAKE
-CFLAGS += -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256
-
-CFLAGS += -DIEEE8021X_EAPOL
-CFLAGS += -DCONFIG_IPV6
-
-CFLAGS += -DCONFIG_INTERNAL_LIBTOMMATH
-CFLAGS += -DCONFIG_CRYPTO_INTERNAL
-CFLAGS += -DCONFIG_TLS_INTERNAL_CLIENT
+GCOPTS=-I$(SRCDIR) \
+	-I$(SRCDIR)/eap_example \
+	-I$(SRCDIR)/src \
+	-I$(SRCDIR)/src/utils \
+	-I$(SRCDIR)/src/crypto \
+	-I$(SRCDIR)/src/tls \
+	-I$(OBJ) \
+	-DEAP_TLS \
+	-DEAP_PEAP \
+	-DEAP_TTLS \
+	-DEAP_MD5 \
+	-DEAP_MSCHAPv2 \
+	-DEAP_GTC \
+	-DEAP_OTP \
+	-DEAP_LEAP \
+	-DEAP_PSK \
+	-DEAP_PAX \
+	-DEAP_SAKE \
+	-DEAP_GPSK \
+	-DEAP_GPSK_SHA256 \
+	-DEAP_SERVER_IDENTITY \
+	-DEAP_SERVER_TLS \
+	-DEAP_SERVER_PEAP \
+	-DEAP_SERVER_TTLS \
+	-DEAP_SERVER_MD5 \
+	-DEAP_SERVER_MSCHAPV2 \
+	-DEAP_SERVER_GTC \
+	-DEAP_SERVER_PSK \
+	-DEAP_SERVER_PAX \
+	-DEAP_SERVER_SAKE \
+	-DEAP_SERVER_GPSK \
+	-DEAP_SERVER_GPSK_SHA256 \
+	-DIEEE8021X_EAPOL \
+	-DCONFIG_NATIVE_WINDOWS \
+	-DCONFIG_IPV6 \
+	-DCONFIG_INTERNAL_LIBTOMMATH \
+	-DCONFIG_CRYPTO_INTERNAL\
+	-DCONFIG_TLS_INTERNAL_CLIENT
 
 UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
@@ -130,15 +136,15 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/wpabuf.c \
 	src/utils/os_win32.c
 
-UTILS_OBJS = $(OBJ)\base64.obj \
-	$(OBJ)\common.obj \
-	$(OBJ)\ip_addr.obj \
-	$(OBJ)\radiotap.obj \
-	$(OBJ)\trace.obj \
-	$(OBJ)\uuid.obj \
-	$(OBJ)\wpa_debug.obj \
-	$(OBJ)\wpabuf.obj \
-	$(OBJ)\os_win32.obj
+UTILS_OBJS = $(OBJ)\utils\base64.obj \
+	$(OBJ)\utils\common.obj \
+	$(OBJ)\utils\ip_addr.obj \
+	$(OBJ)\utils\radiotap.obj \
+	$(OBJ)\utils\trace.obj \
+	$(OBJ)\utils\uuid.obj \
+	$(OBJ)\utils\wpa_debug.obj \
+	$(OBJ)\utils\wpabuf.obj \
+	$(OBJ)\utils\os_win32.obj
 
 CRYPTO_SRCS = \
     src/crypto/aes-cbc.c \
@@ -176,39 +182,39 @@ CRYPTO_SRCS = \
     src/crypto/fips_prf_internal.c
 
 CRYPTO_OBJS = \
-    $(OBJ)\aes-cbc.obj \
-    $(OBJ)\aes-ctr.obj \
-    $(OBJ)\aes-eax.obj \
-    $(OBJ)\aes-encblock.obj \
-    $(OBJ)\aes-internal.obj \
-    $(OBJ)\aes-internal-dec.obj \
-    $(OBJ)\aes-internal-enc.obj \
-    $(OBJ)\aes-omac1.obj \
-    $(OBJ)\aes-unwrap.obj \
-    $(OBJ)\aes-wrap.obj \
-    $(OBJ)\des-internal.obj \
-    $(OBJ)\dh_group5.obj \
-    $(OBJ)\dh_groups.obj \
-    $(OBJ)\md4-internal.obj \
-    $(OBJ)\md5.obj \
-    $(OBJ)\md5-internal.obj \
-    $(OBJ)\md5-non-fips.obj \
-    $(OBJ)\milenage.obj \
-    $(OBJ)\ms_funcs.obj \
-    $(OBJ)\rc4.obj \
-    $(OBJ)\sha1.obj \
-    $(OBJ)\sha1-internal.obj \
-    $(OBJ)\sha1-pbkdf2.obj \
-    $(OBJ)\sha1-tlsprf.obj \
-    $(OBJ)\sha1-tprf.obj \
-    $(OBJ)\sha256.obj \
-    $(OBJ)\sha256-internal.obj \
-    $(OBJ)\crypto_internal.obj \
-    $(OBJ)\crypto_internal-cipher.obj \
-    $(OBJ)\crypto_internal-modexp.obj \
-    $(OBJ)\crypto/crypto_internal-rsa.obj \
-    $(OBJ)\tls_internal.obj \
-    $(OBJ)\fips_prf_internal.obj
+    $(OBJ)\crypto\aes-cbc.obj \
+    $(OBJ)\crypto\aes-ctr.obj \
+    $(OBJ)\crypto\aes-eax.obj \
+    $(OBJ)\crypto\aes-encblock.obj \
+    $(OBJ)\crypto\aes-internal.obj \
+    $(OBJ)\crypto\aes-internal-dec.obj \
+    $(OBJ)\crypto\aes-internal-enc.obj \
+    $(OBJ)\crypto\aes-omac1.obj \
+    $(OBJ)\crypto\aes-unwrap.obj \
+    $(OBJ)\crypto\aes-wrap.obj \
+    $(OBJ)\crypto\des-internal.obj \
+    $(OBJ)\crypto\dh_group5.obj \
+    $(OBJ)\crypto\dh_groups.obj \
+    $(OBJ)\crypto\md4-internal.obj \
+    $(OBJ)\crypto\md5.obj \
+    $(OBJ)\crypto\md5-internal.obj \
+    $(OBJ)\crypto\md5-non-fips.obj \
+    $(OBJ)\crypto\milenage.obj \
+    $(OBJ)\crypto\ms_funcs.obj \
+    $(OBJ)\crypto\rc4.obj \
+    $(OBJ)\crypto\sha1.obj \
+    $(OBJ)\crypto\sha1-internal.obj \
+    $(OBJ)\crypto\sha1-pbkdf2.obj \
+    $(OBJ)\crypto\sha1-tlsprf.obj \
+    $(OBJ)\crypto\sha1-tprf.obj \
+    $(OBJ)\crypto\sha256.obj \
+    $(OBJ)\crypto\sha256-internal.obj \
+    $(OBJ)\crypto\crypto_internal.obj \
+    $(OBJ)\crypto\crypto_internal-cipher.obj \
+    $(OBJ)\crypto\crypto_internal-modexp.obj \
+    $(OBJ)\crypto\crypto_internal-rsa.obj \
+    $(OBJ)\crypto\tls_internal.obj \
+    $(OBJ)\crypto\fips_prf_internal.obj
 
 TLS_SRCS = \
     src/tls/asn1.c \
@@ -229,27 +235,77 @@ TLS_SRCS = \
     src/tls/x509v3.c
 
 TLS_OBJS = \
-    $(OBJ)\asn1.obj \
-    $(OBJ)\bignum.obj \
-    $(OBJ)\pkcs1.obj \
-    $(OBJ)\pkcs5.obj \
-    $(OBJ)\pkcs8.obj \
-    $(OBJ)\rsa.obj \
-    $(OBJ)\tlsv1_client.obj \
-    $(OBJ)\tlsv1_client_read.obj \
-    $(OBJ)\tlsv1_client_write.obj \
-    $(OBJ)\tlsv1_common.obj \
-    $(OBJ)\tlsv1_cred.obj \
-    $(OBJ)\tlsv1_record.obj \
-    $(OBJ)\tlsv1_server.obj \
-    $(OBJ)\tlsv1_server_read.obj \
-    $(OBJ)\tlsv1_server_write.obj \
-    $(OBJ)\x509v3.obj
+    $(OBJ)\tls\asn1.obj \
+    $(OBJ)\tls\bignum.obj \
+    $(OBJ)\tls\pkcs1.obj \
+    $(OBJ)\tls\pkcs5.obj \
+    $(OBJ)\tls\pkcs8.obj \
+    $(OBJ)\tls\rsa.obj \
+    $(OBJ)\tls\tlsv1_client.obj \
+    $(OBJ)\tls\tlsv1_client_read.obj \
+    $(OBJ)\tls\tlsv1_client_write.obj \
+    $(OBJ)\tls\tlsv1_common.obj \
+    $(OBJ)\tls\tlsv1_cred.obj \
+    $(OBJ)\tls\tlsv1_record.obj \
+    $(OBJ)\tls\tlsv1_server.obj \
+    $(OBJ)\tls\tlsv1_server_read.obj \
+    $(OBJ)\tls\tlsv1_server_write.obj \
+    $(OBJ)\tls\x509v3.obj
+
+{$(OBJ)\src\eap_common}.c{$(OBJ)\eap_common}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\eap_common\ -Fd($OBJ)\eap_common\ -I$(OBJ)\eap_common $(GCOPTS)
+
+{src\eap_common}.c{$(OBJ)\eap_common}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\eap_common\ -Fd$(OBJ)\eap_common\ -I$(OBJ)\eap_common $(GCOPTS)
+
+{$(OBJ)\src\eap_peer}.c{$(OBJ)\eap_peer}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\eap_peer\ -Fd($OBJ)\eap_peer\ -I$(OBJ)\eap_peer $(GCOPTS)
+
+{src\eap_peer}.c{$(OBJ)\eap_peer}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\eap_peer\ -Fd$(OBJ)\eap_peer\ -I$(OBJ)\eap_peer $(GCOPTS)
+
+{$(OBJ)\src\utils}.c{$(OBJ)\utils}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\utils\ -Fd($OBJ)\utils\ -I$(OBJ)\utils $(GCOPTS)
+
+{src\utils}.c{$(OBJ)\utils}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\utils\ -Fd$(OBJ)\utils\ -I$(OBJ)\utils $(GCOPTS)
+
+{$(OBJ)\src\crypto}.c{$(OBJ)\crypto}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\crypto\ -Fd($OBJ)\crypto\ -I$(OBJ)\crypto $(GCOPTS)
+
+{src\crypto}.c{$(OBJ)\crypto}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\crypto\ -Fd$(OBJ)\crypto\ -I$(OBJ)\crypto $(GCOPTS)
+
+{$(OBJ)\src\tls}.c{$(OBJ)\tls}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\tls\ -Fd($OBJ)\tls\ -I$(OBJ)\tls $(GCOPTS)
+
+{src\tls}.c{$(OBJ)\tls}.obj::
+	$(C2OBJ_NP) -Fo$(OBJ)\tls\ -Fd$(OBJ)\tls\ -I$(OBJ)\tls $(GCOPTS)
+
 
 $(LIBEAP): $(OBJS_BOTH) $(OBJS_peer) $(UTILS_OBJS) $(CRYPTO_OBJS) $(TLS_OBJS)
 	$(LIBCON)
 
 all:: $(LIBEAP)
+
+prep:: mkdirs-libeap
+
+mkdirs-libeap:
+!if !exist($(OBJ)\eap_common)
+	$(MKDIR) $(OBJ)\eap_common
+!endif
+!if !exist($(OBJ)\eap_peer)
+	$(MKDIR) $(OBJ)\eap_peer
+!endif
+!if !exist($(OBJ)\utils)
+	$(MKDIR) $(OBJ)\utils
+!endif
+!if !exist($(OBJ)\crypto)
+	$(MKDIR) $(OBJ)\crypto
+!endif
+!if !exist($(OBJ)\tls)
+	$(MKDIR) $(OBJ)\tls
+!endif
 
 clean::
 
