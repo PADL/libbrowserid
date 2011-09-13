@@ -125,6 +125,7 @@ gssEapDecodeInnerTokens(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     unsigned char *p;
+    size_t count = 0;
     size_t remain;
 
     tokens->buffers.count = 0;
@@ -149,14 +150,37 @@ gssEapDecodeInnerTokens(OM_uint32 *minor,
             goto cleanup;
         }
 
-        ntypes = GSSEAP_REALLOC(tokens->types,
-                                (tokens->buffers.count + 1) * sizeof(OM_uint32));
-        if (ntypes == NULL) {
-            major = GSS_S_FAILURE;
-            *minor = ENOMEM;
-            goto cleanup;
+        if (tokens->buffers.count <= count) {
+            if (count == 0)
+                count = 1;
+            else
+                count *= 2;
+
+            ntypes = GSSEAP_MALLOC(count * sizeof(OM_uint32));
+            if (ntypes == NULL) {
+                major = GSS_S_FAILURE;
+                *minor = ENOMEM;
+                goto cleanup;
+            }
+            if (tokens->types != NULL) {
+                memcpy(ntypes, tokens->types, tokens->buffers.count * sizeof(OM_uint32));
+                GSSEAP_FREE(tokens->types);
+            }
+            tokens->types = ntypes;
+
+            newTokenBuffers = GSSEAP_MALLOC(count * sizeof(gss_buffer_desc));
+            if (newTokenBuffers == NULL) {
+                major = GSS_S_FAILURE;
+                *minor = ENOMEM;
+                goto cleanup;
+            }
+            if (tokens->buffers.elements != NULL) {
+                memcpy(newTokenBuffers, tokens->buffers.elements,
+                       tokens->buffers.count * sizeof(gss_buffer_desc));
+                GSSEAP_FREE(tokens->buffers.elements);
+            }
+            tokens->buffers.elements = newTokenBuffers;
         }
-        tokens->types = ntypes;
 
         tokens->types[tokens->buffers.count] = load_uint32_be(&p[0]);
         tokenBuffer.length = load_uint32_be(&p[4]);
@@ -168,21 +192,11 @@ gssEapDecodeInnerTokens(OM_uint32 *minor,
         }
         tokenBuffer.value = &p[8];
 
-        newTokenBuffers = GSSEAP_REALLOC(tokens->buffers.elements,
-                                         (tokens->buffers.count + 1) * sizeof(gss_buffer_desc));
-        if (newTokenBuffers == NULL) {
-            major = GSS_S_FAILURE;
-            *minor = ENOMEM;
-            goto cleanup;
-        }
-
-        tokens->buffers.elements = newTokenBuffers;
         tokens->buffers.elements[tokens->buffers.count] = tokenBuffer;
         tokens->buffers.count++;
 
         p      += 8 + tokenBuffer.length;
         remain -= 8 + tokenBuffer.length;
-
     } while (remain != 0);
 
     major = GSS_S_COMPLETE;
