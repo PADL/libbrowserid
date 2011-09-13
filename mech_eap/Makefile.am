@@ -73,7 +73,6 @@ mech_eap_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
-	util_base64.c				\
 	util_buffer.c				\
 	util_context.c				\
 	util_cksum.c				\
@@ -105,6 +104,7 @@ mech_eap_la_SOURCES +=				\
 	release_any_name_mapping.c		\
 	set_name_attribute.c			\
 	util_attr.cpp				\
+	util_base64.c				\
 	util_json.cpp				\
 	util_radius.cpp
 

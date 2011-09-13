@@ -48,6 +48,7 @@
         }                                       \
     } while (0)
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 static OM_uint32
 gssEapImportPartialContext(OM_uint32 *minor,
                            unsigned char **pBuf,
@@ -113,6 +114,7 @@ gssEapImportPartialContext(OM_uint32 *minor,
 
     return GSS_S_COMPLETE;
 }
+#endif
 
 static OM_uint32
 importMechanismOid(OM_uint32 *minor,
@@ -304,6 +306,7 @@ gssEapImportContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     /*
      * The partial context should only be expected for unestablished
      * acceptor contexts.
@@ -317,6 +320,7 @@ gssEapImportContext(OM_uint32 *minor,
 
 #ifdef GSSEAP_DEBUG
     assert(remain == 0);
+#endif
 #endif
 
     major = GSS_S_COMPLETE;

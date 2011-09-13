@@ -83,6 +83,7 @@ typedef const gss_OID_desc *gss_const_OID;
 #include <wpabuf.h>
 
 /* FreeRADIUS headers */
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 #ifdef __cplusplus
 extern "C" {
 #define operator fr_operator
@@ -95,6 +96,7 @@ extern "C" {
 #undef operator
 }
 #endif
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
 #include "gsseap_err.h"
 #include "radsec_err.h"
@@ -184,6 +186,7 @@ struct gss_eap_initiator_ctx {
     struct wpabuf reqData;
 };
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 struct gss_eap_acceptor_ctx {
     struct rs_context *radContext;
     struct rs_connection *radConn;
@@ -191,6 +194,7 @@ struct gss_eap_acceptor_ctx {
     gss_buffer_desc state;
     VALUE_PAIR *vps;
 };
+#endif
 
 #ifdef HAVE_HEIMDAL_VERSION
 struct gss_ctx_id_t_desc_struct
@@ -215,8 +219,10 @@ struct gss_ctx_id_struct
     union {
         struct gss_eap_initiator_ctx initiator;
         #define initiatorCtx         ctxU.initiator
+#ifdef GSSEAP_ENABLE_ACCEPTOR
         struct gss_eap_acceptor_ctx  acceptor;
         #define acceptorCtx          ctxU.acceptor
+#endif
 #ifdef GSSEAP_ENABLE_REAUTH
         gss_ctx_id_t                 reauth;
         #define reauthCtx            ctxU.reauth
@@ -310,6 +316,10 @@ gssEapSaveStatusInfo(OM_uint32 minor, const char *format, ...);
 
 #define IS_WIRE_ERROR(err)              ((err) > GSSEAP_RESERVED && \
                                          (err) <= GSSEAP_RADIUS_PROT_FAILURE)
+
+/* upper bound of RADIUS error range must be kept in sync with radsec.h */
+#define IS_RADIUS_ERROR(err)            ((err) >= ERROR_TABLE_BASE_rse && \
+                                         (err) <= ERROR_TABLE_BASE_rse + 20)
 
 /* export_sec_context.c */
 OM_uint32
