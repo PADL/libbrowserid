@@ -74,6 +74,7 @@ DllMain(HINSTANCE hDLL,     /* DLL module handle */
     switch (reason) {
         case DLL_PROCESS_ATTACH:
             /* Allocate a TLS index. */
+            gssEapInitiatorInit();
             tlsIndex = TlsAlloc();
             if (tlsIndex == TLS_OUT_OF_INDEXES)
                 return FALSE;
@@ -99,6 +100,7 @@ DllMain(HINSTANCE hDLL,     /* DLL module handle */
                 destroyThreadLocalData(tlsData);
             /* Release the TLS index. */
             TlsFree(tlsIndex);
+            gssEapFinalize();
             break;
         default:
             break;

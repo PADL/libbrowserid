@@ -165,10 +165,10 @@ gssEapInitLibRadsec(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
-static void gssEapInitiatorInit(void) GSSEAP_CONSTRUCTOR;
-static void gssEapFinalize(void) GSSEAP_DESTRUCTOR;
+void gssEapInitiatorInit(void) GSSEAP_CONSTRUCTOR;
+void gssEapFinalize(void) GSSEAP_DESTRUCTOR;
 
-static void
+void
 gssEapInitiatorInit(void)
 {
     OM_uint32 major, minor;
@@ -188,7 +188,7 @@ gssEapInitiatorInit(void)
 #endif
 }
 
-static void
+void
 gssEapFinalize(void)
 {
 #ifdef GSSEAP_ENABLE_ACCEPTOR

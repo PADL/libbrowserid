@@ -335,6 +335,13 @@ gssEapExportSecContext(OM_uint32 *minor,
                        gss_buffer_t token);
 
 
+/* eap_mech.c */
+void
+gssEapInitiatorInit(void);
+
+void
+gssEapFinalize(void);
+
 #ifdef __cplusplus
 }
 #endif
