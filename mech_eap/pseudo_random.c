@@ -59,13 +59,13 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32 GSSAPI_CALLCONV
-gss_pseudo_random(OM_uint32 *minor,
-                  gss_ctx_id_t ctx,
-                  int prf_key,
-                  const gss_buffer_t prf_in,
-                  ssize_t desired_output_len,
-                  gss_buffer_t prf_out)
+OM_uint32
+gssEapPseudoRandom(OM_uint32 *minor,
+                   gss_ctx_id_t ctx,
+                   int prf_key,
+                   const gss_buffer_t prf_in,
+                   ssize_t desired_output_len,
+                   gss_buffer_t prf_out)
 {
     krb5_error_code code;
     int i;
@@ -78,20 +78,7 @@ gss_pseudo_random(OM_uint32 *minor,
     prf_out->length = 0;
     prf_out->value = NULL;
 
-    if (ctx == GSS_C_NO_CONTEXT) {
-        *minor = EINVAL;
-        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CONTEXT;
-    }
-
     *minor = 0;
-
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
-
-    if (!CTX_IS_ESTABLISHED(ctx)) {
-        GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
-        *minor = GSSEAP_CONTEXT_INCOMPLETE;
-        return GSS_S_NO_CONTEXT;
-    }
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -152,8 +139,6 @@ gss_pseudo_random(OM_uint32 *minor,
     }
 
 cleanup:
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
-
     if (code != 0)
         gss_release_buffer(&tmpMinor, prf_out);
     krb5_free_data_contents(krbContext, &ns);
@@ -162,4 +147,39 @@ cleanup:
     *minor = code;
 
     return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
+}
+
+OM_uint32 GSSAPI_CALLCONV
+gss_pseudo_random(OM_uint32 *minor,
+                  gss_ctx_id_t ctx,
+                  int prf_key,
+                  const gss_buffer_t prf_in,
+                  ssize_t desired_output_len,
+                  gss_buffer_t prf_out)
+{
+    OM_uint32 major;
+
+    if (ctx == GSS_C_NO_CONTEXT) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CONTEXT;
+    }
+
+    prf_out->length = 0;
+    prf_out->value = NULL;
+
+    *minor = 0;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (CTX_IS_ESTABLISHED(ctx)) {
+        major = gssEapPseudoRandom(minor, ctx, prf_key,
+                                   prf_in, desired_output_len, prf_out);
+    } else {
+        major = GSS_S_NO_CONTEXT;
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
+    }
+
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    return major;
 }

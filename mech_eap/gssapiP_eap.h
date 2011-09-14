@@ -343,6 +343,14 @@ gssEapExportSecContext(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
                        gss_buffer_t token);
 
+/* pseudo_random.c */
+OM_uint32
+gssEapPseudoRandom(OM_uint32 *minor,
+                   gss_ctx_id_t ctx,
+                   int prf_key,
+                   const gss_buffer_t prf_in,
+                   ssize_t desired_output_len,
+                   gss_buffer_t prf_out);
 
 /* eap_mech.c */
 void
