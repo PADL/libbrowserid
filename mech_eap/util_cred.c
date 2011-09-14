@@ -522,6 +522,36 @@ cleanup:
     return major;
 }
 
+OM_uint32
+gssEapSetCredService(OM_uint32 *minor,
+                     gss_cred_id_t cred,
+                     const gss_name_t target)
+{
+    OM_uint32 major, tmpMinor;
+    gss_name_t newTarget = GSS_C_NO_NAME;
+
+    if (cred->flags & CRED_FLAG_RESOLVED) {
+        major = GSS_S_FAILURE;
+        *minor = GSSEAP_CRED_RESOLVED;
+        goto cleanup;
+    }
+
+    if (target != GSS_C_NO_NAME) {
+        major = gssEapDuplicateName(minor, target, &newTarget);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    gssEapReleaseName(&tmpMinor, &cred->target);
+    cred->target = newTarget;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    return major;
+}
+
 static OM_uint32
 gssEapDuplicateCred(OM_uint32 *minor,
                     const gss_cred_id_t src,
