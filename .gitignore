@@ -6,3 +6,7 @@ config.*
 ltmain.sh
 libtool
 depcomp
+m4
+!m4/minuso.m4
+build-aux
+!build-aux/compile

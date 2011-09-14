@@ -1,6 +1,8 @@
 AC_PREREQ([2.61])
 AC_INIT([mech_eap], [0.1], [bugs@project-moonshot.org])
-dnl AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_AUX_DIR([build-aux])
+
 dnl AM_INIT_AUTOMAKE([silent-rules])
 AC_USE_SYSTEM_EXTENSIONS
 AC_GNU_SOURCE
