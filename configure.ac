@@ -2,16 +2,19 @@ AC_PREREQ([2.61])
 AC_INIT([mech_eap], [0.1], [bugs@project-moonshot.org])
 dnl AC_CONFIG_MACRO_DIR([m4])
 dnl AM_INIT_AUTOMAKE([silent-rules])
+AC_USE_SYSTEM_EXTENSIONS
+AC_GNU_SOURCE
 AM_INIT_AUTOMAKE
+AM_PROG_CC_C_O
+AM_MAINTAINER_MODE()
 LT_PREREQ([2.2])
-LT_INIT([dlopen disable-static])
+LT_INIT([dlopen disable-static win32-dll])
 
-AC_PROG_CC
+dnl AC_PROG_CC
 AC_PROG_CXX
 AC_CONFIG_HEADERS([config.h])
 AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h)
 AC_REPLACE_FUNCS(vasprintf)
-AC_GNU_SOURCE
 
 dnl Check if we're on Solaris and set CFLAGS accordingly
 dnl AC_CANONICAL_TARGET
@@ -66,6 +69,7 @@ AM_CONDITIONAL(GSSEAP_ENABLE_ACCEPTOR, test "x$acceptor" != "xno")
 
 AC_SUBST(TARGET_CFLAGS)
 AC_SUBST(TARGET_LDFLAGS)
+AX_CHECK_WINDOWS
 AX_CHECK_KRB5
 AX_CHECK_OPENSAML
 AM_CONDITIONAL(OPENSAML, test "x_$check_opensaml_dir" != "x_no")

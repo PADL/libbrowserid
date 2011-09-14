@@ -93,7 +93,6 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
                 tld->krbContext = *context;
         }
     }
-
     return *minor == 0 ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
 

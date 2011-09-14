@@ -114,7 +114,7 @@ gssEapImportPartialContext(OM_uint32 *minor,
 
     return GSS_S_COMPLETE;
 }
-#endif
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
 static OM_uint32
 importMechanismOid(OM_uint32 *minor,
@@ -321,7 +321,7 @@ gssEapImportContext(OM_uint32 *minor,
 #ifdef GSSEAP_DEBUG
     assert(remain == 0);
 #endif
-#endif
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
     major = GSS_S_COMPLETE;
     *minor = 0;

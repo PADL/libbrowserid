@@ -1,5 +1,13 @@
 dnl Based on the one from the Boinc project by Reinhard
 
+AC_DEFUN([AX_CHECK_WINDOWS],
+[AC_MSG_CHECKING(for windows)
+target_windows="no"
+AC_CHECK_HEADER(windows.h,[target_windows="yes"],[target_windows="no"])
+AC_MSG_RESULT($target_windows)
+AM_CONDITIONAL(TARGET_WINDOWS,test "x$target_windows" = "xyes")
+])dnl
+
 AC_DEFUN([AX_CHECK_KRB5],
 [AC_MSG_CHECKING(for GSS-API and Kerberos implementation)
 KRB5_DIR=
@@ -13,9 +21,15 @@ for dir in $check_krb5_dir $prefix /usr /usr/local ; do
    krb5dir="$dir"
    if test -x "$dir/bin/krb5-config"; then
      found_krb5="yes";
-     KRB5_CFLAGS=`$dir/bin/krb5-config gssapi --cflags`;
-     KRB5_LIBS=`$dir/bin/krb5-config gssapi --libs`;
-     COMPILE_ET="$dir/bin/compile_et";
+     if test "x$target_windows" = "xyes"; then
+        KRB5_CFLAGS=-I"$check_krb5_dir/include";
+        KRB5_LIBS="-L$check_krb5_dir/lib/ -lkrb5_32 -lgssapi32";
+        COMPILE_ET="$check_krb5_dir/bin/compile_et";
+     else
+        KRB5_CFLAGS=`$dir/bin/krb5-config gssapi --cflags`;
+        KRB5_LIBS=`$dir/bin/krb5-config gssapi --libs`;
+        COMPILE_ET="$dir/bin/compile_et";
+     fi
      break;
    fi
 done

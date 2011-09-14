@@ -100,7 +100,7 @@ releaseAcceptorContext(struct gss_eap_acceptor_ctx *ctx)
     if (ctx->vps != NULL)
         gssEapRadiusFreeAvps(&tmpMinor, &ctx->vps);
 }
-#endif
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
 OM_uint32
 gssEapReleaseContext(OM_uint32 *minor,
@@ -120,7 +120,7 @@ gssEapReleaseContext(OM_uint32 *minor,
     if (ctx->flags & CTX_FLAG_KRB_REAUTH) {
         gssDeleteSecContext(&tmpMinor, &ctx->reauthCtx, GSS_C_NO_BUFFER);
     } else
-#endif
+#endif /* GSSEAP_ENABLE_REAUTH */
     if (CTX_IS_INITIATOR(ctx)) {
         releaseInitiatorContext(&ctx->initiatorCtx);
     }
@@ -128,7 +128,7 @@ gssEapReleaseContext(OM_uint32 *minor,
     else {
         releaseAcceptorContext(&ctx->acceptorCtx);
     }
-#endif
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
     krb5_free_keyblock_contents(krbContext, &ctx->rfc3961Key);
     gssEapReleaseName(&tmpMinor, &ctx->initiatorName);

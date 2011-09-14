@@ -108,7 +108,6 @@ getStatusInfo(OM_uint32 minor)
                 return p->message;
         }
     }
-
     return NULL;
 }
 

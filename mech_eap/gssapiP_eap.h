@@ -89,14 +89,18 @@ typedef const gss_OID_desc *gss_const_OID;
 #include <eap_common/eap_common.h>
 #include <wpabuf.h>
 
-/* FreeRADIUS headers */
 #ifdef GSSEAP_ENABLE_ACCEPTOR
+/* FreeRADIUS headers */
 #ifdef __cplusplus
 extern "C" {
 #define operator fr_operator
 #endif
 #include <freeradius/libradius.h>
 #include <freeradius/radius.h>
+
+#undef pid_t
+
+/* libradsec headers */
 #include <radsec/radsec.h>
 #include <radsec/request.h>
 #ifdef __cplusplus

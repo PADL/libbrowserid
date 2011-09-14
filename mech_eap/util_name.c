@@ -112,7 +112,6 @@ gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName)
     GSSEAP_KRB_INIT(&krbContext);
     krb5_free_principal(krbContext, name->krbPrincipal);
     gssEapReleaseOid(&tmpMinor, &name->mechanismUsed);
-
 #ifdef GSSEAP_ENABLE_ACCEPTOR
     gssEapReleaseAttrContext(&tmpMinor, name);
 #endif

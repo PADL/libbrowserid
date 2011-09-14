@@ -154,6 +154,7 @@ OM_uint32
 gssEapRadiusMapError(OM_uint32 *minor,
                      struct rs_error *err);
 
+/* This really needs to be a function call on Windows */
 #define RS_CONFIG_FILE      SYSCONFDIR "/radsec.conf"
 
 #define VENDORPEC_MS                        311 /* RFC 2548 */

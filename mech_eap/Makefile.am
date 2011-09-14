@@ -4,8 +4,7 @@ gssincludedir = $(includedir)/gssapi
 gssinclude_HEADERS = gssapi_eap.h
 
 EAP_CFLAGS = -I$(srcdir)/../libeap/src -I$(srcdir)/../libeap/src/common -I$(srcdir)/../libeap/src/eap_common  \
-	-I$(srcdir)/../libeap/src/utils \
-	-DEAP_TLS -DEAP_PEAP -DEAP_TTLS -DEAP_MD5 -DEAP_MSCHAPv2 -DEAP_GTC -DEAP_OTP -DEAP_LEAP -DEAP_PSK -DEAP_PAX -DEAP_SAKE -DEAP_GPSK -DEAP_GPSK_SHA256 -DEAP_SERVER_IDENTITY -DEAP_SERVER_TLS -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DEAP_SERVER_MD5 -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_GTC -DEAP_SERVER_PSK -DEAP_SERVER_PAX -DEAP_SERVER_SAKE -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256 -DIEEE8021X_EAPOL
+	-I$(srcdir)/../libeap/src/utils
 
 if GSSEAP_ENABLE_ACCEPTOR
 GSSEAP_EXPORTS = mech_eap.exports
@@ -15,6 +14,18 @@ endif
 
 gssdir = $(libdir)/gss
 gss_LTLIBRARIES = mech_eap.la
+
+if TARGET_WINDOWS
+EAP_CFLAGS += -DCONFIG_WIN32_DEFAULTS -DUSE_INTERNAL_CRYPTO
+OS_LIBS = -lshell32 -ladvapi32 -lws2_32 -lcomerr32
+mech_eap_la_CFLAGS   = -Zi
+mech_eap_la_CXXFLAGS = -Zi
+else
+EAP_CFLAGS += -DEAP_TLS -DEAP_PEAP -DEAP_TTLS -DEAP_MD5 -DEAP_MSCHAPv2 -DEAP_GTC -DEAP_OTP -DEAP_LEAP -DEAP_PSK -DEAP_PAX -DEAP_SAKE -DEAP_GPSK -DEAP_GPSK_SHA256 -DEAP_SERVER_IDENTITY -DEAP_SERVER_TLS -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DEAP_SERVER_MD5 -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_GTC -DEAP_SERVER_PSK -DEAP_SERVER_PAX -DEAP_SERVER_SAKE -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256 -DIEEE8021X_EAPOL
+OS_LIBS =
+mech_eap_la_CFLAGS   = -Werror -Wall -Wunused-parameter
+mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
+endif
 
 mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
 mech_eap_la_CFLAGS   = -Werror -Wall -Wunused-parameter \
@@ -26,9 +37,12 @@ mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter \
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols $(GSSEAP_EXPORTS) -no-undefined \
 			@RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
+if TARGET_WINDOWS
+mech_eap_la_LDFLAGS += -debug
+endif
+
 mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
 		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
-
 mech_eap_la_SOURCES =    			\
 	acquire_cred.c				\
 	acquire_cred_with_password.c		\
@@ -148,4 +162,3 @@ radsec_err.c: radsec_err.h
 
 clean-generic:
 	rm -f gsseap_err.[ch] radsec_err.[ch]
-

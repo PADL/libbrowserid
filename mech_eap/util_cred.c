@@ -37,9 +37,10 @@
 #include "gssapiP_eap.h"
 
 #ifdef WIN32
-#include <shlobj.h>
+# include <shlobj.h>     /* may need to use ShFolder.h instead */
+# include <stdio.h>
 #else
-#include <pwd.h>
+# include <pwd.h>
 #endif
 
 OM_uint32
@@ -155,10 +156,10 @@ readStaticIdentityFile(OM_uint32 *minor,
         if (!SUCCEEDED(SHGetFolderPath(NULL,
                                        CSIDL_APPDATA, /* |CSIDL_FLAG_CREATE */
                                        NULL, /* User access token */
-                                       0,
+                                       0,    /* SHGFP_TYPE_CURRENT */
                                        szPath))) {
             major = GSS_S_CRED_UNAVAIL;
-            *minor = GetLastError();
+            *minor = GSSEAP_GET_LAST_ERROR(); /* XXX */
             goto cleanup;
         }
 

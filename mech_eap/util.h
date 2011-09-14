@@ -85,7 +85,7 @@ extern "C" {
 #define MIN(_a,_b)  ((_a)<(_b)?(_a):(_b))
 #endif
 
-#if !defined(WIN32) && (!(defined(__cplusplus)) || (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)))
+#if !defined(WIN32) && !(defined(__cplusplus)) || (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
 #define GSSEAP_UNUSED __attribute__ ((__unused__))
 #else
 #define GSSEAP_UNUSED
@@ -779,13 +779,12 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_GET_LAST_ERROR()		(GetLastError())
 
 #define GSSEAP_MUTEX                    CRITICAL_SECTION
-
 #define GSSEAP_MUTEX_INIT(m)            (InitializeCriticalSection((m)), 0)
 #define GSSEAP_MUTEX_DESTROY(m)         DeleteCriticalSection((m))
 #define GSSEAP_MUTEX_LOCK(m)            EnterCriticalSection((m))
 #define GSSEAP_MUTEX_UNLOCK(m)          LeaveCriticalSection((m))
 
-/* XXX yet to implement thread-local wrappers */
+/* Thread-local is handled separately */
 
 #define GSSEAP_THREAD_ONCE              INIT_ONCE
 #define GSSEAP_ONCE(o, i)               InitOnceExecuteOnce((o), (i))
@@ -798,7 +797,6 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_GET_LAST_ERROR()		(errno)
 
 #define GSSEAP_MUTEX                    pthread_mutex_t
-
 #define GSSEAP_MUTEX_INIT(m)            pthread_mutex_init((m), NULL)
 #define GSSEAP_MUTEX_DESTROY(m)         pthread_mutex_destroy((m))
 #define GSSEAP_MUTEX_LOCK(m)            pthread_mutex_lock((m))
@@ -989,7 +987,7 @@ gssEapDestroyKrbContext(krb5_context context);
 #include "util_json.h"
 #include "util_attr.h"
 #include "util_base64.h"
-#endif
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
 #ifdef GSSEAP_ENABLE_REAUTH
 #include "util_reauth.h"
 #endif

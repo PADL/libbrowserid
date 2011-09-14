@@ -31,7 +31,8 @@
  */
 
 /*
- * Thread local data abstraction.
+ * Thread local data abstraction, using pthreads on Unix and the TlsXXX
+ * APIs on Windows.
  */
 
 #include "gssapiP_eap.h"
@@ -151,4 +152,5 @@ gssEapGetThreadLocalData()
 
     return tld;
 }
+
 #endif /* WIN32 */

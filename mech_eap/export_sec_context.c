@@ -47,7 +47,6 @@ gssEapExportPartialContext(OM_uint32 *minor,
     size_t length, serverLen = 0;
     unsigned char *p;
     char serverBuf[MAXHOSTNAMELEN];
-
     if (ctx->acceptorCtx.radConn != NULL) {
         if (rs_conn_get_current_peer(ctx->acceptorCtx.radConn,
                                      serverBuf, sizeof(serverBuf)) != 0) {
@@ -60,7 +59,6 @@ gssEapExportPartialContext(OM_uint32 *minor,
         }
         serverLen = strlen(serverBuf);
     }
-
     length = 4 + serverLen + 4 + ctx->acceptorCtx.state.length;
 
     token->value = GSSEAP_MALLOC(length);
