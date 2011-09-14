@@ -93,7 +93,9 @@ typedef const gss_OID_desc *gss_const_OID;
 /* FreeRADIUS headers */
 #ifdef __cplusplus
 extern "C" {
+#ifndef WIN32
 #define operator fr_operator
+#endif
 #endif
 #include <freeradius/libradius.h>
 #include <freeradius/radius.h>
@@ -104,7 +106,9 @@ extern "C" {
 #include <radsec/radsec.h>
 #include <radsec/request.h>
 #ifdef __cplusplus
+#ifndef WIN32
 #undef operator
+#endif
 }
 #endif
 #endif /* GSSEAP_ENABLE_ACCEPTOR */

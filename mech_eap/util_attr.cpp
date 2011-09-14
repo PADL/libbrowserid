@@ -46,8 +46,7 @@
 static GSSEAP_THREAD_ONCE gssEapAttrProvidersInitOnce = GSSEAP_ONCE_INITIALIZER;
 static OM_uint32 gssEapAttrProvidersInitStatus = GSS_S_UNAVAILABLE;
 
-static void
-gssEapAttrProvidersInitInternal(void)
+GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
 {
     OM_uint32 major, minor;
 
@@ -74,6 +73,8 @@ cleanup:
 #endif
 
     gssEapAttrProvidersInitStatus = major;
+
+    GSSEAP_ONCE_LEAVE;
 }
 
 static OM_uint32

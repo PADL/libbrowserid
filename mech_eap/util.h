@@ -776,25 +776,27 @@ verifyTokenHeader(OM_uint32 *minor,
 
 #include <winbase.h>
 
-#define GSSEAP_GET_LAST_ERROR()		(GetLastError())
+#define GSSEAP_GET_LAST_ERROR()         (GetLastError()) /* XXX FIXME */
 
 #define GSSEAP_MUTEX                    CRITICAL_SECTION
 #define GSSEAP_MUTEX_INIT(m)            (InitializeCriticalSection((m)), 0)
 #define GSSEAP_MUTEX_DESTROY(m)         DeleteCriticalSection((m))
 #define GSSEAP_MUTEX_LOCK(m)            EnterCriticalSection((m))
 #define GSSEAP_MUTEX_UNLOCK(m)          LeaveCriticalSection((m))
+#define GSSEAP_ONCE_LEAVE		do { return TRUE; } while (0)
 
 /* Thread-local is handled separately */
 
 #define GSSEAP_THREAD_ONCE              INIT_ONCE
-#define GSSEAP_ONCE(o, i)               InitOnceExecuteOnce((o), (i))
+#define GSSEAP_ONCE_CALLBACK(cb)        BOOL CALLBACK cb(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context)
+#define GSSEAP_ONCE(o, i)               InitOnceExecuteOnce((o), (i), NULL, NULL)
 #define GSSEAP_ONCE_INITIALIZER         INIT_ONCE_STATIC_INIT
 
 #else
 
 #include <pthread.h>
 
-#define GSSEAP_GET_LAST_ERROR()		(errno)
+#define GSSEAP_GET_LAST_ERROR()         (errno)
 
 #define GSSEAP_MUTEX                    pthread_mutex_t
 #define GSSEAP_MUTEX_INIT(m)            pthread_mutex_init((m), NULL)
@@ -808,8 +810,10 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_SETSPECIFIC(k, d)        pthread_setspecific((k), (d))
 
 #define GSSEAP_THREAD_ONCE              pthread_once_t
+#define GSSEAP_ONCE_CALLBACK(cb)        void cb(void)
 #define GSSEAP_ONCE(o, i)               pthread_once((o), (i))
 #define GSSEAP_ONCE_INITIALIZER         PTHREAD_ONCE_INIT
+#define GSSEAP_ONCE_LEAVE		do { } while (0)
 
 #endif /* WIN32 */
 
