@@ -234,7 +234,7 @@ importName(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
-static OM_uint32
+OM_uint32
 gssEapImportContext(OM_uint32 *minor,
                     gss_buffer_t token,
                     gss_ctx_id_t ctx)

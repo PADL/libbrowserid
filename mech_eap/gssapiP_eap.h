@@ -343,6 +343,12 @@ gssEapExportSecContext(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
                        gss_buffer_t token);
 
+/* import_sec_context.c */
+OM_uint32
+gssEapImportContext(OM_uint32 *minor,
+                    gss_buffer_t token,
+                    gss_ctx_id_t ctx);
+
 /* pseudo_random.c */
 OM_uint32
 gssEapPseudoRandom(OM_uint32 *minor,
