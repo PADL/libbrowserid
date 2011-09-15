@@ -210,7 +210,10 @@ enum gss_eap_token_type {
 
 #define ITOK_TYPE_MASK                  (~(ITOK_FLAG_CRITICAL | ITOK_FLAG_VERIFIED))
 
-#define GSSEAP_WIRE_FLAGS_MASK          GSS_C_MUTUAL_FLAG
+#define GSSEAP_WIRE_FLAGS_MASK          ( GSS_C_MUTUAL_FLAG             | \
+                                          GSS_C_DCE_STYLE               | \
+                                          GSS_C_IDENTIFY_FLAG           | \
+                                          GSS_C_EXTENDED_ERROR_FLAG       )
 
 OM_uint32 gssEapAllocContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 OM_uint32 gssEapReleaseContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
