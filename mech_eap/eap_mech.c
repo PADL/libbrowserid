@@ -196,9 +196,9 @@ gssEapInitiatorInit(OM_uint32 *minor)
 void
 gssEapFinalize(void)
 {
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     OM_uint32 minor;
 
-#ifdef GSSEAP_ENABLE_ACCEPTOR
     gssEapAttrProvidersFinalize(&minor);
 #endif
     eap_peer_unregister_methods();
