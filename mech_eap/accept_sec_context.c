@@ -328,7 +328,7 @@ setAcceptorIdentity(OM_uint32 *minor,
     krb5_principal krbPrinc;
     struct rs_context *rc = ctx->acceptorCtx.radContext;
 
-    assert(rc != NULL);
+    GSSEAP_ASSERT(rc != NULL);
 
     if (ctx->acceptorName == GSS_C_NO_NAME) {
         *minor = 0;
@@ -343,8 +343,8 @@ setAcceptorIdentity(OM_uint32 *minor,
     GSSEAP_KRB_INIT(&krbContext);
 
     krbPrinc = ctx->acceptorName->krbPrincipal;
-    assert(krbPrinc != NULL);
-    assert(KRB_PRINC_LENGTH(krbPrinc) >= 2);
+    GSSEAP_ASSERT(krbPrinc != NULL);
+    GSSEAP_ASSERT(KRB_PRINC_LENGTH(krbPrinc) >= 2);
 
     /* Acceptor-Service-Name */
     krbPrincComponentToGssBuffer(krbPrinc, 0, &nameBuf);
@@ -423,8 +423,8 @@ createRadiusHandle(OM_uint32 *minor,
     struct rs_alloc_scheme ralloc;
     struct rs_error *err;
 
-    assert(actx->radContext == NULL);
-    assert(actx->radConn == NULL);
+    GSSEAP_ASSERT(actx->radContext == NULL);
+    GSSEAP_ASSERT(actx->radConn == NULL);
 
     if (rs_context_create(&actx->radContext) != 0) {
         *minor = GSSEAP_RADSEC_CONTEXT_FAILURE;
@@ -550,7 +550,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
         goto cleanup;
     }
 
-    assert(resp != NULL);
+    GSSEAP_ASSERT(resp != NULL);
 
     frresp = rs_packet_frpkt(resp);
     switch (frresp->code) {
@@ -606,7 +606,7 @@ cleanup:
     if (resp != NULL)
         rs_packet_destroy(resp);
     if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_INITIATOR_EXTS) {
-        assert(major == GSS_S_CONTINUE_NEEDED);
+        GSSEAP_ASSERT(major == GSS_S_CONTINUE_NEEDED);
 
         rs_conn_destroy(ctx->acceptorCtx.radConn);
         ctx->acceptorCtx.radConn = NULL;
@@ -631,7 +631,7 @@ eapGssSmAcceptGssFlags(OM_uint32 *minor,
     unsigned char *p;
     OM_uint32 initiatorGssFlags;
 
-    assert((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
+    GSSEAP_ASSERT((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
 
     if (inputToken->length < 4) {
         *minor = GSSEAP_TOK_TRUNC;
@@ -943,7 +943,7 @@ gssEapAcceptSecContext(OM_uint32 *minor,
         }
     }
 
-    assert(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
+    GSSEAP_ASSERT(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
     if (cred != GSS_C_NO_CREDENTIAL)

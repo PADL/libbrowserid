@@ -761,6 +761,11 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSAPI_CALLCONV                 KRB5_CALLCONV
 #endif
 
+#ifndef GSSEAP_ASSERT
+#include <assert.h>
+#define GSSEAP_ASSERT(x)                assert((x))
+#endif /* !GSSEAP_ASSERT */
+
 #ifdef WIN32
 #define GSSEAP_CONSTRUCTOR
 #define GSSEAP_DESTRUCTOR
@@ -770,7 +775,7 @@ verifyTokenHeader(OM_uint32 *minor,
 #endif
 
 #define GSSEAP_NOT_IMPLEMENTED          do {            \
-        assert(0 && "not implemented");                 \
+        GSSEAP_ASSERT(0 && "not implemented");          \
         *minor = ENOSYS;                                \
         return GSS_S_FAILURE;                           \
     } while (0)

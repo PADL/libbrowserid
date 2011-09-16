@@ -86,7 +86,7 @@ gssEapExportPartialContext(OM_uint32 *minor,
         p += ctx->acceptorCtx.state.length;
     }
 
-    assert(p == (unsigned char *)token->value + token->length);
+    GSSEAP_ASSERT(p == (unsigned char *)token->value + token->length);
 
     major = GSS_S_COMPLETE;
     *minor = 0;
@@ -195,7 +195,7 @@ gssEapExportSecContext(OM_uint32 *minor,
     if (partialCtx.value != NULL)
         p = store_buffer(&partialCtx, p, FALSE);
 
-    assert(p == (unsigned char *)token->value + token->length);
+    GSSEAP_ASSERT(p == (unsigned char *)token->value + token->length);
 
     major = GSS_S_COMPLETE;
     *minor = 0;

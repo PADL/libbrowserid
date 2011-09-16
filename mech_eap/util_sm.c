@@ -40,7 +40,7 @@
 #define SM_FLAG_TRANSITED                   0x80000000
 
 #define SM_ASSERT_VALID(ctx, status)        do { \
-        assert(GSS_ERROR((status)) || \
+        GSSEAP_ASSERT(GSS_ERROR((status)) || \
                ((status) == GSS_S_CONTINUE_NEEDED && ((ctx)->state > GSSEAP_STATE_INITIAL && (ctx)->state < GSSEAP_STATE_ESTABLISHED)) || \
                ((status) == GSS_S_COMPLETE && (ctx)->state == GSSEAP_STATE_ESTABLISHED)); \
     } while (0)
@@ -83,8 +83,8 @@ gssEapStateToString(enum gss_eap_state state)
 void
 gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state)
 {
-    assert(state >= GSSEAP_STATE_INITIAL);
-    assert(state <= GSSEAP_STATE_ESTABLISHED);
+    GSSEAP_ASSERT(state >= GSSEAP_STATE_INITIAL);
+    GSSEAP_ASSERT(state <= GSSEAP_STATE_ESTABLISHED);
 
     fprintf(stderr, "GSS-EAP: state transition %s->%s\n",
             gssEapStateToString(GSSEAP_SM_STATE(ctx)),
@@ -104,7 +104,7 @@ makeErrorToken(OM_uint32 *minor,
     unsigned char errorData[8];
     gss_buffer_desc errorBuffer;
 
-    assert(GSS_ERROR(majorStatus));
+    GSSEAP_ASSERT(GSS_ERROR(majorStatus));
 
     /*
      * Only return error codes that the initiator could have caused,
@@ -169,7 +169,7 @@ gssEapSmStep(OM_uint32 *minor,
     int initialContextToken = 0;
     enum gss_eap_token_type tokType;
 
-    assert(smCount > 0);
+    GSSEAP_ASSERT(smCount > 0);
 
     *minor = 0;
 
@@ -202,7 +202,7 @@ gssEapSmStep(OM_uint32 *minor,
         goto cleanup;
     }
 
-    assert(ctx->state < GSSEAP_STATE_ESTABLISHED);
+    GSSEAP_ASSERT(ctx->state < GSSEAP_STATE_ESTABLISHED);
 
     major = gssEapDecodeInnerTokens(minor, &unwrappedInputToken, &inputTokens);
     if (GSS_ERROR(major))
@@ -279,7 +279,7 @@ gssEapSmStep(OM_uint32 *minor,
 
             if (innerOutputToken.value != NULL) {
                 outputTokens.buffers.elements[outputTokens.buffers.count] = innerOutputToken;
-                assert(smp->outputTokenType != ITOK_TYPE_NONE);
+                GSSEAP_ASSERT(smp->outputTokenType != ITOK_TYPE_NONE);
                 outputTokens.types[outputTokens.buffers.count] = smp->outputTokenType;
                 if (smFlags & SM_FLAG_OUTPUT_TOKEN_CRITICAL)
                     outputTokens.types[outputTokens.buffers.count] |= ITOK_FLAG_CRITICAL;
@@ -302,7 +302,7 @@ gssEapSmStep(OM_uint32 *minor,
         }
     }
 
-    assert(outputTokens.buffers.count <= smCount);
+    GSSEAP_ASSERT(outputTokens.buffers.count <= smCount);
 
     /* Check we understood all critical tokens sent by peer */
     if (!GSS_ERROR(major)) {
@@ -354,7 +354,7 @@ gssEapSmStep(OM_uint32 *minor,
     }
 
     /* If the context is established, empty tokens only to be emitted by initiator */
-    assert(!CTX_IS_ESTABLISHED(ctx) || ((outputToken->length == 0) == CTX_IS_INITIATOR(ctx)));
+    GSSEAP_ASSERT(!CTX_IS_ESTABLISHED(ctx) || ((outputToken->length == 0) == CTX_IS_INITIATOR(ctx)));
 
     SM_ASSERT_VALID(ctx, major);
 

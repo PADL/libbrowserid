@@ -106,7 +106,7 @@ gssEapImportPartialContext(OM_uint32 *minor,
     }
 
 #ifdef GSSEAP_DEBUG
-    assert(remain == 0);
+    GSSEAP_ASSERT(remain == 0);
 #endif
 
     *pBuf = p;
@@ -319,7 +319,7 @@ gssEapImportContext(OM_uint32 *minor,
     }
 
 #ifdef GSSEAP_DEBUG
-    assert(remain == 0);
+    GSSEAP_ASSERT(remain == 0);
 #endif
 #endif /* GSSEAP_ENABLE_ACCEPTOR */
 

@@ -429,8 +429,8 @@ getDefaultReauthCredentials(OM_uint32 *minor,
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    assert(cred != GSS_C_NO_CREDENTIAL);
-    assert(target != GSS_C_NO_NAME);
+    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
+    GSSEAP_ASSERT(target != GSS_C_NO_NAME);
 
     if (cred->name == GSS_C_NO_NAME ||
         !reauthUseCredsCache(krbContext, cred->name->krbPrincipal))
@@ -480,7 +480,7 @@ gssEapCanReauthP(gss_cred_id_t cred,
     time_t now, expiryReq;
     OM_uint32 minor;
 
-    assert(cred != GSS_C_NO_CREDENTIAL);
+    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
 
     now = time(NULL);
     expiryReq = now;

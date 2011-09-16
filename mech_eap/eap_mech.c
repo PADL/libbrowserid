@@ -214,6 +214,6 @@ gssEapInitiatorInitAssert(void)
 
     major = gssEapInitiatorInit(&minor);
 
-    assert(!GSS_ERROR(major));
+    GSSEAP_ASSERT(!GSS_ERROR(major));
 }
 #endif

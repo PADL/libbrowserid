@@ -123,7 +123,7 @@ peerGetInt(void *data, enum eapol_int_var variable)
     if (ctx == GSS_C_NO_CONTEXT)
         return FALSE;
 
-    assert(CTX_IS_INITIATOR(ctx));
+    GSSEAP_ASSERT(CTX_IS_INITIATOR(ctx));
 
     switch (variable) {
     case EAPOL_idleWhile:
@@ -143,7 +143,7 @@ peerSetInt(void *data, enum eapol_int_var variable,
     if (ctx == GSS_C_NO_CONTEXT)
         return;
 
-    assert(CTX_IS_INITIATOR(ctx));
+    GSSEAP_ASSERT(CTX_IS_INITIATOR(ctx));
 
     switch (variable) {
     case EAPOL_idleWhile:
@@ -211,7 +211,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     eapPeerConfig->password = NULL;
     eapPeerConfig->password_len = 0;
 
-    assert(cred != GSS_C_NO_CREDENTIAL);
+    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
 
     GSSEAP_KRB_INIT(&krbContext);
 
@@ -220,7 +220,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     wpa_debug_level = 0;
 #endif
 
-    assert(cred->name != GSS_C_NO_NAME);
+    GSSEAP_ASSERT(cred->name != GSS_C_NO_NAME);
 
     if ((cred->name->flags & (NAME_FLAG_NAI | NAME_FLAG_SERVICE)) == 0) {
         *minor = GSSEAP_BAD_INITIATOR_NAME;
@@ -355,7 +355,7 @@ initBegin(OM_uint32 *minor,
     OM_uint32 major;
     gss_cred_id_t cred = ctx->cred;
 
-    assert(cred != GSS_C_NO_CREDENTIAL);
+    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
 
     if (cred->expiryTime)
         ctx->expiryTime = cred->expiryTime;
@@ -433,7 +433,7 @@ eapGssSmInitError(OM_uint32 *minor,
         *minor = GSSEAP_BAD_ERROR_TOKEN;
     }
 
-    assert(GSS_ERROR(major));
+    GSSEAP_ASSERT(GSS_ERROR(major));
 
     return major;
 }
@@ -457,7 +457,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
     gss_OID actualMech = GSS_C_NO_OID;
     OM_uint32 gssFlags, timeRec;
 
-    assert(cred != GSS_C_NO_CREDENTIAL);
+    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
 
     if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_INITIAL) {
         if (!gssEapCanReauthP(cred, target, timeReq))
@@ -493,7 +493,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
     ctx->gssFlags = gssFlags;
 
     if (major == GSS_S_COMPLETE) {
-        assert(GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_REAUTHENTICATE);
+        GSSEAP_ASSERT(GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_REAUTHENTICATE);
 
         major = gssEapReauthComplete(minor, ctx, cred, actualMech, timeRec);
         if (GSS_ERROR(major))
@@ -607,8 +607,8 @@ eapGssSmInitIdentity(OM_uint32 *minor,
 #endif
         *smFlags |= SM_FLAG_FORCE_SEND_TOKEN;
 
-    assert((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
-    assert(inputToken == GSS_C_NO_BUFFER);
+    GSSEAP_ASSERT((ctx->flags & CTX_FLAG_KRB_REAUTH) == 0);
+    GSSEAP_ASSERT(inputToken == GSS_C_NO_BUFFER);
 
     memset(&eapConfig, 0, sizeof(eapConfig));
 
@@ -655,14 +655,14 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
     *minor = 0;
 
-    assert(inputToken != GSS_C_NO_BUFFER);
+    GSSEAP_ASSERT(inputToken != GSS_C_NO_BUFFER);
 
     major = peerConfigInit(minor, ctx);
     if (GSS_ERROR(major))
         goto cleanup;
 
-    assert(ctx->initiatorCtx.eap != NULL);
-    assert(ctx->flags & CTX_FLAG_EAP_PORT_ENABLED);
+    GSSEAP_ASSERT(ctx->initiatorCtx.eap != NULL);
+    GSSEAP_ASSERT(ctx->flags & CTX_FLAG_EAP_PORT_ENABLED);
 
     ctx->flags |= CTX_FLAG_EAP_REQ; /* we have a Request from the acceptor */
 
@@ -697,7 +697,7 @@ cleanup:
         OM_uint32 tmpMajor;
         gss_buffer_desc respBuf;
 
-        assert(major == GSS_S_CONTINUE_NEEDED);
+        GSSEAP_ASSERT(major == GSS_S_CONTINUE_NEEDED);
 
         respBuf.length = wpabuf_len(resp);
         respBuf.value = (void *)wpabuf_head(resp);
@@ -765,7 +765,7 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    assert(outputToken->value != NULL);
+    GSSEAP_ASSERT(outputToken->value != NULL);
 
     *minor = 0;
     *smFlags |= SM_FLAG_OUTPUT_TOKEN_CRITICAL;
@@ -969,13 +969,13 @@ gssEapInitSecContext(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        assert(ctx->cred != GSS_C_NO_CREDENTIAL);
+        GSSEAP_ASSERT(ctx->cred != GSS_C_NO_CREDENTIAL);
     }
 
     GSSEAP_MUTEX_LOCK(&ctx->cred->mutex);
 
-    assert(ctx->cred->flags & CRED_FLAG_RESOLVED);
-    assert(ctx->cred->flags & CRED_FLAG_INITIATE);
+    GSSEAP_ASSERT(ctx->cred->flags & CRED_FLAG_RESOLVED);
+    GSSEAP_ASSERT(ctx->cred->flags & CRED_FLAG_INITIATE);
 
     if (initialContextToken) {
         major = initBegin(minor, ctx, target_name, mech_type,
@@ -1014,7 +1014,7 @@ gssEapInitSecContext(OM_uint32 *minor,
     if (time_rec != NULL)
         gssEapContextTime(&tmpMinor, ctx, time_rec);
 
-    assert(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
+    GSSEAP_ASSERT(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
     if (cred != GSS_C_NO_CREDENTIAL)
@@ -1048,7 +1048,7 @@ gss_init_sec_context(OM_uint32 *minor,
     output_token->length = 0;
     output_token->value = NULL;
 
-    assert(ctx == GSS_C_NO_CONTEXT || ctx->mechanismUsed != GSS_C_NO_OID);
+    GSSEAP_ASSERT(ctx == GSS_C_NO_CONTEXT || ctx->mechanismUsed != GSS_C_NO_OID);
 
     if (ctx == GSS_C_NO_CONTEXT) {
         if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {

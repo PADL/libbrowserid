@@ -112,10 +112,10 @@ mapIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
     *pkiov_count = 0;
 
     header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
-    assert(header != NULL);
+    GSSEAP_ASSERT(header != NULL);
 
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
-    assert(trailer == NULL || rrc == 0);
+    GSSEAP_ASSERT(trailer == NULL || rrc == 0);
 
     code = krbCryptoLength(context, crypto, KRB5_CRYPTO_TYPE_HEADER, &k5_headerlen);
     if (code != 0)
@@ -325,7 +325,7 @@ gssEapIovMessageLength(gss_iov_buffer_desc *iov,
     int i;
     size_t data_length = 0, assoc_data_length = 0;
 
-    assert(iov != GSS_C_NO_IOV_BUFFER);
+    GSSEAP_ASSERT(iov != GSS_C_NO_IOV_BUFFER);
 
     *data_length_p = *assoc_data_length_p = 0;
 
@@ -350,7 +350,7 @@ gssEapReleaseIov(gss_iov_buffer_desc *iov, int iov_count)
     int i;
     OM_uint32 min_stat;
 
-    assert(iov != GSS_C_NO_IOV_BUFFER);
+    GSSEAP_ASSERT(iov != GSS_C_NO_IOV_BUFFER);
 
     for (i = 0; i < iov_count; i++) {
         if (iov[i].type & GSS_IOV_BUFFER_FLAG_ALLOCATED) {
@@ -366,7 +366,7 @@ gssEapIsIntegrityOnly(gss_iov_buffer_desc *iov, int iov_count)
     int i;
     krb5_boolean has_conf_data = FALSE;
 
-    assert(iov != GSS_C_NO_IOV_BUFFER);
+    GSSEAP_ASSERT(iov != GSS_C_NO_IOV_BUFFER);
 
     for (i = 0; i < iov_count; i++) {
         if (GSS_IOV_BUFFER_TYPE(iov[i].type) == GSS_IOV_BUFFER_TYPE_DATA) {
@@ -381,8 +381,8 @@ gssEapIsIntegrityOnly(gss_iov_buffer_desc *iov, int iov_count)
 int
 gssEapAllocIov(gss_iov_buffer_t iov, size_t size)
 {
-    assert(iov != GSS_C_NO_IOV_BUFFER);
-    assert(iov->type & GSS_IOV_BUFFER_FLAG_ALLOCATE);
+    GSSEAP_ASSERT(iov != GSS_C_NO_IOV_BUFFER);
+    GSSEAP_ASSERT(iov->type & GSS_IOV_BUFFER_FLAG_ALLOCATE);
 
     iov->buffer.length = size;
     iov->buffer.value = GSSEAP_MALLOC(size);

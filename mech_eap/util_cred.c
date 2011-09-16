@@ -338,7 +338,7 @@ gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech)
     OM_uint32 minor;
     int present = 0;
 
-    assert(mech != GSS_C_NO_OID);
+    GSSEAP_ASSERT(mech != GSS_C_NO_OID);
 
     if (cred == GSS_C_NO_CREDENTIAL || cred->mechanisms == GSS_C_NO_OID_SET)
         return TRUE;

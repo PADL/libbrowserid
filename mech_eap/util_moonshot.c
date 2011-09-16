@@ -41,7 +41,7 @@ libMoonshotMapError(OM_uint32 *minor,
 {
     MoonshotError *error = *pError;
 
-    assert(error != NULL);
+    GSSEAP_ASSERT(error != NULL);
 
     switch (error->code) {
     case MOONSHOT_ERROR_UNABLE_TO_START_SERVICE:

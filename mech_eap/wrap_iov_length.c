@@ -182,7 +182,7 @@ gssEapWrapIovLength(OM_uint32 *minor,
     else
         trailer->buffer.length = gssTrailerLen;
 
-    assert(gssPadLen == 0 || padding != NULL);
+    GSSEAP_ASSERT(gssPadLen == 0 || padding != NULL);
 
     if (padding != NULL)
         padding->buffer.length = gssPadLen;

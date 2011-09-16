@@ -96,7 +96,7 @@ gss_eap_radius_attr_provider::initWithGssContext(const gss_eap_attr_ctx *manager
                 return false;
 
             /* We assume libradsec validated this for us */
-            assert(pairfind(m_vps, PW_MESSAGE_AUTHENTICATOR) != NULL);
+            GSSEAP_ASSERT(pairfind(m_vps, PW_MESSAGE_AUTHENTICATOR) != NULL);
             m_authenticated = true;
         }
     }
@@ -151,7 +151,7 @@ isInternalAttributeP(uint16_t attrid, uint16_t vendor)
     bool bInternalAttribute = false;
 
     /* should have been filtered */
-    assert(!isSecretAttributeP(attrid, vendor));
+    GSSEAP_ASSERT(!isSecretAttributeP(attrid, vendor));
 
     switch (vendor) {
     case VENDORPEC_UKERNA:
@@ -671,7 +671,7 @@ avpToJson(const VALUE_PAIR *vp)
 {
     JSONObject obj;
 
-    assert(vp->length <= MAX_STRING_LEN);
+    GSSEAP_ASSERT(vp->length <= MAX_STRING_LEN);
 
     switch (vp->type) {
     case PW_TYPE_INTEGER:
@@ -855,7 +855,7 @@ gssEapRadiusMapError(OM_uint32 *minor,
 {
     int code;
 
-    assert(err != NULL);
+    GSSEAP_ASSERT(err != NULL);
 
     code = rs_err_code(err, 0);
 

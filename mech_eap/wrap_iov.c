@@ -248,7 +248,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
         if (code != 0)
             goto cleanup;
 
-        assert(gssTrailerLen <= 0xFFFF);
+        GSSEAP_ASSERT(gssTrailerLen <= 0xFFFF);
 
         if (trailer == NULL) {
             rrc = gssTrailerLen;

@@ -103,7 +103,7 @@ unwrapToken(OM_uint32 *minor,
         *qop_state = GSS_C_QOP_DEFAULT;
 
     header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
-    assert(header != NULL);
+    GSSEAP_ASSERT(header != NULL);
 
     padding = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_PADDING);
     if (padding != NULL && padding->buffer.length != 0) {
@@ -330,7 +330,7 @@ unwrapStream(OM_uint32 *minor,
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    assert(toktype == TOK_TYPE_WRAP);
+    GSSEAP_ASSERT(toktype == TOK_TYPE_WRAP);
 
     if (toktype != TOK_TYPE_WRAP) {
         code = GSSEAP_WRONG_TOK_ID;
@@ -338,7 +338,7 @@ unwrapStream(OM_uint32 *minor,
     }
 
     stream = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_STREAM);
-    assert(stream != NULL);
+    GSSEAP_ASSERT(stream != NULL);
 
     if (stream->buffer.length < 16) {
         major = GSS_S_DEFECTIVE_TOKEN;
@@ -458,7 +458,7 @@ unwrapStream(OM_uint32 *minor,
     tdata->buffer.length = stream->buffer.length - ttrailer->buffer.length -
         tpadding->buffer.length - theader->buffer.length;
 
-    assert(data != NULL);
+    GSSEAP_ASSERT(data != NULL);
 
     if (data->type & GSS_IOV_BUFFER_FLAG_ALLOCATE) {
         code = gssEapAllocIov(tdata, tdata->buffer.length);
@@ -473,7 +473,7 @@ unwrapStream(OM_uint32 *minor,
                               theader->buffer.length;
     }
 
-    assert(i <= iov_count + 2);
+    GSSEAP_ASSERT(i <= iov_count + 2);
 
     major = unwrapToken(&code, ctx, KRB_CRYPTO_CONTEXT(ctx),
                         conf_state, qop_state, tiov, i, toktype);

@@ -88,10 +88,10 @@ gssEapChecksum(krb5_context context,
         return code;
 
     header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
-    assert(header != NULL);
+    GSSEAP_ASSERT(header != NULL);
 
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
-    assert(rrc != 0 || trailer != NULL);
+    GSSEAP_ASSERT(rrc != 0 || trailer != NULL);
 
     if (trailer == NULL) {
         if (rrc != k5_checksumlen)

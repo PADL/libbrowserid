@@ -43,7 +43,7 @@ gssEapAllocContext(OM_uint32 *minor,
     OM_uint32 tmpMinor;
     gss_ctx_id_t ctx;
 
-    assert(*pCtx == GSS_C_NO_CONTEXT);
+    GSSEAP_ASSERT(*pCtx == GSS_C_NO_CONTEXT);
 
     ctx = (gss_ctx_id_t)GSSEAP_CALLOC(1, sizeof(*ctx));
     if (ctx == NULL) {
@@ -156,7 +156,7 @@ gssEapMakeToken(OM_uint32 *minor,
 {
     unsigned char *p;
 
-    assert(ctx->mechanismUsed != GSS_C_NO_OID);
+    GSSEAP_ASSERT(ctx->mechanismUsed != GSS_C_NO_OID);
 
     outputToken->length = tokenSize(ctx->mechanismUsed, innerToken->length);
     outputToken->value = GSSEAP_MALLOC(outputToken->length);
@@ -253,7 +253,7 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
 
     tokens = verifyMIC ? ctx->inputTokens : ctx->outputTokens;
 
-    assert(tokens != NULL);
+    GSSEAP_ASSERT(tokens != NULL);
 
     iov = GSSEAP_CALLOC(2 + (3 * tokens->buffers.count) + 1, sizeof(*iov));
     if (iov == NULL) {
@@ -277,7 +277,7 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
     }
 
     /* Mechanism OID */
-    assert(ctx->mechanismUsed != GSS_C_NO_OID);
+    GSSEAP_ASSERT(ctx->mechanismUsed != GSS_C_NO_OID);
     iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
     iov[i].buffer.length = ctx->mechanismUsed->length;
     iov[i].buffer.value = ctx->mechanismUsed->elements;
@@ -323,9 +323,9 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
     }
 
     if (verifyMIC) {
-        assert(tokenMIC->length >= 16);
+        GSSEAP_ASSERT(tokenMIC->length >= 16);
 
-        assert(i < 2 + (3 * tokens->buffers.count));
+        GSSEAP_ASSERT(i < 2 + (3 * tokens->buffers.count));
 
         iov[i].type = GSS_IOV_BUFFER_TYPE_HEADER;
         iov[i].buffer.length = 16;

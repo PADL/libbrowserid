@@ -91,7 +91,7 @@ gssEapEncodeInnerTokens(OM_uint32 *minor,
     for (i = 0; i < tokens->buffers.count; i++) {
         gss_buffer_t tokenBuffer = &tokens->buffers.elements[i];
 
-        assert((tokens->types[i] & ITOK_FLAG_VERIFIED) == 0); /* private flag */
+        GSSEAP_ASSERT((tokens->types[i] & ITOK_FLAG_VERIFIED) == 0); /* private flag */
 
          /*
           * Extensions are encoded as type-length-value, where the upper
@@ -104,8 +104,8 @@ gssEapEncodeInnerTokens(OM_uint32 *minor,
         p += 8 + tokenBuffer->length;
     }
 
-    assert(p == (unsigned char *)buffer->value + required);
-    assert(buffer->value != NULL);
+    GSSEAP_ASSERT(p == (unsigned char *)buffer->value + required);
+    GSSEAP_ASSERT(buffer->value != NULL);
 
     major = GSS_S_COMPLETE;
     *minor = 0;
@@ -316,7 +316,7 @@ der_read_length(unsigned char **buf, ssize_t *bufsize)
 size_t
 tokenSize(const gss_OID_desc *mech, size_t body_size)
 {
-    assert(mech != GSS_C_NO_OID);
+    GSSEAP_ASSERT(mech != GSS_C_NO_OID);
 
     /* set body_size to sequence contents size */
     body_size += 4 + (size_t) mech->length;         /* NEED overflow check */
@@ -339,7 +339,7 @@ makeTokenHeader(
     *(*buf)++ = (unsigned char)mech->length;
     memcpy(*buf, mech->elements, mech->length);
     *buf += mech->length;
-    assert(tok_type != TOK_TYPE_NONE);
+    GSSEAP_ASSERT(tok_type != TOK_TYPE_NONE);
     *(*buf)++ = (unsigned char)((tok_type>>8) & 0xff);
     *(*buf)++ = (unsigned char)(tok_type & 0xff);
 }

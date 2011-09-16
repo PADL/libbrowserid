@@ -123,7 +123,7 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
     unsigned char constant[4 + sizeof("rfc4121-gss-eap") - 1], *p;
     ssize_t i, remain;
 
-    assert(encryptionType != ENCTYPE_NULL);
+    GSSEAP_ASSERT(encryptionType != ENCTYPE_NULL);
 
     memset(pKey, 0, sizeof(*pKey));
 

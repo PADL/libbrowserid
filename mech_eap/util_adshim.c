@@ -125,7 +125,7 @@ radius_ad_import_authdata(krb5_context kcontext,
     krb5_free_data_contents(kcontext, &radius_ad->avpdata);
     radius_ad->verified = FALSE;
 
-    assert(authdata[0] != NULL);
+    GSSEAP_ASSERT(authdata[0] != NULL);
 
     radius_ad->avpdata.data = GSSEAP_MALLOC(authdata[0]->length);
     if (radius_ad->avpdata.data == NULL)

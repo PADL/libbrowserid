@@ -283,7 +283,7 @@ importEapNameFlags(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
-    assert(krbPrinc != NULL);
+    GSSEAP_ASSERT(krbPrinc != NULL);
 
     major = krbPrincipalToName(minor, &krbPrinc, pName);
     if (GSS_ERROR(major))
@@ -515,8 +515,8 @@ gssEapImportName(OM_uint32 *minor,
 
     if (major == GSS_S_COMPLETE &&
         mechType != GSS_C_NO_OID) {
-        assert(gssEapIsConcreteMechanismOid(mechType));
-        assert(name->mechanismUsed == GSS_C_NO_OID);
+        GSSEAP_ASSERT(gssEapIsConcreteMechanismOid(mechType));
+        GSSEAP_ASSERT(name->mechanismUsed == GSS_C_NO_OID);
 
         major = gssEapCanonicalizeOid(minor, mechType, 0, &name->mechanismUsed);
     }
@@ -617,7 +617,7 @@ gssEapExportNameInternal(OM_uint32 *minor,
         p += attrs.length;
     }
 
-    assert(p == (unsigned char *)exportedName->value + exportedNameLen);
+    GSSEAP_ASSERT(p == (unsigned char *)exportedName->value + exportedNameLen);
 
     major = GSS_S_COMPLETE;
     *minor = 0;
