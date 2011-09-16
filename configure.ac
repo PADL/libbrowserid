@@ -87,5 +87,6 @@ if test "x$acceptor" = "xyes" ; then
 fi
 
 AX_CHECK_LIBMOONSHOT
-AC_CONFIG_FILES([Makefile libeap/Makefile mech_eap/Makefile])
+AC_CONFIG_FILES([Makefile libeap/Makefile mech_eap/Makefile
+			  mech_eap.spec])
 AC_OUTPUT
