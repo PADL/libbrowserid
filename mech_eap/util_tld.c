@@ -99,10 +99,6 @@ DllMain(HINSTANCE hDLL,     /* DLL module handle */
             }
             break;
         case DLL_PROCESS_DETACH:
-            /* Release the allocated memory for this thread. */
-            tlsData = TlsGetValue(tlsIndex);
-            if (tlsData != NULL)
-                destroyThreadLocalData(tlsData);
             /* Release the TLS index. */
             TlsFree(tlsIndex);
             gssEapFinalize();
