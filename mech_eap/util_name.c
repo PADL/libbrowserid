@@ -206,7 +206,7 @@ importServiceName(OM_uint32 *minor,
     }
 
     if (realm != NULL)
-        GSSEAP_FREE(realm);
+        krb5_free_default_realm(krbContext, realm);
     GSSEAP_FREE(service);
 
     return major;
@@ -272,7 +272,7 @@ importEapNameFlags(OM_uint32 *minor,
 #endif
 
         if (defaultRealm != NULL)
-            GSSEAP_FREE(defaultRealm);
+            krb5_free_default_realm(krbContext, defaultRealm);
     }
 
     if (nameBuffer != GSS_C_NO_BUFFER)

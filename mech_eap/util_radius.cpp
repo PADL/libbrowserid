@@ -809,7 +809,7 @@ gss_eap_radius_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
         pNext = &vp->next;
     }
 
-    m_authenticated = obj["authenticated"].integer();
+    m_authenticated = obj["authenticated"].integer() ? true : false;
 
     return true;
 }

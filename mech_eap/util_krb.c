@@ -68,11 +68,10 @@ initKrbContext(krb5_context *pKrbContext)
     *pKrbContext = krbContext;
 
 cleanup:
+    krb5_free_default_realm(krbContext, defaultRealm);
+
     if (code != 0 && krbContext != NULL)
         krb5_free_context(krbContext);
-
-    if (defaultRealm != NULL)
-        GSSEAP_FREE(defaultRealm);
 
     return code;
 }
@@ -462,7 +461,7 @@ krbMakeAuthDataKdcIssued(krb5_context context,
     if (code != 0)
         goto cleanup;
 
-    GSSEAP_FREE(buf);
+    free(buf); /* match ASN1_MALLOC_ENCODE */
     buf = NULL;
 
     ASN1_MALLOC_ENCODE(AD_KDCIssued, buf, buf_size, &kdcIssued, &len, code);
@@ -479,7 +478,7 @@ krbMakeAuthDataKdcIssued(krb5_context context,
 
 cleanup:
     if (buf != NULL)
-        GSSEAP_FREE(buf);
+        free(buf); /* match ASN1_MALLOC_ENCODE */
     if (crypto != NULL)
         krb5_crypto_destroy(context, crypto);
     free_Checksum(&kdcIssued.ad_checksum);

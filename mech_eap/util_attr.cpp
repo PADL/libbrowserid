@@ -52,6 +52,8 @@ GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
 
     GSSEAP_ASSERT(gssEapAttrProvidersInitStatus == GSS_S_UNAVAILABLE);
 
+    json_set_alloc_funcs(GSSEAP_MALLOC, GSSEAP_FREE);
+
     major = gssEapRadiusAttrProviderInit(&minor);
     if (GSS_ERROR(major))
         goto cleanup;
