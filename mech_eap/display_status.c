@@ -64,7 +64,7 @@ gssEapDestroyStatusInfo(struct gss_eap_status_info *p)
 static void
 saveStatusInfoNoCopy(OM_uint32 minor, char *message)
 {
-    struct gss_eap_status_info **next = NULL, *p=NULL;
+    struct gss_eap_status_info **next = NULL, *p = NULL;
     struct gss_eap_thread_local_data *tld = gssEapGetThreadLocalData();
 
     if (tld != NULL) {

@@ -88,10 +88,15 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
     if (tld != NULL) {
         if (tld->krbContext == NULL) {
             *minor = initKrbContext(&tld->krbContext);
-            if (*minor == 0)
-                *context = tld->krbContext;
+            if (*minor != 0)
+                tld->krbContext = NULL;
         }
+        *context = tld->krbContext;
+    } else {
+        *minor = GSSEAP_GET_LAST_ERROR();
     }
+
+    GSSEAP_ASSERT(*context != NULL || *minor != 0);
 
     return (*minor == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }

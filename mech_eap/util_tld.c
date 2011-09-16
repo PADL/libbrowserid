@@ -62,7 +62,13 @@ static DWORD tlsIndex;
 struct gss_eap_thread_local_data *
 gssEapGetThreadLocalData(void)
 {
-    return TlsGetValue(tlsIndex);
+    struct gss_eap_thread_local_data *tld;
+
+    tld = TlsGetValue(tlsIndex);
+
+    GSSEAP_ASSERT(tld != NULL);
+
+    return tld;
 }
 
 BOOL WINAPI
