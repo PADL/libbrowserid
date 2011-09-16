@@ -363,8 +363,8 @@ gssEapPseudoRandom(OM_uint32 *minor,
                    gss_buffer_t prf_out);
 
 /* eap_mech.c */
-void
-gssEapInitiatorInit(void);
+OM_uint32
+gssEapInitiatorInit(OM_uint32 *minor);
 
 void
 gssEapFinalize(void);

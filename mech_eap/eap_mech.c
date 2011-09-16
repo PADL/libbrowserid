@@ -165,36 +165,55 @@ gssEapInitLibRadsec(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
-void gssEapInitiatorInit(void) GSSEAP_CONSTRUCTOR;
 void gssEapFinalize(void) GSSEAP_DESTRUCTOR;
 
-void
-gssEapInitiatorInit(void)
+OM_uint32
+gssEapInitiatorInit(OM_uint32 *minor)
 {
-    OM_uint32 major, minor;
+    OM_uint32 major;
 
     initialize_eapg_error_table();
     initialize_rse_error_table();
 
-    major = gssEapInitLibEap(&minor);
-    assert(major == GSS_S_COMPLETE);
+    major = gssEapInitLibEap(minor);
+    if (GSS_ERROR(major))
+        return major;
 
-    major = gssEapInitLibRadsec(&minor);
-    assert(major == GSS_S_COMPLETE);
+    major = gssEapInitLibRadsec(minor);
+    if (GSS_ERROR(major))
+        return major;
 
 #ifdef GSSEAP_ENABLE_REAUTH
-    major = gssEapReauthInitialize(&minor);
-    assert(major == GSS_S_COMPLETE);
+    major = gssEapReauthInitialize(minor);
+    if (GSS_ERROR(major))
+        return major;
 #endif
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
 }
 
 void
 gssEapFinalize(void)
 {
-#ifdef GSSEAP_ENABLE_ACCEPTOR
     OM_uint32 minor;
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     gssEapAttrProvidersFinalize(&minor);
 #endif
     eap_peer_unregister_methods();
 }
+
+#ifdef GSSEAP_CONSTRUCTOR
+static void gssEapInitiatorInitAssert(void) GSSEAP_CONSTRUCTOR;
+
+static void
+gssEapInitiatorInitAssert(void)
+{
+    OM_uint32 major, minor;
+
+    major = gssEapInitiatorInit(&minor);
+
+    assert(!GSS_ERROR(major));
+}
+#endif

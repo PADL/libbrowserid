@@ -51,7 +51,7 @@ destroyThreadLocalData(struct gss_eap_thread_local_data *tld)
 #ifdef WIN32
 
 /*
- * This is the tls index returned by TlsAlloc() on process init.
+ * This is the TLS index returned by TlsAlloc() on process init.
  * Each thread, on thread attach in DllMain(), allocates its thread-local
  * data and uses this index with TlsSetValue() to store it.
  * It can then subsequently be retrieved with TlsGetValue().
@@ -71,11 +71,15 @@ DllMain(HINSTANCE hDLL,     /* DLL module handle */
         LPVOID reserved)    /* reserved */
 {
     struct gss_eap_thread_local_data *tlsData;
+    OM_uint32 major, minor;
 
     switch (reason) {
         case DLL_PROCESS_ATTACH:
             /* Allocate a TLS index. */
-            gssEapInitiatorInit();
+            major = gssEapInitiatorInit(&minor);
+            if (GSS_ERROR(major))
+                return FALSE;
+
             tlsIndex = TlsAlloc();
             if (tlsIndex == TLS_OUT_OF_INDEXES)
                 return FALSE;
