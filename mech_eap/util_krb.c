@@ -82,17 +82,18 @@ gssEapKerberosInit(OM_uint32 *minor, krb5_context *context)
     struct gss_eap_thread_local_data *tld;
 
     *minor = 0;
+    *context = NULL;
 
     tld = gssEapGetThreadLocalData();
     if (tld != NULL) {
-        *context = tld->krbContext;
-        if (*context == NULL) {
-            *minor = initKrbContext(context);
+        if (tld->krbContext == NULL) {
+            *minor = initKrbContext(&tld->krbContext);
             if (*minor == 0)
-                tld->krbContext = *context;
+                *context = tld->krbContext;
         }
     }
-    return *minor == 0 ? GSS_S_COMPLETE : GSS_S_FAILURE;
+
+    return (*minor == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
 
 /*
