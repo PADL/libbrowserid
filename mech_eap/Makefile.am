@@ -28,9 +28,9 @@ mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
 endif
 
 mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
-mech_eap_la_CFLAGS   = -Werror -Wall -Wunused-parameter \
+mech_eap_la_CFLAGS   += \
 			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
-mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter \
+mech_eap_la_CXXFLAGS += \
 			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ \
 		        @OPENSAML_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ \
 			@TARGET_CFLAGS@ $(EAP_CFLAGS)
@@ -73,7 +73,6 @@ mech_eap_la_SOURCES =    			\
 	inquire_cred_by_oid.c			\
 	inquire_mech_for_saslname.c		\
 	inquire_mechs_for_name.c		\
-	inquire_name.c				\
 	inquire_names_for_mech.c		\
 	inquire_saslname_for_mech.c		\
 	inquire_sec_context_by_oid.c		\
@@ -116,6 +115,7 @@ mech_eap_la_SOURCES +=				\
 	delete_name_attribute.c			\
 	export_name_composite.c			\
 	get_name_attribute.c			\
+	inquire_name.c				\
 	map_name_to_any.c			\
 	release_any_name_mapping.c		\
 	set_name_attribute.c			\
