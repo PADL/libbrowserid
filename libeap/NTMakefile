@@ -280,7 +280,6 @@ TLS_OBJS = \
 {src\tls}.c{$(OBJ)\tls}.obj::
 	$(C2OBJ_NP) -Fo$(OBJ)\tls\ -Fd$(OBJ)\tls\ -I$(OBJ)\tls $(GCOPTS)
 
-
 $(LIBEAP): $(OBJS_BOTH) $(OBJS_peer) $(UTILS_OBJS) $(CRYPTO_OBJS) $(TLS_OBJS)
 	$(LIBCON)
 
