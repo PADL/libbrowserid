@@ -328,13 +328,7 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
         GSSEAP_ASSERT(i < 2 + (3 * tokens->buffers.count));
 
         iov[i].type = GSS_IOV_BUFFER_TYPE_HEADER;
-        iov[i].buffer.length = 16;
-        iov[i].buffer.value = tokenMIC->value;
-        i++;
-
-        iov[i].type = GSS_IOV_BUFFER_TYPE_TRAILER;
-        iov[i].buffer.length = tokenMIC->length - 16;
-        iov[i].buffer.value = (unsigned char *)tokenMIC->value + 16;
+        iov[i].buffer = *tokenMIC;
         i++;
 
         major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,

@@ -243,7 +243,14 @@ unwrapToken(OM_uint32 *minor,
             goto defective;
         seqnum = load_uint64_be(ptr + 8);
 
-        code = gssEapVerify(krbContext, ctx->checksumType, 0,
+        /*
+         * Although MIC tokens don't have a RRC, they are similarly
+         * composed of a header and a checksum. So the verify_mic()
+         * can be implemented with a single header buffer, fake the
+         * RRC to the putative trailer length if no trailer buffer.
+         */
+        code = gssEapVerify(krbContext, ctx->checksumType,
+                            trailer != NULL ? 0 : header->buffer.length - 16,
                             KRB_CRYPTO_CONTEXT(ctx), keyUsage,
                             iov, iov_count, &valid);
         if (code != 0 || valid == FALSE) {
