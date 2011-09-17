@@ -56,19 +56,23 @@ destroyThreadLocalData(struct gss_eap_thread_local_data *tld)
  * data and uses this index with TlsSetValue() to store it.
  * It can then subsequently be retrieved with TlsGetValue().
  */
-static DWORD tlsIndex;
+static DWORD tlsIndex = TLS_OUT_OF_INDEXES;
 
 /* Access thread-local data */
 struct gss_eap_thread_local_data *
 gssEapGetThreadLocalData(void)
 {
-    struct gss_eap_thread_local_data *tld;
+    struct gss_eap_thread_local_data *tlsData;
 
-    tld = TlsGetValue(tlsIndex);
+    GSSEAP_ASSERT(tlsIndex != TLS_OUT_OF_INDEXES);
 
-    GSSEAP_ASSERT(tld != NULL);
+    tlsData = TlsGetValue(tlsIndex);
+    if (tlsData == NULL) {
+        tlsData = GSSEAP_CALLOC(1, sizeof(*tlsData));
+        TlsSetValue(tlsIndex, tlsData);
+    }
 
-    return tld;
+    return tlsData;
 }
 
 BOOL WINAPI
@@ -93,8 +97,9 @@ DllMain(HINSTANCE hDLL,     /* DLL module handle */
         case DLL_THREAD_ATTACH:
             /* Initialize the TLS index for this thread. */
             tlsData = GSSEAP_CALLOC(1, sizeof(*tlsData));
-            if (tlsData != NULL)
-                TlsSetValue(tlsIndex, tlsData);
+            if (tlsData == NULL)
+                return FALSE;
+            TlsSetValue(tlsIndex, tlsData);
             break;
         case DLL_THREAD_DETACH:
             /* Release the allocated memory for this thread. */
