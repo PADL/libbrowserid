@@ -1,5 +1,8 @@
 AUTOMAKE_OPTIONS = foreign
 
+EXTRA_DIST = gsseap_err.et radsec_err.et \
+	mech_eap.exports mech_eap-noacceptor.exports 
+
 gssincludedir = $(includedir)/gssapi
 gssinclude_HEADERS = gssapi_eap.h
 
@@ -26,11 +29,12 @@ OS_LIBS =
 mech_eap_la_CFLAGS   = -Werror -Wall -Wunused-parameter
 mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
 endif
+mech_eap_la_DEPENDENCIES = $(GSSEAP_EXPORTS)
 
 mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
-mech_eap_la_CFLAGS   = -Werror -Wall -Wunused-parameter \
+mech_eap_la_CFLAGS   += \
 			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
-mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter \
+mech_eap_la_CXXFLAGS += \
 			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ \
 		        @OPENSAML_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ \
 			@TARGET_CFLAGS@ $(EAP_CFLAGS)
@@ -73,7 +77,6 @@ mech_eap_la_SOURCES =    			\
 	inquire_cred_by_oid.c			\
 	inquire_mech_for_saslname.c		\
 	inquire_mechs_for_name.c		\
-	inquire_name.c				\
 	inquire_names_for_mech.c		\
 	inquire_saslname_for_mech.c		\
 	inquire_sec_context_by_oid.c		\
@@ -107,7 +110,17 @@ mech_eap_la_SOURCES =    			\
 	wrap.c					\
 	wrap_iov.c				\
 	wrap_iov_length.c			\
-	wrap_size_limit.c
+	wrap_size_limit.c \
+	gssapiP_eap.h \
+	util_attr.h \
+	util_base64.h \
+	util.h \
+	util_json.h \
+	util_radius.h \
+	util_reauth.h \
+	util_saml.h \
+	util_shib.h
+
 
 if GSSEAP_ENABLE_ACCEPTOR
 
@@ -116,6 +129,7 @@ mech_eap_la_SOURCES +=				\
 	delete_name_attribute.c			\
 	export_name_composite.c			\
 	get_name_attribute.c			\
+	inquire_name.c				\
 	map_name_to_any.c			\
 	release_any_name_mapping.c		\
 	set_name_attribute.c			\
@@ -134,7 +148,7 @@ endif
 
 endif
 
-BUILT_SOURCES = gsseap_err.c radsec_err.c
+BUILT_SOURCES = gsseap_err.c radsec_err.c gsseap_err.h radsec_err.h
 
 if GSSEAP_ENABLE_REAUTH
 mech_eap_la_SOURCES += util_reauth.c
@@ -148,7 +162,7 @@ radius_ad_la_CFLAGS  = -Werror -Wall -Wunused-parameter \
 radius_ad_la_LDFLAGS = -avoid-version -module \
 		       -export-symbols radius_ad.exports -no-undefined
 radius_ad_la_LIBADD  = @KRB5_LIBS@
-radius_ad_la_SOURCES = util_adshim.c
+radius_ad_la_SOURCES = util_adshim.c authdata_plugin.h
 endif
 endif
 

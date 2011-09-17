@@ -1,0 +1,48 @@
+Name:		moonshot-gss-eap
+Version:	@VERSION@
+Release:	1%{?dist}
+Summary:	Moonshot GSS-API Mechanism
+
+Group:		Security Tools
+License:	BSD
+URL:		http://www.project-moonshot.org/
+Source0:	mech_eap-%{version}.tar.gz
+BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root
+
+BuildRequires:	 krb5-libs >= 1.9.1
+BuildRequires:	 moonshot-ui-devel
+Requires:	moonshot-ui
+
+%description
+Project Moonshot provides federated access management.
+
+
+%prep
+%setup -q -n mech_eap-%{version}
+
+
+%build
+%configure --disable-acceptor --with-libmoonshot=%{_prefix} --with-krb5=%{_prefix}
+make %{?_smp_mflags}
+
+
+%install
+rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT
+
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+
+%files
+%defattr(-,root,root,-)
+%doc mech_eap/README
+%{_libdir}/gss/mech_eap.so
+%exclude %{_libdir}/gss/mech_eap.la
+%{_includedir}/gssapi/*.h
+
+
+
+
+%changelog

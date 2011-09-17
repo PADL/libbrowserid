@@ -25,16 +25,18 @@ for dir in $check_krb5_dir $prefix /usr /usr/local ; do
         KRB5_CFLAGS=-I"$check_krb5_dir/include";
         KRB5_LIBS="-L$check_krb5_dir/lib/ -lkrb5_32 -lgssapi32";
         COMPILE_ET="$check_krb5_dir/bin/compile_et";
+	AC_MSG_RESULT([yes])
      else
         KRB5_CFLAGS=`$dir/bin/krb5-config gssapi --cflags`;
-        KRB5_LIBS=`$dir/bin/krb5-config gssapi --libs`;
-        COMPILE_ET="$dir/bin/compile_et";
+        KRB5_LIBS=`$dir/bin/krb5-config gssapi --libs`
+AC_MSG_RESULT([yes])
+        AC_PATH_PROG(COMPILE_ET, [compile_et], [compile_et], [$dir/bin$PATH_SEPARATOr])
      fi
      break;
    fi
 done
-AC_MSG_RESULT($found_krb5)
 if test x_$found_krb5 != x_yes; then
+   AC_MSG_RESULT($found_krb5)
    AC_MSG_ERROR([
 ----------------------------------------------------------------------
   Cannot find GSS-API/Kerberos libraries.
