@@ -152,13 +152,19 @@ importKerberosKey(OM_uint32 *minor,
                   size_t *pRemain,
                   krb5_cksumtype *checksumType,
                   krb5_enctype *pEncryptionType,
-                  krb5_keyblock *key)
+                  krb5_keyblock *pKey)
 {
     unsigned char *p = *pBuf;
     size_t remain = *pRemain;
     OM_uint32 encryptionType;
     OM_uint32 length;
-    gss_buffer_desc tmp;
+    krb5_context krbContext;
+    krb5_keyblock key;
+    krb5_error_code code;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    KRB_KEY_INIT(pKey);
 
     if (remain < 12) {
         *minor = GSSEAP_TOK_TRUNC;
@@ -179,14 +185,19 @@ importKerberosKey(OM_uint32 *minor,
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
-    if (load_buffer(&p[12], length, &tmp) == NULL) {
-        *minor = ENOMEM;
-        return GSS_S_FAILURE;
-    }
+    if (encryptionType != ENCTYPE_NULL) {
+        KRB_KEY_INIT(&key);
 
-    KRB_KEY_TYPE(key)   = encryptionType;
-    KRB_KEY_LENGTH(key) = tmp.length;
-    KRB_KEY_DATA(key)   = (unsigned char *)tmp.value;
+        KRB_KEY_TYPE(&key)   = encryptionType;
+        KRB_KEY_LENGTH(&key) = length;
+        KRB_KEY_DATA(&key)   = &p[12];
+
+        code = krb5_copy_keyblock_contents(krbContext, &key, pKey);
+        if (code != 0) {
+            *minor = code;
+            return GSS_S_FAILURE;
+        }
+    }
 
     *pBuf    += 12 + length;
     *pRemain -= 12 + length;
