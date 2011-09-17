@@ -344,6 +344,21 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
                        krb5_keyblock *pKey);
 
 /* util_krb.c */
+
+#ifndef KRB_MALLOC
+/*
+ * If your Kerberos library uses a different allocator to your
+ * GSS mechanism glue, then you might wish to define these in
+ * config.h or elsewhere. This should eventually go away when
+ * we no longer need to allocate memory that is freed by the
+ * Kerberos library.
+ */
+#define KRB_CALLOC                      calloc
+#define KRB_MALLOC                      malloc
+#define KRB_FREE                        free
+#define KRB_REALLOC                     realloc
+#endif /* KRB_MALLOC */
+
 #ifdef HAVE_HEIMDAL_VERSION
 
 #define KRB_TIME_FOREVER        ((time_t)~0L)
@@ -362,6 +377,8 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
 
 #define KRB_CRYPTO_CONTEXT(ctx) (krbCrypto)
 
+#define KRB_DATA_INIT(d)        krb5_data_zero((d))
+
 #else
 
 #define KRB_TIME_FOREVER        KRB5_INT32_MAX
@@ -379,6 +396,12 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
 #define KRB_KT_ENT_FREE(c, e)   krb5_free_keytab_entry_contents((c), (e))
 
 #define KRB_CRYPTO_CONTEXT(ctx) (&(ctx)->rfc3961Key)
+
+#define KRB_DATA_INIT(d)        do {        \
+        (d)->magic = KV5M_DATA;             \
+        (d)->length = 0;                    \
+        (d)->data = NULL;                   \
+    } while (0)
 
 #endif /* HAVE_HEIMDAL_VERSION */
 
@@ -752,10 +775,12 @@ verifyTokenHeader(OM_uint32 *minor,
 
 /* Helper macros */
 
+#ifndef GSSEAP_MALLOC
 #define GSSEAP_CALLOC                   calloc
 #define GSSEAP_MALLOC                   malloc
 #define GSSEAP_FREE                     free
 #define GSSEAP_REALLOC                  realloc
+#endif
 
 #ifndef GSSAPI_CALLCONV
 #define GSSAPI_CALLCONV                 KRB5_CALLCONV

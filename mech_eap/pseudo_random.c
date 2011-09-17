@@ -82,11 +82,8 @@ gssEapPseudoRandom(OM_uint32 *minor,
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    t.length = 0;
-    t.data = NULL;
-
-    ns.length = 0;
-    ns.data = NULL;
+    KRB_DATA_INIT(&t);
+    KRB_DATA_INIT(&ns);
 
     if (prf_key != GSS_C_PRF_KEY_PARTIAL &&
         prf_key != GSS_C_PRF_KEY_FULL) {
@@ -114,12 +111,15 @@ gssEapPseudoRandom(OM_uint32 *minor,
         goto cleanup;
     }
 
+#ifndef HAVE_HEIMDAL_VERSION
+    /* Same API, but different allocation rules, unfortunately. */
     t.length = prflen;
     t.data = GSSEAP_MALLOC(t.length);
     if (t.data == NULL) {
         code = ENOMEM;
         goto cleanup;
     }
+#endif
 
     memcpy((unsigned char *)ns.data + 4, prf_in->value, prf_in->length);
     i = 0;
@@ -141,8 +141,18 @@ gssEapPseudoRandom(OM_uint32 *minor,
 cleanup:
     if (code != 0)
         gss_release_buffer(&tmpMinor, prf_out);
-    krb5_free_data_contents(krbContext, &ns);
+    if (ns.data != NULL) {
+        memset(ns.data, 0, ns.length);
+        GSSEAP_FREE(ns.data);
+    }
+#ifdef HAVE_HEIMDAL_VERSION
     krb5_free_data_contents(krbContext, &t);
+#else
+    if (t.data != NULL) {
+        memset(t.data, 0, t.length);
+        GSSEAP_FREE(t.data);
+    }
+#endif
 
     *minor = code;
 

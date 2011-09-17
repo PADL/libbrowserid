@@ -265,7 +265,7 @@ importEapNameFlags(OM_uint32 *minor,
 
 #ifdef HAVE_HEIMDAL_VERSION
         if (code == 0 && KRB_PRINC_REALM(krbPrinc) == NULL) {
-            KRB_PRINC_REALM(krbPrinc) = calloc(1, sizeof(char)); /* XXX */
+            KRB_PRINC_REALM(krbPrinc) = KRB_CALLOC(1, sizeof(char));
             if (KRB_PRINC_REALM(krbPrinc) == NULL)
                 code = ENOMEM;
         }
