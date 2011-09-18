@@ -149,6 +149,7 @@ struct gss_name_struct
 #define CRED_FLAG_PASSWORD                  0x00040000
 #define CRED_FLAG_DEFAULT_CCACHE            0x00080000
 #define CRED_FLAG_RESOLVED                  0x00100000
+#define CRED_FLAG_TARGET                    0x00200000
 #define CRED_FLAG_PUBLIC_MASK               0x0000FFFF
 
 #ifdef HAVE_HEIMDAL_VERSION

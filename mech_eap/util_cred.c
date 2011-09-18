@@ -541,6 +541,10 @@ gssEapSetCredService(OM_uint32 *minor,
         major = gssEapDuplicateName(minor, target, &newTarget);
         if (GSS_ERROR(major))
             goto cleanup;
+
+        cred->flags |= CRED_FLAG_TARGET;
+    } else {
+        cred->flags &= ~(CRED_FLAG_TARGET);
     }
 
     gssEapReleaseName(&tmpMinor, &cred->target);
