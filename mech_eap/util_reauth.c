@@ -335,8 +335,13 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_auth_con_setlocalsubkey(krbContext, authContext,
+                                        &ctx->rfc3961Key);
+#else
     code = krb5_auth_con_setsendsubkey(krbContext, authContext,
                                        &ctx->rfc3961Key);
+#endif
     if (code != 0)
         goto cleanup;
 
