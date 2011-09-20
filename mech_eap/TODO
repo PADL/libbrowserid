@@ -1,3 +1,4 @@
+- gssEapAcquireCred should validate RADIUS configuration
 - integration with initiator-side EAP channel bindings
 - always intern OIDs so they never need to be freed
 - handle many-to-many Shibboleth attribute mappings; need to encode both attribute and value index into more
