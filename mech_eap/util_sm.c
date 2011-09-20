@@ -139,6 +139,7 @@ makeErrorToken(OM_uint32 *minor,
         return major;
     }
 
+    token->buffers.count = 1;
     token->types[0] = ITOK_TYPE_CONTEXT_ERR | ITOK_FLAG_CRITICAL;
 
     *minor = 0;
