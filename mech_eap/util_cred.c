@@ -307,6 +307,16 @@ gssEapAcquireCred(OM_uint32 *minor,
         GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
     }
 
+    if (cred->flags & CRED_FLAG_ACCEPT) {
+        struct rs_context *radContext;
+
+        major = gssEapCreateRadiusContext(minor, cred, &radContext);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        rs_context_destroy(radContext);
+    }
+
     if (pActualMechs != NULL) {
         major = duplicateOidSet(minor, cred->mechanisms, pActualMechs);
         if (GSS_ERROR(major))

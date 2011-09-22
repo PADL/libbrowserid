@@ -492,30 +492,6 @@ gss_eap_radius_attr_provider::init(void)
 {
     gss_eap_attr_ctx::registerProvider(ATTR_TYPE_RADIUS, createAttrContext);
 
-#ifdef GSSEAP_ENABLE_REAUTH
-    struct rs_context *radContext;
-
-    /*
-     * This hack is necessary in order to force the loading of the global
-     * dictionary, otherwise accepting reauthentication tokens fails unless
-     * the acceptor has already accepted a normal authentication token.
-     */
-    if (rs_context_create(&radContext) != 0)
-        return false;
-
-    if (rs_context_read_config(radContext, RS_CONFIG_FILE) != 0) {
-        rs_context_destroy(radContext);
-        return false;
-    }
-
-    if (rs_context_init_freeradius_dict(radContext, NULL)) {
-        rs_context_destroy(radContext);
-        return false;
-    }
-
-    rs_context_destroy(radContext);
-#endif
-
     return true;
 }
 
@@ -870,4 +846,54 @@ gssEapRadiusMapError(OM_uint32 *minor,
     rs_err_free(err);
 
     return GSS_S_FAILURE;
+}
+
+OM_uint32
+gssEapCreateRadiusContext(OM_uint32 *minor,
+                          gss_cred_id_t cred,
+                          struct rs_context **pRadContext)
+{
+    const char *configFile = RS_CONFIG_FILE;
+    struct rs_context *radContext;
+    struct rs_alloc_scheme ralloc;
+    struct rs_error *err;
+    OM_uint32 major;
+
+    *pRadContext = NULL;
+
+    if (rs_context_create(&radContext) != 0) {
+        *minor = GSSEAP_RADSEC_CONTEXT_FAILURE;
+        return GSS_S_FAILURE;
+    }
+
+    if (cred->radiusConfigFile.value != NULL)
+        configFile = (const char *)cred->radiusConfigFile.value;
+
+    ralloc.calloc  = GSSEAP_CALLOC;
+    ralloc.malloc  = GSSEAP_MALLOC;
+    ralloc.free    = GSSEAP_FREE;
+    ralloc.realloc = GSSEAP_REALLOC;
+
+    rs_context_set_alloc_scheme(radContext, &ralloc);
+
+    if (rs_context_read_config(radContext, configFile) != 0) {
+        err = rs_err_ctx_pop(radContext);
+        goto fail;
+    }
+
+    if (rs_context_init_freeradius_dict(radContext, NULL) != 0) {
+        err = rs_err_ctx_pop(radContext);
+        goto fail;
+    }
+
+    *pRadContext = radContext;
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+
+fail:
+    major = gssEapRadiusMapError(minor, err);
+    rs_context_destroy(radContext);
+
+    return major;
 }

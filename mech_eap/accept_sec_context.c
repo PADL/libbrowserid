@@ -418,58 +418,35 @@ createRadiusHandle(OM_uint32 *minor,
                    gss_ctx_id_t ctx)
 {
     struct gss_eap_acceptor_ctx *actx = &ctx->acceptorCtx;
-    const char *configFile = RS_CONFIG_FILE;
-    const char *configStanza = "gss-eap";
-    struct rs_alloc_scheme ralloc;
     struct rs_error *err;
+    const char *configStanza = "gss-eap";
+    OM_uint32 major;
 
     GSSEAP_ASSERT(actx->radContext == NULL);
     GSSEAP_ASSERT(actx->radConn == NULL);
+    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
 
-    if (rs_context_create(&actx->radContext) != 0) {
-        *minor = GSSEAP_RADSEC_CONTEXT_FAILURE;
-        return GSS_S_FAILURE;
-    }
+    major = gssEapCreateRadiusContext(minor, cred, &actx->radContext);
+    if (GSS_ERROR(major))
+        return major;
 
-    if (cred->radiusConfigFile.value != NULL)
-        configFile = (const char *)cred->radiusConfigFile.value;
     if (cred->radiusConfigStanza.value != NULL)
         configStanza = (const char *)cred->radiusConfigStanza.value;
 
-    ralloc.calloc  = GSSEAP_CALLOC;
-    ralloc.malloc  = GSSEAP_MALLOC;
-    ralloc.free    = GSSEAP_FREE;
-    ralloc.realloc = GSSEAP_REALLOC;
-
-    rs_context_set_alloc_scheme(actx->radContext, &ralloc);
-
-    if (rs_context_read_config(actx->radContext, configFile) != 0) {
-        err = rs_err_ctx_pop(actx->radContext);
-        goto fail;
-    }
-
-    if (rs_context_init_freeradius_dict(actx->radContext, NULL) != 0) {
-        err = rs_err_ctx_pop(actx->radContext);
-        goto fail;
-    }
-
     if (rs_conn_create(actx->radContext, &actx->radConn, configStanza) != 0) {
         err = rs_err_conn_pop(actx->radConn);
-        goto fail;
+        return gssEapRadiusMapError(minor, err);
     }
 
     if (actx->radServer != NULL) {
         if (rs_conn_select_peer(actx->radConn, actx->radServer) != 0) {
             err = rs_err_conn_pop(actx->radConn);
-            goto fail;
+            return gssEapRadiusMapError(minor, err);
         }
     }
 
     *minor = 0;
     return GSS_S_COMPLETE;
-
-fail:
-    return gssEapRadiusMapError(minor, err);
 }
 
 /*
