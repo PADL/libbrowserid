@@ -342,6 +342,16 @@ gssEapDisplayStatus(OM_uint32 *minor,
 #define IS_RADIUS_ERROR(err)            ((err) >= ERROR_TABLE_BASE_rse && \
                                          (err) <= ERROR_TABLE_BASE_rse + 20)
 
+/* exchange_meta_data.c */
+OM_uint32 GSSAPI_CALLCONV
+gssEapExchangeMetaData(OM_uint32 *minor,
+                       gss_const_OID mech,
+                       gss_cred_id_t cred,
+                       gss_ctx_id_t *ctx,
+                       const gss_name_t name,
+                       OM_uint32 req_flags,
+                       gss_const_buffer_t meta_data);
+
 /* export_sec_context.c */
 OM_uint32
 gssEapExportSecContext(OM_uint32 *minor,
@@ -354,6 +364,13 @@ gssEapImportContext(OM_uint32 *minor,
                     gss_buffer_t token,
                     gss_ctx_id_t ctx);
 
+/* inquire_sec_context_by_oid.c */
+#define NEGOEX_INITIATOR_SALT      "gss-eap-negoex-initiator"
+#define NEGOEX_INITIATOR_SALT_LEN  (sizeof(NEGOEX_INITIATOR_SALT) - 1)
+
+#define NEGOEX_ACCEPTOR_SALT       "gss-eap-negoex-acceptor"
+#define NEGOEX_ACCEPTOR_SALT_LEN   (sizeof(NEGOEX_ACCEPTOR_SALT) - 1)
+
 /* pseudo_random.c */
 OM_uint32
 gssEapPseudoRandom(OM_uint32 *minor,
@@ -362,6 +379,16 @@ gssEapPseudoRandom(OM_uint32 *minor,
                    const gss_buffer_t prf_in,
                    ssize_t desired_output_len,
                    gss_buffer_t prf_out);
+
+/* query_meta_data.c */
+OM_uint32
+gssEapQueryMetaData(OM_uint32 *minor,
+                    gss_const_OID mech GSSEAP_UNUSED,
+                    gss_cred_id_t cred,
+                    gss_ctx_id_t *context_handle,
+                    const gss_name_t name,
+                    OM_uint32 req_flags GSSEAP_UNUSED,
+                    gss_buffer_t meta_data);
 
 /* eap_mech.c */
 OM_uint32

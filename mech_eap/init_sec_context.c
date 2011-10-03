@@ -1048,8 +1048,6 @@ gss_init_sec_context(OM_uint32 *minor,
     output_token->length = 0;
     output_token->value = NULL;
 
-    GSSEAP_ASSERT(ctx == GSS_C_NO_CONTEXT || ctx->mechanismUsed != GSS_C_NO_OID);
-
     if (ctx == GSS_C_NO_CONTEXT) {
         if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {
             *minor = GSSEAP_WRONG_SIZE;

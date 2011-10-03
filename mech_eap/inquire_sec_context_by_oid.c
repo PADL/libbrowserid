@@ -37,15 +37,64 @@
 #include "gssapiP_eap.h"
 
 static OM_uint32
+addEnctypeOidToBufferSet(OM_uint32 *minor,
+                         krb5_enctype encryptionType,
+                         gss_buffer_set_t *dataSet)
+{
+    OM_uint32 major;
+    unsigned char oidBuf[16];
+    gss_OID_desc oid;
+    gss_buffer_desc buf;
+
+    oid.length = sizeof(oidBuf);
+    oid.elements = oidBuf;
+
+    major = composeOid(minor,
+                       "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x04",
+                       10,
+                       encryptionType,
+                       &oid);
+    if (GSS_ERROR(major))
+        return major;
+
+    buf.length = oid.length;
+    buf.value = oid.elements;
+
+    major = gss_add_buffer_set_member(minor, &buf, dataSet);
+
+    return major;
+}
+
+static void
+zeroAndReleaseBufferSet(gss_buffer_set_t *dataSet)
+{
+    OM_uint32 tmpMinor;
+    gss_buffer_set_t set = *dataSet;
+    size_t i;
+
+    if (set == GSS_C_NO_BUFFER_SET)
+        return;
+
+    for (i = 0; i <set->count; i++)
+        memset(set->elements[i].value, 0, set->elements[i].length);
+
+    gss_release_buffer_set(&tmpMinor, dataSet);
+}
+
+static OM_uint32
 inquireSessionKey(OM_uint32 *minor,
                   const gss_ctx_id_t ctx,
                   const gss_OID desired_object GSSEAP_UNUSED,
                   gss_buffer_set_t *dataSet)
 {
-    OM_uint32 major, tmpMinor;
-    unsigned char oidBuf[16];
+    OM_uint32 major;
     gss_buffer_desc buf;
-    gss_OID_desc oid;
+
+    if (ctx->encryptionType == ENCTYPE_NULL) {
+        major = GSS_S_UNAVAILABLE;
+        *minor = GSSEAP_KEY_UNAVAILABLE;
+        goto cleanup;
+    }
 
     buf.length = KRB_KEY_LENGTH(&ctx->rfc3961Key);
     buf.value = KRB_KEY_DATA(&ctx->rfc3961Key);
@@ -54,21 +103,7 @@ inquireSessionKey(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    oid.length = sizeof(oidBuf);
-    oid.elements = oidBuf;
-
-    major = composeOid(minor,
-                       "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x04",
-                       10,
-                       ctx->encryptionType,
-                       &oid);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    buf.length = oid.length;
-    buf.value = oid.elements;
-
-    major = gss_add_buffer_set_member(minor, &buf, dataSet);
+    major = addEnctypeOidToBufferSet(minor, ctx->encryptionType, dataSet);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -76,13 +111,74 @@ inquireSessionKey(OM_uint32 *minor,
     *minor = 0;
 
 cleanup:
-    if (GSS_ERROR(major) && *dataSet != GSS_C_NO_BUFFER_SET) {
-        gss_buffer_set_t set = *dataSet;
+    if (GSS_ERROR(major))
+        zeroAndReleaseBufferSet(dataSet);
 
-        if (set->count != 0)
-            memset(set->elements[0].value, 0, set->elements[0].length);
-        gss_release_buffer_set(&tmpMinor, dataSet);
+    return major;
+}
+
+static OM_uint32
+inquireNegoExKey(OM_uint32 *minor,
+                  const gss_ctx_id_t ctx,
+                  const gss_OID desired_object,
+                  gss_buffer_set_t *dataSet)
+{
+    OM_uint32 major, tmpMinor;
+    int bInitiatorKey;
+    gss_buffer_desc salt;
+    gss_buffer_desc key = GSS_C_EMPTY_BUFFER;
+    size_t keySize;
+
+    bInitiatorKey = CTX_IS_INITIATOR(ctx);
+
+    if (ctx->encryptionType == ENCTYPE_NULL) {
+        major = GSS_S_UNAVAILABLE;
+        *minor = GSSEAP_KEY_UNAVAILABLE;
+        goto cleanup;
     }
+
+    /*
+     * If the caller supplied the verify key OID, then we need the acceptor
+     * key if we are the initiator, and vice versa.
+     */
+    if (desired_object->length == 11 &&
+        memcmp(desired_object->elements,
+               "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x05\x07", 11) == 0)
+        bInitiatorKey ^= 1;
+
+    if (bInitiatorKey) {
+        salt.length = NEGOEX_INITIATOR_SALT_LEN;
+        salt.value  = NEGOEX_INITIATOR_SALT;
+    } else {
+        salt.length = NEGOEX_ACCEPTOR_SALT_LEN;
+        salt.value  = NEGOEX_ACCEPTOR_SALT;
+    }
+
+    keySize = KRB_KEY_LENGTH(&ctx->rfc3961Key);
+
+    major = gssEapPseudoRandom(minor, ctx, GSS_C_PRF_KEY_FULL, &salt,
+                               keySize, &key);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gss_add_buffer_set_member(minor, &key, dataSet);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = addEnctypeOidToBufferSet(minor, ctx->encryptionType, dataSet);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    if (key.value != NULL) {
+        memset(key.value, 0, key.length);
+        gss_release_buffer(&tmpMinor, &key);
+    }
+    if (GSS_ERROR(major))
+        zeroAndReleaseBufferSet(dataSet);
 
     return major;
 }
@@ -102,6 +198,16 @@ static struct {
         { 12, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x05\x06\x01" },
         gssEapExportLucidSecContext
     },
+    {
+        /* GSS_C_INQ_NEGOEX_KEY */
+        { 11, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x05\x06" },
+        inquireNegoExKey
+    },
+    {
+        /* GSS_C_INQ_NEGOEX_VERIFY_KEY */
+        { 11, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x05\x07" },
+        inquireNegoExKey
+    },
 };
 
 OM_uint32 GSSAPI_CALLCONV
@@ -117,11 +223,13 @@ gss_inquire_sec_context_by_oid(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
+#if 0
     if (!CTX_IS_ESTABLISHED(ctx)) {
         *minor = GSSEAP_CONTEXT_INCOMPLETE;
         major = GSS_S_NO_CONTEXT;
         goto cleanup;
     }
+#endif
 
     major = GSS_S_UNAVAILABLE;
     *minor = GSSEAP_BAD_CONTEXT_OPTION;
@@ -134,7 +242,6 @@ gss_inquire_sec_context_by_oid(OM_uint32 *minor,
         }
     }
 
-cleanup:
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;

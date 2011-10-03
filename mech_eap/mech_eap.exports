@@ -11,6 +11,7 @@ gss_display_name
 gss_display_name_ext
 gss_display_status
 gss_duplicate_name
+gss_exchange_meta_data
 gss_export_name
 gss_export_name_composite
 gss_export_sec_context
@@ -34,6 +35,8 @@ gss_inquire_sec_context_by_oid
 gss_map_name_to_any
 gss_process_context_token
 gss_pseudo_random
+gss_query_mechanism_info
+gss_query_meta_data
 gss_release_any_name_mapping
 gss_release_cred
 gss_release_name

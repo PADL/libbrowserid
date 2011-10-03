@@ -62,6 +62,7 @@ mech_eap_la_SOURCES =    			\
 	display_status.c			\
 	duplicate_name.c			\
 	eap_mech.c				\
+	exchange_meta_data.c			\
 	export_name.c				\
 	export_sec_context.c			\
 	get_mic.c				\
@@ -82,6 +83,8 @@ mech_eap_la_SOURCES =    			\
 	inquire_sec_context_by_oid.c		\
 	process_context_token.c			\
 	pseudo_random.c				\
+	query_mechanism_info.c			\
+	query_meta_data.c			\
 	radsec_err.c				\
 	release_cred.c				\
 	release_name.c				\

@@ -9,6 +9,7 @@ gss_display_name
 gss_display_name_ext
 gss_display_status
 gss_duplicate_name
+gss_exchange_meta_data
 gss_export_name
 gss_export_sec_context
 gss_get_mic
@@ -28,6 +29,8 @@ gss_inquire_saslname_for_mech
 gss_inquire_sec_context_by_oid
 gss_process_context_token
 gss_pseudo_random
+gss_query_mechanism_info
+gss_query_meta_data
 gss_release_cred
 gss_release_name
 gss_internal_release_oid
