@@ -33,9 +33,9 @@ mech_eap_la_DEPENDENCIES = $(GSSEAP_EXPORTS)
 
 mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
 mech_eap_la_CFLAGS   += \
-			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
+			@KRB5_CFLAGS@ @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_CXXFLAGS += \
-			@KRB5_CFLAGS@  @RADSEC_CFLAGS@ \
+			@KRB5_CFLAGS@ @RADSEC_CFLAGS@ \
 		        @OPENSAML_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ \
 			@TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
@@ -102,7 +102,6 @@ mech_eap_la_SOURCES =    			\
 	util_krb.c				\
 	util_lucid.c				\
 	util_mech.c				\
-	util_moonshot.c				\
 	util_name.c				\
 	util_oid.c				\
 	util_ordering.c				\
@@ -124,6 +123,12 @@ mech_eap_la_SOURCES =    			\
 	util_saml.h \
 	util_shib.h
 
+if LIBMOONSHOT
+mech_eap_la_SOURCES += util_moonshot.c
+mech_eap_la_CFLAGS  += @LIBMOONSHOT_CFLAGS@
+mech_eap_la_LDFLAGS += @LIBMOONSHOT_LDFLAGS@
+mech_eap_la_LIBADD  += @LIBMOONSHOT_LIBS@
+endif
 
 if GSSEAP_ENABLE_ACCEPTOR
 

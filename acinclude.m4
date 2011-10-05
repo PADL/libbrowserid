@@ -328,13 +328,16 @@ fi
 AC_DEFUN([AX_CHECK_LIBMOONSHOT],
 [AC_MSG_CHECKING(for Moonshot identity selector implementation)
 LIBMOONSHOT_DIR=
+LIBMOONSHOT_CFLAGS=
+LIBMOONSHOT_LDFLAGS=
+LIBMOONSHOT_LIBS=
 found_libmoonshot="no"
 AC_ARG_WITH(libmoonshot,
     AC_HELP_STRING([--with-libmoonshot],
        [Use libmoonshot (in specified installation directory)]),
     [check_libmoonshot_dir="$withval"],
     [check_libmoonshot_dir=])
-for dir in $check_libmoonshot_dir $prefix /usr /usr/local ../../moonshot-ui/libmoonshot ; do
+for dir in $check_libmoonshot_dir $prefix /usr /usr/local ; do
    libmoonshotdir="$dir"
    if test -f "$dir/include/libmoonshot.h"; then
      found_libmoonshot="yes";
@@ -344,23 +347,15 @@ for dir in $check_libmoonshot_dir $prefix /usr /usr/local ../../moonshot-ui/libm
    fi
 done
 AC_MSG_RESULT($found_libmoonshot)
-if test x_$found_libmoonshot != x_yes; then
-   AC_MSG_ERROR([
-----------------------------------------------------------------------
-  Cannot find Moonshot identity selector libraries.
-
-  Please install wpa_supplicant or specify installation directory with
-  --with-libmoonshot=(dir).
-----------------------------------------------------------------------
-])
-else
-	printf "libmoonshot found in $libmoonshotdir\n";
-	LIBMOONSHOT_LIBS="-lmoonshot";
-	LIBMOONSHOT_LDFLAGS="-L$libmoonshot/lib";
-	AC_SUBST(LIBMOONSHOT_CFLAGS)
-	AC_SUBST(LIBMOONSHOT_LDFLAGS)
-	AC_SUBST(LIBMOONSHOT_LIBS)
-	AC_CHECK_LIB(moonshot, moonshot_get_identity, [AC_DEFINE_UNQUOTED([HAVE_MOONSHOT_GET_IDENTITY], 1, [Define if Moonshot identity selector is available])], [], "$LIBMOONSHOT_LIBS")
+if test x_$found_libmoonshot = x_yes; then
+    printf "libmoonshot found in $libmoonshotdir\n";
+    LIBMOONSHOT_LIBS="-lmoonshot";
+    LIBMOONSHOT_LDFLAGS="-L$libmoonshot/lib";
+    AC_CHECK_LIB(moonshot, moonshot_get_identity, [AC_DEFINE_UNQUOTED([HAVE_MOONSHOT_GET_IDENTITY], 1, [Define if Moonshot identity selector is available])], [], "$LIBMOONSHOT_LIBS")
 fi
+    AC_SUBST(LIBMOONSHOT_CFLAGS)
+    AC_SUBST(LIBMOONSHOT_LDFLAGS)
+    AC_SUBST(LIBMOONSHOT_LIBS)
+    AM_CONDITIONAL(LIBMOONSHOT, test "x$found_libmoonshot" != "xno")
 ])dnl
 
