@@ -639,39 +639,41 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
                                  gss_buffer_t outputToken GSSEAP_UNUSED,
                                  OM_uint32 *smFlags GSSEAP_UNUSED)
 {
-    OM_uint32 major;
-    gss_iov_buffer_desc iov[2];
+    krb5_error_code code;
+    krb5_context krbContext;
+    krb5_data data;
+    krb5_checksum cksum;
+    krb5_boolean valid = FALSE;
 
-    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA | GSS_IOV_BUFFER_FLAG_ALLOCATE;
-    iov[0].buffer.length = 0;
-    iov[0].buffer.value = NULL;
+    if (chanBindings == GSS_C_NO_CHANNEL_BINDINGS ||
+        chanBindings->application_data.length == 0)
+        return GSS_S_CONTINUE_NEEDED;
 
-    iov[1].type = GSS_IOV_BUFFER_TYPE_STREAM | GSS_IOV_BUFFER_FLAG_ALLOCATED;
+    GSSEAP_KRB_INIT(&krbContext);
 
-    /* XXX necessary because decrypted in place and we verify it later */
-    major = duplicateBuffer(minor, inputToken, &iov[1].buffer);
-    if (GSS_ERROR(major))
-        return major;
+    KRB_DATA_INIT(&data);
 
-    major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
-                                    iov, 2, TOK_TYPE_WRAP);
-    if (GSS_ERROR(major)) {
-        gssEapReleaseIov(iov, 2);
-        return major;
+    gssBufferToKrbData(&chanBindings->application_data, &data);
+
+    KRB_CHECKSUM_INIT(&cksum, ctx->checksumType, inputToken);
+
+    code = krb5_c_verify_checksum(krbContext, &ctx->rfc3961Key,
+                                  KEY_USAGE_GSSEAP_CHBIND_MIC,
+                                  &data, &cksum, &valid);
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_FAILURE;
     }
 
-    if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS &&
-        !bufferEqual(&iov[0].buffer, &chanBindings->application_data)) {
-        major = GSS_S_BAD_BINDINGS;
+    if (valid == FALSE) {
         *minor = GSSEAP_BINDINGS_MISMATCH;
-    } else {
-        major = GSS_S_CONTINUE_NEEDED;
-        *minor = 0;
+        return GSS_S_BAD_BINDINGS;
     }
 
-    gssEapReleaseIov(iov, 2);
+    ctx->flags |= CTX_FLAG_CHANNEL_BINDINGS_VERIFIED;
 
-    return major;
+    *minor = 0;
+    return GSS_S_CONTINUE_NEEDED;
 }
 
 static OM_uint32
@@ -682,12 +684,26 @@ eapGssSmAcceptInitiatorMIC(OM_uint32 *minor,
                            gss_OID mech GSSEAP_UNUSED,
                            OM_uint32 reqFlags GSSEAP_UNUSED,
                            OM_uint32 timeReq GSSEAP_UNUSED,
-                           gss_channel_bindings_t chanBindings GSSEAP_UNUSED,
+                           gss_channel_bindings_t chanBindings,
                            gss_buffer_t inputToken,
                            gss_buffer_t outputToken GSSEAP_UNUSED,
                            OM_uint32 *smFlags GSSEAP_UNUSED)
 {
     OM_uint32 major;
+
+    /*
+     * The channel binding token is optional, however if the caller indicated
+     * bindings we must raise an error if it was absent.
+     *
+     * In the future, we might use a context option to allow the caller to
+     * indicate that missing bindings are acceptable.
+     */
+    if (chanBindings != NULL &&
+        chanBindings->application_data.length != 0 &&
+        (ctx->flags & CTX_FLAG_CHANNEL_BINDINGS_VERIFIED) == 0) {
+        *minor = GSSEAP_MISSING_BINDINGS;
+        return GSS_S_BAD_BINDINGS;
+    }
 
     major = gssEapVerifyTokenMIC(minor, ctx, inputToken);
     if (GSS_ERROR(major))
@@ -807,7 +823,7 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
         ITOK_TYPE_GSS_CHANNEL_BINDINGS,
         ITOK_TYPE_NONE,
         GSSEAP_STATE_INITIATOR_EXTS,
-        SM_ITOK_FLAG_REQUIRED,
+        0,
         eapGssSmAcceptGssChannelBindings,
     },
     {
