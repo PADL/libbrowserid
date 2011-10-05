@@ -45,7 +45,7 @@ gssEapQueryMetaData(OM_uint32 *minor,
                     OM_uint32 req_flags GSSEAP_UNUSED,
                     gss_buffer_t meta_data)
 {
-    OM_uint32 major;
+    OM_uint32 major = GSS_S_COMPLETE;
     int isInitiator = (name != GSS_C_NO_NAME);
     gss_ctx_id_t ctx = *context_handle;
 
