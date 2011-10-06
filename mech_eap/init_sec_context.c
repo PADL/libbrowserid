@@ -961,6 +961,11 @@ gssEapInitSecContext(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     int initialContextToken = (ctx->mechanismUsed == GSS_C_NO_OID);
 
+    /*
+     * XXX is acquiring the credential lock here necessary? The password is
+     * mutable but the contract could specify that this is not updated whilst
+     * a context is being initialized.
+     */
     if (cred != GSS_C_NO_CREDENTIAL)
         GSSEAP_MUTEX_LOCK(&cred->mutex);
 
