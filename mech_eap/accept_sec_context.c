@@ -867,7 +867,11 @@ gssEapAcceptSecContext(OM_uint32 *minor,
         cred = ctx->cred;
     }
 
-    GSSEAP_MUTEX_LOCK(&cred->mutex);
+    /*
+     * Previously we acquired the credential mutex here, but it should not be
+     * necessary as the acceptor does not access any mutable elements of the
+     * credential handle.
+     */
 
     /*
      * Calling gssEapInquireCred() forces the default acceptor credential name
@@ -923,9 +927,6 @@ gssEapAcceptSecContext(OM_uint32 *minor,
     GSSEAP_ASSERT(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
-    if (cred != GSS_C_NO_CREDENTIAL)
-        GSSEAP_MUTEX_UNLOCK(&cred->mutex);
-
     return major;
 }
 
