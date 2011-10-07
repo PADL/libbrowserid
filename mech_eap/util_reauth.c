@@ -485,7 +485,8 @@ gssEapCanReauthP(gss_cred_id_t cred,
     time_t now, expiryReq;
     OM_uint32 minor;
 
-    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
+    if (cred == GSS_C_NO_CREDENTIAL)
+        return FALSE;
 
     now = time(NULL);
     expiryReq = now;

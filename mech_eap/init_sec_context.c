@@ -457,8 +457,10 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
     gss_OID actualMech = GSS_C_NO_OID;
     OM_uint32 gssFlags, timeRec;
 
-    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
-
+    /*
+     * Here we use the passed in credential handle because the resolved
+     * context credential does not currently have the reauth creds.
+     */
     if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_INITIAL) {
         if (!gssEapCanReauthP(cred, target, timeReq))
             return GSS_S_CONTINUE_NEEDED;
@@ -469,6 +471,8 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
         *minor = GSSEAP_WRONG_ITOK;
         goto cleanup;
     }
+
+    GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
 
     major = gssEapMechToGlueName(minor, target, &mechTarget);
     if (GSS_ERROR(major))
