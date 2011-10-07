@@ -728,9 +728,10 @@ gssEapResolveInitiatorCred(OM_uint32 *minor,
         if (major == GSS_S_CRED_UNAVAIL)
 #endif
             major = staticIdentityFileResolveInitiatorCred(minor, resolvedCred);
-        if (GSS_ERROR(major))
+        if (GSS_ERROR(major) && major != GSS_S_CRED_UNAVAIL)
             goto cleanup;
 
+        /* If we have a caller-supplied password, the credential is resolved. */
         if ((resolvedCred->flags & CRED_FLAG_PASSWORD) == 0) {
             major = GSS_S_CRED_UNAVAIL;
             *minor = GSSEAP_NO_DEFAULT_CRED;
