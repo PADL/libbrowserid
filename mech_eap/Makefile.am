@@ -125,15 +125,13 @@ mech_eap_la_SOURCES =    			\
 	util_saml.h \
 	util_shib.h
 
-<<<<<<< HEAD
 if LIBMOONSHOT
 mech_eap_la_SOURCES += util_moonshot.c
 mech_eap_la_CFLAGS  += @LIBMOONSHOT_CFLAGS@
 mech_eap_la_LDFLAGS += @LIBMOONSHOT_LDFLAGS@
 mech_eap_la_LIBADD  += @LIBMOONSHOT_LIBS@
 endif
-=======
->>>>>>> 8d229bd... make dist: distribute sources
+
 
 if GSSEAP_ENABLE_ACCEPTOR
 
