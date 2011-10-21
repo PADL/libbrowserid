@@ -307,6 +307,7 @@ gssEapAcquireCred(OM_uint32 *minor,
         GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
     }
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
     if (cred->flags & CRED_FLAG_ACCEPT) {
         struct rs_context *radContext;
 
@@ -316,6 +317,7 @@ gssEapAcquireCred(OM_uint32 *minor,
 
         rs_context_destroy(radContext);
     }
+#endif
 
     if (pActualMechs != NULL) {
         major = duplicateOidSet(minor, cred->mechanisms, pActualMechs);
