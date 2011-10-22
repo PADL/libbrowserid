@@ -380,6 +380,12 @@ gssEapPseudoRandom(OM_uint32 *minor,
                    ssize_t desired_output_len,
                    gss_buffer_t prf_out);
 
+/* query_mechanism_info.c */
+OM_uint32
+gssQueryMechanismInfo(OM_uint32 *minor,
+                      gss_const_OID mech_oid,
+                      unsigned char auth_scheme[16]);
+
 /* query_meta_data.c */
 OM_uint32
 gssEapQueryMetaData(OM_uint32 *minor,

@@ -36,10 +36,10 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32 GSSAPI_CALLCONV
-gss_query_mechanism_info(OM_uint32 *minor,
-                         gss_const_OID mech_oid,
-                         unsigned char auth_scheme[16])
+OM_uint32
+gssQueryMechanismInfo(OM_uint32 *minor,
+                      gss_const_OID mech_oid,
+                      unsigned char auth_scheme[16])
 {
     OM_uint32 major;
     krb5_enctype enctype;
@@ -56,4 +56,12 @@ gss_query_mechanism_info(OM_uint32 *minor,
 
     *minor = 0;
     return GSS_S_COMPLETE;
+}
+
+OM_uint32 GSSAPI_CALLCONV
+gss_query_mechanism_info(OM_uint32 *minor,
+                         gss_const_OID mech_oid,
+                         unsigned char auth_scheme[16])
+{
+    return gssQueryMechanismInfo(minor, mech_oid, auth_scheme);
 }
