@@ -296,7 +296,7 @@ getAttributeId(const gss_buffer_t desc,
 
     if (!isdigit(*s)) {
         /* No digits */
-        ret = rs_attr_find(s, &attrid->second, &attrid->first);
+        ret = (rs_attr_find(s, &attrid->second, &attrid->first) == RSE_OK);
     } else {
         char *s2;
         unsigned int tmp = strtoul(s, &s2, 10);
