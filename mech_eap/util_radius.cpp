@@ -252,8 +252,9 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
         if (alreadyAddedAttributeP(seen, attrid))
             continue;
 
+        /* TODO support draft-ietf-radext-radius-extensions */
         if (attrid.first != 0) {
-            snprintf(buf, sizeof(buf), "%u.%u", attrid.first, attrid.second);
+            snprintf(buf, sizeof(buf), "26.%u.%u", attrid.first, attrid.second);
         } else {
             snprintf(buf, sizeof(buf), "%u", attrid.second);
         }
@@ -277,28 +278,38 @@ getAttributeId(const gss_buffer_t desc,
     OM_uint32 tmpMinor;
     gss_buffer_desc strAttr = GSS_C_EMPTY_BUFFER;
     char *s;
-    bool ret;
+    bool ret = false;
 
     /* need to duplicate because attr may not be NUL terminated */
     duplicateBuffer(*desc, &strAttr);
     s = (char *)strAttr.value;
 
+    /* TODO support draft-ietf-radext-radius-extensions */
     if (isdigit(*s)) {
-        char *s2;
-        unsigned int tmp = strtoul(s, &s2, 10);
+        unsigned int tmp = strtoul(s, &s, 10);
 
-        if (*s2 == '.') {
-            /* Vendor attributes formatted as Vendor.Attribute */
-            attrid->first = tmp;
-            attrid->second = strtoul(s2 + 1, NULL, 10);
-            ret = true;
-        } else if (*s2 == '\0') {
+        if (*s == '.') {
+            s++;
+
+            switch (tmp) {
+            case PW_VENDOR_SPECIFIC:
+                /* attribute name formatted as 26.Vendor.Attribute */
+                attrid->first = strtoul(s, &s, 10);
+                if (*s == '.') {
+                    s++;
+                    attrid->second = strtoul(s, &s, 10);
+                    ret = (*s == '\0');
+                }
+                break;
+            default:
+                break;
+            }
+        } else if (*s == '\0') {
             /* Non-vendor attrbiute */
             attrid->first = 0;
             attrid->second = tmp;
             ret = true;
-        } else
-            ret = false;
+        }
     } else {
         /* No digits */
         ret = (rs_attr_find(s, &attrid->second, &attrid->first) == RSE_OK);
