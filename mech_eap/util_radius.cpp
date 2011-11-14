@@ -932,11 +932,6 @@ gssEapCreateRadiusContext(OM_uint32 *minor,
         goto fail;
     }
 
-    if (rs_context_init_freeradius_dict(radContext, NULL) != 0) {
-        err = rs_err_ctx_pop(radContext);
-        goto fail;
-    }
-
     *pRadContext = radContext;
 
     *minor = 0;
