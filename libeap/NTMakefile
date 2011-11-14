@@ -305,4 +305,4 @@ mkdirs-libeap:
 !endif
 
 clean::
-
+	rm -f $(OBJS_BOTH) $(OBJS_peer) $(UTILS_OBJS) $(CRYPTO_OBJS) $(TLS_OBJS)
