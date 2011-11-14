@@ -38,11 +38,6 @@
 
 #define RS_MAP_ERROR(code)  (ERROR_TABLE_BASE_rse + (code))
 
-static gss_buffer_desc radiusUrnPrefix = {
-    sizeof("urn:x-radius:") - 1,
-    (void *)"urn:x-radius:"
-};
-
 static rs_avp *copyAvps(rs_const_avp *src);
 
 static OM_uint32
@@ -257,12 +252,10 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
         if (alreadyAddedAttributeP(seen, attrid))
             continue;
 
-        if (attrid.second != 0) {
-            snprintf(buf, sizeof(buf), "%s%u.%u",
-                     (char *)radiusUrnPrefix.value, attrid.first, attrid.second);
+        if (attrid.first != 0) {
+            snprintf(buf, sizeof(buf), "%u.%u", attrid.first, attrid.second);
         } else {
-            snprintf(buf, sizeof(buf), "%s%u",
-                     (char *)radiusUrnPrefix.value, attrid.second);
+            snprintf(buf, sizeof(buf), "%u", attrid.second);
         }
 
         desc.value = buf;
@@ -286,34 +279,29 @@ getAttributeId(const gss_buffer_t desc,
     char *s;
     bool ret;
 
-    if (desc->length < radiusUrnPrefix.length ||
-        memcmp(desc->value, radiusUrnPrefix.value, radiusUrnPrefix.length) != 0)
-        return false;
-
     /* need to duplicate because attr may not be NUL terminated */
     duplicateBuffer(*desc, &strAttr);
-    s = (char *)strAttr.value + radiusUrnPrefix.length;
+    s = (char *)strAttr.value;
 
-    if (!isdigit(*s)) {
-        /* No digits */
-        ret = (rs_attr_find(s, &attrid->second, &attrid->first) == RSE_OK);
-    } else {
+    if (isdigit(*s)) {
         char *s2;
         unsigned int tmp = strtoul(s, &s2, 10);
 
-        if (s2 == NULL) {
-            /* Non-vendor attrbiute */
-            attrid->first = 0;
-            attrid->second = tmp;
-            ret = true;
-        } else if (*s2 == '.') {
+        if (*s2 == '.') {
             /* Vendor attributes formatted as Vendor.Attribute */
             attrid->first = tmp;
             attrid->second = strtoul(s2 + 1, NULL, 10);
             ret = true;
-        } else {
+        } else if (*s2 == '\0') {
+            /* Non-vendor attrbiute */
+            attrid->first = 0;
+            attrid->second = tmp;
+            ret = true;
+        } else
             ret = false;
-        }
+    } else {
+        /* No digits */
+        ret = (rs_attr_find(s, &attrid->second, &attrid->first) == RSE_OK);
     }
 
     gss_release_buffer(&tmpMinor, &strAttr);
@@ -839,7 +827,7 @@ gss_eap_radius_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
 const char *
 gss_eap_radius_attr_provider::prefix(void) const
 {
-    return "urn:ietf:params:gss-eap:radius-avp";
+    return "urn:ietf:params:gssapi:aaa-radius";
 }
 
 JSONObject
