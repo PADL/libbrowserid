@@ -20,17 +20,32 @@
 #define	MD4_BLOCK_LENGTH		64
 #define	MD4_DIGEST_LENGTH		16
 
+#ifdef WIN32
+/*
+ * Use internal Windows implementation from CryptDLL (documented on
+ * MSDN) if building on Windows.
+ */
+typedef struct MD4Context {
+	u32 state[4];			/* state */
+	u64 count;			/* number of bits, mod 2^64 */
+	u8 buffer[MD4_BLOCK_LENGTH];	/* input buffer */
+	u8 digest[MD4_DIGEST_LENGTH];	/* output buffer */
+} MD4_CTX;
+
+extern void MD4Init(MD4_CTX *ctx);
+extern void MD4Update(MD4_CTX *ctx, const unsigned char *input, unsigned int len);
+extern void MD4Final(MD4_CTX *ctx);
+#else
 typedef struct MD4Context {
 	u32 state[4];			/* state */
 	u64 count;			/* number of bits, mod 2^64 */
 	u8 buffer[MD4_BLOCK_LENGTH];	/* input buffer */
 } MD4_CTX;
 
-
 static void MD4Init(MD4_CTX *ctx);
 static void MD4Update(MD4_CTX *ctx, const unsigned char *input, size_t len);
 static void MD4Final(unsigned char digest[MD4_DIGEST_LENGTH], MD4_CTX *ctx);
-
+#endif /* WIN32 */
 
 int md4_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 {
@@ -40,7 +55,12 @@ int md4_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 	MD4Init(&ctx);
 	for (i = 0; i < num_elem; i++)
 		MD4Update(&ctx, addr[i], len[i]);
+#ifdef WIN32
+	MD4Final(&ctx);
+	memcpy(mac, ctx.digest, MD4_DIGEST_LENGTH);
+#else
 	MD4Final(mac, &ctx);
+#endif
 	return 0;
 }
 

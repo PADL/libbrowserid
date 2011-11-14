@@ -55,7 +55,12 @@ struct crypto_hash * crypto_hash_init(enum crypto_hash_alg alg, const u8 *key,
 		if (key_len > sizeof(k_pad)) {
 			MD5Init(&ctx->u.md5);
 			MD5Update(&ctx->u.md5, key, key_len);
+#ifdef WIN32
+			MD5Final(&ctx->u.md5);
+			memcpy(tk, ctx->u.md5.digest, 16);
+#else
 			MD5Final(tk, &ctx->u.md5);
+#endif
 			key = tk;
 			key_len = 16;
 		}
@@ -137,7 +142,12 @@ int crypto_hash_finish(struct crypto_hash *ctx, u8 *mac, size_t *len)
 			return -1;
 		}
 		*len = 16;
+#ifdef WIN32
+		MD5Final(&ctx->u.md5);
+		memcpy(mac, ctx->u.md5.digest, 16);
+#else
 		MD5Final(mac, &ctx->u.md5);
+#endif
 		break;
 	case CRYPTO_HASH_ALG_SHA1:
 		if (*len < 20) {
@@ -156,7 +166,12 @@ int crypto_hash_finish(struct crypto_hash *ctx, u8 *mac, size_t *len)
 		}
 		*len = 16;
 
+#ifdef WIN32
+		MD5Final(&ctx->u.md5);
+		memcpy(mac, ctx->u.md5.digest, 16);
+#else
 		MD5Final(mac, &ctx->u.md5);
+#endif
 
 		os_memcpy(k_pad, ctx->key, ctx->key_len);
 		os_memset(k_pad + ctx->key_len, 0,
@@ -166,7 +181,12 @@ int crypto_hash_finish(struct crypto_hash *ctx, u8 *mac, size_t *len)
 		MD5Init(&ctx->u.md5);
 		MD5Update(&ctx->u.md5, k_pad, sizeof(k_pad));
 		MD5Update(&ctx->u.md5, mac, 16);
+#ifdef WIN32
+		MD5Final(&ctx->u.md5);
+		memcpy(mac, ctx->u.md5.digest, 16);
+#else
 		MD5Final(mac, &ctx->u.md5);
+#endif
 		break;
 	case CRYPTO_HASH_ALG_HMAC_SHA1:
 		if (*len < 20) {
