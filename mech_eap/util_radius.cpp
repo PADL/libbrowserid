@@ -252,15 +252,13 @@ gss_eap_radius_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
         if (alreadyAddedAttributeP(seen, attrid))
             continue;
 
-        /* TODO support draft-ietf-radext-radius-extensions */
-        if (attrid.first != 0) {
-            snprintf(buf, sizeof(buf), "26.%u.%u", attrid.first, attrid.second);
-        } else {
-            snprintf(buf, sizeof(buf), "%u", attrid.second);
-        }
+        if (rs_attr_display_name(attrid.second, attrid.first,
+                                 buf, sizeof(buf), TRUE) != RSE_OK ||
+            strncmp(buf, "Attr-", 5) != 0)
+            continue;
 
-        desc.value = buf;
-        desc.length = strlen(buf);
+        desc.value = &buf[5];
+        desc.length = strlen((char *)desc.value);
 
         if (!addAttribute(m_manager, this, &desc, data))
             return false;
@@ -275,49 +273,35 @@ static bool
 getAttributeId(const gss_buffer_t desc,
                gss_eap_attrid *attrid)
 {
-    OM_uint32 tmpMinor;
-    gss_buffer_desc strAttr = GSS_C_EMPTY_BUFFER;
-    char *s;
-    bool ret = false;
+    char *strAttr, *s;
+    int canon, code;
+
+    if (desc->length == 0)
+        return false;
+
+    canon = isdigit(*(char *)desc->value);
 
     /* need to duplicate because attr may not be NUL terminated */
-    duplicateBuffer(*desc, &strAttr);
-    s = (char *)strAttr.value;
+    strAttr = (char *)GSSEAP_MALLOC(canon ? 5 : 0 + desc->length + 1);
+    if (strAttr == NULL)
+        throw new std::bad_alloc();
 
-    /* TODO support draft-ietf-radext-radius-extensions */
-    if (isdigit(*s)) {
-        unsigned int tmp = strtoul(s, &s, 10);
+    s = strAttr;
 
-        if (*s == '.') {
-            s++;
-
-            switch (tmp) {
-            case PW_VENDOR_SPECIFIC:
-                /* attribute name formatted as 26.Vendor.Attribute */
-                attrid->first = strtoul(s, &s, 10);
-                if (*s == '.') {
-                    s++;
-                    attrid->second = strtoul(s, &s, 10);
-                    ret = (*s == '\0');
-                }
-                break;
-            default:
-                break;
-            }
-        } else if (*s == '\0') {
-            /* Non-vendor attrbiute */
-            attrid->first = 0;
-            attrid->second = tmp;
-            ret = true;
-        }
-    } else {
-        /* No digits */
-        ret = (rs_attr_find(s, &attrid->second, &attrid->first) == RSE_OK);
+    if (canon) {
+        memcpy(s, "Attr-", 5);
+        s += 5;
     }
 
-    gss_release_buffer(&tmpMinor, &strAttr);
+    memcpy(s, desc->value, desc->length);
+    s += desc->length;
+    *s = '\0';
 
-    return ret;
+    code = rs_attr_parse_name(strAttr, &attrid->second, &attrid->first);
+
+    GSSEAP_FREE(strAttr);
+
+    return (code == RSE_OK);
 }
 
 bool
