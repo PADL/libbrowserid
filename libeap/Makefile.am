@@ -88,6 +88,7 @@ CRYPTO_SRCS = \
     src/crypto/md5-non-fips.c \
     src/crypto/milenage.c \
     src/crypto/ms_funcs.c \
+    src/crypto/random.c \
     src/crypto/rc4.c \
     src/crypto/sha1.c \
     src/crypto/sha1-internal.c \
