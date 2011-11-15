@@ -194,6 +194,7 @@ CRYPTO_OBJS = \
     $(OBJ)\crypto\md5-non-fips.obj \
     $(OBJ)\crypto\milenage.obj \
     $(OBJ)\crypto\ms_funcs.obj \
+    $(OBJ)\crypto\random.obj \
     $(OBJ)\crypto\rc4.obj \
     $(OBJ)\crypto\sha1.obj \
     $(OBJ)\crypto\sha1-pbkdf2.obj \
