@@ -767,6 +767,13 @@ void crypto_private_key_free(struct crypto_private_key *key)
 	}
 }
 
+int crypto_public_key_decrypt_pkcs1(struct crypto_public_key *key,
+				    const u8 *crypt, size_t crypt_len,
+				    u8 *plain, size_t *plain_len)
+{
+	return pkcs1_decrypt_public_key((struct crypto_rsa_key *) key,
+					crypt, crypt_len, plain, plain_len);
+}
 
 int crypto_global_init(void)
 {

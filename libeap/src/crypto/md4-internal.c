@@ -64,7 +64,7 @@ int md4_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 	return 0;
 }
 
-
+#ifndef WIN32
 /* ===== start - public domain MD4 implementation ===== */
 /*	$OpenBSD: md4.c,v 1.7 2005/08/08 08:05:35 espie Exp $	*/
 
@@ -296,3 +296,4 @@ MD4Transform(u32 state[4], const u8 block[MD4_BLOCK_LENGTH])
 	state[3] += d;
 }
 /* ===== end - public domain MD4 implementation ===== */
+#endif /* WIN32 */

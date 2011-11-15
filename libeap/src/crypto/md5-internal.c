@@ -294,5 +294,4 @@ static void MD5Transform(u32 buf[4], u32 const in[16])
     buf[3] += d;
 }
 /* ===== end - public domain MD5 implementation ===== */
-
 #endif /* WIN32 */

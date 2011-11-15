@@ -180,39 +180,28 @@ CRYPTO_SRCS = \
     src/crypto/fips_prf_internal.c
 
 CRYPTO_OBJS = \
-    $(OBJ)\crypto\aes-cbc.obj \
     $(OBJ)\crypto\aes-ctr.obj \
     $(OBJ)\crypto\aes-eax.obj \
     $(OBJ)\crypto\aes-encblock.obj \
-    $(OBJ)\crypto\aes-internal.obj \
-    $(OBJ)\crypto\aes-internal-dec.obj \
-    $(OBJ)\crypto\aes-internal-enc.obj \
     $(OBJ)\crypto\aes-omac1.obj \
     $(OBJ)\crypto\aes-unwrap.obj \
     $(OBJ)\crypto\aes-wrap.obj \
-    $(OBJ)\crypto\des-internal.obj \
+    $(OBJ)\crypto\crypto_cryptoapi.obj \
     $(OBJ)\crypto\dh_group5.obj \
+    $(OBJ)\crypto\fips_prf_internal.obj \
     $(OBJ)\crypto\dh_groups.obj \
-    $(OBJ)\crypto\md4-internal.obj \
     $(OBJ)\crypto\md5.obj \
-    $(OBJ)\crypto\md5-internal.obj \
     $(OBJ)\crypto\md5-non-fips.obj \
     $(OBJ)\crypto\milenage.obj \
     $(OBJ)\crypto\ms_funcs.obj \
     $(OBJ)\crypto\rc4.obj \
     $(OBJ)\crypto\sha1.obj \
-    $(OBJ)\crypto\sha1-internal.obj \
     $(OBJ)\crypto\sha1-pbkdf2.obj \
     $(OBJ)\crypto\sha1-tlsprf.obj \
     $(OBJ)\crypto\sha1-tprf.obj \
     $(OBJ)\crypto\sha256.obj \
     $(OBJ)\crypto\sha256-internal.obj \
-    $(OBJ)\crypto\crypto_internal.obj \
-    $(OBJ)\crypto\crypto_internal-cipher.obj \
-    $(OBJ)\crypto\crypto_internal-modexp.obj \
-    $(OBJ)\crypto\crypto_internal-rsa.obj \
-    $(OBJ)\crypto\tls_internal.obj \
-    $(OBJ)\crypto\fips_prf_internal.obj
+    $(OBJ)\crypto\tls_internal.obj
 
 TLS_SRCS = \
     src/tls/asn1.c \
