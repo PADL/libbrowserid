@@ -95,6 +95,7 @@ GCOPTS=-I$(SRCDIR) \
 	-I$(SRCDIR)/src/tls \
 	-I$(OBJ) \
 	-D__func__=__FUNCTION__ \
+	-DGSSEAP_SSP \
 	-DEAP_TLS \
 	-DEAP_PEAP \
 	-DEAP_TTLS \
