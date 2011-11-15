@@ -19,7 +19,12 @@
 #include "md5_i.h"
 #include "crypto.h"
 
+
+static void MD5Transform(u32 buf[4], u32 const in[16]);
+
+
 typedef struct MD5Context MD5_CTX;
+
 
 /**
  * md5_vector - MD5 hash for data vector
@@ -37,18 +42,10 @@ int md5_vector(size_t num_elem, const u8 *addr[], const size_t *len, u8 *mac)
 	MD5Init(&ctx);
 	for (i = 0; i < num_elem; i++)
 		MD5Update(&ctx, addr[i], len[i]);
-#ifdef WIN32
-	MD5Final(&ctx);
-	memcpy(mac, ctx.digest, 16);
-#else
 	MD5Final(mac, &ctx);
-#endif
 	return 0;
 }
 
-#ifndef WIN32
-
-static void MD5Transform(u32 buf[4], u32 const in[16]);
 
 /* ===== start - public domain MD5 implementation ===== */
 /*
@@ -294,4 +291,3 @@ static void MD5Transform(u32 buf[4], u32 const in[16])
     buf[3] += d;
 }
 /* ===== end - public domain MD5 implementation ===== */
-#endif /* WIN32 */
