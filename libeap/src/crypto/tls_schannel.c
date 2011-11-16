@@ -35,7 +35,6 @@
 #include "common.h"
 #include "tls.h"
 
-
 struct tls_global {
 	HMODULE hsecurity;
 	PSecurityFunctionTable sspi;
@@ -50,9 +49,6 @@ struct tls_connection {
 	ALG_ID algs[2];
 	CredHandle creds;
 	CtxtHandle context;
-
-	u8 eap_tls_prf[128];
-	int eap_tls_prf_set;
 };
 
 
@@ -157,7 +153,6 @@ int tls_connection_shutdown(void *ssl_ctx, struct tls_connection *conn)
 	if (conn == NULL)
 		return -1;
 
-	conn->eap_tls_prf_set = 0;
 	conn->established = 0;
 	conn->failed = 0;
 	conn->read_alerts = 0;
@@ -193,45 +188,80 @@ int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
 int tls_connection_get_keys(void *tls_ctx, struct tls_connection *conn,
 			    struct tls_keys *keys)
 {
-#if 0
-	struct tls_global *global = tls_ctx;
-	SECURITY_STATUS status;
-	SecPkgContext_SessionKey sk;
-
-	/* Schannel does not export master secret or client/server random. */
-	status = global->sspi->QueryContextAttributes(
-		&conn->context, SECPKG_ATTR_SESSION_KEY, &sk);
-	if (status != SEC_E_OK) {
-		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
-			   "SECPKG_ATTR_SESSION_KEY) failed (%d)",
-			   __func__, (int) status);
-		return -1;
-	}
-#endif
-
 	return -1;
 }
 
+static const char *
+tls_prf_labels[] = {
+	"client EAP encryption",
+	"ttls keying material",
+	"ttls challenge",
+	"key expansion"
+};
 
 int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 		       const char *label, int server_random_first,
 		       u8 *out, size_t out_len)
 {
-	/*
-	 * Cannot get master_key from Schannel, but EapKeyBlock can be used to
-	 * generate session keys for EAP-TLS and EAP-PEAPv0. EAP-PEAPv2 and
-	 * EAP-TTLS cannot use this, though, since they are using different
-	 * labels. The only option could be to implement TLSv1 completely here
-	 * and just use Schannel or CryptoAPI for low-level crypto
-	 * functionality..
-	 */
+	struct tls_global *global = tls_ctx;
+	SECURITY_STATUS status;
+	SecPkgContext_EapPrfInfo epi;
+	SecPkgContext_EapKeyBlock ekb;
+	DWORD i, dwLabel = (DWORD)-1;
 
-	if (conn == NULL || !conn->eap_tls_prf_set || server_random_first ||
-	    os_strcmp(label, "client EAP encryption") != 0 ||
-	    out_len > sizeof(conn->eap_tls_prf))
+	os_memset(out, 0, out_len);
+
+	if (conn == NULL || server_random_first) {
 		return -1;
+	}
 
-	os_memcpy(out, conn->eap_tls_prf, out_len);
+	for (i = 0;
+	     i < sizeof(tls_prf_labels) / sizeof(tls_prf_labels[0]);
+	     i++) {
+		if (os_strcmp(label, tls_prf_labels[i]) == 0) {
+			dwLabel = i;
+			break;
+		}
+	}
+
+	if (dwLabel == (DWORD)-1) {
+		return -1;
+	}
+
+	epi.dwVersion = 0;
+	epi.cbPrfData = sizeof(dwLabel);
+	epi.pbPrfData = (PBYTE)&dwLabel;
+
+	status = SetContextAttributesA(&conn->context,
+				       SECPKG_ATTR_EAP_PRF_INFO,
+				       &epi,
+				       sizeof(epi));
+	if (status != SEC_E_OK) {
+		wpa_printf(MSG_DEBUG, "%s: SetContextAttributes("
+			   "SECPKG_ATTR_EAP_PRF_INFO) failed (%d)",
+			   __func__, (int) status);
+		return -1;
+	}
+
+	status = global->sspi->QueryContextAttributes(&conn->context,
+						      SECPKG_ATTR_EAP_KEY_BLOCK,
+						      &ekb);
+	if (status != SEC_E_OK) {
+		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
+			   "SECPKG_ATTR_EAP_KEY_BLOCK) failed (%d)",
+			   __func__, (int) status);
+		return -1;
+	}
+
+	wpa_hexdump_key(MSG_MSGDUMP, "Schannel - EapKeyBlock - rgbKeys",
+			ekb.rgbKeys, sizeof(ekb.rgbKeys));
+	wpa_hexdump_key(MSG_MSGDUMP, "Schannel - EapKeyBlock - rgbIVs",
+			ekb.rgbIVs, sizeof(ekb.rgbIVs));
+
+	if (out_len > sizeof(ekb.rgbKeys))
+		out_len = sizeof(ekb.rgbKeys);
+
+	os_memcpy(out, ekb.rgbKeys, out_len);
 
 	return 0;
 }
@@ -298,42 +328,6 @@ static struct wpabuf * tls_conn_hs_clienthello(struct tls_global *global,
 	return NULL;
 }
 
-
-#ifndef SECPKG_ATTR_EAP_KEY_BLOCK
-#define SECPKG_ATTR_EAP_KEY_BLOCK 0x5b
-
-typedef struct _SecPkgContext_EapKeyBlock {
-	BYTE rgbKeys[128];
-	BYTE rgbIVs[64];
-} SecPkgContext_EapKeyBlock, *PSecPkgContext_EapKeyBlock;
-#endif /* !SECPKG_ATTR_EAP_KEY_BLOCK */
-
-static int tls_get_eap(struct tls_global *global, struct tls_connection *conn)
-{
-	SECURITY_STATUS status;
-	SecPkgContext_EapKeyBlock kb;
-
-	/* Note: Windows NT and Windows Me/98/95 do not support getting
-	 * EapKeyBlock */
-
-	status = global->sspi->QueryContextAttributes(
-		&conn->context, SECPKG_ATTR_EAP_KEY_BLOCK, &kb);
-	if (status != SEC_E_OK) {
-		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
-			   "SECPKG_ATTR_EAP_KEY_BLOCK) failed (%d)",
-			   __func__, (int) status);
-		return -1;
-	}
-
-	wpa_hexdump_key(MSG_MSGDUMP, "Schannel - EapKeyBlock - rgbKeys",
-			kb.rgbKeys, sizeof(kb.rgbKeys));
-	wpa_hexdump_key(MSG_MSGDUMP, "Schannel - EapKeyBlock - rgbIVs",
-			kb.rgbIVs, sizeof(kb.rgbIVs));
-
-	os_memcpy(conn->eap_tls_prf, kb.rgbKeys, sizeof(kb.rgbKeys));
-	conn->eap_tls_prf_set = 1;
-	return 0;
-}
 
 
 struct wpabuf * tls_connection_handshake(void *tls_ctx,
@@ -432,7 +426,6 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 		wpa_printf(MSG_DEBUG, "Schannel: SEC_E_OK - Handshake "
 			   "completed successfully");
 		conn->established = 1;
-		tls_get_eap(global, conn);
 
 		/* Need to return something to get final TLS ACK. */
 		if (out_buf == NULL)
