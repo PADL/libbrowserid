@@ -36,18 +36,26 @@
 #include "tls.h"
 
 struct tls_global {
-	DWORD reserved;
+	int check_crl;
 };
 
 struct tls_connection {
 	int established, start;
 	int failed, read_alerts, write_alerts;
 
-	HCERTSTORE my_cert_store;
+	CERT_NAME_BLOB subject_match;
+	CERT_NAME_BLOB altsubject_match;
+	HCERTSTORE client_cert_store;
+	HCERTSTORE server_cert_store;
 	SCHANNEL_CRED schannel_cred;
 	ALG_ID algs[2];
+
+	SECURITY_STATUS last_error;
 	CredHandle creds;
 	CtxtHandle context;
+
+	int ca_cert_verify : 1;
+	int server_cert_only : 1;
 };
 
 
@@ -58,6 +66,7 @@ void * tls_init(const struct tls_config *conf)
 	global = os_zalloc(sizeof(*global));
 	if (global == NULL)
 		return NULL;
+
 	return global;
 }
 
@@ -93,8 +102,10 @@ void tls_connection_deinit(void *ssl_ctx, struct tls_connection *conn)
 {
 	if (conn == NULL)
 		return;
-	if (conn->my_cert_store)
-		CertCloseStore(conn->my_cert_store, 0);
+	if (conn->client_cert_store)
+		CertCloseStore(conn->client_cert_store, 0);
+	if (conn->server_cert_store)
+		CertCloseStore(conn->server_cert_store, 0);
 	os_free(conn);
 }
 
@@ -115,6 +126,14 @@ int tls_connection_shutdown(void *ssl_ctx, struct tls_connection *conn)
 	conn->read_alerts = 0;
 	conn->write_alerts = 0;
 
+	os_free(conn->subject_match.pbData);
+	conn->subject_match.pbData = NULL;
+	conn->subject_match.cbData = 0;
+
+	os_free(conn->altsubject_match.pbData);
+	conn->altsubject_match.pbData = NULL;
+	conn->altsubject_match.cbData = 0;
+
 	DeleteSecurityContext(&conn->context);
 	FreeCredentialsHandle(&conn->creds);
 
@@ -131,6 +150,10 @@ int tls_global_set_params(void *tls_ctx,
 
 int tls_global_set_verify(void *ssl_ctx, int check_crl)
 {
+	struct tls_global *global = ssl_ctx;
+
+	global->check_crl = check_crl;
+
 	return -1;
 }
 
@@ -138,15 +161,20 @@ int tls_global_set_verify(void *ssl_ctx, int check_crl)
 int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
 			      int verify_peer)
 {
-	return -1;
+	conn->ca_cert_verify = !!verify_peer;
+	return 0;
 }
 
-
+/*
+ * SChannel does not support exporting the raw session key. Failing
+ * here is fine as the caller will use tls_connection_prf() instead.
+ */
 int tls_connection_get_keys(void *tls_ctx, struct tls_connection *conn,
 			    struct tls_keys *keys)
 {
 	return -1;
 }
+
 
 static const char *
 tls_prf_labels[] = {
@@ -181,6 +209,8 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 	}
 
 	if (dwLabel == (DWORD)-1) {
+		wpa_printf(MSG_DEBUG, "%s: unknown PRF label \"%s\"",
+			   __func__, label);
 		return -1;
 	}
 
@@ -188,20 +218,13 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 	epi.cbPrfData = sizeof(dwLabel);
 	epi.pbPrfData = (PBYTE)&dwLabel;
 
-	/*
-	 * This is undefined in SecurityFunctionTable, at least in the
-	 * ANSI version, so this must be linked directly from Secur32.dll.
-	 * This does rather defeat the purpose of the indirection but in
-	 * the interests of minimum code intrusion I have left that other
-	 * calls as is.
-	 */
 	status = SetContextAttributes(&conn->context,
 				      SECPKG_ATTR_EAP_PRF_INFO,
 				      &epi,
 				      sizeof(epi));
 	if (status != SEC_E_OK) {
 		wpa_printf(MSG_DEBUG, "%s: SetContextAttributes("
-			   "SECPKG_ATTR_EAP_PRF_INFO) failed (%d)",
+			   "SECPKG_ATTR_EAP_PRF_INFO) failed (0x%08x)",
 			   __func__, (int) status);
 		return -1;
 	}
@@ -211,7 +234,7 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 					&ekb);
 	if (status != SEC_E_OK) {
 		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
-			   "SECPKG_ATTR_EAP_KEY_BLOCK) failed (%d)",
+			   "SECPKG_ATTR_EAP_KEY_BLOCK) failed (0x%08x)",
 			   __func__, (int) status);
 		return -1;
 	}
@@ -229,6 +252,160 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 	return 0;
 }
 
+static int tls_connection_set_subject_match(struct tls_connection *conn,
+					    const char *subject_match,
+					    const char *altsubject_match)
+{
+	DWORD cbSize;
+
+	os_free(conn->subject_match.pbData);
+	conn->subject_match.pbData = NULL;
+	conn->subject_match.cbData = 0;
+
+	if (subject_match) {
+		if (!CertStrToName(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+				   subject_match,
+				   CERT_X500_NAME_STR,
+				   NULL,
+				   NULL,
+				   &cbSize,
+				   NULL))
+			return -1;
+
+		conn->subject_match.pbData = os_malloc(cbSize);
+
+		if (conn->subject_match.pbData == NULL)
+			return -1;
+
+		if (!CertStrToName(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+				   subject_match,
+				   CERT_X500_NAME_STR,
+				   NULL,
+				   conn->subject_match.pbData,
+				   &conn->subject_match.cbData,
+				   NULL)) {
+			os_free(conn->subject_match.pbData);
+			conn->subject_match.pbData = NULL;
+			return -1;
+		}
+	}
+
+	os_free(conn->altsubject_match.pbData);
+	conn->altsubject_match.pbData = NULL;
+	conn->altsubject_match.cbData = 0;
+
+	if (altsubject_match) {
+		if (!CertStrToName(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+				   altsubject_match,
+				   CERT_X500_NAME_STR,
+				   NULL,
+				   NULL,
+				   &cbSize,
+				   NULL))
+			return -1;
+
+		conn->altsubject_match.pbData = os_malloc(cbSize);
+
+		if (conn->altsubject_match.pbData == NULL)
+			return -1;
+
+		if (!CertStrToName(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+				   altsubject_match,
+				   CERT_X500_NAME_STR,
+				   NULL,
+				   conn->altsubject_match.pbData,
+				   &conn->altsubject_match.cbData,
+				   NULL)) {
+			os_free(conn->altsubject_match.pbData);
+			conn->altsubject_match.pbData = NULL;
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
+				  const char *ca_cert, const u8 *ca_cert_blob,
+				  size_t ca_cert_blob_len, const char *ca_path)
+{
+	HCERTSTORE cs = NULL;
+
+	conn->ca_cert_verify = 1;
+	if (ca_cert_blob != NULL) {
+		cs = CertOpenStore(CERT_STORE_PROV_MEMORY,
+				   0, 0, CERT_STORE_CREATE_NEW_FLAG,
+				   NULL);
+	} else if (ca_cert != NULL) {
+		cs = CertOpenStore(CERT_STORE_PROV_FILENAME,
+				   X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+				   0,
+				   CERT_STORE_OPEN_EXISTING_FLAG |
+				   CERT_STORE_READONLY_FLAG,
+				   ca_path);
+	} else {
+		return 0;
+	}
+
+	if (cs == NULL) {
+		conn->last_error = GetLastError();
+		wpa_printf(MSG_DEBUG, "%s: CertOpenStore failed (0x%08x)"
+			   __func__, conn->last_error);
+		return -1;
+	}
+
+	if (ca_cert_blob != NULL) {
+		if (!CertAddEncodedCertificateToStore(cs,
+						      X509_ASN_ENCODING |
+							PKCS_7_ASN_ENCODING,
+						      ca_cert_blob,
+						      ca_cert_blob_len,
+						      CERT_STORE_ADD_ALWAYS,
+						      NULL)) {
+			conn->last_error = GetLastError();
+			wpa_printf(MSG_DEBUG,
+				   "%s: CertAddEncodedCertificateToStore "
+				   "failed (0x%08x)"
+				   __func__, conn->last_error);
+			CertCloseStore(cs, 0);
+			return -1;
+		}
+	}
+
+	if (conn->server_cert_store != NULL)
+		CertCloseStore(conn->server_cert_store, 0);
+	conn->server_cert_store = cs;
+
+	return 0;
+}
+
+static int tls_connection_verify(void *tls_ctx,
+				 struct tls_connection *conn)
+{
+	SECURITY_STATUS status;
+	PCERT_CONTEXT serverCert;
+
+	status = QueryContextAttributes(&conn->context,
+					SECPKG_ATTR_REMOTE_CERT_CONTEXT,
+					&serverCert);
+	if (status != SEC_E_OK || serverCert->pCertInfo == NULL) {
+		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
+			   "SECPKG_ATTR_REMOTE_CERT_CONTEXT) failed (0x%08x)",
+			   __func__, (int) status);
+		return -1;
+	}
+
+	if (conn->subject_match.pbData) {
+		if (!CertCompareCertificateName(X509_ASN_ENCODING |
+						PKCS_7_ASN_ENCODING,
+						&serverCert->pCertInfo->Subject,
+						&conn->subject_match)) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
 
 static struct wpabuf * tls_conn_hs_clienthello(struct tls_global *global,
 					       struct tls_connection *conn)
@@ -268,6 +445,7 @@ static struct wpabuf * tls_conn_hs_clienthello(struct tls_global *global,
 					   &sspi_flags_out,
 					   &ts_expiry);
 	if (status != SEC_I_CONTINUE_NEEDED) {
+		conn->last_error = status;
 		wpa_printf(MSG_ERROR, "%s: InitializeSecurityContextA "
 			   "failed - 0x%x",
 			   __func__, (unsigned int) status);
@@ -358,7 +536,7 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 					   &ts_expiry);
 
 	wpa_printf(MSG_MSGDUMP, "Schannel: InitializeSecurityContext -> "
-		   "status=%d inlen[0]=%d intype[0]=%d inlen[1]=%d "
+		   "status=0x%08x inlen[0]=%d intype[0]=%d inlen[1]=%d "
 		   "intype[1]=%d outlen[0]=%d",
 		   (int) status, (int) inbufs[0].cbBuffer,
 		   (int) inbufs[0].BufferType, (int) inbufs[1].cbBuffer,
@@ -378,6 +556,8 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 		}
 	}
 
+	conn->last_error = status;
+
 	switch (status) {
 	case SEC_E_INCOMPLETE_MESSAGE:
 		wpa_printf(MSG_DEBUG, "Schannel: SEC_E_INCOMPLETE_MESSAGE");
@@ -386,6 +566,9 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 		wpa_printf(MSG_DEBUG, "Schannel: SEC_I_CONTINUE_NEEDED");
 		break;
 	case SEC_E_OK:
+		if (tls_connection_verify(tls_ctx, conn) != 0)
+			break;
+
 		/* TODO: verify server certificate chain */
 		wpa_printf(MSG_DEBUG, "Schannel: SEC_E_OK - Handshake "
 			   "completed successfully");
@@ -503,7 +686,7 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 	wpabuf_put(out, bufs[2].cbBuffer);
 
 	wpa_printf(MSG_MSGDUMP, "Schannel: EncryptMessage -> "
-		   "status=%d len[0]=%d type[0]=%d len[1]=%d type[1]=%d "
+		   "status=0x%08x len[0]=%d type[0]=%d len[1]=%d type[1]=%d "
 		   "len[2]=%d type[2]=%d",
 		   (int) status,
 		   (int) bufs[0].cbBuffer, (int) bufs[0].BufferType,
@@ -529,8 +712,9 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 		return out;
 	}
 
-	wpa_printf(MSG_DEBUG, "%s: Failed - status=%d",
-		   __func__, (int) status);
+	conn->last_error = status;
+	wpa_printf(MSG_DEBUG, "%s: Failed - status=0x%08x",
+		   __func__, conn->last_error);
 	wpabuf_free(out);
 	return NULL;
 }
@@ -567,8 +751,9 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 	buf.pBuffers = bufs;
 
 	status = DecryptMessage(&conn->context, &buf, 0, NULL);
+
 	wpa_printf(MSG_MSGDUMP, "Schannel: DecryptMessage -> "
-		   "status=%d len[0]=%d type[0]=%d len[1]=%d type[1]=%d "
+		   "status=0x%08x len[0]=%d type[0]=%d len[1]=%d type[1]=%d "
 		   "len[2]=%d type[2]=%d len[3]=%d type[3]=%d",
 		   (int) status,
 		   (int) bufs[0].cbBuffer, (int) bufs[0].BufferType,
@@ -610,8 +795,9 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 		return out;
 	}
 
-	wpa_printf(MSG_DEBUG, "%s: Failed - status=%d",
-		   __func__, (int) status);
+	conn->last_error = status;
+	wpa_printf(MSG_DEBUG, "%s: Failed - status=0x%08x",
+		   __func__, conn->last_error);
 	wpabuf_free(tmp);
 	return NULL;
 }
@@ -694,7 +880,7 @@ static HCERTSTORE cryptoapi_find_user_store(void)
 	HCERTSTORE cs;
 
 	status = LsaSpFunctionTable->GetClientInfo(&clientInfo);
-	if (status)
+	if (status != SEC_E_OK)
 		return NULL;
 
 	if (!GetTokenInformation(clientInfo.ClientToken,
@@ -723,7 +909,7 @@ static HCERTSTORE cryptoapi_find_user_store(void)
 	cs = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0,
 			   CERT_SYSTEM_STORE_USERS |
 				CERT_STORE_OPEN_EXISTING_FLAG |
-			   	CERT_STORE_READONLY_FLAG,
+				CERT_STORE_READONLY_FLAG,
 			   wszStorePath);
 
 	LocalFree(szTokenUser);
@@ -739,7 +925,7 @@ static LPWSTR cryptoapi_find_user_store(void)
 	cs = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0,
 			   CERT_SYSTEM_STORE_CURRENT_USER |
 				CERT_STORE_OPEN_EXISTING_FLAG |
-			   	CERT_STORE_READONLY_FLAG,
+				CERT_STORE_READONLY_FLAG,
 			   L"MY");
 
 	return cs;
@@ -791,19 +977,33 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 	if (conn == NULL)
 		return -1;
 
-	conn->my_cert_store = cryptoapi_find_user_store();
-	if (conn->my_cert_store == NULL) {
+	if (tls_connection_set_subject_match(conn,
+					     params->subject_match,
+					     params->altsubject_match) != 0)
+		return -1;
+
+	if (tls_connection_ca_cert(tls_ctx, conn, params->ca_cert,
+				   params->ca_cert_blob,
+				   params->ca_cert_blob_len,
+				   params->ca_path))
+		return -1;
+
+	conn->client_cert_store = cryptoapi_find_user_store();
+	if (conn->client_cert_store == NULL) {
+		conn->last_error = GetLastError();
 		wpa_printf(MSG_ERROR, "%s: CertOpenSystemStore failed - 0x%x",
-			   __func__, (unsigned int) GetLastError());
+			   __func__, conn->last_error);
 		return -1;
 	}
 
 	if (params->private_key != NULL) {
 		certContexts[0] = cryptoapi_find_cert(params->private_key,
-						      conn->my_cert_store);
+						      conn->client_cert_store);
 		if (certContexts[0] == NULL) {
-			wpa_printf(MSG_ERROR, "%s: CertFindCertificateInStore failed - 0x%x",
-			   	__func__, (unsigned int) GetLastError());
+			conn->last_error = GetLastError();
+			wpa_printf(MSG_ERROR,
+				   "%s: CertFindCertificateInStore failed - 0x%x",
+				   __func__, conn->last_error);
 			return -1;
 		}
 	}
@@ -817,6 +1017,7 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 		conn->schannel_cred.paCred = certContexts;
 	}
 
+	conn->schannel_cred.hRootStore = conn->server_cert_store;
 	/* TODO set DH params */
 	conn->algs[0] = CALG_RSA_KEYX;
 	conn->algs[1] = CALG_DH_EPHEM;
@@ -836,6 +1037,7 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 					  &conn->creds,
 					  &ts_expiry);
 	if (status != SEC_E_OK) {
+		conn->last_error = status;
 		wpa_printf(MSG_DEBUG, "%s: AcquireCredentialsHandleA failed - "
 			   "0x%x", __func__, (unsigned int) status);
 		return -1;
