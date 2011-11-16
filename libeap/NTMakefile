@@ -123,9 +123,7 @@ GCOPTS=-I$(SRCDIR) \
 	-DEAP_SERVER_GPSK_SHA256 \
 	-DIEEE8021X_EAPOL \
 	-DCONFIG_NATIVE_WINDOWS \
-	-DCONFIG_INTERNAL_LIBTOMMATH \
-	-DCONFIG_CRYPTO_INTERNAL\
-	-DCONFIG_TLS_INTERNAL_CLIENT
+	-DCONFIG_INTERNAL_LIBTOMMATH
 
 UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
@@ -177,7 +175,6 @@ CRYPTO_SRCS = \
     src/crypto/crypto_internal-cipher.c \
     src/crypto/crypto_internal-modexp.c \
     src/crypto/crypto_internal-rsa.c \
-    src/crypto/tls_internal.c \
     src/crypto/fips_prf_internal.c
 
 CRYPTO_OBJS = \
@@ -202,8 +199,7 @@ CRYPTO_OBJS = \
     $(OBJ)\crypto\sha1-tlsprf.obj \
     $(OBJ)\crypto\sha1-tprf.obj \
     $(OBJ)\crypto\sha256.obj \
-    $(OBJ)\crypto\sha256-internal.obj \
-    $(OBJ)\crypto\tls_internal.obj
+    $(OBJ)\crypto\sha256-internal.obj
 
 TLS_SRCS = \
     src/tls/asn1.c \
@@ -240,6 +236,27 @@ TLS_OBJS = \
     $(OBJ)\tls\tlsv1_server_read.obj \
     $(OBJ)\tls\tlsv1_server_write.obj \
     $(OBJ)\tls\x509v3.obj
+
+#
+# If TLS_SCHANNEL is defined, use the SChannel (SSPI) implementation
+# of TLS. This does not support EAP-PEAPv2 or EAP-TTLS because it
+# cannot derive a session key.
+#
+#TLS_SCHANNEL=1
+!ifdef TLS_SCHANNEL
+GCOPTS = $(GCOPTS) \
+	-DCONFIG_INTERNAL_SHA256 \
+	-DCONFIG_INTERNAL_RC4 \
+	-DCONFIG_INTERNAL_DH_GROUP5
+CRYPTO_SRCS = $(CRYPTO_SRCS) src\crypto\tls_schannel.c
+CRYPTO_OBJS = $(CRYPTO_OBJS) $(OBJ)\crypto\tls_schannel.obj
+!else
+GCOPTS = $(GCOPTS) \
+	-DCONFIG_TLS_INTERNAL_CLIENT \
+	-DCONFIG_CRYPTO_INTERNAL
+CRYPTO_SRCS = $(CRYPTO_SRCS) src\crypto\tls_internal.c
+CRYPTO_OBJS = $(CRYPTO_OBJS) $(OBJ)\crypto\tls_internal.obj
+!endif
 
 {$(OBJ)\src\eap_common}.c{$(OBJ)\eap_common}.obj::
 	$(C2OBJ_NP) -Fo$(OBJ)\eap_common\ -Fd($OBJ)\eap_common\ -I$(OBJ)\eap_common $(GCOPTS)
