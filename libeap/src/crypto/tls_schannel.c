@@ -232,6 +232,13 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 	epi.cbPrfData = sizeof(dwLabel);
 	epi.pbPrfData = (PBYTE)&dwLabel;
 
+	/*
+	 * This is undefined in SecurityFunctionTable, at least in the
+	 * ANSI version, so this must be linked directly from Secur32.dll.
+	 * This does rather defeat the purpose of the indirection but in
+	 * the interests of minimum code intrusion I have left that other
+	 * calls as is.
+	 */
 	status = SetContextAttributesA(&conn->context,
 				       SECPKG_ATTR_EAP_PRF_INFO,
 				       &epi,
