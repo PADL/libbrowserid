@@ -190,10 +190,25 @@ int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
 }
 
 
-int tls_connection_get_keys(void *ssl_ctx, struct tls_connection *conn,
+int tls_connection_get_keys(void *tls_ctx, struct tls_connection *conn,
 			    struct tls_keys *keys)
 {
+#if 0
+	struct tls_global *global = tls_ctx;
+	SECURITY_STATUS status;
+	SecPkgContext_SessionKey sk;
+
 	/* Schannel does not export master secret or client/server random. */
+	status = global->sspi->QueryContextAttributes(
+		&conn->context, SECPKG_ATTR_SESSION_KEY, &sk);
+	if (status != SEC_E_OK) {
+		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
+			   "SECPKG_ATTR_SESSION_KEY) failed (%d)",
+			   __func__, (int) status);
+		return -1;
+	}
+#endif
+
 	return -1;
 }
 
