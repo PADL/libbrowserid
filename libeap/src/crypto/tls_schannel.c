@@ -36,8 +36,7 @@
 #include "tls.h"
 
 struct tls_global {
-	HMODULE hsecurity;
-	PSecurityFunctionTable sspi;
+	DWORD reserved;
 };
 
 struct tls_connection {
@@ -52,42 +51,6 @@ struct tls_connection {
 };
 
 
-static int schannel_load_lib(struct tls_global *global)
-{
-	INIT_SECURITY_INTERFACE pInitSecurityInterface;
-
-	global->hsecurity = LoadLibrary(TEXT("Secur32.dll"));
-	if (global->hsecurity == NULL) {
-		wpa_printf(MSG_ERROR, "%s: Could not load Secur32.dll - 0x%x",
-			   __func__, (unsigned int) GetLastError());
-		return -1;
-	}
-
-	pInitSecurityInterface = (INIT_SECURITY_INTERFACE) GetProcAddress(
-		global->hsecurity, "InitSecurityInterfaceA");
-	if (pInitSecurityInterface == NULL) {
-		wpa_printf(MSG_ERROR, "%s: Could not find "
-			   "InitSecurityInterfaceA from Secur32.dll",
-			   __func__);
-		FreeLibrary(global->hsecurity);
-		global->hsecurity = NULL;
-		return -1;
-	}
-
-	global->sspi = pInitSecurityInterface();
-	if (global->sspi == NULL) {
-		wpa_printf(MSG_ERROR, "%s: Could not read security "
-			   "interface - 0x%x",
-			   __func__, (unsigned int) GetLastError());
-		FreeLibrary(global->hsecurity);
-		global->hsecurity = NULL;
-		return -1;
-	}
-
-	return 0;
-}
-
-
 void * tls_init(const struct tls_config *conf)
 {
 	struct tls_global *global;
@@ -95,10 +58,6 @@ void * tls_init(const struct tls_config *conf)
 	global = os_zalloc(sizeof(*global));
 	if (global == NULL)
 		return NULL;
-	if (schannel_load_lib(global)) {
-		os_free(global);
-		return NULL;
-	}
 	return global;
 }
 
@@ -107,7 +66,6 @@ void tls_deinit(void *ssl_ctx)
 {
 	struct tls_global *global = ssl_ctx;
 
-	FreeLibrary(global->hsecurity);
 	os_free(global);
 }
 
@@ -149,7 +107,6 @@ int tls_connection_established(void *ssl_ctx, struct tls_connection *conn)
 
 int tls_connection_shutdown(void *ssl_ctx, struct tls_connection *conn)
 {
-	struct tls_global *global = ssl_ctx;
 	if (conn == NULL)
 		return -1;
 
@@ -158,8 +115,8 @@ int tls_connection_shutdown(void *ssl_ctx, struct tls_connection *conn)
 	conn->read_alerts = 0;
 	conn->write_alerts = 0;
 
-	global->sspi->DeleteSecurityContext(&conn->context);
-	global->sspi->FreeCredentialsHandle(&conn->creds);
+	DeleteSecurityContext(&conn->context);
+	FreeCredentialsHandle(&conn->creds);
 
 	return 0;
 }
@@ -203,7 +160,6 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 		       const char *label, int server_random_first,
 		       u8 *out, size_t out_len)
 {
-	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
 	SecPkgContext_EapPrfInfo epi;
 	SecPkgContext_EapKeyBlock ekb;
@@ -239,10 +195,10 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 	 * the interests of minimum code intrusion I have left that other
 	 * calls as is.
 	 */
-	status = SetContextAttributesA(&conn->context,
-				       SECPKG_ATTR_EAP_PRF_INFO,
-				       &epi,
-				       sizeof(epi));
+	status = SetContextAttributes(&conn->context,
+				      SECPKG_ATTR_EAP_PRF_INFO,
+				      &epi,
+				      sizeof(epi));
 	if (status != SEC_E_OK) {
 		wpa_printf(MSG_DEBUG, "%s: SetContextAttributes("
 			   "SECPKG_ATTR_EAP_PRF_INFO) failed (%d)",
@@ -250,9 +206,9 @@ int tls_connection_prf(void *tls_ctx, struct tls_connection *conn,
 		return -1;
 	}
 
-	status = global->sspi->QueryContextAttributes(&conn->context,
-						      SECPKG_ATTR_EAP_KEY_BLOCK,
-						      &ekb);
+	status = QueryContextAttributes(&conn->context,
+					SECPKG_ATTR_EAP_KEY_BLOCK,
+					&ekb);
 	if (status != SEC_E_OK) {
 		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
 			   "SECPKG_ATTR_EAP_KEY_BLOCK) failed (%d)",
@@ -299,17 +255,18 @@ static struct wpabuf * tls_conn_hs_clienthello(struct tls_global *global,
 	outbuf.pBuffers = outbufs;
 	outbuf.ulVersion = SECBUFFER_VERSION;
 
-#ifdef UNICODE
-	status = global->sspi->InitializeSecurityContextW(
-		&conn->creds, NULL, NULL /* server name */, sspi_flags, 0,
-		SECURITY_NATIVE_DREP, NULL, 0, &conn->context,
-		&outbuf, &sspi_flags_out, &ts_expiry);
-#else /* UNICODE */
-	status = global->sspi->InitializeSecurityContextA(
-		&conn->creds, NULL, NULL /* server name */, sspi_flags, 0,
-		SECURITY_NATIVE_DREP, NULL, 0, &conn->context,
-		&outbuf, &sspi_flags_out, &ts_expiry);
-#endif /* UNICODE */
+	status = InitializeSecurityContext(&conn->creds,
+					   NULL,
+					   NULL /* server name */,
+					   sspi_flags,
+					   0,
+					   SECURITY_NATIVE_DREP,
+					   NULL,
+					   0,
+					   &conn->context,
+					   &outbuf,
+					   &sspi_flags_out,
+					   &ts_expiry);
 	if (status != SEC_I_CONTINUE_NEEDED) {
 		wpa_printf(MSG_ERROR, "%s: InitializeSecurityContextA "
 			   "failed - 0x%x",
@@ -326,7 +283,7 @@ static struct wpabuf * tls_conn_hs_clienthello(struct tls_global *global,
 					outbufs[0].cbBuffer);
 		if (buf == NULL)
 			return NULL;
-		global->sspi->FreeContextBuffer(outbufs[0].pvBuffer);
+		FreeContextBuffer(outbufs[0].pvBuffer);
 		return buf;
 	}
 
@@ -342,7 +299,6 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 					 const struct wpabuf *in_data,
 					 struct wpabuf **appl_data)
 {
-	struct tls_global *global = tls_ctx;
 	DWORD sspi_flags, sspi_flags_out;
 	SecBufferDesc inbuf, outbuf;
 	SecBuffer inbufs[2], outbufs[1];
@@ -354,7 +310,7 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 		*appl_data = NULL;
 
 	if (conn->start)
-		return tls_conn_hs_clienthello(global, conn);
+		return tls_conn_hs_clienthello(tls_ctx, conn);
 
 	wpa_printf(MSG_DEBUG, "SChannel: %d bytes handshake data to process",
 		   (int) wpabuf_len(in_data));
@@ -388,17 +344,18 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 	outbuf.pBuffers = outbufs;
 	outbuf.ulVersion = SECBUFFER_VERSION;
 
-#ifdef UNICODE
-	status = global->sspi->InitializeSecurityContextW(
-		&conn->creds, &conn->context, NULL, sspi_flags, 0,
-		SECURITY_NATIVE_DREP, &inbuf, 0, NULL,
-		&outbuf, &sspi_flags_out, &ts_expiry);
-#else /* UNICODE */
-	status = global->sspi->InitializeSecurityContextA(
-		&conn->creds, &conn->context, NULL, sspi_flags, 0,
-		SECURITY_NATIVE_DREP, &inbuf, 0, NULL,
-		&outbuf, &sspi_flags_out, &ts_expiry);
-#endif /* UNICODE */
+	status = InitializeSecurityContext(&conn->creds,
+					   &conn->context,
+					   NULL,
+					   sspi_flags,
+					   0,
+					   SECURITY_NATIVE_DREP,
+					   &inbuf,
+					   0,
+					   NULL,
+					   &outbuf,
+					   &sspi_flags_out,
+					   &ts_expiry);
 
 	wpa_printf(MSG_MSGDUMP, "Schannel: InitializeSecurityContext -> "
 		   "status=%d inlen[0]=%d intype[0]=%d inlen[1]=%d "
@@ -414,7 +371,7 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 				    outbufs[0].pvBuffer, outbufs[0].cbBuffer);
 			out_buf = wpabuf_alloc_copy(outbufs[0].pvBuffer,
 						    outbufs[0].cbBuffer);
-			global->sspi->FreeContextBuffer(outbufs[0].pvBuffer);
+			FreeContextBuffer(outbufs[0].pvBuffer);
 			outbufs[0].pvBuffer = NULL;
 			if (out_buf == NULL)
 				return NULL;
@@ -447,7 +404,7 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 					outbufs[1].pvBuffer,
 					outbufs[1].cbBuffer);
 			}
-			global->sspi->FreeContextBuffer(inbufs[1].pvBuffer);
+			FreeContextBuffer(inbufs[1].pvBuffer);
 			inbufs[1].pvBuffer = NULL;
 		}
 		break;
@@ -467,7 +424,7 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 		wpa_printf(MSG_DEBUG, "Schannel: Handshake failed "
 			   "(out_buf=%p)", out_buf);
 		conn->failed++;
-		global->sspi->DeleteSecurityContext(&conn->context);
+		DeleteSecurityContext(&conn->context);
 		return out_buf;
 	}
 
@@ -475,7 +432,7 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 		/* TODO: Can this happen? What to do with this data? */
 		wpa_hexdump(MSG_MSGDUMP, "SChannel - Leftover data",
 			    inbufs[1].pvBuffer, inbufs[1].cbBuffer);
-		global->sspi->FreeContextBuffer(inbufs[1].pvBuffer);
+		FreeContextBuffer(inbufs[1].pvBuffer);
 		inbufs[1].pvBuffer = NULL;
 	}
 
@@ -496,7 +453,6 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 				       struct tls_connection *conn,
 				       const struct wpabuf *in_data)
 {
-	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
 	SecBufferDesc buf;
 	SecBuffer bufs[4];
@@ -504,9 +460,9 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 	int i;
 	struct wpabuf *out;
 
-	status = global->sspi->QueryContextAttributes(&conn->context,
-						      SECPKG_ATTR_STREAM_SIZES,
-						      &sizes);
+	status = QueryContextAttributes(&conn->context,
+					SECPKG_ATTR_STREAM_SIZES,
+					&sizes);
 	if (status != SEC_E_OK) {
 		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes failed",
 			   __func__);
@@ -542,7 +498,7 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 	buf.cBuffers = sizeof(bufs) / sizeof(bufs[0]);
 	buf.pBuffers = bufs;
 
-	status = global->sspi->EncryptMessage(&conn->context, 0, &buf, 0);
+	status = EncryptMessage(&conn->context, 0, &buf, 0);
 
 	wpabuf_put(out, bufs[2].cbBuffer);
 
@@ -584,7 +540,6 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 				       struct tls_connection *conn,
 				       const struct wpabuf *in_data)
 {
-	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
 	SecBufferDesc buf;
 	SecBuffer bufs[4];
@@ -611,7 +566,7 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 	buf.cBuffers = sizeof(bufs) / sizeof(bufs[0]);
 	buf.pBuffers = bufs;
 
-	status = global->sspi->DecryptMessage(&conn->context, &buf, 0, NULL);
+	status = DecryptMessage(&conn->context, &buf, 0, NULL);
 	wpa_printf(MSG_MSGDUMP, "Schannel: DecryptMessage -> "
 		   "status=%d len[0]=%d type[0]=%d len[1]=%d type[1]=%d "
 		   "len[2]=%d type[2]=%d len[3]=%d type[3]=%d",
@@ -829,7 +784,6 @@ static const CERT_CONTEXT *cryptoapi_find_cert(const char *name,
 int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 			      const struct tls_connection_params *params)
 {
-	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
 	PCCERT_CONTEXT certContexts[1] = { NULL };
 	TimeStamp ts_expiry;
@@ -872,15 +826,15 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 	conn->schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION |
 				      SCH_CRED_NO_DEFAULT_CREDS;
 
-#ifdef UNICODE
-	status = global->sspi->AcquireCredentialsHandleW(
-		NULL, UNISP_NAME_W, SECPKG_CRED_OUTBOUND, NULL,
-		&conn->schannel_cred, NULL, NULL, &conn->creds, &ts_expiry);
-#else /* UNICODE */
-	status = global->sspi->AcquireCredentialsHandleA(
-		NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND, NULL,
-		&conn->schannel_cred, NULL, NULL, &conn->creds, &ts_expiry);
-#endif /* UNICODE */
+	status = AcquireCredentialsHandle(NULL,
+					  UNISP_NAME,
+					  SECPKG_CRED_OUTBOUND,
+					  NULL,
+					  &conn->schannel_cred,
+					  NULL,
+					  NULL,
+					  &conn->creds,
+					  &ts_expiry);
 	if (status != SEC_E_OK) {
 		wpa_printf(MSG_DEBUG, "%s: AcquireCredentialsHandleA failed - "
 			   "0x%x", __func__, (unsigned int) status);
