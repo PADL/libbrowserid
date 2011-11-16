@@ -159,7 +159,7 @@ int tls_connection_shutdown(void *ssl_ctx, struct tls_connection *conn)
 	conn->write_alerts = 0;
 
 	global->sspi->DeleteSecurityContext(&conn->context);
-	/* FIXME: what else needs to be reset? */
+	global->sspi->FreeCredentialsHandle(&conn->creds);
 
 	return 0;
 }
