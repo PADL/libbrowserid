@@ -27,7 +27,11 @@
 #define SECURITY_WIN32
 #include <security.h>
 #include <sspi.h>
-
+#ifdef GSSEAP_SSP
+#include <NTSecAPI.h>
+#include <NTSecPkg.h>
+#include <Sddl.h>
+#endif
 #include "common.h"
 #include "tls.h"
 
@@ -35,14 +39,15 @@
 struct tls_global {
 	HMODULE hsecurity;
 	PSecurityFunctionTable sspi;
-	HCERTSTORE my_cert_store;
 };
 
 struct tls_connection {
 	int established, start;
 	int failed, read_alerts, write_alerts;
 
+	HCERTSTORE my_cert_store;
 	SCHANNEL_CRED schannel_cred;
+	ALG_ID algs[2];
 	CredHandle creds;
 	CtxtHandle context;
 
@@ -106,8 +111,6 @@ void tls_deinit(void *ssl_ctx)
 {
 	struct tls_global *global = ssl_ctx;
 
-	if (global->my_cert_store)
-		CertCloseStore(global->my_cert_store, 0);
 	FreeLibrary(global->hsecurity);
 	os_free(global);
 }
@@ -136,7 +139,8 @@ void tls_connection_deinit(void *ssl_ctx, struct tls_connection *conn)
 {
 	if (conn == NULL)
 		return;
-
+	if (conn->my_cert_store)
+		CertCloseStore(conn->my_cert_store, 0);
 	os_free(conn);
 }
 
@@ -154,10 +158,13 @@ int tls_connection_shutdown(void *ssl_ctx, struct tls_connection *conn)
 		return -1;
 
 	conn->eap_tls_prf_set = 0;
-	conn->established = conn->failed = 0;
-	conn->read_alerts = conn->write_alerts = 0;
+	conn->established = 0;
+	conn->failed = 0;
+	conn->read_alerts = 0;
+	conn->write_alerts = 0;
+
 	global->sspi->DeleteSecurityContext(&conn->context);
-	/* FIX: what else needs to be reseted? */
+	/* FIXME: what else needs to be reset? */
 
 	return 0;
 }
@@ -508,15 +515,21 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 	bufs[1].cbBuffer = wpabuf_len(in_data);
 	bufs[1].BufferType = SECBUFFER_DATA;
 
-	bufs[2].pvBuffer = wpabuf_put(out, sizes.cbTrailer);
+	bufs[2].pvBuffer = wpabuf_put(out, 0);
 	bufs[2].cbBuffer = sizes.cbTrailer;
 	bufs[2].BufferType = SECBUFFER_STREAM_TRAILER;
 
+	bufs[3].pvBuffer = NULL;
+	bufs[3].cbBuffer = 0;
+	bufs[3].BufferType = SECBUFFER_EMPTY;
+
 	buf.ulVersion = SECBUFFER_VERSION;
-	buf.cBuffers = 3;
+	buf.cBuffers = sizeof(bufs) / sizeof(bufs[0]);
 	buf.pBuffers = bufs;
 
 	status = global->sspi->EncryptMessage(&conn->context, 0, &buf, 0);
+
+	wpabuf_put(out, bufs[2].cbBuffer);
 
 	wpa_printf(MSG_MSGDUMP, "Schannel: EncryptMessage -> "
 		   "status=%d len[0]=%d type[0]=%d len[1]=%d type[1]=%d "
@@ -530,7 +543,7 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 		   wpabuf_head(out), bufs[0].pvBuffer, bufs[1].pvBuffer,
 		   bufs[2].pvBuffer);
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < buf.cBuffers; i++) {
 		if (bufs[i].pvBuffer && bufs[i].BufferType != SECBUFFER_EMPTY)
 		{
 			wpa_hexdump(MSG_MSGDUMP, "SChannel: bufs",
@@ -560,6 +573,8 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 	SECURITY_STATUS status;
 	SecBufferDesc buf;
 	SecBuffer bufs[4];
+	PSecBuffer data = NULL;
+	PSecBuffer extra = NULL;
 	int i;
 	struct wpabuf *out, *tmp;
 
@@ -578,11 +593,10 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 	bufs[3].BufferType = SECBUFFER_EMPTY;
 
 	buf.ulVersion = SECBUFFER_VERSION;
-	buf.cBuffers = 4;
+	buf.cBuffers = sizeof(bufs) / sizeof(bufs[0]);
 	buf.pBuffers = bufs;
 
-	status = global->sspi->DecryptMessage(&conn->context, &buf, 0,
-						    NULL);
+	status = global->sspi->DecryptMessage(&conn->context, &buf, 0, NULL);
 	wpa_printf(MSG_MSGDUMP, "Schannel: DecryptMessage -> "
 		   "status=%d len[0]=%d type[0]=%d len[1]=%d type[1]=%d "
 		   "len[2]=%d type[2]=%d len[3]=%d type[3]=%d",
@@ -603,11 +617,15 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 		break;
 	case SEC_E_OK:
 		wpa_printf(MSG_DEBUG, "%s: SEC_E_OK", __func__);
-		for (i = 0; i < 4; i++) {
-			if (bufs[i].BufferType == SECBUFFER_DATA)
-				break;
+		for (i = 0; i < buf.cBuffers; i++) {
+			if (data == NULL &&
+			    bufs[i].BufferType == SECBUFFER_DATA)
+				data = &bufs[i];
+			else if (extra == NULL &&
+			    bufs[i].BufferType == SECBUFFER_EXTRA)
+				extra = &bufs[i];
 		}
-		if (i == 4) {
+		if (data == NULL) {
 			wpa_printf(MSG_DEBUG, "%s: No output data from "
 				   "DecryptMessage", __func__);
 			wpabuf_free(tmp);
@@ -615,9 +633,10 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 		}
 		wpa_hexdump_key(MSG_MSGDUMP, "Schannel: Decrypted data from "
 				"DecryptMessage",
-				bufs[i].pvBuffer, bufs[i].cbBuffer);
-		out = wpabuf_alloc_copy(bufs[i].pvBuffer, bufs[i].cbBuffer);
+				data->pvBuffer, data->cbBuffer);
+		out = wpabuf_alloc_copy(data->pvBuffer, data->cbBuffer);
 		wpabuf_free(tmp);
+
 		return out;
 	}
 
@@ -686,33 +705,158 @@ int tls_connection_get_write_alerts(void *ssl_ctx, struct tls_connection *conn)
 	return conn->write_alerts;
 }
 
+#ifdef GSSEAP_SSP
+extern PLSA_SECPKG_FUNCTION_TABLE LsaSpFunctionTable;
+
+/*
+ * Get the certificate store path by the LSA calling user's SID.
+ */
+static HCERTSTORE cryptoapi_find_user_store(void)
+{
+	SECPKG_CLIENT_INFO clientInfo;
+	NTSTATUS status;
+	PUCHAR tokenUserBuffer[sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE];
+	DWORD cbTokenUserBuffer = sizeof(tokenUserBuffer);
+	PTOKEN_USER pTokenUser;
+	LPSTR szTokenUser = NULL;
+	ULONG cchTokenUser;
+	LPWSTR wszStorePath = NULL;
+	HCERTSTORE cs;
+
+	status = LsaSpFunctionTable->GetClientInfo(&clientInfo);
+	if (status)
+		return NULL;
+
+	if (!GetTokenInformation(clientInfo.ClientToken,
+				 TokenUser, tokenUserBuffer,
+				 cbTokenUserBuffer, &cbTokenUserBuffer))
+		return NULL;
+
+	pTokenUser = (PTOKEN_USER)tokenUserBuffer;
+
+	if (!ConvertSidToStringSid(pTokenUser->User.Sid, &szTokenUser))
+		return NULL;
+
+	cchTokenUser = strlen(szTokenUser);
+
+	wszStorePath = LocalAlloc(LPTR, sizeof(WCHAR) * (cchTokenUser + 4));
+	if (wszStorePath == NULL) {
+		LocalFree(szTokenUser);
+		return NULL;
+	}
+
+	MultiByteToWideChar(CP_ACP, 0, szTokenUser, cchTokenUser,
+			    wszStorePath, cchTokenUser);
+
+	wcscpy(wszStorePath + cchTokenUser, L"\\MY");
+
+	cs = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0,
+			   CERT_SYSTEM_STORE_USERS |
+				CERT_STORE_OPEN_EXISTING_FLAG |
+			   	CERT_STORE_READONLY_FLAG,
+			   wszStorePath);
+
+	LocalFree(szTokenUser);
+	LocalFree(wszStorePath);
+
+	return cs;
+}
+#else
+static LPWSTR cryptoapi_find_user_store(void)
+{
+	HCERTSTORE cs;
+
+	cs = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0,
+			   CERT_SYSTEM_STORE_CURRENT_USER |
+				CERT_STORE_OPEN_EXISTING_FLAG |
+			   	CERT_STORE_READONLY_FLAG,
+			   L"MY");
+
+	return cs;
+}
+#endif /* GSSEAP_SSP */
+
+static const CERT_CONTEXT *cryptoapi_find_cert(const char *name,
+					       HCERTSTORE cs)
+{
+	const CERT_CONTEXT *ret = NULL;
+
+	if (strncmp(name, "cert://", 7) == 0) {
+		unsigned short wbuf[255];
+		MultiByteToWideChar(CP_ACP, 0, name + 7, -1, wbuf, 255);
+		ret = CertFindCertificateInStore(cs, X509_ASN_ENCODING |
+						 PKCS_7_ASN_ENCODING,
+						 0, CERT_FIND_SUBJECT_STR,
+						 wbuf, NULL);
+	} else if (strncmp(name, "hash://", 7) == 0) {
+		CRYPT_HASH_BLOB blob;
+		int len;
+		const char *hash = name + 7;
+		unsigned char *buf;
+
+		len = os_strlen(hash) / 2;
+		buf = os_malloc(len);
+		if (buf && hexstr2bin(hash, buf, len) == 0) {
+			blob.cbData = len;
+			blob.pbData = buf;
+			ret = CertFindCertificateInStore(cs,
+							 X509_ASN_ENCODING |
+							 PKCS_7_ASN_ENCODING,
+							 0, CERT_FIND_HASH,
+							 &blob, NULL);
+		}
+		os_free(buf);
+	}
+
+	return ret;
+}
 
 int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 			      const struct tls_connection_params *params)
 {
 	struct tls_global *global = tls_ctx;
-	ALG_ID algs[1];
 	SECURITY_STATUS status;
+	PCCERT_CONTEXT certContexts[1] = { NULL };
 	TimeStamp ts_expiry;
 
 	if (conn == NULL)
 		return -1;
 
-	if (global->my_cert_store == NULL &&
-	    (global->my_cert_store = CertOpenSystemStore(0, TEXT("MY"))) ==
-	    NULL) {
+	conn->my_cert_store = cryptoapi_find_user_store();
+	if (conn->my_cert_store == NULL) {
 		wpa_printf(MSG_ERROR, "%s: CertOpenSystemStore failed - 0x%x",
 			   __func__, (unsigned int) GetLastError());
 		return -1;
 	}
 
+	if (params->private_key != NULL) {
+		certContexts[0] = cryptoapi_find_cert(params->private_key,
+						      conn->my_cert_store);
+		if (certContexts[0] == NULL) {
+			wpa_printf(MSG_ERROR, "%s: CertFindCertificateInStore failed - 0x%x",
+			   	__func__, (unsigned int) GetLastError());
+			return -1;
+		}
+	}
+
 	os_memset(&conn->schannel_cred, 0, sizeof(conn->schannel_cred));
 	conn->schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
 	conn->schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1;
-	algs[0] = CALG_RSA_KEYX;
-	conn->schannel_cred.cSupportedAlgs = 1;
-	conn->schannel_cred.palgSupportedAlgs = algs;
-	conn->schannel_cred.dwFlags |= SCH_CRED_NO_DEFAULT_CREDS;
+
+	if (params->private_key != NULL) {
+		conn->schannel_cred.cCreds = 1;
+		conn->schannel_cred.paCred = certContexts;
+	}
+
+	/* TODO set DH params */
+	conn->algs[0] = CALG_RSA_KEYX;
+	conn->algs[1] = CALG_DH_EPHEM;
+	conn->schannel_cred.cSupportedAlgs = 2;
+	conn->schannel_cred.palgSupportedAlgs = conn->algs;
+
+	conn->schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION |
+				      SCH_CRED_NO_DEFAULT_CREDS;
+
 #ifdef UNICODE
 	status = global->sspi->AcquireCredentialsHandleW(
 		NULL, UNISP_NAME_W, SECPKG_CRED_OUTBOUND, NULL,
