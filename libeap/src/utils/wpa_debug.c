@@ -132,6 +132,9 @@ static int syslog_priority(int level)
 void wpa_printf(int level, const char *fmt, ...)
 {
 	va_list ap;
+#ifdef GSSEAP_SSP
+	char buf[2048];
+#endif
 
 	va_start(ap, fmt);
 	if (level >= wpa_debug_level) {
@@ -147,8 +150,14 @@ void wpa_printf(int level, const char *fmt, ...)
 			fprintf(out_file, "\n");
 		} else {
 #endif /* CONFIG_DEBUG_FILE */
+#if 0
+		vsnprintf(buf, sizeof(buf), fmt, ap);
+		OutputDebugStringA(buf);
+		OutputDebugStringA("\r\n");
+#else
 		vprintf(fmt, ap);
 		printf("\n");
+#endif
 #ifdef CONFIG_DEBUG_FILE
 		}
 #endif /* CONFIG_DEBUG_FILE */
@@ -158,7 +167,6 @@ void wpa_printf(int level, const char *fmt, ...)
 	}
 	va_end(ap);
 }
-
 
 static void _wpa_hexdump(int level, const char *title, const u8 *buf,
 			 size_t len, int show)
