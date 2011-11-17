@@ -78,6 +78,13 @@ extern gss_OID GSS_EAP_CRED_SET_CRED_FLAG;
 extern gss_OID GSS_EAP_CRED_SET_CRED_PASSWORD;
 
 /*
+ * Path to PKCS#12 private key file for use with EAP-TLS
+ * authentication.
+ */
+extern gss_OID GSS_EAP_CRED_SET_CRED_PRIVATE_KEY;
+
+
+/*
  * Credentials flag indicating the local attributes
  * processing should be skipped.
  */

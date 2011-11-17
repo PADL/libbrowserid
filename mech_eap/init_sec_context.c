@@ -250,13 +250,21 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     eapPeerConfig->anonymous_identity_len = 1 + realm.length;
 
     /* password */
-    eapPeerConfig->password = (unsigned char *)cred->password.value;
-    eapPeerConfig->password_len = cred->password.length;
+    if ((cred->flags & CRED_FLAG_CERTIFICATE) == 0) {
+        eapPeerConfig->password = (unsigned char *)cred->password.value;
+        eapPeerConfig->password_len = cred->password.length;
+    }
 
     /* certs */
     eapPeerConfig->ca_cert = (unsigned char *)cred->caCertificate.value;
     eapPeerConfig->subject_match = (unsigned char *)cred->subjectNameConstraint.value;
     eapPeerConfig->altsubject_match = (unsigned char *)cred->subjectAltNameConstraint.value;
+
+    if (cred->flags & CRED_FLAG_CERTIFICATE) {
+        eapPeerConfig->client_cert = (unsigned char *)cred->clientCertificate.value;
+        eapPeerConfig->private_key = (unsigned char *)cred->privateKey.value;
+        eapPeerConfig->private_key_passwd = (unsigned char *)cred->password.value;
+    }
 
     *minor = 0;
     return GSS_S_COMPLETE;
