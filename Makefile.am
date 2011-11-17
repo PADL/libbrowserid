@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign
 
-AM_CPPFLAGS = -I$(srcdir)/src -I$(srcdir)/eap_example -I$(srcdir)/src/utils 
+AM_CPPFLAGS = -I$(srcdir)/src -I$(srcdir)/eap_example -I$(srcdir)/src/utils @OPENSSL_CFLAGS@
 
 SOURCES_BOTH = src/eap_common/eap_peap_common.c
 SOURCES_BOTH += src/eap_common/eap_psk_common.c
@@ -55,8 +55,9 @@ CFLAGS += -DIEEE8021X_EAPOL
 CFLAGS += -DCONFIG_IPV6
 
 CFLAGS += -DCONFIG_INTERNAL_LIBTOMMATH
-CFLAGS += -DCONFIG_CRYPTO_INTERNAL
-CFLAGS += -DCONFIG_TLS_INTERNAL_CLIENT
+CFLAGS += -DCONFIG_INTERNAL_SHA1
+CFLAGS += -DEAP_TLS_OPENSSL
+CFLAGS += -DPKCS12_FUNCS
 
 UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
@@ -73,35 +74,20 @@ CRYPTO_SRCS = \
     src/crypto/aes-ctr.c \
     src/crypto/aes-eax.c \
     src/crypto/aes-encblock.c \
-    src/crypto/aes-internal.c \
-    src/crypto/aes-internal-dec.c \
-    src/crypto/aes-internal-enc.c \
     src/crypto/aes-omac1.c \
     src/crypto/aes-unwrap.c \
     src/crypto/aes-wrap.c \
-    src/crypto/des-internal.c \
-    src/crypto/dh_group5.c \
-    src/crypto/dh_groups.c \
-    src/crypto/md4-internal.c \
     src/crypto/md5.c \
-    src/crypto/md5-internal.c \
     src/crypto/md5-non-fips.c \
     src/crypto/milenage.c \
     src/crypto/ms_funcs.c \
-    src/crypto/rc4.c \
     src/crypto/sha1.c \
-    src/crypto/sha1-internal.c \
     src/crypto/sha1-pbkdf2.c \
     src/crypto/sha1-tlsprf.c \
     src/crypto/sha1-tprf.c \
     src/crypto/sha256.c \
-    src/crypto/sha256-internal.c \
-    src/crypto/crypto_internal.c \
-    src/crypto/crypto_internal-cipher.c \
-    src/crypto/crypto_internal-modexp.c \
-    src/crypto/crypto_internal-rsa.c \
-    src/crypto/tls_internal.c \
-    src/crypto/fips_prf_internal.c
+    src/crypto/crypto_openssl.c \
+    src/crypto/tls_openssl.c
 
 TLS_SRCS = \
     src/tls/asn1.c \
@@ -121,6 +107,6 @@ TLS_SRCS = \
     src/tls/tlsv1_server_write.c \
     src/tls/x509v3.c
 
-libeap_la_SOURCES = $(SOURCES_BOTH) $(SOURCES_peer) $(UTILS_SRCS) $(CRYPTO_SRCS) $(TLS_SRCS)
+libeap_la_SOURCES = $(SOURCES_BOTH) $(SOURCES_peer) $(UTILS_SRCS) $(CRYPTO_SRCS)
 
 noinst_LTLIBRARIES = libeap.la
