@@ -36,14 +36,6 @@ RELDIR=libeap
 #
 # Common object files
 #
-SOURCES_BOTH = src\eap_common\eap_peap_common.c \
-	src\eap_common\eap_psk_common.c \
-	src\eap_common\eap_pax_common.c \
-	src\eap_common\eap_sake_common.c \
-	src\eap_common\eap_gpsk_common.c \
-	src\eap_common/eap_common.c \
-	src\eap_common\chap.c
-
 OBJS_BOTH = $(OBJ)\eap_common\eap_peap_common.obj \
 	$(OBJ)\eap_common\eap_psk_common.obj \
 	$(OBJ)\eap_common\eap_pax_common.obj \
@@ -51,23 +43,6 @@ OBJS_BOTH = $(OBJ)\eap_common\eap_peap_common.obj \
 	$(OBJ)\eap_common\eap_gpsk_common.obj \
 	$(OBJ)\eap_common\eap_common.obj \
 	$(OBJ)\eap_common\chap.obj
-
-SOURCES_peer = src/eap_peer/eap_tls.c \
-	src/eap_peer/eap_peap.c \
-	src/eap_peer/eap_ttls.c \
-	src/eap_peer/eap_md5.c \
-	src/eap_peer/eap_mschapv2.c \
-	src/eap_peer/mschapv2.c \
-	src/eap_peer/eap_otp.c \
-	src/eap_peer/eap_gtc.c \
-	src/eap_peer/eap_leap.c \
-	src/eap_peer/eap_psk.c \
-	src/eap_peer/eap_pax.c \
-	src/eap_peer/eap_sake.c \
-	src/eap_peer/eap_gpsk.c \
-	src/eap_peer/eap.c \
-	src/eap_peer/eap_methods.c \
-	src/eap_peer/eap_tls_common.c
 
 OBJS_peer = $(OBJ)\eap_peer\eap_tls.obj \
 	$(OBJ)\eap_peer\eap_peap.obj \
@@ -125,15 +100,6 @@ GCOPTS=-I$(SRCDIR) \
 	-DCONFIG_NATIVE_WINDOWS \
 	-DCONFIG_INTERNAL_LIBTOMMATH
 
-UTILS_SRCS = src/utils/base64.c \
-	src/utils/common.c \
-	src/utils/ip_addr.c \
-	src/utils/trace.c \
-	src/utils/uuid.c \
-	src/utils/wpa_debug.c \
-	src/utils/wpabuf.c \
-	src/utils/os_win32.c
-
 UTILS_OBJS = $(OBJ)\utils\base64.obj \
 	$(OBJ)\utils\common.obj \
 	$(OBJ)\utils\ip_addr.obj \
@@ -142,40 +108,6 @@ UTILS_OBJS = $(OBJ)\utils\base64.obj \
 	$(OBJ)\utils\wpa_debug.obj \
 	$(OBJ)\utils\wpabuf.obj \
 	$(OBJ)\utils\os_win32.obj
-
-CRYPTO_SRCS = \
-    src/crypto/aes-cbc.c \
-    src/crypto/aes-ctr.c \
-    src/crypto/aes-eax.c \
-    src/crypto/aes-encblock.c \
-    src/crypto/aes-internal.c \
-    src/crypto/aes-internal-dec.c \
-    src/crypto/aes-internal-enc.c \
-    src/crypto/aes-omac1.c \
-    src/crypto/aes-unwrap.c \
-    src/crypto/aes-wrap.c \
-    src/crypto/des-internal.c \
-    src/crypto/dh_group5.c \
-    src/crypto/dh_groups.c \
-    src/crypto/md4-internal.c \
-    src/crypto/md5.c \
-    src/crypto/md5-internal.c \
-    src/crypto/md5-non-fips.c \
-    src/crypto/milenage.c \
-    src/crypto/ms_funcs.c \
-    src/crypto/rc4.c \
-    src/crypto/sha1.c \
-    src/crypto/sha1-internal.c \
-    src/crypto/sha1-pbkdf2.c \
-    src/crypto/sha1-tlsprf.c \
-    src/crypto/sha1-tprf.c \
-    src/crypto/sha256.c \
-    src/crypto/sha256-internal.c \
-    src/crypto/crypto_internal.c \
-    src/crypto/crypto_internal-cipher.c \
-    src/crypto/crypto_internal-modexp.c \
-    src/crypto/crypto_internal-rsa.c \
-    src/crypto/fips_prf_internal.c
 
 CRYPTO_OBJS = \
     $(OBJ)\crypto\aes-ctr.obj \
@@ -200,24 +132,6 @@ CRYPTO_OBJS = \
     $(OBJ)\crypto\sha1-tprf.obj \
     $(OBJ)\crypto\sha256.obj \
     $(OBJ)\crypto\sha256-internal.obj
-
-TLS_SRCS = \
-    src/tls/asn1.c \
-    src/tls/bignum.c \
-    src/tls/pkcs1.c \
-    src/tls/pkcs5.c \
-    src/tls/pkcs8.c \
-    src/tls/rsa.c \
-    src/tls/tlsv1_client.c \
-    src/tls/tlsv1_client_read.c \
-    src/tls/tlsv1_client_write.c \
-    src/tls/tlsv1_common.c \
-    src/tls/tlsv1_cred.c \
-    src/tls/tlsv1_record.c \
-    src/tls/tlsv1_server.c \
-    src/tls/tlsv1_server_read.c \
-    src/tls/tlsv1_server_write.c \
-    src/tls/x509v3.c
 
 TLS_OBJS = \
     $(OBJ)\tls\asn1.obj \
@@ -249,13 +163,11 @@ GCOPTS = $(GCOPTS) \
 	-DCONFIG_INTERNAL_SHA256 \
 	-DCONFIG_INTERNAL_RC4 \
 	-DCONFIG_INTERNAL_DH_GROUP5
-CRYPTO_SRCS = $(CRYPTO_SRCS) src\crypto\tls_schannel.c
 CRYPTO_OBJS = $(CRYPTO_OBJS) $(OBJ)\crypto\tls_schannel.obj
 !else
 GCOPTS = $(GCOPTS) \
 	-DCONFIG_TLS_INTERNAL_CLIENT \
 	-DCONFIG_CRYPTO_INTERNAL
-CRYPTO_SRCS = $(CRYPTO_SRCS) src\crypto\tls_internal.c
 CRYPTO_OBJS = $(CRYPTO_OBJS) $(OBJ)\crypto\tls_internal.obj
 !endif
 
