@@ -515,6 +515,10 @@ int tls_connection_get_keyblock_size(void *tls_ctx,
  */
 unsigned int tls_capabilities(void *tls_ctx);
 
+#ifdef GSSEAP_SSP
+u32 tls_get_sspi_error(void *tls_ctx);
+#endif
+
 typedef int (*tls_session_ticket_cb)
 (void *ctx, const u8 *ticket, size_t len, const u8 *client_random,
  const u8 *server_random, u8 *master_secret);

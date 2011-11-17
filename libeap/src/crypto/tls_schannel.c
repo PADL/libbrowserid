@@ -37,6 +37,7 @@
 
 struct tls_global {
 	int check_crl;
+	SECURITY_STATUS last_error;
 };
 
 struct tls_connection {
@@ -50,14 +51,12 @@ struct tls_connection {
 	SCHANNEL_CRED schannel_cred;
 	ALG_ID algs[2];
 
-	SECURITY_STATUS last_error;
 	CredHandle creds;
 	CtxtHandle context;
 
 	int ca_cert_verify : 1;
 	int server_cert_only : 1;
 };
-
 
 void * tls_init(const struct tls_config *conf)
 {
@@ -329,6 +328,7 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 				  const char *ca_cert, const u8 *ca_cert_blob,
 				  size_t ca_cert_blob_len, const char *ca_path)
 {
+	struct tls_global *global = tls_ctx;
 	HCERTSTORE cs = NULL;
 
 	conn->ca_cert_verify = 1;
@@ -348,9 +348,9 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 	}
 
 	if (cs == NULL) {
-		conn->last_error = GetLastError();
+		global->last_error = GetLastError();
 		wpa_printf(MSG_DEBUG, "%s: CertOpenStore failed (0x%08x)"
-			   __func__, conn->last_error);
+			   __func__, global->last_error);
 		return -1;
 	}
 
@@ -362,11 +362,11 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 						      ca_cert_blob_len,
 						      CERT_STORE_ADD_ALWAYS,
 						      NULL)) {
-			conn->last_error = GetLastError();
+			global->last_error = GetLastError();
 			wpa_printf(MSG_DEBUG,
 				   "%s: CertAddEncodedCertificateToStore "
 				   "failed (0x%08x)"
-				   __func__, conn->last_error);
+				   __func__, global->last_error);
 			CertCloseStore(cs, 0);
 			return -1;
 		}
@@ -445,7 +445,7 @@ static struct wpabuf * tls_conn_hs_clienthello(struct tls_global *global,
 					   &sspi_flags_out,
 					   &ts_expiry);
 	if (status != SEC_I_CONTINUE_NEEDED) {
-		conn->last_error = status;
+		global->last_error = status;
 		wpa_printf(MSG_ERROR, "%s: InitializeSecurityContextA "
 			   "failed - 0x%x",
 			   __func__, (unsigned int) status);
@@ -477,6 +477,7 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 					 const struct wpabuf *in_data,
 					 struct wpabuf **appl_data)
 {
+	struct tls_global *global = tls_ctx;
 	DWORD sspi_flags, sspi_flags_out;
 	SecBufferDesc inbuf, outbuf;
 	SecBuffer inbufs[2], outbufs[1];
@@ -556,8 +557,6 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 		}
 	}
 
-	conn->last_error = status;
-
 	switch (status) {
 	case SEC_E_INCOMPLETE_MESSAGE:
 		wpa_printf(MSG_DEBUG, "Schannel: SEC_E_INCOMPLETE_MESSAGE");
@@ -604,6 +603,7 @@ struct wpabuf * tls_connection_handshake(void *tls_ctx,
 	}
 
 	if (FAILED(status)) {
+		global->last_error = status;
 		wpa_printf(MSG_DEBUG, "Schannel: Handshake failed "
 			   "(out_buf=%p)", out_buf);
 		conn->failed++;
@@ -636,6 +636,7 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 				       struct tls_connection *conn,
 				       const struct wpabuf *in_data)
 {
+	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
 	SecBufferDesc buf;
 	SecBuffer bufs[4];
@@ -712,9 +713,9 @@ struct wpabuf * tls_connection_encrypt(void *tls_ctx,
 		return out;
 	}
 
-	conn->last_error = status;
+	global->last_error = status;
 	wpa_printf(MSG_DEBUG, "%s: Failed - status=0x%08x",
-		   __func__, conn->last_error);
+		   __func__, global->last_error);
 	wpabuf_free(out);
 	return NULL;
 }
@@ -724,6 +725,7 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 				       struct tls_connection *conn,
 				       const struct wpabuf *in_data)
 {
+	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
 	SecBufferDesc buf;
 	SecBuffer bufs[4];
@@ -795,9 +797,9 @@ struct wpabuf * tls_connection_decrypt(void *tls_ctx,
 		return out;
 	}
 
-	conn->last_error = status;
+	global->last_error = status;
 	wpa_printf(MSG_DEBUG, "%s: Failed - status=0x%08x",
-		   __func__, conn->last_error);
+		   __func__, global->last_error);
 	wpabuf_free(tmp);
 	return NULL;
 }
@@ -970,6 +972,7 @@ static const CERT_CONTEXT *cryptoapi_find_cert(const char *name,
 int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 			      const struct tls_connection_params *params)
 {
+	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
 	PCCERT_CONTEXT certContexts[1] = { NULL };
 	TimeStamp ts_expiry;
@@ -990,9 +993,9 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 
 	conn->client_cert_store = cryptoapi_find_user_store();
 	if (conn->client_cert_store == NULL) {
-		conn->last_error = GetLastError();
+		global->last_error = GetLastError();
 		wpa_printf(MSG_ERROR, "%s: CertOpenSystemStore failed - 0x%x",
-			   __func__, conn->last_error);
+			   __func__, global->last_error);
 		return -1;
 	}
 
@@ -1000,10 +1003,10 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 		certContexts[0] = cryptoapi_find_cert(params->private_key,
 						      conn->client_cert_store);
 		if (certContexts[0] == NULL) {
-			conn->last_error = GetLastError();
+			global->last_error = GetLastError();
 			wpa_printf(MSG_ERROR,
 				   "%s: CertFindCertificateInStore failed - 0x%x",
-				   __func__, conn->last_error);
+				   __func__, global->last_error);
 			return -1;
 		}
 	}
@@ -1037,7 +1040,7 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 					  &conn->creds,
 					  &ts_expiry);
 	if (status != SEC_E_OK) {
-		conn->last_error = status;
+		global->last_error = status;
 		wpa_printf(MSG_DEBUG, "%s: AcquireCredentialsHandleA failed - "
 			   "0x%x", __func__, (unsigned int) status);
 		return -1;
@@ -1051,3 +1054,12 @@ unsigned int tls_capabilities(void *tls_ctx)
 {
 	return 0;
 }
+
+#ifdef GSSEAP_SSP
+u32 tls_get_sspi_error(void *tls_ctx)
+{
+	struct tls_global *global = tls_ctx;
+
+	return global->last_error;
+}
+#endif
