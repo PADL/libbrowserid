@@ -104,8 +104,8 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     gss_release_buffer(&tmpMinor, &cred->caCertificate);
     gss_release_buffer(&tmpMinor, &cred->subjectNameConstraint);
     gss_release_buffer(&tmpMinor, &cred->subjectAltNameConstraint);
-    gss_release_buffer(&tmpMinor, &cred->privateKey);
     gss_release_buffer(&tmpMinor, &cred->clientCertificate);
+    gss_release_buffer(&tmpMinor, &cred->privateKey);
 
 #ifdef GSSEAP_ENABLE_REAUTH
     if (cred->krbCredCache != NULL) {
@@ -693,6 +693,8 @@ gssEapDuplicateCred(OM_uint32 *minor,
         duplicateBufferOrCleanup(&src->subjectNameConstraint, &dst->subjectNameConstraint);
     if (src->subjectAltNameConstraint.value != NULL)
         duplicateBufferOrCleanup(&src->subjectAltNameConstraint, &dst->subjectAltNameConstraint);
+    if (src->clientCertificate.value != NULL)
+        duplicateBufferOrCleanup(&src->clientCertificate, &dst->clientCertificate);
     if (src->privateKey.value != NULL)
         duplicateBufferOrCleanup(&src->privateKey, &dst->privateKey);
 
