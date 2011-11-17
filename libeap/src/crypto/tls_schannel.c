@@ -50,6 +50,7 @@ struct tls_connection {
 	HCERTSTORE server_cert_store;
 	SCHANNEL_CRED schannel_cred;
 	ALG_ID algs[2];
+	PCCERT_CONTEXT cert_context;
 
 	CredHandle creds;
 	CtxtHandle context;
@@ -101,6 +102,8 @@ void tls_connection_deinit(void *ssl_ctx, struct tls_connection *conn)
 {
 	if (conn == NULL)
 		return;
+	if (conn->cert_context)
+		CertFreeCertificateContext(conn->cert_context);
 	if (conn->client_cert_store)
 		CertCloseStore(conn->client_cert_store, 0);
 	if (conn->server_cert_store)
@@ -934,10 +937,11 @@ static LPWSTR cryptoapi_find_user_store(void)
 }
 #endif /* GSSEAP_SSP */
 
-static const CERT_CONTEXT *cryptoapi_find_cert(const char *name,
+static const CERT_CONTEXT *cryptoapi_find_cert(struct tls_global *global,
+					       const char *name,
 					       HCERTSTORE cs)
 {
-	const CERT_CONTEXT *ret = NULL;
+	PCCERT_CONTEXT ret = NULL;
 
 	if (strncmp(name, "cert://", 7) == 0) {
 		unsigned short wbuf[255];
@@ -966,6 +970,53 @@ static const CERT_CONTEXT *cryptoapi_find_cert(const char *name,
 		os_free(buf);
 	}
 
+	if (ret == NULL) {
+		global->last_error = GetLastError();
+		wpa_printf(MSG_ERROR,
+			   "%s: CertFindCertificateInStore failed - 0x%x",
+			   __func__, global->last_error);
+	}
+
+	return ret;
+}
+
+static const CERT_CONTEXT *cryptoapi_find_cert_blob(struct tls_global *global,
+						    const u8 *cert_blob,
+						    size_t cert_blob_len,
+						    HCERTSTORE cs)
+{
+	PCCERT_CONTEXT match;
+	PCCERT_CONTEXT ret = NULL;
+
+	match = CertCreateCertificateContext(X509_ASN_ENCODING |
+						PKCS_7_ASN_ENCODING,
+					     cert_blob,
+					     cert_blob_len);
+	if (match == NULL) {
+		global->last_error = GetLastError();
+		wpa_printf(MSG_ERROR,
+			   "%s: CertCreateCertificateContext failed - 0x%x",
+			   __func__, global->last_error);
+		return NULL;
+	}
+
+	ret = CertFindCertificateInStore(cs,
+					 X509_ASN_ENCODING |
+					    PKCS_7_ASN_ENCODING,
+					 0,
+					 CERT_FIND_EXISTING,
+					 match,
+					 NULL);
+
+	if (ret == NULL) {
+		global->last_error = GetLastError();
+		wpa_printf(MSG_ERROR,
+			   "%s: CertFindCertificateInStore failed - 0x%x",
+			   __func__, global->last_error);
+	}
+
+	CertFreeCertificateContext(match);
+
 	return ret;
 }
 
@@ -974,7 +1025,6 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 {
 	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
-	PCCERT_CONTEXT certContexts[1] = { NULL };
 	TimeStamp ts_expiry;
 
 	if (conn == NULL)
@@ -999,28 +1049,37 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 		return -1;
 	}
 
-	if (params->private_key != NULL) {
-		certContexts[0] = cryptoapi_find_cert(params->private_key,
-						      conn->client_cert_store);
-		if (certContexts[0] == NULL) {
-			global->last_error = GetLastError();
-			wpa_printf(MSG_ERROR,
-				   "%s: CertFindCertificateInStore failed - 0x%x",
-				   __func__, global->last_error);
+	/*
+	 * We either pass the entire certificate as a blob in the client_cert
+	 * field, or otherwise a hint on how to retrieve the private key in
+	 * the private_key field.
+	 */
+	if (params->client_cert_blob != NULL) {
+		conn->cert_context =
+			cryptoapi_find_cert_blob(global,
+						 params->client_cert_blob,
+						 params->client_cert_blob_len,
+						 conn->client_cert_store);
+		if (conn->cert_context == NULL)
 			return -1;
-		}
+	} else if (params->private_key != NULL) {
+		conn->cert_context =
+			cryptoapi_find_cert(global,
+					    params->private_key,
+					    conn->client_cert_store);
+		if (conn->cert_context == NULL)
+			return -1;
 	}
 
 	os_memset(&conn->schannel_cred, 0, sizeof(conn->schannel_cred));
 	conn->schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
 	conn->schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1;
-
-	if (params->private_key != NULL) {
+	if (conn->cert_context != NULL) {
 		conn->schannel_cred.cCreds = 1;
-		conn->schannel_cred.paCred = certContexts;
+		conn->schannel_cred.paCred = &conn->cert_context;
 	}
-
 	conn->schannel_cred.hRootStore = conn->server_cert_store;
+
 	/* TODO set DH params */
 	conn->algs[0] = CALG_RSA_KEYX;
 	conn->algs[1] = CALG_DH_EPHEM;
