@@ -81,6 +81,8 @@ if test x_$found_shibresolver = x_yes; then
   AX_CHECK_SHIBSP
 fi
 
+AX_CHECK_OPENSSL
+
 if test "x$acceptor" = "xyes" ; then
   AX_CHECK_RADSEC
   AX_CHECK_JANSSON
