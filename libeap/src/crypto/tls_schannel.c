@@ -27,11 +27,6 @@
 #define SECURITY_WIN32
 #include <security.h>
 #include <sspi.h>
-#ifdef GSSEAP_SSP
-#include <NTSecAPI.h>
-#include <NTSecPkg.h>
-#include <Sddl.h>
-#endif
 #include "common.h"
 #include "tls.h"
 
@@ -866,63 +861,6 @@ int tls_connection_get_write_alerts(void *ssl_ctx, struct tls_connection *conn)
 	return conn->write_alerts;
 }
 
-#ifdef GSSEAP_SSP
-extern PLSA_SECPKG_FUNCTION_TABLE LsaSpFunctionTable;
-
-/*
- * Get the certificate store path by the LSA calling user's SID.
- */
-static HCERTSTORE cryptoapi_find_user_store(void)
-{
-	SECPKG_CLIENT_INFO clientInfo;
-	NTSTATUS status;
-	PUCHAR tokenUserBuffer[sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE];
-	DWORD cbTokenUserBuffer = sizeof(tokenUserBuffer);
-	PTOKEN_USER pTokenUser;
-	LPSTR szTokenUser = NULL;
-	ULONG cchTokenUser;
-	LPWSTR wszStorePath = NULL;
-	HCERTSTORE cs;
-
-	status = LsaSpFunctionTable->GetClientInfo(&clientInfo);
-	if (status != SEC_E_OK)
-		return NULL;
-
-	if (!GetTokenInformation(clientInfo.ClientToken,
-				 TokenUser, tokenUserBuffer,
-				 cbTokenUserBuffer, &cbTokenUserBuffer))
-		return NULL;
-
-	pTokenUser = (PTOKEN_USER)tokenUserBuffer;
-
-	if (!ConvertSidToStringSid(pTokenUser->User.Sid, &szTokenUser))
-		return NULL;
-
-	cchTokenUser = strlen(szTokenUser);
-
-	wszStorePath = LocalAlloc(LPTR, sizeof(WCHAR) * (cchTokenUser + 4));
-	if (wszStorePath == NULL) {
-		LocalFree(szTokenUser);
-		return NULL;
-	}
-
-	MultiByteToWideChar(CP_ACP, 0, szTokenUser, cchTokenUser,
-			    wszStorePath, cchTokenUser);
-
-	wcscpy(wszStorePath + cchTokenUser, L"\\MY");
-
-	cs = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0,
-			   CERT_SYSTEM_STORE_USERS |
-				CERT_STORE_OPEN_EXISTING_FLAG |
-				CERT_STORE_READONLY_FLAG,
-			   wszStorePath);
-
-	LocalFree(szTokenUser);
-	LocalFree(wszStorePath);
-
-	return cs;
-}
-#else
 static LPWSTR cryptoapi_find_user_store(void)
 {
 	HCERTSTORE cs;
@@ -935,7 +873,6 @@ static LPWSTR cryptoapi_find_user_store(void)
 
 	return cs;
 }
-#endif /* GSSEAP_SSP */
 
 static const CERT_CONTEXT *cryptoapi_find_cert(struct tls_global *global,
 					       const char *name,

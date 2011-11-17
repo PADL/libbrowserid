@@ -278,74 +278,11 @@ static int cryptoapi_finish(RSA *rsa)
 }
 
 
-#ifdef GSSEAP_SSP
-extern PLSA_SECPKG_FUNCTION_TABLE LsaSpFunctionTable;
-
-/*
- * Get the certificate store path by the LSA calling user's SID.
- */
-static HCERTSTORE cryptoapi_find_user_store(void)
-{
-	SECPKG_CLIENT_INFO clientInfo;
-	NTSTATUS status;
-	PUCHAR tokenUserBuffer[sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE];
-	DWORD cbTokenUserBuffer = sizeof(tokenUserBuffer);
-	PTOKEN_USER pTokenUser;
-	LPSTR szTokenUser = NULL;
-	ULONG cchTokenUser;
-	LPWSTR wszStorePath = NULL;
-	HCERTSTORE cs;
-
-	status = LsaSpFunctionTable->GetClientInfo(&clientInfo);
-	if (status)
-		return NULL;
-
-	if (!GetTokenInformation(clientInfo.ClientToken,
-				 TokenUser, tokenUserBuffer,
-				 cbTokenUserBuffer, &cbTokenUserBuffer))
-		return NULL;
-
-	pTokenUser = (PTOKEN_USER)tokenUserBuffer;
-
-	if (!ConvertSidToStringSid(pTokenUser->User.Sid, &szTokenUser))
-		return NULL;
-
-	cchTokenUser = strlen(szTokenUser);
-
-	wszStorePath = LocalAlloc(LPTR, sizeof(WCHAR) * (cchTokenUser + 4));
-	if (wszStorePath == NULL) {
-		LocalFree(szTokenUser);
-		return NULL;
-	}
-
-	MultiByteToWideChar(CP_ACP, 0, szTokenUser, cchTokenUser,
-			    wszStorePath, cchTokenUser);
-
-	wcscpy(wszStorePath + cchTokenUser, L"\\MY");
-
-	cs = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, 0,
-			   CERT_SYSTEM_STORE_USERS |
-				CERT_STORE_OPEN_EXISTING_FLAG |
-			   	CERT_STORE_READONLY_FLAG,
-			   wszStorePath);
-
-	LocalFree(szTokenUser);
-	LocalFree(wszStorePath);
-
-	return cs;
-}
-#endif /* GSSEAP_SSP */
-
 static const CERT_CONTEXT * cryptoapi_find_cert(const char *name, DWORD store)
 {
 	HCERTSTORE cs;
 	const CERT_CONTEXT *ret = NULL;
 
-#ifdef GSSEAP_SSP
-	if (store == CERT_SYSTEM_STORE_CURRENT_USER)
-		cs = cryptoapi_find_user_store();
-	else
-#endif
 	cs = CertOpenStore((LPCSTR) CERT_STORE_PROV_SYSTEM, 0, 0,
 		   	   store | CERT_STORE_OPEN_EXISTING_FLAG |
 		   	   CERT_STORE_READONLY_FLAG, L"MY");
