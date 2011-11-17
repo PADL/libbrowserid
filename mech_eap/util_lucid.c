@@ -136,7 +136,10 @@ cleanup:
 
     lctx->version = 1;
     lctx->initiate = CTX_IS_INITIATOR(ctx);
-    lctx->endtime = ctx->expiryTime;
+    if (ctx->expiryTime == 0)
+        lctx->endtime = KRB_TIME_FOREVER;
+    else
+        lctx->endtime = ctx->expiryTime;
     lctx->send_seq = ctx->sendSeq;
     lctx->recv_seq = ctx->recvSeq;
     lctx->protocol = 1;
@@ -144,8 +147,8 @@ cleanup:
     lctx->cfx_kd.have_acceptor_subkey = haveAcceptorSubkey;
 
     lkey = haveAcceptorSubkey
-           ? &lctx->cfx_kd.ctx_key
-           : &lctx->cfx_kd.acceptor_subkey;
+           ? &lctx->cfx_kd.acceptor_subkey
+           : &lctx->cfx_kd.ctx_key;
 
     lkey->type = KRB_KEY_TYPE(&ctx->rfc3961Key);
     lkey->data = GSSEAP_MALLOC(KRB_KEY_LENGTH(&ctx->rfc3961Key));
