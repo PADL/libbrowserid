@@ -957,11 +957,6 @@ static const CERT_CONTEXT *cryptoapi_find_cert_blob(struct tls_global *global,
 	return ret;
 }
 
-#ifdef GSSEAP_SSP
-extern NTSTATUS GsspImpersonateClient(void);
-extern NTSTATUS GsspRevertToSelf(void);
-#endif
-
 int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 			      const struct tls_connection_params *params)
 {
@@ -983,23 +978,11 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 				   params->ca_path))
 		return -1;
 
-#ifdef GSSEAP_SSP
-	global->last_error = GsspImpersonateClient();
-	if (global->last_error) {
-		wpa_printf(MSG_ERROR, "%s: GsspImpersonateClient failed - 0x%x",
-			   __func__, global->last_error);
-		return -1;
-	}
-#endif
-
 	conn->client_cert_store = cryptoapi_find_user_store();
 	if (conn->client_cert_store == NULL) {
 		global->last_error = GetLastError();
 		wpa_printf(MSG_ERROR, "%s: CertOpenSystemStore failed - 0x%x",
 			   __func__, global->last_error);
-#ifdef GSSEAP_SSP
-		GsspRevertToSelf();
-#endif
 		return -1;
 	}
 
@@ -1014,23 +997,15 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 						 params->client_cert_blob,
 						 params->client_cert_blob_len,
 						 conn->client_cert_store);
-		if (conn->cert_context == NULL) {
-#ifdef GSSEAP_SSP
-			GsspRevertToSelf();
-#endif
+		if (conn->cert_context == NULL)
 			return -1;
-		}
 	} else if (params->private_key != NULL) {
 		conn->cert_context =
 			cryptoapi_find_cert(global,
 					    params->private_key,
 					    conn->client_cert_store);
-		if (conn->cert_context == NULL) {
-#ifdef GSSEAP_SSP
-			GsspRevertToSelf();
-#endif
+		if (conn->cert_context == NULL)
 			return -1;
-		}
 	}
 
 	os_memset(&conn->schannel_cred, 0, sizeof(conn->schannel_cred));
@@ -1064,13 +1039,10 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 		global->last_error = status;
 		wpa_printf(MSG_DEBUG, "%s: AcquireCredentialsHandleA failed - "
 			   "0x%x", __func__, (unsigned int) status);
+		return -1;
 	}
 
-#ifdef GSSEAP_SSP
-	GsspRevertToSelf();
-#endif
-
-	return (status == SEC_E_OK) ? 0 : -1;
+	return 0;
 }
 
 
