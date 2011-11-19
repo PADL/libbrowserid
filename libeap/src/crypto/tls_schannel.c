@@ -883,7 +883,8 @@ static const CERT_CONTEXT *cryptoapi_find_cert(struct tls_global *global,
 	if (strncmp(name, "cert://", 7) == 0) {
 		unsigned short wbuf[255];
 		MultiByteToWideChar(CP_ACP, 0, name + 7, -1, wbuf, 255);
-		ret = CertFindCertificateInStore(cs, X509_ASN_ENCODING |
+		ret = CertFindCertificateInStore(cs,
+						 X509_ASN_ENCODING |
 						 PKCS_7_ASN_ENCODING,
 						 0, CERT_FIND_SUBJECT_STR,
 						 wbuf, NULL);
@@ -1025,6 +1026,7 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 
 	conn->schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION |
 				      SCH_CRED_NO_DEFAULT_CREDS;
+	conn->schannel_cred.dwCredFormat = SCH_CRED_FORMAT_CERT_CONTEXT;
 
 	status = AcquireCredentialsHandle(NULL,
 					  UNISP_NAME,
