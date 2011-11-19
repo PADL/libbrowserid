@@ -958,6 +958,25 @@ static const CERT_CONTEXT *cryptoapi_find_cert_blob(struct tls_global *global,
 	return ret;
 }
 
+
+static int tls_connection_private_key_passwd(void *tls_context,
+					     struct tls_connection *conn,
+					     const char *passwd)
+{
+	if (conn->cert_context == NULL)
+		return 0;
+
+	if (!CertSetCertificateContextProperty(conn->cert_context,
+					       CERT_SCARD_PIN_ID_PROP_ID,
+					       CERT_SET_PROPERTY_INHIBIT_PERSIST_FLAG ,
+					       passwd)) {
+		return -1;
+	}
+
+	return 0;
+}
+
+
 int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 			      const struct tls_connection_params *params)
 {
@@ -1008,6 +1027,12 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 		if (conn->cert_context == NULL)
 			return -1;
 	}
+
+	if (params->private_key_passwd != NULL &&
+	    tls_connection_private_key_passwd(global,
+					      conn,
+					      params->private_key_passwd) != 0)
+		return -1;
 
 	os_memset(&conn->schannel_cred, 0, sizeof(conn->schannel_cred));
 	conn->schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
