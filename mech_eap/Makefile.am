@@ -42,7 +42,7 @@ mech_eap_la_CXXFLAGS += \
 			@TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols $(GSSEAP_EXPORTS) -no-undefined \
-			@RADSEC_LDFLAGS@ @OPENSSL_LDFLAGS@ @TARGET_LDFLAGS@
+			@KRB5_LDFLAGS@ @RADSEC_LDFLAGS@ @OPENSSL_LDFLAGS@ @TARGET_LDFLAGS@
 if TARGET_WINDOWS
 mech_eap_la_LDFLAGS += -debug
 endif
