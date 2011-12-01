@@ -130,8 +130,7 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 static OM_uint32
 readStaticIdentityFile(OM_uint32 *minor,
                        gss_buffer_t defaultIdentity,
-                       gss_buffer_t defaultPassword,
-                       gss_buffer_t defaultPrivateKey)
+                       gss_buffer_t defaultPassword)
 {
     OM_uint32 major, tmpMinor;
     FILE *fp = NULL;
@@ -149,11 +148,6 @@ readStaticIdentityFile(OM_uint32 *minor,
     if (defaultPassword != GSS_C_NO_BUFFER) {
         defaultPassword->length = 0;
         defaultPassword->value = NULL;
-    }
-
-    if (defaultPrivateKey != GSS_C_NO_BUFFER) {
-        defaultPrivateKey->length = 0;
-        defaultPrivateKey->value = NULL;
     }
 
     ccacheName = getenv("GSSEAP_IDENTITY");
@@ -211,8 +205,6 @@ readStaticIdentityFile(OM_uint32 *minor,
             dst = defaultIdentity;
         else if (i == 1)
             dst = defaultPassword;
-        else if (i == 2)
-            dst = defaultPrivateKey;
         else
             break;
 
@@ -241,7 +233,6 @@ cleanup:
     if (GSS_ERROR(major)) {
         gss_release_buffer(&tmpMinor, defaultIdentity);
         zeroAndReleasePassword(defaultPassword);
-        gss_release_buffer(&tmpMinor, defaultPrivateKey);
     }
 
     memset(buf, 0, sizeof(buf));
@@ -382,8 +373,7 @@ staticIdentityFileResolveDefaultIdentity(OM_uint32 *minor,
 
     *pName = GSS_C_NO_NAME;
 
-    major = readStaticIdentityFile(minor, &defaultIdentity,
-                                   GSS_C_NO_BUFFER, GSS_C_NO_BUFFER);
+    major = readStaticIdentityFile(minor, &defaultIdentity, GSS_C_NO_BUFFER);
     if (major == GSS_S_COMPLETE) {
         major = gssEapImportName(minor, &defaultIdentity, GSS_C_NT_USER_NAME,
                                  nameMech, pName);
@@ -721,11 +711,9 @@ staticIdentityFileResolveInitiatorCred(OM_uint32 *minor, gss_cred_id_t cred)
     gss_buffer_desc defaultIdentity = GSS_C_EMPTY_BUFFER;
     gss_name_t defaultIdentityName = GSS_C_NO_NAME;
     gss_buffer_desc defaultPassword = GSS_C_EMPTY_BUFFER;
-    gss_buffer_desc defaultPrivateKey = GSS_C_EMPTY_BUFFER;
     int isDefaultIdentity = FALSE;
 
-    major = readStaticIdentityFile(minor, &defaultIdentity,
-                                   &defaultPassword, &defaultPrivateKey);
+    major = readStaticIdentityFile(minor, &defaultIdentity, &defaultPassword);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -753,26 +741,17 @@ staticIdentityFileResolveInitiatorCred(OM_uint32 *minor, gss_cred_id_t cred)
         }
     }
 
-    if (isDefaultIdentity) {
-        if (defaultPrivateKey.length != 0) {
-            major = gssEapSetCredClientCertificate(minor, cred, GSS_C_NO_BUFFER,
-                                                  &defaultPrivateKey);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        }
-
-        if ((cred->flags & CRED_FLAG_PASSWORD) == 0) {
-            major = gssEapSetCredPassword(minor, cred, &defaultPassword);
-            if (GSS_ERROR(major))
-                goto cleanup;
-        }
+    if (isDefaultIdentity &&
+        (cred->flags & CRED_FLAG_PASSWORD) == 0) {
+        major = gssEapSetCredPassword(minor, cred, &defaultPassword);
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
 
 cleanup:
     gssEapReleaseName(&tmpMinor, &defaultIdentityName);
     zeroAndReleasePassword(&defaultPassword);
     gss_release_buffer(&tmpMinor, &defaultIdentity);
-    gss_release_buffer(&tmpMinor, &defaultPrivateKey);
 
     return major;
 }
