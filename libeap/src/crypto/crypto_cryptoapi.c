@@ -108,6 +108,27 @@ static void cryptoapi_report_error(const char *msg)
 	LocalFree(s);
 }
 
+static int cryptoapi_acquire_ctx(HCRYPTPROV *pProv, LPCTSTR pszProvider,
+				 DWORD dwProvType)
+{
+	BOOL ret;
+
+	*pProv = 0;
+
+	ret = CryptAcquireContext(pProv, NULL, pszProvider, dwProvType,
+				  CRYPT_VERIFYCONTEXT);
+	if (!ret &&
+	    GetLastError() == NTE_BAD_KEYSET) {
+		ret = CryptAcquireContext(pProv, NULL, pszProvider, dwProvType,
+					  CRYPT_NEWKEYSET);
+	}
+
+	if (!ret) {
+		cryptoapi_report_error("CryptAcquireContext");
+	}
+
+	return ret ? 0 : -1;
+}
 
 int cryptoapi_hash_vector(ALG_ID alg, size_t hash_len, size_t num_elem,
 			  const u8 *addr[], const size_t *len, u8 *mac)
@@ -118,10 +139,9 @@ int cryptoapi_hash_vector(ALG_ID alg, size_t hash_len, size_t num_elem,
 	DWORD hlen;
 	int ret = 0;
 
-	if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, 0)) {
-		cryptoapi_report_error("CryptAcquireContext");
-		return -1;
-	}
+	ret = cryptoapi_acquire_ctx(&prov, NULL, PROV_RSA_FULL);
+	if (ret != 0)
+		return ret;
 
 	if (!CryptCreateHash(prov, alg, 0, 0, &hash)) {
 		cryptoapi_report_error("CryptCreateHash");
@@ -185,10 +205,7 @@ void des_encrypt(const u8 *clear, const u8 *key, u8 *cypher)
 	}
 	key_blob.key[i] = next | 1;
 
-	if (!CryptAcquireContext(&prov, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL,
-				 CRYPT_VERIFYCONTEXT)) {
- 		wpa_printf(MSG_DEBUG, "CryptoAPI: CryptAcquireContext failed: "
-			   "%d", (int) GetLastError());
+	if (cryptoapi_acquire_ctx(&prov, MS_ENHANCED_PROV, PROV_RSA_FULL) != 0) {
 		return;
 	}
 
@@ -263,11 +280,8 @@ void * aes_encrypt_init(const u8 *key, size_t len)
 	if (akey == NULL)
 		return NULL;
 
-	if (!CryptAcquireContext(&akey->prov, NULL,
-				 MS_ENH_RSA_AES_PROV, PROV_RSA_AES,
-				 CRYPT_VERIFYCONTEXT)) {
- 		wpa_printf(MSG_DEBUG, "CryptoAPI: CryptAcquireContext failed: "
-			   "%d", (int) GetLastError());
+	if (cryptoapi_acquire_ctx(&akey->prov, MS_ENH_RSA_AES_PROV,
+				  PROV_RSA_AES) != 0) {
 		os_free(akey);
 		return NULL;
 	}
@@ -402,8 +416,7 @@ struct crypto_hash * crypto_hash_init(enum crypto_hash_alg alg, const u8 *key,
 
 	ctx->alg = alg;
 
-	if (!CryptAcquireContext(&ctx->prov, NULL, NULL, PROV_RSA_FULL, 0)) {
-		cryptoapi_report_error("CryptAcquireContext");
+	if (cryptoapi_acquire_ctx(&ctx->prov, NULL, PROV_RSA_FULL) != 0) {
 		os_free(ctx);
 		return NULL;
 	}
@@ -559,9 +572,8 @@ struct crypto_cipher * crypto_cipher_init(enum crypto_cipher_alg alg,
 	if (ctx == NULL)
 		return NULL;
 
-	if (!CryptAcquireContext(&ctx->prov, NULL, MS_ENH_RSA_AES_PROV,
-				 PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
-		cryptoapi_report_error("CryptAcquireContext");
+	if (cryptoapi_acquire_ctx(&ctx->prov, MS_ENH_RSA_AES_PROV,
+				  PROV_RSA_AES) != 0) {
 		goto fail1;
 	}
 
@@ -679,9 +691,7 @@ struct crypto_public_key * crypto_public_key_from_cert(const u8 *buf,
 		return NULL;
 	}
 
-	if (!CryptAcquireContext(&pk->prov, NULL, MS_DEF_PROV, PROV_RSA_FULL,
-				 0)) {
- 		cryptoapi_report_error("CryptAcquireContext");
+	if (cryptoapi_acquire_ctx(&pk->prov, MS_DEF_PROV, PROV_RSA_FULL) != 0) {
 		os_free(pk);
 		CertFreeCertificateContext(cc);
 		return NULL;
