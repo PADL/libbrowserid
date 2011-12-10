@@ -43,8 +43,12 @@
 #include <new>
 
 /* lazy initialisation */
+#ifdef WIN32
+static volatile OM_uint32 gssEapAttrProvidersInitStatus = GSS_S_UNAVAILABLE;
+#else
 static GSSEAP_THREAD_ONCE gssEapAttrProvidersInitOnce = GSSEAP_ONCE_INITIALIZER;
 static OM_uint32 gssEapAttrProvidersInitStatus = GSS_S_UNAVAILABLE;
+#endif
 
 GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
 {
@@ -74,7 +78,12 @@ cleanup:
     GSSEAP_ASSERT(major == GSS_S_COMPLETE);
 #endif
 
+#ifdef WIN32
+    InterlockedCompareExchangeRelease(&gssEapAttrProvidersInitStatus,
+                                      major, GSS_S_UNAVAILABLE);
+#else
     gssEapAttrProvidersInitStatus = major;
+#endif
 
     GSSEAP_ONCE_LEAVE;
 }
@@ -82,7 +91,12 @@ cleanup:
 static OM_uint32
 gssEapAttrProvidersInit(OM_uint32 *minor)
 {
+#ifdef WIN32
+    if (gssEapAttrProvidersInitStatus == GSS_S_UNAVAILABLE)
+        gssEapAttrProvidersInitInternal();
+#else
     GSSEAP_ONCE(&gssEapAttrProvidersInitOnce, gssEapAttrProvidersInitInternal);
+#endif
 
     if (GSS_ERROR(gssEapAttrProvidersInitStatus))
         *minor = GSSEAP_NO_ATTR_PROVIDERS;
