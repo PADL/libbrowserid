@@ -816,12 +816,14 @@ verifyTokenHeader(OM_uint32 *minor,
 #define GSSEAP_MUTEX_DESTROY(m)         DeleteCriticalSection((m))
 #define GSSEAP_MUTEX_LOCK(m)            EnterCriticalSection((m))
 #define GSSEAP_MUTEX_UNLOCK(m)          LeaveCriticalSection((m))
+#define GSSEAP_ONCE_LEAVE		do { return TRUE; } while (0)
 
 /* Thread-local is handled separately */
 
-/* Once is handled separately because INIT_ONCE is only on Vista and above */
-#define GSSEAP_ONCE_LEAVE
-#define GSSEAP_ONCE_CALLBACK(cb)        void CALLBACK cb(void)
+#define GSSEAP_THREAD_ONCE              INIT_ONCE
+#define GSSEAP_ONCE_CALLBACK(cb)        BOOL CALLBACK cb(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context)
+#define GSSEAP_ONCE(o, i)               InitOnceExecuteOnce((o), (i), NULL, NULL)
+#define GSSEAP_ONCE_INITIALIZER         INIT_ONCE_STATIC_INIT
 
 #else
 
