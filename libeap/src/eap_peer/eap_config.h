@@ -628,6 +628,16 @@ struct eap_peer_config {
 	 */
 	int fragment_size;
 
+    /**
+     * chbind_data - eap channel binding data
+     */
+    u8 *chbind_data;
+
+    /**
+     * chbind_data_len - length of eap channel binding data
+     */
+    size_t chbind_data_len;
+
 #define EAP_CONFIG_FLAGS_PASSWORD_NTHASH BIT(0)
 	/**
 	 * flags - Network configuration flags (bitfield)
