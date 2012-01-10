@@ -1,3 +1,4 @@
+- draft-ietf-radext-radius-extensions
 - integration with initiator-side EAP channel bindings
 - investigate initiator-side credential locking
 - always intern OIDs so they never need to be freed
