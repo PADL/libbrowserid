@@ -102,6 +102,7 @@ struct wps_data {
 	 * config_error - Configuration Error value to be used in NACK
 	 */
 	u16 config_error;
+	u16 error_indication;
 
 	int ext_reg;
 	int int_reg;
@@ -116,6 +117,9 @@ struct wps_data {
 	struct wps_credential *use_cred;
 
 	int use_psk_key;
+	u8 p2p_dev_addr[ETH_ALEN]; /* P2P Device Address of the client or
+				    * 00:00:00:00:00:00 if not a P2p client */
+	int pbc_in_m1;
 };
 
 
@@ -192,6 +196,8 @@ struct wps_parse_attr {
 	size_t eap_identity_len;
 	const u8 *authorized_macs; /* <= 30 octets */
 	size_t authorized_macs_len;
+	const u8 *sec_dev_type_list; /* <= 128 octets */
+	size_t sec_dev_type_list_len;
 
 	/* attributes that can occur multiple times */
 #define MAX_CRED_COUNT 10
@@ -202,6 +208,10 @@ struct wps_parse_attr {
 #define MAX_REQ_DEV_TYPE_COUNT 10
 	const u8 *req_dev_type[MAX_REQ_DEV_TYPE_COUNT];
 	size_t num_req_dev_type;
+
+	const u8 *vendor_ext[MAX_WPS_PARSE_VENDOR_EXT];
+	size_t vendor_ext_len[MAX_WPS_PARSE_VENDOR_EXT];
+	size_t num_vendor_ext;
 };
 
 /* wps_common.c */
@@ -213,15 +223,19 @@ void wps_derive_psk(struct wps_data *wps, const u8 *dev_passwd,
 struct wpabuf * wps_decrypt_encr_settings(struct wps_data *wps, const u8 *encr,
 					  size_t encr_len);
 void wps_fail_event(struct wps_context *wps, enum wps_msg_type msg,
-		    u16 config_error);
+		    u16 config_error, u16 error_indication);
 void wps_success_event(struct wps_context *wps);
 void wps_pwd_auth_fail_event(struct wps_context *wps, int enrollee, int part);
 void wps_pbc_overlap_event(struct wps_context *wps);
 void wps_pbc_timeout_event(struct wps_context *wps);
+void wps_registrar_sel_registrar_changed_event(struct wps_context *wps);
 
 extern struct oob_device_data oob_ufd_device_data;
 extern struct oob_device_data oob_nfc_device_data;
 extern struct oob_nfc_device_data oob_nfc_pn531_device_data;
+
+struct wpabuf * wps_build_wsc_ack(struct wps_data *wps);
+struct wpabuf * wps_build_wsc_nack(struct wps_data *wps);
 
 /* wps_attr_parse.c */
 int wps_parse_msg(const struct wpabuf *msg, struct wps_parse_attr *attr);

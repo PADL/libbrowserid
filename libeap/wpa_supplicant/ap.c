@@ -16,10 +16,13 @@
 #include "utils/includes.h"
 
 #include "utils/common.h"
+#include "utils/eloop.h"
+#include "utils/uuid.h"
 #include "common/ieee802_11_defs.h"
 #include "common/wpa_ctrl.h"
 #include "ap/hostapd.h"
 #include "ap/ap_config.h"
+#include "ap/ap_drv_ops.h"
 #ifdef NEED_AP_MLME
 #include "ap/ieee802_11.h"
 #endif /* NEED_AP_MLME */
@@ -27,9 +30,6 @@
 #include "ap/ieee802_1x.h"
 #include "ap/wps_hostapd.h"
 #include "ap/ctrl_iface_ap.h"
-#include "eap_common/eap_defs.h"
-#include "eap_server/eap_methods.h"
-#include "eap_common/eap_wsc_common.h"
 #include "wps/wps.h"
 #include "common/ieee802_11_defs.h"
 #include "config_ssid.h"
@@ -39,6 +39,12 @@
 #include "p2p_supplicant.h"
 #include "ap.h"
 #include "ap/sta_info.h"
+#include "notify.h"
+
+
+#ifdef CONFIG_WPS
+static void wpas_wps_ap_pin_timeout(void *eloop_data, void *user_ctx);
+#endif /* CONFIG_WPS */
 
 
 static int wpa_supplicant_conf_ap(struct wpa_supplicant *wpa_s,
@@ -69,8 +75,28 @@ static int wpa_supplicant_conf_ap(struct wpa_supplicant *wpa_s,
 		return -1;
 	}
 
-	/* TODO: enable HT if driver supports it;
+	/* TODO: enable HT40 if driver supports it;
 	 * drop to 11b if driver does not support 11g */
+
+#ifdef CONFIG_IEEE80211N
+	/*
+	 * Enable HT20 if the driver supports it, by setting conf->ieee80211n.
+	 * Using default config settings for: conf->ht_op_mode_fixed,
+	 * conf->ht_capab, conf->secondary_channel, conf->require_ht
+	 */
+	if (wpa_s->hw.modes) {
+		struct hostapd_hw_modes *mode = NULL;
+		int i;
+		for (i = 0; i < wpa_s->hw.num_modes; i++) {
+			if (wpa_s->hw.modes[i].mode == conf->hw_mode) {
+				mode = &wpa_s->hw.modes[i];
+				break;
+			}
+		}
+		if (mode && mode->ht_capab)
+			conf->ieee80211n = 1;
+	}
+#endif /* CONFIG_IEEE80211N */
 
 #ifdef CONFIG_P2P
 	if (conf->hw_mode == HOSTAPD_MODE_IEEE80211G) {
@@ -98,6 +124,8 @@ static int wpa_supplicant_conf_ap(struct wpa_supplicant *wpa_s,
 		}
 		conf->supported_rates = list;
 	}
+
+	bss->isolate = !wpa_s->conf->p2p_intra_bss;
 #endif /* CONFIG_P2P */
 
 	if (ssid->ssid_len == 0) {
@@ -122,6 +150,22 @@ static int wpa_supplicant_conf_ap(struct wpa_supplicant *wpa_s,
 			return -1;
 		os_memcpy(bss->ssid.wpa_psk->psk, ssid->psk, PMK_LEN);
 		bss->ssid.wpa_psk->group = 1;
+	} else if (ssid->wep_key_len[0] || ssid->wep_key_len[1] ||
+		   ssid->wep_key_len[2] || ssid->wep_key_len[3]) {
+		struct hostapd_wep_keys *wep = &bss->ssid.wep;
+		int i;
+		for (i = 0; i < NUM_WEP_KEYS; i++) {
+			if (ssid->wep_key_len[i] == 0)
+				continue;
+			wep->key[i] = os_malloc(ssid->wep_key_len[i]);
+			if (wep->key[i] == NULL)
+				return -1;
+			os_memcpy(wep->key[i], ssid->wep_key[i],
+				  ssid->wep_key_len[i]);
+			wep->len[i] = ssid->wep_key_len[i];
+		}
+		wep->idx = ssid->wep_tx_keyidx;
+		wep->keys_set = 1;
 	}
 
 	/* Select group cipher based on the enabled pairwise cipher suites */
@@ -143,25 +187,46 @@ static int wpa_supplicant_conf_ap(struct wpa_supplicant *wpa_s,
 	else if (bss->wpa)
 		bss->ssid.security_policy = SECURITY_WPA_PSK;
 	else if (bss->ieee802_1x) {
+		int cipher = WPA_CIPHER_NONE;
 		bss->ssid.security_policy = SECURITY_IEEE_802_1X;
 		bss->ssid.wep.default_len = bss->default_wep_key_len;
-	} else if (bss->ssid.wep.keys_set)
+		if (bss->default_wep_key_len)
+			cipher = bss->default_wep_key_len >= 13 ?
+				WPA_CIPHER_WEP104 : WPA_CIPHER_WEP40;
+		bss->wpa_group = cipher;
+		bss->wpa_pairwise = cipher;
+		bss->rsn_pairwise = cipher;
+	} else if (bss->ssid.wep.keys_set) {
+		int cipher = WPA_CIPHER_WEP40;
+		if (bss->ssid.wep.len[0] >= 13)
+			cipher = WPA_CIPHER_WEP104;
 		bss->ssid.security_policy = SECURITY_STATIC_WEP;
-	else
+		bss->wpa_group = cipher;
+		bss->wpa_pairwise = cipher;
+		bss->rsn_pairwise = cipher;
+	} else {
 		bss->ssid.security_policy = SECURITY_PLAINTEXT;
+		bss->wpa_group = WPA_CIPHER_NONE;
+		bss->wpa_pairwise = WPA_CIPHER_NONE;
+		bss->rsn_pairwise = WPA_CIPHER_NONE;
+	}
 
 #ifdef CONFIG_WPS
 	/*
-	 * Enable WPS by default, but require user interaction to actually use
-	 * it. Only the internal Registrar is supported.
+	 * Enable WPS by default for open and WPA/WPA2-Personal network, but
+	 * require user interaction to actually use it. Only the internal
+	 * Registrar is supported.
 	 */
+	if (bss->ssid.security_policy != SECURITY_WPA_PSK &&
+	    bss->ssid.security_policy != SECURITY_PLAINTEXT)
+		goto no_wps;
 	bss->eap_server = 1;
 	bss->wps_state = 2;
-	bss->ap_setup_locked = 1;
+	bss->ap_setup_locked = 2;
 	if (wpa_s->conf->config_methods)
 		bss->config_methods = os_strdup(wpa_s->conf->config_methods);
-	if (wpa_s->conf->device_type)
-		bss->device_type = os_strdup(wpa_s->conf->device_type);
+	os_memcpy(bss->device_type, wpa_s->conf->device_type,
+		  WPS_DEV_TYPE_LEN);
 	if (wpa_s->conf->device_name) {
 		bss->device_name = os_strdup(wpa_s->conf->device_name);
 		bss->friendly_name = os_strdup(wpa_s->conf->device_name);
@@ -174,9 +239,21 @@ static int wpa_supplicant_conf_ap(struct wpa_supplicant *wpa_s,
 		bss->model_number = os_strdup(wpa_s->conf->model_number);
 	if (wpa_s->conf->serial_number)
 		bss->serial_number = os_strdup(wpa_s->conf->serial_number);
-	os_memcpy(bss->uuid, wpa_s->conf->uuid, WPS_UUID_LEN);
+	if (is_nil_uuid(wpa_s->conf->uuid))
+		os_memcpy(bss->uuid, wpa_s->wps->uuid, WPS_UUID_LEN);
+	else
+		os_memcpy(bss->uuid, wpa_s->conf->uuid, WPS_UUID_LEN);
 	os_memcpy(bss->os_version, wpa_s->conf->os_version, 4);
+no_wps:
 #endif /* CONFIG_WPS */
+
+	if (wpa_s->max_stations &&
+	    wpa_s->max_stations < wpa_s->conf->max_num_sta)
+		bss->max_num_sta = wpa_s->max_stations;
+	else
+		bss->max_num_sta = wpa_s->conf->max_num_sta;
+
+	bss->disassoc_low_ack = wpa_s->conf->disassoc_low_ack;
 
 	return 0;
 }
@@ -204,20 +281,33 @@ static void ap_public_action_rx(void *ctx, const u8 *buf, size_t len, int freq)
 static void ap_wps_event_cb(void *ctx, enum wps_event event,
 			    union wps_event_data *data)
 {
+#ifdef CONFIG_P2P
 	struct wpa_supplicant *wpa_s = ctx;
 
-	if (event == WPS_EV_FAIL && wpa_s->parent && wpa_s->parent != wpa_s) {
+	if (event == WPS_EV_FAIL) {
 		struct wps_event_fail *fail = &data->fail;
 
-		/*
-		 * src/ap/wps_hostapd.c has already sent this on the main
-		 * interface, so only send on the parent interface here if
-		 * needed.
-		 */
-		wpa_msg(wpa_s->parent, MSG_INFO, WPS_EVENT_FAIL
-			"msg=%d config_error=%d",
-			fail->msg, fail->config_error);
+		if (wpa_s->parent && wpa_s->parent != wpa_s &&
+		    wpa_s == wpa_s->global->p2p_group_formation) {
+			/*
+			 * src/ap/wps_hostapd.c has already sent this on the
+			 * main interface, so only send on the parent interface
+			 * here if needed.
+			 */
+			wpa_msg(wpa_s->parent, MSG_INFO, WPS_EVENT_FAIL
+				"msg=%d config_error=%d",
+				fail->msg, fail->config_error);
+		}
+		wpas_p2p_wps_failed(wpa_s, fail);
 	}
+#endif /* CONFIG_P2P */
+}
+
+
+static void ap_sta_authorized_cb(void *ctx, const u8 *mac_addr,
+				 int authorized)
+{
+	wpas_notify_sta_authorized(ctx, mac_addr, authorized);
 }
 
 
@@ -241,12 +331,12 @@ static int ap_vendor_action_rx(void *ctx, const u8 *buf, size_t len, int freq)
 }
 
 
-static int ap_probe_req_rx(void *ctx, const u8 *addr, const u8 *ie,
-			   size_t ie_len)
+static int ap_probe_req_rx(void *ctx, const u8 *sa, const u8 *da,
+			   const u8 *bssid, const u8 *ie, size_t ie_len)
 {
 #ifdef CONFIG_P2P
 	struct wpa_supplicant *wpa_s = ctx;
-	return wpas_p2p_probe_req_rx(wpa_s, addr, ie, ie_len);
+	return wpas_p2p_probe_req_rx(wpa_s, sa, da, bssid, ie, ie_len);
 #else /* CONFIG_P2P */
 	return 0;
 #endif /* CONFIG_P2P */
@@ -260,6 +350,18 @@ static void ap_wps_reg_success_cb(void *ctx, const u8 *mac_addr,
 	struct wpa_supplicant *wpa_s = ctx;
 	wpas_p2p_wps_success(wpa_s, mac_addr, 1);
 #endif /* CONFIG_P2P */
+}
+
+
+static void wpas_ap_configured_cb(void *ctx)
+{
+	struct wpa_supplicant *wpa_s = ctx;
+
+	wpa_supplicant_set_state(wpa_s, WPA_COMPLETED);
+
+	if (wpa_s->ap_configured_cb)
+		wpa_s->ap_configured_cb(wpa_s->ap_configured_cb_ctx,
+					wpa_s->ap_configured_cb_data);
 }
 
 
@@ -299,6 +401,7 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 	}
 	params.freq = ssid->frequency;
 
+	params.wpa_proto = ssid->proto;
 	if (ssid->key_mgmt & WPA_KEY_MGMT_PSK)
 		wpa_s->key_mgmt = WPA_KEY_MGMT_PSK;
 	else
@@ -323,7 +426,6 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 	if (ssid->mode == WPAS_MODE_P2P_GO ||
 	    ssid->mode == WPAS_MODE_P2P_GROUP_FORMATION)
 		params.p2p = 1;
-	wpa_drv_set_intra_bss(wpa_s, wpa_s->conf->p2p_intra_bss);
 #endif /* CONFIG_P2P */
 
 	if (wpa_s->parent->set_ap_uapsd)
@@ -340,11 +442,17 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 	if (hapd_iface == NULL)
 		return -1;
 	hapd_iface->owner = wpa_s;
+	hapd_iface->drv_flags = wpa_s->drv_flags;
 
 	wpa_s->ap_iface->conf = conf = hostapd_config_defaults();
 	if (conf == NULL) {
 		wpa_supplicant_ap_deinit(wpa_s);
 		return -1;
+	}
+
+	if (params.uapsd > 0) {
+		conf->bss->wmm_enabled = 1;
+		conf->bss->wmm_uapsd = 1;
 	}
 
 	if (wpa_supplicant_conf_ap(wpa_s, ssid, conf)) {
@@ -389,17 +497,25 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 		hapd_iface->bss[i]->wps_reg_success_cb_ctx = wpa_s;
 		hapd_iface->bss[i]->wps_event_cb = ap_wps_event_cb;
 		hapd_iface->bss[i]->wps_event_cb_ctx = wpa_s;
+		hapd_iface->bss[i]->sta_authorized_cb = ap_sta_authorized_cb;
+		hapd_iface->bss[i]->sta_authorized_cb_ctx = wpa_s;
 #ifdef CONFIG_P2P
 		hapd_iface->bss[i]->p2p = wpa_s->global->p2p;
 		hapd_iface->bss[i]->p2p_group = wpas_p2p_group_init(
 			wpa_s, ssid->p2p_persistent_group,
 			ssid->mode == WPAS_MODE_P2P_GROUP_FORMATION);
 #endif /* CONFIG_P2P */
+		hapd_iface->bss[i]->setup_complete_cb = wpas_ap_configured_cb;
+		hapd_iface->bss[i]->setup_complete_cb_ctx = wpa_s;
 	}
 
 	os_memcpy(hapd_iface->bss[0]->own_addr, wpa_s->own_addr, ETH_ALEN);
 	hapd_iface->bss[0]->driver = wpa_s->driver;
 	hapd_iface->bss[0]->drv_priv = wpa_s->drv_priv;
+
+	wpa_s->current_ssid = ssid;
+	os_memcpy(wpa_s->bssid, wpa_s->own_addr, ETH_ALEN);
+	wpa_s->assoc_freq = ssid->frequency;
 
 	if (hostapd_setup_interface(wpa_s->ap_iface)) {
 		wpa_printf(MSG_ERROR, "Failed to initialize AP interface");
@@ -407,25 +523,22 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 		return -1;
 	}
 
-	wpa_s->current_ssid = ssid;
-	os_memcpy(wpa_s->bssid, wpa_s->own_addr, ETH_ALEN);
-	wpa_s->assoc_freq = ssid->frequency;
-	wpa_supplicant_set_state(wpa_s, WPA_COMPLETED);
-
-	if (wpa_s->ap_configured_cb)
-		wpa_s->ap_configured_cb(wpa_s->ap_configured_cb_ctx,
-					wpa_s->ap_configured_cb_data);
-
 	return 0;
 }
 
 
 void wpa_supplicant_ap_deinit(struct wpa_supplicant *wpa_s)
 {
+#ifdef CONFIG_WPS
+	eloop_cancel_timeout(wpas_wps_ap_pin_timeout, wpa_s, NULL);
+#endif /* CONFIG_WPS */
+
 	if (wpa_s->ap_iface == NULL)
 		return;
 
 	wpa_s->current_ssid = NULL;
+	wpa_s->assoc_freq = 0;
+	wpa_s->reassociated_connection = 0;
 #ifdef CONFIG_P2P
 	if (wpa_s->ap_iface->bss)
 		wpa_s->ap_iface->bss[0]->p2p_group = NULL;
@@ -448,16 +561,21 @@ void ap_tx_status(void *ctx, const u8 *addr,
 }
 
 
-void ap_rx_from_unknown_sta(void *ctx, const u8 *frame, size_t len)
+void ap_client_poll_ok(void *ctx, const u8 *addr)
 {
 #ifdef NEED_AP_MLME
 	struct wpa_supplicant *wpa_s = ctx;
-	const struct ieee80211_hdr *hdr =
-		(const struct ieee80211_hdr *) frame;
-	u16 fc = le_to_host16(hdr->frame_control);
-	ieee802_11_rx_from_unknown(wpa_s->ap_iface->bss[0], hdr->addr2,
-				   (fc & (WLAN_FC_TODS | WLAN_FC_FROMDS)) ==
-				   (WLAN_FC_TODS | WLAN_FC_FROMDS));
+	if (wpa_s->ap_iface)
+		hostapd_client_poll_ok(wpa_s->ap_iface->bss[0], addr);
+#endif /* NEED_AP_MLME */
+}
+
+
+void ap_rx_from_unknown_sta(void *ctx, const u8 *addr, int wds)
+{
+#ifdef NEED_AP_MLME
+	struct wpa_supplicant *wpa_s = ctx;
+	ieee802_11_rx_from_unknown(wpa_s->ap_iface->bss[0], addr, wds);
 #endif /* NEED_AP_MLME */
 }
 
@@ -494,11 +612,13 @@ void wpa_supplicant_ap_rx_eapol(struct wpa_supplicant *wpa_s,
 
 #ifdef CONFIG_WPS
 
-int wpa_supplicant_ap_wps_pbc(struct wpa_supplicant *wpa_s, const u8 *bssid)
+int wpa_supplicant_ap_wps_pbc(struct wpa_supplicant *wpa_s, const u8 *bssid,
+			      const u8 *p2p_dev_addr)
 {
 	if (!wpa_s->ap_iface)
 		return -1;
-	return hostapd_wps_button_pushed(wpa_s->ap_iface->bss[0]);
+	return hostapd_wps_button_pushed(wpa_s->ap_iface->bss[0],
+					 p2p_dev_addr);
 }
 
 
@@ -567,6 +687,123 @@ int wpa_supplicant_ap_wps_pin(struct wpa_supplicant *wpa_s, const u8 *bssid,
 	if (ret)
 		return -1;
 	return ret_len;
+}
+
+
+static void wpas_wps_ap_pin_timeout(void *eloop_data, void *user_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_data;
+	wpa_printf(MSG_DEBUG, "WPS: AP PIN timed out");
+	wpas_wps_ap_pin_disable(wpa_s);
+}
+
+
+static void wpas_wps_ap_pin_enable(struct wpa_supplicant *wpa_s, int timeout)
+{
+	struct hostapd_data *hapd;
+
+	if (wpa_s->ap_iface == NULL)
+		return;
+	hapd = wpa_s->ap_iface->bss[0];
+	wpa_printf(MSG_DEBUG, "WPS: Enabling AP PIN (timeout=%d)", timeout);
+	hapd->ap_pin_failures = 0;
+	eloop_cancel_timeout(wpas_wps_ap_pin_timeout, wpa_s, NULL);
+	if (timeout > 0)
+		eloop_register_timeout(timeout, 0,
+				       wpas_wps_ap_pin_timeout, wpa_s, NULL);
+}
+
+
+void wpas_wps_ap_pin_disable(struct wpa_supplicant *wpa_s)
+{
+	struct hostapd_data *hapd;
+
+	if (wpa_s->ap_iface == NULL)
+		return;
+	wpa_printf(MSG_DEBUG, "WPS: Disabling AP PIN");
+	hapd = wpa_s->ap_iface->bss[0];
+	os_free(hapd->conf->ap_pin);
+	hapd->conf->ap_pin = NULL;
+	eloop_cancel_timeout(wpas_wps_ap_pin_timeout, wpa_s, NULL);
+}
+
+
+const char * wpas_wps_ap_pin_random(struct wpa_supplicant *wpa_s, int timeout)
+{
+	struct hostapd_data *hapd;
+	unsigned int pin;
+	char pin_txt[9];
+
+	if (wpa_s->ap_iface == NULL)
+		return NULL;
+	hapd = wpa_s->ap_iface->bss[0];
+	pin = wps_generate_pin();
+	os_snprintf(pin_txt, sizeof(pin_txt), "%u", pin);
+	os_free(hapd->conf->ap_pin);
+	hapd->conf->ap_pin = os_strdup(pin_txt);
+	if (hapd->conf->ap_pin == NULL)
+		return NULL;
+	wpas_wps_ap_pin_enable(wpa_s, timeout);
+
+	return hapd->conf->ap_pin;
+}
+
+
+const char * wpas_wps_ap_pin_get(struct wpa_supplicant *wpa_s)
+{
+	struct hostapd_data *hapd;
+	if (wpa_s->ap_iface == NULL)
+		return NULL;
+	hapd = wpa_s->ap_iface->bss[0];
+	return hapd->conf->ap_pin;
+}
+
+
+int wpas_wps_ap_pin_set(struct wpa_supplicant *wpa_s, const char *pin,
+			int timeout)
+{
+	struct hostapd_data *hapd;
+	char pin_txt[9];
+	int ret;
+
+	if (wpa_s->ap_iface == NULL)
+		return -1;
+	hapd = wpa_s->ap_iface->bss[0];
+	ret = os_snprintf(pin_txt, sizeof(pin_txt), "%s", pin);
+	if (ret < 0 || ret >= (int) sizeof(pin_txt))
+		return -1;
+	os_free(hapd->conf->ap_pin);
+	hapd->conf->ap_pin = os_strdup(pin_txt);
+	if (hapd->conf->ap_pin == NULL)
+		return -1;
+	wpas_wps_ap_pin_enable(wpa_s, timeout);
+
+	return 0;
+}
+
+
+void wpa_supplicant_ap_pwd_auth_fail(struct wpa_supplicant *wpa_s)
+{
+	struct hostapd_data *hapd;
+
+	if (wpa_s->ap_iface == NULL)
+		return;
+	hapd = wpa_s->ap_iface->bss[0];
+
+	/*
+	 * Registrar failed to prove its knowledge of the AP PIN. Disable AP
+	 * PIN if this happens multiple times to slow down brute force attacks.
+	 */
+	hapd->ap_pin_failures++;
+	wpa_printf(MSG_DEBUG, "WPS: AP PIN authentication failure number %u",
+		   hapd->ap_pin_failures);
+	if (hapd->ap_pin_failures < 3)
+		return;
+
+	wpa_printf(MSG_DEBUG, "WPS: Disable AP PIN");
+	hapd->ap_pin_failures = 0;
+	os_free(hapd->conf->ap_pin);
+	hapd->conf->ap_pin = NULL;
 }
 
 #endif /* CONFIG_WPS */
@@ -654,7 +891,7 @@ int wpa_supplicant_ap_update_beacon(struct wpa_supplicant *wpa_s)
 
 	ieee802_11_set_beacons(iface);
 	hapd = iface->bss[0];
-	hapd->drv.set_ap_wps_ie(hapd);
+	hostapd_set_ap_wps_ie(hapd);
 
 	return 0;
 }

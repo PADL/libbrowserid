@@ -33,15 +33,9 @@ struct p2p_device {
 	struct dl_list list;
 	struct os_time last_seen;
 	int listen_freq;
-	int level;
 	enum p2p_wps_method wps_method;
 
-	u8 p2p_device_addr[ETH_ALEN]; /* P2P Device Address of the peer */
-	u8 pri_dev_type[8];
-	char device_name[33];
-	u16 config_methods;
-	u8 dev_capab;
-	u8 group_capab;
+	struct p2p_peer_info info;
 
 	/*
 	 * If the peer was discovered based on an interface address (e.g., GO
@@ -93,10 +87,14 @@ struct p2p_device {
 #define P2P_DEV_WAIT_GO_NEG_CONFIRM BIT(11)
 #define P2P_DEV_GROUP_CLIENT_ONLY BIT(12)
 #define P2P_DEV_FORCE_FREQ BIT(13)
+#define P2P_DEV_PD_FOR_JOIN BIT(14)
+#define P2P_DEV_REPORTED_ONCE BIT(15)
+#define P2P_DEV_PREFER_PERSISTENT_RECONN BIT(16)
 	unsigned int flags;
 
 	int status; /* enum p2p_status_code */
 	unsigned int wait_count;
+	unsigned int connect_reqs;
 	unsigned int invitation_reqs;
 
 	u16 ext_listen_period;
@@ -111,6 +109,16 @@ struct p2p_sd_query {
 	u8 peer[ETH_ALEN];
 	int for_all_peers;
 	struct wpabuf *tlvs;
+};
+
+struct p2p_pending_action_tx {
+	unsigned int freq;
+	u8 dst[ETH_ALEN];
+	u8 src[ETH_ALEN];
+	u8 bssid[ETH_ALEN];
+	size_t len;
+	unsigned int wait_time;
+	/* Followed by len octets of the frame */
 };
 
 /**
@@ -266,6 +274,11 @@ struct p2p_data {
 	size_t ssid_len;
 
 	/**
+	 * ssid_set - Whether SSID is already set for GO Negotiation
+	 */
+	int ssid_set;
+
+	/**
 	 * Regulatory class for own operational channel
 	 */
 	u8 op_reg_class;
@@ -351,6 +364,11 @@ struct p2p_data {
 		P2P_AFTER_SCAN_CONNECT
 	} start_after_scan;
 	u8 after_scan_peer[ETH_ALEN];
+	struct p2p_pending_action_tx *after_scan_tx;
+
+	/* Requested device types for find/search */
+	unsigned int num_req_dev_types;
+	u8 *req_dev_types;
 
 	struct p2p_group **groups;
 	size_t num_groups;
@@ -371,6 +389,32 @@ struct p2p_data {
 	u8 peer_filter[ETH_ALEN];
 
 	int cross_connect;
+
+	int best_freq_24;
+	int best_freq_5;
+	int best_freq_overall;
+
+	/**
+	 * wps_vendor_ext - WPS Vendor Extensions to add
+	 */
+	struct wpabuf *wps_vendor_ext[P2P_MAX_WPS_VENDOR_EXT];
+
+	/*
+	 * user_initiated_pd - Whether a PD request is user initiated or not.
+	 */
+	u8 user_initiated_pd;
+
+	/*
+	 * Keep track of which peer a given PD request was sent to.
+	 * Used to raise a timeout alert in case there is no response.
+	 */
+	u8 pending_pd_devaddr[ETH_ALEN];
+
+	/*
+	 * Retry counter for provision discovery requests when issued
+	 * in IDLE state.
+	 */
+	int pd_retries;
 };
 
 /**
@@ -424,6 +468,18 @@ struct p2p_message {
 	u16 dev_password_id;
 	u16 wps_config_methods;
 	const u8 *wps_pri_dev_type;
+	const u8 *wps_sec_dev_type_list;
+	size_t wps_sec_dev_type_list_len;
+	const u8 *wps_vendor_ext[P2P_MAX_WPS_VENDOR_EXT];
+	size_t wps_vendor_ext_len[P2P_MAX_WPS_VENDOR_EXT];
+	const u8 *manufacturer;
+	size_t manufacturer_len;
+	const u8 *model_name;
+	size_t model_name_len;
+	const u8 *model_number;
+	size_t model_number_len;
+	const u8 *serial_number;
+	size_t serial_number_len;
 
 	/* DS Parameter Set IE */
 	const u8 *ds_params;
@@ -552,6 +608,7 @@ void p2p_process_prov_disc_resp(struct p2p_data *p2p, const u8 *sa,
 				const u8 *data, size_t len);
 int p2p_send_prov_disc_req(struct p2p_data *p2p, struct p2p_device *dev,
 			   int join);
+void p2p_reset_pending_pd(struct p2p_data *p2p);
 
 /* p2p_invitation.c */
 void p2p_process_invitation_req(struct p2p_data *p2p, const u8 *sa,
@@ -597,5 +654,8 @@ int dev_type_list_match(const u8 *dev_type, const u8 *req_dev_type[],
 			size_t num_req_dev_type);
 struct wpabuf * p2p_build_probe_resp_ies(struct p2p_data *p2p);
 void p2p_build_ssid(struct p2p_data *p2p, u8 *ssid, size_t *ssid_len);
+int p2p_send_action(struct p2p_data *p2p, unsigned int freq, const u8 *dst,
+		    const u8 *src, const u8 *bssid, const u8 *buf,
+		    size_t len, unsigned int wait_time);
 
 #endif /* P2P_I_H */

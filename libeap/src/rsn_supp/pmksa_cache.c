@@ -66,6 +66,7 @@ static void pmksa_cache_expire(void *eloop_ctx, void *timeout_ctx)
 		pmksa->pmksa = entry->next;
 		wpa_printf(MSG_DEBUG, "RSN: expired PMKSA cache entry for "
 			   MACSTR, MAC2STR(entry->aa));
+		wpa_sm_remove_pmkid(pmksa->sm, entry->aa, entry->pmkid);
 		pmksa_cache_free_entry(pmksa, entry, 0);
 	}
 
@@ -185,6 +186,14 @@ pmksa_cache_add(struct rsn_pmksa_cache *pmksa, const u8 *pmk, size_t pmk_len,
 			wpa_printf(MSG_DEBUG, "RSN: Replace PMKSA entry for "
 				   "the current AP");
 			pmksa_cache_free_entry(pmksa, pos, 1);
+
+			/*
+			 * If OKC is used, there may be other PMKSA cache
+			 * entries based on the same PMK. These needs to be
+			 * flushed so that a new entry can be created based on
+			 * the new PMK.
+			 */
+			pmksa_cache_flush(pmksa, network_ctx);
 			break;
 		}
 		prev = pos;
@@ -225,6 +234,40 @@ pmksa_cache_add(struct rsn_pmksa_cache *pmksa, const u8 *pmk, size_t pmk_len,
 	wpa_sm_add_pmkid(pmksa->sm, entry->aa, entry->pmkid);
 
 	return entry;
+}
+
+
+/**
+ * pmksa_cache_flush - Flush PMKSA cache entries for a specific network
+ * @pmksa: Pointer to PMKSA cache data from pmksa_cache_init()
+ * @network_ctx: Network configuration context or %NULL to flush all entries
+ */
+void pmksa_cache_flush(struct rsn_pmksa_cache *pmksa, void *network_ctx)
+{
+	struct rsn_pmksa_cache_entry *entry, *prev = NULL, *tmp;
+	int removed = 0;
+
+	entry = pmksa->pmksa;
+	while (entry) {
+		if (entry->network_ctx == network_ctx || network_ctx == NULL) {
+			wpa_printf(MSG_DEBUG, "RSN: Flush PMKSA cache entry "
+				   "for " MACSTR, MAC2STR(entry->aa));
+			if (prev)
+				prev->next = entry->next;
+			else
+				pmksa->pmksa = entry->next;
+			tmp = entry;
+			entry = entry->next;
+			wpa_sm_remove_pmkid(pmksa->sm, tmp->aa, tmp->pmkid);
+			pmksa_cache_free_entry(pmksa, tmp, 0);
+			removed++;
+		} else {
+			prev = entry;
+			entry = entry->next;
+		}
+	}
+	if (removed)
+		pmksa_cache_set_expiration(pmksa);
 }
 
 
@@ -273,22 +316,6 @@ struct rsn_pmksa_cache_entry * pmksa_cache_get(struct rsn_pmksa_cache *pmksa,
 }
 
 
-/**
- * pmksa_cache_notify_reconfig - Reconfiguration notification for PMKSA cache
- * @pmksa: Pointer to PMKSA cache data from pmksa_cache_init()
- *
- * Clear references to old data structures when wpa_supplicant is reconfigured.
- */
-void pmksa_cache_notify_reconfig(struct rsn_pmksa_cache *pmksa)
-{
-	struct rsn_pmksa_cache_entry *entry = pmksa->pmksa;
-	while (entry) {
-		entry->network_ctx = NULL;
-		entry = entry->next;
-	}
-}
-
-
 static struct rsn_pmksa_cache_entry *
 pmksa_cache_clone_entry(struct rsn_pmksa_cache *pmksa,
 			const struct rsn_pmksa_cache_entry *old_entry,
@@ -327,6 +354,7 @@ pmksa_cache_get_opportunistic(struct rsn_pmksa_cache *pmksa, void *network_ctx,
 {
 	struct rsn_pmksa_cache_entry *entry = pmksa->pmksa;
 
+	wpa_printf(MSG_DEBUG, "RSN: Consider " MACSTR " for OKC", MAC2STR(aa));
 	if (network_ctx == NULL)
 		return NULL;
 	while (entry) {

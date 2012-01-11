@@ -834,6 +834,7 @@ eapol_auth_alloc(struct eapol_authenticator *eapol, const u8 *addr,
 	eap_conf.peer_addr = addr;
 	eap_conf.fragment_size = eapol->conf.fragment_size;
 	eap_conf.pwd_group = eapol->conf.pwd_group;
+	eap_conf.pbc_in_m1 = eapol->conf.pbc_in_m1;
 	sm->eap = eap_server_sm_init(sm, &eapol_cb, &eap_conf);
 	if (sm->eap == NULL) {
 		eapol_auth_free(sm);
@@ -1016,7 +1017,7 @@ static struct eapol_callbacks eapol_cb =
 
 int eapol_auth_eap_pending_cb(struct eapol_state_machine *sm, void *ctx)
 {
-	if (sm == NULL || ctx != sm->eap)
+	if (sm == NULL || ctx == NULL || ctx != sm->eap)
 		return -1;
 
 	eap_sm_pending_cb(sm->eap);
@@ -1039,6 +1040,7 @@ static int eapol_auth_conf_clone(struct eapol_auth_config *dst,
 	dst->eap_sim_db_priv = src->eap_sim_db_priv;
 	os_free(dst->eap_req_id_text);
 	dst->pwd_group = src->pwd_group;
+	dst->pbc_in_m1 = src->pbc_in_m1;
 	if (src->eap_req_id_text) {
 		dst->eap_req_id_text = os_malloc(src->eap_req_id_text_len);
 		if (dst->eap_req_id_text == NULL)

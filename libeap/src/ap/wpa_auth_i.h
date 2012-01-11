@@ -120,6 +120,8 @@ struct wpa_state_machine {
 					       * message 2/4 */
 	u8 *assoc_resp_ftie;
 #endif /* CONFIG_IEEE80211R */
+
+	int pending_1_of_4_timeout;
 };
 
 
@@ -145,6 +147,8 @@ struct wpa_group {
 	u8 GTK[2][WPA_GTK_MAX_LEN];
 	u8 GNonce[WPA_NONCE_LEN];
 	Boolean changed;
+	Boolean first_sta_seen;
+	Boolean reject_4way_hs_for_entropy;
 #ifdef CONFIG_IEEE80211W
 	u8 IGTK[2][WPA_IGTK_LEN];
 	int GN_igtk, GM_igtk;

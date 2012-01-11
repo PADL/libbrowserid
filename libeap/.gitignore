@@ -1,6 +1,7 @@
 *.o
 *.d
 *~
+.config
 wpa_supplicant/eapol_test
 wpa_supplicant/preauth_test
 wpa_supplicant/wpa_cli
@@ -15,3 +16,6 @@ hostapd/hostapd
 hostapd/hostapd_cli
 hostapd/hlr_auc_gw
 hostapd/nt_password_hash
+wlantest/libwlantest.a
+wlantest/wlantest
+wlantest/wlantest_cli

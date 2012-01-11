@@ -24,6 +24,7 @@
 #include "common/wpa_ctrl.h"
 #include "eap_common/eap_wsc_common.h"
 #include "eap_peer/eap.h"
+#include "eapol_supp/eapol_supp_sm.h"
 #include "rsn_supp/wpa.h"
 #include "config.h"
 #include "wpa_supplicant_i.h"
@@ -70,13 +71,21 @@ int wpas_wps_eapol_cb(struct wpa_supplicant *wpa_s)
 	}
 
 	eloop_cancel_timeout(wpas_wps_timeout, wpa_s, NULL);
+	if (wpa_s->key_mgmt == WPA_KEY_MGMT_WPS && !wpa_s->wps_success)
+		wpa_msg(wpa_s, MSG_INFO, WPS_EVENT_FAIL);
 
 	if (wpa_s->key_mgmt == WPA_KEY_MGMT_WPS && wpa_s->current_ssid &&
 	    !(wpa_s->current_ssid->key_mgmt & WPA_KEY_MGMT_WPS)) {
+		int disabled = wpa_s->current_ssid->disabled;
 		wpa_printf(MSG_DEBUG, "WPS: Network configuration replaced - "
 			   "try to associate with the received credential");
 		wpa_supplicant_deauthenticate(wpa_s,
 					      WLAN_REASON_DEAUTH_LEAVING);
+		if (disabled) {
+			wpa_printf(MSG_DEBUG, "WPS: Current network is "
+				   "disabled - wait for user to enable");
+			return 1;
+		}
 		wpa_s->after_wps = 5;
 		wpa_s->wps_freq = wpa_s->assoc_freq;
 		wpa_s->reassociate = 1;
@@ -118,6 +127,8 @@ static void wpas_wps_security_workaround(struct wpa_supplicant *wpa_s,
 	if (wpa_drv_get_capa(wpa_s, &capa))
 		return; /* Unknown what driver supports */
 
+	if (ssid->ssid == NULL)
+		return;
 	bss = wpa_bss_get(wpa_s, cred->mac_addr, ssid->ssid, ssid->ssid_len);
 	if (bss == NULL) {
 		wpa_printf(MSG_DEBUG, "WPS: The AP was not found from BSS "
@@ -183,6 +194,9 @@ static int wpa_supplicant_wps_cred(void *ctx,
 	struct wpa_ssid *ssid = wpa_s->current_ssid;
 	u8 key_idx = 0;
 	u16 auth_type;
+#ifdef CONFIG_WPS_REG_DISABLE_OPEN
+	int registrar = 0;
+#endif /* CONFIG_WPS_REG_DISABLE_OPEN */
 
 	if ((wpa_s->conf->wps_cred_processing == 1 ||
 	     wpa_s->conf->wps_cred_processing == 2) && cred->cred_attr) {
@@ -236,6 +250,13 @@ static int wpa_supplicant_wps_cred(void *ctx,
 	if (ssid && (ssid->key_mgmt & WPA_KEY_MGMT_WPS)) {
 		wpa_printf(MSG_DEBUG, "WPS: Replace WPS network block based "
 			   "on the received credential");
+#ifdef CONFIG_WPS_REG_DISABLE_OPEN
+		if (ssid->eap.identity &&
+		    ssid->eap.identity_len == WSC_ID_REGISTRAR_LEN &&
+		    os_memcmp(ssid->eap.identity, WSC_ID_REGISTRAR,
+			      WSC_ID_REGISTRAR_LEN) == 0)
+			registrar = 1;
+#endif /* CONFIG_WPS_REG_DISABLE_OPEN */
 		os_free(ssid->eap.identity);
 		ssid->eap.identity = NULL;
 		ssid->eap.identity_len = 0;
@@ -311,6 +332,16 @@ static int wpa_supplicant_wps_cred(void *ctx,
 		ssid->auth_alg = WPA_AUTH_ALG_OPEN;
 		ssid->key_mgmt = WPA_KEY_MGMT_NONE;
 		ssid->proto = 0;
+#ifdef CONFIG_WPS_REG_DISABLE_OPEN
+		if (registrar) {
+			wpa_msg(wpa_s, MSG_INFO, WPS_EVENT_OPEN_NETWORK
+				"id=%d - Credentials for an open "
+				"network disabled by default - use "
+				"'select_network %d' to enable",
+				ssid->id, ssid->id);
+			ssid->disabled = 1;
+		}
+#endif /* CONFIG_WPS_REG_DISABLE_OPEN */
 		break;
 	case WPS_AUTH_SHARED:
 		ssid->auth_alg = WPA_AUTH_ALG_SHARED;
@@ -348,6 +379,7 @@ static int wpa_supplicant_wps_cred(void *ctx,
 				return -1;
 			}
 			ssid->psk_set = 1;
+			ssid->export_keys = 1;
 		} else if (cred->key_len >= 8 && cred->key_len < 2 * PMK_LEN) {
 			os_free(ssid->passphrase);
 			ssid->passphrase = os_malloc(cred->key_len + 1);
@@ -356,6 +388,7 @@ static int wpa_supplicant_wps_cred(void *ctx,
 			os_memcpy(ssid->passphrase, cred->key, cred->key_len);
 			ssid->passphrase[cred->key_len] = '\0';
 			wpa_config_update_psk(ssid);
+			ssid->export_keys = 1;
 		} else {
 			wpa_printf(MSG_ERROR, "WPS: Invalid Network Key "
 				   "length %lu",
@@ -378,6 +411,15 @@ static int wpa_supplicant_wps_cred(void *ctx,
 }
 
 
+#ifdef CONFIG_P2P
+static void wpas_wps_pbc_overlap_cb(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+	wpas_p2p_notif_pbc_overlap(wpa_s);
+}
+#endif /* CONFIG_P2P */
+
+
 static void wpa_supplicant_wps_event_m2d(struct wpa_supplicant *wpa_s,
 					 struct wps_event_m2d *m2d)
 {
@@ -385,20 +427,59 @@ static void wpa_supplicant_wps_event_m2d(struct wpa_supplicant *wpa_s,
 		"dev_password_id=%d config_error=%d",
 		m2d->dev_password_id, m2d->config_error);
 	wpas_notify_wps_event_m2d(wpa_s, m2d);
+#ifdef CONFIG_P2P
+	if (wpa_s->parent && wpa_s->parent != wpa_s) {
+		wpa_msg(wpa_s->parent, MSG_INFO, WPS_EVENT_M2D
+			"dev_password_id=%d config_error=%d",
+			m2d->dev_password_id, m2d->config_error);
+	}
+	if (m2d->config_error == WPS_CFG_MULTIPLE_PBC_DETECTED) {
+		/*
+		 * Notify P2P from eloop timeout to avoid issues with the
+		 * interface getting removed while processing a message.
+		 */
+		eloop_register_timeout(0, 0, wpas_wps_pbc_overlap_cb, wpa_s,
+				       NULL);
+	}
+#endif /* CONFIG_P2P */
 }
 
+
+static const char * wps_event_fail_reason[NUM_WPS_EI_VALUES] = {
+	"No Error", /* WPS_EI_NO_ERROR */
+	"TKIP Only Prohibited", /* WPS_EI_SECURITY_TKIP_ONLY_PROHIBITED */
+	"WEP Prohibited" /* WPS_EI_SECURITY_WEP_PROHIBITED */
+};
 
 static void wpa_supplicant_wps_event_fail(struct wpa_supplicant *wpa_s,
 					  struct wps_event_fail *fail)
 {
-	wpa_msg(wpa_s, MSG_INFO, WPS_EVENT_FAIL "msg=%d config_error=%d",
-		fail->msg, fail->config_error);
-	if (wpa_s->parent && wpa_s->parent != wpa_s)
-		wpa_msg(wpa_s->parent, MSG_INFO, WPS_EVENT_FAIL
-			"msg=%d config_error=%d",
+	if (fail->error_indication > 0 &&
+	    fail->error_indication < NUM_WPS_EI_VALUES) {
+		wpa_msg(wpa_s, MSG_INFO,
+			WPS_EVENT_FAIL "msg=%d config_error=%d reason=%d (%s)",
+			fail->msg, fail->config_error, fail->error_indication,
+			wps_event_fail_reason[fail->error_indication]);
+		if (wpa_s->parent && wpa_s->parent != wpa_s)
+			wpa_msg(wpa_s->parent, MSG_INFO, WPS_EVENT_FAIL
+				"msg=%d config_error=%d reason=%d (%s)",
+				fail->msg, fail->config_error,
+				fail->error_indication,
+				wps_event_fail_reason[fail->error_indication]);
+	} else {
+		wpa_msg(wpa_s, MSG_INFO,
+			WPS_EVENT_FAIL "msg=%d config_error=%d",
 			fail->msg, fail->config_error);
+		if (wpa_s->parent && wpa_s->parent != wpa_s)
+			wpa_msg(wpa_s->parent, MSG_INFO, WPS_EVENT_FAIL
+				"msg=%d config_error=%d",
+				fail->msg, fail->config_error);
+	}
 	wpas_clear_wps(wpa_s);
 	wpas_notify_wps_event_fail(wpa_s, fail);
+#ifdef CONFIG_P2P
+	wpas_p2p_wps_failed(wpa_s, fail);
+#endif /* CONFIG_P2P */
 }
 
 
@@ -509,6 +590,33 @@ static void wpa_supplicant_wps_event_er_ap_settings(
 }
 
 
+static void wpa_supplicant_wps_event_er_set_sel_reg(
+	struct wpa_supplicant *wpa_s,
+	struct wps_event_er_set_selected_registrar *ev)
+{
+	char uuid_str[100];
+
+	uuid_bin2str(ev->uuid, uuid_str, sizeof(uuid_str));
+	switch (ev->state) {
+	case WPS_ER_SET_SEL_REG_START:
+		wpa_msg(wpa_s, MSG_DEBUG, WPS_EVENT_ER_SET_SEL_REG
+			"uuid=%s state=START sel_reg=%d dev_passwd_id=%u "
+			"sel_reg_config_methods=0x%x",
+			uuid_str, ev->sel_reg, ev->dev_passwd_id,
+			ev->sel_reg_config_methods);
+		break;
+	case WPS_ER_SET_SEL_REG_DONE:
+		wpa_msg(wpa_s, MSG_DEBUG, WPS_EVENT_ER_SET_SEL_REG
+			"uuid=%s state=DONE", uuid_str);
+		break;
+	case WPS_ER_SET_SEL_REG_FAILED:
+		wpa_msg(wpa_s, MSG_INFO, WPS_EVENT_ER_SET_SEL_REG
+			"uuid=%s state=FAILED", uuid_str);
+		break;
+	}
+}
+
+
 static void wpa_supplicant_wps_event(void *ctx, enum wps_event event,
 				     union wps_event_data *data)
 {
@@ -524,6 +632,10 @@ static void wpa_supplicant_wps_event(void *ctx, enum wps_event event,
 		wpa_supplicant_wps_event_success(wpa_s);
 		break;
 	case WPS_EV_PWD_AUTH_FAIL:
+#ifdef CONFIG_AP
+		if (wpa_s->ap_iface && data->pwd_auth_fail.enrollee)
+			wpa_supplicant_ap_pwd_auth_fail(wpa_s);
+#endif /* CONFIG_AP */
 		break;
 	case WPS_EV_PBC_OVERLAP:
 		break;
@@ -547,6 +659,10 @@ static void wpa_supplicant_wps_event(void *ctx, enum wps_event event,
 		wpa_supplicant_wps_event_er_ap_settings(wpa_s,
 							&data->ap_settings);
 		break;
+	case WPS_EV_ER_SET_SELECTED_REGISTRAR:
+		wpa_supplicant_wps_event_er_set_sel_reg(wpa_s,
+							&data->set_sel_reg);
+		break;
 	}
 }
 
@@ -564,7 +680,9 @@ enum wps_request_type wpas_wps_get_req_type(struct wpa_ssid *ssid)
 static void wpas_clear_wps(struct wpa_supplicant *wpa_s)
 {
 	int id;
-	struct wpa_ssid *ssid, *remove_ssid = NULL;
+	struct wpa_ssid *ssid, *remove_ssid = NULL, *prev_current;
+
+	prev_current = wpa_s->current_ssid;
 
 	eloop_cancel_timeout(wpas_wps_timeout, wpa_s, NULL);
 
@@ -583,6 +701,11 @@ static void wpas_clear_wps(struct wpa_supplicant *wpa_s)
 			id = -1;
 		ssid = ssid->next;
 		if (id >= 0) {
+			if (prev_current == remove_ssid) {
+				wpa_sm_set_config(wpa_s->wpa, NULL);
+				eapol_sm_notify_config(wpa_s->eapol, NULL,
+						       NULL);
+			}
 			wpas_notify_network_removed(wpa_s, remove_ssid);
 			wpa_config_remove_network(wpa_s->conf, id);
 		}
@@ -674,9 +797,18 @@ static void wpas_wps_reassoc(struct wpa_supplicant *wpa_s,
 	ssid = wpa_s->conf->ssid;
 	while (ssid) {
 		int was_disabled = ssid->disabled;
-		ssid->disabled = ssid != selected;
-		if (was_disabled != ssid->disabled)
-			wpas_notify_network_enabled_changed(wpa_s, ssid);
+		/*
+		 * In case the network object corresponds to a persistent group
+		 * then do not send out network disabled signal. In addition,
+		 * do not change disabled status of persistent network objects
+		 * from 2 to 1 should we connect to another network.
+		 */
+		if (was_disabled != 2) {
+			ssid->disabled = ssid != selected;
+			if (was_disabled != ssid->disabled)
+				wpas_notify_network_enabled_changed(wpa_s,
+								    ssid);
+		}
 		ssid = ssid->next;
 	}
 	wpa_s->disconnected = 0;
@@ -957,10 +1089,39 @@ static u16 wps_fix_config_methods(u16 config_methods)
 }
 
 
+static void wpas_wps_set_uuid(struct wpa_supplicant *wpa_s,
+			      struct wps_context *wps)
+{
+	wpa_printf(MSG_DEBUG, "WPS: Set UUID for interface %s", wpa_s->ifname);
+	if (is_nil_uuid(wpa_s->conf->uuid)) {
+		struct wpa_supplicant *first;
+		first = wpa_s->global->ifaces;
+		while (first && first->next)
+			first = first->next;
+		if (first && first != wpa_s) {
+			os_memcpy(wps->uuid, wpa_s->global->ifaces->wps->uuid,
+				  WPS_UUID_LEN);
+			wpa_hexdump(MSG_DEBUG, "WPS: UUID from the first "
+				    "interface", wps->uuid, WPS_UUID_LEN);
+		} else {
+			uuid_gen_mac_addr(wpa_s->own_addr, wps->uuid);
+			wpa_hexdump(MSG_DEBUG, "WPS: UUID based on MAC "
+				    "address", wps->uuid, WPS_UUID_LEN);
+		}
+	} else {
+		os_memcpy(wps->uuid, wpa_s->conf->uuid, WPS_UUID_LEN);
+		wpa_hexdump(MSG_DEBUG, "WPS: UUID based on configuration",
+			    wps->uuid, WPS_UUID_LEN);
+	}
+}
+
+
 int wpas_wps_init(struct wpa_supplicant *wpa_s)
 {
 	struct wps_context *wps;
 	struct wps_registrar_config rcfg;
+	struct hostapd_hw_modes *modes;
+	u16 m;
 
 	wps = os_zalloc(sizeof(*wps));
 	if (wps == NULL)
@@ -985,22 +1146,34 @@ int wpas_wps_init(struct wpa_supplicant *wpa_s)
 		return -1;
 	}
 	wps->config_methods = wps_fix_config_methods(wps->config_methods);
-	if (wpa_s->conf->device_type &&
-	    wps_dev_type_str2bin(wpa_s->conf->device_type,
-				 wps->dev.pri_dev_type) < 0) {
-		wpa_printf(MSG_ERROR, "WPS: Invalid device_type");
-		os_free(wps);
-		return -1;
-	}
+	wps->dev.config_methods = wps->config_methods;
+	os_memcpy(wps->dev.pri_dev_type, wpa_s->conf->device_type,
+		  WPS_DEV_TYPE_LEN);
+
+	wps->dev.num_sec_dev_types = wpa_s->conf->num_sec_device_types;
+	os_memcpy(wps->dev.sec_dev_type, wpa_s->conf->sec_device_type,
+		  WPS_DEV_TYPE_LEN * wps->dev.num_sec_dev_types);
+
 	wps->dev.os_version = WPA_GET_BE32(wpa_s->conf->os_version);
-	wps->dev.rf_bands = WPS_RF_24GHZ | WPS_RF_50GHZ; /* TODO: config */
+	modes = wpa_s->hw.modes;
+	if (modes) {
+		for (m = 0; m < wpa_s->hw.num_modes; m++) {
+			if (modes[m].mode == HOSTAPD_MODE_IEEE80211B ||
+			    modes[m].mode == HOSTAPD_MODE_IEEE80211G)
+				wps->dev.rf_bands |= WPS_RF_24GHZ;
+			else if (modes[m].mode == HOSTAPD_MODE_IEEE80211A)
+				wps->dev.rf_bands |= WPS_RF_50GHZ;
+		}
+	}
+	if (wps->dev.rf_bands == 0) {
+		/*
+		 * Default to claiming support for both bands if the driver
+		 * does not provide support for fetching supported bands.
+		 */
+		wps->dev.rf_bands = WPS_RF_24GHZ | WPS_RF_50GHZ;
+	}
 	os_memcpy(wps->dev.mac_addr, wpa_s->own_addr, ETH_ALEN);
-	if (is_nil_uuid(wpa_s->conf->uuid)) {
-		uuid_gen_mac_addr(wpa_s->own_addr, wps->uuid);
-		wpa_hexdump(MSG_DEBUG, "WPS: UUID based on MAC address",
-			    wps->uuid, WPS_UUID_LEN);
-	} else
-		os_memcpy(wps->uuid, wpa_s->conf->uuid, WPS_UUID_LEN);
+	wpas_wps_set_uuid(wpa_s, wps);
 
 	wps->auth_types = WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK;
 	wps->encr_types = WPS_ENCR_AES | WPS_ENCR_TKIP;
@@ -1240,6 +1413,7 @@ int wpas_wps_scan_pbc_overlap(struct wpa_supplicant *wpa_s,
 void wpas_wps_notify_scan_results(struct wpa_supplicant *wpa_s)
 {
 	struct wpa_bss *bss;
+	unsigned int pbc = 0, auth = 0, pin = 0, wps = 0;
 
 	if (wpa_s->disconnected || wpa_s->wpa_state >= WPA_ASSOCIATED)
 		return;
@@ -1250,20 +1424,24 @@ void wpas_wps_notify_scan_results(struct wpa_supplicant *wpa_s)
 		if (!ie)
 			continue;
 		if (wps_is_selected_pbc_registrar(ie))
-			wpa_msg_ctrl(wpa_s, MSG_INFO,
-				     WPS_EVENT_AP_AVAILABLE_PBC);
+			pbc++;
 		else if (wps_is_addr_authorized(ie, wpa_s->own_addr, 0))
-			wpa_msg_ctrl(wpa_s, MSG_INFO,
-				     WPS_EVENT_AP_AVAILABLE_AUTH);
+			auth++;
 		else if (wps_is_selected_pin_registrar(ie))
-			wpa_msg_ctrl(wpa_s, MSG_INFO,
-				     WPS_EVENT_AP_AVAILABLE_PIN);
+			pin++;
 		else
-			wpa_msg_ctrl(wpa_s, MSG_INFO,
-				     WPS_EVENT_AP_AVAILABLE);
+			wps++;
 		wpabuf_free(ie);
-		break;
 	}
+
+	if (pbc)
+		wpa_msg_ctrl(wpa_s, MSG_INFO, WPS_EVENT_AP_AVAILABLE_PBC);
+	else if (auth)
+		wpa_msg_ctrl(wpa_s, MSG_INFO, WPS_EVENT_AP_AVAILABLE_AUTH);
+	else if (pin)
+		wpa_msg_ctrl(wpa_s, MSG_INFO, WPS_EVENT_AP_AVAILABLE_PIN);
+	else if (wps)
+		wpa_msg_ctrl(wpa_s, MSG_INFO, WPS_EVENT_AP_AVAILABLE);
 }
 
 
@@ -1362,6 +1540,49 @@ int wpas_wps_er_learn(struct wpa_supplicant *wpa_s, const char *uuid,
 }
 
 
+int wpas_wps_er_set_config(struct wpa_supplicant *wpa_s, const char *uuid,
+			   int id)
+{
+	u8 u[UUID_LEN];
+	struct wpa_ssid *ssid;
+	struct wps_credential cred;
+
+	if (uuid_str2bin(uuid, u))
+		return -1;
+	ssid = wpa_config_get_network(wpa_s->conf, id);
+	if (ssid == NULL || ssid->ssid == NULL)
+		return -1;
+
+	os_memset(&cred, 0, sizeof(cred));
+	if (ssid->ssid_len > 32)
+		return -1;
+	os_memcpy(cred.ssid, ssid->ssid, ssid->ssid_len);
+	cred.ssid_len = ssid->ssid_len;
+	if (ssid->key_mgmt & WPA_KEY_MGMT_PSK) {
+		cred.auth_type = (ssid->proto & WPA_PROTO_RSN) ?
+			WPS_AUTH_WPA2PSK : WPS_AUTH_WPAPSK;
+		if (ssid->pairwise_cipher & WPA_CIPHER_CCMP)
+			cred.encr_type = WPS_ENCR_AES;
+		else
+			cred.encr_type = WPS_ENCR_TKIP;
+		if (ssid->passphrase) {
+			cred.key_len = os_strlen(ssid->passphrase);
+			if (cred.key_len >= 64)
+				return -1;
+			os_memcpy(cred.key, ssid->passphrase, cred.key_len);
+		} else if (ssid->psk_set) {
+			cred.key_len = 32;
+			os_memcpy(cred.key, ssid->psk, 32);
+		} else
+			return -1;
+	} else {
+		cred.auth_type = WPS_AUTH_OPEN;
+		cred.encr_type = WPS_ENCR_NONE;
+	}
+	return wps_er_set_config(wpa_s->wps_er, u, &cred);
+}
+
+
 int wpas_wps_er_config(struct wpa_supplicant *wpa_s, const char *uuid,
 		       const char *pin, struct wps_new_ap_settings *settings)
 {
@@ -1413,10 +1634,13 @@ int wpas_wps_er_config(struct wpa_supplicant *wpa_s, const char *uuid,
 }
 
 
+static int callbacks_pending = 0;
+
 static void wpas_wps_terminate_cb(void *ctx)
 {
 	wpa_printf(MSG_DEBUG, "WPS ER: Terminated");
-	eloop_terminate();
+	if (--callbacks_pending <= 0)
+		eloop_terminate();
 }
 #endif /* CONFIG_WPS_ER */
 
@@ -1425,6 +1649,7 @@ int wpas_wps_terminate_pending(struct wpa_supplicant *wpa_s)
 {
 #ifdef CONFIG_WPS_ER
 	if (wpa_s->wps_er) {
+		callbacks_pending++;
 		wps_er_deinit(wpa_s->wps_er, wpas_wps_terminate_cb, wpa_s);
 		wpa_s->wps_er = NULL;
 		return 1;
@@ -1468,24 +1693,21 @@ void wpas_wps_update_config(struct wpa_supplicant *wpa_s)
 	}
 	wps->config_methods = wps_fix_config_methods(wps->config_methods);
 
-	if (wpa_s->conf->changed_parameters & CFG_CHANGED_DEVICE_TYPE) {
-		if (wpa_s->conf->device_type &&
-		    wps_dev_type_str2bin(wpa_s->conf->device_type,
-					 wps->dev.pri_dev_type) < 0)
-			wpa_printf(MSG_ERROR, "WPS: Invalid device_type");
+	if (wpa_s->conf->changed_parameters & CFG_CHANGED_DEVICE_TYPE)
+		os_memcpy(wps->dev.pri_dev_type, wpa_s->conf->device_type,
+			  WPS_DEV_TYPE_LEN);
+
+	if (wpa_s->conf->changed_parameters & CFG_CHANGED_SEC_DEVICE_TYPE) {
+		wps->dev.num_sec_dev_types = wpa_s->conf->num_sec_device_types;
+		os_memcpy(wps->dev.sec_dev_type, wpa_s->conf->sec_device_type,
+			  wps->dev.num_sec_dev_types * WPS_DEV_TYPE_LEN);
 	}
 
 	if (wpa_s->conf->changed_parameters & CFG_CHANGED_OS_VERSION)
 		wps->dev.os_version = WPA_GET_BE32(wpa_s->conf->os_version);
 
-	if (wpa_s->conf->changed_parameters & CFG_CHANGED_UUID) {
-		if (is_nil_uuid(wpa_s->conf->uuid)) {
-			uuid_gen_mac_addr(wpa_s->own_addr, wps->uuid);
-			wpa_hexdump(MSG_DEBUG, "WPS: UUID based on MAC "
-				    "address", wps->uuid, WPS_UUID_LEN);
-		} else
-			os_memcpy(wps->uuid, wpa_s->conf->uuid, WPS_UUID_LEN);
-	}
+	if (wpa_s->conf->changed_parameters & CFG_CHANGED_UUID)
+		wpas_wps_set_uuid(wpa_s, wps);
 
 	if (wpa_s->conf->changed_parameters &
 	    (CFG_CHANGED_DEVICE_NAME | CFG_CHANGED_WPS_STRING)) {

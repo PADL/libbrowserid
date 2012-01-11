@@ -21,6 +21,13 @@
 #include "p2p.h"
 
 
+/*
+ * Number of retries to attempt for provision discovery requests during IDLE
+ * state in case the peer is not listening.
+ */
+#define MAX_PROV_DISC_REQ_RETRIES 10
+
+
 static void p2p_build_wps_ie_config_methods(struct wpabuf *buf,
 					    u16 config_methods)
 {
@@ -56,8 +63,8 @@ static struct wpabuf * p2p_build_prov_disc_req(struct p2p_data *p2p,
 	p2p_buf_add_capability(buf, p2p->dev_capab, 0);
 	p2p_buf_add_device_info(buf, p2p, NULL);
 	if (go) {
-		p2p_buf_add_group_id(buf, go->p2p_device_addr, go->oper_ssid,
-				     go->oper_ssid_len);
+		p2p_buf_add_group_id(buf, go->info.p2p_device_addr,
+				     go->oper_ssid, go->oper_ssid_len);
 	}
 	p2p_buf_update_ie_hdr(buf, len);
 
@@ -165,10 +172,9 @@ out:
 		return;
 	}
 	p2p->pending_action_state = P2P_NO_PENDING_ACTION;
-	if (p2p->cfg->send_action(p2p->cfg->cb_ctx, freq, sa,
-				  p2p->cfg->dev_addr, p2p->cfg->dev_addr,
-				  wpabuf_head(resp), wpabuf_len(resp), 200) <
-	    0) {
+	if (p2p_send_action(p2p, freq, sa, p2p->cfg->dev_addr,
+			    p2p->cfg->dev_addr,
+			    wpabuf_head(resp), wpabuf_len(resp), 200) < 0) {
 		wpa_msg(p2p->cfg->msg_ctx, MSG_DEBUG,
 			"P2P: Failed to send Action frame");
 	}
@@ -216,6 +222,11 @@ void p2p_process_prov_disc_resp(struct p2p_data *p2p, const u8 *sa,
 		return;
 	}
 
+	if (p2p->pending_action_state == P2P_PENDING_PD) {
+		os_memset(p2p->pending_pd_devaddr, 0, ETH_ALEN);
+		p2p->pending_action_state = P2P_NO_PENDING_ACTION;
+	}
+
 	if (dev->dialog_token != msg.dialog_token) {
 		wpa_msg(p2p->cfg->msg_ctx, MSG_DEBUG,
 			"P2P: Ignore Provisioning Discovery Response with "
@@ -225,9 +236,20 @@ void p2p_process_prov_disc_resp(struct p2p_data *p2p, const u8 *sa,
 		return;
 	}
 
+	/*
+	 * If the response is from the peer to whom a user initiated request
+	 * was sent earlier, we reset that state info here.
+	 */
+	if (p2p->user_initiated_pd &&
+	    os_memcmp(p2p->pending_pd_devaddr, sa, ETH_ALEN) == 0)
+		p2p_reset_pending_pd(p2p);
+
 	if (msg.wps_config_methods != dev->req_config_methods) {
 		wpa_msg(p2p->cfg->msg_ctx, MSG_DEBUG, "P2P: Peer rejected "
 			"our Provisioning Discovery Request");
+		if (p2p->cfg->prov_disc_fail)
+			p2p->cfg->prov_disc_fail(p2p->cfg->cb_ctx, sa,
+						 P2P_PROV_DISC_REJECTED);
 		p2p_parse_free(&msg);
 		goto out;
 	}
@@ -267,16 +289,17 @@ int p2p_send_prov_disc_req(struct p2p_data *p2p, struct p2p_device *dev,
 		wpa_msg(p2p->cfg->msg_ctx, MSG_DEBUG,
 			"P2P: No Listen/Operating frequency known for the "
 			"peer " MACSTR " to send Provision Discovery Request",
-			MAC2STR(dev->p2p_device_addr));
+			MAC2STR(dev->info.p2p_device_addr));
 		return -1;
 	}
 
 	if (dev->flags & P2P_DEV_GROUP_CLIENT_ONLY) {
-		if (!(dev->dev_capab & P2P_DEV_CAPAB_CLIENT_DISCOVERABILITY)) {
+		if (!(dev->info.dev_capab &
+		      P2P_DEV_CAPAB_CLIENT_DISCOVERABILITY)) {
 			wpa_msg(p2p->cfg->msg_ctx, MSG_DEBUG,
 				"P2P: Cannot use PD with P2P Device " MACSTR
 				" that is in a group and is not discoverable",
-				MAC2STR(dev->p2p_device_addr));
+				MAC2STR(dev->info.p2p_device_addr));
 			return -1;
 		}
 		/* TODO: use device discoverability request through GO */
@@ -292,16 +315,16 @@ int p2p_send_prov_disc_req(struct p2p_data *p2p, struct p2p_device *dev,
 		return -1;
 
 	p2p->pending_action_state = P2P_PENDING_PD;
-	if (p2p->cfg->send_action(p2p->cfg->cb_ctx, freq,
-				  dev->p2p_device_addr, p2p->cfg->dev_addr,
-				  dev->p2p_device_addr,
-				  wpabuf_head(req), wpabuf_len(req), 200) < 0)
-	{
+	if (p2p_send_action(p2p, freq, dev->info.p2p_device_addr,
+			    p2p->cfg->dev_addr, dev->info.p2p_device_addr,
+			    wpabuf_head(req), wpabuf_len(req), 200) < 0) {
 		wpa_msg(p2p->cfg->msg_ctx, MSG_DEBUG,
 			"P2P: Failed to send Action frame");
 		wpabuf_free(req);
 		return -1;
 	}
+
+	os_memcpy(p2p->pending_pd_devaddr, dev->info.p2p_device_addr, ETH_ALEN);
 
 	wpabuf_free(req);
 	return 0;
@@ -330,6 +353,10 @@ int p2p_prov_disc_req(struct p2p_data *p2p, const u8 *peer_addr,
 		return -1;
 
 	dev->req_config_methods = config_methods;
+	if (join)
+		dev->flags |= P2P_DEV_PD_FOR_JOIN;
+	else
+		dev->flags &= ~P2P_DEV_PD_FOR_JOIN;
 
 	if (p2p->go_neg_peer ||
 	    (p2p->state != P2P_IDLE && p2p->state != P2P_SEARCH &&
@@ -341,5 +368,23 @@ int p2p_prov_disc_req(struct p2p_data *p2p, const u8 *peer_addr,
 		return 0;
 	}
 
+	/*
+	 * We use the join param as a cue to differentiate between user
+	 * initiated PD request and one issued during finds (internal).
+	 */
+	p2p->user_initiated_pd = !join;
+
+	/* Also set some retries to attempt in case of IDLE state */
+	if (p2p->user_initiated_pd && p2p->state == P2P_IDLE)
+		p2p->pd_retries = MAX_PROV_DISC_REQ_RETRIES;
+
 	return p2p_send_prov_disc_req(p2p, dev, join);
+}
+
+
+void p2p_reset_pending_pd(struct p2p_data *p2p)
+{
+	p2p->user_initiated_pd = 0;
+	os_memset(p2p->pending_pd_devaddr, 0, ETH_ALEN);
+	p2p->pd_retries = 0;
 }

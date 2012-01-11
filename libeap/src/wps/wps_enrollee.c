@@ -17,6 +17,7 @@
 #include "common.h"
 #include "crypto/crypto.h"
 #include "crypto/sha256.h"
+#include "crypto/random.h"
 #include "wps_i.h"
 #include "wps_dev_attr.h"
 
@@ -53,7 +54,7 @@ static int wps_build_e_hash(struct wps_data *wps, struct wpabuf *msg)
 	const u8 *addr[4];
 	size_t len[4];
 
-	if (os_get_random(wps->snonce, 2 * WPS_SECRET_NONCE_LEN) < 0)
+	if (random_get_bytes(wps->snonce, 2 * WPS_SECRET_NONCE_LEN) < 0)
 		return -1;
 	wpa_hexdump(MSG_DEBUG, "WPS: E-S1", wps->snonce, WPS_SECRET_NONCE_LEN);
 	wpa_hexdump(MSG_DEBUG, "WPS: E-S2",
@@ -119,8 +120,9 @@ static int wps_build_e_snonce2(struct wps_data *wps, struct wpabuf *msg)
 static struct wpabuf * wps_build_m1(struct wps_data *wps)
 {
 	struct wpabuf *msg;
+	u16 config_methods;
 
-	if (os_get_random(wps->nonce_e, WPS_NONCE_LEN) < 0)
+	if (random_get_bytes(wps->nonce_e, WPS_NONCE_LEN) < 0)
 		return NULL;
 	wpa_hexdump(MSG_DEBUG, "WPS: Enrollee Nonce",
 		    wps->nonce_e, WPS_NONCE_LEN);
@@ -129,6 +131,26 @@ static struct wpabuf * wps_build_m1(struct wps_data *wps)
 	msg = wpabuf_alloc(1000);
 	if (msg == NULL)
 		return NULL;
+
+	config_methods = wps->wps->config_methods;
+	if (wps->wps->ap && !wps->pbc_in_m1 &&
+	    (wps->dev_password_len != 0 ||
+	     (config_methods & WPS_CONFIG_DISPLAY))) {
+		/*
+		 * These are the methods that the AP supports as an Enrollee
+		 * for adding external Registrars, so remove PushButton.
+		 *
+		 * As a workaround for Windows 7 mechanism for probing WPS
+		 * capabilities from M1, leave PushButton option if no PIN
+		 * method is available or if WPS configuration enables PBC
+		 * workaround.
+		 */
+		config_methods &= ~WPS_CONFIG_PUSHBUTTON;
+#ifdef CONFIG_WPS2
+		config_methods &= ~(WPS_CONFIG_VIRT_PUSHBUTTON |
+				    WPS_CONFIG_PHY_PUSHBUTTON);
+#endif /* CONFIG_WPS2 */
+	}
 
 	if (wps_build_version(msg) ||
 	    wps_build_msg_type(msg, WPS_M1) ||
@@ -139,7 +161,7 @@ static struct wpabuf * wps_build_m1(struct wps_data *wps)
 	    wps_build_auth_type_flags(wps, msg) ||
 	    wps_build_encr_type_flags(wps, msg) ||
 	    wps_build_conn_type_flags(wps, msg) ||
-	    wps_build_config_methods(msg, wps->wps->config_methods) ||
+	    wps_build_config_methods(msg, config_methods) ||
 	    wps_build_wps_state(wps, msg) ||
 	    wps_build_device_attrs(&wps->wps->dev, msg) ||
 	    wps_build_rf_bands(&wps->wps->dev, msg) ||
@@ -361,53 +383,6 @@ static struct wpabuf * wps_build_wsc_done(struct wps_data *wps)
 		wps_success_event(wps->wps);
 		wps->state = WPS_FINISHED;
 	}
-	return msg;
-}
-
-
-static struct wpabuf * wps_build_wsc_ack(struct wps_data *wps)
-{
-	struct wpabuf *msg;
-
-	wpa_printf(MSG_DEBUG, "WPS: Building Message WSC_ACK");
-
-	msg = wpabuf_alloc(1000);
-	if (msg == NULL)
-		return NULL;
-
-	if (wps_build_version(msg) ||
-	    wps_build_msg_type(msg, WPS_WSC_ACK) ||
-	    wps_build_enrollee_nonce(wps, msg) ||
-	    wps_build_registrar_nonce(wps, msg) ||
-	    wps_build_wfa_ext(msg, 0, NULL, 0)) {
-		wpabuf_free(msg);
-		return NULL;
-	}
-
-	return msg;
-}
-
-
-static struct wpabuf * wps_build_wsc_nack(struct wps_data *wps)
-{
-	struct wpabuf *msg;
-
-	wpa_printf(MSG_DEBUG, "WPS: Building Message WSC_NACK");
-
-	msg = wpabuf_alloc(1000);
-	if (msg == NULL)
-		return NULL;
-
-	if (wps_build_version(msg) ||
-	    wps_build_msg_type(msg, WPS_WSC_NACK) ||
-	    wps_build_enrollee_nonce(wps, msg) ||
-	    wps_build_registrar_nonce(wps, msg) ||
-	    wps_build_config_error(msg, wps->config_error) ||
-	    wps_build_wfa_ext(msg, 0, NULL, 0)) {
-		wpabuf_free(msg);
-		return NULL;
-	}
-
 	return msg;
 }
 
@@ -704,6 +679,7 @@ static int wps_process_cred_e(struct wps_data *wps, const u8 *cred,
 		if (wps->cred.encr_type & WPS_ENCR_WEP) {
 			wpa_printf(MSG_INFO, "WPS: Reject Credential "
 				   "due to WEP configuration");
+			wps->error_indication = WPS_EI_SECURITY_WEP_PROHIBITED;
 			return -2;
 		}
 
@@ -804,6 +780,7 @@ static int wps_process_ap_settings_e(struct wps_data *wps,
 		if (cred.encr_type & WPS_ENCR_WEP) {
 			wpa_printf(MSG_INFO, "WPS: Reject new AP settings "
 				   "due to WEP configuration");
+			wps->error_indication = WPS_EI_SECURITY_WEP_PROHIBITED;
 			return -1;
 		}
 
@@ -821,6 +798,8 @@ static int wps_process_ap_settings_e(struct wps_data *wps,
 		    WPS_AUTH_WPAPSK) {
 			wpa_printf(MSG_INFO, "WPS-STRICT: Invalid WSC 2.0 "
 				   "AP Settings: WPA-Personal/TKIP only");
+			wps->error_indication =
+				WPS_EI_SECURITY_TKIP_ONLY_PROHIBITED;
 			return -1;
 		}
 	}
@@ -872,8 +851,15 @@ static enum wps_process_res wps_process_m2(struct wps_data *wps,
 		return WPS_CONTINUE;
 	}
 
+	/*
+	 * Stop here on an AP as an Enrollee if AP Setup is locked unless the
+	 * special locked mode is used to allow protocol run up to M7 in order
+	 * to support external Registrars that only learn the current AP
+	 * configuration without changing it.
+	 */
 	if (wps->wps->ap &&
-	    (wps->wps->ap_setup_locked || wps->dev_password == NULL)) {
+	    ((wps->wps->ap_setup_locked && wps->wps->ap_setup_locked != 2) ||
+	     wps->dev_password == NULL)) {
 		wpa_printf(MSG_DEBUG, "WPS: AP Setup is locked - refuse "
 			   "registration of a new Registrar");
 		wps->config_error = WPS_CFG_SETUP_LOCKED;
@@ -1078,6 +1064,19 @@ static enum wps_process_res wps_process_m8(struct wps_data *wps,
 		return WPS_CONTINUE;
 	}
 
+	if (wps->wps->ap && wps->wps->ap_setup_locked) {
+		/*
+		 * Stop here if special ap_setup_locked == 2 mode allowed the
+		 * protocol to continue beyond M2. This allows ER to learn the
+		 * current AP settings without changing them.
+		 */
+		wpa_printf(MSG_DEBUG, "WPS: AP Setup is locked - refuse "
+			   "registration of a new Registrar");
+		wps->config_error = WPS_CFG_SETUP_LOCKED;
+		wps->state = SEND_WSC_NACK;
+		return WPS_CONTINUE;
+	}
+
 	decrypted = wps_decrypt_encr_settings(wps, attr->encr_settings,
 					      attr->encr_settings_len);
 	if (decrypted == NULL) {
@@ -1132,7 +1131,8 @@ static enum wps_process_res wps_process_wsc_msg(struct wps_data *wps,
 
 	if (attr.msg_type == NULL) {
 		wpa_printf(MSG_DEBUG, "WPS: No Message Type attribute");
-		return WPS_FAILURE;
+		wps->state = SEND_WSC_NACK;
+		return WPS_CONTINUE;
 	}
 
 	switch (*attr.msg_type) {
@@ -1151,21 +1151,24 @@ static enum wps_process_res wps_process_wsc_msg(struct wps_data *wps,
 			return WPS_FAILURE;
 		ret = wps_process_m4(wps, msg, &attr);
 		if (ret == WPS_FAILURE || wps->state == SEND_WSC_NACK)
-			wps_fail_event(wps->wps, WPS_M4, wps->config_error);
+			wps_fail_event(wps->wps, WPS_M4, wps->config_error,
+				       wps->error_indication);
 		break;
 	case WPS_M6:
 		if (wps_validate_m6(msg) < 0)
 			return WPS_FAILURE;
 		ret = wps_process_m6(wps, msg, &attr);
 		if (ret == WPS_FAILURE || wps->state == SEND_WSC_NACK)
-			wps_fail_event(wps->wps, WPS_M6, wps->config_error);
+			wps_fail_event(wps->wps, WPS_M6, wps->config_error,
+				       wps->error_indication);
 		break;
 	case WPS_M8:
 		if (wps_validate_m8(msg) < 0)
 			return WPS_FAILURE;
 		ret = wps_process_m8(wps, msg, &attr);
 		if (ret == WPS_FAILURE || wps->state == SEND_WSC_NACK)
-			wps_fail_event(wps->wps, WPS_M8, wps->config_error);
+			wps_fail_event(wps->wps, WPS_M8, wps->config_error,
+				       wps->error_indication);
 		break;
 	default:
 		wpa_printf(MSG_DEBUG, "WPS: Unsupported Message Type %d",
@@ -1292,13 +1295,16 @@ static enum wps_process_res wps_process_wsc_nack(struct wps_data *wps,
 
 	switch (wps->state) {
 	case RECV_M4:
-		wps_fail_event(wps->wps, WPS_M3, config_error);
+		wps_fail_event(wps->wps, WPS_M3, config_error,
+			       wps->error_indication);
 		break;
 	case RECV_M6:
-		wps_fail_event(wps->wps, WPS_M5, config_error);
+		wps_fail_event(wps->wps, WPS_M5, config_error,
+			       wps->error_indication);
 		break;
 	case RECV_M8:
-		wps_fail_event(wps->wps, WPS_M7, config_error);
+		wps_fail_event(wps->wps, WPS_M7, config_error,
+			       wps->error_indication);
 		break;
 	default:
 		break;

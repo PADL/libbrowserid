@@ -20,8 +20,8 @@
 #include "crypto/dh_group5.h"
 #include "crypto/sha1.h"
 #include "crypto/sha256.h"
+#include "crypto/random.h"
 #include "wps_i.h"
-#include "wps_dev_attr.h"
 
 
 void wps_kdf(const u8 *key, const u8 *label_prefix, size_t label_prefix_len,
@@ -243,7 +243,7 @@ unsigned int wps_generate_pin(void)
 	unsigned int val;
 
 	/* Generate seven random digits for the PIN */
-	if (os_get_random((unsigned char *) &val, sizeof(val)) < 0) {
+	if (random_get_bytes((unsigned char *) &val, sizeof(val)) < 0) {
 		struct os_time now;
 		os_get_time(&now);
 		val = os_random() ^ now.sec ^ now.usec;
@@ -256,7 +256,7 @@ unsigned int wps_generate_pin(void)
 
 
 void wps_fail_event(struct wps_context *wps, enum wps_msg_type msg,
-		    u16 config_error)
+		    u16 config_error, u16 error_indication)
 {
 	union wps_event_data data;
 
@@ -266,6 +266,7 @@ void wps_fail_event(struct wps_context *wps, enum wps_msg_type msg,
 	os_memset(&data, 0, sizeof(data));
 	data.fail.msg = msg;
 	data.fail.config_error = config_error;
+	data.fail.error_indication = error_indication;
 	wps->event_cb(wps->cb_ctx, WPS_EV_FAIL, &data);
 }
 
@@ -308,6 +309,15 @@ void wps_pbc_timeout_event(struct wps_context *wps)
 		return;
 
 	wps->event_cb(wps->cb_ctx, WPS_EV_PBC_TIMEOUT, NULL);
+}
+
+
+void wps_registrar_sel_registrar_changed_event(struct wps_context *wps)
+{
+	if (wps->event_cb == NULL)
+		return;
+
+	wps->event_cb(wps->cb_ctx, WPS_EV_ER_SET_SELECTED_REGISTRAR, NULL);
 }
 
 
@@ -652,4 +662,51 @@ u16 wps_config_methods_str2bin(const char *str)
 	}
 
 	return methods;
+}
+
+
+struct wpabuf * wps_build_wsc_ack(struct wps_data *wps)
+{
+	struct wpabuf *msg;
+
+	wpa_printf(MSG_DEBUG, "WPS: Building Message WSC_ACK");
+
+	msg = wpabuf_alloc(1000);
+	if (msg == NULL)
+		return NULL;
+
+	if (wps_build_version(msg) ||
+	    wps_build_msg_type(msg, WPS_WSC_ACK) ||
+	    wps_build_enrollee_nonce(wps, msg) ||
+	    wps_build_registrar_nonce(wps, msg) ||
+	    wps_build_wfa_ext(msg, 0, NULL, 0)) {
+		wpabuf_free(msg);
+		return NULL;
+	}
+
+	return msg;
+}
+
+
+struct wpabuf * wps_build_wsc_nack(struct wps_data *wps)
+{
+	struct wpabuf *msg;
+
+	wpa_printf(MSG_DEBUG, "WPS: Building Message WSC_NACK");
+
+	msg = wpabuf_alloc(1000);
+	if (msg == NULL)
+		return NULL;
+
+	if (wps_build_version(msg) ||
+	    wps_build_msg_type(msg, WPS_WSC_NACK) ||
+	    wps_build_enrollee_nonce(wps, msg) ||
+	    wps_build_registrar_nonce(wps, msg) ||
+	    wps_build_config_error(msg, wps->config_error) ||
+	    wps_build_wfa_ext(msg, 0, NULL, 0)) {
+		wpabuf_free(msg);
+		return NULL;
+	}
+
+	return msg;
 }

@@ -331,11 +331,13 @@ struct wpa_config * wpa_config_read(const char *name)
 	config->ssid = head;
 	wpa_config_debug_dump_networks(config);
 
+#ifndef WPA_IGNORE_CONFIG_ERRORS
 	if (errors) {
 		wpa_config_free(config);
 		config = NULL;
 		head = NULL;
 	}
+#endif /* WPA_IGNORE_CONFIG_ERRORS */
 
 	return config;
 }
@@ -643,8 +645,12 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 		fprintf(f, "model_number=%s\n", config->model_number);
 	if (config->serial_number)
 		fprintf(f, "serial_number=%s\n", config->serial_number);
-	if (config->device_type)
-		fprintf(f, "device_type=%s\n", config->device_type);
+	{
+		char _buf[WPS_DEV_TYPE_BUFSIZE], *buf;
+		buf = wps_dev_type_bin2str(config->device_type,
+					   _buf, sizeof(_buf));
+		fprintf(f, "device_type=%s\n", buf);
+	}
 	if (WPA_GET_BE32(config->os_version))
 		fprintf(f, "os_version=%08x\n",
 			WPA_GET_BE32(config->os_version));
@@ -675,7 +681,8 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 			config->persistent_reconnect);
 	if (config->p2p_intra_bss != DEFAULT_P2P_INTRA_BSS)
 		fprintf(f, "p2p_intra_bss=%u\n", config->p2p_intra_bss);
-
+	if (config->p2p_group_idle)
+		fprintf(f, "p2p_group_idle=%u\n", config->p2p_group_idle);
 #endif /* CONFIG_P2P */
 	if (config->country[0] && config->country[1]) {
 		fprintf(f, "country=%c%c\n",
@@ -683,8 +690,40 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 	}
 	if (config->bss_max_count != DEFAULT_BSS_MAX_COUNT)
 		fprintf(f, "bss_max_count=%u\n", config->bss_max_count);
+	if (config->bss_expiration_age != DEFAULT_BSS_EXPIRATION_AGE)
+		fprintf(f, "bss_expiration_age=%u\n",
+			config->bss_expiration_age);
+	if (config->bss_expiration_scan_count !=
+	    DEFAULT_BSS_EXPIRATION_SCAN_COUNT)
+		fprintf(f, "bss_expiration_scan_count=%u\n",
+			config->bss_expiration_scan_count);
 	if (config->filter_ssids)
 		fprintf(f, "filter_ssids=%d\n", config->filter_ssids);
+	if (config->max_num_sta != DEFAULT_MAX_NUM_STA)
+		fprintf(f, "max_num_sta=%u\n", config->max_num_sta);
+	if (config->disassoc_low_ack)
+		fprintf(f, "disassoc_low_ack=%u\n", config->disassoc_low_ack);
+#ifdef CONFIG_INTERWORKING
+	if (config->home_realm)
+		fprintf(f, "home_realm=%s\n", config->home_realm);
+	if (config->home_username)
+		fprintf(f, "home_username=%s\n", config->home_username);
+	if (config->home_password)
+		fprintf(f, "home_password=%s\n", config->home_password);
+	if (config->home_ca_cert)
+		fprintf(f, "home_ca_cert=%s\n", config->home_ca_cert);
+	if (config->home_imsi)
+		fprintf(f, "home_imsi=%s\n", config->home_imsi);
+	if (config->home_milenage)
+		fprintf(f, "home_milenage=%s\n", config->home_milenage);
+	if (config->interworking)
+		fprintf(f, "interworking=%u\n", config->interworking);
+	if (!is_zero_ether_addr(config->hessid))
+		fprintf(f, "hessid=" MACSTR "\n", MAC2STR(config->hessid));
+	if (config->access_network_type != DEFAULT_ACCESS_NETWORK_TYPE)
+		fprintf(f, "access_network_type=%d\n",
+			config->access_network_type);
+#endif /* CONFIG_INTERWORKING */
 }
 
 #endif /* CONFIG_NO_CONFIG_WRITE */

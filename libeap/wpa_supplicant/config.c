@@ -1694,7 +1694,6 @@ void wpa_config_free(struct wpa_config *config)
 	struct wpa_config_blob *blob, *prevblob;
 #endif /* CONFIG_NO_CONFIG_BLOBS */
 	struct wpa_ssid *ssid, *prev = NULL;
-	int i;
 
 	ssid = config->ssid;
 	while (ssid) {
@@ -1724,13 +1723,41 @@ void wpa_config_free(struct wpa_config *config)
 	os_free(config->model_name);
 	os_free(config->model_number);
 	os_free(config->serial_number);
-	os_free(config->device_type);
-	for (i = 0; i < MAX_SEC_DEVICE_TYPES; i++)
-		os_free(config->sec_device_type[i]);
 	os_free(config->config_methods);
 	os_free(config->p2p_ssid_postfix);
 	os_free(config->pssid);
+	os_free(config->home_realm);
+	os_free(config->home_username);
+	os_free(config->home_password);
+	os_free(config->home_ca_cert);
+	os_free(config->home_imsi);
+	os_free(config->home_milenage);
 	os_free(config);
+}
+
+
+/**
+ * wpa_config_foreach_network - Iterate over each configured network
+ * @config: Configuration data from wpa_config_read()
+ * @func: Callback function to process each network
+ * @arg: Opaque argument to pass to callback function
+ *
+ * Iterate over the set of configured networks calling the specified
+ * function for each item. We guard against callbacks removing the
+ * supplied network.
+ */
+void wpa_config_foreach_network(struct wpa_config *config,
+				void (*func)(void *, struct wpa_ssid *),
+				void *arg)
+{
+	struct wpa_ssid *ssid, *next;
+
+	ssid = config->ssid;
+	while (ssid) {
+		next = ssid->next;
+		func(arg, ssid);
+		ssid = next;
+	}
 }
 
 
@@ -1888,10 +1915,32 @@ int wpa_config_set(struct wpa_ssid *ssid, const char *var, const char *value,
 }
 
 
+int wpa_config_set_quoted(struct wpa_ssid *ssid, const char *var,
+			  const char *value)
+{
+	size_t len;
+	char *buf;
+	int ret;
+
+	len = os_strlen(value);
+	buf = os_malloc(len + 3);
+	if (buf == NULL)
+		return -1;
+	buf[0] = '"';
+	os_memcpy(buf + 1, value, len);
+	buf[len + 1] = '"';
+	buf[len + 2] = '\0';
+	ret = wpa_config_set(ssid, var, buf, 0);
+	os_free(buf);
+	return ret;
+}
+
+
 /**
  * wpa_config_get_all - Get all options from network configuration
  * @ssid: Pointer to network configuration data
  * @get_keys: Determines if keys/passwords will be included in returned list
+ *	(if they may be exported)
  * Returns: %NULL terminated list of all set keys and their values in the form
  * of [key1, val1, key2, val2, ... , NULL]
  *
@@ -1906,6 +1955,8 @@ char ** wpa_config_get_all(struct wpa_ssid *ssid, int get_keys)
 	size_t i;
 	char **props;
 	int fields_num;
+
+	get_keys = get_keys && ssid->export_keys;
 
 	props = os_zalloc(sizeof(char *) * ((2 * NUM_SSID_FIELDS) + 1));
 	if (!props)
@@ -2146,6 +2197,10 @@ struct wpa_config * wpa_config_alloc_empty(const char *ctrl_interface,
 	config->p2p_go_intent = DEFAULT_P2P_GO_INTENT;
 	config->p2p_intra_bss = DEFAULT_P2P_INTRA_BSS;
 	config->bss_max_count = DEFAULT_BSS_MAX_COUNT;
+	config->bss_expiration_age = DEFAULT_BSS_EXPIRATION_AGE;
+	config->bss_expiration_scan_count = DEFAULT_BSS_EXPIRATION_SCAN_COUNT;
+	config->max_num_sta = DEFAULT_MAX_NUM_STA;
+	config->access_network_type = DEFAULT_ACCESS_NETWORK_TYPE;
 
 	if (ctrl_interface)
 		config->ctrl_interface = os_strdup(ctrl_interface);
@@ -2307,6 +2362,14 @@ static int wpa_config_process_uuid(const struct global_parse_data *data,
 }
 
 
+static int wpa_config_process_device_type(
+	const struct global_parse_data *data,
+	struct wpa_config *config, int line, const char *pos)
+{
+	return wps_dev_type_str2bin(pos, config->device_type);
+}
+
+
 static int wpa_config_process_os_version(const struct global_parse_data *data,
 					 struct wpa_config *config, int line,
 					 const char *pos)
@@ -2329,21 +2392,35 @@ static int wpa_config_process_sec_device_type(
 {
 	int idx;
 
-	for (idx = 0; idx < MAX_SEC_DEVICE_TYPES; idx++)
-		if (config->sec_device_type[idx] == NULL)
-			break;
-	if (idx == MAX_SEC_DEVICE_TYPES) {
+	if (config->num_sec_device_types >= MAX_SEC_DEVICE_TYPES) {
 		wpa_printf(MSG_ERROR, "Line %d: too many sec_device_type "
 			   "items", line);
 		return -1;
 	}
 
-	config->sec_device_type[idx] = os_strdup(pos);
-	if (config->sec_device_type[idx] == NULL)
+	idx = config->num_sec_device_types;
+
+	if (wps_dev_type_str2bin(pos, config->sec_device_type[idx]))
 		return -1;
+
+	config->num_sec_device_types++;
 	return 0;
 }
 #endif /* CONFIG_P2P */
+
+
+static int wpa_config_process_hessid(
+	const struct global_parse_data *data,
+	struct wpa_config *config, int line, const char *pos)
+{
+	if (hwaddr_aton2(pos, config->hessid) < 0) {
+		wpa_printf(MSG_ERROR, "Line %d: Invalid hessid '%s'",
+			   line, pos);
+		return -1;
+	}
+
+	return 0;
+}
 
 
 #ifdef OFFSET
@@ -2387,7 +2464,7 @@ static const struct global_parse_data global_fields[] = {
 	{ STR_RANGE(model_name, 0, 32), CFG_CHANGED_WPS_STRING },
 	{ STR_RANGE(model_number, 0, 32), CFG_CHANGED_WPS_STRING },
 	{ STR_RANGE(serial_number, 0, 32), CFG_CHANGED_WPS_STRING },
-	{ STR(device_type), CFG_CHANGED_DEVICE_TYPE },
+	{ FUNC(device_type), CFG_CHANGED_DEVICE_TYPE },
 	{ FUNC(os_version), CFG_CHANGED_OS_VERSION },
 	{ STR(config_methods), CFG_CHANGED_CONFIG_METHODS },
 	{ INT_RANGE(wps_cred_processing, 0, 2), 0 },
@@ -2402,10 +2479,24 @@ static const struct global_parse_data global_fields[] = {
 	{ STR(p2p_ssid_postfix), CFG_CHANGED_P2P_SSID_POSTFIX },
 	{ INT_RANGE(persistent_reconnect, 0, 1), 0 },
 	{ INT_RANGE(p2p_intra_bss, 0, 1), CFG_CHANGED_P2P_INTRA_BSS },
+	{ INT(p2p_group_idle), 0 },
 #endif /* CONFIG_P2P */
 	{ FUNC(country), CFG_CHANGED_COUNTRY },
 	{ INT(bss_max_count), 0 },
-	{ INT_RANGE(filter_ssids, 0, 1), 0 }
+	{ INT(bss_expiration_age), 0 },
+	{ INT(bss_expiration_scan_count), 0 },
+	{ INT_RANGE(filter_ssids, 0, 1), 0 },
+	{ INT(max_num_sta), 0 },
+	{ INT_RANGE(disassoc_low_ack, 0, 1), 0 },
+	{ STR(home_realm), 0 },
+	{ STR(home_username), 0 },
+	{ STR(home_password), 0 },
+	{ STR(home_ca_cert), 0 },
+	{ STR(home_imsi), 0 },
+	{ STR(home_milenage), 0 },
+	{ INT_RANGE(interworking, 0, 1), 0 },
+	{ FUNC(hessid), 0 },
+	{ INT_RANGE(access_network_type, 0, 15), 0 }
 };
 
 #undef FUNC

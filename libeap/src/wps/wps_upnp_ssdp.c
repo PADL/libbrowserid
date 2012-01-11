@@ -97,16 +97,6 @@ static int line_length(const char *l)
 }
 
 
-/* No. of chars excluding trailing whitespace */
-static int line_length_stripped(const char *l)
-{
-	const char *lp = l + line_length(l);
-	while (lp > l && !isgraph(lp[-1]))
-		lp--;
-	return lp - l;
-}
-
-
 static int str_starts(const char *str, const char *start)
 {
 	return os_strncmp(str, start, os_strlen(start)) == 0;
@@ -136,9 +126,12 @@ next_advertisement(struct upnp_wps_device_sm *sm,
 	struct wpabuf *msg;
 	char *NTString = "";
 	char uuid_string[80];
+	struct upnp_wps_device_interface *iface;
 
 	*islast = 0;
-	uuid_bin2str(sm->wps->uuid, uuid_string, sizeof(uuid_string));
+	iface = dl_list_first(&sm->interfaces,
+			      struct upnp_wps_device_interface, list);
+	uuid_bin2str(iface->wps->uuid, uuid_string, sizeof(uuid_string));
 	msg = wpabuf_alloc(800); /* more than big enough */
 	if (msg == NULL)
 		goto fail;
@@ -527,7 +520,6 @@ static void ssdp_parse_msearch(struct upnp_wps_device_sm *sm,
 #ifndef CONFIG_NO_STDOUT_DEBUG
 	const char *start = data;
 #endif /* CONFIG_NO_STDOUT_DEBUG */
-	const char *end;
 	int got_host = 0;
 	int got_st = 0, st_match = 0;
 	int got_man = 0;
@@ -542,7 +534,6 @@ static void ssdp_parse_msearch(struct upnp_wps_device_sm *sm,
 
 	/* Parse remaining lines */
 	for (; *data != '\0'; data += line_length(data)) {
-		end = data + line_length_stripped(data);
 		if (token_eq(data, "host")) {
 			/* The host line indicates who the packet
 			 * is addressed to... but do we really care?
@@ -588,8 +579,13 @@ static void ssdp_parse_msearch(struct upnp_wps_device_sm *sm,
 			}
 			if (str_starts(data, "uuid:")) {
 				char uuid_string[80];
+				struct upnp_wps_device_interface *iface;
+				iface = dl_list_first(
+					&sm->interfaces,
+					struct upnp_wps_device_interface,
+					list);
 				data += os_strlen("uuid:");
-				uuid_bin2str(sm->wps->uuid, uuid_string,
+				uuid_bin2str(iface->wps->uuid, uuid_string,
 					     sizeof(uuid_string));
 				if (str_starts(data, uuid_string))
 					st_match = 1;

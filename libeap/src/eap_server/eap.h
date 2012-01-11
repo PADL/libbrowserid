@@ -110,6 +110,8 @@ struct eap_config {
 	const struct wpabuf *assoc_p2p_ie;
 	const u8 *peer_addr;
 	int fragment_size;
+
+	int pbc_in_m1;
 };
 
 
@@ -123,5 +125,6 @@ void eap_sm_pending_cb(struct eap_sm *sm);
 int eap_sm_method_pending(struct eap_sm *sm);
 const u8 * eap_get_identity(struct eap_sm *sm, size_t *len);
 struct eap_eapol_interface * eap_get_interface(struct eap_sm *sm);
+void eap_server_clear_identity(struct eap_sm *sm);
 
 #endif /* EAP_H */

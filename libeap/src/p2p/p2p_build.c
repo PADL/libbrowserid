@@ -171,11 +171,13 @@ void p2p_buf_add_device_info(struct wpabuf *buf, struct p2p_data *p2p,
 	if (peer && peer->wps_method != WPS_NOT_READY) {
 		if (peer->wps_method == WPS_PBC)
 			methods |= WPS_CONFIG_PUSHBUTTON;
-		else if (peer->wps_method == WPS_PIN_LABEL)
-			methods |= WPS_CONFIG_LABEL;
 		else if (peer->wps_method == WPS_PIN_DISPLAY ||
 			 peer->wps_method == WPS_PIN_KEYPAD)
 			methods |= WPS_CONFIG_DISPLAY | WPS_CONFIG_KEYPAD;
+	} else if (p2p->cfg->config_methods) {
+		methods |= p2p->cfg->config_methods &
+			(WPS_CONFIG_PUSHBUTTON | WPS_CONFIG_DISPLAY |
+			 WPS_CONFIG_KEYPAD);
 	} else {
 		methods |= WPS_CONFIG_PUSHBUTTON;
 		methods |= WPS_CONFIG_DISPLAY | WPS_CONFIG_KEYPAD;
@@ -330,10 +332,37 @@ void p2p_buf_add_p2p_interface(struct wpabuf *buf, struct p2p_data *p2p)
 }
 
 
+static void p2p_add_wps_string(struct wpabuf *buf, enum wps_attribute attr,
+			       const char *val)
+{
+	size_t len;
+
+	wpabuf_put_be16(buf, attr);
+	len = val ? os_strlen(val) : 0;
+#ifndef CONFIG_WPS_STRICT
+	if (len == 0) {
+		/*
+		 * Some deployed WPS implementations fail to parse zeor-length
+		 * attributes. As a workaround, send a space character if the
+		 * device attribute string is empty.
+		 */
+		wpabuf_put_be16(buf, 1);
+		wpabuf_put_u8(buf, ' ');
+		return;
+	}
+#endif /* CONFIG_WPS_STRICT */
+	wpabuf_put_be16(buf, len);
+	if (val)
+		wpabuf_put_data(buf, val, len);
+}
+
+
 void p2p_build_wps_ie(struct p2p_data *p2p, struct wpabuf *buf, u16 pw_id,
 		      int all_attr)
 {
 	u8 *len;
+	int i;
+
 	wpabuf_put_u8(buf, WLAN_EID_VENDOR_SPECIFIC);
 	len = wpabuf_put(buf, 1);
 	wpabuf_put_be32(buf, WPS_DEV_OUI_WFA);
@@ -353,37 +382,52 @@ void p2p_build_wps_ie(struct p2p_data *p2p, struct wpabuf *buf, u16 pw_id,
 	wpabuf_put_be16(buf, pw_id);
 
 	if (all_attr) {
-		size_t nlen;
-
 		wpabuf_put_be16(buf, ATTR_RESPONSE_TYPE);
 		wpabuf_put_be16(buf, 1);
 		wpabuf_put_u8(buf, WPS_RESP_ENROLLEE_INFO);
 
-#if 0
-		/* FIX */
-		wps_build_uuid_e(buf, reg->wps->uuid);
-		wps_build_manufacturer(dev, buf);
-		wps_build_model_name(dev, buf);
-		wps_build_model_number(dev, buf);
-		wps_build_serial_number(dev, buf);
-#endif
+		wps_build_uuid_e(buf, p2p->cfg->uuid);
+		p2p_add_wps_string(buf, ATTR_MANUFACTURER,
+				   p2p->cfg->manufacturer);
+		p2p_add_wps_string(buf, ATTR_MODEL_NAME, p2p->cfg->model_name);
+		p2p_add_wps_string(buf, ATTR_MODEL_NUMBER,
+				   p2p->cfg->model_number);
+		p2p_add_wps_string(buf, ATTR_SERIAL_NUMBER,
+				   p2p->cfg->serial_number);
 
 		wpabuf_put_be16(buf, ATTR_PRIMARY_DEV_TYPE);
 		wpabuf_put_be16(buf, WPS_DEV_TYPE_LEN);
 		wpabuf_put_data(buf, p2p->cfg->pri_dev_type, WPS_DEV_TYPE_LEN);
 
-		wpabuf_put_be16(buf, ATTR_DEV_NAME);
-		nlen = p2p->cfg->dev_name ? os_strlen(p2p->cfg->dev_name) : 0;
-		wpabuf_put_be16(buf, nlen);
-		if (p2p->cfg->dev_name)
-			wpabuf_put_data(buf, p2p->cfg->dev_name, nlen);
+		p2p_add_wps_string(buf, ATTR_DEV_NAME, p2p->cfg->dev_name);
 
 		wpabuf_put_be16(buf, ATTR_CONFIG_METHODS);
 		wpabuf_put_be16(buf, 2);
-		wpabuf_put_be16(buf, 0); /* FIX: ? */
+		wpabuf_put_be16(buf, p2p->cfg->config_methods);
 	}
 
 	wps_build_wfa_ext(buf, 0, NULL, 0);
+
+	if (all_attr && p2p->cfg->num_sec_dev_types) {
+		wpabuf_put_be16(buf, ATTR_SECONDARY_DEV_TYPE_LIST);
+		wpabuf_put_be16(buf, WPS_DEV_TYPE_LEN *
+				p2p->cfg->num_sec_dev_types);
+		wpabuf_put_data(buf, p2p->cfg->sec_dev_type,
+				WPS_DEV_TYPE_LEN *
+				p2p->cfg->num_sec_dev_types);
+	}
+
+	/* Add the WPS vendor extensions */
+	for (i = 0; i < P2P_MAX_WPS_VENDOR_EXT; i++) {
+		if (p2p->wps_vendor_ext[i] == NULL)
+			break;
+		if (wpabuf_tailroom(buf) <
+		    4 + wpabuf_len(p2p->wps_vendor_ext[i]))
+			continue;
+		wpabuf_put_be16(buf, ATTR_VENDOR_EXT);
+		wpabuf_put_be16(buf, wpabuf_len(p2p->wps_vendor_ext[i]));
+		wpabuf_put_buf(buf, p2p->wps_vendor_ext[i]);
+	}
 
 	p2p_buf_update_ie_hdr(buf, len);
 }

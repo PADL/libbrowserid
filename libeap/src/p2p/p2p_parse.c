@@ -166,7 +166,8 @@ static int p2p_parse_attribute(u8 id, const u8 *data, u16 len,
 		for (i = 0; i < nlen; i++) {
 			if (msg->device_name[i] == '\0')
 				break;
-			if (msg->device_name[i] < 32)
+			if (msg->device_name[i] > 0 &&
+			    msg->device_name[i] < 32)
 				msg->device_name[i] = '_';
 		}
 		wpa_printf(MSG_DEBUG, "P2P: * Device Info: addr " MACSTR
@@ -327,6 +328,7 @@ int p2p_parse_p2p_ie(const struct wpabuf *buf, struct p2p_message *msg)
 static int p2p_parse_wps_ie(const struct wpabuf *buf, struct p2p_message *msg)
 {
 	struct wps_parse_attr attr;
+	int i;
 
 	wpa_printf(MSG_DEBUG, "P2P: Parsing WPS IE");
 	if (wps_parse_msg(buf, &attr))
@@ -352,6 +354,24 @@ static int p2p_parse_wps_ie(const struct wpabuf *buf, struct p2p_message *msg)
 			   wps_dev_type_bin2str(msg->wps_pri_dev_type, devtype,
 						sizeof(devtype)));
 	}
+	if (attr.sec_dev_type_list) {
+		msg->wps_sec_dev_type_list = attr.sec_dev_type_list;
+		msg->wps_sec_dev_type_list_len = attr.sec_dev_type_list_len;
+	}
+
+	for (i = 0; i < P2P_MAX_WPS_VENDOR_EXT; i++) {
+		msg->wps_vendor_ext[i] = attr.vendor_ext[i];
+		msg->wps_vendor_ext_len[i] = attr.vendor_ext_len[i];
+	}
+
+	msg->manufacturer = attr.manufacturer;
+	msg->manufacturer_len = attr.manufacturer_len;
+	msg->model_name = attr.model_name;
+	msg->model_name_len = attr.model_name_len;
+	msg->model_number = attr.model_number;
+	msg->model_number_len = attr.model_number_len;
+	msg->serial_number = attr.serial_number;
+	msg->serial_number_len = attr.serial_number_len;
 
 	return 0;
 }
@@ -563,7 +583,7 @@ static int p2p_group_info_text(const u8 *gi, size_t gi_len, char *buf,
 		name[cli->dev_name_len] = '\0';
 		count = (int) cli->dev_name_len - 1;
 		while (count >= 0) {
-			if (name[count] < 32)
+			if (name[count] > 0 && name[count] < 32)
 				name[count] = '_';
 			count--;
 		}

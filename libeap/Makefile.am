@@ -1,41 +1,13 @@
 AUTOMAKE_OPTIONS = foreign
 
 AM_CPPFLAGS = -I$(srcdir)/src -I$(srcdir)/eap_example -I$(srcdir)/src/utils 
-noinst_HEADERS = \
-	src/common/defs.h \
-	src/common/eapol_common.h \
-	src/common/ieee802_11_common.h \
-	src/common/ieee802_11_defs.h \
-	src/common/privsep_commands.h \
-	src/common/version.h \
-	src/common/wpa_common.h \
-	src/common/wpa_ctrl.h
-
-EXTRA_DIST = src/tls/libtommath.c
 
 SOURCES_BOTH = src/eap_common/eap_peap_common.c
 SOURCES_BOTH += src/eap_common/eap_psk_common.c
 SOURCES_BOTH += src/eap_common/eap_pax_common.c
 SOURCES_BOTH += src/eap_common/eap_sake_common.c
 SOURCES_BOTH += src/eap_common/eap_gpsk_common.c
-SOURCES_BOTH += src/eap_common/chap.c \
-src/eap_common/chap.h \
-	src/eap_common/eap_common.h \
-	src/eap_common/eap_defs.h \
-	src/eap_common/eap_fast_common.h \
-	src/eap_common/eap_gpsk_common.h \
-	src/eap_common/eap_ikev2_common.h \
-	src/eap_common/eap_pax_common.h \
-	src/eap_common/eap_peap_common.h \
-	src/eap_common/eap_psk_common.h \
-	src/eap_common/eap_pwd_common.h \
-	src/eap_common/eap_sake_common.h \
-	src/eap_common/eap_sim_common.h \
-	src/eap_common/eap_tlv_common.h \
-	src/eap_common/eap_ttls.h \
-	src/eap_common/eap_wsc_common.h \
-	src/eap_common/ikev2_common.h
-
+SOURCES_BOTH += src/eap_common/chap.c
 
 SOURCES_peer = src/eap_peer/eap_tls.c
 SOURCES_peer += src/eap_peer/eap_peap.c
@@ -53,17 +25,7 @@ SOURCES_peer += src/eap_peer/eap_gpsk.c
 SOURCES_peer += src/eap_peer/eap.c
 SOURCES_peer += src/eap_common/eap_common.c
 SOURCES_peer += src/eap_peer/eap_methods.c
-SOURCES_peer += src/eap_peer/eap_tls_common.c \
-	src/eap_peer/eap_config.h \
-	src/eap_peer/eap_fast_pac.h \
-	src/eap_peer/eap.h \
-	src/eap_peer/eap_i.h \
-	src/eap_peer/eap_methods.h \
-	src/eap_peer/eap_tls_common.h \
-	src/eap_peer/ikev2.h \
-	src/eap_peer/mschapv2.h \
-	src/eap_peer/tncc.h
-
+SOURCES_peer += src/eap_peer/eap_tls_common.c
 CFLAGS += -DEAP_TLS
 CFLAGS += -DEAP_PEAP
 CFLAGS += -DEAP_TTLS
@@ -104,24 +66,7 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/uuid.c \
 	src/utils/wpa_debug.c \
 	src/utils/wpabuf.c \
-	src/utils/os_unix.c \
-	src/utils/base64.h \
-	src/utils/build_config.h \
-	src/utils/common.h \
-	src/utils/eloop.h \
-	src/utils/includes.h \
-	src/utils/ip_addr.h \
-	src/utils/list.h \
-	src/utils/os.h \
-	src/utils/pcsc_funcs.h \
-	src/utils/radiotap.h \
-	src/utils/radiotap_iter.h \
-	src/utils/state_machine.h \
-	src/utils/trace.h \
-	src/utils/uuid.h \
-	src/utils/wpabuf.h \
-	src/utils/wpa_debug.h
-
+	src/utils/os_unix.c
 
 CRYPTO_SRCS = \
     src/crypto/aes-cbc.c \
@@ -156,23 +101,7 @@ CRYPTO_SRCS = \
     src/crypto/crypto_internal-modexp.c \
     src/crypto/crypto_internal-rsa.c \
     src/crypto/tls_internal.c \
-    src/crypto/fips_prf_internal.c \
-	src/crypto/aes.h \
-	src/crypto/aes_i.h \
-	src/crypto/aes_wrap.h \
-	src/crypto/crypto.h \
-	src/crypto/des_i.h \
-	src/crypto/dh_group5.h \
-	src/crypto/dh_groups.h \
-	src/crypto/md5.h \
-	src/crypto/md5_i.h \
-	src/crypto/milenage.h \
-	src/crypto/ms_funcs.h \
-	src/crypto/sha1.h \
-	src/crypto/sha1_i.h \
-	src/crypto/sha256.h \
-	src/crypto/tls.h
-
+    src/crypto/fips_prf_internal.c
 
 TLS_SRCS = \
     src/tls/asn1.c \
@@ -190,21 +119,7 @@ TLS_SRCS = \
     src/tls/tlsv1_server.c \
     src/tls/tlsv1_server_read.c \
     src/tls/tlsv1_server_write.c \
-    src/tls/x509v3.c \
-	src/tls/asn1.h \
-	src/tls/bignum.h \
-	src/tls/pkcs1.h \
-	src/tls/pkcs5.h \
-	src/tls/pkcs8.h \
-	src/tls/rsa.h \
-	src/tls/tlsv1_client.h \
-	src/tls/tlsv1_client_i.h \
-	src/tls/tlsv1_common.h \
-	src/tls/tlsv1_cred.h \
-	src/tls/tlsv1_record.h \
-	src/tls/tlsv1_server.h \
-	src/tls/tlsv1_server_i.h \
-	src/tls/x509v3.h 
+    src/tls/x509v3.c
 
 libeap_la_SOURCES = $(SOURCES_BOTH) $(SOURCES_peer) $(UTILS_SRCS) $(CRYPTO_SRCS) $(TLS_SRCS)
 

@@ -109,8 +109,11 @@ struct wps_data * wps_init(const struct wps_config *cfg)
 
 	if (cfg->peer_addr)
 		os_memcpy(data->peer_dev.mac_addr, cfg->peer_addr, ETH_ALEN);
+	if (cfg->p2p_dev_addr)
+		os_memcpy(data->p2p_dev_addr, cfg->p2p_dev_addr, ETH_ALEN);
 
 	data->use_psk_key = cfg->use_psk_key;
+	data->pbc_in_m1 = cfg->pbc_in_m1;
 
 	return data;
 }
@@ -352,6 +355,19 @@ const u8 * wps_get_uuid_e(const struct wpabuf *msg)
 
 
 /**
+ * wps_is_20 - Check whether WPS attributes claim support for WPS 2.0
+ */
+int wps_is_20(const struct wpabuf *msg)
+{
+	struct wps_parse_attr attr;
+
+	if (msg == NULL || wps_parse_msg(msg, &attr) < 0)
+		return 0;
+	return attr.version2 != NULL;
+}
+
+
+/**
  * wps_build_assoc_req_ie - Build WPS IE for (Re)Association Request
  * @req_type: Value for Request Type attribute
  * Returns: WPS IE or %NULL on failure
@@ -426,16 +442,20 @@ struct wpabuf * wps_build_assoc_resp_ie(void)
  * @dev: Device attributes
  * @uuid: Own UUID
  * @req_type: Value for Request Type attribute
+ * @num_req_dev_types: Number of requested device types
+ * @req_dev_types: Requested device types (8 * num_req_dev_types octets) or
+ *	%NULL if none
  * Returns: WPS IE or %NULL on failure
  *
  * The caller is responsible for freeing the buffer.
  */
 struct wpabuf * wps_build_probe_req_ie(int pbc, struct wps_device_data *dev,
 				       const u8 *uuid,
-				       enum wps_request_type req_type)
+				       enum wps_request_type req_type,
+				       unsigned int num_req_dev_types,
+				       const u8 *req_dev_types)
 {
 	struct wpabuf *ie;
-	u16 methods;
 
 	wpa_printf(MSG_DEBUG, "WPS: Building WPS IE for Probe Request");
 
@@ -443,38 +463,9 @@ struct wpabuf * wps_build_probe_req_ie(int pbc, struct wps_device_data *dev,
 	if (ie == NULL)
 		return NULL;
 
-	if (pbc) {
-		methods = WPS_CONFIG_PUSHBUTTON;
-#ifdef CONFIG_WPS2
-		/*
-		 * TODO: At least in theory, should figure out whether this
-		 * Probe Request was triggered with physical or virtual
-		 * pushbutton.
-		 */
-		methods |= WPS_CONFIG_VIRT_PUSHBUTTON;
-#endif /* CONFIG_WPS2 */
-	} else {
-		/*
-		 * TODO: At least in theory, should figure out whether this
-		 * Probe Request was triggered using physical or virtual
-		 * display.
-		 */
-		methods = WPS_CONFIG_LABEL | WPS_CONFIG_DISPLAY |
-#ifdef CONFIG_WPS2
-			WPS_CONFIG_VIRT_DISPLAY |
-#endif /* CONFIG_WPS2 */
-			WPS_CONFIG_KEYPAD;
-#ifdef CONFIG_WPS_UFD
-		methods |= WPS_CONFIG_USBA;
-#endif /* CONFIG_WPS_UFD */
-#ifdef CONFIG_WPS_NFC
-		methods |= WPS_CONFIG_NFC_INTERFACE;
-#endif /* CONFIG_WPS_NFC */
-	}
-
 	if (wps_build_version(ie) ||
 	    wps_build_req_type(ie, req_type) ||
-	    wps_build_config_methods(ie, methods) ||
+	    wps_build_config_methods(ie, dev->config_methods) ||
 	    wps_build_uuid_e(ie, uuid) ||
 	    wps_build_primary_dev_type(dev, ie) ||
 	    wps_build_rf_bands(dev, ie) ||
@@ -487,10 +478,11 @@ struct wpabuf * wps_build_probe_req_ie(int pbc, struct wps_device_data *dev,
 	    wps_build_model_name(dev, ie) ||
 	    wps_build_model_number(dev, ie) ||
 	    wps_build_dev_name(dev, ie) ||
-	    wps_build_wfa_ext(ie, req_type == WPS_REQ_ENROLLEE, NULL, 0)
-#else /* CONFIG_WPS2 */
-	    0
+	    wps_build_wfa_ext(ie, req_type == WPS_REQ_ENROLLEE, NULL, 0) ||
 #endif /* CONFIG_WPS2 */
+	    wps_build_req_dev_type(dev, ie, num_req_dev_types, req_dev_types)
+	    ||
+	    wps_build_secondary_dev_type(dev, ie)
 		) {
 		wpabuf_free(ie);
 		return NULL;

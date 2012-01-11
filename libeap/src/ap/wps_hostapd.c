@@ -28,6 +28,7 @@
 #include "wps/wps_dev_attr.h"
 #include "hostapd.h"
 #include "ap_config.h"
+#include "ap_drv_ops.h"
 #include "beacon.h"
 #include "sta_info.h"
 #include "wps_hostapd.h"
@@ -40,7 +41,8 @@ static int hostapd_wps_upnp_init(struct hostapd_data *hapd,
 static void hostapd_wps_upnp_deinit(struct hostapd_data *hapd);
 #endif /* CONFIG_WPS_UPNP */
 
-static int hostapd_wps_probe_req_rx(void *ctx, const u8 *addr,
+static int hostapd_wps_probe_req_rx(void *ctx, const u8 *addr, const u8 *da,
+				    const u8 *bssid,
 				    const u8 *ie, size_t ie_len);
 static void hostapd_wps_ap_pin_timeout(void *eloop_data, void *user_ctx);
 
@@ -139,8 +141,9 @@ static int hostapd_wps_set_ie_cb(void *ctx, struct wpabuf *beacon_ie,
 	hapd->wps_beacon_ie = beacon_ie;
 	wpabuf_free(hapd->wps_probe_resp_ie);
 	hapd->wps_probe_resp_ie = probe_resp_ie;
-	ieee802_11_set_beacon(hapd);
-	return hapd->drv.set_ap_wps_ie(hapd);
+	if (hapd->beacon_set_done)
+		ieee802_11_set_beacon(hapd);
+	return hostapd_set_ap_wps_ie(hapd);
 }
 
 
@@ -239,6 +242,20 @@ static void wps_reload_config(void *eloop_data, void *user_ctx)
 }
 
 
+static void hapd_new_ap_event(struct hostapd_data *hapd, const u8 *attr,
+			      size_t attr_len)
+{
+	size_t blen = attr_len * 2 + 1;
+	char *buf = os_malloc(blen);
+	if (buf) {
+		wpa_snprintf_hex(buf, blen, attr, attr_len);
+		wpa_msg(hapd->msg_ctx, MSG_INFO,
+			WPS_EVENT_NEW_AP_SETTINGS "%s", buf);
+		os_free(buf);
+	}
+}
+
+
 static int hapd_wps_cred_cb(struct hostapd_data *hapd, void *ctx)
 {
 	const struct wps_credential *cred = ctx;
@@ -268,15 +285,15 @@ static int hapd_wps_cred_cb(struct hostapd_data *hapd, void *ctx)
 
 	if ((hapd->conf->wps_cred_processing == 1 ||
 	     hapd->conf->wps_cred_processing == 2) && cred->cred_attr) {
-		size_t blen = cred->cred_attr_len * 2 + 1;
-		char *_buf = os_malloc(blen);
-		if (_buf) {
-			wpa_snprintf_hex(_buf, blen,
-					 cred->cred_attr, cred->cred_attr_len);
-			wpa_msg(hapd->msg_ctx, MSG_INFO, "%s%s",
-				WPS_EVENT_NEW_AP_SETTINGS, _buf);
-			os_free(_buf);
-		}
+		hapd_new_ap_event(hapd, cred->cred_attr, cred->cred_attr_len);
+	} else if (hapd->conf->wps_cred_processing == 1 ||
+		   hapd->conf->wps_cred_processing == 2) {
+		struct wpabuf *attr;
+		attr = wpabuf_alloc(200);
+		if (attr && wps_build_credential_wrap(attr, cred) == 0)
+			hapd_new_ap_event(hapd, wpabuf_head_u8(attr),
+					  wpabuf_len(attr));
+		wpabuf_free(attr);
 	} else
 		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_NEW_AP_SETTINGS);
 
@@ -426,6 +443,8 @@ static int hapd_wps_cred_cb(struct hostapd_data *hapd, void *ctx)
 		if (!multi_bss &&
 		    (str_starts(buf, "ssid=") ||
 		     str_starts(buf, "auth_algs=") ||
+		     str_starts(buf, "wep_default_key=") ||
+		     str_starts(buf, "wep_key") ||
 		     str_starts(buf, "wps_state=") ||
 		     str_starts(buf, "wpa=") ||
 		     str_starts(buf, "wpa_psk=") ||
@@ -532,12 +551,26 @@ static void hostapd_pwd_auth_fail(struct hostapd_data *hapd,
 }
 
 
+static const char * wps_event_fail_reason[NUM_WPS_EI_VALUES] = {
+	"No Error", /* WPS_EI_NO_ERROR */
+	"TKIP Only Prohibited", /* WPS_EI_SECURITY_TKIP_ONLY_PROHIBITED */
+	"WEP Prohibited" /* WPS_EI_SECURITY_WEP_PROHIBITED */
+};
+
 static void hostapd_wps_event_fail(struct hostapd_data *hapd,
 				   struct wps_event_fail *fail)
 {
-	wpa_msg(hapd->msg_ctx, MSG_INFO,
-		WPS_EVENT_FAIL "msg=%d config_error=%d",
-		fail->msg, fail->config_error);
+	if (fail->error_indication > 0 &&
+	    fail->error_indication < NUM_WPS_EI_VALUES) {
+		wpa_msg(hapd->msg_ctx, MSG_INFO,
+			WPS_EVENT_FAIL "msg=%d config_error=%d reason=%d (%s)",
+			fail->msg, fail->config_error, fail->error_indication,
+			wps_event_fail_reason[fail->error_indication]);
+	} else {
+		wpa_msg(hapd->msg_ctx, MSG_INFO,
+			WPS_EVENT_FAIL "msg=%d config_error=%d",
+			fail->msg, fail->config_error);
+	}
 }
 
 
@@ -548,28 +581,40 @@ static void hostapd_wps_event_cb(void *ctx, enum wps_event event,
 
 	switch (event) {
 	case WPS_EV_M2D:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_M2D);
 		break;
 	case WPS_EV_FAIL:
 		hostapd_wps_event_fail(hapd, &data->fail);
 		break;
 	case WPS_EV_SUCCESS:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_SUCCESS);
 		break;
 	case WPS_EV_PWD_AUTH_FAIL:
 		hostapd_pwd_auth_fail(hapd, &data->pwd_auth_fail);
 		break;
 	case WPS_EV_PBC_OVERLAP:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_OVERLAP);
 		break;
 	case WPS_EV_PBC_TIMEOUT:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_TIMEOUT);
 		break;
 	case WPS_EV_ER_AP_ADD:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_ER_AP_ADD);
 		break;
 	case WPS_EV_ER_AP_REMOVE:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_ER_AP_REMOVE);
 		break;
 	case WPS_EV_ER_ENROLLEE_ADD:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_ER_ENROLLEE_ADD);
 		break;
 	case WPS_EV_ER_ENROLLEE_REMOVE:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_ER_ENROLLEE_REMOVE);
 		break;
 	case WPS_EV_ER_AP_SETTINGS:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_ER_AP_SETTINGS);
+		break;
+	case WPS_EV_ER_SET_SELECTED_REGISTRAR:
+		wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_ER_SET_SEL_REG);
 		break;
 	}
 	if (hapd->wps_event_cb)
@@ -585,7 +630,7 @@ static void hostapd_wps_clear_ies(struct hostapd_data *hapd)
 	wpabuf_free(hapd->wps_probe_resp_ie);
 	hapd->wps_probe_resp_ie = NULL;
 
-	hapd->drv.set_ap_wps_ie(hapd);
+	hostapd_set_ap_wps_ie(hapd);
 }
 
 
@@ -635,6 +680,31 @@ static int interface_count(struct hostapd_iface *iface)
 	iface->for_each_interface(iface->interfaces, count_interface_cb,
 				  &count);
 	return count;
+}
+
+
+static int hostapd_wps_set_vendor_ext(struct hostapd_data *hapd,
+				      struct wps_context *wps)
+{
+	int i;
+
+	for (i = 0; i < MAX_WPS_VENDOR_EXTENSIONS; i++) {
+		wpabuf_free(wps->dev.vendor_ext[i]);
+		wps->dev.vendor_ext[i] = NULL;
+
+		if (hapd->conf->wps_vendor_ext[i] == NULL)
+			continue;
+
+		wps->dev.vendor_ext[i] =
+			wpabuf_dup(hapd->conf->wps_vendor_ext[i]);
+		if (wps->dev.vendor_ext[i] == NULL) {
+			while (--i >= 0)
+				wpabuf_free(wps->dev.vendor_ext[i]);
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 
@@ -709,13 +779,14 @@ int hostapd_init_wps(struct hostapd_data *hapd,
 		wps->config_methods |= WPS_CONFIG_VIRT_PUSHBUTTON;
 	}
 #endif /* CONFIG_WPS2 */
-	if (hapd->conf->device_type &&
-	    wps_dev_type_str2bin(hapd->conf->device_type,
-				 wps->dev.pri_dev_type) < 0) {
-		wpa_printf(MSG_ERROR, "WPS: Invalid device_type");
+	os_memcpy(wps->dev.pri_dev_type, hapd->conf->device_type,
+		  WPS_DEV_TYPE_LEN);
+
+	if (hostapd_wps_set_vendor_ext(hapd, wps) < 0) {
 		os_free(wps);
 		return -1;
 	}
+
 	wps->dev.os_version = WPA_GET_BE32(hapd->conf->os_version);
 	wps->dev.rf_bands = hapd->iconf->hw_mode == HOSTAPD_MODE_IEEE80211A ?
 		WPS_RF_50GHZ : WPS_RF_24GHZ; /* FIX: dualband AP */
@@ -831,19 +902,33 @@ int hostapd_init_wps(struct hostapd_data *hapd,
 	wps->model_description = hapd->conf->model_description;
 	wps->model_url = hapd->conf->model_url;
 	wps->upc = hapd->conf->upc;
-
-	if (hostapd_wps_upnp_init(hapd, wps) < 0) {
-		wpa_printf(MSG_ERROR, "Failed to initialize WPS UPnP");
-		wps_registrar_deinit(wps->registrar);
-		os_free(wps->network_key);
-		os_free(wps);
-		return -1;
-	}
 #endif /* CONFIG_WPS_UPNP */
 
 	hostapd_register_probereq_cb(hapd, hostapd_wps_probe_req_rx, hapd);
 
 	hapd->wps = wps;
+
+	return 0;
+}
+
+
+int hostapd_init_wps_complete(struct hostapd_data *hapd)
+{
+	struct wps_context *wps = hapd->wps;
+
+	if (wps == NULL)
+		return 0;
+
+#ifdef CONFIG_WPS_UPNP
+	if (hostapd_wps_upnp_init(hapd, wps) < 0) {
+		wpa_printf(MSG_ERROR, "Failed to initialize WPS UPnP");
+		wps_registrar_deinit(wps->registrar);
+		os_free(wps->network_key);
+		os_free(wps);
+		hapd->wps = NULL;
+		return -1;
+	}
+#endif /* CONFIG_WPS_UPNP */
 
 	return 0;
 }
@@ -884,6 +969,8 @@ void hostapd_update_wps(struct hostapd_data *hapd)
 	hapd->wps->model_url = hapd->conf->model_url;
 	hapd->wps->upc = hapd->conf->upc;
 #endif /* CONFIG_WPS_UPNP */
+
+	hostapd_wps_set_vendor_ext(hapd, hapd->wps);
 
 	if (hapd->conf->wps_state)
 		wps_registrar_update_ie(hapd->wps->registrar);
@@ -946,15 +1033,18 @@ int hostapd_wps_add_pin(struct hostapd_data *hapd, const u8 *addr,
 
 static int wps_button_pushed(struct hostapd_data *hapd, void *ctx)
 {
+	const u8 *p2p_dev_addr = ctx;
 	if (hapd->wps == NULL)
 		return 0;
-	return wps_registrar_button_pushed(hapd->wps->registrar);
+	return wps_registrar_button_pushed(hapd->wps->registrar, p2p_dev_addr);
 }
 
 
-int hostapd_wps_button_pushed(struct hostapd_data *hapd)
+int hostapd_wps_button_pushed(struct hostapd_data *hapd,
+			      const u8 *p2p_dev_addr)
 {
-	return hostapd_wps_for_each(hapd, wps_button_pushed, NULL);
+	return hostapd_wps_for_each(hapd, wps_button_pushed,
+				    (void *) p2p_dev_addr);
 }
 
 
@@ -1012,7 +1102,8 @@ error:
 #endif /* CONFIG_WPS_OOB */
 
 
-static int hostapd_wps_probe_req_rx(void *ctx, const u8 *addr,
+static int hostapd_wps_probe_req_rx(void *ctx, const u8 *addr, const u8 *da,
+				    const u8 *bssid,
 				    const u8 *ie, size_t ie_len)
 {
 	struct hostapd_data *hapd = ctx;
@@ -1111,7 +1202,7 @@ static int hostapd_rx_req_put_wlan_response(
 	}
 #endif /* CONFIG_WPS_STRICT */
 
-	if (!sta) {
+	if (!sta || !(sta->flags & WLAN_STA_WPS)) {
 		wpa_printf(MSG_DEBUG, "WPS UPnP: No matching STA found");
 		return 0;
 	}
@@ -1144,18 +1235,11 @@ static int hostapd_wps_upnp_init(struct hostapd_data *hapd,
 	if (hapd->conf->ap_pin)
 		ctx->ap_pin = os_strdup(hapd->conf->ap_pin);
 
-	hapd->wps_upnp = upnp_wps_device_init(ctx, wps, hapd);
-	if (hapd->wps_upnp == NULL) {
-		os_free(ctx);
+	hapd->wps_upnp = upnp_wps_device_init(ctx, wps, hapd,
+					      hapd->conf->upnp_iface);
+	if (hapd->wps_upnp == NULL)
 		return -1;
-	}
 	wps->wps_upnp = hapd->wps_upnp;
-
-	if (upnp_wps_device_start(hapd->wps_upnp, hapd->conf->upnp_iface)) {
-		upnp_wps_device_deinit(hapd->wps_upnp);
-		hapd->wps_upnp = NULL;
-		return -1;
-	}
 
 	return 0;
 }
@@ -1163,7 +1247,7 @@ static int hostapd_wps_upnp_init(struct hostapd_data *hapd,
 
 static void hostapd_wps_upnp_deinit(struct hostapd_data *hapd)
 {
-	upnp_wps_device_deinit(hapd->wps_upnp);
+	upnp_wps_device_deinit(hapd->wps_upnp, hapd);
 }
 
 #endif /* CONFIG_WPS_UPNP */
@@ -1183,6 +1267,7 @@ static void hostapd_wps_ap_pin_timeout(void *eloop_data, void *user_ctx)
 	struct hostapd_data *hapd = eloop_data;
 	wpa_printf(MSG_DEBUG, "WPS: AP PIN timed out");
 	hostapd_wps_ap_pin_disable(hapd);
+	wpa_msg(hapd->msg_ctx, MSG_INFO, WPS_EVENT_AP_PIN_DISABLED);
 }
 
 
@@ -1271,4 +1356,67 @@ int hostapd_wps_ap_pin_set(struct hostapd_data *hapd, const char *pin,
 		return -1;
 	data.timeout = timeout;
 	return hostapd_wps_for_each(hapd, wps_ap_pin_set, &data);
+}
+
+
+static int wps_update_ie(struct hostapd_data *hapd, void *ctx)
+{
+	if (hapd->wps)
+		wps_registrar_update_ie(hapd->wps->registrar);
+	return 0;
+}
+
+
+void hostapd_wps_update_ie(struct hostapd_data *hapd)
+{
+	hostapd_wps_for_each(hapd, wps_update_ie, NULL);
+}
+
+
+int hostapd_wps_config_ap(struct hostapd_data *hapd, const char *ssid,
+			  const char *auth, const char *encr, const char *key)
+{
+	struct wps_credential cred;
+	size_t len;
+
+	os_memset(&cred, 0, sizeof(cred));
+
+	len = os_strlen(ssid);
+	if ((len & 1) || len > 2 * sizeof(cred.ssid) ||
+	    hexstr2bin(ssid, cred.ssid, len / 2))
+		return -1;
+	cred.ssid_len = len / 2;
+
+	if (os_strncmp(auth, "OPEN", 4) == 0)
+		cred.auth_type = WPS_AUTH_OPEN;
+	else if (os_strncmp(auth, "WPAPSK", 6) == 0)
+		cred.auth_type = WPS_AUTH_WPAPSK;
+	else if (os_strncmp(auth, "WPA2PSK", 7) == 0)
+		cred.auth_type = WPS_AUTH_WPA2PSK;
+	else
+		return -1;
+
+	if (encr) {
+		if (os_strncmp(encr, "NONE", 4) == 0)
+			cred.encr_type = WPS_ENCR_NONE;
+		else if (os_strncmp(encr, "WEP", 3) == 0)
+			cred.encr_type = WPS_ENCR_WEP;
+		else if (os_strncmp(encr, "TKIP", 4) == 0)
+			cred.encr_type = WPS_ENCR_TKIP;
+		else if (os_strncmp(encr, "CCMP", 4) == 0)
+			cred.encr_type = WPS_ENCR_AES;
+		else
+			return -1;
+	} else
+		cred.encr_type = WPS_ENCR_NONE;
+
+	if (key) {
+		len = os_strlen(key);
+		if ((len & 1) || len > 2 * sizeof(cred.key) ||
+		    hexstr2bin(key, cred.key, len / 2))
+			return -1;
+		cred.key_len = len / 2;
+	}
+
+	return wps_registrar_config_ap(hapd->wps->registrar, &cred);
 }

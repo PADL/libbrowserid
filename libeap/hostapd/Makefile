@@ -51,6 +51,10 @@ OBJS += ../src/ap/ap_mlme.o
 OBJS += ../src/ap/wpa_auth_ie.o
 OBJS += ../src/ap/preauth_auth.o
 OBJS += ../src/ap/pmksa_cache_auth.o
+OBJS += ../src/ap/ieee802_11_shared.o
+OBJS += ../src/ap/beacon.o
+
+OBJS_c = hostapd_cli.o ../src/common/wpa_ctrl.o ../src/utils/os_$(CONFIG_OS).o
 
 NEED_RC4=y
 NEED_AES=y
@@ -63,18 +67,25 @@ CFLAGS += -DHOSTAPD
 ifdef CONFIG_WPA_TRACE
 CFLAGS += -DWPA_TRACE
 OBJS += ../src/utils/trace.o
+HOBJS += ../src/utils/trace.o
 LDFLAGS += -rdynamic
 CFLAGS += -funwind-tables
 ifdef CONFIG_WPA_TRACE_BFD
 CFLAGS += -DWPA_TRACE_BFD
 LIBS += -lbfd
 LIBS_c += -lbfd
+LIBS_h += -lbfd
 endif
 endif
 
-OBJS += ../src/utils/eloop.o
+ifndef CONFIG_ELOOP
+CONFIG_ELOOP=eloop
+endif
+OBJS += ../src/utils/$(CONFIG_ELOOP).o
+OBJS_c += ../src/utils/$(CONFIG_ELOOP).o
 OBJS += ../src/utils/common.o
 OBJS += ../src/utils/wpa_debug.o
+OBJS_c += ../src/utils/wpa_debug.o
 OBJS += ../src/utils/wpabuf.o
 OBJS += ../src/utils/os_$(CONFIG_OS).o
 OBJS += ../src/utils/ip_addr.o
@@ -425,6 +436,10 @@ ifndef CONFIG_TLS
 CONFIG_TLS=openssl
 endif
 
+ifdef CONFIG_TLSV11
+CFLAGS += -DCONFIG_TLSV11
+endif
+
 ifeq ($(CONFIG_TLS), openssl)
 ifdef TLS_FUNCS
 OBJS += ../src/crypto/tls_openssl.o
@@ -443,10 +458,6 @@ ifeq ($(CONFIG_TLS), gnutls)
 ifdef TLS_FUNCS
 OBJS += ../src/crypto/tls_gnutls.o
 LIBS += -lgnutls -lgpg-error
-ifdef CONFIG_GNUTLS_EXTRA
-CFLAGS += -DCONFIG_GNUTLS_EXTRA
-LIBS += -lgnutls-extra
-endif
 endif
 OBJS += ../src/crypto/crypto_gnutls.o
 HOBJS += ../src/crypto/crypto_gnutls.o
@@ -644,6 +655,7 @@ endif
 ifdef NEED_MD5
 ifdef CONFIG_INTERNAL_MD5
 OBJS += ../src/crypto/md5-internal.o
+HOBJS += ../src/crypto/md5-internal.o
 endif
 endif
 
@@ -684,6 +696,16 @@ OBJS += ../src/crypto/dh_group5.o
 endif
 endif
 
+ifdef CONFIG_NO_RANDOM_POOL
+CFLAGS += -DCONFIG_NO_RANDOM_POOL
+else
+OBJS += ../src/crypto/random.o
+HOBJS += ../src/crypto/random.o
+HOBJS += ../src/utils/eloop.o
+HOBJS += $(SHA1OBJS)
+HOBJS += ../src/crypto/md5.o
+endif
+
 ifdef CONFIG_RADIUS_SERVER
 CFLAGS += -DRADIUS_SERVER
 OBJS += ../src/radius/radius_server.o
@@ -708,7 +730,6 @@ OBJS += ../src/utils/base64.o
 endif
 
 ifdef NEED_AP_MLME
-OBJS += ../src/ap/beacon.o
 OBJS += ../src/ap/wmm.o
 OBJS += ../src/ap/ap_list.o
 OBJS += ../src/ap/ieee802_11.o
@@ -724,8 +745,24 @@ CFLAGS += -DCONFIG_P2P_MANAGER
 OBJS += ../src/ap/p2p_hostapd.o
 endif
 
+ifdef CONFIG_INTERWORKING
+CFLAGS += -DCONFIG_INTERWORKING
+endif
+
+OBJS += ../src/drivers/driver_common.o
+
+ifdef CONFIG_WPA_CLI_EDIT
+OBJS_c += ../src/utils/edit.o
+else
+OBJS_c += ../src/utils/edit_simple.o
+endif
+
 ifdef CONFIG_NO_STDOUT_DEBUG
 CFLAGS += -DCONFIG_NO_STDOUT_DEBUG
+endif
+
+ifdef CONFIG_DEBUG_FILE
+CFLAGS += -DCONFIG_DEBUG_FILE
 endif
 
 ALL=hostapd hostapd_cli
@@ -753,7 +790,8 @@ verify_config:
 	fi
 
 install: all
-	for i in $(ALL); do cp -f $$i /usr/local/bin/$$i; done
+	mkdir -p $(DESTDIR)/usr/local/bin
+	for i in $(ALL); do cp -f $$i $(DESTDIR)/usr/local/bin/$$i; done
 
 ../src/drivers/build.hostapd:
 	@if [ -f ../src/drivers/build.wpa_supplicant ]; then \
@@ -764,15 +802,15 @@ install: all
 BCHECK=../src/drivers/build.hostapd
 
 hostapd: $(BCHECK) $(OBJS)
-	$(CC) $(LDFLAGS) -o hostapd $(OBJS) $(LIBS)
+	$(Q)$(CC) $(LDFLAGS) -o hostapd $(OBJS) $(LIBS)
+	@$(E) "  LD " $@
 
-OBJS_c = hostapd_cli.o ../src/common/wpa_ctrl.o ../src/utils/os_$(CONFIG_OS).o
 ifdef CONFIG_WPA_TRACE
 OBJS_c += ../src/utils/trace.o
-OBJS_c += ../src/utils/wpa_debug.o
 endif
 hostapd_cli: $(OBJS_c)
-	$(CC) $(LDFLAGS) -o hostapd_cli $(OBJS_c) $(LIBS_c)
+	$(Q)$(CC) $(LDFLAGS) -o hostapd_cli $(OBJS_c) $(LIBS_c)
+	@$(E) "  LD " $@
 
 NOBJS = nt_password_hash.o ../src/crypto/ms_funcs.o $(SHA1OBJS) ../src/crypto/md5.o
 ifdef NEED_RC4
@@ -802,10 +840,12 @@ HOBJS += ../src/crypto/aes-internal-enc.o
 endif
 
 nt_password_hash: $(NOBJS)
-	$(CC) $(LDFLAGS) -o nt_password_hash $(NOBJS) $(LIBS_n)
+	$(Q)$(CC) $(LDFLAGS) -o nt_password_hash $(NOBJS) $(LIBS_n)
+	@$(E) "  LD " $@
 
 hlr_auc_gw: $(HOBJS)
-	$(CC) $(LDFLAGS) -o hlr_auc_gw $(HOBJS) $(LIBS_h)
+	$(Q)$(CC) $(LDFLAGS) -o hlr_auc_gw $(HOBJS) $(LIBS_h)
+	@$(E) "  LD " $@
 
 clean:
 	$(MAKE) -C ../src clean

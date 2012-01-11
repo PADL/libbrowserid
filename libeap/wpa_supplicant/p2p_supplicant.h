@@ -17,6 +17,8 @@
 
 enum p2p_wps_method;
 struct p2p_go_neg_results;
+enum p2p_send_action_result;
+struct p2p_peer_info;
 
 int wpas_p2p_init(struct wpa_global *global, struct wpa_supplicant *wpa_s);
 void wpas_p2p_deinit(struct wpa_supplicant *wpa_s);
@@ -43,26 +45,29 @@ void wpas_p2p_wps_success(struct wpa_supplicant *wpa_s, const u8 *peer_addr,
 int wpas_p2p_prov_disc(struct wpa_supplicant *wpa_s, const u8 *peer_addr,
 		       const char *config_method);
 void wpas_send_action_tx_status(struct wpa_supplicant *wpa_s, const u8 *dst,
-				const u8 *data, size_t data_len, int ack);
+				const u8 *data, size_t data_len,
+				enum p2p_send_action_result result);
 int wpas_p2p_scan_result_text(const u8 *ies, size_t ies_len, char *buf,
 			      char *end);
 enum p2p_discovery_type;
 int wpas_p2p_find(struct wpa_supplicant *wpa_s, unsigned int timeout,
-		  enum p2p_discovery_type type);
+		  enum p2p_discovery_type type,
+		  unsigned int num_req_dev_types, const u8 *req_dev_types);
 void wpas_p2p_stop_find(struct wpa_supplicant *wpa_s);
 int wpas_p2p_listen(struct wpa_supplicant *wpa_s, unsigned int timeout);
 int wpas_p2p_assoc_req_ie(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
 			  u8 *buf, size_t len, int p2p_group);
 int wpas_p2p_probe_req_rx(struct wpa_supplicant *wpa_s, const u8 *addr,
+			  const u8 *dst, const u8 *bssid,
 			  const u8 *ie, size_t ie_len);
 void wpas_p2p_rx_action(struct wpa_supplicant *wpa_s, const u8 *da,
 			const u8 *sa, const u8 *bssid,
 			u8 category, const u8 *data, size_t len, int freq);
 void wpas_p2p_scan_ie(struct wpa_supplicant *wpa_s, struct wpabuf *ies);
 void wpas_p2p_group_deinit(struct wpa_supplicant *wpa_s);
-void wpas_dev_found(void *ctx, const u8 *addr, const u8 *dev_addr,
-		    const u8 *pri_dev_type, const char *dev_name,
-		    u16 config_methods, u8 dev_capab, u8 group_capab);
+void wpas_dev_found(void *ctx, const u8 *addr,
+		    const struct p2p_peer_info *info,
+		    int new_device);
 void wpas_go_neg_completed(void *ctx, struct p2p_go_neg_results *res);
 void wpas_go_neg_req_rx(void *ctx, const u8 *src, u16 dev_passwd_id);
 void wpas_prov_disc_req(void *ctx, const u8 *peer, u16 config_methods,
@@ -114,5 +119,14 @@ void wpas_p2p_notif_connected(struct wpa_supplicant *wpa_s);
 void wpas_p2p_notif_disconnected(struct wpa_supplicant *wpa_s);
 int wpas_p2p_notif_pbc_overlap(struct wpa_supplicant *wpa_s);
 void wpas_p2p_update_channel_list(struct wpa_supplicant *wpa_s);
+int wpas_p2p_cancel(struct wpa_supplicant *wpa_s);
+void wpas_p2p_interface_unavailable(struct wpa_supplicant *wpa_s);
+void wpas_p2p_update_best_channels(struct wpa_supplicant *wpa_s,
+				   int freq_24, int freq_5, int freq_overall);
+int wpas_p2p_unauthorize(struct wpa_supplicant *wpa_s, const char *addr);
+int wpas_p2p_disconnect(struct wpa_supplicant *wpa_s);
+void wpas_p2p_wps_failed(struct wpa_supplicant *wpa_s,
+			 struct wps_event_fail *fail);
+int wpas_p2p_in_progress(struct wpa_supplicant *wpa_s);
 
 #endif /* P2P_SUPPLICANT_H */

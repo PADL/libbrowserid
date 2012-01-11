@@ -39,6 +39,7 @@ struct p2p_group {
 	struct p2p_data *p2p;
 	struct p2p_group_config *cfg;
 	struct p2p_group_member *members;
+	unsigned int num_members;
 	int group_formation;
 	int beacon_update;
 	struct wpabuf *noa;
@@ -71,6 +72,7 @@ struct p2p_group * p2p_group_init(struct p2p_data *p2p,
 	group->group_formation = 1;
 	group->beacon_update = 1;
 	p2p_group_update_ies(group);
+	group->cfg->idle_update(group->cfg->cb_ctx, 1);
 
 	return group;
 }
@@ -89,6 +91,7 @@ static void p2p_group_free_members(struct p2p_group *group)
 	struct p2p_group_member *m, *prev;
 	m = group->members;
 	group->members = NULL;
+	group->num_members = 0;
 	while (m) {
 		prev = m;
 		m = m->next;
@@ -127,6 +130,8 @@ void p2p_group_deinit(struct p2p_group *group)
 
 static void p2p_client_info(struct wpabuf *ie, struct p2p_group_member *m)
 {
+	if (m->client_info == NULL)
+		return;
 	if (wpabuf_tailroom(ie) < wpabuf_len(m->client_info) + 1)
 		return;
 	wpabuf_put_buf(ie, m->client_info);
@@ -142,14 +147,19 @@ static void p2p_group_add_common_ies(struct p2p_group *group,
 	dev_capab |= P2P_DEV_CAPAB_SERVICE_DISCOVERY;
 	dev_capab |= P2P_DEV_CAPAB_INVITATION_PROCEDURE;
 	group_capab |= P2P_GROUP_CAPAB_GROUP_OWNER;
-	if (group->cfg->persistent_group)
+	if (group->cfg->persistent_group) {
 		group_capab |= P2P_GROUP_CAPAB_PERSISTENT_GROUP;
+		if (group->cfg->persistent_group == 2)
+			group_capab |= P2P_GROUP_CAPAB_PERSISTENT_RECONN;
+	}
 	if (group->p2p->cfg->p2p_intra_bss)
 		group_capab |= P2P_GROUP_CAPAB_INTRA_BSS_DIST;
 	if (group->group_formation)
 		group_capab |= P2P_GROUP_CAPAB_GROUP_FORMATION;
 	if (group->p2p->cross_connect)
 		group_capab |= P2P_GROUP_CAPAB_CROSS_CONN;
+	if (group->num_members >= group->cfg->max_clients)
+		group_capab |= P2P_GROUP_CAPAB_GROUP_LIMIT;
 	p2p_buf_add_capability(ie, dev_capab, group_capab);
 }
 
@@ -316,32 +326,24 @@ int p2p_group_notif_assoc(struct p2p_group *group, const u8 *addr,
 		return -1;
 	os_memcpy(m->addr, addr, ETH_ALEN);
 	m->p2p_ie = ieee802_11_vendor_ie_concat(ie, len, P2P_IE_VENDOR_TYPE);
-	if (m->p2p_ie == NULL) {
-		p2p_group_free_member(m);
-		return -1;
-	}
-
-	m->client_info = p2p_build_client_info(addr, m->p2p_ie, &m->dev_capab,
-					       m->dev_addr);
-	if (m->client_info == NULL) {
-		/*
-		 * This can happen, e.g., when a P2P client connects to a P2P
-		 * group using the infrastructure WLAN interface instead of
-		 * P2P group interface. In that case, the P2P client may behave
-		 * as if the GO would be a P2P Manager WLAN AP.
-		 */
-		wpa_msg(group->p2p->cfg->msg_ctx, MSG_DEBUG,
-			"P2P: Could not build Client Info from P2P IE - "
-			"assume " MACSTR " is not a P2P client",
-			MAC2STR(addr));
-		p2p_group_free_member(m);
-		return 0;
+	if (m->p2p_ie) {
+		m->client_info = p2p_build_client_info(addr, m->p2p_ie,
+						       &m->dev_capab,
+						       m->dev_addr);
 	}
 
 	m->next = group->members;
 	group->members = m;
-
+	group->num_members++;
+	wpa_msg(group->p2p->cfg->msg_ctx, MSG_DEBUG, "P2P: Add client " MACSTR
+		" to group (p2p=%d client_info=%d); num_members=%u/%u",
+		MAC2STR(addr), m->p2p_ie ? 1 : 0, m->client_info ? 1 : 0,
+		group->num_members, group->cfg->max_clients);
+	if (group->num_members == group->cfg->max_clients)
+		group->beacon_update = 1;
 	p2p_group_update_ies(group);
+	if (group->num_members == 1)
+		group->cfg->idle_update(group->cfg->cb_ctx, 0);
 
 	return 0;
 }
@@ -392,7 +394,16 @@ void p2p_group_notif_disassoc(struct p2p_group *group, const u8 *addr)
 		else
 			group->members = m->next;
 		p2p_group_free_member(m);
+		group->num_members--;
+		wpa_msg(group->p2p->cfg->msg_ctx, MSG_DEBUG, "P2P: Remove "
+			"client " MACSTR " from group; num_members=%u/%u",
+			MAC2STR(addr), group->num_members,
+			group->cfg->max_clients);
+		if (group->num_members == group->cfg->max_clients - 1)
+			group->beacon_update = 1;
 		p2p_group_update_ies(group);
+		if (group->num_members == 0)
+			group->cfg->idle_update(group->cfg->cb_ctx, 1);
 	}
 }
 
@@ -486,7 +497,7 @@ int p2p_group_notif_noa(struct p2p_group *group, const u8 *noa,
 	} else {
 		if (group->noa) {
 			if (wpabuf_size(group->noa) >= noa_len) {
-				group->noa->size = 0;
+				group->noa->used = 0;
 				wpabuf_put_data(group->noa, noa, noa_len);
 			} else {
 				wpabuf_free(group->noa);
@@ -535,6 +546,19 @@ static struct p2p_group_member * p2p_group_get_client_iface(
 }
 
 
+const u8 * p2p_group_get_dev_addr(struct p2p_group *group, const u8 *addr)
+{
+	struct p2p_group_member *m;
+
+	if (group == NULL)
+		return NULL;
+	m = p2p_group_get_client_iface(group, addr);
+	if (m && !is_zero_ether_addr(m->dev_addr))
+		return m->dev_addr;
+	return NULL;
+}
+
+
 static struct wpabuf * p2p_build_go_disc_req(void)
 {
 	struct wpabuf *buf;
@@ -558,7 +582,7 @@ int p2p_group_go_discover(struct p2p_group *group, const u8 *dev_id,
 	int freq;
 
 	m = p2p_group_get_client(group, dev_id);
-	if (m == NULL) {
+	if (m == NULL || m->client_info == NULL) {
 		wpa_printf(MSG_DEBUG, "P2P: Requested client was not in this "
 			   "group " MACSTR,
 			   MAC2STR(group->cfg->interface_addr));
@@ -612,7 +636,7 @@ u8 p2p_group_presence_req(struct p2p_group *group,
 	int curr_noa_len;
 
 	m = p2p_group_get_client_iface(group, client_interface_addr);
-	if (m == NULL) {
+	if (m == NULL || m->client_info == NULL) {
 		wpa_printf(MSG_DEBUG, "P2P: Client was not in this group");
 		return P2P_SC_FAIL_UNABLE_TO_ACCOMMODATE;
 	}
@@ -638,4 +662,28 @@ u8 p2p_group_presence_req(struct p2p_group *group,
 		return P2P_SC_FAIL_UNABLE_TO_ACCOMMODATE;
 
 	return P2P_SC_SUCCESS;
+}
+
+
+unsigned int p2p_get_group_num_members(struct p2p_group *group)
+{
+	return group->num_members;
+}
+
+
+const u8 * p2p_iterate_group_members(struct p2p_group *group, void **next)
+{
+	struct p2p_group_member *iter = *next;
+
+	if (!iter)
+		iter = group->members;
+	else
+		iter = iter->next;
+
+	*next = iter;
+
+	if (!iter)
+		return NULL;
+
+	return iter->addr;
 }
