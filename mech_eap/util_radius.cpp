@@ -282,7 +282,7 @@ getAttributeId(const gss_buffer_t desc,
     canon = isdigit(*(char *)desc->value);
 
     /* need to duplicate because attr may not be NUL terminated */
-    strAttr = (char *)GSSEAP_MALLOC(canon ? 5 : 0 + desc->length + 1);
+    strAttr = (char *)GSSEAP_MALLOC((canon ? 5 : 0) + desc->length + 1);
     if (strAttr == NULL)
         throw new std::bad_alloc();
 
