@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="windows-1252"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+  <?if $(var.Platform)=x64 ?>
+
+  <?define Win64=yes ?>
+  <?define GuidPackage=3a5ea220-f203-4293-814f-0441c02d2326 ?>
+  <?define GuidEapSSP=950adf7c-bbd0-44fb-9984-a97aba4ed8d2 ?>
+
+  <?else?>
+
+  <?define Win64=no ?>
+  <?define GuidPackage=e3bdc731-7bcc-4373-b4da-8f1f7efce00e ?>
+  <?define GuidEapSSP=f77e7649-d7fe-4351-abd0-2b2018989ed1 ?>
+
+  <?endif?>
+
+  <Module Id="M_EapSSP" Language="0" Version="$(var.Version)">
+    <Package Id="$(var.GuidPackage)"
+             InstallerVersion="200"
+             Languages="1033" Manufacturer="PADL"
+             SummaryCodepage="1252" AdminImage="no"
+             Platform="$(var.Platform)" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="D_Module" Name="." FileSource="$(var.BinDir)">
+        <Component Id="C_EapSSP"
+                   Guid="$(var.GuidEapSSP)"
+                   Win64="$(var.Win64)">
+          <File Name="EapSSP.dll" KeyPath="yes" />
+          <File Name="EapSSP.pdb" />
+        </Component>
+      </Directory>
+    </Directory>
+  </Module>
+
+</Wix>

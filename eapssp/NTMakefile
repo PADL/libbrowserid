@@ -1,0 +1,97 @@
+RELDIR=eapssp
+
+!include ..\windows\NTMakefile.w32
+
+#
+# Objects
+#
+EAPSSP_OBJS = \
+	$(OBJ)\gssp_context.obj	\
+	$(OBJ)\gssp_ctxattr.obj	\
+	$(OBJ)\gssp_cred.obj	\
+	$(OBJ)\gssp_credlist.obj\
+	$(OBJ)\gssp_glue.obj	\
+	$(OBJ)\gssp_init.obj	\
+	$(OBJ)\gssp_info.obj	\
+	$(OBJ)\gssp_logon.obj	\
+	$(OBJ)\gssp_mem.obj	\
+	$(OBJ)\gssp_nego.obj	\
+	$(OBJ)\gssp_reauth.obj	\
+	$(OBJ)\gssp_stubs.obj	\
+	$(OBJ)\gssp_trace.obj	\
+	$(OBJ)\gssp_user.obj	\
+	$(OBJ)\gssp_util.obj    \
+	$(OBJ)\vers.obj
+
+!ifdef GSSEAP_ENABLE_ACCEPTOR
+EAPSSP_OBJS = $(EAPSSP_OBJS)    \
+	$(OBJ)\gssp_attr.obj	\
+	$(OBJ)\gssp_token.obj
+!endif
+
+cdefines=$(cdefines) -DBUILD_GSSEAP_SSP -DUNICODE -D_UNICODE
+
+#
+# Resource
+#
+AUXRCFLAGS = -I$(OBJ)
+RES = $(OBJ)\EapSSP-version.res
+
+#
+# DLL
+#
+EAPSSP_LIBS = \
+	$(HEIMDAL_SDKLIBDIR)\heimdal.lib \
+	$(HEIMDAL_SDKLIBDIR)\libcom_err.lib \
+	$(CRYPTDLL) \
+	$(NTDLL)
+
+!ifdef GSSEAP_ENABLE_ACCEPTOR
+EAPSSP_LIBS = $(EAPSSP_LIBS)				    \
+	$(RADSEC_SDKLIBDIR)\libradsec.lib		    \
+	$(LEVENT_SDKLIBDIR)\libevent_core.lib		    \
+	$(JANSSON_SDKLIBDIR)\libjansson.lib
+
+dlllflags = $(dlllflags) secur32.lib ntdsapi.lib ws2_32.lib crypt32.lib
+!endif
+
+$(BINDIR)\EapSSP.dll: $(EAPSSP_OBJS) $(LIBMECH_EAP) $(LIBEAP) $(EAPSSP_LIBS) $(RES)
+	$(DLLCONLINK) -def:EapSSP-exports.def
+	$(DLLPREP_MERGE)
+	$(_CODESIGN)
+
+#
+# Rules
+#
+all:: $(BINDIR)\EapSSP.dll $(OBJ)/NTMakefile.vers
+
+all-tools::
+
+clean::
+	-$(RM) $(BINDIR)\EapSSP.dll $(OBJ)\vers.* $(OBJ)\NTMakefile.vers
+
+#
+# Generated version files
+#
+$(OBJ)\vers.c: $(SRC)/CVSVersionInfo.txt $(SRCDIR)/vers_string
+	cd $(OBJ)
+	set CVSVERSIONDIR=$(SRC)
+	perl -I$(SRCDIR) $(SRCDIR)/vers_string -v
+	cd $(SRCDIR)
+
+$(OBJ)\vers.h: $(SRC)/CVSVersionInfo.txt $(SRCDIR)/vers_string
+	cd $(OBJ)
+	set CVSVERSIONDIR=$(SRC)
+	set VER_PRODUCT_MAJOR=$(VER_PRODUCT_MAJOR)
+	set VER_PRODUCT_MINOR=$(VER_PRODUCT_MINOR)
+	perl -I$(SRCDIR) $(SRCDIR)/vers_string -p >vers.h
+	cd $(SRCDIR)
+
+$(OBJ)\NTMakefile.vers: $(SRC)/CVSVersionInfo.txt $(SRCDIR)/vers_string
+	cd $(OBJ)
+	set CVSVERSIONDIR=$(SRC)
+	perl -I$(SRCDIR) $(SRCDIR)/vers_string -m >NTMakefile.vers
+	cd $(SRCDIR)
+
+$(OBJ)\vers.c: $(OBJ)\vers.h
+

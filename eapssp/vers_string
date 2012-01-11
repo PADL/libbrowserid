@@ -1,0 +1,108 @@
+#!/usr/bin/perl
+#
+#ident $Id: vers_string,v 1.10 1999/04/05 01:38:26 lukeh Exp $
+#
+# Implementation of SGS vers_string which uses CVSVersionInfo.txt.
+
+require "cvslib.pl";
+
+$OUTFILE = (-f "version.h") ? "version.h" : "vers.c";
+$AUTHOR = `whoami`;
+# fix for Windows
+$AUTHOR =~ s/(.*)\\//;
+$AUTHOR =~ s/\r$//;
+$HEADER = '$Id: vers_string,v 1.10 1999/04/05 01:38:26 lukeh Exp $';
+
+if ($ENV{'PROGRAM'}) { $PROGRAM = $ENV{'PROGRAM'}; }
+
+use Cwd;
+
+chop($AUTHOR);
+chop($DATE=`date -u`);
+$CWD = getcwd;
+
+($PROJECT, $VERSION) = split(/\-/, &getCVSVersionInfo(), 2);
+
+if (!defined($PROJECT)) {
+	$PROJECT = "Unknown";
+	$PROGRAM = "Unknown";
+} else {
+	$SEP = "-";
+	if (!defined($PROGRAM)) {
+		chop($PROGRAM=`basename $CWD`);
+	}
+}
+
+if ($ARGV[0] eq "-f") {
+	print $PROJECT, $SEP, $VERSION, "\n";
+} elsif ($ARGV[0] eq "-l") {
+	print "static const char SGS_VERS[] = \"";
+	print '@(#)LIBRARY:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:', $DATE;
+	print "\";\n";
+} elsif ($ARGV[0] eq "-c") {
+	print "const char SGS_VERS[] = \"";
+	print '@(#)PROGRAM:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:', $DATE;
+	print "\";\n";
+	print "const char VERS_NUM[] = \"$VERSION\";\n";
+} elsif ($ARGV[0] eq "-n") {
+	print "$VERSION\n";
+} elsif ($ARGV[0] eq "-m") {
+	my ($AUX, $PATCH) = split(/\-/, $VERSION);
+	if (!defined($PATCH)) { $PATCH = 0; }
+	print "VER_PRODUCT_AUX=$AUX\n";
+	print "VER_PRODUCT_PATCH=$PATCH\n";
+} elsif ($ARGV[0] eq "-p") {
+	my ($AUX, $PATCH) = split(/\-/, $VERSION);
+        my ($MAJOR, $MINOR) = ($ENV{'VER_PRODUCT_MAJOR'}, $ENV{'VER_PRODUCT_MINOR'});
+        if (!defined($MAJOR)) { $MAJOR = 0; };
+        if (!defined($MINOR)) { $MINOR = 0; };
+	if (!defined($PATCH)) { $PATCH = 0; }
+        
+        print "#define RC_PRODVER_MAJOR     $MAJOR\n";
+        print "#define RC_PRODVER_MINOR     $MINOR\n";
+        print "#define RC_PRODVER_AUX       $AUX\n";
+        print "#define RC_PRODVER_PATCH     $PATCH\n";
+        print "#define RC_PRODVER_C         $MAJOR,$MINOR,$AUX,$PATCH\n";
+        print "#define RC_PRODVER_CS        \"$MAJOR,$MINOR,$AUX,$PATCH\"\n";
+        print "#define RC_PRODVER_DS        \"$MAJOR.$MINOR.$AUX.$PATCH\"\n";
+
+} elsif ($ARGV[0] eq "-B") {
+	print 'PROGRAM:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:NO DATE SET (-B used)',"\n";
+} elsif ($ARGV[0] eq "-v") {
+	unlink($OUTFILE);
+	open(OUTFILE,">$OUTFILE");
+	print OUTFILE "/* $OUTFILE built by $HEADER */\n";
+	print OUTFILE "\n";
+	if ($OUTFILE eq "version.h") {
+		print OUTFILE "#define USE_SGS_VERS\n\n";
+	}
+	print OUTFILE "const char SGS_VERS[] = \"";
+	print OUTFILE '@(#)PROGRAM:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:', $DATE;
+	print OUTFILE "\";\n\n";
+	print OUTFILE "const char VERS_NUM[] = \"$VERSION\";\n\n";
+	close(OUTFILE);
+} elsif ($ARGV[0] ne "") {
+	print STDERR "$HEADER\n";
+	print STDERR "Copyright (C) 1997-2011 PADL Software Pty Ltd <lukeh\@padl.com>";
+	print STDERR "\n\n";
+	print STDERR "Unknown command line option $ARGV[0].\n";
+	print STDERR "Usage: vers_string [-f|-l|-c|-n|-B|-v]\n";
+	print STDERR "\t-f: echo project-n to stdout\n";
+	print STDERR "\t-l: echo static const char SGS_VERS to stdout\n";
+	print STDERR "\t-c: echo const char VERS_NUM and SGS_VERS to stdout\n";
+	print STDERR "\t-n: echo version number to stdout\n";
+	print STDERR "\t-B: emulate vers_string -B (why?)\n";
+	print STDERR "\t-v: generate $OUTFILE\n";
+	print STDERR "\tother options same as vers_string\n";
+	print STDERR "\n";
+	print STDERR "\tTo attach a project name and version number to a CVS\n";
+	print STDERR "\tmodule, use checkpoint\n";
+	print STDERR "\tTo find out the current project version, type cvsver\n";
+	print STDERR "\tTo create a new project, type cvsnew [project]\n";
+	print STDERR "\tTo sync with an existing project, type cvssync\n";
+	print STDERR "\tTo create a project distribution, type tarup\n";
+	print STDERR "\tTo commit a project, type commit [message]\n";
+} else {
+	print 'PROGRAM:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:', $DATE;
+	print "\n";
+}

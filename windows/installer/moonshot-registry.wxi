@@ -1,0 +1,21 @@
+<Include>
+
+  <DirectoryRef Id="TARGETDIR">
+    <Component Id="C_EapSSPRegistry"
+               Guid="d3b74ffb-42f3-4906-a849-fe5b28712104" Win64="$(var.Win64)">
+      <RegistryKey Action="createAndRemoveOnUninstall"
+                   Root="HKLM"
+                   Key="SYSTEM\CurrentControlSet\Control\Lsa\EapSSP">
+        <RegistryValue Name="Flags" Type="integer"
+                       Value="0" KeyPath="yes" />
+      </RegistryKey>
+      <RegistryKey Action="none"
+                   Root="HKLM"
+                   Key="SYSTEM\CurrentControlSet\Control\Lsa">
+        <RegistryValue Name="Security Packages" Type="multiString"
+                       Value="eapssp" KeyPath="no" Action="append" />
+      </RegistryKey>
+    </Component>
+  </DirectoryRef>
+
+</Include>

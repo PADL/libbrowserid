@@ -1,0 +1,5 @@
+
+- bcdedit /debug yes
+- enable ntsd -d as debugger for lsass.exe
+- ed nt!Kd_DEFAULT_MASK 0xFFFFFFFF
+

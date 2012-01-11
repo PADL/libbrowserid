@@ -1,0 +1,64 @@
+EapSSP Beta Installation Notes
+==============================
+
+1. Install the installer package. The kernel package is only required
+   for CIFS and other services implemented in the kernel.
+
+2. Acceptors need a registry entry like the following:
+
+        [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\EapSSP\Radius\moonshot-test.project-moonshot.org]
+        "Service"="1812"
+        "Secret"="testing123"
+
+3. If you are using Microsoft Exchange you will need to modify the
+   DWORD value called Flags under the EapSSP key and set it to
+   contain 0x00000010. This enables a workaround, pending a hotfix
+   from Microsoft. This is only required on the Exchange servers.
+
+4. To debug Lsass.exe, start dbgsrv on the test machine:
+
+        > dbgsrv -t tcp:port=1234
+
+   (If you need to debug across logon sessions, start it with psexec -d -s
+   so it runs as the local system account.)
+
+   On the debugging workstation do:
+
+        > windbg -premote tcp:server=192.168.1.1,port=1234 -pXXX
+
+   replacing the IP address and setting XXX to the PID of Lsass.exe.
+
+5. Users must be mapped to a Windows account, even for identification
+   contexts (GSS_C_IDENTIFY_FLAG). However in the case of identification
+   contexts on standalone machines, a wildcard mapping in the registry
+   will work even if the underlying Windows account does not exist.
+
+   On domain controllers and members, the preferred way is to setup a
+   mapping in Active Directory by adding:
+
+        altSecurityIdentities: EAP:steve@PROJECT-MOONSHOT.ORG
+
+   the directory entry of the target user. Obviously, replace the NAI.
+   The acceptor will map this user to a Kerberos principal and then
+   perform S4U2Self to acquire a token (for identify contexts, only the
+   mapping part of this is done). On domain controllers, the database is
+   ready directly without S4U.
+
+   If you're not using Active Directory, you can setup a local user mapping
+   with the following:
+
+        [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\EapSSP\UserList]
+        "steve@PROJECT-MOONSHOT.ORG"="steve"
+
+   It's also possible to tunnel a PAC in a RADIUS response using the
+   rlm_mspac module.
+
+6. EapSSP will read domain credentials stored in CredMan. You can
+   create these explicitly with cmdkey, or implicitly by using an
+   application that supports CredMan. Note that currently SPNs cannot
+   be used in target names; this is a bug in CredMan, not EapSSP. We
+   may also support generic credentials in the future to work around
+   this. To add a credential:
+
+        cmdkey /add:server.project-moonshot.org /user:steve@PROJECT-MOONSHOT.ORG /pass:foo
+

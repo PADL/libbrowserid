@@ -1,0 +1,32 @@
+Phase 1
+=======
+
+1. 32-bit WOW / build
+2. Installer
+
+Phase 2
+=======
+
+3. KSP for CIFS support
+4. Port to Vista (likely qualification only)
+5. Port to XP (this is probably not going to be possible because
+   XP will only reliably negotiate between NTLM and Kerberos, does
+   not support the parameterized EAP PRF in SChannel, etc)
+
+Phase 3
+=======
+
+6. libradsec use SChannel instead of OpenSSL
+7. Credential provider for Moonshot identity card support
+8. Windows 8 claims support
+
+- is there a bug with how we are using snprintf() and %S?
+- in memory credentials architecture review
+- generic credentials support (CredMan)
+- discuss EAP-TLS SChannel impersonation bug with MS
+- add thread user after reversion
+- DLL manifests
+- GSS_C_IDENTIFY_FLAG testing
+- do we want to preserve attribute type information for claims
+- dates in INF build
+- allocate claims contiguously

@@ -1,0 +1,68 @@
+RELDIR=kseceap
+
+!include ..\windows\NTMakefile.w32
+!if exist($(OBJDIR)\eapssp\NTMakefile.vers)
+!include $(OBJDIR)\eapssp\NTMakefile.vers
+!endif
+
+!if "$(CPU)"=="AMD64"
+PLATFORM=x64
+!else
+PLATFORM=x86
+!endif
+
+!if "$(BUILD)"=="rel"
+SETENVOPT=/Release
+BUILD_RELEASE=fre
+!else
+SETENVOPT=/Debug
+BUILD_RELEASE=chk
+!endif
+
+SETENVOPT=$(SETENVOPT) /$(PLATFORM) /$(BUILD_TARGET)
+
+DDKBUILDDIR=$(SRCDIR)\obj$(BUILD_RELEASE)_$(BUILD_TARGET)_$(MCPU)\$(CPU)
+
+KSECEAPSYS=$(DDKBUILDDIR)\kseceap.sys
+KSECEAPCAT=$(DDKBUILDDIR)\kseceap.cat
+KSECEAPINF=$(DDKBUILDDIR)\kseceap.inf
+KSECEAPPDB=$(DDKBUILDDIR)\kseceap.pdb
+
+KSECEAPVER=$(VER_PRODUCT_MAJOR).$(VER_PRODUCT_MINOR).$(VER_PRODUCT_AUX).$(VER_PRODUCT_PATCH)
+
+SETENV=$(SETENV) \
+	$(DDKDIR) $(BUILD_RELEASE) $(PLATFORM) $(BUILD_TARGET)
+
+kseceap.rc: kseceap.rc.in $(SRC)/CVSVersionInfo.txt
+	$(SED)  -e "s,[@]cpu[@],$(MCPU),g" \
+		-e "s,[@]version[@],$(KSECEAPVER),g" < kseceap.rc.in > $@
+
+$(KSECEAPSYS): kseceap.c kseceap.rc
+	$(SETENV) && cd $(SRCDIR) && $(DDKBUILD) /C /W
+	$(_CODESIGN)
+
+$(KSECEAPINF):: $(SRC)/CVSVersionInfo.txt
+
+$(KSECEAPINF):: kseceap.inf.in
+	$(SED)  -e "s,[@]cpu[@],$(MCPU),g" \
+		-e "s,[@]version[@],$(KSECEAPVER),g" < kseceap.inf.in > $@
+
+$(KSECEAPCAT): $(KSECEAPSYS) $(KSECEAPINF)
+	$(INF2CAT) /driver:$(DDKBUILDDIR) /os:7_$(PLATFORM) /verbose
+	$(_CODESIGN)
+	$(CP) $(KSECEAPSYS) $(DRIVERSBINDIR)
+	$(CP) $(KSECEAPCAT) $(DRIVERSBINDIR)
+	$(CP) $(KSECEAPINF) $(DRIVERSBINDIR)
+	-$(CP) $(KSECEAPPDB) $(DRIVERSBINDIR)
+
+all:: $(KSECEAPSYS) $(KSECEAPCAT)
+
+clean::
+	-$(RM) $(DRIVERSBINDIR)\*.*
+	-$(RM) $(DDKBUILDDIR)\*.*
+
+test::
+	-$(RM) $(SRCDIR)\htm\*.*
+	-$(RM) $(SRCDIR)\kseceap.rc
+	$(DDKDIR)\tools\chkinf\chkinf $(KSECEAPINF)
+

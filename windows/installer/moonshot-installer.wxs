@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="windows-1252"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:difx="http://schemas.microsoft.com/wix/DifxAppExtension">
+
+  <?define SupportWinXP=yes ?>
+
+  <?if $(var.Platform)=x64 ?>
+    <?define Win64=yes ?>
+    <?define InstDir="$(var.InstDir64)" ?>
+    <?define PlatformSystemFolder="System64Folder" ?>
+    <?define PlatformProgramFilesFolder="ProgramFiles64Folder" ?>
+  <?else?>
+    <?define Win64=no ?>
+    <?define InstDir="$(var.InstDir32)" ?>
+    <?define PlatformSystemFolder="SystemFolder" ?>
+    <?define PlatformProgramFilesFolder="ProgramFilesFolder" ?>
+  <?endif?>
+
+  <Product Name="!(loc.ProductName) $(var.Version)"
+           Id="*" UpgradeCode="81E64C32-1D09-4E3D-9EA2-EECD9C4D16CE"
+           Language="!(loc.LanguageCode)" Codepage="1252" Version="$(var.Version)"
+           Manufacturer="!(loc.Manufacturer)">
+
+    <Package Id="*" Description="!(loc.Description)"
+             Manufacturer="!(loc.Manufacturer)"
+             InstallerVersion="300" Languages="!(loc.LanguageCode)"
+             Compressed="yes" SummaryCodepage="1252" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir" DiskId="1">
+      <?ifdef Target32?>
+        <Directory Id="SystemFolder" />
+      <?endif?>
+      <?ifdef Target64?>
+        <Directory Id="System64Folder" />
+      <?endif?>
+      <Directory Id="$(var.PlatformProgramFilesFolder)" />
+    </Directory>
+
+    <?ifdef Target32?>
+      <DirectoryRef Id="SystemFolder" DiskId="1">
+        <Merge Id="M_Runtime32" Language="0"
+               SourceFile="$(var.RuntimeModule32)" />
+        <Merge Id="M_Heimdal32" Language="0"
+               SourceFile="$(var.HeimdalModule32)" />
+        <Merge Id="M_EapSSP32" Language="0"
+               SourceFile="$(var.InstDir32)\Moonshot-EapSSP.msm" />
+      </DirectoryRef>
+    <?endif?>
+
+    <?ifdef Target64?>
+      <DirectoryRef Id="System64Folder" DiskId="1">
+        <Merge Id="M_Runtime64" Language="0"
+               SourceFile="$(var.RuntimeModule64)" />
+        <Merge Id="M_Heimdal64" Language="0"
+               SourceFile="$(var.HeimdalModule64)" />
+        <Merge Id="M_EapSSP64" Language="0"
+               SourceFile="$(var.InstDir64)\Moonshot-EapSSP.msm" />
+      </DirectoryRef>
+    <?endif?>
+
+    <?include "Moonshot-registry.wxi" ?>
+
+    <Media Id="1" Cabinet="Disk1" CompressionLevel="high" EmbedCab="yes" />
+
+    <Upgrade Id="81E64C32-1D09-4E3D-9EA2-EECD9C4D16CE">
+      <UpgradeVersion IncludeMaximum="no" MigrateFeatures="yes" Maximum="$(var.Version)"
+                      Property="PREVIOUSINSTALLATION" />
+      <UpgradeVersion Minimum="$(var.Version)" IncludeMinimum="yes"
+                      Maximum="127.127.32767.32767"
+                      OnlyDetect="yes" Property="EXISTINGINSTALLATION" />
+    </Upgrade>
+
+    <Condition Message="!(loc.AdminRequired)">Installed OR Privileged</Condition>
+    <Condition Message="!(loc.AlreadyInstalled)">Installed OR NOT EXISTINGINSTALLATION</Condition>
+
+    <?ifdef SupportWinXP?>
+      <Condition Message="This application is only supported on Windows XP or higher.">
+        <![CDATA[Installed OR (VersionNT >= 501)]]>
+      </Condition>
+    <?else?>
+      <Condition Message="This application is only supported on Windows Vista or higher.">
+        <![CDATA[Installed OR (VersionNT >= 600)]]>
+      </Condition>
+    <?endif?>
+
+    <Feature Id="F_EapSSP"
+             Title="!(loc.FeaMainTitle)"
+             Description="!(loc.FeaMainDesc)" Display="expand"
+             Level="1" TypicalDefault="install" InstallDefault="local">
+      <?ifdef Target64?>
+        <MergeRef Id="M_Runtime64" />
+        <MergeRef Id="M_Heimdal64" />
+        <MergeRef Id="M_EapSSP64" />
+      <?endif?>
+      <?ifdef Target32?>
+        <MergeRef Id="M_Runtime32" />
+        <MergeRef Id="M_Heimdal32" />
+        <MergeRef Id="M_EapSSP32" />
+      <?endif?>
+      <ComponentRef Id="C_EapSSPRegistry" />
+      <Feature Id="F_KSecEap"
+               ConfigurableDirectory="INSTALLLOCATION"
+               Title="!(loc.FeaKernTitle)"
+               Description="!(loc.FeaKernDesc)" Display="expand"
+               Level="1" TypicalDefault="install" InstallDefault="local">
+        <ComponentRef Id="C_KSecEap" />
+      </Feature>
+    </Feature>
+
+    <!-- Properties for Add/Remove Programs -->
+    <Property Id="ARPHELPLINK" Value="http://www.project-moonshot.org" />
+    <Property Id="ARPCONTACT" Value="support@padl.com" />
+    <Property Id="ARPURLINFOABOUT" Value="http://www.project-moonshot.org" />
+
+    <!-- Other properties -->
+    <Property Id="ALLUSERS" Value="1" Secure="yes" />
+    <UIRef Id="WixUI_FeatureTree" />
+
+    <InstallExecuteSequence>
+      <RemoveExistingProducts After="InstallFinalize" />
+<!--
+      <Custom Action="CA_SetInstallEapAes128" After="InstallFiles">NOT Installed</Custom>
+      <Custom Action="CA_InstallEapAes128" After="CA_SetInstallEapAes128">NOT Installed</Custom>
+      <Custom Action="CA_SetInstallEapAes256" After="CA_InstallEapAes128">NOT Installed</Custom>
+      <Custom Action="CA_InstallEapAes256" After="CA_SetInstallEapAes256">NOT Installed</Custom>
+
+      <Custom Action="CA_SetUninstallEapAes128" After="InstallFinalize">REMOVE ~= "ALL"</Custom>
+      <Custom Action="CA_UninstallEapAes128" After="CA_SetUninstallEapAes128">REMOVE ~= "ALL"</Custom>
+      <Custom Action="CA_SetUninstallEapAes256" After="CA_UninstallEapAes128">REMOVE ~= "ALL"</Custom>
+      <Custom Action="CA_UninstallEapAes256" After="CA_SetUninstallEapAes256">REMOVE ~= "ALL"</Custom>
+-->
+      <ScheduleReboot After="InstallFinalize" />
+    </InstallExecuteSequence>
+
+  </Product>
+</Wix>

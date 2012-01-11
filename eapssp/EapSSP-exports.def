@@ -1,0 +1,12 @@
+EXPORTS
+
+DllMain
+
+LsaApInitializePackage
+LsaApLogonUserEx2
+LsaApLogonTerminated
+
+SpInitialize
+SpInstanceInit
+SpLsaModeInitialize
+SpUserModeInitialize

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="windows-1252"?>
+ <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+      xmlns:difx="http://schemas.microsoft.com/wix/DifxAppExtension">
+  <?if $(var.Platform)=x64 ?>
+    <?define Win64=yes ?>
+    <?define GuidKSecEap=930ed209-9cf0-4fc6-ba1d-e6a04d4bc60e ?>
+    <?define PlatformProgramFilesFolder="ProgramFiles64Folder" ?>
+  <?else?>
+    <?define Win64=no ?>
+    <?define GuidKSecEap=f6f13b71-d181-419d-9f05-4ab350664585 ?>
+    <?define PlatformProgramFilesFolder="ProgramFilesFolder" ?>
+  <?endif?>
+
+  <Fragment>
+    <Binary Id="DIFxApp.dll" SourceFile="$(var.DIFxAppDir)\DIFxApp.dll" />
+    <Binary Id="DIFxAppA.dll" SourceFile="$(var.DIFxAppDir)\DIFxAppA.dll" />
+
+    <CustomAction Id="MsiCleanupOnSuccess" BinaryKey="DIFxApp.dll"
+                  DllEntry="CleanupOnSuccess" />
+    <CustomAction Id="MsiProcessDrivers" BinaryKey="DIFxApp.dll"
+                  DllEntry="ProcessDriverPackages" />
+    <CustomAction Id="MsiInstallDrivers" BinaryKey="DIFxAppA.dll"
+                  DllEntry="InstallDriverPackages"
+                  Execute="deferred" Impersonate="no" />
+    <CustomAction Id="MsiUninstallDrivers" BinaryKey="DIFxAppA.dll"
+                  DllEntry="UninstallDriverPackages"
+                  Execute="deferred" Impersonate="no" />
+    <CustomAction Id="MsiRollbackInstall" BinaryKey="DIFxAppA.dll"
+                  DllEntry="RollbackInstall"
+                  Execute="rollback" Impersonate="no" />
+
+    <InstallExecuteSequence>
+      <Custom Action="MsiCleanupOnSuccess" After="InstallFinalize" /> 
+      <Custom Action="MsiProcessDrivers" After="InstallFiles" /> 
+    </InstallExecuteSequence>
+
+    <DirectoryRef Id="$(var.PlatformProgramFilesFolder)" DiskId="1">
+      <Directory Id="INSTALLLOCATION" Name="Moonshot">
+        <Directory Id="Drivers" Name="Drivers"
+                   FileSource="$(var.DriversBinDir)">
+          <Component Id="C_KSecEap"
+                     Guid="$(var.GuidKSecEap)"
+                     Win64="$(var.Win64)">
+            <File Name="KSecEap.sys" KeyPath="yes" />
+            <File Name="KSecEap.inf" />
+            <File Name="KSecEap.cat" />
+            <File Name="KSecEap.pdb" />
+            <difx:Driver Legacy="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

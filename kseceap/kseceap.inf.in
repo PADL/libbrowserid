@@ -1,0 +1,62 @@
+;/*
+; * Copyright (C) 2011 PADL Software Pty Ltd.
+; * All rights reserved.
+; * Use is subject to license.
+; *
+; * CONFIDENTIAL
+; *
+; * INF file for installing KSecEap driver
+; */
+
+[Version]
+Signature           = "$WINDOWS NT$"
+Class               = LegacyDriver
+ClassGUID           = {8ECC055D-047F-11D1-A537-0000F8753ED1}
+Provider            = %PADL%
+DriverVer           = 04/21/2009,@version@
+CatalogFile         = KSecEap.cat
+DriverPackageType   = KernelService
+
+[DestinationDirs]
+DefaultDestDir      = 12
+KSecEap.DriverFiles = 12
+
+[DefaultInstall]
+OptionDesc          = %ServiceDescription%
+CopyFiles           = KSecEap.DriverFiles
+
+[DefaultInstall.Services]
+AddService          = %ServiceName%,0x2,KSecEap.Service
+
+[DefaultUninstall]
+DelFiles            = KSecEap.DriverFiles
+
+[DefaultUninstall.Services]
+DelService          = %ServiceName%,0x200
+
+[KSecEap.Service]
+DisplayName         = %ServiceName%
+Description         = %ServiceDescription%
+ServiceBinary       = %12%\KSecEap.sys
+LoadOrderGroup      = Cryptography
+ServiceType         = 1                  ; SERVICE_KERNEL_DRIVER
+StartType           = 1                  ; SERVICE_SYSTEM_START
+ErrorControl        = 1                  ; SERVICE_ERROR_NORMAL
+
+[KSecEap.DriverFiles]
+KSecEap.sys
+KSecEap.pdb
+
+[SourceDisksFiles]
+KSecEap.sys         = 1
+KSecEap.pdb         = 1
+
+[SourceDisksNames]
+1 = %DISK_NAME%,,,
+
+[Strings]
+PADL                = "PADL Software Pty Ltd"
+ServiceDescription  = "EAP Kernel Security Support Provider"
+ServiceName         = "KSecEap"
+DISK_NAME           = "KSecEap Install Disk"
+

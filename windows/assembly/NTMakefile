@@ -1,0 +1,163 @@
+########################################################################
+#
+# Copyright (c) 2010, Secure Endpoints Inc.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# - Redistributions of source code must retain the above copyright
+#   notice, this list of conditions and the following disclaimer.
+#
+# - Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in
+#   the documentation and/or other materials provided with the
+#   distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+
+RELDIR=windows\assembly
+
+!include ../NTMakefile.w32
+!if exist($(OBJDIR)\eapssp\NTMakefile.vers)
+!include $(OBJDIR)\eapssp\NTMakefile.vers
+!endif
+
+# CODESIGN_PKT should be set to the public key token of the code
+# signing certificate in use.  You can use :
+#
+# pktextract <path to certificate>
+#
+# ..to derive the public key token.
+#
+!ifndef CODESIGN_PKT
+!  error CODESIGN_PKT should be set to the public key token for codesigning certificate
+!endif
+
+prep:: mk-asm-dirs
+
+# ----------------------------------------------------------------------
+# Moonshot.EapSSP Assembly
+
+ASMSSPDIR=$(ASMDIR)\Moonshot.EapSSP
+ASMSSPVER=$(VER_PRODUCT_MAJOR).$(VER_PRODUCT_MINOR).$(VER_PRODUCT_AUX).$(VER_PRODUCT_PATCH)
+ASMSSPVER_OLD_BEGIN=$(VER_OLD_BEGIN_MAJOR).$(VER_OLD_BEGIN_MINOR).$(VER_OLD_BEGIN_AUX).$(VER_OLD_BEGIN_PATCH)
+ASMSSPVER_OLD_END=$(VER_OLD_END_MAJOR).$(VER_OLD_END_MINOR).$(VER_OLD_END_AUX).$(VER_OLD_END_PATCH)
+ASMSSPMAN=$(ASMSSPNAME).manifest
+
+ASMSSPBINS=\
+	$(ASMSSPDIR)\EapSSP.dll		\
+	$(ASMSSPDIR)\EapSSP.pdb
+
+$(ASMSSPDIR)\$(ASMSSPMAN).nohash: Moonshot.EapSSP.manifest.in
+	$(SED)  -e "s,[@]name[@],$(ASMSSPNAME),g" \
+		-e "s,[@]cpu[@],$(MCPU),g" \
+		-e "s,[@]version[@],$(ASMSSPVER),g" \
+		-e "s,[@]pkt[@],$(CODESIGN_PKT),g" < $** > $@
+
+$(ASMSSPDIR)\$(ASMSSPMAN) $(ASMSSPDIR)\$(ASMSSPMAN).cdf: \
+		$(ASMSSPDIR)\$(ASMSSPMAN).nohash $(ASMSSPBINS)
+	-$(RM) $(ASMSSPDIR)\$(ASMSSPMAN)
+	-$(RM) $(ASMSSPDIR)\$(ASMSSPMAN).cdf
+	$(MT) -manifest $(ASMSSPDIR)\$(ASMSSPMAN).nohash -out:$(ASMSSPDIR)\$(ASMSSPMAN) -hashupdate -makecdfs
+
+$(ASMSSPDIR)\$(ASMSSPNAME).cat: $(ASMSSPDIR)\$(ASMSSPMAN).cdf
+	cd $(ASMSSPDIR)
+	$(MAKECAT) $**
+	$(_CODESIGN)
+#	$(RM) $(ASMSSPMAN).cdf
+#	$(RM) $(ASMSSPMAN).nohash
+	cd $(SRCDIR)
+
+asm-ssp: \
+	$(ASMSSPBINS)			\
+	$(ASMSSPDIR)\$(ASMSSPMAN)	\
+	$(ASMSSPDIR)\$(ASMSSPNAME).cat	\
+
+all:: asm-ssp
+
+clean::
+	-$(RM) $(ASMSSPDIR)\*.*
+
+test::
+	$(MT) -manifest $(ASMSSPDIR)\$(ASMSSPMAN) -validate_manifest
+
+{$(BINDIR)}.dll{$(ASMSSPDIR)}.dll:
+	$(CP) $< $@
+#	$(DLLPREP_MERGE)
+
+{$(BINDIR)}.pdb{$(ASMSSPDIR)}.pdb:
+	$(CP) $< $@
+
+# ----------------------------------------------------------------------
+# Application manifests
+#
+#all:: $(APPMANIFEST)
+#
+#clean::
+#	-$(RM) $(APPMANIFEST)
+#
+#$(APPMANIFEST): Moonshot.Application.manifest.in
+#	$(SED)	-e "s,[@]sspname[@],$(ASMSSPNAME),g" \
+#		-e "s,[@]sspversion[@],$(ASMSSPVER),g" \
+#		-e "s,[@]cpu[@],$(MCPU),g" \
+#		-e "s,[@]pkt[@],$(CODESIGN_PKT),g" < $** > $@
+#
+#test::
+#	$(MT) -manifest $(APPMANIFEST) -validate_manifest
+
+# ----------------------------------------------------------------------
+# Publisher configuration files
+
+POLSSP=policy.$(VER_PRODUCT_MAJOR).$(VER_PRODUCT_MINOR).Moonshot.EapSSP
+POLSSPDIR=$(ASMDIR)\$(POLSSP)
+POLSSPFILE=$(POLSSPDIR)\$(ASMSSPVER).pol
+POLSSPCAT=$(POLSSPDIR)\$(ASMSSPVER).cat
+
+$(POLSSPFILE): policy.Moonshot.EapSSP.in
+	$(SED)  -e "s,[@]sspname[@],$(ASMSSPNAME),g"	\
+		-e "s,[@]sspversion[@],$(ASMSSPVER),g"	\
+		-e "s,[@]sspverfrom_begin[@],$(ASMSSPVER_OLD_BEGIN),g"	\
+		-e "s,[@]sspverfrom_end[@],$(ASMSSPVER_OLD_END),g"	\
+		-e "s,[@]ssppolname[@],$(POLSSP),g"	\
+		-e "s,[@]cpu[@],$(MCPU),g"	\
+		-e "s,[@]pkt[@],$(CODESIGN_PKT),g" < $** > $@
+
+$(POLSSPFILE).cdf: $(POLSSPFILE)
+	$(MT) -manifest $(POLSSPFILE) -makecdfs
+
+$(POLSSPCAT): $(POLSSPFILE).cdf
+	cd $(POLSSPDIR)
+	$(MAKECAT) $**
+	$(_CODESIGN)
+	cd $(SRCDIR)
+
+all:: $(POLSSPFILE) $(POLSSPCAT)
+
+clean::
+	-$(RM) $(POLSSPDIR)\*.*
+
+# ----------------------------------------------------------------------
+
+.SUFFIXES: .dll .pdb
+
+mk-asm-dirs:
+!  if !exist($(ASMSSPDIR))
+	$(MKDIR) $(ASMSSPDIR)
+!  endif
+!  if !exist($(POLSSPDIR))
+	$(MKDIR) $(POLSSPDIR)
+!  endif

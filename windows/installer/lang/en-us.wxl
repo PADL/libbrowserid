@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization Culture="en-us" xmlns="http://schemas.microsoft.com/wix/2006/localization">
+  <String Id='LanguageCode'>1033</String>
+  <String Id='Codepage'>1252</String>
+  <String Id='ProductName'>Moonshot SSP</String>
+  <String Id='Manufacturer'>PADL Software Pty Ltd</String>
+  <String Id='Description'>Moonshot EAP Security Support Provider</String>
+  <String Id='Comments'></String>
+  <String Id='FeaMainTitle'>SSP</String>
+  <String Id='FeaMainDesc'>EAP Security Support Provider</String>
+  <String Id='Fea32BitTitle'>SSP (32-bit)</String>
+  <String Id='Fea32BitDesc'>EAP Security Support Provider (32-bit)</String>
+  <String Id='FeaKernTitle'>Kernel SSP</String>
+  <String Id='FeaKernDesc'>EAP Kernel Security Support Provider (required for SMB/CIFS)</String>
+   <String Id='AdminRequired'>Installation of this package requires elevation</String>
+  <String Id='AlreadyInstalled'>A current or newer version of Moonshot EapSSP is already installed on this machine.  Please use the Add/Remove Programs control panel to manage the existing installation.</String>
+</WixLocalization> 

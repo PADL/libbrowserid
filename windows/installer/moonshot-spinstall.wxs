@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="windows-1252"?>
+ <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+      xmlns:difx="http://schemas.microsoft.com/wix/DifxAppExtension">
+
+  <Fragment>
+    <Binary Id="SPInstall.dll" SourceFile="$(var.InstDir)\spinstall.dll" />
+
+    <CustomAction Id="CA_SetInstallEapAes128"
+                  Return="check"
+                  Property="CA_InstallEapAes128"
+                  Value="eap-aes128" />
+    <CustomAction Id="CA_InstallEapAes128" BinaryKey="SPInstall.dll"
+                  DllEntry="InstallSecurityPackage"
+                  Execute="deferred" Impersonate="no" />
+
+    <CustomAction Id="CA_SetInstallEapAes256"
+                  Return="check"
+                  Property="CA_InstallEapAes256"
+                  Value="eap-aes256" />
+    <CustomAction Id="CA_InstallEapAes256" BinaryKey="SPInstall.dll"
+                  DllEntry="InstallSecurityPackage"
+                  Execute="deferred" Impersonate="no" />
+
+    <CustomAction Id="CA_SetUninstallEapAes128"
+                  Return="check"
+                  Property="CA_UninstallEapAes128"
+                  Value="eap-aes128" />
+    <CustomAction Id="CA_UninstallEapAes128" BinaryKey="SPInstall.dll"
+                  DllEntry="UninstallSecurityPackage"
+                  Execute="deferred" Impersonate="no" />
+
+    <CustomAction Id="CA_SetUninstallEapAes256"
+                  Return="check"
+                  Property="CA_UninstallEapAes256"
+                  Value="eap-aes256" />
+    <CustomAction Id="CA_UninstallEapAes256" BinaryKey="SPInstall.dll"
+                  DllEntry="UninstallSecurityPackage"
+                  Execute="deferred" Impersonate="no" />
+
+  </Fragment>
+</Wix>
