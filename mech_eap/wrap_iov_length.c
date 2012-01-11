@@ -196,6 +196,7 @@ gssEapWrapIovLength(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+#ifndef GSSEAP_SSP
 OM_uint32 GSSAPI_CALLCONV
 gss_wrap_iov_length(OM_uint32 *minor,
                     gss_ctx_id_t ctx,
@@ -232,3 +233,4 @@ cleanup:
 
     return major;
 }
+#endif

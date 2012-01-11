@@ -36,6 +36,7 @@
 
 #include "gssapiP_eap.h"
 
+#ifndef GSSEAP_SSP
 OM_uint32 GSSAPI_CALLCONV
 gss_wrap(OM_uint32 *minor,
          gss_ctx_id_t ctx,
@@ -73,6 +74,7 @@ cleanup:
 
     return major;
 }
+#endif
 
 OM_uint32
 gssEapWrap(OM_uint32 *minor,

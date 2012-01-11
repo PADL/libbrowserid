@@ -45,7 +45,11 @@ destroyThreadLocalData(struct gss_eap_thread_local_data *tld)
         gssEapDestroyStatusInfo(tld->statusInfo);
     if (tld->krbContext != NULL)
         gssEapDestroyKrbContext(tld->krbContext);
+#ifdef GSSEAP_SSP
+    HeapFree(GetProcessHeap(), 0, tld);
+#else
     GSSEAP_FREE(tld);
+#endif
 }
 
 #ifdef WIN32
@@ -68,7 +72,11 @@ gssEapGetThreadLocalData(void)
 
     tlsData = TlsGetValue(tlsIndex);
     if (tlsData == NULL) {
+#ifdef GSSEAP_SSP
+        tlsData = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*tlsData));
+#else
         tlsData = GSSEAP_CALLOC(1, sizeof(*tlsData));
+#endif
         TlsSetValue(tlsIndex, tlsData);
     }
 
@@ -87,8 +95,12 @@ DllMain(HINSTANCE hDLL,     /* DLL module handle */
         case DLL_PROCESS_ATTACH:
             /* Allocate a TLS index. */
             major = gssEapInitiatorInit(&minor);
-            if (GSS_ERROR(major))
+            if (GSS_ERROR(major)) {
+#ifdef GSSEAP_SSP
+                GsspDebugTrace(WINEVENT_LEVEL_INFO, L"DllMain: EAP client initialization failed %08x.%08x; unloading SSP", major, minor);
+#endif
                 return FALSE;
+            }
 
             tlsIndex = TlsAlloc();
             if (tlsIndex == TLS_OUT_OF_INDEXES)
@@ -96,7 +108,11 @@ DllMain(HINSTANCE hDLL,     /* DLL module handle */
             /* No break: Initialize the index for first thread.*/
         case DLL_THREAD_ATTACH:
             /* Initialize the TLS index for this thread. */
+#ifdef GSSEAP_SSP
+            tlsData = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*tlsData));
+#else
             tlsData = GSSEAP_CALLOC(1, sizeof(*tlsData));
+#endif
             if (tlsData == NULL)
                 return FALSE;
             TlsSetValue(tlsIndex, tlsData);

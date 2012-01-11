@@ -212,6 +212,79 @@ importServiceName(OM_uint32 *minor,
     return major;
 }
 
+#ifdef GSSEAP_SSP
+static OM_uint32
+importWin32Name(OM_uint32 *minor,
+                const gss_buffer_t nameBuffer,
+                gss_name_t *pName)
+{
+    OM_uint32 major;
+    krb5_context krbContext;
+    krb5_principal krbPrinc = NULL;
+    krb5_error_code code;
+    gss_buffer_desc realm = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc user = GSS_C_EMPTY_BUFFER;
+    char *sRealm = NULL;
+    char *sUser = NULL;
+    size_t i;
+
+    GSSEAP_KRB_INIT(&krbContext);
+
+    code = KRB5_PARSE_MALFORMED;
+    for (i = 0; i < nameBuffer->length; i++) {
+        char *p = &((char *)nameBuffer->value)[i];
+
+        if (*p == '\\') {
+            realm.length = i;
+            realm.value = nameBuffer->value;
+
+            user.length = nameBuffer->length - i - 1;
+            user.value = p + 1;
+
+            code = 0;
+            break;
+        }
+    }
+
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_BAD_NAME;
+    }
+
+    major = bufferToString(minor, &realm, &sRealm);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = bufferToString(minor, &user, &sUser);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    code = krb5_build_principal(krbContext,
+                                &krbPrinc,
+                                realm.length,
+                                sRealm,
+                                sUser,
+                                NULL);
+    if (code != 0) {
+        *minor = code;
+        goto cleanup;
+    }
+
+    major = krbPrincipalToName(minor, &krbPrinc, pName);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
+    krb5_free_principal(krbContext, krbPrinc);
+    if (sRealm != NULL)
+        GSSEAP_FREE(sRealm);
+    if (sUser != NULL)
+        GSSEAP_FREE(sUser);
+
+    return 0;
+}
+#endif
+
 #define IMPORT_FLAG_DEFAULT_REALM           0x1
 
 /*
@@ -280,7 +353,7 @@ importEapNameFlags(OM_uint32 *minor,
 
     if (code != 0) {
         *minor = code;
-        return GSS_S_FAILURE;
+        return GSS_S_BAD_NAME;
     }
 
     GSSEAP_ASSERT(krbPrinc != NULL);
@@ -305,7 +378,16 @@ importUserName(OM_uint32 *minor,
                const gss_buffer_t nameBuffer,
                gss_name_t *pName)
 {
-    return importEapNameFlags(minor, nameBuffer, IMPORT_FLAG_DEFAULT_REALM, pName);
+    OM_uint32 major;
+
+#ifdef GSSEAP_SSP
+    major = importWin32Name(minor, nameBuffer, pName);
+    if (GSS_ERROR(major) && *minor == (OM_uint32)KRB5_PARSE_MALFORMED)
+#endif
+
+    major = importEapNameFlags(minor, nameBuffer, IMPORT_FLAG_DEFAULT_REALM, pName);
+
+    return major;
 }
 
 static OM_uint32
@@ -495,7 +577,9 @@ gssEapImportName(OM_uint32 *minor,
         { GSS_C_NT_HOSTBASED_SERVICE_X,     importServiceName           },
         { GSS_C_NT_ANONYMOUS,               importAnonymousName         },
         { GSS_C_NT_EXPORT_NAME,             importExportName            },
+#ifndef GSSEAP_SSP
         { GSS_KRB5_NT_PRINCIPAL_NAME,       importUserName              },
+#endif
 #ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
         { GSS_C_NT_COMPOSITE_EXPORT,        importCompositeExportName   },
 #endif
@@ -783,6 +867,8 @@ gssEapCompareName(OM_uint32 *minor,
         *name_equal = krb5_principal_compare(krbContext,
                                              name1->krbPrincipal,
                                              name2->krbPrincipal);
+    } else {
+        *name_equal = 0;
     }
 
     return GSS_S_COMPLETE;

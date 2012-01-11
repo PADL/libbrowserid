@@ -116,6 +116,46 @@ gssEapImportPartialContext(OM_uint32 *minor,
 }
 #endif /* GSSEAP_ENABLE_ACCEPTOR */
 
+#ifdef GSSEAP_SSP
+static OM_uint32
+gssEapImportUnicodeString(OM_uint32 *minor,
+                          unsigned char **pBuf,
+                          size_t *pRemain,
+                          UNICODE_STRING *string)
+{
+    unsigned char *p = *pBuf;
+    size_t remain = *pRemain;
+
+    RtlInitUnicodeString(string, NULL);
+
+    CHECK_REMAIN(2);
+    string->Length = load_uint16_be(p);
+    UPDATE_REMAIN(2);
+
+    CHECK_REMAIN(2);
+    string->MaximumLength = load_uint16_be(p);
+    UPDATE_REMAIN(2);
+
+    if (string->MaximumLength != 0) {
+        CHECK_REMAIN(string->MaximumLength);
+
+        string->Buffer = GSSEAP_MALLOC(string->MaximumLength);
+        if (string->Buffer == NULL) {
+            *minor = ENOMEM;
+            return GSS_S_FAILURE;
+        }
+        memcpy(string->Buffer, p, string->MaximumLength);
+
+        UPDATE_REMAIN(string->MaximumLength);
+    }
+
+    *pBuf = p;
+    *pRemain -= 4 + string->MaximumLength;
+
+    return GSS_S_COMPLETE;
+}
+#endif /* GSSEAP_SSP */
+
 static OM_uint32
 importMechanismOid(OM_uint32 *minor,
                    unsigned char **pBuf,
@@ -328,11 +368,27 @@ gssEapImportContext(OM_uint32 *minor,
         if (GSS_ERROR(major))
             return major;
     }
-
-#ifdef GSSEAP_DEBUG
-    GSSEAP_ASSERT(remain == 0);
-#endif
 #endif /* GSSEAP_ENABLE_ACCEPTOR */
+
+#ifdef GSSEAP_SSP
+    major = gssEapImportUnicodeString(minor, &p, &remain, &ctx->AccountName);
+    if (GSS_ERROR(major)) {
+        RtlInitUnicodeString(&ctx->AccountName, NULL);
+        return major;
+    }
+
+    if (remain < 24) {
+        *minor = GSSEAP_TOK_TRUNC;
+        return GSS_S_DEFECTIVE_TOKEN;
+    }
+
+    ctx->LogonId.HighPart   = load_uint32_be(&p[0]);
+    ctx->LogonId.LowPart    = load_uint32_be(&p[4]);
+    ctx->TokenHandle        = (HANDLE)load_uint64_be(&p[8]);
+    ctx->LsaHandle          = load_uint64_be(&p[16]);
+    p      += 24;
+    remain -= 24;
+#endif /* GSSEAP_SSP */
 
     major = GSS_S_COMPLETE;
     *minor = 0;
@@ -340,6 +396,7 @@ gssEapImportContext(OM_uint32 *minor,
     return major;
 }
 
+#ifndef GSSEAP_SSP
 OM_uint32 GSSAPI_CALLCONV
 gss_import_sec_context(OM_uint32 *minor,
                        gss_buffer_t interprocess_token,
@@ -372,3 +429,4 @@ cleanup:
 
     return major;
 }
+#endif

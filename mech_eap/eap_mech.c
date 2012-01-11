@@ -183,7 +183,7 @@ gssEapInitiatorInit(OM_uint32 *minor)
     if (GSS_ERROR(major))
         return major;
 
-#ifdef GSSEAP_ENABLE_REAUTH
+#if defined(GSSEAP_ENABLE_REAUTH) && !defined(GSSEAP_SSP)
     major = gssEapReauthInitialize(minor);
     if (GSS_ERROR(major))
         return major;

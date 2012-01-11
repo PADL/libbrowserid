@@ -156,8 +156,16 @@ inquireNegoExKey(OM_uint32 *minor,
 
     keySize = KRB_KEY_LENGTH(&ctx->rfc3961Key);
 
-    major = gssEapPseudoRandom(minor, ctx, GSS_C_PRF_KEY_FULL, &salt,
-                               keySize, &key);
+    key.value = GSSEAP_MALLOC(keySize);
+    if (key.value == NULL) {
+        major = GSS_S_FAILURE;
+        *minor = ENOMEM;
+        goto cleanup;
+    }
+
+    key.length = keySize;
+
+    major = gssEapPseudoRandom(minor, ctx, GSS_C_PRF_KEY_FULL, &salt, &key);
     if (GSS_ERROR(major))
         goto cleanup;
 

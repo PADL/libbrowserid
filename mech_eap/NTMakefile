@@ -1,0 +1,72 @@
+#
+# mech_eap for SSP build
+#
+
+RELDIR=mech_eap
+
+!include ../windows/NTMakefile.w32 
+
+cdefines = $(cdefines) -DSYSCONFDIR=\"c:/windows/system32/drivers/etc/\"
+
+
+libmech_eap_gen_OBJS=					\
+	$(OBJ)\gsseap_err.obj				\
+	$(OBJ)\radsec_err.obj
+
+libmech_eap_OBJS =    					\
+	$(OBJ)\display_status.obj			\
+	$(OBJ)\eap_mech.obj				\
+	$(OBJ)\export_sec_context.obj			\
+	$(OBJ)\exchange_meta_data.obj			\
+	$(OBJ)\import_sec_context.obj			\
+	$(OBJ)\init_sec_context.obj			\
+	$(OBJ)\pseudo_random.obj			\
+	$(OBJ)\query_mechanism_info.obj 		\
+	$(OBJ)\query_meta_data.obj			\
+	$(OBJ)\unwrap_iov.obj				\
+	$(OBJ)\util_buffer.obj				\
+	$(OBJ)\util_context.obj				\
+	$(OBJ)\util_cksum.obj				\
+	$(OBJ)\util_cred.obj				\
+	$(OBJ)\util_crypt.obj				\
+	$(OBJ)\util_krb.obj				\
+	$(OBJ)\util_lucid.obj				\
+	$(OBJ)\util_mech.obj				\
+	$(OBJ)\util_name.obj				\
+	$(OBJ)\util_oid.obj				\
+	$(OBJ)\util_ordering.obj			\
+	$(OBJ)\util_sm.obj				\
+	$(OBJ)\util_tld.obj				\
+	$(OBJ)\util_token.obj				\
+	$(OBJ)\wrap.obj					\
+	$(OBJ)\wrap_iov.obj				\
+	$(OBJ)\wrap_iov_length.obj				
+
+!ifdef GSSEAP_ENABLE_ACCEPTOR
+libmech_eap_OBJS = $(libmech_eap_OBJS)			\
+	$(OBJ)\accept_sec_context.obj			\
+	$(OBJ)\util_attr.obj				\
+	$(OBJ)\util_base64.obj				\
+	$(OBJ)\util_json.obj				\
+	$(OBJ)\util_radius.obj				
+!endif
+
+COMPILE_ET = $(HEIMDAL_BINDIR)\compile_et.exe
+
+$(OBJ)\gsseap_err.h $(OBJ)\gsseap_err.c: gsseap_err.et
+	cd $(OBJ)
+	$(COMPILE_ET) $(SRCDIR)\gsseap_err.et
+	cd $(SRCDIR)
+
+$(OBJ)\radsec_err.h $(OBJ)\radsec_err.c: radsec_err.et
+	cd $(OBJ)
+	$(COMPILE_ET) $(SRCDIR)\radsec_err.et
+	cd $(SRCDIR)
+
+$(LIBMECH_EAP): $(libmech_eap_gen_OBJS) $(libmech_eap_OBJS)
+	$(LIBCON)
+
+all:: $(BUILT_SOURCES) $(LIBMECH_EAP)
+
+clean::
+

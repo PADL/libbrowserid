@@ -49,6 +49,7 @@ gssEapExchangeMetaData(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+#ifndef GSSEAP_SSP
 OM_uint32 GSSAPI_CALLCONV
 gss_exchange_meta_data(OM_uint32 *minor,
                        gss_const_OID mech,
@@ -80,3 +81,4 @@ gss_exchange_meta_data(OM_uint32 *minor,
 
     return major;
 }
+#endif

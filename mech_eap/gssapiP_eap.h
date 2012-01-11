@@ -61,6 +61,8 @@
 # include <WinSock2.h>
 # define MAXHOSTNAMELEN NI_MAXHOST
 #endif
+#ifdef HAVE_HEIMDAL_VERSION
+#endif
 #endif
 
 /* GSS headers */
@@ -90,28 +92,11 @@ typedef const gss_OID_desc *gss_const_OID;
 #include <wpabuf.h>
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR
-/* FreeRADIUS headers */
-#ifdef __cplusplus
-extern "C" {
-#ifndef WIN32
-#define operator fr_operator
-#endif
-#endif
-#include <freeradius/libradius.h>
-#include <freeradius/radius.h>
-
-#undef pid_t
-
 /* libradsec headers */
 #include <radsec/radsec.h>
 #include <radsec/request.h>
-#ifdef __cplusplus
-#ifndef WIN32
-#undef operator
+#include <radsec/radius.h>
 #endif
-}
-#endif
-#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
 #include "gsseap_err.h"
 #include "radsec_err.h"
@@ -150,6 +135,8 @@ struct gss_name_struct
 #define CRED_FLAG_DEFAULT_CCACHE            0x00080000
 #define CRED_FLAG_RESOLVED                  0x00100000
 #define CRED_FLAG_TARGET                    0x00200000
+#define CRED_FLAG_CERTIFICATE               0x00400000
+#define CRED_FLAG_CONFIG_BLOB               0x00800000
 #define CRED_FLAG_PUBLIC_MASK               0x0000FFFF
 
 #ifdef HAVE_HEIMDAL_VERSION
@@ -170,9 +157,19 @@ struct gss_cred_id_struct
     gss_buffer_desc caCertificate;
     gss_buffer_desc subjectNameConstraint;
     gss_buffer_desc subjectAltNameConstraint;
-#ifdef GSSEAP_ENABLE_REAUTH
+    gss_buffer_desc clientCertificate;
+    gss_buffer_desc privateKey;
+#if defined(GSSEAP_ENABLE_REAUTH) && !defined(GSSEAP_SSP)
     krb5_ccache krbCredCache;
     gss_cred_id_t reauthCred;
+#endif
+#ifdef GSSEAP_SSP
+    volatile ULONG SspFlags;        /* extra flags */
+    volatile LUID LogonId;          /* logon session */
+    volatile ULONG ProcessID;       /* PID (0 for all processes in session) */
+    PCCERT_CONTEXT CertContext;     /* optional certificate context */
+    LIST_ENTRY ListEntry;           /* list pointer for credentials list */
+    volatile LONG RefCount;         /* reference count */
 #endif
 };
 
@@ -195,11 +192,16 @@ struct gss_cred_id_struct
 #define CTX_FLAG_EAP_ALT_REJECT             0x01000000
 #define CTX_FLAG_EAP_MASK                   0xFFFF0000
 
+#define CONFIG_BLOB_CLIENT_CERT             0
+#define CONFIG_BLOB_PRIVATE_KEY             1
+#define CONFIG_BLOB_MAX                     2
+
 struct gss_eap_initiator_ctx {
     unsigned int idleWhile;
     struct eap_peer_config eapPeerConfig;
     struct eap_sm *eap;
     struct wpabuf reqData;
+    struct wpa_config_blob configBlobs[CONFIG_BLOB_MAX];
 };
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR
@@ -208,7 +210,7 @@ struct gss_eap_acceptor_ctx {
     struct rs_connection *radConn;
     char *radServer;
     gss_buffer_desc state;
-    VALUE_PAIR *vps;
+    rs_avp *vps;
 };
 #endif
 
@@ -246,6 +248,18 @@ struct gss_ctx_id_struct
     } ctxU;
     const struct gss_eap_token_buffer_set *inputTokens;
     const struct gss_eap_token_buffer_set *outputTokens;
+#ifdef GSSEAP_SSP
+    volatile LUID LogonId;          /* logon session */
+    HANDLE TokenHandle;             /* token for acceptor contexts */
+    UNICODE_STRING AccountName;     /* mapped account from LSA */
+    ULONG UserFlags;                /* flags from profile */
+    LSA_SEC_HANDLE LsaHandle;       /* handle for user-mode contexts */
+    PVOID ProfileBuffer;            /* profile buffer */
+    ULONG ProfileBufferLength;      /* profile buffer length */
+    NTSTATUS SubStatus;             /* logon substatus */
+    LIST_ENTRY ListEntry;           /* list pointer for user-mode contexts */
+    volatile LONG RefCount;         /* reference count */
+#endif
 };
 
 #define TOK_FLAG_SENDER_IS_ACCEPTOR         0x01
@@ -338,9 +352,12 @@ gssEapDisplayStatus(OM_uint32 *minor,
 #define IS_WIRE_ERROR(err)              ((err) > GSSEAP_RESERVED && \
                                          (err) <= GSSEAP_RADIUS_PROT_FAILURE)
 
-/* upper bound of RADIUS error range must be kept in sync with radsec.h */
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 #define IS_RADIUS_ERROR(err)            ((err) >= ERROR_TABLE_BASE_rse && \
-                                         (err) <= ERROR_TABLE_BASE_rse + 20)
+                                         (err) <= ERROR_TABLE_BASE_rse + RSE_MAX)
+#else
+#define IS_RADIUS_ERROR(err)            (0)
+#endif
 
 /* exchange_meta_data.c */
 OM_uint32 GSSAPI_CALLCONV
@@ -377,7 +394,6 @@ gssEapPseudoRandom(OM_uint32 *minor,
                    gss_ctx_id_t ctx,
                    int prf_key,
                    const gss_buffer_t prf_in,
-                   ssize_t desired_output_len,
                    gss_buffer_t prf_out);
 
 /* query_mechanism_info.c */

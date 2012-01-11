@@ -336,6 +336,7 @@ cleanup:
     return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
 
+#ifndef GSSEAP_SSP
 OM_uint32 GSSAPI_CALLCONV
 gss_wrap_iov(OM_uint32 *minor,
              gss_ctx_id_t ctx,
@@ -377,3 +378,4 @@ cleanup:
 
     return major;
 }
+#endif

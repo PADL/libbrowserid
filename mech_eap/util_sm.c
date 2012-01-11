@@ -72,6 +72,11 @@ gssEapStateToString(enum gss_eap_state state)
     case GSSEAP_STATE_ESTABLISHED:
         s = "ESTABLISHED";
         break;
+#ifdef GSSEAP_SSP
+    case GSSEAP_STATE_MECHLIST_MIC:
+        s = "MECHLIST_MIC";
+        break;
+#endif
     default:
         s = "INVALID";
         break;

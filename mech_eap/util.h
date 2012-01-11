@@ -270,6 +270,12 @@ gssEapSetCredPassword(OM_uint32 *minor,
                       const gss_buffer_t password);
 
 OM_uint32
+gssEapSetCredClientCertificate(OM_uint32 *minor,
+                               gss_cred_id_t cred,
+                               const gss_buffer_t clientCert,
+                               const gss_buffer_t privateKey);
+
+OM_uint32
 gssEapSetCredService(OM_uint32 *minor,
                      gss_cred_id_t cred,
                      const gss_name_t target);
@@ -670,6 +676,9 @@ enum gss_eap_state {
     GSSEAP_STATE_REAUTHENTICATE = 0x10,     /* GSS reauthentication messages */
 #endif
     GSSEAP_STATE_ESTABLISHED    = 0x20,     /* context established */
+#ifdef GSSEAP_SSP
+    GSSEAP_STATE_MECHLIST_MIC   = 0x40,     /* make SPNEGO checksum */
+#endif
     GSSEAP_STATE_ALL            = 0x3F
 };
 
@@ -1025,7 +1034,7 @@ gssEapDestroyKrbContext(krb5_context context);
 #include "util_attr.h"
 #include "util_base64.h"
 #endif /* GSSEAP_ENABLE_ACCEPTOR */
-#ifdef GSSEAP_ENABLE_REAUTH
+#if defined(GSSEAP_ENABLE_REAUTH) || defined(GSSEAP_SSP)
 #include "util_reauth.h"
 #endif
 

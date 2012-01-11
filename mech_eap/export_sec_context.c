@@ -160,6 +160,11 @@ gssEapExportSecContext(OM_uint32 *minor,
     if (partialCtx.value != NULL)
         length += 4 + partialCtx.length;        /* partialCtx.value */
 
+#ifdef GSSEAP_SSP
+    length += 4 + ctx->AccountName.MaximumLength; /* AccountName.value */
+    length += 24;
+#endif
+
     token->value = GSSEAP_MALLOC(length);
     if (token->value == NULL) {
         major = GSS_S_FAILURE;
@@ -195,6 +200,32 @@ gssEapExportSecContext(OM_uint32 *minor,
     if (partialCtx.value != NULL)
         p = store_buffer(&partialCtx, p, FALSE);
 
+#ifdef GSSEAP_SSP
+    store_uint16_be(ctx->AccountName.Length,        &p[0]);
+    store_uint16_be(ctx->AccountName.MaximumLength, &p[2]);
+    memcpy(&p[4], ctx->AccountName.Buffer, ctx->AccountName.MaximumLength);
+    p += 4 + ctx->AccountName.MaximumLength;
+
+    store_uint32_be(ctx->LogonId.HighPart, &p[0]);
+    store_uint32_be(ctx->LogonId.LowPart,  &p[4]);
+
+    if (LsaSpFunctionTable != NULL && ctx->TokenHandle != NULL) {
+        HANDLE Handle;
+
+        if (LsaSpFunctionTable->DuplicateHandle(ctx->TokenHandle,
+                                                &Handle) != STATUS_SUCCESS) {
+            major = GSS_S_FAILURE;
+            goto cleanup;
+        }
+        store_uint64_be((ULONG_PTR)Handle, &p[8]);
+    } else {
+        store_uint64_be(0UI64, &p[8]);
+    }
+
+    store_uint64_be(ctx->LsaHandle,        &p[16]);
+    p += 24;
+#endif /* GSSEAP_SSP */
+
     GSSEAP_ASSERT(p == (unsigned char *)token->value + token->length);
 
     major = GSS_S_COMPLETE;
@@ -210,6 +241,7 @@ cleanup:
     return major;
 }
 
+#ifndef GSSEAP_SSP
 OM_uint32 GSSAPI_CALLCONV
 gss_export_sec_context(OM_uint32 *minor,
                        gss_ctx_id_t *context_handle,
@@ -244,3 +276,4 @@ gss_export_sec_context(OM_uint32 *minor,
 
     return GSS_S_COMPLETE;
 }
+#endif

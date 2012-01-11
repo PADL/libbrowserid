@@ -167,10 +167,20 @@ peerSetConfigBlob(void *ctx GSSEAP_UNUSED,
 }
 
 static const struct wpa_config_blob *
-peerGetConfigBlob(void *ctx GSSEAP_UNUSED,
-                  const char *name GSSEAP_UNUSED)
+peerGetConfigBlob(void *ctx,
+                  const char *name)
 {
-    return NULL;
+    gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
+    size_t index;
+
+    if (strcmp(name, "client-cert") == 0)
+        index = CONFIG_BLOB_CLIENT_CERT;
+    else if (strcmp(name, "private-key") == 0)
+        index = CONFIG_BLOB_PRIVATE_KEY;
+    else
+        return NULL;
+
+    return &gssCtx->initiatorCtx.configBlobs[index];
 }
 
 static void
@@ -200,6 +210,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     OM_uint32 major;
     krb5_context krbContext;
     struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
+    struct wpa_config_blob *configBlobs = ctx->initiatorCtx.configBlobs;
     gss_buffer_desc identity = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc realm = GSS_C_EMPTY_BUFFER;
     gss_cred_id_t cred = ctx->cred;
@@ -250,13 +261,39 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     eapPeerConfig->anonymous_identity_len = 1 + realm.length;
 
     /* password */
-    eapPeerConfig->password = (unsigned char *)cred->password.value;
-    eapPeerConfig->password_len = cred->password.length;
+#ifdef GSSEAP_SSP
+    GsspUnprotectCred(ctx->cred);
+#endif
+    if ((cred->flags & CRED_FLAG_CERTIFICATE) == 0) {
+        eapPeerConfig->password = (unsigned char *)cred->password.value;
+        eapPeerConfig->password_len = cred->password.length;
+    }
 
     /* certs */
     eapPeerConfig->ca_cert = (unsigned char *)cred->caCertificate.value;
     eapPeerConfig->subject_match = (unsigned char *)cred->subjectNameConstraint.value;
     eapPeerConfig->altsubject_match = (unsigned char *)cred->subjectAltNameConstraint.value;
+
+    if (cred->flags & CRED_FLAG_CERTIFICATE) {
+        /*
+         * CRED_FLAG_CONFIG_BLOB is an internal flag which will be used in the
+         * future to directly pass certificate and private key data to the
+         * EAP implementation, rather than an indirected string pointer.
+         */
+        if (cred->flags & CRED_FLAG_CONFIG_BLOB) {
+            eapPeerConfig->client_cert = (unsigned char *)"blob://client-cert";
+            configBlobs[CONFIG_BLOB_CLIENT_CERT].data = cred->clientCertificate.value;
+            configBlobs[CONFIG_BLOB_CLIENT_CERT].len  = cred->clientCertificate.length;
+
+            eapPeerConfig->client_cert = (unsigned char *)"blob://private-key";
+            configBlobs[CONFIG_BLOB_PRIVATE_KEY].data = cred->clientCertificate.value;
+            configBlobs[CONFIG_BLOB_PRIVATE_KEY].len  = cred->privateKey.length;
+        } else {
+            eapPeerConfig->client_cert = (unsigned char *)cred->clientCertificate.value;
+            eapPeerConfig->private_key = (unsigned char *)cred->privateKey.value;
+        }
+        eapPeerConfig->private_key_passwd = (unsigned char *)cred->password.value;
+    }
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -279,6 +316,10 @@ peerConfigFree(OM_uint32 *minor,
         eapPeerConfig->anonymous_identity = NULL;
         eapPeerConfig->anonymous_identity_len = 0;
     }
+
+#ifdef GSSEAP_SSP
+    GsspProtectCred(ctx->cred);
+#endif
 
     *minor = 0;
     return GSS_S_COMPLETE;
@@ -438,7 +479,7 @@ eapGssSmInitError(OM_uint32 *minor,
     return major;
 }
 
-#ifdef GSSEAP_ENABLE_REAUTH
+#if defined(GSSEAP_ENABLE_REAUTH) && !defined(GSSEAP_SSP)
 static OM_uint32
 eapGssSmInitGssReauth(OM_uint32 *minor,
                       gss_cred_id_t cred,
@@ -599,7 +640,7 @@ eapGssSmInitIdentity(OM_uint32 *minor,
 {
     struct eap_config eapConfig;
 
-#ifdef GSSEAP_ENABLE_REAUTH
+#if defined(GSSEAP_ENABLE_REAUTH) && !defined(GSSEAP_SSP)
     if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_REAUTHENTICATE) {
         OM_uint32 tmpMinor;
 
@@ -675,7 +716,16 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
     major = GSS_S_CONTINUE_NEEDED;
 
+#ifdef GSSEAP_SSP
+    if (GsspImpersonateClient() != STATUS_SUCCESS) {
+        major = GSS_S_FAILURE;
+        goto cleanup;
+    }
+#endif
     eap_peer_sm_step(ctx->initiatorCtx.eap);
+#ifdef GSSEAP_SSP
+    GsspRevertToSelf();
+#endif
     if (ctx->flags & CTX_FLAG_EAP_RESP) {
         ctx->flags &= ~(CTX_FLAG_EAP_RESP);
 
@@ -881,7 +931,7 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         eapGssSmInitVendorInfo
     },
 #endif
-#ifdef GSSEAP_ENABLE_REAUTH
+#if defined(GSSEAP_ENABLE_REAUTH) && !defined(GSSEAP_SSP)
     {
         ITOK_TYPE_REAUTH_RESP,
         ITOK_TYPE_REAUTH_REQ,
@@ -981,7 +1031,8 @@ gssEapInitSecContext(OM_uint32 *minor,
         GSSEAP_ASSERT(ctx->cred != GSS_C_NO_CREDENTIAL);
     }
 
-    GSSEAP_MUTEX_LOCK(&ctx->cred->mutex);
+    if (cred != ctx->cred)
+        GSSEAP_MUTEX_LOCK(&ctx->cred->mutex);
 
     GSSEAP_ASSERT(ctx->cred->flags & CRED_FLAG_RESOLVED);
     GSSEAP_ASSERT(ctx->cred->flags & CRED_FLAG_INITIATE);
@@ -1026,14 +1077,15 @@ gssEapInitSecContext(OM_uint32 *minor,
     GSSEAP_ASSERT(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
+    if (ctx->cred != cred && ctx->cred != GSS_C_NO_CREDENTIAL)
+        GSSEAP_MUTEX_UNLOCK(&ctx->cred->mutex);
     if (cred != GSS_C_NO_CREDENTIAL)
         GSSEAP_MUTEX_UNLOCK(&cred->mutex);
-    if (ctx->cred != GSS_C_NO_CREDENTIAL)
-        GSSEAP_MUTEX_UNLOCK(&ctx->cred->mutex);
 
     return major;
 }
 
+#ifndef GSSEAP_SSP
 OM_uint32 GSSAPI_CALLCONV
 gss_init_sec_context(OM_uint32 *minor,
                      gss_cred_id_t cred,
@@ -1095,3 +1147,4 @@ gss_init_sec_context(OM_uint32 *minor,
 
     return major;
 }
+#endif

@@ -73,6 +73,10 @@ gssEapAllocContext(OM_uint32 *minor,
                     GSS_C_SEQUENCE_FLAG |   /* sequencing */
                     GSS_C_REPLAY_FLAG;      /* replay detection */
 
+#ifdef GSSEAP_SSP
+    ctx->RefCount = 1;
+#endif
+
     *pCtx = ctx;
 
     return GSS_S_COMPLETE;
@@ -114,9 +118,16 @@ gssEapReleaseContext(OM_uint32 *minor,
         return GSS_S_COMPLETE;
     }
 
+#ifdef GSSEAP_SSP
+    if (InterlockedDecrement(&ctx->RefCount) > 0) {
+        *pCtx = GSS_C_NO_CONTEXT;
+        return GSS_S_COMPLETE;
+    }
+#endif
+
     gssEapKerberosInit(&tmpMinor, &krbContext);
 
-#ifdef GSSEAP_ENABLE_REAUTH
+#if defined(GSSEAP_ENABLE_REAUTH) && !defined(GSSEAP_SSP)
     if (ctx->flags & CTX_FLAG_KRB_REAUTH) {
         gssDeleteSecContext(&tmpMinor, &ctx->reauthCtx, GSS_C_NO_BUFFER);
     } else
@@ -136,6 +147,14 @@ gssEapReleaseContext(OM_uint32 *minor,
     gssEapReleaseOid(&tmpMinor, &ctx->mechanismUsed);
     sequenceFree(&tmpMinor, &ctx->seqState);
     gssEapReleaseCred(&tmpMinor, &ctx->cred);
+
+#ifdef GSSEAP_SSP
+    if (ctx->TokenHandle != NULL)
+        CloseHandle(ctx->TokenHandle);
+    GsspFreeUnicodeString(&ctx->AccountName);
+    if (ctx->ProfileBuffer != NULL)
+        LsaFreeReturnBuffer(ctx->ProfileBuffer);
+#endif
 
     GSSEAP_MUTEX_DESTROY(&ctx->mutex);
 
