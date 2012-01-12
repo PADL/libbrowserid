@@ -3,7 +3,7 @@
 #define RC_FILE_TYPE            VFT_DLL
 #define RC_FILE_DESC_0409       "EAP Security Support Provider"
 #define RC_FILE_ORIG_0409       "EapSSP.dll"
-#define RC_COPYRIGHT_0409       "Copyright (c) 2011 PADL Software Pty Ltd"
+#define RC_COPYRIGHT_0409       "Copyright (c) 2012 PADL Software Pty Ltd"
 #define RC_COMPANY_0409         "PADL Software Pty Ltd"
 #define RC_PRODUCT_NAME_0409    "Moonshot SSP"
 
