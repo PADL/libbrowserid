@@ -83,7 +83,7 @@ if ($ARGV[0] eq "-f") {
 	close(OUTFILE);
 } elsif ($ARGV[0] ne "") {
 	print STDERR "$HEADER\n";
-	print STDERR "Copyright (C) 1997-2011 PADL Software Pty Ltd <lukeh\@padl.com>";
+	print STDERR "Copyright (C) 1997-2012 PADL Software Pty Ltd <lukeh\@padl.com>";
 	print STDERR "\n\n";
 	print STDERR "Unknown command line option $ARGV[0].\n";
 	print STDERR "Usage: vers_string [-f|-l|-c|-n|-B|-v]\n";
