@@ -1,7 +1,12 @@
+Makefile
 Makefile.in
 aclocal.m4
 autom4te.cache
 configure
+config.h.in
+config.log
+config.status
+stamp-h*
 ltmain.sh
 libtool
 depcomp
@@ -11,6 +16,7 @@ build-aux
 !build-aux/compile
 mech_eap.spec
 mech_eap*tar*
+.deps
 *.obj
 *.pdb
 *.exe
