@@ -2,7 +2,7 @@
 ::
 :: @(#)BuildSSP.cmd
 ::
-:: Copyright (C) 2012 PADL Software Pty Ltd.
+:: Copyright (C) 2011 PADL Software Pty Ltd.
 :: All rights reserved.
 :: Use is subject to license.
 ::
