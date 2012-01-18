@@ -194,7 +194,8 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
     gss_release_buffer(&tmpMinor, &cred->subjectNameConstraint);
     gss_release_buffer(&tmpMinor, &cred->subjectAltNameConstraint);
 
-    if (serverCertificateHash != NULL) {
+    if ((serverCertificateHash != NULL)
+	&& (strlen(serverCertificateHash) > 0)) {
         size_t len = strlen(serverCertificateHash);
 
         #define HASH_PREFIX             "hash://server/sha256/"
