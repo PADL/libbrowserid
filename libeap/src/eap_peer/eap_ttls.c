@@ -73,12 +73,29 @@ struct eap_ttls_data {
 	u8 *key_data;
 
 	struct wpabuf *pending_phase2_req;
-
+	int chbind_req_sent; /* channel binding request was sent */
 #ifdef EAP_TNC
 	int ready_for_tnc;
 	int tnc_started;
 #endif /* EAP_TNC */
 };
+
+
+/* draft-ietf-emu-chbind-13 section 5.3 */
+
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif /* _MSC_VER */
+
+struct chbind_hdr {
+	u16 len;
+	u8 nsid;
+};
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif /* _MSC_VER */
+
 
 
 static void * eap_ttls_init(struct eap_sm *sm)
@@ -1061,6 +1078,8 @@ struct ttls_parse_avp {
 	u8 *mschapv2;
 	u8 *eapdata;
 	size_t eap_len;
+	u8 *chbind_data;
+	size_t chbind_len;
 	int mschapv2_error;
 };
 
@@ -1088,6 +1107,38 @@ static int eap_ttls_parse_attr_eap(const u8 *dpos, size_t dlen,
 		os_memcpy(neweap + parse->eap_len, dpos, dlen);
 		parse->eapdata = neweap;
 		parse->eap_len += dlen;
+	}
+
+	return 0;
+}
+
+
+static int eap_ttls_parse_attr_chbind(const u8 *dpos, size_t dlen,
+				   struct ttls_parse_avp *parse)
+{
+	wpa_printf(MSG_DEBUG, "EAP-TTLS: AVP - Channel Binding Message");
+
+	if (parse->chbind_data == NULL) {
+		parse->chbind_data = os_malloc(dlen);
+		if (parse->chbind_data == NULL) {
+			wpa_printf(MSG_WARNING, "EAP-TTLS: Failed to allocate "
+				   "memory for Phase 2 channel binding data");
+			return -1;
+		}
+		os_memcpy(parse->chbind_data, dpos, dlen);
+		parse->chbind_len = dlen;
+	} else {
+        /* TODO: can this really happen?  maybe just make this an error? */
+		u8 *newchbind = os_realloc(parse->chbind_data,
+					   parse->chbind_len + dlen);
+		if (newchbind == NULL) {
+			wpa_printf(MSG_WARNING, "EAP-TTLS: Failed to allocate "
+				   "memory for Phase 2 channel binding data");
+			return -1;
+		}
+		os_memcpy(newchbind + parse->chbind_len, dpos, dlen);
+		parse->chbind_data = newchbind;
+		parse->chbind_len += dlen;
 	}
 
 	return 0;
@@ -1143,6 +1194,11 @@ static int eap_ttls_parse_avp(u8 *pos, size_t left,
 
 	if (vendor_id == 0 && avp_code == RADIUS_ATTR_EAP_MESSAGE) {
 		if (eap_ttls_parse_attr_eap(dpos, dlen, parse) < 0)
+			return -1;
+	} else if (vendor_id == 0 &&
+		   avp_code == DIAMETER_ATTR_CHBIND_MESSAGE) {
+		/* message containing channel binding data */
+		if (eap_ttls_parse_attr_chbind(dpos, dlen, parse) < 0)
 			return -1;
 	} else if (vendor_id == 0 && avp_code == RADIUS_ATTR_REPLY_MESSAGE) {
 		/* This is an optional message that can be displayed to
@@ -1265,6 +1321,99 @@ static int eap_ttls_encrypt_response(struct eap_sm *sm,
 	return 0;
 }
 
+static int eap_ttls_add_chbind_request(struct eap_sm *sm,
+				       struct eap_ttls_data *data,
+				       struct wpabuf **resp)
+{
+	struct wpabuf *chbind_req, *res;
+	int length = 1, i;
+	struct eap_peer_config *config = eap_get_config(sm);
+
+	if (!config->chbind_config || config->chbind_config_len <= 0)
+		return -1;
+
+	for (i=0; i<config->chbind_config_len; i++) {
+		length += 3 + config->chbind_config[i].req_data_len;
+	}
+
+	chbind_req = wpabuf_alloc(length);
+	if (!chbind_req)
+		return -1;
+
+	wpabuf_put_u8(chbind_req, CHBIND_CODE_REQUEST);
+	for (i=0; i<config->chbind_config_len; i++) {
+		struct eap_peer_chbind_config *chbind_config =
+			&config->chbind_config[i];
+		wpabuf_put_be16(chbind_req, chbind_config->req_data_len);
+		wpabuf_put_u8(chbind_req, chbind_config->nsid);
+		wpabuf_put_data(chbind_req, chbind_config->req_data,
+				chbind_config->req_data_len);
+	}
+	if (eap_ttls_avp_encapsulate(&chbind_req,
+		DIAMETER_ATTR_CHBIND_MESSAGE, 0) < 0)
+		return -1;
+
+	/* bleh. This will free *resp regardless of whether combined buffer
+	   alloc succeeds, which is not consistent with the other error
+	   condition behavior in this function */
+	*resp = wpabuf_concat(chbind_req, *resp);
+
+	return (*resp) ? 0 : -1;
+}
+
+
+static int eap_ttls_process_chbind(struct eap_sm *sm,
+				   struct eap_ttls_data *data,
+				   struct eap_method_ret *ret,
+				   struct ttls_parse_avp *parse,
+				   struct wpabuf **resp)
+{
+	size_t pos=0;
+	u8 code;
+	u16 len;
+	struct chbind_hdr *hdr;
+	struct eap_peer_config *config = eap_get_config(sm);
+
+	if (parse->chbind_data == NULL) {
+		wpa_printf(MSG_WARNING, "EAP-TTLS: No channel binding message "
+			   "in the packet - dropped");
+		return -1;
+	}
+	if (parse->chbind_len < 1 + sizeof(*hdr)) {
+		wpa_printf(MSG_WARNING, "EAP-TTLS: bad channel binding response "
+				"frame (len=%lu, expected %lu or more) - dropped",
+				(unsigned long) parse->chbind_len,
+				(unsigned long) sizeof(*hdr));
+		return -1;
+	}
+	code = parse->chbind_data[pos++];
+	while (pos+sizeof(*hdr) < parse->chbind_len) {
+		hdr = (struct chbind_hdr *)(&parse->chbind_data[pos]);
+		pos += sizeof(*hdr);
+		len = be_to_host16(hdr->len);
+		if (pos + len <= parse->chbind_len) {
+			int i;
+			for (i=0; i<config->chbind_config_len; i++) {
+				struct eap_peer_chbind_config *chbind_config =
+					&config->chbind_config[i];
+				if (chbind_config->nsid == hdr->nsid)
+					chbind_config->response_cb(
+					        chbind_config->ctx,
+						code, hdr->nsid,
+						&parse->chbind_data[pos], len);
+			}
+		}
+		pos += len;
+	}
+	if (pos != parse->chbind_len) {
+		wpa_printf(MSG_WARNING, "EAP-TTLS: bad channel binding response "
+				"frame (parsed len=%lu, expected %lu) - dropped",
+				(unsigned long) pos,
+				(unsigned long) parse->chbind_len);
+		return -1;
+	}
+	return 0;
+}
 
 static int eap_ttls_process_phase2_eap(struct eap_sm *sm,
 				       struct eap_ttls_data *data,
@@ -1477,16 +1626,33 @@ static int eap_ttls_process_decrypted(struct eap_sm *sm,
 #endif /* EAP_TNC */
 	}
 
+	if (!resp && (config->pending_req_identity ||
+			config->pending_req_password ||
+			config->pending_req_otp ||
+			config->pending_req_new_password)) {
+		wpabuf_free(data->pending_phase2_req);
+		data->pending_phase2_req = wpabuf_dup(in_decrypted);
+		return 0;
+	}
+
+	/* handle channel binding response here */
+	if (parse->chbind_data) {
+		/* received channel binding repsonse */
+		if (eap_ttls_process_chbind(sm, data, ret, parse, &resp) < 0)
+			return -1;
+	}
+	/* issue channel binding request when appropriate */
+	if (config->chbind_config && config->chbind_config_len > 0 &&
+		!data->chbind_req_sent) {
+		if (eap_ttls_add_chbind_request(sm, data, &resp) < 0)
+			return -1;
+		data->chbind_req_sent = 1;
+	}
+
 	if (resp) {
 		if (eap_ttls_encrypt_response(sm, data, resp, identifier,
 					      out_data) < 0)
 			return -1;
-	} else if (config->pending_req_identity ||
-		   config->pending_req_password ||
-		   config->pending_req_otp ||
-		   config->pending_req_new_password) {
-		wpabuf_free(data->pending_phase2_req);
-		data->pending_phase2_req = wpabuf_dup(in_decrypted);
 	}
 
 	return 0;

@@ -105,6 +105,8 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/wpa_debug.c \
 	src/utils/wpabuf.c \
 	src/utils/os_unix.c \
+	src/utils/radius_utils.c \
+src/utils/radius_utils.h \
 	src/utils/base64.h \
 	src/utils/build_config.h \
 	src/utils/common.h \
