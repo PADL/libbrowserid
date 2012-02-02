@@ -58,15 +58,15 @@ GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
     if (GSS_ERROR(major))
         goto cleanup;
 
-#ifdef HAVE_OPENSAML
-    major = gssEapSamlAttrProvidersInit(&minor);
-    if (GSS_ERROR(major))
-        goto cleanup;
-#endif
 
 #ifdef HAVE_SHIBRESOLVER
     /* Allow Shibboleth initialization failure to be non-fatal */
     gssEapLocalAttrProviderInit(&minor);
+#endif
+#ifdef HAVE_OPENSAML
+    major = gssEapSamlAttrProvidersInit(&minor);
+    if (GSS_ERROR(major))
+        goto cleanup;
 #endif
 
 cleanup:
