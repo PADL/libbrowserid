@@ -391,6 +391,8 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
 #define KRB_PRINC_TYPE(princ)   (krb5_princ_type(NULL, (princ)))
 #define KRB_PRINC_NAME(princ)   (krb5_princ_name(NULL, (princ)))
 #define KRB_PRINC_REALM(princ)  (krb5_princ_realm(NULL, (princ)))
+#define KRB_PRINC_COMPONENT(princ, component) \
+        (krb5_princ_component(NULL, (princ), (component)))
 
 #define KRB_KT_ENT_KEYBLOCK(e)  (&(e)->key)
 #define KRB_KT_ENT_FREE(c, e)   krb5_free_keytab_entry_contents((c), (e))
@@ -774,6 +776,13 @@ verifyTokenHeader(OM_uint32 *minor,
                   enum gss_eap_token_type *ret_tok_type);
 
 /* Helper macros */
+#if _WIN32
+#include <gssapi/gssapi_alloc.h>
+#define GSSEAP_MALLOC gssalloc_malloc
+#define GSSEAP_CALLOC gssalloc_calloc
+#define GSSEAP_FREE gssalloc_free
+#define GSSEAP_REALLOC gssalloc_realloc
+#endif
 
 #ifndef GSSEAP_MALLOC
 #define GSSEAP_CALLOC                   calloc

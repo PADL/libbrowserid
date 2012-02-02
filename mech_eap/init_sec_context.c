@@ -36,6 +36,9 @@
  */
 
 #include "gssapiP_eap.h"
+#include "radius/radius.h"
+#include "util_radius.h"
+#include "utils/radius_utils.h"
 
 static OM_uint32
 policyVariableToFlag(enum eapol_bool_var variable)
@@ -194,6 +197,138 @@ static struct eapol_callbacks gssEapPolicyCallbacks = {
 extern int wpa_debug_level;
 #endif
 
+/* */
+static u8 componentToAttrMap[] =
+{
+    128, /* GSS-Acceptor-Service-Name */
+    129, /* GSS-Acceptor-Host-Name    */
+    130  /* GSS-Acceptor-Service-specific */
+};
+#define CHBIND_REALM_FLAG (1 << sizeof(componentToAttrMap))
+
+static OM_uint32
+peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
+{
+    struct wpabuf *buf;
+    radius_vendor_attr vendor_attr;
+    int component, components = 0;
+    unsigned int requested = 0;
+    krb5_principal princ;
+    /* must have acceptor name, but already checked in
+     * eapGssSmInitAcceptorName(), so maybe redunadant
+     * to do so here as well? */
+    if (!ctx->acceptorName) {
+        *minor = GSSEAP_NO_ACCEPTOR_NAME;
+        return GSS_S_BAD_NAME;
+    }
+
+    princ = ctx->acceptorName->krbPrincipal;
+    if (KRB_PRINC_LENGTH(princ) > sizeof(componentToAttrMap)) {
+        *minor = GSSEAP_BAD_ACCEPTOR_NAME;
+        return GSS_S_BAD_NAME;
+    }
+
+    /* allocate a buffer to hold channel binding data to be used by libeap */
+    buf = wpabuf_alloc(256);
+    if (!buf) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    for (component=0; component < KRB_PRINC_LENGTH(princ); component++)
+    {
+        krb5_data* name_data = KRB_PRINC_COMPONENT(princ, component);
+        if (name_data->length > 0)
+        {
+            components++;
+            vendor_attr = radius_vendor_attr_start(buf, VENDORPEC_UKERNA);
+            vendor_attr = radius_vendor_attr_add_subtype(vendor_attr,
+                componentToAttrMap[component],
+                name_data->data,
+                name_data->length);
+            requested |= 1<<component;
+            vendor_attr = radius_vendor_attr_finish(vendor_attr);
+        }
+    }
+
+    if (KRB_PRINC_REALM(princ) && (KRB_PRINC_REALM(princ)->length > 0)) {
+        components++;
+        requested |= CHBIND_REALM_FLAG;
+        vendor_attr = radius_vendor_attr_start(buf, VENDORPEC_UKERNA);
+        vendor_attr = radius_vendor_attr_add_subtype(vendor_attr, 131,
+                                            KRB_PRINC_REALM(princ)->data,
+                                            KRB_PRINC_REALM(princ)->length);
+        vendor_attr = radius_vendor_attr_finish(vendor_attr);
+    }
+
+    if ((components==0) || (vendor_attr == VENDOR_ATTR_INVALID)) {
+        wpabuf_free(buf);
+        *minor = GSSEAP_BAD_ACCEPTOR_NAME;
+        return GSS_S_BAD_NAME;
+    }
+    /* @TODO: realloc buf to actual size? */
+    ctx->initiatorCtx.chbindData = buf;
+    ctx->initiatorCtx.chbindReqFlags = requested;
+    return GSS_S_COMPLETE;
+}
+
+static void
+peerProcessChbindResponse(void *context, int code, int nsid,
+                          u8 *data, size_t len)
+{
+    radius_parser msg, vendor_specific;
+    gss_ctx_id_t ctx = (gss_ctx_id_t )context;
+    void *vsadata;
+    u8 type;
+    u32 vendor_id;
+    u32 accepted = 0;
+    size_t vsadata_len;
+    int i;
+
+    if (nsid != CHBIND_NSID_RADIUS)
+        return;
+    msg = radius_parser_start(data, len);
+    if (!msg)
+        return;
+    while (radius_parser_parse_tlv(msg, &type, &vendor_id, &vsadata,
+                                   &vsadata_len) == 0) {
+        void *unused_data;
+        size_t unused_len;
+        u8 vendor_type;
+
+        if ((type != RADIUS_ATTR_VENDOR_SPECIFIC) ||
+            (vendor_id != VENDORPEC_UKERNA))
+            continue;
+        vendor_specific = radius_parser_start(vsadata, vsadata_len);
+        if (!vendor_specific)
+            continue;
+        while (radius_parser_parse_vendor_specific(vendor_specific,
+                                                   &vendor_type,
+                                                   &unused_data,
+                                                   &unused_len) == 0) {
+            if (vendor_type == 131) {
+                accepted |= CHBIND_REALM_FLAG;
+            } else {
+                for (i=0; i<sizeof(componentToAttrMap); i++) {
+                    if (componentToAttrMap[i]==vendor_type) {
+                        accepted |= 1<<i;
+                        break;
+                    }
+                }
+            }
+        }
+        radius_parser_finish(vendor_specific);
+        break;
+    }
+    radius_parser_finish(msg);
+    if ((code == CHBIND_CODE_SUCCESS) &&
+        (accepted == ctx->initiatorCtx.chbindReqFlags)) {
+        /* Accepted! */
+    } else {
+        /* log failures? */
+    }
+}
+
 static OM_uint32
 peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
@@ -258,6 +393,28 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     eapPeerConfig->subject_match = (unsigned char *)cred->subjectNameConstraint.value;
     eapPeerConfig->altsubject_match = (unsigned char *)cred->subjectAltNameConstraint.value;
 
+    /* eap channel binding */
+    if (ctx->initiatorCtx.chbindData)
+    {
+        struct eap_peer_chbind_config *chbind_config =
+            (struct eap_peer_chbind_config *)
+            GSSEAP_MALLOC(sizeof(struct eap_peer_chbind_config));
+        if (chbind_config == NULL) {
+            *minor = ENOMEM;
+            return GSS_S_FAILURE;
+        }
+
+        chbind_config->req_data = wpabuf_mhead_u8(ctx->initiatorCtx.chbindData);
+        chbind_config->req_data_len = wpabuf_len(ctx->initiatorCtx.chbindData);
+        chbind_config->nsid = CHBIND_NSID_RADIUS;
+        chbind_config->response_cb = &peerProcessChbindResponse;
+        chbind_config->ctx = ctx;
+        eapPeerConfig->chbind_config = chbind_config;
+        eapPeerConfig->chbind_config_len = 1;
+    } else {
+        eapPeerConfig->chbind_config = NULL;
+        eapPeerConfig->chbind_config_len = 0;
+    }
     *minor = 0;
     return GSS_S_COMPLETE;
 }
@@ -579,6 +736,16 @@ eapGssSmInitAcceptorName(OM_uint32 *minor,
     if (ctx->acceptorName == GSS_C_NO_NAME) {
         *minor = GSSEAP_NO_ACCEPTOR_NAME;
         return GSS_S_FAILURE;
+    }
+
+    /*
+     * Generate channel binding data
+     */
+    if (ctx->initiatorCtx.chbindData == NULL)
+    {
+        major = peerInitEapChannelBinding(minor, ctx);
+        if (GSS_ERROR(major))
+            return major;
     }
 
     return GSS_S_CONTINUE_NEEDED;

@@ -200,6 +200,8 @@ struct gss_eap_initiator_ctx {
     struct eap_peer_config eapPeerConfig;
     struct eap_sm *eap;
     struct wpabuf reqData;
+    struct wpabuf *chbindData;
+    unsigned int chbindReqFlags;
 };
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR

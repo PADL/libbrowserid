@@ -122,6 +122,8 @@ private:
 extern "C" {
 #endif
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
+
 OM_uint32
 gssEapRadiusAddAvp(OM_uint32 *minor,
                    VALUE_PAIR **vp,
@@ -158,6 +160,8 @@ OM_uint32
 gssEapCreateRadiusContext(OM_uint32 *minor,
                           gss_cred_id_t cred,
                           struct rs_context **pRadContext);
+
+#endif
 
 /* This really needs to be a function call on Windows */
 #define RS_CONFIG_FILE      SYSCONFDIR "/radsec.conf"
