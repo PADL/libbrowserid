@@ -318,11 +318,11 @@ peerProcessChbindResponse(void *context, int code, int nsid,
             }
         }
         radius_parser_finish(vendor_specific);
-        break;
     }
     radius_parser_finish(msg);
     if ((code == CHBIND_CODE_SUCCESS) &&
         (accepted == ctx->initiatorCtx.chbindReqFlags)) {
+        ctx->flags |= CTX_FLAG_EAP_CHBIND_ACCEPT;
         /* Accepted! */
     } else {
         /* log failures? */
@@ -1185,8 +1185,15 @@ gssEapInitSecContext(OM_uint32 *minor,
             goto cleanup;
         }
     }
-    if (ret_flags != NULL)
-        *ret_flags = ctx->gssFlags;
+    if (ret_flags != NULL) {
+        if ((major == GSS_S_COMPLETE) &&
+            (ctx->flags & CTX_FLAG_EAP_CHBIND_ACCEPT))
+            *ret_flags = ctx->gssFlags | GSS_C_MUTUAL_FLAG;
+        else
+            *ret_flags = ctx->gssFlags & (~GSS_C_MUTUAL_FLAG);
+    }
+    if (major == GSS_S_COMPLETE)
+        major = major;
     if (time_rec != NULL)
         gssEapContextTime(&tmpMinor, ctx, time_rec);
 
