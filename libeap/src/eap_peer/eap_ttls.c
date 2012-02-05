@@ -262,6 +262,41 @@ static int eap_ttls_avp_encapsulate(struct wpabuf **resp, u32 avp_code,
 	return 0;
 }
 
+/* chop up resp into multiple vsa's as necessary*/
+static int eap_ttls_avp_vsa_encapsulate(struct wpabuf **resp, u32 vendor,
+					u8 attr, int mandatory)
+{
+	struct wpabuf *msg;
+	u8 *avp, *pos, *src;
+	size_t size = wpabuf_len(*resp);
+	size_t num_msgs = 1 + (size / 248);
+	size_t msg_wrapper_size = sizeof(struct ttls_avp_vendor) + 4;
+	size_t allocated_total = num_msgs * (4 + msg_wrapper_size) + size;
+
+	msg = wpabuf_alloc(allocated_total);
+	if (msg == NULL) {
+		wpabuf_free(*resp);
+		*resp = NULL;
+		return -1;
+	}
+	src = wpabuf_mhead(*resp);
+	avp = wpabuf_mhead(msg);
+	while (size > 0) {
+		int avp_size = size > 248 ? 248 : size;
+		size -= avp_size;
+		pos = eap_ttls_avp_hdr(avp, attr, vendor, mandatory,
+				       avp_size);
+		os_memcpy(pos, src, avp_size);
+		pos += avp_size;
+		AVP_PAD(avp, pos);
+		wpabuf_put(msg, pos - avp);
+		avp = pos;
+	}
+	/* check avp-wpabuf_mhead(msg) < allocated_total */
+	wpabuf_free(*resp);
+	*resp = msg;
+	return 0;
+}
 
 #if EAP_TTLS_VERSION > 0
 static int eap_ttls_ia_permute_inner_secret(struct eap_sm *sm,
@@ -1195,8 +1230,8 @@ static int eap_ttls_parse_avp(u8 *pos, size_t left,
 	if (vendor_id == 0 && avp_code == RADIUS_ATTR_EAP_MESSAGE) {
 		if (eap_ttls_parse_attr_eap(dpos, dlen, parse) < 0)
 			return -1;
-	} else if (vendor_id == 0 &&
-		   avp_code == DIAMETER_ATTR_CHBIND_MESSAGE) {
+	} else if (vendor_id == RADIUS_VENDOR_ID_UKERNA &&
+		   avp_code == RADIUS_ATTR_UKERNA_CHBIND) {
 		/* message containing channel binding data */
 		if (eap_ttls_parse_attr_chbind(dpos, dlen, parse) < 0)
 			return -1;
@@ -1349,8 +1384,9 @@ static int eap_ttls_add_chbind_request(struct eap_sm *sm,
 		wpabuf_put_data(chbind_req, chbind_config->req_data,
 				chbind_config->req_data_len);
 	}
-	if (eap_ttls_avp_encapsulate(&chbind_req,
-		DIAMETER_ATTR_CHBIND_MESSAGE, 0) < 0)
+	if (eap_ttls_avp_vsa_encapsulate(&chbind_req,
+					 RADIUS_VENDOR_ID_UKERNA,
+					 RADIUS_ATTR_UKERNA_CHBIND, 0) < 0)
 		return -1;
 
 	/* bleh. This will free *resp regardless of whether combined buffer
