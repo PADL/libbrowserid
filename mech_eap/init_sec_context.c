@@ -244,7 +244,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
             vendor_attr = radius_vendor_attr_start(buf, VENDORPEC_UKERNA);
             vendor_attr = radius_vendor_attr_add_subtype(vendor_attr,
                 componentToAttrMap[component],
-                name_data->data,
+                (unsigned char *) name_data->data,
                 name_data->length);
             requested |= 1<<component;
             vendor_attr = radius_vendor_attr_finish(vendor_attr);
@@ -256,7 +256,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
         requested |= CHBIND_REALM_FLAG;
         vendor_attr = radius_vendor_attr_start(buf, VENDORPEC_UKERNA);
         vendor_attr = radius_vendor_attr_add_subtype(vendor_attr, 131,
-                                            KRB_PRINC_REALM(princ)->data,
+                                            (unsigned char *) KRB_PRINC_REALM(princ)->data,
                                             KRB_PRINC_REALM(princ)->length);
         vendor_attr = radius_vendor_attr_finish(vendor_attr);
     }
