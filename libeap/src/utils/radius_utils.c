@@ -20,59 +20,37 @@
 #include "radius_utils.h"
 #include "wpabuf.h"
 
-struct radius_vendor_attr_struct
+int radius_add_tlv(struct wpabuf **buf, u32 type, u32 vendor, u8 *data,
+		   size_t len)
 {
-    struct wpabuf *buf;
-    u8 *len_pos;
-    size_t start;
-};
+	u8 base_type;
+	u8 total;
+	if (vendor) {
+		if (len + 6 > RADIUS_MAX_ATTR_LEN)
+			return -1;
+		total = len + 2 + 6;
+		base_type = RADIUS_ATTR_VENDOR_SPECIFIC;
+	} else {
+		if (len > RADIUS_MAX_ATTR_LEN)
+			return -1;
+		total = len + 2;
+		base_type = type;
+	}
 
-radius_vendor_attr radius_vendor_attr_start(struct wpabuf *buf, u32 vendor)
-{
-    radius_vendor_attr attr = (radius_vendor_attr )os_zalloc(sizeof(*attr));
-    if (!attr)
-        return attr;
-    attr->buf = buf;
-    attr->start = wpabuf_len(buf);
-    wpabuf_put_u8(buf, 26);
-    attr->len_pos = (u8*)wpabuf_put(buf, 1);
-    /* @TODO: Verify high 8 bits of vendor are 0? */
-    wpabuf_put_be32(buf, vendor);
-    return attr;
-}
+	/* ensure buffer has enough space */
+	if (wpabuf_resize(buf, total))
+		return -1;
 
-radius_vendor_attr radius_vendor_attr_add_subtype(radius_vendor_attr attr,
-                                                  u8 type,
-                                                  u8 *data,
-                                                  size_t len)
-{
-    if (attr == VENDOR_ATTR_INVALID)
-        return attr;
-    if (len + 2 + (wpabuf_len(attr->buf) - attr->start) > 255) {
-        os_free(attr);
-        return VENDOR_ATTR_INVALID;
-    }
-    wpabuf_put_u8(attr->buf, type);
-    wpabuf_put_u8(attr->buf, len + 2);
-    wpabuf_put_data(attr->buf, data, len);
-    return attr;
-}
-
-radius_vendor_attr radius_vendor_attr_finish(radius_vendor_attr attr)
-{
-    /* poke size into correct place and free attr */
-    size_t len;
-    radius_vendor_attr ret = VENDOR_ATTR_INVALID;
-    if (attr == ret)
-        return ret;
-
-    len = wpabuf_len(attr->buf) - attr->start;
-    if (len < 255) {
-        ret = attr;
-        *(attr->len_pos) = (u8 )len;
-    }
-    os_free(attr);
-    return ret;
+	/* write into buffer */
+	wpabuf_put_u8(*buf, base_type);
+	wpabuf_put_u8(*buf, total);
+	if (vendor) {
+		wpabuf_put_be32(*buf, vendor);
+		wpabuf_put_u8(*buf, (u8 )type);
+		wpabuf_put_u8(*buf, (u8 )len+2);
+	}
+	wpabuf_put_data(*buf, data, len);
+	return 0;
 }
 
 struct radius_parser_struct
@@ -99,7 +77,7 @@ void radius_parser_finish(radius_parser parser)
 }
 
 int radius_parser_parse_tlv(radius_parser parser, u8 *type, u32 *vendor_id,
-	                        void **value, size_t *len)
+			    void **value, size_t *len)
 {
 	u8 rawtype, rawlen;
 	if (!parser)
@@ -117,8 +95,7 @@ int radius_parser_parse_tlv(radius_parser parser, u8 *type, u32 *vendor_id,
 		*vendor_id = WPA_GET_BE24(&parser->data[parser->pos + 3]);
 		*value = &parser->data[parser->pos + 6];
 		*len = rawlen - 6;
-	}
-	else {
+	} else {
 		if (rawlen < 3)
 			return -1;
 
@@ -132,7 +109,7 @@ int radius_parser_parse_tlv(radius_parser parser, u8 *type, u32 *vendor_id,
 }
 
 int radius_parser_parse_vendor_specific(radius_parser parser, u8 *vendor_type,
-	                                    void **value, size_t *len)
+					void **value, size_t *len)
 {
 	u8 rawtype, rawlen;
 	if (!parser)
