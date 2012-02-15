@@ -288,6 +288,7 @@ static int eap_ttls_avp_vsa_encapsulate(struct wpabuf **resp, u32 vendor,
 				       avp_size);
 		os_memcpy(pos, src, avp_size);
 		pos += avp_size;
+		src += avp_size;
 		AVP_PAD(avp, pos);
 		wpabuf_put(msg, pos - avp);
 		avp = pos;
