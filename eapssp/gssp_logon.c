@@ -670,7 +670,7 @@ GsspAcquireSmartCardLogonCred(
     *pInitiatorCred = NULL;
 
     Status = GsspUnpackSmartCardLogon(pKSL, ClientBufferBase,
-                                     SubmitBufferSize, &ksl, &LogonId);
+                                      SubmitBufferSize, &ksl, &LogonId);
     GSSP_BAIL_ON_ERROR(Status);
 
     Status = ProtectedUnicodeStringToGssBuffer(&ksl.Pin, &Pin);
