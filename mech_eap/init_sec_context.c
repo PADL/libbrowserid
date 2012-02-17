@@ -336,6 +336,7 @@ peerProcessChbindResponse(void *context, int code, int nsid,
     if ((code == CHBIND_CODE_SUCCESS) &&
         (accepted == ctx->initiatorCtx.chbindReqFlags)) {
         ctx->flags |= CTX_FLAG_EAP_CHBIND_ACCEPT;
+        ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
         /* Accepted! */
     } else {
         /* log failures? */
@@ -463,12 +464,6 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx, OM_uint32 reqFlags)
     OM_uint32 major;
     const unsigned char *key;
     size_t keyLength;
-
-#if 1
-    /* XXX actually check for mutual auth */
-    if (reqFlags & GSS_C_MUTUAL_FLAG)
-        ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
-#endif
 
     /* Cache encryption type derived from selected mechanism OID */
     major = gssEapOidToEnctype(minor, ctx->mechanismUsed, &ctx->encryptionType);
@@ -1198,13 +1193,10 @@ gssEapInitSecContext(OM_uint32 *minor,
             goto cleanup;
         }
     }
-    if (ret_flags != NULL) {
-        if ((major == GSS_S_COMPLETE) &&
-            (ctx->flags & CTX_FLAG_EAP_CHBIND_ACCEPT))
-            *ret_flags = ctx->gssFlags | GSS_C_MUTUAL_FLAG;
-        else
-            *ret_flags = ctx->gssFlags & (~GSS_C_MUTUAL_FLAG);
-    }
+
+    if (ret_flags != NULL)
+        *ret_flags = ctx->gssFlags;
+
     if (major == GSS_S_COMPLETE)
         major = major;
     if (time_rec != NULL)
