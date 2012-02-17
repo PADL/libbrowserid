@@ -39,6 +39,8 @@
 
 #ifdef __cplusplus
 
+#ifdef GSSEAP_ENABLE_ACCEPTOR
+
 struct gss_eap_radius_attr_provider : gss_eap_attr_provider {
 public:
     gss_eap_radius_attr_provider(void);
@@ -118,6 +120,8 @@ private:
     bool m_authenticated;
 };
 
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
+
 /* For now */
 extern "C" {
 #endif
@@ -161,7 +165,17 @@ gssEapCreateRadiusContext(OM_uint32 *minor,
                           gss_cred_id_t cred,
                           struct rs_context **pRadContext);
 
-#endif
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
+
+/* initiator utilities that require only libeap, and not freeradius */
+struct wpabuf;
+
+OM_uint32
+gssEapRadiusAddAttr(OM_uint32 *minor,
+                    struct wpabuf **dst,
+                    uint16_t type,
+                    uint16_t vendor,
+                    gss_buffer_t value);
 
 /* This really needs to be a function call on Windows */
 #define RS_CONFIG_FILE      SYSCONFDIR "/radsec.conf"

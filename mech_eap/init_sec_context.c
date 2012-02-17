@@ -197,23 +197,24 @@ static struct eapol_callbacks gssEapPolicyCallbacks = {
 extern int wpa_debug_level;
 #endif
 
-/* */
-static u8 componentToAttrMap[] =
-{
-    128, /* GSS-Acceptor-Service-Name */
-    129, /* GSS-Acceptor-Host-Name    */
-    130  /* GSS-Acceptor-Service-specific */
-};
-#define CHBIND_REALM_FLAG (1 << sizeof(componentToAttrMap))
+#define CHBIND_SERVICE_NAME_FLAG 0x01
+#define CHBIND_HOST_NAME_FLAG 0x02
+#define CHBIND_SERVICE_SPECIFIC_FLAG 0x04
+#define CHBIND_REALM_NAME_FLAG 0x08
+
+extern void TestFunc();
 
 static OM_uint32
 peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
-    struct wpabuf *buf;
-    radius_vendor_attr vendor_attr;
+    struct wpabuf *buf = NULL;
     int component, components = 0;
     unsigned int requested = 0;
     krb5_principal princ;
+    gss_buffer_desc nameBuf;
+    OM_uint32 major = GSS_S_COMPLETE;
+    krb5_context krbContext = NULL;
+
     /* must have acceptor name, but already checked in
      * eapGssSmInitAcceptorName(), so maybe redunadant
      * to do so here as well? */
@@ -223,53 +224,61 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
     }
 
     princ = ctx->acceptorName->krbPrincipal;
-    if (KRB_PRINC_LENGTH(princ) > sizeof(componentToAttrMap)) {
-        *minor = GSSEAP_BAD_ACCEPTOR_NAME;
-        return GSS_S_BAD_NAME;
+
+    krbPrincComponentToGssBuffer(princ, 0, &nameBuf);
+    if (nameBuf.length > 0) {
+        major = gssEapRadiusAddAttr(minor, &buf, PW_GSS_ACCEPTOR_SERVICE_NAME,
+                                    VENDORPEC_UKERNA, &nameBuf);
+        if (GSS_ERROR(major))
+            goto init_chbind_cleanup;
+        requested |= CHBIND_SERVICE_NAME_FLAG;
     }
 
-    /* allocate a buffer to hold channel binding data to be used by libeap */
-    buf = wpabuf_alloc(256);
-    if (!buf) {
-        *minor = ENOMEM;
-        return GSS_S_FAILURE;
+    krbPrincComponentToGssBuffer(princ, 1, &nameBuf);
+    if (nameBuf.length > 0) {
+        major = gssEapRadiusAddAttr(minor, &buf, PW_GSS_ACCEPTOR_HOST_NAME,
+                                    VENDORPEC_UKERNA, &nameBuf);
+        if (GSS_ERROR(major))
+            goto init_chbind_cleanup;
+        requested |= CHBIND_HOST_NAME_FLAG;
     }
 
-    for (component=0; component < KRB_PRINC_LENGTH(princ); component++)
-    {
-        krb5_data* name_data = KRB_PRINC_COMPONENT(princ, component);
-        if (name_data->length > 0)
-        {
-            components++;
-            vendor_attr = radius_vendor_attr_start(buf, VENDORPEC_UKERNA);
-            vendor_attr = radius_vendor_attr_add_subtype(vendor_attr,
-                componentToAttrMap[component],
-                (unsigned char *) name_data->data,
-                name_data->length);
-            requested |= 1<<component;
-            vendor_attr = radius_vendor_attr_finish(vendor_attr);
+    GSSEAP_KRB_INIT(&krbContext);
+    *minor = krbPrincUnparseServiceSpecifics(krbContext, princ, &nameBuf);
+    if (*minor)
+        goto init_chbind_cleanup;
+
+    if (nameBuf.length > 0) {
+        major = gssEapRadiusAddAttr(minor, &buf,
+                                    PW_GSS_ACCEPTOR_SERVICE_SPECIFIC,
+                                    VENDORPEC_UKERNA, &nameBuf);
+        if (GSS_ERROR(major)) {
+            krbFreeUnparsedName(krbContext, &nameBuf);
+            goto init_chbind_cleanup;
         }
+        requested |= CHBIND_SERVICE_SPECIFIC_FLAG;
+    }
+    krbFreeUnparsedName(krbContext, &nameBuf);
+
+    krbPrincRealmToGssBuffer(princ, &nameBuf);
+    if (nameBuf.length > 0) {
+        major = gssEapRadiusAddAttr(minor, &buf,
+                                    PW_GSS_ACCEPTOR_REALM_NAME,
+                                    VENDORPEC_UKERNA, &nameBuf);
+        requested |= CHBIND_REALM_NAME_FLAG;
     }
 
-    if (KRB_PRINC_REALM(princ) && (KRB_PRINC_REALM(princ)->length > 0)) {
-        components++;
-        requested |= CHBIND_REALM_FLAG;
-        vendor_attr = radius_vendor_attr_start(buf, VENDORPEC_UKERNA);
-        vendor_attr = radius_vendor_attr_add_subtype(vendor_attr, 131,
-                                            (unsigned char *) KRB_PRINC_REALM(princ)->data,
-                                            KRB_PRINC_REALM(princ)->length);
-        vendor_attr = radius_vendor_attr_finish(vendor_attr);
-    }
-
-    if ((components==0) || (vendor_attr == VENDOR_ATTR_INVALID)) {
+    if (requested==0) {
         wpabuf_free(buf);
         *minor = GSSEAP_BAD_ACCEPTOR_NAME;
         return GSS_S_BAD_NAME;
     }
-    /* @TODO: realloc buf to actual size? */
     ctx->initiatorCtx.chbindData = buf;
     ctx->initiatorCtx.chbindReqFlags = requested;
-    return GSS_S_COMPLETE;
+    buf = NULL;
+init_chbind_cleanup:
+    wpabuf_free(buf);
+    return major;
 }
 
 static void
@@ -306,15 +315,19 @@ peerProcessChbindResponse(void *context, int code, int nsid,
                                                    &vendor_type,
                                                    &unused_data,
                                                    &unused_len) == 0) {
-            if (vendor_type == 131) {
-                accepted |= CHBIND_REALM_FLAG;
-            } else {
-                for (i=0; i<sizeof(componentToAttrMap); i++) {
-                    if (componentToAttrMap[i]==vendor_type) {
-                        accepted |= 1<<i;
-                        break;
-                    }
-                }
+            switch (vendor_type) {
+            case PW_GSS_ACCEPTOR_SERVICE_NAME:
+                accepted |= CHBIND_SERVICE_NAME_FLAG;
+                break;
+            case PW_GSS_ACCEPTOR_HOST_NAME:
+                accepted |= CHBIND_HOST_NAME_FLAG;
+                break;
+            case PW_GSS_ACCEPTOR_SERVICE_SPECIFIC:
+                accepted |= CHBIND_SERVICE_SPECIFIC_FLAG;
+                break;
+            case PW_GSS_ACCEPTOR_REALM_NAME:
+                accepted |= CHBIND_REALM_NAME_FLAG;
+                break;
             }
         }
         radius_parser_finish(vendor_specific);

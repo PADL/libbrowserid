@@ -107,6 +107,7 @@ mech_eap_la_SOURCES =    			\
 	util_name.c				\
 	util_oid.c				\
 	util_ordering.c				\
+	util_radius.cpp				\
 	util_sm.c				\
 	util_tld.c				\
 	util_token.c				\
@@ -146,8 +147,7 @@ mech_eap_la_SOURCES +=				\
 	set_name_attribute.c			\
 	util_attr.cpp				\
 	util_base64.c				\
-	util_json.cpp				\
-	util_radius.cpp
+	util_json.cpp
 
 if OPENSAML
 mech_eap_la_SOURCES += util_saml.cpp

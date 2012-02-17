@@ -981,13 +981,51 @@ static inline void
 krbPrincComponentToGssBuffer(krb5_principal krbPrinc,
                              int index, gss_buffer_t buffer)
 {
+    if (KRB_PRINC_LENGTH(krbPrinc) < index) {
+        buffer->value = NULL;
+        buffer->length = 0;
+    } else {
 #ifdef HAVE_HEIMDAL_VERSION
-    buffer->value = (void *)KRB_PRINC_NAME(krbPrinc)[index];
-    buffer->length = strlen((char *)buffer->value);
+        buffer->value = (void *)KRB_PRINC_NAME(krbPrinc)[index];
+        buffer->length = strlen((char *)buffer->value);
 #else
-    buffer->value = (void *)krb5_princ_component(NULL, krbPrinc, index)->data;
-    buffer->length = krb5_princ_component(NULL, krbPrinc, index)->length;
+        buffer->value = (void *)krb5_princ_component(NULL, krbPrinc, index)->data;
+        buffer->length = krb5_princ_component(NULL, krbPrinc, index)->length;
 #endif /* HAVE_HEIMDAL_VERSION */
+    }
+}
+
+static inline krb5_error_code
+krbPrincUnparseServiceSpecifics(krb5_context krbContext, krb5_principal krbPrinc,
+                                gss_buffer_t nameBuf)
+{
+    krb5_error_code result = 0;
+    if (KRB_PRINC_LENGTH(krbPrinc) > 2) {
+        /* Acceptor-Service-Specific */
+        krb5_principal_data ssiPrinc = *krbPrinc;
+        char *ssi;
+
+        KRB_PRINC_LENGTH(&ssiPrinc) -= 2;
+        KRB_PRINC_NAME(&ssiPrinc) += 2;
+
+        result = krb5_unparse_name_flags(krbContext, &ssiPrinc,
+                                         KRB5_PRINCIPAL_UNPARSE_NO_REALM, &ssi);
+        if (result != 0)
+            return result;
+
+        nameBuf->value = ssi;
+        nameBuf->length = strlen(ssi);
+    } else {
+        nameBuf->value = NULL;
+        nameBuf->length = 0;
+    }
+    return result;
+}
+
+static inline void
+krbFreeUnparsedName(krb5_context krbContext, gss_buffer_t nameBuf)
+{
+    krb5_free_unparsed_name(krbContext, (char *)(nameBuf->value));
 }
 
 static inline void
