@@ -23,11 +23,6 @@
 
 static PSECPKG_KERNEL_FUNCTIONS KspFunctions = NULL;
 
-#if 0
-static ERESOURCE EapGlobalResource;
-static PVOID EapPagableSection;
-#endif
-
 static PVOID EapPagedList;
 static PVOID EapNonPagedList;
 static volatile PVOID EapActiveList;
@@ -817,12 +812,6 @@ DriverEntry(
     __in PUNICODE_STRING RegistryPath)
 {
     NTSTATUS Status;
-
-#if 0
-    Status = ExInitializeResourceLite(&EapGlobalResource);
-    if (!NT_SUCCESS(Status))
-        return Status;
-#endif
 
     Status = KSecRegisterSecurityProvider(&EapAes256Name,
                                           &EapAes256FunctionTable);
