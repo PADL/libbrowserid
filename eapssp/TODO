@@ -40,9 +40,10 @@ msetup /MapUser Principal Account
 msetup /AddAAA Server Secret [Port]
 msetup /SetFlags Flags
 msetup /DumpState (same output if no args)
+msetup /EnableSSP
+msetup /DisableSSP
 msetup /?
 msetup /help
-
 
 
 None
