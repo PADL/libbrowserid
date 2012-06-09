@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 PADL Software Pty Ltd.
+ * Copyright (C) 2012 PADL Software Pty Ltd.
  * All rights reserved.
  * Use is subject to license.
  *
@@ -21,7 +21,12 @@ gssEapStoreReauthCreds(OM_uint32 *Minor,
     DWORD cbSubmitTktRequest;
     UNICODE_STRING AuthenticationPackage;
 
-    if (CredBuf->length == 0 || GssCred == GSS_C_NO_CREDENTIAL)
+    /*
+     * Storing reauth credentials on standalone machines seems to cause the
+     * LSA to crash in the Kerberos security package.
+     */
+    if (CredBuf->length == 0 || GssCred == GSS_C_NO_CREDENTIAL ||
+        (SpParameters.MachineState & SECPKG_STATE_STANDALONE))
         return GSS_S_COMPLETE;
 
     RtlInitUnicodeString(&AuthenticationPackage, MICROSOFT_KERBEROS_NAME_W);

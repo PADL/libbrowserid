@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 PADL Software Pty Ltd.
+ * Copyright (C) 2012 PADL Software Pty Ltd.
  * All rights reserved.
  * Use is subject to license.
  *
@@ -22,11 +22,6 @@
 #include "KSecEap.h"
 
 static PSECPKG_KERNEL_FUNCTIONS KspFunctions = NULL;
-
-#if 0
-static ERESOURCE EapGlobalResource;
-static PVOID EapPagableSection;
-#endif
 
 static PVOID EapPagedList;
 static PVOID EapNonPagedList;
@@ -817,12 +812,6 @@ DriverEntry(
     __in PUNICODE_STRING RegistryPath)
 {
     NTSTATUS Status;
-
-#if 0
-    Status = ExInitializeResourceLite(&EapGlobalResource);
-    if (!NT_SUCCESS(Status))
-        return Status;
-#endif
 
     Status = KSecRegisterSecurityProvider(&EapAes256Name,
                                           &EapAes256FunctionTable);

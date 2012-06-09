@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 PADL Software Pty Ltd.
+ * Copyright (C) 2012 PADL Software Pty Ltd.
  * All rights reserved.
  * Use is subject to license.
  *
@@ -103,11 +103,14 @@
 OM_uint32
 GsspReleaseBuffer(OM_uint32 *minor, gss_buffer_t buffer)
 {
-    if (buffer != GSS_C_NO_BUFFER && buffer->value != NULL) {
-        GsspFreePtr(buffer->value);
+    if (buffer != GSS_C_NO_BUFFER) {
+        if (buffer->value != NULL) {
+            GsspFreePtr(buffer->value);
+        }
+
+        buffer->value = NULL;
+        buffer->length = 0;
     }
-    buffer->value = NULL;
-    buffer->length = 0;
 
     *minor = 0;
     return GSS_S_COMPLETE;

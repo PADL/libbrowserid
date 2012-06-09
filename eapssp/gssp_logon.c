@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 PADL Software Pty Ltd.
+ * Copyright (C) 2012 PADL Software Pty Ltd.
  * All rights reserved.
  * Use is subject to license.
  *
@@ -670,7 +670,7 @@ GsspAcquireSmartCardLogonCred(
     *pInitiatorCred = NULL;
 
     Status = GsspUnpackSmartCardLogon(pKSL, ClientBufferBase,
-                                     SubmitBufferSize, &ksl, &LogonId);
+                                      SubmitBufferSize, &ksl, &LogonId);
     GSSP_BAIL_ON_ERROR(Status);
 
     Status = ProtectedUnicodeStringToGssBuffer(&ksl.Pin, &Pin);
