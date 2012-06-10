@@ -11,7 +11,9 @@ LIBMSETUP =$(LIBDIR)\libmsetup.lib
 cdefines = $(cdefines) -DUNICODE -D_UNICODE
 
 libmsetup_OBJS =    					\
+	$(OBJ)\msetup_aaa.obj				\
 	$(OBJ)\msetup_flags.obj				\
+	$(OBJ)\msetup_map.obj				\
 	$(OBJ)\msetup_reg.obj				
 
 $(LIBMSETUP): $(libmsetup_OBJS)

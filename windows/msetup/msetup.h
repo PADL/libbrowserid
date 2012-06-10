@@ -104,12 +104,19 @@ MsListSspFlags(FILE *fp);
 /*
  * Add a AAA server tuple.
  */
+
+typedef struct _AAA_SERVER_INFO {
+    LPWSTR Server;
+    LPWSTR Secret;
+    LPWSTR Service;
+} AAA_SERVER_INFO;
+
+typedef AAA_SERVER_INFO *PAAA_SERVER_INFO;
+
 DWORD
 MsAddAaaServer(
     HKEY hKey,
-    LPCWSTR wszServer,
-    LPCWSTR wszSecret,
-    LPCWSTR wszService);
+    PAAA_SERVER_INFO ServerInfo);
 
 /*
  * Deletes existing AAA server tuple.
@@ -117,6 +124,6 @@ MsAddAaaServer(
 DWORD
 MsDeleteAaaServer(
     HKEY hKey,
-    LPCWSTR wszServer);
+    PAAA_SERVER_INFO ServerInfo);
 
 #endif /* _MSETUP_H_ */
