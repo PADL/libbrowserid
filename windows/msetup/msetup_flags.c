@@ -115,7 +115,7 @@ MsListSspFlags(FILE *fp)
     DWORD i;
 
     for (i = 0; i < sizeof(sspFlagMap) / sizeof(sspFlagMap[0]); i++) {
-        fwprintf(fp, L"%02x %12s %s", sspFlagMap[i].Flag, sspFlagMap[i].String, sspFlagMap[i].Description);
+        fwprintf(fp, L"0x%02x %12s %s", sspFlagMap[i].Flag, sspFlagMap[i].String, sspFlagMap[i].Description);
     }
 
     return ERROR_SUCCESS;

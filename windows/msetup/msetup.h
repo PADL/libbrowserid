@@ -36,7 +36,7 @@
  * Opens registry key at SSP configuration root.
  */
 DWORD
-MsOpenKey(BOOLEAN fWritable, PHKEY phkResult);
+MsOpenKey(LPWSTR wszServer, BOOLEAN fWritable, PHKEY phkResult);
 
 /*
  * Closes SSP configuration registry key.
@@ -56,6 +56,7 @@ MsCloseKey(HKEY hKey);
 DWORD
 MsMapUser(HKEY hKey, LPCWSTR wszPrincipal, LPCWSTR wszAccount);
 
+#if 0
 /*
  * msetup_ssp.c
  */
@@ -64,6 +65,7 @@ MsMapUser(HKEY hKey, LPCWSTR wszPrincipal, LPCWSTR wszAccount);
  */
 DWORD
 MsSetSspEnabled(HKEY hKey, BOOLEAN fEnableSsp);
+#endif
 
 /*
  * msetup_flags.c

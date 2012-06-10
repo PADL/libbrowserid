@@ -11,7 +11,7 @@
 #include "msetup.h"
 
 DWORD
-MsOpenKey(BOOLEAN fWritable, PHKEY phkResult)
+MsOpenKey(LPWSTR wszServer, BOOLEAN fWritable, PHKEY phkResult)
 {
     DWORD lResult;
 
