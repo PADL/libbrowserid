@@ -14,11 +14,13 @@ DWORD
 MsOpenKey(LPWSTR wszServer, BOOLEAN fWritable, PHKEY phkResult)
 {
     DWORD lResult;
+    DWORD dwAccess;
+
+    dwAccess = fWritable ? KEY_WRITE : KEY_QUERY_VALUE;
 
     lResult = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
 			   L"SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",
-			   0, fWritable ? KEY_WRITE : KEY_QUERY_VALUE,
-                           phkResult);
+			   0, dwAccess, phkResult);
 
     return lResult;
 }

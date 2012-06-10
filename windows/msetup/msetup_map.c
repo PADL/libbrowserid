@@ -10,15 +10,15 @@
 
 #include "msetup.h"
 
-static DWORD
-OpenUserListKey(HKEY hKey, PHKEY hMapKey)
+DWORD
+MsOpenUserListKey(HKEY hKey, BOOLEAN fWritable, PHKEY hMapKey)
 {
     return RegCreateKeyEx(hKey,
                           L"UserList",
                           0,                /* Reserved */
                           NULL,             /* lpClass */
                           REG_OPTION_NON_VOLATILE,
-                          KEY_WRITE,
+                          fWritable ? KEY_WRITE : KEY_QUERY_VALUE,
                           NULL,             /* lpSecurityAttributes */
                           hMapKey,
                           NULL);            /* lpdwDisposition */
@@ -33,16 +33,16 @@ MsMapUser(
     DWORD lResult;
     HKEY hMapKey;
 
-    lResult = OpenUserListKey(hKey, &hMapKey);
+    lResult = MsOpenUserListKey(hKey, TRUE, &hMapKey);
     if (lResult != ERROR_SUCCESS)
         return lResult;
 
     if (wszAccount != NULL) {
-        lResult = RegSetValueEx(hKey, wszPrincipal, 0,
+        lResult = RegSetValueEx(hMapKey, wszPrincipal, 0,
                                 REG_SZ, (PBYTE)wszAccount,
-                                wcslen(wszAccount) * sizeof(WCHAR));
+                                (wcslen(wszAccount) + 1) * sizeof(WCHAR));
     } else {
-        lResult = RegDeleteValue(hKey, wszPrincipal);
+        lResult = RegDeleteValue(hMapKey, wszPrincipal);
     }
 
     RegCloseKey(hMapKey);

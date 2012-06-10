@@ -52,7 +52,7 @@ MsAddAaaServer(
     if (ServerInfo->Secret != NULL) {
         lResult = RegSetValueEx(hKey, L"Secret", 0,
                                 REG_SZ, (PBYTE)ServerInfo->Secret,
-                                wcslen(ServerInfo->Secret) * sizeof(WCHAR));
+                                (wcslen(ServerInfo->Secret) + 1) * sizeof(WCHAR));
         if (lResult != ERROR_SUCCESS)
             goto cleanup;
     }
@@ -60,7 +60,7 @@ MsAddAaaServer(
     if (ServerInfo->Service != NULL) {
         lResult = RegSetValueEx(hKey, L"Service", 0,
                                 REG_SZ, (PBYTE)ServerInfo->Service,
-                                wcslen(ServerInfo->Service) * sizeof(WCHAR));
+                                (wcslen(ServerInfo->Service) + 1) * sizeof(WCHAR));
         if (lResult != ERROR_SUCCESS)
             goto cleanup;
     }

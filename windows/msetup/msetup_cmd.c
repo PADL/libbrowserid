@@ -5,7 +5,7 @@
  *
  * CONFIDENTIAL
  *
- * msetup utility
+ * msetup utility, modelled on ksetup usage
  */
 
 #include <assert.h>
@@ -21,12 +21,16 @@ DisplayUsage(void);
 static void
 HandleInvalidArg(LPWSTR Arg);
 
+static void
+DisplayError(LPWSTR Message, DWORD lResult);
+
 static DWORD
 DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
 {
     DWORD lResult;
     DWORD dwSspFlags;
-    DWORD i;
+    DWORD i = 0;
+    HKEY hUserListKey = NULL;
 
     lResult = MsQuerySspFlags(hSspKey, &dwSspFlags);
     if (lResult != ERROR_SUCCESS)
@@ -47,6 +51,44 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
         wprintf(L"\n");
     }
 
+    lResult = MsOpenUserListKey(hSspKey, FALSE, &hUserListKey);
+    if (lResult == ERROR_SUCCESS) {
+        for (i = 0; lResult == ERROR_SUCCESS; i++) {
+            WCHAR wszPrincipal[256];
+            WCHAR wszAccount[256];
+            DWORD cchPrincipal = sizeof(wszPrincipal) / sizeof(WCHAR);
+            DWORD cbAccount = sizeof(wszAccount);
+            DWORD dwType = REG_SZ;
+
+            lResult = RegEnumValue(hUserListKey, i, wszPrincipal,
+                                   &cchPrincipal, NULL,
+                                   &dwType, (PBYTE)wszAccount, &cbAccount);
+            if (lResult != ERROR_SUCCESS)
+                continue;
+
+            wprintf(L"Mapping ");
+            if (_wcsicmp(wszPrincipal, L"*") == 0)
+                wprintf(L"all users (*)");
+            else
+                wprintf(L"%s", wszPrincipal);
+            wprintf(L" to ");
+            if (dwType != REG_SZ)
+                wprintf(L"???");
+            else if (_wcsicmp(wszAccount, L"*") == 0)
+                wprintf(L"a local account by the same name (*)");
+            else
+                wprintf(L"%s", wszAccount);
+            wprintf(L".\n");
+        }
+        if (lResult != ERROR_SUCCESS && lResult != ERROR_NO_MORE_ITEMS)
+            DisplayError(L"Enumerating UserList registry key", lResult);
+        MsCloseKey(hUserListKey);
+    } else
+        i = 0;
+
+    if (i == 0)
+        wprintf(L"No user mappings defined.\n");
+
     return ERROR_SUCCESS;
 }
 
@@ -60,8 +102,28 @@ DoHelp(HKEY hSspKey, int argc, WCHAR *argv[])
     return ERROR_SUCCESS;
 }
 
+static DWORD
+DoMapUser(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    LPWSTR wszPrincipal;
+    LPWSTR wszAccount;
+    DWORD lResult;
+
+    if (argc == 0)
+        DisplayUsage();
+
+    wszPrincipal = argv[0];
+    wszAccount = (argc > 1) ? argv[1] : NULL;
+
+    lResult = MsMapUser(hSspKey, wszPrincipal, wszAccount);
+    if (lResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to create UserList entry", lResult);
+
+    return lResult;
+}
+
 static void
-ErrorExit(LPWSTR Message, DWORD lResult)
+DisplayError(LPWSTR Message, DWORD lResult)
 {
     WCHAR wszMsgBuf[128] = L"";
 
@@ -82,14 +144,24 @@ static struct _MS_CMD_OPTION {
     LPWSTR Usage;
     LPWSTR Description;
     DWORD Flags;
-    DWORD (*Callback)(HKEY, int, WCHAR **);
+    DWORD (*Callback)(HKEY, int, WCHAR *[]);
 } msCmdOptions[] = {
     {
         L"/DumpState",
         L"(no args)",
-        L"Display the EAP SSP configuration on the given machine",
+        L"\tDisplay the EAP SSP configuration on the given machine\n",
         0,
         DoDumpState,
+    },
+    {
+        L"/MapUser",
+        L"<NAI> [Account]",
+        L"\tMaps a Network Access Identifier ('*' = any NAI)\n"
+        L"\tto an account ('*' = an account by the same name);\n"
+        L"\tIf account name is omitted, the mapping for the\n"
+        L"\tspecified NAI is deleted.\n",
+        FLAG_WRITE,
+        DoMapUser
     },
     {
         L"/Help",
@@ -120,7 +192,7 @@ DisplayUsage(void)
         if (Option->Flags & FLAG_HIDDEN)
             continue;
 
-        wprintf(L"%s %s\n\t%s\n",
+        wprintf(L"%s %s\n%s",
                 Option->Option, Option->Usage, Option->Description);
     }
 }
@@ -128,7 +200,7 @@ DisplayUsage(void)
 static void
 HandleInvalidArg(LPWSTR Arg)
 {
-    wprintf(L"%s: no such argument.\n");
+    wprintf(L"%s: no such argument.\n", Arg);
     wprintf(L"use msetup /? for help.\n");
     ExitProcess(ERROR_INVALID_PARAMETER);
 }
@@ -158,6 +230,9 @@ int wmain(int argc, WCHAR *argv[])
                 break;
             }
         }
+
+        argc--;
+        argv++;
     } else {
         Option = &msCmdOptions[0];  /* /DumpState */
     }
@@ -170,8 +245,11 @@ int wmain(int argc, WCHAR *argv[])
         lResult = MsOpenKey(wszServer, !!(Option->Flags & FLAG_WRITE),
                             &hSspKey);
         if (lResult != 0) {
-            wprintf(L"Moonshot SSP is not installed on this machine.\n");
-            ErrorExit(L"Failed to open SSP key", lResult);
+            if (lResult == ERROR_FILE_NOT_FOUND)
+                wprintf(L"Moonshot SSP is not installed on this machine.\n");
+            else
+                DisplayError(L"Failed to open SSP key", lResult);
+            ExitProcess(lResult);
         }
     }
 
@@ -180,5 +258,6 @@ int wmain(int argc, WCHAR *argv[])
     if (hSspKey != NULL)
         MsCloseKey(hSspKey);
 
+    ExitProcess(lResult);
     return lResult;
 }

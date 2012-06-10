@@ -56,6 +56,9 @@ MsCloseKey(HKEY hKey);
 DWORD
 MsMapUser(HKEY hKey, LPCWSTR wszPrincipal, LPCWSTR wszAccount);
 
+DWORD
+MsOpenUserListKey(HKEY hKey, BOOLEAN fWritable, PHKEY hMapKey);
+
 #if 0
 /*
  * msetup_ssp.c
