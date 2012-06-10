@@ -12,7 +12,7 @@
 #include "msetup.h"
 
 #define FLAG_WRITE          1
-#define FLAG_HIDDEN         2
+#define FLAG_USAGE          2
 #define FLAG_NO_KEY         4
 
 static void
@@ -23,6 +23,9 @@ HandleInvalidArg(LPWSTR Arg);
 
 static void
 DisplayError(LPWSTR Message, DWORD lResult);
+
+static LPCWSTR
+GetSelectedOption(void);
 
 static DWORD
 DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
@@ -36,6 +39,7 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
     if (lResult != ERROR_SUCCESS)
         return lResult;
 
+    /* flags */
     wprintf(L"Flags = 0x%x ", dwSspFlags);
 
     if (dwSspFlags == 0) {
@@ -51,6 +55,9 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
         wprintf(L"\n");
     }
 
+    /* AAA config */
+
+    /* user mappings */
     lResult = MsOpenUserListKey(hSspKey, FALSE, &hUserListKey);
     if (lResult == ERROR_SUCCESS) {
         for (i = 0; lResult == ERROR_SUCCESS; i++) {
@@ -73,7 +80,7 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
                 wprintf(L"%s", wszPrincipal);
             wprintf(L" to ");
             if (dwType != REG_SZ)
-                wprintf(L"???");
+                wprintf(L"<invalid type>");
             else if (_wcsicmp(wszAccount, L"*") == 0)
                 wprintf(L"a local account by the same name (*)");
             else
@@ -83,13 +90,59 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
         if (lResult != ERROR_SUCCESS && lResult != ERROR_NO_MORE_ITEMS)
             DisplayError(L"Enumerating UserList registry key", lResult);
         MsCloseKey(hUserListKey);
-    } else
+    } else {
         i = 0;
+    }
 
-    if (i == 0)
+    if (i == 0) {
         wprintf(L"No user mappings defined.\n");
+    }
 
     return ERROR_SUCCESS;
+}
+
+static DWORD
+DoModifySspFlags(HKEY hSspKey, SSP_FLAG_OP fOp, int argc, WCHAR *argv[])
+{
+    DWORD dwSspFlags = 0;
+    DWORD i;
+
+    if (argc == 0) {
+        fwprintf(stderr, L"%s requires 2 arguments", GetSelectedOption());
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    for (i = 0; i < argc; i++) {
+        DWORD dwFlag = MsStringToSspFlag(argv[i]);
+
+        if (dwFlag == 0) {
+            fwprintf(stderr, L"Unknown realm flag: %s", argv[i]);
+            DisplayUsage();
+            return ERROR_INVALID_PARAMETER;
+        }
+
+        dwSspFlags |= dwFlag;
+    }
+
+    return MsModifySspFlags(hSspKey, fOp, dwSspFlags);
+}
+
+static DWORD
+DoSetSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    return DoModifySspFlags(hSspKey, SSP_FLAG_SET, argc, argv);
+}
+
+static DWORD
+DoAddSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    return DoModifySspFlags(hSspKey, SSP_FLAG_ADD, argc, argv);
+}
+
+static DWORD
+DoDeleteSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    return DoModifySspFlags(hSspKey, SSP_FLAG_DELETE, argc, argv);
 }
 
 static DWORD
@@ -109,8 +162,10 @@ DoMapUser(HKEY hSspKey, int argc, WCHAR *argv[])
     LPWSTR wszAccount;
     DWORD lResult;
 
-    if (argc == 0)
+    if (argc == 0) {
         DisplayUsage();
+        ExitProcess(ERROR_INVALID_PARAMETER);
+    }
 
     wszPrincipal = argv[0];
     wszAccount = (argc > 1) ? argv[1] : NULL;
@@ -120,6 +175,15 @@ DoMapUser(HKEY hSspKey, int argc, WCHAR *argv[])
         DisplayError(L"Failed to create UserList entry", lResult);
 
     return lResult;
+}
+
+static DWORD
+DoListSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    if (argc != 0)
+        HandleInvalidArg(argv[1]);
+
+    return MsListSspFlags(stdout);
 }
 
 static void
@@ -164,36 +228,72 @@ static struct _MS_CMD_OPTION {
         DoMapUser
     },
     {
+        L"/ListSspFlags",
+        L"(no args)",
+        L"\tLists the available SSP configuration flags\n",
+        FLAG_NO_KEY,
+        DoListSspFlags
+    },
+    {
+        L"/SetSspFlags",
+        L"<flag> [flag] [flag] [...]",
+        L"\tSets SSP configuration flags\n",
+        FLAG_WRITE,
+        DoSetSspFlags
+    },
+    {
+        L"/AddSspFlags",
+        L"<flag> [flag] [flag] [...]",
+        L"\tAdds additional SSP configuration flags\n",
+        FLAG_WRITE,
+        DoAddSspFlags
+    },
+    {
+        L"/DelSspFlags",
+        L"<flag> [flag] [flag] [...]",
+        L"\tDeletes SSP configuration flags\n",
+        FLAG_WRITE,
+        DoDeleteSspFlags
+    },
+    {
         L"/Help",
         NULL,
         NULL,
-        FLAG_HIDDEN | FLAG_NO_KEY,
+        FLAG_USAGE | FLAG_NO_KEY,
         DoHelp,
     },
     {
         L"/?",
         NULL,
         NULL,
-        FLAG_HIDDEN | FLAG_NO_KEY,
+        FLAG_USAGE | FLAG_NO_KEY,
         DoHelp,
     },
 };
 
+static struct _MS_CMD_OPTION *gCmdOption;
+
 static void
-DisplayUsage(void)
+DisplayUsage()
 {
     DWORD i;
 
-    wprintf(L"\nUSAGE:\n");
+    fwprintf(stderr, L"\nUSAGE:\n");
 
     for (i = 0; i < sizeof(msCmdOptions) / sizeof(msCmdOptions[0]); i++) {
         struct _MS_CMD_OPTION *Option = &msCmdOptions[i];
 
-        if (Option->Flags & FLAG_HIDDEN)
+        /* don't advertise the usage for the usage command itself */
+        if (Option->Flags & FLAG_USAGE)
             continue;
 
-        wprintf(L"%s %s\n%s",
-                Option->Option, Option->Usage, Option->Description);
+        /* if not called within usage command, just show specified usage */
+        if ((gCmdOption->Flags & FLAG_USAGE) == 0 &&
+            gCmdOption->Option != Option->Option)
+            continue;
+
+        fwprintf(stderr, L"%s %s\n%s",
+                 Option->Option, Option->Usage, Option->Description);
     }
 }
 
@@ -205,12 +305,17 @@ HandleInvalidArg(LPWSTR Arg)
     ExitProcess(ERROR_INVALID_PARAMETER);
 }
 
+static LPCWSTR
+GetSelectedOption(void)
+{
+    return gCmdOption->Option;
+}
+
 int wmain(int argc, WCHAR *argv[])
 {
     HKEY hSspKey = NULL;
     DWORD lResult;
     LPWSTR wszServer = NULL;
-    struct _MS_CMD_OPTION *Option = NULL;
     DWORD i;
 
     assert(argc > 0);
@@ -226,7 +331,7 @@ int wmain(int argc, WCHAR *argv[])
     if (argc != 0) {
         for (i = 0; i < sizeof(msCmdOptions) / sizeof(msCmdOptions[0]); i++) {
             if (_wcsicmp(argv[0], msCmdOptions[i].Option) == 0) {
-                Option = &msCmdOptions[i];
+                gCmdOption = &msCmdOptions[i];
                 break;
             }
         }
@@ -234,15 +339,15 @@ int wmain(int argc, WCHAR *argv[])
         argc--;
         argv++;
     } else {
-        Option = &msCmdOptions[0];  /* /DumpState */
+        gCmdOption = &msCmdOptions[0];  /* /DumpState */
     }
 
-    if (Option == NULL) {
+    if (gCmdOption == NULL) {
         HandleInvalidArg(argv[0]);
     }
 
-    if (!(Option->Flags & FLAG_NO_KEY)) {
-        lResult = MsOpenKey(wszServer, !!(Option->Flags & FLAG_WRITE),
+    if (!(gCmdOption->Flags & FLAG_NO_KEY)) {
+        lResult = MsOpenKey(wszServer, !!(gCmdOption->Flags & FLAG_WRITE),
                             &hSspKey);
         if (lResult != 0) {
             if (lResult == ERROR_FILE_NOT_FOUND)
@@ -253,7 +358,7 @@ int wmain(int argc, WCHAR *argv[])
         }
     }
 
-    lResult = (*Option->Callback)(hSspKey, argc, argv);
+    lResult = (*gCmdOption->Callback)(hSspKey, argc, argv);
 
     if (hSspKey != NULL)
         MsCloseKey(hSspKey);

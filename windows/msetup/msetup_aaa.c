@@ -10,15 +10,15 @@
 
 #include "msetup.h"
 
-static DWORD
-OpenRadiusKey(HKEY hKey, PHKEY hRadiusKey)
+DWORD
+MsOpenRadiusKey(HKEY hKey, BOOLEAN fWritable, PHKEY hRadiusKey)
 {
     return RegCreateKeyEx(hKey,
                           L"Radius",
                           0,                /* Reserved */
                           NULL,             /* lpClass */
                           REG_OPTION_NON_VOLATILE,
-                          KEY_WRITE,
+                          fWritable ? KEY_WRITE : KEY_QUERY_VALUE,
                           NULL,             /* lpSecurityAttributes */
                           hRadiusKey,
                           NULL);            /* lpdwDisposition */
@@ -33,7 +33,7 @@ MsAddAaaServer(
     HKEY hRadiusKey = NULL;
     HKEY hAaaServerKey = NULL;
 
-    lResult = OpenRadiusKey(hKey, &hRadiusKey);
+    lResult = MsOpenRadiusKey(hKey, TRUE, &hRadiusKey);
     if (lResult != ERROR_SUCCESS)
         goto cleanup;
 
@@ -82,7 +82,7 @@ MsDeleteAaaServer(
     DWORD lResult;
     HKEY hRadiusKey;
 
-    lResult = OpenRadiusKey(hKey, &hRadiusKey);
+    lResult = MsOpenRadiusKey(hKey, TRUE, &hRadiusKey);
     if (lResult != ERROR_SUCCESS)
         return lResult;
 

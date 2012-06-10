@@ -119,6 +119,9 @@ typedef struct _AAA_SERVER_INFO {
 typedef AAA_SERVER_INFO *PAAA_SERVER_INFO;
 
 DWORD
+MsOpenRadiusKey(HKEY hKey, BOOLEAN fWritable, PHKEY hRadiusKey);
+
+DWORD
 MsAddAaaServer(
     HKEY hKey,
     PAAA_SERVER_INFO ServerInfo);
