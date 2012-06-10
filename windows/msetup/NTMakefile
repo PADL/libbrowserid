@@ -1,0 +1,23 @@
+#
+# msetup library
+#
+
+RELDIR=msetup
+
+LIBMSETUP =$(LIBDIR)\libmsetup.lib
+
+!include ../NTMakefile.w32 
+
+cdefines = $(cdefines) -DUNICODE -D_UNICODE
+
+libmsetup_OBJS =    					\
+	$(OBJ)\msetup_flags.obj				\
+	$(OBJ)\msetup_reg.obj				
+
+$(LIBMSETUP): $(libmsetup_OBJS)
+	$(LIBCON)
+
+all:: $(LIBMSETUP)
+
+clean::
+

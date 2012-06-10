@@ -1,0 +1,122 @@
+/*
+ * Copyright (C) 2012 PADL Software Pty Ltd.
+ * All rights reserved.
+ * Use is subject to license.
+ *
+ * CONFIDENTIAL
+ */
+
+#ifndef _MSETUP_H_
+#define _MSETUP_H_ 1
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef SECURITY_WIN32
+#define SECURITY_WIN32
+#endif
+#ifndef _SEC_WINNT_AUTH_TYPES
+#define _SEC_WINNT_AUTH_TYPES
+#endif
+#include <windows.h>
+#include <ntdll.h>
+#include <ntstatus.h>
+#include <NTSecAPI.h>
+#include <sspi.h>
+#include <NTSecPkg.h>
+#include <Evntprov.h>
+#include <Sddl.h>
+
+#include "gssp.h"           /* for flags */
+
+/*
+ * msetup_reg.c
+ */
+/*
+ * Opens registry key at SSP configuration root.
+ */
+DWORD
+MsOpenKey(BOOLEAN fWritable, PHKEY phkResult);
+
+/*
+ * Closes SSP configuration registry key.
+ */
+DWORD
+MsCloseKey(HKEY hKey);
+
+/*
+ * msetup_map.c
+ */
+/*
+ * Add a mapping between a AAA identity and a Windows
+ * account. The string "*" may be used to indicate a
+ * wildcard mapping. If Account is NULL, then the mapping
+ * is deleted.
+ */
+DWORD
+MsMapUser(HKEY hKey, LPCWSTR wszPrincipal, LPCWSTR wszAccount);
+
+/*
+ * msetup_ssp.c
+ */
+/*
+ * Enable or disable SSP.
+ */
+DWORD
+MsSetSspEnabled(HKEY hKey, BOOLEAN fEnableSsp);
+
+/*
+ * msetup_flags.c
+ */
+/*
+ * Get SSP flags
+ */
+DWORD
+MsQuerySspFlags(HKEY hKey, DWORD *pdwSspFlags);
+
+typedef enum _SSP_FLAG_OP {
+    SSP_FLAG_SET,
+    SSP_FLAG_ADD,
+    SSP_FLAG_DELETE
+} SSP_FLAG_OP;
+
+/*
+ * Modify SSP flags
+ */
+DWORD
+MsModifySspFlags(
+    HKEY hKey,
+    SSP_FLAG_OP fOp,
+    DWORD dwSspFlags);
+
+LPCWSTR
+MsSspFlagToString(DWORD dwSspFlag);
+
+DWORD
+MsStringToSspFlag(LPCWSTR wszSspFlag);
+
+DWORD
+MsListSspFlags(FILE *fp);
+
+/*
+ * msetup_aaa.c
+ */
+/*
+ * Add a AAA server tuple.
+ */
+DWORD
+MsAddAaaServer(
+    HKEY hKey,
+    LPCWSTR wszServer,
+    LPCWSTR wszSecret,
+    LPCWSTR wszService);
+
+/*
+ * Deletes existing AAA server tuple.
+ */
+DWORD
+MsDeleteAaaServer(
+    HKEY hKey,
+    LPCWSTR wszServer);
+
+#endif /* _MSETUP_H_ */
