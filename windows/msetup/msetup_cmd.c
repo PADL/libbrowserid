@@ -95,7 +95,6 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
         for (i = 0; lResult == ERROR_SUCCESS; i++) {
             WCHAR wszAaaServer[256];
             DWORD cchAaaServer = sizeof(wszAaaServer) / sizeof(WCHAR);
-            DWORD dwDumpResult;
 
             lResult = RegEnumKeyEx(hSubKey, i, wszAaaServer, &cchAaaServer,
                                    NULL, NULL, NULL, NULL);
@@ -106,13 +105,7 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
                 break;
             }
 
-            dwDumpResult = DoDumpAaaServer(hSubKey, wszAaaServer);
-            if (dwDumpResult != ERROR_SUCCESS) {
-                DisplayError(L"Displaying AAA server registry key",
-                             dwDumpResult);
-                lResult = dwDumpResult;
-                break;
-            }
+            DoDumpAaaServer(hSubKey, wszAaaServer);
         }
         MsCloseKey(hSubKey);
     }
