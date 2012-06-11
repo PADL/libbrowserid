@@ -18,7 +18,7 @@ MsOpenUserListKey(HKEY hKey, BOOLEAN fWritable, PHKEY hMapKey)
                           0,                /* Reserved */
                           NULL,             /* lpClass */
                           REG_OPTION_NON_VOLATILE,
-                          fWritable ? KEY_WRITE : KEY_QUERY_VALUE,
+                          fWritable ? KEY_WRITE : KEY_READ,
                           NULL,             /* lpSecurityAttributes */
                           hMapKey,
                           NULL);            /* lpdwDisposition */

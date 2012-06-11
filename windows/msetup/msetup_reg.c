@@ -25,7 +25,9 @@ MsOpenKey(LPWSTR wszServer, BOOLEAN fWritable, PHKEY phkResult)
         hklm = HKEY_LOCAL_MACHINE;
     }
 
-    dwAccess = fWritable ? KEY_WRITE : KEY_QUERY_VALUE;
+    dwAccess = KEY_READ;
+    if (fWritable)
+        dwAccess |= KEY_WRITE;
 
     lResult = RegOpenKeyEx(hklm,
 			   L"SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",

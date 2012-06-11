@@ -48,7 +48,7 @@ DoDumpAaaServer(HKEY hRadiusKey, LPCWSTR wszAaaServer)
     lResult = RegQueryValueEx(hAaaKey, L"Secret", NULL, &dwType,
                               NULL, NULL);
     if (lResult == ERROR_SUCCESS)
-        wprintf(L"Secret = ********\n");
+        wprintf(L"\tSecret = ********\n");
 
     RegCloseKey(hAaaKey);
 
@@ -95,18 +95,25 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
         for (i = 0; lResult == ERROR_SUCCESS; i++) {
             WCHAR wszAaaServer[256];
             DWORD cchAaaServer = sizeof(wszAaaServer) / sizeof(WCHAR);
+            DWORD dwDumpResult;
 
             lResult = RegEnumKeyEx(hSubKey, i, wszAaaServer, &cchAaaServer,
                                    NULL, NULL, NULL, NULL);
-            if (lResult != ERROR_SUCCESS)
+            if (lResult == ERROR_NO_MORE_ITEMS) {
                 break;
+            } else if (lResult != ERROR_SUCCESS) {
+                DisplayError(L"Enumerating Radius registry key", lResult);
+                break;
+            }
 
-            lResult = DoDumpAaaServer(hSubKey, wszAaaServer);
-            if (lResult != ERROR_SUCCESS)
+            dwDumpResult = DoDumpAaaServer(hSubKey, wszAaaServer);
+            if (dwDumpResult != ERROR_SUCCESS) {
+                DisplayError(L"Displaying AAA server registry key",
+                             dwDumpResult);
+                lResult = dwDumpResult;
                 break;
+            }
         }
-        if (lResult != ERROR_SUCCESS && lResult != ERROR_NO_MORE_ITEMS)
-            DisplayError(L"Enumerating Radius registry key", lResult);
         MsCloseKey(hSubKey);
     }
 

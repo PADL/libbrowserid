@@ -11,29 +11,37 @@
 #include "msetup.h"
 
 DWORD
-MsOpenRadiusKey(HKEY hKey, BOOLEAN fWritable, PHKEY hRadiusKey)
+MsOpenRadiusKey(HKEY hKey, BOOLEAN fWritable, PHKEY phRadiusKey)
 {
-    return RegCreateKeyEx(hKey,
-                          L"Radius",
-                          0,                /* Reserved */
-                          NULL,             /* lpClass */
-                          REG_OPTION_NON_VOLATILE,
-                          fWritable ? KEY_WRITE : KEY_QUERY_VALUE,
-                          NULL,             /* lpSecurityAttributes */
-                          hRadiusKey,
-                          NULL);            /* lpdwDisposition */
+    DWORD dwAccess;
+    DWORD lResult;
+
+    dwAccess = KEY_READ;
+    if (fWritable)
+        dwAccess |= KEY_WRITE;
+
+    lResult = RegCreateKeyEx(hKey,
+                             L"Radius",
+                             0,                /* Reserved */
+                             NULL,             /* lpClass */
+                             REG_OPTION_NON_VOLATILE,
+                             dwAccess,
+                             NULL,             /* lpSecurityAttributes */
+                             phRadiusKey,
+                             NULL);            /* lpdwDisposition */
+    return lResult;
 }
 
 DWORD
 MsAddAaaServer(
-    HKEY hKey,
+    HKEY hSspKey,
     PAAA_SERVER_INFO ServerInfo)
 {
     DWORD lResult;
     HKEY hRadiusKey = NULL;
     HKEY hAaaServerKey = NULL;
 
-    lResult = MsOpenRadiusKey(hKey, TRUE, &hRadiusKey);
+    lResult = MsOpenRadiusKey(hSspKey, TRUE, &hRadiusKey);
     if (lResult != ERROR_SUCCESS)
         goto cleanup;
 
@@ -50,7 +58,7 @@ MsAddAaaServer(
         goto cleanup;
 
     if (ServerInfo->Secret != NULL) {
-        lResult = RegSetValueEx(hKey, L"Secret", 0,
+        lResult = RegSetValueEx(hAaaServerKey, L"Secret", 0,
                                 REG_SZ, (PBYTE)ServerInfo->Secret,
                                 (wcslen(ServerInfo->Secret) + 1) * sizeof(WCHAR));
         if (lResult != ERROR_SUCCESS)
@@ -58,7 +66,7 @@ MsAddAaaServer(
     }
 
     if (ServerInfo->Service != NULL) {
-        lResult = RegSetValueEx(hKey, L"Service", 0,
+        lResult = RegSetValueEx(hAaaServerKey, L"Service", 0,
                                 REG_SZ, (PBYTE)ServerInfo->Service,
                                 (wcslen(ServerInfo->Service) + 1) * sizeof(WCHAR));
         if (lResult != ERROR_SUCCESS)
@@ -76,13 +84,13 @@ cleanup:
 
 DWORD
 MsDeleteAaaServer(
-    HKEY hKey,
+    HKEY hSspKey,
     PAAA_SERVER_INFO ServerInfo)
 {
     DWORD lResult;
     HKEY hRadiusKey;
 
-    lResult = MsOpenRadiusKey(hKey, TRUE, &hRadiusKey);
+    lResult = MsOpenRadiusKey(hSspKey, TRUE, &hRadiusKey);
     if (lResult != ERROR_SUCCESS)
         return lResult;
 
