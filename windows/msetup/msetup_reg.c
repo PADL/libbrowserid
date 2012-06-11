@@ -15,12 +15,24 @@ MsOpenKey(LPWSTR wszServer, BOOLEAN fWritable, PHKEY phkResult)
 {
     DWORD lResult;
     DWORD dwAccess;
+    HKEY hklm;
+
+    if (wszServer != NULL) {
+        lResult = RegConnectRegistry(wszServer, HKEY_LOCAL_MACHINE, &hklm);
+        if (lResult != ERROR_SUCCESS)
+            return lResult;
+    } else {
+        hklm = HKEY_LOCAL_MACHINE;
+    }
 
     dwAccess = fWritable ? KEY_WRITE : KEY_QUERY_VALUE;
 
-    lResult = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+    lResult = RegOpenKeyEx(hklm,
 			   L"SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",
 			   0, dwAccess, phkResult);
+
+    if (wszServer != NULL)
+        RegCloseKey(hklm);
 
     return lResult;
 }

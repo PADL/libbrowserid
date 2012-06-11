@@ -16,24 +16,58 @@
 #define FLAG_NO_KEY         4
 
 static void
-DisplayUsage(void);
+DisplayUsage(LPCWSTR Command);
+
+static DWORD
+HandleInvalidArg(LPCWSTR Arg);
 
 static void
-HandleInvalidArg(LPWSTR Arg);
+DisplayError(LPCWSTR Message, DWORD lResult);
 
-static void
-DisplayError(LPWSTR Message, DWORD lResult);
+static DWORD
+DoDumpAaaServer(HKEY hRadiusKey, LPCWSTR wszAaaServer)
+{
+    DWORD lResult;
+    HKEY hAaaKey;
+    WCHAR wszBuf[256];
+    DWORD dwType = REG_SZ;
+    DWORD dwSize = sizeof(wszBuf);
 
-static LPCWSTR
-GetSelectedOption(void);
+    wprintf(L"%s:\n", wszAaaServer);
 
+    lResult = RegOpenKeyEx(hRadiusKey, wszAaaServer,
+                           0, KEY_QUERY_VALUE, &hAaaKey);
+    if (lResult != ERROR_SUCCESS)
+        return lResult;
+
+    lResult = RegQueryValueEx(hAaaKey, L"Service", NULL, &dwType,
+                              (PBYTE)wszBuf, &dwSize);
+    if (lResult == ERROR_SUCCESS)
+        wprintf(L"\tService = %s\n", wszBuf);
+
+    lResult = RegQueryValueEx(hAaaKey, L"Secret", NULL, &dwType,
+                              NULL, NULL);
+    if (lResult == ERROR_SUCCESS)
+        wprintf(L"Secret = ********\n");
+
+    RegCloseKey(hAaaKey);
+
+    return ERROR_SUCCESS;
+}
+
+/*
+ * Dump current configuration to stdout
+ */
 static DWORD
 DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
 {
     DWORD lResult;
     DWORD dwSspFlags;
     DWORD i = 0;
-    HKEY hUserListKey = NULL;
+    HKEY hSubKey = NULL;
+
+    if (argc > 1)
+        return HandleInvalidArg(argv[1]);
 
     lResult = MsQuerySspFlags(hSspKey, &dwSspFlags);
     if (lResult != ERROR_SUCCESS)
@@ -56,9 +90,28 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
     }
 
     /* AAA config */
+    lResult = MsOpenRadiusKey(hSspKey, FALSE, &hSubKey);
+    if (lResult == ERROR_SUCCESS) {
+        for (i = 0; lResult == ERROR_SUCCESS; i++) {
+            WCHAR wszAaaServer[256];
+            DWORD cchAaaServer = sizeof(wszAaaServer) / sizeof(WCHAR);
+
+            lResult = RegEnumKeyEx(hSubKey, i, wszAaaServer, &cchAaaServer,
+                                   NULL, NULL, NULL, NULL);
+            if (lResult != ERROR_SUCCESS)
+                break;
+
+            lResult = DoDumpAaaServer(hSubKey, wszAaaServer);
+            if (lResult != ERROR_SUCCESS)
+                break;
+        }
+        if (lResult != ERROR_SUCCESS && lResult != ERROR_NO_MORE_ITEMS)
+            DisplayError(L"Enumerating Radius registry key", lResult);
+        MsCloseKey(hSubKey);
+    }
 
     /* user mappings */
-    lResult = MsOpenUserListKey(hSspKey, FALSE, &hUserListKey);
+    lResult = MsOpenUserListKey(hSspKey, FALSE, &hSubKey);
     if (lResult == ERROR_SUCCESS) {
         for (i = 0; lResult == ERROR_SUCCESS; i++) {
             WCHAR wszPrincipal[256];
@@ -67,11 +120,11 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
             DWORD cbAccount = sizeof(wszAccount);
             DWORD dwType = REG_SZ;
 
-            lResult = RegEnumValue(hUserListKey, i, wszPrincipal,
+            lResult = RegEnumValue(hSubKey, i, wszPrincipal,
                                    &cchPrincipal, NULL,
                                    &dwType, (PBYTE)wszAccount, &cbAccount);
             if (lResult != ERROR_SUCCESS)
-                continue;
+                break;
 
             wprintf(L"Mapping ");
             if (_wcsicmp(wszPrincipal, L"*") == 0)
@@ -89,7 +142,7 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
         }
         if (lResult != ERROR_SUCCESS && lResult != ERROR_NO_MORE_ITEMS)
             DisplayError(L"Enumerating UserList registry key", lResult);
-        MsCloseKey(hUserListKey);
+        MsCloseKey(hSubKey);
     } else {
         i = 0;
     }
@@ -101,23 +154,26 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
     return ERROR_SUCCESS;
 }
 
+/*
+ * Modify SSP flags
+ */
 static DWORD
 DoModifySspFlags(HKEY hSspKey, SSP_FLAG_OP fOp, int argc, WCHAR *argv[])
 {
     DWORD dwSspFlags = 0;
     DWORD i;
 
-    if (argc == 0) {
-        fwprintf(stderr, L"%s requires 2 arguments", GetSelectedOption());
+    if (argc < 2) {
+        fwprintf(stderr, L"%s requires 2 arguments", argv[0]);
         return ERROR_INVALID_PARAMETER;
     }
 
-    for (i = 0; i < argc; i++) {
+    for (i = 1; i < argc; i++) {
         DWORD dwFlag = MsStringToSspFlag(argv[i]);
 
         if (dwFlag == 0) {
             fwprintf(stderr, L"Unknown realm flag: %s", argv[i]);
-            DisplayUsage();
+            DisplayUsage(argv[0]);
             return ERROR_INVALID_PARAMETER;
         }
 
@@ -148,10 +204,10 @@ DoDeleteSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
 static DWORD
 DoHelp(HKEY hSspKey, int argc, WCHAR *argv[])
 {
-    if (argc != 0)
-        HandleInvalidArg(argv[1]);
+    if (argc > 1)
+        return HandleInvalidArg(argv[1]);
 
-    DisplayUsage();
+    DisplayUsage(NULL);
     return ERROR_SUCCESS;
 }
 
@@ -162,17 +218,17 @@ DoMapUser(HKEY hSspKey, int argc, WCHAR *argv[])
     LPWSTR wszAccount;
     DWORD lResult;
 
-    if (argc == 0) {
-        DisplayUsage();
+    if (argc < 2) {
+        DisplayUsage(argv[0]);
         ExitProcess(ERROR_INVALID_PARAMETER);
     }
 
-    wszPrincipal = argv[0];
-    wszAccount = (argc > 1) ? argv[1] : NULL;
+    wszPrincipal = argv[1];
+    wszAccount = (argc > 2) ? argv[2] : NULL;
 
     lResult = MsMapUser(hSspKey, wszPrincipal, wszAccount);
     if (lResult != ERROR_SUCCESS)
-        DisplayError(L"Failed to create UserList entry", lResult);
+        DisplayError(L"Failed to create user map entry", lResult);
 
     return lResult;
 }
@@ -180,14 +236,56 @@ DoMapUser(HKEY hSspKey, int argc, WCHAR *argv[])
 static DWORD
 DoListSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
 {
-    if (argc != 0)
-        HandleInvalidArg(argv[1]);
+    if (argc > 1)
+        return HandleInvalidArg(argv[1]);
 
     return MsListSspFlags(stdout);
 }
 
+static DWORD
+DoAddAaaServer(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    AAA_SERVER_INFO AaaServerInfo = { 0 };
+    DWORD lResult;
+
+    if (argc < 2 || argc > 4) {
+        DisplayUsage(argv[0]);
+        ExitProcess(ERROR_INVALID_PARAMETER);
+    }
+
+    AaaServerInfo.Server = argv[1];
+    AaaServerInfo.Service = (argc > 2) ? argv[2] : NULL;
+    AaaServerInfo.Secret = (argc > 3) ? argv[3] : NULL;
+
+    lResult = MsAddAaaServer(hSspKey, &AaaServerInfo);
+    if (lResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to create AAA server entry", lResult);
+
+    return lResult;
+}
+
+static DWORD
+DoDelAaaServer(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    AAA_SERVER_INFO AaaServerInfo = { 0 };
+    DWORD lResult;
+
+    if (argc != 2) {
+        DisplayUsage(argv[0]);
+        ExitProcess(ERROR_INVALID_PARAMETER);
+    }
+
+    AaaServerInfo.Server = argv[1];
+
+    lResult = MsDeleteAaaServer(hSspKey, &AaaServerInfo);
+    if (lResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to delete AAA server entry", lResult);
+
+    return lResult;
+}
+
 static void
-DisplayError(LPWSTR Message, DWORD lResult)
+DisplayError(LPCWSTR Message, DWORD lResult)
 {
     WCHAR wszMsgBuf[128] = L"";
 
@@ -256,6 +354,20 @@ static struct _MS_CMD_OPTION {
         DoDeleteSspFlags
     },
     {
+        L"/AddAaa",
+        L"<AaaServer> [Service|Port] [Secret]\n",
+        L"\tAdds a AAA server entry\n",
+        FLAG_WRITE,
+        DoAddAaaServer
+    },
+    {
+        L"/DelAaa",
+        L"<AaaServer> [Service|Port] [Secret]\n",
+        L"\tDeletes a AAA server entry\n",
+        FLAG_WRITE,
+        DoDelAaaServer
+    },
+    {
         L"/Help",
         NULL,
         NULL,
@@ -271,10 +383,8 @@ static struct _MS_CMD_OPTION {
     },
 };
 
-static struct _MS_CMD_OPTION *gCmdOption;
-
 static void
-DisplayUsage()
+DisplayUsage(LPCWSTR Command)
 {
     DWORD i;
 
@@ -287,9 +397,7 @@ DisplayUsage()
         if (Option->Flags & FLAG_USAGE)
             continue;
 
-        /* if not called within usage command, just show specified usage */
-        if ((gCmdOption->Flags & FLAG_USAGE) == 0 &&
-            gCmdOption->Option != Option->Option)
+        if (Command != NULL && _wcsicmp(Command, Option->Option) != 0)
             continue;
 
         fwprintf(stderr, L"%s %s\n%s",
@@ -297,18 +405,13 @@ DisplayUsage()
     }
 }
 
-static void
-HandleInvalidArg(LPWSTR Arg)
+static DWORD
+HandleInvalidArg(LPCWSTR Arg)
 {
     wprintf(L"%s: no such argument.\n", Arg);
     wprintf(L"use msetup /? for help.\n");
     ExitProcess(ERROR_INVALID_PARAMETER);
-}
-
-static LPCWSTR
-GetSelectedOption(void)
-{
-    return gCmdOption->Option;
+    return ERROR_INVALID_PARAMETER;
 }
 
 int wmain(int argc, WCHAR *argv[])
@@ -317,6 +420,7 @@ int wmain(int argc, WCHAR *argv[])
     DWORD lResult;
     LPWSTR wszServer = NULL;
     DWORD i;
+    struct _MS_CMD_OPTION *Option = NULL;
 
     assert(argc > 0);
     argc--;
@@ -331,23 +435,21 @@ int wmain(int argc, WCHAR *argv[])
     if (argc != 0) {
         for (i = 0; i < sizeof(msCmdOptions) / sizeof(msCmdOptions[0]); i++) {
             if (_wcsicmp(argv[0], msCmdOptions[i].Option) == 0) {
-                gCmdOption = &msCmdOptions[i];
+                Option = &msCmdOptions[i];
                 break;
             }
         }
-
-        argc--;
-        argv++;
     } else {
-        gCmdOption = &msCmdOptions[0];  /* /DumpState */
+        Option = &msCmdOptions[0];  /* /DumpState */
     }
 
-    if (gCmdOption == NULL) {
+    if (Option == NULL) {
+        assert(argc != 0);
         HandleInvalidArg(argv[0]);
     }
 
-    if (!(gCmdOption->Flags & FLAG_NO_KEY)) {
-        lResult = MsOpenKey(wszServer, !!(gCmdOption->Flags & FLAG_WRITE),
+    if (!(Option->Flags & FLAG_NO_KEY)) {
+        lResult = MsOpenKey(wszServer, !!(Option->Flags & FLAG_WRITE),
                             &hSspKey);
         if (lResult != 0) {
             if (lResult == ERROR_FILE_NOT_FOUND)
@@ -358,7 +460,7 @@ int wmain(int argc, WCHAR *argv[])
         }
     }
 
-    lResult = (*gCmdOption->Callback)(hSspKey, argc, argv);
+    lResult = (*Option->Callback)(hSspKey, argc, argv);
 
     if (hSspKey != NULL)
         MsCloseKey(hSspKey);
