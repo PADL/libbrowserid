@@ -19,9 +19,7 @@
              SummaryCodepage="1252" AdminImage="no"
              Platform="$(var.Platform)" />
     <Directory Id="TARGETDIR" Name="SourceDir">
-      <Directory Id="$(var.PlatformProgramFilesFolder)"
-                 Name="Moonshot"
-                 FileSource="$(var.BinDir)">
+      <Directory Id="D_Module" Name="." FileSource="$(var.BinDir)">
         <Component Id="C_MSetup"
                    Guid="$(var.GuidMSetup)"
                    Win64="$(var.Win64)">
