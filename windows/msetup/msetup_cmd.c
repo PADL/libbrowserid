@@ -234,15 +234,6 @@ DoMapUser(HKEY hSspKey, int argc, WCHAR *argv[])
 }
 
 static DWORD
-DoListSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
-{
-    if (argc > 1)
-        return HandleInvalidArg(argv[1]);
-
-    return MsListSspFlags(stdout);
-}
-
-static DWORD
 DoAddAaaServer(HKEY hSspKey, int argc, WCHAR *argv[])
 {
     AAA_SERVER_INFO AaaServerInfo = { 0 };
@@ -282,6 +273,15 @@ DoDelAaaServer(HKEY hSspKey, int argc, WCHAR *argv[])
         DisplayError(L"Failed to delete AAA server entry", lResult);
 
     return lResult;
+}
+
+static DWORD
+DoListSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    if (argc > 1)
+        return HandleInvalidArg(argv[1]);
+
+    return MsListSspFlags(stdout);
 }
 
 static void
@@ -326,6 +326,20 @@ static struct _MS_CMD_OPTION {
         DoMapUser
     },
     {
+        L"/AddAaa",
+        L"<AaaServer> [Service|Port] [Secret]",
+        L"\tAdds a AAA server entry\n",
+        FLAG_WRITE,
+        DoAddAaaServer
+    },
+    {
+        L"/DelAaa",
+        L"<AaaServer> [Service|Port] [Secret]",
+        L"\tDeletes a AAA server entry\n",
+        FLAG_WRITE,
+        DoDelAaaServer
+    },
+    {
         L"/ListSspFlags",
         L"(no args)",
         L"\tLists the available SSP configuration flags\n",
@@ -352,20 +366,6 @@ static struct _MS_CMD_OPTION {
         L"\tDeletes SSP configuration flags\n",
         FLAG_WRITE,
         DoDeleteSspFlags
-    },
-    {
-        L"/AddAaa",
-        L"<AaaServer> [Service|Port] [Secret]",
-        L"\tAdds a AAA server entry\n",
-        FLAG_WRITE,
-        DoAddAaaServer
-    },
-    {
-        L"/DelAaa",
-        L"<AaaServer> [Service|Port] [Secret]",
-        L"\tDeletes a AAA server entry\n",
-        FLAG_WRITE,
-        DoDelAaaServer
     },
     {
         L"/Help",
