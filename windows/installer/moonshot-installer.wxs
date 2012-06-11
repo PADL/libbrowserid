@@ -58,6 +58,11 @@
       </DirectoryRef>
     <?endif?>
 
+    <DirectoryRef Id="$(var.PlatformProgramFilesFolder)" DiskId="1">
+      <Merge Id="M_MSetup" Language="0"
+             SourceFile="$(var.InstDir)\Moonshot-MSetup.msm" />
+    </DirectoryRef>
+
     <?include "Moonshot-registry.wxi" ?>
 
     <Media Id="1" Cabinet="Disk1" CompressionLevel="high" EmbedCab="yes" />
@@ -97,6 +102,7 @@
         <MergeRef Id="M_Heimdal32" />
         <MergeRef Id="M_EapSSP32" />
       <?endif?>
+      <MergeRef Id="M_MSetup" />
       <ComponentRef Id="C_EapSSPRegistry" />
       <Feature Id="F_KSecEap"
                ConfigurableDirectory="INSTALLLOCATION"

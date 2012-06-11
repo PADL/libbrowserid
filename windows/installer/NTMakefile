@@ -103,6 +103,25 @@ clean::
 	-$(RM) $(INSTDIR)\Moonshot-EapSSP.msm
 
 ######################################################################
+# Configuration utility merge module file
+
+MSETUPMODULE=$(INSTDIR)\Moonshot-MSetup.msm
+
+$(MSETUPMODULE): $(OBJ)\Moonshot-MSetup.wixobj
+	$(LIGHT) -out $@ $** -ext WixUtilExtension
+
+$(OBJ)\Moonshot-MSetup.wixobj: Moonshot-MSetup.wxs
+	$(CANDLE) -arch $(PLATFORM) -o $@ $**	\
+		-dVersion=$(VERSION)		\
+		-dBinDir=$(BINDIR)		\
+		-dPlatform=$(PLATFORM)		\
+
+all:: $(MSETUPMODULE)
+
+clean::
+	-$(RM) $(INSTDIR)\Moonshot-MSetup.msm
+
+######################################################################
 # Kernel-space object file
 
 KSECEAPOBJ = $(OBJ)\Moonshot-KSecEap.wixobj
@@ -191,7 +210,7 @@ CANDLEOPTS=$(CANDLEOPTS) -dTarget64	\
 	-dHeimdalModule32=$(HEIMDALMODULE32)	\
 	-dHeimdalModule64=$(HEIMDALMODULE64)    \
 
-INSTDEPS=$(EAPSSPMODULE) $(KSECEAPOBJ) $(SPINSTALLOBJ)
+INSTDEPS=$(EAPSSPMODULE) $(KSECEAPOBJ) $(MSETUPMODULE) $(SPINSTALLOBJ)
 
 !ifdef MULTIPLATFORM_INSTALLER
 CANDLEOPTS=$(CANDLEOPTS) -dTarget32
@@ -224,7 +243,7 @@ $(INSTALLER): $(WIXOBJ) $(THIRDPARTYOBJS) $(INSTDEPS) lang\en-us.wxl $(SPINSTALL
 		-ext $(DIFXAPPEXT)
 	$(_CODESIGN)
 
-$(WIXOBJ): Moonshot-installer.wxs Moonshot-KSecEap.wxs Moonshot-registry.wxi
+$(WIXOBJ): Moonshot-installer.wxs Moonshot-KSecEap.wxs Moonshot-MSetup.wxs Moonshot-registry.wxi
 	$(CANDLE) -arch $(PLATFORM) -o $@ Moonshot-installer.wxs \
 		$(CANDLEOPTS) $(THIRDPARTYOPTS)
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="windows-1252"?>
+ <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?if $(var.Platform)=x64 ?>
+    <?define Win64=yes ?>
+    <?define GuidPackage=eab00180-5796-417b-877e-b2888da7d927 ?>
+    <?define GuidMSetup=a3f1e5de-6937-4c11-867b-f12a745af877 ?>
+    <?define PlatformProgramFilesFolder="ProgramFiles64Folder" ?>
+  <?else?>
+    <?define Win64=no ?>
+    <?define GuidPackage=3e1d5806-443a-4f61-823c-e7ceb4f0175e ?>
+    <?define GuidMSetup=af5b4929-2f4e-4675-bb5b-69af31336641 ?>
+    <?define PlatformProgramFilesFolder="ProgramFilesFolder" ?>
+  <?endif?>
+
+  <Module Id="M_MSetup" Language="0" Version="$(var.Version)">
+    <Package Id="$(var.GuidPackage)"
+             InstallerVersion="200"
+             Languages="1033" Manufacturer="PADL"
+             SummaryCodepage="1252" AdminImage="no"
+             Platform="$(var.Platform)" />
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="$(var.PlatformProgramFilesFolder)"
+                 Name="Moonshot"
+                 FileSource="$(var.BinDir)">
+        <Component Id="C_MSetup"
+                   Guid="$(var.GuidMSetup)"
+                   Win64="$(var.Win64)">
+          <File Name="MSetup.exe" KeyPath="yes" />
+          <File Name="MSetup.pdb" />
+        </Component>
+      </Directory>
+    </Directory>
+  </Module>
+</Wix>
