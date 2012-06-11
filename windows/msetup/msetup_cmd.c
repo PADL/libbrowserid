@@ -355,14 +355,14 @@ static struct _MS_CMD_OPTION {
     },
     {
         L"/AddAaa",
-        L"<AaaServer> [Service|Port] [Secret]\n",
+        L"<AaaServer> [Service|Port] [Secret]",
         L"\tAdds a AAA server entry\n",
         FLAG_WRITE,
         DoAddAaaServer
     },
     {
         L"/DelAaa",
-        L"<AaaServer> [Service|Port] [Secret]\n",
+        L"<AaaServer> [Service|Port] [Secret]",
         L"\tDeletes a AAA server entry\n",
         FLAG_WRITE,
         DoDelAaaServer
