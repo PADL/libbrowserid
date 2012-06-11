@@ -171,7 +171,7 @@ DoModifySspFlags(HKEY hSspKey, SSP_FLAG_OP fOp, int argc, WCHAR *argv[])
     for (i = 1; i < argc; i++) {
         DWORD dwFlag = MsStringToSspFlag(argv[i]);
 
-        if (dwFlag == 0) {
+        if (dwFlag == (DWORD)-1) {
             fwprintf(stderr, L"Unknown realm flag: %s", argv[i]);
             DisplayUsage(argv[0]);
             return ERROR_INVALID_PARAMETER;

@@ -69,12 +69,41 @@ static struct {
     LPCWSTR String;
     LPCWSTR Description;
 } sspFlagMap[] = {
-    { GSSP_FLAG_DEBUG,                  L"Debug",            L"Enable debugging"            },
-    { GSSP_FLAG_DISABLE_SPNEGO,         L"DisableSpnego",    L"Do not advertise mechanism through Negotiate" },
-    { GSSP_FLAG_DISABLE_NEGOEX,         L"DisableNegoEx",    L"Do not advertise mechanism through NegoEx" },
-    { GSSP_FLAG_S4U_ON_DC,              L"UseS4UOnDC",       L"Use S4U2Self even on domain controllers" },
-    { GSSP_FLAG_FORCE_KERB_RPCID,       L"UseKerberosRpcID", L"Masquerade as Kerberos for Exchange compatibility" },
-    { GSSP_FLAG_LOGON,                  L"EnableLogonAP",    L"Support interactive logon" },
+    {
+        0,
+        L"None",
+        L"No SSP flags"
+    },
+    {
+        GSSP_FLAG_DEBUG,
+        L"Debug",
+        L"Enable debugging"
+    },
+    {
+        GSSP_FLAG_DISABLE_SPNEGO,
+        L"DisableSpnego",
+        L"Do not advertise mechanism through Negotiate"
+    },
+    {
+        GSSP_FLAG_DISABLE_NEGOEX,
+        L"DisableNegoEx",
+        L"Do not advertise mechanism through NegoEx"
+    },
+    {
+        GSSP_FLAG_S4U_ON_DC,
+        L"UseS4UOnDC",
+        L"Use S4U2Self even on domain controllers"
+    },
+    {
+        GSSP_FLAG_FORCE_KERB_RPCID,
+        L"UseKerberosRpcID",
+        L"Masquerade as Kerberos for Exchange compatibility"
+    },
+    {
+        GSSP_FLAG_LOGON,
+        L"EnableLogonAP",
+        L"Support interactive logon"
+    },
 };
 
 LPCWSTR
@@ -97,7 +126,7 @@ DWORD
 MsStringToSspFlag(LPCWSTR wszSspFlag)
 {
     DWORD i;
-    DWORD dwSspFlag = 0;
+    DWORD dwSspFlag = (DWORD)-1;
 
     for (i = 0; i < sizeof(sspFlagMap) / sizeof(sspFlagMap[0]); i++) {
         if (_wcsicmp(wszSspFlag, sspFlagMap[i].String) == 0) {
@@ -115,7 +144,7 @@ MsListSspFlags(FILE *fp)
     DWORD i;
 
     for (i = 0; i < sizeof(sspFlagMap) / sizeof(sspFlagMap[0]); i++) {
-        fwprintf(fp, L"0x%02x %20s %s\n",
+        fwprintf(fp, L"0x%02x %-16s %s\n",
                  sspFlagMap[i].Flag,
                  sspFlagMap[i].String,
                  sspFlagMap[i].Description);
