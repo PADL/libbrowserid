@@ -29,7 +29,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-SUBDIRS = installer
+SUBDIRS = msetup installer
 
 !include NTMakefile.w32
 
