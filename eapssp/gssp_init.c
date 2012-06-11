@@ -303,8 +303,11 @@ GsspGetInfo(IN gss_OID Oid, OUT PSecPkgInfo PackageInfo)
     PackageInfo->cbMaxToken = EAPSSP_MAX_TOKEN_SIZE;
 
     if (oidEqual(Oid, GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM)) {
+        PackageInfo->wRPCID = RPC_C_AUTHN_GSS_EAP_AES256;
+        PackageInfo->Name = EAP_AES256_PACKAGE_NAME_W;
+    } else if (oidEqual(Oid, GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM)) {
         /*
-         * Note: The AP is only specified for EAP-AES256; there's no point in
+         * Note: The AP is only specified for EAP-AES128; there's no point in
          * using specific message protection services for interactive logon.
          * Because this support is experimental and may impact normal logon
          * behaviour, it is only enabled if a flag is set in the registry.
@@ -312,9 +315,6 @@ GsspGetInfo(IN gss_OID Oid, OUT PSecPkgInfo PackageInfo)
          if (GsspFlags & GSSP_FLAG_LOGON)
             PackageInfo->fCapabilities |= SECPKG_FLAG_LOGON;
 
-        PackageInfo->wRPCID = RPC_C_AUTHN_GSS_EAP_AES256;
-        PackageInfo->Name = EAP_AES256_PACKAGE_NAME_W;
-    } else if (oidEqual(Oid, GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM)) {
         PackageInfo->wRPCID = RPC_C_AUTHN_GSS_EAP_AES128;
         PackageInfo->Name = EAP_AES128_PACKAGE_NAME_W;
     } else {
