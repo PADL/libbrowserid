@@ -40,7 +40,7 @@ struct tls_connection {
 	int failed, read_alerts, write_alerts;
 
 	CERT_NAME_BLOB subject_match;
-	CERT_NAME_BLOB altsubject_match;
+	LPSTR altsubject_match;
 	HCERTSTORE client_cert_store;
 	HCERTSTORE server_cert_store;
 	SCHANNEL_CRED schannel_cred;
@@ -126,9 +126,8 @@ int tls_connection_shutdown(void *ssl_ctx, struct tls_connection *conn)
 	conn->subject_match.pbData = NULL;
 	conn->subject_match.cbData = 0;
 
-	os_free(conn->altsubject_match.pbData);
-	conn->altsubject_match.pbData = NULL;
-	conn->altsubject_match.cbData = 0;
+	os_free(conn->altsubject_match);
+	conn->altsubject_match = NULL;
 
 	DeleteSecurityContext(&conn->context);
 	FreeCredentialsHandle(&conn->creds);
@@ -286,36 +285,13 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
 		}
 	}
 
-	os_free(conn->altsubject_match.pbData);
-	conn->altsubject_match.pbData = NULL;
-	conn->altsubject_match.cbData = 0;
+	os_free(conn->altsubject_match);
+	conn->altsubject_match = NULL;
 
 	if (altsubject_match) {
-		if (!CertStrToName(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-				   altsubject_match,
-				   CERT_X500_NAME_STR,
-				   NULL,
-				   NULL,
-				   &cbSize,
-				   NULL))
+		conn->altsubject_match = os_strdup(altsubject_match);
+		if (conn->altsubject_match == NULL)
 			return -1;
-
-		conn->altsubject_match.pbData = os_malloc(cbSize);
-
-		if (conn->altsubject_match.pbData == NULL)
-			return -1;
-
-		if (!CertStrToName(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-				   altsubject_match,
-				   CERT_X500_NAME_STR,
-				   NULL,
-				   conn->altsubject_match.pbData,
-				   &conn->altsubject_match.cbData,
-				   NULL)) {
-			os_free(conn->altsubject_match.pbData);
-			conn->altsubject_match.pbData = NULL;
-			return -1;
-		}
 	}
 
 	return 0;
@@ -452,6 +428,9 @@ static int tls_connection_verify(void *tls_ctx,
 		}
 	}
 
+	CertFreeCertificateChain(pChainContext);
+	pChainContext = NULL;
+
 	if (conn->subject_match.pbData != NULL) {
 		if (serverCert->pCertInfo == NULL ||
 		    !CertCompareCertificateName(X509_ASN_ENCODING |
@@ -461,6 +440,37 @@ static int tls_connection_verify(void *tls_ctx,
 			global->last_error = GetLastError();
 			return -1;
 		}
+	}
+
+	if (conn->altsubject_match != NULL) {
+		DWORD cbSize;
+		LPSTR szSubjectAltName;
+
+		cbSize = CertGetNameString(serverCert,
+					   CERT_NAME_SIMPLE_DISPLAY_TYPE,
+					   0,
+					   NULL,
+					   NULL,
+					   0);
+
+		szSubjectAltName = os_malloc(cbSize);
+		if (szSubjectAltName == NULL)
+			return -1;
+
+		CertGetNameString(serverCert,
+				  CERT_NAME_SIMPLE_DISPLAY_TYPE,
+				  0,
+				  NULL,
+				  szSubjectAltName,
+				  cbSize);
+
+		if (!os_strcmp(conn->altsubject_match, szSubjectAltName)) {
+			global->last_error = CERT_E_INVALID_NAME;
+			os_free(szSubjectAltName);
+			return -1;
+		}
+
+		os_free(szSubjectAltName);
 	}
 
 	return 0;
