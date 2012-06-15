@@ -694,7 +694,7 @@ GsspAcquireCredHandle(
         Status = GsspFindCred(&ActualLogonId, ProcessID, GssCredFlags,
                               Oid, GssName, NULL, &GssCred);
         if (Status == SEC_E_UNKNOWN_CREDENTIALS &&
-            (GsspFlags & GSSP_FLAG_LOGON)) {
+            (GsspFlags & GSSP_FLAG_LOGON_CREDS)) {
             /* Try the logon credential list */
             Status = GsspFindCred(&ActualLogonId, CRED_PROCESS_ID_ALL,
                                   GssCredFlags, Oid, GssName, NULL, &GssCred);
@@ -960,7 +960,7 @@ SpAcceptCredentialsEapAes256(
     IN PSECPKG_PRIMARY_CRED PrimaryCredentials,
     IN PSECPKG_SUPPLEMENTAL_CRED SupplementalCredentials)
 {
-    if ((GsspFlags & GSSP_FLAG_LOGON) == 0)
+    if ((GsspFlags & (GSSP_FLAG_LOGON_CREDS)) == 0)
         return SEC_E_UNSUPPORTED_FUNCTION;
 
     return GsspAcceptCredentials(LogonType, AccountName,
@@ -1567,7 +1567,7 @@ gssEapResolveInitiatorCred(
                      CRED_FLAG_INITIATE | CRED_FLAG_RESOLVED,
                      CredMech, InitiatorName,
                      GssTargetName, &ResolvedCred) == SEC_E_OK ||
-        ((GsspFlags & GSSP_FLAG_LOGON) &&
+        ((GsspFlags & GSSP_FLAG_LOGON_CREDS) &&
          GsspFindCred(&LogonId, CRED_PROCESS_ID_ALL,
                       CRED_FLAG_INITIATE | CRED_FLAG_RESOLVED,
                       CredMech, InitiatorName,

@@ -104,6 +104,11 @@ static struct {
         L"EnableLogonAP",
         L"Support interactive logon"
     },
+    {
+        GSSP_FLAG_LOGON_CREDS,
+        L"UseLogonCreds",
+        L"Use domain logon credentials"
+    },
 };
 
 LPCWSTR

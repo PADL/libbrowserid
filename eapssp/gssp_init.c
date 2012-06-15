@@ -271,6 +271,13 @@ SpLsaModeInitialize(
         return STATUS_NOT_SUPPORTED;
     }
 
+    /*
+     * Interactive logon support (FLAG_LOGON) implies storing logon
+     * credentials for use by network authentication mechanism
+     * (FLAG_LOGON_CREDS), although the latter can be set explicitly.
+     */
+    if (GsspFlags & GSSP_FLAG_LOGON)
+        GsspFlags |= GSSP_FLAG_LOGON_CREDS;
     if (*PackageVersion >= SECPKG_INTERFACE_VERSION_4)
         GsspFlags |= GSSP_FLAG_UPLEVEL;
     if (VersionInfo.dwMajorVersion > 6 ||

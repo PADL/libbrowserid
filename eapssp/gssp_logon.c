@@ -61,7 +61,7 @@ cleanup:
 VOID NTAPI
 LsaApLogonTerminated(PLUID LogonId)
 {
-    if (GsspFlags & GSSP_FLAG_LOGON)
+    if (GsspFlags & GSSP_FLAG_LOGON_CREDS)
         GsspRemoveLogonCred(LogonId);
 }
 
@@ -163,7 +163,7 @@ GsspAcceptCredentials(
     PSECPKG_SUPPLEMENTAL_CRED SupplementalCredentials,
     gss_OID MechOid)
 {
-    GSSP_ASSERT(GsspFlags & GSSP_FLAG_LOGON);
+    GSSP_ASSERT(GsspFlags & GSSP_FLAG_LOGON_CREDS);
 
     if (!IsValidLogonType(LogonType))
         return STATUS_INVALID_LOGON_TYPE;
