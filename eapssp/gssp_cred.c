@@ -1070,7 +1070,7 @@ GetClientCertificateSubject(
 
     hCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM,
                                0,
-                               0,
+                               (HCRYPTPROV_LEGACY)0,
                                CERT_SYSTEM_STORE_CURRENT_USER |
                                 CERT_STORE_OPEN_EXISTING_FLAG |
                                 CERT_STORE_READONLY_FLAG,
