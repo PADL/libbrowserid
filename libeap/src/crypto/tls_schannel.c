@@ -380,24 +380,84 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 static int tls_connection_verify(void *tls_ctx,
 				 struct tls_connection *conn)
 {
+	struct tls_global *global = tls_ctx;
 	SECURITY_STATUS status;
 	PCERT_CONTEXT serverCert;
+	PCCERT_CHAIN_CONTEXT pChainContext = NULL;
+	CERT_CHAIN_PARA chainPara = { 0 };
+	CERT_CHAIN_POLICY_PARA chainPolicyPara = { 0 };
+	CERT_CHAIN_POLICY_STATUS chainPolicyStatus = { 0 };
+	LPSTR rgszUsages[] = {
+		szOID_PKIX_KP_SERVER_AUTH,
+		szOID_SERVER_GATED_CRYPTO,
+		szOID_SGC_NETSCAPE
+	};
+	SSL_EXTRA_CERT_CHAIN_POLICY_PARA extraPolicyPara = { 0 };
 
 	status = QueryContextAttributes(&conn->context,
 					SECPKG_ATTR_REMOTE_CERT_CONTEXT,
 					&serverCert);
-	if (status != SEC_E_OK || serverCert->pCertInfo == NULL) {
+	if (status != SEC_E_OK) {
 		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
 			   "SECPKG_ATTR_REMOTE_CERT_CONTEXT) failed (0x%08x)",
 			   __func__, (int) status);
+		global->last_error = status;
+		return -1;
+	}
+
+	chainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
+	chainPara.RequestedUsage.Usage.cUsageIdentifier =
+		sizeof(rgszUsages) / sizeof(rgszUsages[0]);
+	chainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
+
+	if (!CertGetCertificateChain(NULL,
+				     serverCert,
+				     NULL,		/* pTime */
+				     (conn->server_cert_store != NULL)
+                                        ? conn->server_cert_store
+                                        : serverCert->hCertStore,
+				     &chainPara,
+				     CERT_CHAIN_ENABLE_PEER_TRUST,
+				     NULL,		/* pvReserved */
+				     &pChainContext)) {
+		global->last_error = GetLastError();
+		wpa_printf(MSG_DEBUG, "%s: CertGetCertificateChain failed "
+			   "(0x%08x)", __func__, global->last_error);
+		return -1;
+	}
+
+	extraPolicyPara.cbStruct = sizeof(extraPolicyPara);
+	extraPolicyPara.dwAuthType = AUTHTYPE_SERVER;
+	extraPolicyPara.fdwChecks = 0;
+	extraPolicyPara.pwszServerName = NULL;
+
+	chainPolicyPara.cbSize = sizeof(chainPolicyPara);
+	chainPolicyPara.pvExtraPolicyPara = &extraPolicyPara;
+
+	if (!CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_SSL,
+					 pChainContext,
+					 &chainPolicyPara,
+					 &chainPolicyStatus)) {
+		global->last_error = GetLastError();
+		wpa_printf(MSG_DEBUG, "%s: CertVerifyCertificatePolicy failed "
+			   "(0x%08x)", __func__, global->last_error);
+		CertFreeCertificateChain(pChainContext);
+		return -1;
+	}
+
+	if (chainPolicyStatus.dwError != ERROR_SUCCESS) {
+		global->last_error = chainPolicyStatus.dwError;
+		CertFreeCertificateChain(pChainContext);
 		return -1;
 	}
 
 	if (conn->subject_match.pbData) {
-		if (!CertCompareCertificateName(X509_ASN_ENCODING |
+		if (serverCert->pCertInfo == NULL ||
+		    !CertCompareCertificateName(X509_ASN_ENCODING |
 						PKCS_7_ASN_ENCODING,
 						&serverCert->pCertInfo->Subject,
 						&conn->subject_match)) {
+			global->last_error = GetLastError();
 			return -1;
 		}
 	}
