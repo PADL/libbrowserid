@@ -50,8 +50,7 @@ struct tls_connection {
 	CredHandle creds;
 	CtxtHandle context;
 
-	int ca_cert_verify : 1;
-	int server_cert_only : 1;
+	int verify_peer;
 };
 
 void * tls_init(const struct tls_config *conf)
@@ -158,7 +157,7 @@ int tls_global_set_verify(void *ssl_ctx, int check_crl)
 int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
 			      int verify_peer)
 {
-	conn->ca_cert_verify = !!verify_peer;
+	conn->verify_peer = !!verify_peer;
 	return 0;
 }
 
@@ -329,7 +328,7 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 	struct tls_global *global = tls_ctx;
 	HCERTSTORE cs = NULL;
 
-	conn->ca_cert_verify = 1;
+	conn->verify_peer = 1;
 	if (ca_cert_blob != NULL) {
 		cs = CertOpenStore(CERT_STORE_PROV_MEMORY,
 				   0, 0, CERT_STORE_CREATE_NEW_FLAG,
@@ -426,32 +425,34 @@ static int tls_connection_verify(void *tls_ctx,
 		return -1;
 	}
 
-	extraPolicyPara.cbStruct = sizeof(extraPolicyPara);
-	extraPolicyPara.dwAuthType = AUTHTYPE_SERVER;
-	extraPolicyPara.fdwChecks = 0;
-	extraPolicyPara.pwszServerName = NULL;
+	if (conn->verify_peer != 0) {
+		extraPolicyPara.cbStruct = sizeof(extraPolicyPara);
+		extraPolicyPara.dwAuthType = AUTHTYPE_SERVER;
+		extraPolicyPara.fdwChecks = 0;
+		extraPolicyPara.pwszServerName = NULL;
 
-	chainPolicyPara.cbSize = sizeof(chainPolicyPara);
-	chainPolicyPara.pvExtraPolicyPara = &extraPolicyPara;
+		chainPolicyPara.cbSize = sizeof(chainPolicyPara);
+		chainPolicyPara.pvExtraPolicyPara = &extraPolicyPara;
 
-	if (!CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_SSL,
-					 pChainContext,
-					 &chainPolicyPara,
-					 &chainPolicyStatus)) {
-		global->last_error = GetLastError();
-		wpa_printf(MSG_DEBUG, "%s: CertVerifyCertificatePolicy failed "
-			   "(0x%08x)", __func__, global->last_error);
-		CertFreeCertificateChain(pChainContext);
-		return -1;
+		if (!CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_SSL,
+						      pChainContext,
+						      &chainPolicyPara,
+						      &chainPolicyStatus)) {
+			global->last_error = GetLastError();
+			wpa_printf(MSG_DEBUG,"%s: CertVerifyCertificatePolicy failed "
+				   "(0x%08x)", __func__, global->last_error);
+			CertFreeCertificateChain(pChainContext);
+			return -1;
+		}
+
+		if (chainPolicyStatus.dwError != ERROR_SUCCESS) {
+			global->last_error = chainPolicyStatus.dwError;
+			CertFreeCertificateChain(pChainContext);
+			return -1;
+		}
 	}
 
-	if (chainPolicyStatus.dwError != ERROR_SUCCESS) {
-		global->last_error = chainPolicyStatus.dwError;
-		CertFreeCertificateChain(pChainContext);
-		return -1;
-	}
-
-	if (conn->subject_match.pbData) {
+	if (conn->subject_match.pbData != NULL) {
 		if (serverCert->pCertInfo == NULL ||
 		    !CertCompareCertificateName(X509_ASN_ENCODING |
 						PKCS_7_ASN_ENCODING,
