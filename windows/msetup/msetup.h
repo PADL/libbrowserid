@@ -134,4 +134,22 @@ MsDeleteAaaServer(
     HKEY hKey,
     PAAA_SERVER_INFO ServerInfo);
 
+/*
+ * msetup_cred.c
+ */
+typedef enum _MS_CRED_ATTR {
+    MS_CRED_ATTR_CA_CERTIFICATE = 1,
+    MS_CRED_ATTR_SERVER_CERT_HASH,
+    MS_CRED_ATTR_SUBJECT_NAME,
+    MS_CRED_ATTR_SUBJECT_ALT_NAME,
+    MS_CRED_ATTR_MAX = MS_CRED_ATTR_SUBJECT_ALT_NAME
+} MS_CRED_ATTR;
+
+DWORD
+MsSetCredAttribute(
+    LPWSTR TargetName,
+    LPWSTR UserName,
+    DWORD dwAttribute,
+    LPWSTR AttributeValue);
+
 #endif /* _MSETUP_H_ */

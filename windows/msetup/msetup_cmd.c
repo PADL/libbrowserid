@@ -284,6 +284,55 @@ DoListSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
     return MsListSspFlags(stdout);
 }
 
+static DWORD
+DoSetCredAttr(DWORD dwAttribute, int argc, WCHAR *argv[])
+{
+    LPWSTR TargetName, UserName, AttributeValue;
+    DWORD lResult;
+
+    if (argc < 2 || argc > 4) {
+        DisplayUsage(argv[0]);
+        ExitProcess(ERROR_INVALID_PARAMETER);
+    }
+
+    TargetName = argv[1];
+    UserName = argv[2];
+    AttributeValue = argv[3];
+
+    lResult = MsSetCredAttribute(TargetName,
+                                 UserName,
+                                 dwAttribute,
+                                 AttributeValue);
+    if (lResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to set credential attribute", lResult);
+
+    return lResult;
+}
+
+static DWORD
+DoSetCredCACert(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    return DoSetCredAttr(MS_CRED_ATTR_CA_CERTIFICATE, argc, argv);
+}
+
+static DWORD
+DoSetCredHash(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    return DoSetCredAttr(MS_CRED_ATTR_SERVER_CERT_HASH, argc, argv);
+}
+
+static DWORD
+DoSetCredSubjectName(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    return DoSetCredAttr(MS_CRED_ATTR_SUBJECT_NAME, argc, argv);
+}
+
+static DWORD
+DoSetCredSubjectAltName(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    return DoSetCredAttr(MS_CRED_ATTR_SUBJECT_ALT_NAME, argc, argv);
+}
+
 static void
 DisplayError(LPCWSTR Message, DWORD lResult)
 {
@@ -366,6 +415,35 @@ static struct _MS_CMD_OPTION {
         L"\tDeletes SSP configuration flags\n",
         FLAG_WRITE,
         DoDeleteSspFlags
+    },
+    {
+        L"/SetCredCACert",
+        L"<TargetName> <NAI> <CACertificate>",
+        L"\tBinds a certificate name to a stored credential\n",
+        FLAG_NO_KEY,
+        DoSetCredCACert
+    },
+    {
+        L"/SetCredHash",
+        L"<TargetName> <NAI> <SHA256Hash>",
+        L"\tBinds a server certificate hash to a stored credential\n",
+        FLAG_NO_KEY,
+        DoSetCredHash
+    },
+    {
+        L"/SetCredSubjectName",
+        L"<TargetName> <NAI> <SubjectNameConstraint>",
+        L"\tBinds a subject name constraint to a stored credential\n",
+        FLAG_NO_KEY,
+        DoSetCredSubjectName
+    },
+    {
+        L"/SetCredSubjectAltName",
+        L"<TargetName> <NAI> <SANConstraint>",
+        L"\tBinds a subject alternative name constraint to a\n"
+        L"\tstored credential\n",
+        FLAG_NO_KEY,
+        DoSetCredSubjectAltName
     },
     {
         L"/Help",
