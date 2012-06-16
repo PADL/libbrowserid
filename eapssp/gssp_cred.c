@@ -68,6 +68,10 @@ GsspCredUnlockAndRelease(gss_cred_id_t GssCred)
     }
 }
 
+/*
+ * Look in the registry for a global certificate store name which
+ * can be passed to the libeap TLS implementation.
+ */
 static NTSTATUS
 GsspSetCredDefaultCert(gss_cred_id_t GssCred)
 {
@@ -77,11 +81,11 @@ GsspSetCredDefaultCert(gss_cred_id_t GssCred)
     HKEY hSspKey = NULL;
     LPSTR szCaCertificate = NULL;
 
-    /*
-     * Look in the registry for a global certificate store name which
-     * can be passed to the libeap TLS implementation.
-     */
-    GSSP_ASSERT(GssCred->caCertificate.value == NULL);
+    /* Perhaps it was passed by the credential provider */
+    if (GssCred->caCertificate.value != NULL) {
+        dwResult = STATUS_SUCCESS;
+        goto cleanup;
+    }
 
     dwResult = RegOpenKeyExA(HKEY_LOCAL_MACHINE,
                              "SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",
