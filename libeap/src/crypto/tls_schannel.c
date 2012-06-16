@@ -433,6 +433,9 @@ static int tls_connection_verify(void *tls_ctx,
 	};
 	SSL_EXTRA_CERT_CHAIN_POLICY_PARA extraPolicyPara = { 0 };
 
+	/*
+	 * Obtain the certificate for the remote (EAP) server.
+	 */
 	status = QueryContextAttributes(&conn->context,
 					SECPKG_ATTR_REMOTE_CERT_CONTEXT,
 					&serverCert);
@@ -444,7 +447,9 @@ static int tls_connection_verify(void *tls_ctx,
 		return -1;
 	}
 
-	/* Validate server certificate fingerprint, if any */
+	/*
+	 * Validate the server fingerprint (hash), if any.
+	 */
 	if (conn->server_cert_hash.pbData != NULL) {
 		DWORD cbHash = 0;
 		PBYTE *pbHash;
@@ -480,7 +485,7 @@ static int tls_connection_verify(void *tls_ctx,
 					pbHash, cbHash) == 0);
 		os_free(pbHash);
 
-		if (!bHashMatch) {
+		if (bHashMatch == FALSE) {
 			global->last_error = CRYPT_E_HASH_VALUE;
 			return -1;
 		}
@@ -507,7 +512,14 @@ static int tls_connection_verify(void *tls_ctx,
 		return -1;
 	}
 
-	if (conn->verify_peer != 0) {
+	/*
+	 * If there is only a self-signed certificate, and we already
+	 * verified the certificate fingerprint (hash), then we can skip
+	 * the verification of the certificate chain policy.
+	 */
+	if (conn->verify_peer != 0 &&
+	    (pChainContext->cChain > 1 ||
+	     conn->server_cert_hash.pbData == NULL)) {
 		extraPolicyPara.cbStruct = sizeof(extraPolicyPara);
 		extraPolicyPara.dwAuthType = AUTHTYPE_SERVER;
 		extraPolicyPara.fdwChecks = 0;
@@ -537,6 +549,9 @@ static int tls_connection_verify(void *tls_ctx,
 	CertFreeCertificateChain(pChainContext);
 	pChainContext = NULL;
 
+	/*
+	 * Validate the subject, if subject name constraints set.
+	 */
 	if (conn->subject_match.pbData != NULL) {
 		if (serverCert->pCertInfo == NULL ||
 		    !CertCompareCertificateName(X509_ASN_ENCODING |
@@ -548,6 +563,9 @@ static int tls_connection_verify(void *tls_ctx,
 		}
 	}
 
+	/*
+	 * Validate the SAN, if SAN constraints set.
+	 */
 	if (conn->altsubject_match != NULL) {
 		DWORD cbSize;
 		LPSTR szSubjectAltName;
