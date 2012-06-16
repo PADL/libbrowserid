@@ -346,9 +346,9 @@ DoSetCredCACert(HKEY hSspKey, int argc, WCHAR *argv[])
 }
 
 static DWORD
-DoSetCredHash(HKEY hSspKey, int argc, WCHAR *argv[])
+DoSetCredServerCert(HKEY hSspKey, int argc, WCHAR *argv[])
 {
-    return DoSetCredAttr(MS_CRED_ATTR_SERVER_CERT_HASH, argc, argv);
+    return DoSetCredAttr(MS_CRED_ATTR_SERVER_CERT, argc, argv);
 }
 
 static DWORD
@@ -459,17 +459,19 @@ static struct _MS_CMD_OPTION {
     },
     {
         L"/SetCredCACert",
-        L"<TargetName> <NAI> <CACertificate>",
-        L"\tBinds a certificate name to a stored credential\n",
+        L"<TargetName> <NAI> <CertFile> |\n"
+        L"               <TargetName> <NAI> cert_store://<CertStore>\n"
+        L"               <TargetName> <NAI> hash://server/sha1/<Hash>",
+        L"\tBinds a certificate to a stored credential\n",
         FLAG_NO_KEY,
         DoSetCredCACert
     },
     {
-        L"/SetCredHash",
-        L"<TargetName> <NAI> <SHA256Hash>",
-        L"\tBinds a server certificate hash to a stored credential\n",
+        L"/SetCredServerCert",
+        L"<TargetName> <NAI> <ServerCert>",
+        L"\tBinds a server certificate to a stored credential\n",
         FLAG_NO_KEY,
-        DoSetCredHash
+        DoSetCredServerCert
     },
     {
         L"/SetCredSubjectName",

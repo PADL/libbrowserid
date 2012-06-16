@@ -81,8 +81,10 @@ MsSetCredServerCert(LPWSTR TargetName,
     DWORD dwResult;
 
     dwResult = FindCertBySubject(L"MY", CertName, &cs, &cc);
+#if 0
     if (dwResult == CRYPT_E_NOT_FOUND)
         dwResult = FindCertBySubject(L"TrustedPeople", CertName, &cs, &cc);
+#endif
     if (dwResult != ERROR_SUCCESS)
         goto cleanup;
 
