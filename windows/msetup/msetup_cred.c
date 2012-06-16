@@ -240,9 +240,13 @@ MsSetDefaultCertStore(
 {
     DWORD dwResult;
 
-    dwResult = RegSetValueEx(hSspKey, L"DefaultCertStore", 0,
-                             REG_SZ, (PBYTE)Store,
-                             (wcslen(Store) + 1) * sizeof(WCHAR));
+    if (Store != NULL) {
+        dwResult = RegSetValueEx(hSspKey, L"DefaultCertStore", 0,
+                                 REG_SZ, (PBYTE)Store,
+                                 (wcslen(Store) + 1) * sizeof(WCHAR));
+    } else {
+        dwResult = RegDeleteValue(hSspKey, L"DefaultCertStore");
+    }
 
     return dwResult;
 }

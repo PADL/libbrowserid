@@ -96,7 +96,7 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
         wprintf(L"Default certificate store: %s\n", pwszCertStore);
         LocalFree(pwszCertStore);
     } else {
-        wprintf(L"No default certificate store.\n");
+        wprintf(L"No default certificate store configured.\n");
     }
 
     /* AAA config */
@@ -297,15 +297,15 @@ DoListSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
 static DWORD
 DoSetDefaultCertStore(HKEY hSspKey, int argc, WCHAR *argv[])
 {
-    LPWSTR StoreName;
+    LPWSTR StoreName = NULL;
     DWORD dwResult;
 
-    if (argc != 2) {
+    if (argc > 2) {
         DisplayUsage(argv[0]);
         ExitProcess(ERROR_INVALID_PARAMETER);
+    } else if (argc == 2) {
+        StoreName = argv[1];
     }
-
-    StoreName = argv[1];
 
     dwResult = MsSetDefaultCertStore(hSspKey, StoreName);
     if (dwResult != ERROR_SUCCESS)
@@ -450,7 +450,10 @@ static struct _MS_CMD_OPTION {
         L"/SetDefaultCertStore",
         L"<CertStore>",
         L"\tSets default certificate store name\n"
-        L"\t(will enforce certificate validation)\n",
+        L"\t(will enforce certificate validation)\n"
+        L"\tIf certificate store is omitted, then the store\n"
+        L"\tname is cleared and certificate validation will\n"
+        L"\tonly be performed on a per-credential basis.\n",
         FLAG_WRITE,
         DoSetDefaultCertStore
     },
