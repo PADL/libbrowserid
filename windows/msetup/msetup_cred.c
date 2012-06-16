@@ -215,7 +215,7 @@ UpdateExistingCred(
     for (i = 0, iAttr = -1; i < ExistingCred->AttributeCount; i++) {
         PCREDENTIAL_ATTRIBUTE Attr = &ExistingCred->Attributes[i];
 
-        if (wcsicmp(Attr->Keyword, Handler->Attribute) == 0)
+        if (_wcsicmp(Attr->Keyword, Handler->Attribute) == 0)
             iAttr = i;
 
         if (iAttr == i && AttributeValue == NULL) {
@@ -311,7 +311,7 @@ MsSetCredAttribute(
     }
 
     for (i = 0, bFoundCred = FALSE; i < dwCredCount; i++) {
-        if (wcsicmp(ExistingCreds[i]->UserName, UserName) == 0) {
+        if (_wcsicmp(ExistingCreds[i]->UserName, UserName) == 0) {
             dwResult = UpdateExistingCred(TargetName, UserName, dwAttrType,
                                           AttributeValue, ExistingCreds[i]);
             if (dwResult != ERROR_SUCCESS)
