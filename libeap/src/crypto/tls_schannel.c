@@ -15,9 +15,6 @@
 /*
  * FIX: Go through all SSPI functions and verify what needs to be freed
  * FIX: session resumption
- * TODO: add support for server cert chain validation
- * TODO: add support for CA cert validation
- * TODO: add support for EAP-TLS (client cert/key conf)
  */
 
 #include "includes.h"
@@ -43,6 +40,7 @@ struct tls_connection {
 	LPSTR altsubject_match;
 	HCERTSTORE client_cert_store;
 	HCERTSTORE server_cert_store;
+	CRYPT_HASH_BLOB server_cert_hash;
 	SCHANNEL_CRED schannel_cred;
 	ALG_ID algs[2];
 	PCCERT_CONTEXT cert_context;
@@ -102,6 +100,8 @@ void tls_connection_deinit(void *ssl_ctx, struct tls_connection *conn)
 		CertCloseStore(conn->client_cert_store, 0);
 	if (conn->server_cert_store)
 		CertCloseStore(conn->server_cert_store, 0);
+	if (conn->server_cert_hash.pbData)
+		os_free(conn->server_cert_hash.pbData);
 	os_free(conn);
 }
 
@@ -297,28 +297,92 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
 	return 0;
 }
 
+/*
+ * As with the other TLS providers, the CA certificate filename is overloaded
+ * to contain indirecting URIs. Iff this parameter is absent, then the server
+ * certificate will not be verified.
+ *
+ *	ca_cert_blob present?		Parse ASN.1 encoded blob directly
+ *
+ *	cert_store://<store>		Use Windows certificate store <store>;
+ *					if that is absent, use personal store
+ *
+ *	hash://server/sha1/<hash>	Match certificate in personal store
+ *					with the specified hash
+ *
+ *	<filename>			Open store from specified PEM file
+ *
+ */
 static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 				  const char *ca_cert, const u8 *ca_cert_blob,
 				  size_t ca_cert_blob_len, const char *ca_path)
 {
 	struct tls_global *global = tls_ctx;
 	HCERTSTORE cs = NULL;
+	const char *pos;
 
-	conn->verify_peer = 1;
 	if (ca_cert_blob != NULL) {
 		cs = CertOpenStore(CERT_STORE_PROV_MEMORY,
-				   0, 0, CERT_STORE_CREATE_NEW_FLAG,
-				   NULL);
+				   0, (HCRYPTPROV_LEGACY)0,
+				   CERT_STORE_CREATE_NEW_FLAG, NULL);
+	} else if (ca_cert != NULL &&
+		   os_strncmp(ca_cert, "cert_store://", 13) == 0) {
+		pos = ca_cert + 13;
+
+		if (pos[0] == '\0')
+			pos = "MY"; /* default personal store */
+
+		cs = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+				   X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+				   (HCRYPTPROV_LEGACY)0,
+				   CERT_SYSTEM_STORE_CURRENT_USER,
+				   pos);
+	} else if (ca_cert != NULL &&
+		   os_strncmp(ca_cert, "hash://server/sha1/", 19) == 0) {
+		size_t len;
+		u8 *certhash;
+
+		pos = ca_cert + 19;
+		len = os_strlen(pos);
+
+		certhash = os_malloc(len / 2);
+		if (certhash == NULL) {
+			global->last_error = GetLastError();
+			return -1;
+		}
+
+		if (hexstr2bin(pos, certhash, len / 2)) {
+			os_free(certhash);
+			wpa_printf(MSG_DEBUG, "SChannel: Invalid hash "
+				   "value in ca_cert '%s'", ca_cert);
+			return -1;
+		}
+
+		if (conn->server_cert_hash.pbData != NULL)
+			os_free(conn->server_cert_hash.pbData);
+		conn->server_cert_hash.cbData = len / 2;
+		conn->server_cert_hash.pbData = certhash;
+
+		cs = CertOpenStore(CERT_STORE_PROV_SYSTEM,
+				   X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+				   (HCRYPTPROV_LEGACY)0,
+				   CERT_SYSTEM_STORE_CURRENT_USER,
+				   "MY");
+		/* Actual hash value is verified later */
 	} else if (ca_cert != NULL) {
 		cs = CertOpenStore(CERT_STORE_PROV_FILENAME,
 				   X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-				   0,
+				   (HCRYPTPROV_LEGACY)NULL,
 				   CERT_STORE_OPEN_EXISTING_FLAG |
-				   CERT_STORE_READONLY_FLAG,
+				    CERT_STORE_READONLY_FLAG,
 				   ca_cert);
 	} else {
+		/* No store specified, don't verify peer */
+		conn->verify_peer = 0;
 		return 0;
 	}
+
+	conn->verify_peer = 1;
 
 	if (cs == NULL) {
 		global->last_error = GetLastError();
@@ -378,6 +442,48 @@ static int tls_connection_verify(void *tls_ctx,
 			   __func__, (int) status);
 		global->last_error = status;
 		return -1;
+	}
+
+	/* Validate server certificate fingerprint, if any */
+	if (conn->server_cert_hash.pbData != NULL) {
+		DWORD cbHash = 0;
+		PBYTE *pbHash;
+		BOOLEAN bHashMatch;
+
+		CertGetCertificateContextProperty(serverCert,
+						  CERT_HASH_PROP_ID,
+						  NULL,
+						  &cbHash);
+
+		if (cbHash != conn->server_cert_hash.cbData) {
+			wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
+				   "CERT_HASH_PROP_ID) length mismatch", __func__);
+			return -1;
+		}
+
+		pbHash = os_malloc(cbHash);
+		if (pbHash == NULL)
+			return -1;
+
+		if (!CertGetCertificateContextProperty(serverCert,
+						       CERT_HASH_PROP_ID,
+						       pbHash,
+						       &cbHash)) {
+			global->last_error = GetLastError();
+			wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
+				   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
+			os_free(pbHash);
+			return -1;
+		}
+
+		bHashMatch = (os_memcmp(conn->server_cert_hash.pbData,
+					pbHash, cbHash) == 0);
+		os_free(pbHash);
+
+		if (!bHashMatch) {
+			global->last_error = CRYPT_E_HASH_VALUE;
+			return -1;
+		}
 	}
 
 	chainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
@@ -973,7 +1079,7 @@ static const CERT_CONTEXT *cryptoapi_find_cert(struct tls_global *global,
 			ret = CertFindCertificateInStore(cs,
 							 X509_ASN_ENCODING |
 							 PKCS_7_ASN_ENCODING,
-							 0, CERT_FIND_HASH,
+							 0, CERT_FIND_SHA1_HASH,
 							 &blob, NULL);
 		}
 		os_free(buf);
