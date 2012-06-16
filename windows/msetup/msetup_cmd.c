@@ -36,17 +36,17 @@ DoDumpAaaServer(HKEY hRadiusKey, LPCWSTR wszAaaServer)
     wprintf(L"%s:\n", wszAaaServer);
 
     dwResult = RegOpenKeyEx(hRadiusKey, wszAaaServer,
-                           0, KEY_QUERY_VALUE, &hAaaKey);
+                            0, KEY_QUERY_VALUE, &hAaaKey);
     if (dwResult != ERROR_SUCCESS)
         return dwResult;
 
     dwResult = RegQueryValueEx(hAaaKey, L"Service", NULL, &dwType,
-                              (PBYTE)wszBuf, &dwSize);
+                               (PBYTE)wszBuf, &dwSize);
     if (dwResult == ERROR_SUCCESS)
         wprintf(L"\tService = %s\n", wszBuf);
 
     dwResult = RegQueryValueEx(hAaaKey, L"Secret", NULL, &dwType,
-                              NULL, NULL);
+                               NULL, NULL);
     if (dwResult == ERROR_SUCCESS)
         wprintf(L"\tSecret = ********\n");
 
@@ -330,9 +330,9 @@ DoSetCredAttr(DWORD dwAttribute, int argc, WCHAR *argv[])
     AttributeValue = argv[3];
 
     dwResult = MsSetCredAttribute(TargetName,
-                                 UserName,
-                                 dwAttribute,
-                                 AttributeValue);
+                                  UserName,
+                                  dwAttribute,
+                                  AttributeValue);
     if (dwResult != ERROR_SUCCESS)
         DisplayError(L"Failed to set credential attribute", dwResult);
 

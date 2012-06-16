@@ -13,14 +13,14 @@
 DWORD
 MsOpenKey(LPWSTR wszServer, BOOLEAN fWritable, PHKEY phkResult)
 {
-    DWORD lResult;
+    DWORD dwResult;
     DWORD dwAccess;
     HKEY hklm;
 
     if (wszServer != NULL) {
-        lResult = RegConnectRegistry(wszServer, HKEY_LOCAL_MACHINE, &hklm);
-        if (lResult != ERROR_SUCCESS)
-            return lResult;
+        dwResult = RegConnectRegistry(wszServer, HKEY_LOCAL_MACHINE, &hklm);
+        if (dwResult != ERROR_SUCCESS)
+            return dwResult;
     } else {
         hklm = HKEY_LOCAL_MACHINE;
     }
@@ -29,14 +29,14 @@ MsOpenKey(LPWSTR wszServer, BOOLEAN fWritable, PHKEY phkResult)
     if (fWritable)
         dwAccess |= KEY_WRITE;
 
-    lResult = RegOpenKeyEx(hklm,
-			   L"SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",
-			   0, dwAccess, phkResult);
+    dwResult = RegOpenKeyEx(hklm,
+                            L"SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",
+                            0, dwAccess, phkResult);
 
     if (wszServer != NULL)
         RegCloseKey(hklm);
 
-    return lResult;
+    return dwResult;
 }
 
 DWORD

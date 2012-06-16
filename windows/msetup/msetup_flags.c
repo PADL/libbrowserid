@@ -13,16 +13,16 @@
 DWORD
 MsQuerySspFlags(HKEY hKey, DWORD *pdwSspFlags)
 {
-    DWORD lResult;
+    DWORD dwResult;
     DWORD dwType = REG_DWORD;
     DWORD dwSize = sizeof(*pdwSspFlags);
 
-    lResult = RegQueryValueEx(hKey, L"Flags", NULL, &dwType,
+    dwResult = RegQueryValueEx(hKey, L"Flags", NULL, &dwType,
                               (PBYTE)pdwSspFlags, &dwSize);
-    if (lResult == ERROR_SUCCESS)
+    if (dwResult == ERROR_SUCCESS)
         *pdwSspFlags &= GSSP_FLAG_REG_MASK;
 
-    return lResult;
+    return dwResult;
 }
 
 DWORD
@@ -31,7 +31,7 @@ MsModifySspFlags(
     SSP_FLAG_OP fOp,
     DWORD dwSspFlags)
 {
-    DWORD lResult;
+    DWORD dwResult;
     DWORD dwRegSspFlags = 0;
 
     /*
@@ -40,10 +40,10 @@ MsModifySspFlags(
      */
 
     if (fOp != SSP_FLAG_SET) {
-        lResult = MsQuerySspFlags(hKey, &dwRegSspFlags);
-        if (lResult != ERROR_SUCCESS &&
-            lResult != ERROR_FILE_NOT_FOUND)
-            return lResult;
+        dwResult = MsQuerySspFlags(hKey, &dwRegSspFlags);
+        if (dwResult != ERROR_SUCCESS &&
+            dwResult != ERROR_FILE_NOT_FOUND)
+            return dwResult;
     }
 
     switch (fOp) {
@@ -58,10 +58,10 @@ MsModifySspFlags(
         break;
     }
 
-    lResult = RegSetValueEx(hKey, L"Flags", 0, REG_DWORD,
-                            (PBYTE)&dwRegSspFlags, sizeof(dwRegSspFlags));
+    dwResult = RegSetValueEx(hKey, L"Flags", 0, REG_DWORD,
+                             (PBYTE)&dwRegSspFlags, sizeof(dwRegSspFlags));
 
-    return lResult;
+    return dwResult;
 }
 
 static struct {

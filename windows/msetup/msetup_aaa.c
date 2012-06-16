@@ -15,22 +15,23 @@ DWORD
 MsOpenRadiusKey(HKEY hKey, BOOLEAN fWritable, PHKEY phRadiusKey)
 {
     DWORD dwAccess;
-    DWORD lResult;
+    DWORD dwResult;
 
     dwAccess = KEY_READ;
     if (fWritable)
         dwAccess |= KEY_WRITE;
 
-    lResult = RegCreateKeyEx(hKey,
-                             L"Radius",
-                             0,                /* Reserved */
-                             NULL,             /* lpClass */
-                             REG_OPTION_NON_VOLATILE,
-                             dwAccess,
-                             NULL,             /* lpSecurityAttributes */
-                             phRadiusKey,
-                             NULL);            /* lpdwDisposition */
-    return lResult;
+    dwResult = RegCreateKeyEx(hKey,
+                              L"Radius",
+                              0,                /* Reserved */
+                              NULL,             /* lpClass */
+                              REG_OPTION_NON_VOLATILE,
+                              dwAccess,
+                              NULL,             /* lpSecurityAttributes */
+                              phRadiusKey,
+                              NULL);            /* lpdwDisposition */
+
+    return dwResult;
 }
 
 /*
@@ -41,7 +42,7 @@ MsOpenRadiusKey(HKEY hKey, BOOLEAN fWritable, PHKEY phRadiusKey)
 static DWORD
 BuildAaaSecurityDescriptor(PSECURITY_DESCRIPTOR *ppSD, PACL *ppACL)
 {
-    DWORD lResult;
+    DWORD dwResult;
     PSECURITY_DESCRIPTOR pSD = NULL;
     SID_IDENTIFIER_AUTHORITY SidAuthNT = SECURITY_NT_AUTHORITY;
     PSID pLocalSystemSid = NULL;
@@ -56,7 +57,7 @@ BuildAaaSecurityDescriptor(PSECURITY_DESCRIPTOR *ppSD, PACL *ppACL)
                                   SECURITY_LOCAL_SYSTEM_RID,
                                   0, 0, 0, 0, 0, 0, 0,
                                   &pLocalSystemSid)) {
-        lResult = GetLastError();
+        dwResult = GetLastError();
         goto cleanup;
     }
 
@@ -71,7 +72,7 @@ BuildAaaSecurityDescriptor(PSECURITY_DESCRIPTOR *ppSD, PACL *ppACL)
                                   SECURITY_BUILTIN_DOMAIN_RID,
                                   DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0,
                                   &pAdministratorsSid)) {
-        lResult = GetLastError();
+        dwResult = GetLastError();
         goto cleanup;
     }
 
@@ -82,27 +83,27 @@ BuildAaaSecurityDescriptor(PSECURITY_DESCRIPTOR *ppSD, PACL *ppACL)
     ea[1].Trustee.TrusteeType = TRUSTEE_IS_GROUP;
     ea[1].Trustee.ptstrName = (LPTSTR)pAdministratorsSid;
 
-    lResult = SetEntriesInAcl(sizeof(ea) / sizeof(ea[0]), ea, NULL, &pACL);
-    if (lResult != ERROR_SUCCESS) {
-        fwprintf(stderr, L"Failed to SetEntriesInAcl: %08x\n", lResult);
+    dwResult = SetEntriesInAcl(sizeof(ea) / sizeof(ea[0]), ea, NULL, &pACL);
+    if (dwResult != ERROR_SUCCESS) {
+        fwprintf(stderr, L"Failed to SetEntriesInAcl: %08x\n", dwResult);
         goto cleanup;
     }
 
     pSD = LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
     if (pSD == NULL) {
-        lResult = GetLastError();
+        dwResult = GetLastError();
         goto cleanup;
     }
 
     if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION)) {
-        lResult = GetLastError();
-        fwprintf(stderr, L"Failed to InitializeSecurityDescriptor: %08x\n", lResult);
+        dwResult = GetLastError();
+        fwprintf(stderr, L"Failed to InitializeSecurityDescriptor: %08x\n", dwResult);
         goto cleanup;
     }
 
     if (!SetSecurityDescriptorDacl(pSD, TRUE, pACL, FALSE)) {
-        lResult = GetLastError();
-        fwprintf(stderr, L"Failed to SetSecurityDescriptorDacl: %08x\n", lResult);
+        dwResult = GetLastError();
+        fwprintf(stderr, L"Failed to SetSecurityDescriptorDacl: %08x\n", dwResult);
         goto cleanup;
     }
 
@@ -122,7 +123,7 @@ cleanup:
     if (pSD != NULL)
         LocalFree(pSD);
 
-    return lResult;
+    return dwResult;
 }
 
 DWORD
@@ -130,50 +131,50 @@ MsAddAaaServer(
     HKEY hSspKey,
     PAAA_SERVER_INFO ServerInfo)
 {
-    DWORD lResult;
+    DWORD dwResult;
     HKEY hRadiusKey = NULL;
     HKEY hAaaServerKey = NULL;
     PSECURITY_DESCRIPTOR pSD = NULL;
     PACL pACL = NULL;
     SECURITY_ATTRIBUTES sa = { 0 };
 
-    lResult = MsOpenRadiusKey(hSspKey, TRUE, &hRadiusKey);
-    if (lResult != ERROR_SUCCESS)
+    dwResult = MsOpenRadiusKey(hSspKey, TRUE, &hRadiusKey);
+    if (dwResult != ERROR_SUCCESS)
         goto cleanup;
 
-    lResult = BuildAaaSecurityDescriptor(&pSD, &pACL);
-    if (lResult != ERROR_SUCCESS)
+    dwResult = BuildAaaSecurityDescriptor(&pSD, &pACL);
+    if (dwResult != ERROR_SUCCESS)
         goto cleanup;
 
     sa.nLength = sizeof(sa);
     sa.lpSecurityDescriptor = pSD;
     sa.bInheritHandle = FALSE;
 
-    lResult = RegCreateKeyEx(hRadiusKey,
-                             ServerInfo->Server,
-                             0,             /* Reserved */
-                             NULL,          /* lpClass */
-                             REG_OPTION_NON_VOLATILE,
-                             KEY_WRITE,
-                             &sa,
-                             &hAaaServerKey,
-                             NULL);
-    if (lResult != ERROR_SUCCESS)
+    dwResult = RegCreateKeyEx(hRadiusKey,
+                              ServerInfo->Server,
+                              0,             /* Reserved */
+                              NULL,          /* lpClass */
+                              REG_OPTION_NON_VOLATILE,
+                              KEY_WRITE,
+                              &sa,
+                              &hAaaServerKey,
+                              NULL);
+    if (dwResult != ERROR_SUCCESS)
         goto cleanup;
 
     if (ServerInfo->Secret != NULL) {
-        lResult = RegSetValueEx(hAaaServerKey, L"Secret", 0,
-                                REG_SZ, (PBYTE)ServerInfo->Secret,
-                                (wcslen(ServerInfo->Secret) + 1) * sizeof(WCHAR));
-        if (lResult != ERROR_SUCCESS)
+        dwResult = RegSetValueEx(hAaaServerKey, L"Secret", 0,
+                                 REG_SZ, (PBYTE)ServerInfo->Secret,
+                                 (wcslen(ServerInfo->Secret) + 1) * sizeof(WCHAR));
+        if (dwResult != ERROR_SUCCESS)
             goto cleanup;
     }
 
     if (ServerInfo->Service != NULL) {
-        lResult = RegSetValueEx(hAaaServerKey, L"Service", 0,
-                                REG_SZ, (PBYTE)ServerInfo->Service,
-                                (wcslen(ServerInfo->Service) + 1) * sizeof(WCHAR));
-        if (lResult != ERROR_SUCCESS)
+        dwResult = RegSetValueEx(hAaaServerKey, L"Service", 0,
+                                 REG_SZ, (PBYTE)ServerInfo->Service,
+                                 (wcslen(ServerInfo->Service) + 1) * sizeof(WCHAR));
+        if (dwResult != ERROR_SUCCESS)
             goto cleanup;
     }
 
@@ -187,7 +188,7 @@ cleanup:
     if (hRadiusKey != NULL)
         RegCloseKey(hRadiusKey);
 
-    return lResult;
+    return dwResult;
 }
 
 DWORD
@@ -195,17 +196,17 @@ MsDeleteAaaServer(
     HKEY hSspKey,
     PAAA_SERVER_INFO ServerInfo)
 {
-    DWORD lResult;
+    DWORD dwResult;
     HKEY hRadiusKey;
 
-    lResult = MsOpenRadiusKey(hSspKey, TRUE, &hRadiusKey);
-    if (lResult != ERROR_SUCCESS)
-        return lResult;
+    dwResult = MsOpenRadiusKey(hSspKey, TRUE, &hRadiusKey);
+    if (dwResult != ERROR_SUCCESS)
+        return dwResult;
 
-    lResult = RegDeleteKey(hRadiusKey, ServerInfo->Server);
+    dwResult = RegDeleteKey(hRadiusKey, ServerInfo->Server);
 
     RegCloseKey(hRadiusKey);
 
-    return lResult;
+    return dwResult;
 }
 
