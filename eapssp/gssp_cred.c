@@ -1202,7 +1202,7 @@ SetClientCertificate(
 }
 
 static NTSTATUS
-HandleCMCaCertAttr(
+CMAttrSetCACert(
     PCREDENTIAL_ATTRIBUTE Attribute,
     gss_cred_id_t GssCred)
 {
@@ -1224,7 +1224,7 @@ HandleCMCaCertAttr(
 }
 
 static NTSTATUS
-HandleCMServerCertHashAttr(
+CMAttrSetServerCertHash(
     PCREDENTIAL_ATTRIBUTE Attribute,
     gss_cred_id_t GssCred)
 {
@@ -1254,7 +1254,7 @@ HandleCMServerCertHashAttr(
 }
 
 static NTSTATUS
-HandleCMSubjectNameAttr(
+CMAttrSetSubjectName(
     PCREDENTIAL_ATTRIBUTE Attribute,
     gss_cred_id_t GssCred)
 {
@@ -1304,7 +1304,7 @@ HandleCMSubjectNameAttr(
 }
 
 static NTSTATUS
-HandleCMSubjectAltNameAttr(
+CMAttrSetSubjectAltName(
     PCREDENTIAL_ATTRIBUTE Attribute,
     gss_cred_id_t GssCred)
 {
@@ -1322,17 +1322,17 @@ HandleCMSubjectAltNameAttr(
     return Status;
 }
 
-typedef NTSTATUS (*CredManAttrHandlerFn)(PCREDENTIAL_ATTRIBUTE Attr,
-                                         gss_cred_id_t GssCred);
+typedef NTSTATUS (*CMAttrSetterFn)(PCREDENTIAL_ATTRIBUTE Attr,
+                                   gss_cred_id_t GssCred);
 
 static struct {
     LPWSTR Attribute;
-    CredManAttrHandlerFn Handler;
-} CredManAttrHandlers[] = {
-    { L"Moonshot_CACertificate",            HandleCMCaCertAttr          },
-    { L"Moonshot_ServerCertificateHash",    HandleCMServerCertHashAttr  },
-    { L"Moonshot_SubjectNameConstraint",    HandleCMSubjectNameAttr     },
-    { L"Moonshot_SubjectAltNameConstraint", HandleCMSubjectAltNameAttr  },
+    CMAttrSetterFn Setter;
+} CMAttrSetters[] = {
+    { L"Moonshot_CACertificate",            CMAttrSetCACert             },
+    { L"Moonshot_ServerCertificateHash",    CMAttrSetServerCertHash     },
+    { L"Moonshot_SubjectNameConstraint",    CMAttrSetSubjectName        },
+    { L"Moonshot_SubjectAltNameConstraint", CMAttrSetSubjectAltName     },
 };
 
 static OM_uint32
@@ -1467,11 +1467,10 @@ ConvertCredManCredToGssCred(
             continue;
 
         for (j = 0;
-             j < sizeof(CredManAttrHandlers) / sizeof(CredManAttrHandlers[0]);
+             j < sizeof(CMAttrSetters) / sizeof(CMAttrSetters[0]);
              j++) {
-            if (wcscmp(Attribute->Keyword,
-                       CredManAttrHandlers[i].Attribute) == 0) {
-                Status = CredManAttrHandlers[i].Handler(Attribute, GssCred);
+            if (wcscmp(Attribute->Keyword, CMAttrSetters[i].Attribute) == 0) {
+                Status = CMAttrSetters[i].Setter(Attribute, GssCred);
                 if (Status != STATUS_SUCCESS) {
                     Major = GSS_S_FAILURE;
                     *Minor = (Status == STATUS_NO_MEMORY)
