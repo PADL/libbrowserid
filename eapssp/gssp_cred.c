@@ -14,6 +14,15 @@
     (((Flags) & SEC_WINNT_AUTH_IDENTITY_ANSI) || \
      ((Flags) & SEC_WINNT_AUTH_IDENTITY_UNICODE))
 
+#define HASH_PREFIX                    "hash://"
+#define HASH_PREFIX_LEN                (sizeof(HASH_PREFIX) - 1)
+
+#define SERVER_HASH_PREFIX             HASH_PREFIX "server/sha1/"
+#define SERVER_HASH_PREFIX_LEN         (sizeof(SERVER_HASH_PREFIX) - 1)
+
+#define CERT_STORE_PREFIX              "cert_store://"
+#define CERT_STORE_PREFIX_LEN          (sizeof(CERT_STORE_PREFIX) - 1)
+
 VOID
 GsspCredAddRef(gss_cred_id_t GssCred)
 {
@@ -57,6 +66,62 @@ GsspCredUnlockAndRelease(gss_cred_id_t GssCred)
         GsspCredUnlock(GssCred);
         GsspCredRelease(GssCred);
     }
+}
+
+static NTSTATUS
+GsspSetCredDefaultCert(gss_cred_id_t GssCred)
+{
+    DWORD dwResult;
+    DWORD dwType = REG_SZ;
+    DWORD dwSize = 0;
+    HKEY hSspKey = NULL;
+    LPSTR szCaCertificate = NULL;
+
+    /*
+     * Look in the registry for a global certificate store name which
+     * can be passed to the libeap TLS implementation.
+     */
+    GSSP_ASSERT(GssCred->caCertificate.value == NULL);
+
+    dwResult = RegOpenKeyExA(HKEY_LOCAL_MACHINE,
+                             "SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",
+                             0, KEY_QUERY_VALUE, &hSspKey);
+    if (dwResult != ERROR_SUCCESS) {
+        dwResult = STATUS_SUCCESS;
+        goto cleanup;
+    }
+
+    dwResult = RegQueryValueExA(hSspKey, "DefaultCertStore", NULL,
+                                &dwType, NULL, &dwSize);
+    if (dwResult != ERROR_SUCCESS || dwType != REG_SZ) {
+        dwResult = STATUS_SUCCESS;
+        goto cleanup;
+    }
+
+    dwResult = GsspAlloc(CERT_STORE_PREFIX_LEN + dwSize + 1, &szCaCertificate);
+    GSSP_BAIL_ON_ERROR(dwResult);
+
+    RtlCopyMemory(szCaCertificate, CERT_STORE_PREFIX, CERT_STORE_PREFIX_LEN);
+
+    dwResult = RegQueryValueExA(hSspKey, "DefaultCertStore", NULL, &dwType,
+                                (PBYTE)szCaCertificate + CERT_STORE_PREFIX_LEN,
+                                &dwSize);
+    GSSP_BAIL_ON_ERROR(dwResult);
+
+    szCaCertificate[CERT_STORE_PREFIX_LEN + dwSize] = '\0';
+
+    GssCred->caCertificate.value = szCaCertificate;
+    GssCred->caCertificate.length = CERT_STORE_PREFIX_LEN + dwSize;
+
+    szCaCertificate = NULL;
+
+cleanup:
+    if (hSspKey != NULL)
+        RegCloseKey(hSspKey);
+    if (szCaCertificate != NULL)
+        GsspFree(szCaCertificate);
+
+    return dwResult;
 }
 
 static NTSTATUS
@@ -750,6 +815,9 @@ GsspAcquireCredHandle(
         goto cleanup;
     }
 
+    Status = GsspSetCredDefaultCert(GssCred);
+    GSSP_BAIL_ON_ERROR(Status);
+
     GsspAddCred(GssCred);
 
     Status = STATUS_SUCCESS;
@@ -968,12 +1036,6 @@ SpAcceptCredentialsEapAes256(
                                  GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM);
 }
 
-#define HASH_PREFIX                    "hash://"
-#define HASH_PREFIX_LEN                (sizeof(HASH_PREFIX) - 1)
-
-#define SERVER_HASH_PREFIX             HASH_PREFIX "server/sha256/"
-#define SERVER_HASH_PREFIX_LEN         (sizeof(SERVER_HASH_PREFIX) - 1)
-
 /*
  * Return the imported GSS name for a certificate name.
  */
@@ -1146,11 +1208,14 @@ HandleCMCaCertAttr(
 {
     NTSTATUS Status;
     UNICODE_STRING CaCertificate;
+    OM_uint32 Minor;
 
     /* Certificate path is stored as a Unicode string */
     CaCertificate.Length        = Attribute->ValueSize;
     CaCertificate.MaximumLength = Attribute->ValueSize;
     CaCertificate.Buffer        = (PWSTR)Attribute->Value;
+
+    GsspReleaseBuffer(&Minor, &GssCred->caCertificate);
 
     Status = GsspUnicodeStringToGssBuffer(&CaCertificate,
                                           &GssCred->caCertificate);
@@ -1166,6 +1231,7 @@ HandleCMServerCertHashAttr(
     NTSTATUS Status;
     DWORD cchHash;
     LPSTR szHash;
+    OM_uint32 Minor;
 
     /* Path to server certificate file */
     cchHash = SERVER_HASH_PREFIX_LEN + (2 * Attribute->ValueSize);
@@ -1178,6 +1244,8 @@ HandleCMServerCertHashAttr(
                      cchHash + 1 - SERVER_HASH_PREFIX_LEN,
                      Attribute->Value,
                      Attribute->ValueSize);
+
+    GsspReleaseBuffer(&Minor, &GssCred->caCertificate);
 
     GssCred->caCertificate.length = cchHash;
     GssCred->caCertificate.value = szHash;
@@ -1580,6 +1648,9 @@ CredManResolveInitiatorCred(
     }
     GSSP_BAIL_ON_ERROR(Status);
 
+    Major = GSS_S_CRED_UNAVAIL;
+    *Minor = GSSEAP_NO_DEFAULT_CRED;
+
     for (i = 0; i < Count; i++) {
         PENCRYPTED_CREDENTIALW Credential = Credentials[i];
 
@@ -1593,6 +1664,19 @@ CredManResolveInitiatorCred(
             Major = GSS_S_COMPLETE;
             *Minor = 0;
         }
+    }
+
+    GSSP_ASSERT(*pGssCred != GSS_C_NO_CREDENTIAL || GSS_ERROR(Major));
+
+    /*
+     * Copy default certificate store from unresolved credential, if none
+     * was explicitly associated with the CredMan one.
+     */
+    if (!GSS_ERROR(Major) &&
+        (*pGssCred)->caCertificate.value == NULL &&
+        GssCred->caCertificate.value != NULL) {
+        Major = duplicateBuffer(Minor, &GssCred->caCertificate,
+                                &(*pGssCred)->caCertificate);
     }
 
 cleanup:

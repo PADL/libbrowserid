@@ -78,24 +78,24 @@ MsSetCredServerCert(LPWSTR TargetName,
 {
     HCERTSTORE cs = NULL;
     PCCERT_CONTEXT cc = NULL;
-    DWORD dwStatus;
+    DWORD dwResult;
 
-    dwStatus = FindCertBySubject(L"MY", CertName, &cs, &cc);
-    if (dwStatus == CRYPT_E_NOT_FOUND)
-        dwStatus = FindCertBySubject(L"TrustedPeople", CertName, &cs, &cc);
-    if (dwStatus != ERROR_SUCCESS)
+    dwResult = FindCertBySubject(L"MY", CertName, &cs, &cc);
+    if (dwResult == CRYPT_E_NOT_FOUND)
+        dwResult = FindCertBySubject(L"TrustedPeople", CertName, &cs, &cc);
+    if (dwResult != ERROR_SUCCESS)
         goto cleanup;
 
     CertGetCertificateContextProperty(cc, CERT_HASH_PROP_ID,
                                       NULL, &Attribute->ValueSize);
     if (Attribute->ValueSize == 0) {
-        dwStatus = GetLastError();
+        dwResult = GetLastError();
         goto cleanup;
     }
 
     Attribute->Value = LocalAlloc(LPTR, Attribute->ValueSize);
     if (Attribute->Value == NULL) {
-        dwStatus = GetLastError();
+        dwResult = GetLastError();
         goto cleanup;
     }
 
@@ -104,11 +104,11 @@ MsSetCredServerCert(LPWSTR TargetName,
     if (!CertGetCertificateContextProperty(cc, CERT_HASH_PROP_ID,
                                            Attribute->Value,
                                            &Attribute->ValueSize)) {
-        dwStatus = GetLastError();
+        dwResult = GetLastError();
         goto cleanup;
     }
 
-    dwStatus = ERROR_SUCCESS;
+    dwResult = ERROR_SUCCESS;
 
 cleanup:
     if (cs != NULL)
@@ -116,7 +116,7 @@ cleanup:
     if (cc != NULL)
         CertFreeCertificateContext(cc);
 
-    return dwStatus;
+    return dwResult;
 }
 
 static DWORD
@@ -188,7 +188,7 @@ MsSetCredAttribute(
     DWORD dwAttribute,
     LPWSTR AttributeValue)
 {
-    DWORD dwStatus;
+    DWORD dwResult;
     CREDENTIAL Credential = { 0 };
     CREDENTIAL_ATTRIBUTE Attribute = { 0 };
     struct _MS_CRED_ATTR_HANDLER *Handler;
@@ -205,13 +205,13 @@ MsSetCredAttribute(
     Attribute.Keyword = Handler->Attribute;
     Attribute.Flags = 0;
 
-    dwStatus = Handler->AttrHandler(TargetName,
+    dwResult = Handler->AttrHandler(TargetName,
                                     UserName,
                                     AttributeValue,
                                     &Attribute,
                                     &bFreeAttr);
-    if (dwStatus != ERROR_SUCCESS)
-        return dwStatus;
+    if (dwResult != ERROR_SUCCESS)
+        return dwResult;
 
     Credential.Flags = 0;
     Credential.Type = CRED_TYPE_DOMAIN_PASSWORD;
@@ -223,12 +223,52 @@ MsSetCredAttribute(
     Credential.UserName = UserName;
 
     if (!CredWrite(&Credential, CRED_PRESERVE_CREDENTIAL_BLOB))
-        dwStatus = GetLastError();
+        dwResult = GetLastError();
     else
-        dwStatus = ERROR_SUCCESS;
+        dwResult = ERROR_SUCCESS;
 
     if (bFreeAttr && Attribute.Value != NULL)
         LocalFree(Attribute.Value);
 
-    return dwStatus;
+    return dwResult;
+}
+
+DWORD
+MsSetDefaultCertStore(
+    HKEY hSspKey,
+    LPWSTR Store)
+{
+    DWORD dwResult;
+
+    dwResult = RegSetValueEx(hSspKey, L"DefaultCertStore", 0,
+                             REG_SZ, (PBYTE)Store,
+                             (wcslen(Store) + 1) * sizeof(WCHAR));
+
+    return dwResult;
+}
+
+DWORD
+MsGetDefaultCertStore(
+    HKEY hSspKey,
+    LPWSTR *pStore)
+{
+    DWORD dwResult;
+    DWORD dwType = REG_SZ;
+    DWORD dwSize = 0;
+
+    dwResult = RegQueryValueEx(hSspKey, L"DefaultCertStore", NULL, &dwType,
+                               NULL, &dwSize);
+    if (dwResult != ERROR_SUCCESS)
+        return dwResult;
+    else if (dwType != REG_SZ)
+        return ERROR_INVALID_PARAMETER;
+
+    *pStore = LocalAlloc(LPTR, dwSize + sizeof(WCHAR));
+
+    dwResult = RegQueryValueEx(hSspKey, L"DefaultCertStore", NULL, &dwType,
+                               (PBYTE)*pStore, &dwSize);
+    if (dwResult == ERROR_SUCCESS)
+        (*pStore)[dwSize / sizeof(WCHAR)] = 0;
+
+    return dwResult;
 }

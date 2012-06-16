@@ -31,14 +31,14 @@ static HMODULE hAdvApi32 = NULL;
 DWORD
 GsspGetRegFlags(void)
 {
-    DWORD lResult;
+    DWORD dwResult;
     DWORD dwEapSspFlags = 0;
     HKEY hKey;
 
-    lResult = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-			   L"SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",
-			   0, KEY_QUERY_VALUE, &hKey);
-    if (lResult == ERROR_SUCCESS) {
+    dwResult = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+                            L"SYSTEM\\CurrentControlSet\\Control\\Lsa\\EapSSP",
+                            0, KEY_QUERY_VALUE, &hKey);
+    if (dwResult == ERROR_SUCCESS) {
         DWORD dwType = REG_DWORD;
         DWORD dwSize = sizeof(dwEapSspFlags);
 

@@ -152,4 +152,15 @@ MsSetCredAttribute(
     DWORD dwAttribute,
     LPWSTR AttributeValue);
 
+DWORD
+MsSetDefaultCertStore(
+    HKEY hSspKey,
+    LPWSTR Store);
+
+
+DWORD
+MsGetDefaultCertStore(
+    HKEY hSspKey,
+    LPWSTR *pStore);
+
 #endif /* _MSETUP_H_ */

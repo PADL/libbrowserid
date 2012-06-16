@@ -22,12 +22,12 @@ static DWORD
 HandleInvalidArg(LPCWSTR Arg);
 
 static void
-DisplayError(LPCWSTR Message, DWORD lResult);
+DisplayError(LPCWSTR Message, DWORD dwResult);
 
 static DWORD
 DoDumpAaaServer(HKEY hRadiusKey, LPCWSTR wszAaaServer)
 {
-    DWORD lResult;
+    DWORD dwResult;
     HKEY hAaaKey;
     WCHAR wszBuf[256];
     DWORD dwType = REG_SZ;
@@ -35,19 +35,19 @@ DoDumpAaaServer(HKEY hRadiusKey, LPCWSTR wszAaaServer)
 
     wprintf(L"%s:\n", wszAaaServer);
 
-    lResult = RegOpenKeyEx(hRadiusKey, wszAaaServer,
+    dwResult = RegOpenKeyEx(hRadiusKey, wszAaaServer,
                            0, KEY_QUERY_VALUE, &hAaaKey);
-    if (lResult != ERROR_SUCCESS)
-        return lResult;
+    if (dwResult != ERROR_SUCCESS)
+        return dwResult;
 
-    lResult = RegQueryValueEx(hAaaKey, L"Service", NULL, &dwType,
+    dwResult = RegQueryValueEx(hAaaKey, L"Service", NULL, &dwType,
                               (PBYTE)wszBuf, &dwSize);
-    if (lResult == ERROR_SUCCESS)
+    if (dwResult == ERROR_SUCCESS)
         wprintf(L"\tService = %s\n", wszBuf);
 
-    lResult = RegQueryValueEx(hAaaKey, L"Secret", NULL, &dwType,
+    dwResult = RegQueryValueEx(hAaaKey, L"Secret", NULL, &dwType,
                               NULL, NULL);
-    if (lResult == ERROR_SUCCESS)
+    if (dwResult == ERROR_SUCCESS)
         wprintf(L"\tSecret = ********\n");
 
     RegCloseKey(hAaaKey);
@@ -61,17 +61,18 @@ DoDumpAaaServer(HKEY hRadiusKey, LPCWSTR wszAaaServer)
 static DWORD
 DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
 {
-    DWORD lResult;
+    DWORD dwResult;
     DWORD dwSspFlags;
     DWORD i = 0;
+    LPWSTR pwszCertStore = NULL;
     HKEY hSubKey = NULL;
 
     if (argc > 1)
         return HandleInvalidArg(argv[1]);
 
-    lResult = MsQuerySspFlags(hSspKey, &dwSspFlags);
-    if (lResult != ERROR_SUCCESS)
-        return lResult;
+    dwResult = MsQuerySspFlags(hSspKey, &dwSspFlags);
+    if (dwResult != ERROR_SUCCESS)
+        return dwResult;
 
     /* flags */
     wprintf(L"Flags = 0x%x ", dwSspFlags);
@@ -89,19 +90,28 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
         wprintf(L"\n");
     }
 
+    /* certificate store config */
+    dwResult = MsGetDefaultCertStore(hSspKey, &pwszCertStore);
+    if (dwResult == ERROR_SUCCESS) {
+        wprintf(L"Default certificate store: %s\n", pwszCertStore);
+        LocalFree(pwszCertStore);
+    } else {
+        wprintf(L"No default certificate store.\n");
+    }
+
     /* AAA config */
-    lResult = MsOpenRadiusKey(hSspKey, FALSE, &hSubKey);
-    if (lResult == ERROR_SUCCESS) {
-        for (i = 0; lResult == ERROR_SUCCESS; i++) {
+    dwResult = MsOpenRadiusKey(hSspKey, FALSE, &hSubKey);
+    if (dwResult == ERROR_SUCCESS) {
+        for (i = 0; dwResult == ERROR_SUCCESS; i++) {
             WCHAR wszAaaServer[256];
             DWORD cchAaaServer = sizeof(wszAaaServer) / sizeof(WCHAR);
 
-            lResult = RegEnumKeyEx(hSubKey, i, wszAaaServer, &cchAaaServer,
+            dwResult = RegEnumKeyEx(hSubKey, i, wszAaaServer, &cchAaaServer,
                                    NULL, NULL, NULL, NULL);
-            if (lResult == ERROR_NO_MORE_ITEMS) {
+            if (dwResult == ERROR_NO_MORE_ITEMS) {
                 break;
-            } else if (lResult != ERROR_SUCCESS) {
-                DisplayError(L"Enumerating Radius registry key", lResult);
+            } else if (dwResult != ERROR_SUCCESS) {
+                DisplayError(L"Enumerating Radius registry key", dwResult);
                 break;
             }
 
@@ -111,19 +121,19 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
     }
 
     /* user mappings */
-    lResult = MsOpenUserListKey(hSspKey, FALSE, &hSubKey);
-    if (lResult == ERROR_SUCCESS) {
-        for (i = 0; lResult == ERROR_SUCCESS; i++) {
+    dwResult = MsOpenUserListKey(hSspKey, FALSE, &hSubKey);
+    if (dwResult == ERROR_SUCCESS) {
+        for (i = 0; dwResult == ERROR_SUCCESS; i++) {
             WCHAR wszPrincipal[256];
             WCHAR wszAccount[256];
             DWORD cchPrincipal = sizeof(wszPrincipal) / sizeof(WCHAR);
             DWORD cbAccount = sizeof(wszAccount);
             DWORD dwType = REG_SZ;
 
-            lResult = RegEnumValue(hSubKey, i, wszPrincipal,
+            dwResult = RegEnumValue(hSubKey, i, wszPrincipal,
                                    &cchPrincipal, NULL,
                                    &dwType, (PBYTE)wszAccount, &cbAccount);
-            if (lResult != ERROR_SUCCESS)
+            if (dwResult != ERROR_SUCCESS)
                 break;
 
             wprintf(L"Mapping ");
@@ -140,8 +150,8 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
                 wprintf(L"%s", wszAccount);
             wprintf(L".\n");
         }
-        if (lResult != ERROR_SUCCESS && lResult != ERROR_NO_MORE_ITEMS)
-            DisplayError(L"Enumerating UserList registry key", lResult);
+        if (dwResult != ERROR_SUCCESS && dwResult != ERROR_NO_MORE_ITEMS)
+            DisplayError(L"Enumerating UserList registry key", dwResult);
         MsCloseKey(hSubKey);
     } else {
         i = 0;
@@ -216,7 +226,7 @@ DoMapUser(HKEY hSspKey, int argc, WCHAR *argv[])
 {
     LPWSTR wszPrincipal;
     LPWSTR wszAccount;
-    DWORD lResult;
+    DWORD dwResult;
 
     if (argc < 2) {
         DisplayUsage(argv[0]);
@@ -226,18 +236,18 @@ DoMapUser(HKEY hSspKey, int argc, WCHAR *argv[])
     wszPrincipal = argv[1];
     wszAccount = (argc > 2) ? argv[2] : NULL;
 
-    lResult = MsMapUser(hSspKey, wszPrincipal, wszAccount);
-    if (lResult != ERROR_SUCCESS)
-        DisplayError(L"Failed to create user map entry", lResult);
+    dwResult = MsMapUser(hSspKey, wszPrincipal, wszAccount);
+    if (dwResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to create user map entry", dwResult);
 
-    return lResult;
+    return dwResult;
 }
 
 static DWORD
 DoAddAaaServer(HKEY hSspKey, int argc, WCHAR *argv[])
 {
     AAA_SERVER_INFO AaaServerInfo = { 0 };
-    DWORD lResult;
+    DWORD dwResult;
 
     if (argc < 2 || argc > 4) {
         DisplayUsage(argv[0]);
@@ -248,18 +258,18 @@ DoAddAaaServer(HKEY hSspKey, int argc, WCHAR *argv[])
     AaaServerInfo.Service = (argc > 2) ? argv[2] : NULL;
     AaaServerInfo.Secret = (argc > 3) ? argv[3] : NULL;
 
-    lResult = MsAddAaaServer(hSspKey, &AaaServerInfo);
-    if (lResult != ERROR_SUCCESS)
-        DisplayError(L"Failed to create AAA server entry", lResult);
+    dwResult = MsAddAaaServer(hSspKey, &AaaServerInfo);
+    if (dwResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to create AAA server entry", dwResult);
 
-    return lResult;
+    return dwResult;
 }
 
 static DWORD
 DoDelAaaServer(HKEY hSspKey, int argc, WCHAR *argv[])
 {
     AAA_SERVER_INFO AaaServerInfo = { 0 };
-    DWORD lResult;
+    DWORD dwResult;
 
     if (argc != 2) {
         DisplayUsage(argv[0]);
@@ -268,11 +278,11 @@ DoDelAaaServer(HKEY hSspKey, int argc, WCHAR *argv[])
 
     AaaServerInfo.Server = argv[1];
 
-    lResult = MsDeleteAaaServer(hSspKey, &AaaServerInfo);
-    if (lResult != ERROR_SUCCESS)
-        DisplayError(L"Failed to delete AAA server entry", lResult);
+    dwResult = MsDeleteAaaServer(hSspKey, &AaaServerInfo);
+    if (dwResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to delete AAA server entry", dwResult);
 
-    return lResult;
+    return dwResult;
 }
 
 static DWORD
@@ -285,10 +295,30 @@ DoListSspFlags(HKEY hSspKey, int argc, WCHAR *argv[])
 }
 
 static DWORD
+DoSetDefaultCertStore(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    LPWSTR StoreName;
+    DWORD dwResult;
+
+    if (argc != 2) {
+        DisplayUsage(argv[0]);
+        ExitProcess(ERROR_INVALID_PARAMETER);
+    }
+
+    StoreName = argv[1];
+
+    dwResult = MsSetDefaultCertStore(hSspKey, StoreName);
+    if (dwResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to set default certificate store", dwResult);
+
+    return dwResult;
+}
+
+static DWORD
 DoSetCredAttr(DWORD dwAttribute, int argc, WCHAR *argv[])
 {
     LPWSTR TargetName, UserName, AttributeValue;
-    DWORD lResult;
+    DWORD dwResult;
 
     if (argc < 2 || argc > 4) {
         DisplayUsage(argv[0]);
@@ -299,14 +329,14 @@ DoSetCredAttr(DWORD dwAttribute, int argc, WCHAR *argv[])
     UserName = argv[2];
     AttributeValue = argv[3];
 
-    lResult = MsSetCredAttribute(TargetName,
+    dwResult = MsSetCredAttribute(TargetName,
                                  UserName,
                                  dwAttribute,
                                  AttributeValue);
-    if (lResult != ERROR_SUCCESS)
-        DisplayError(L"Failed to set credential attribute", lResult);
+    if (dwResult != ERROR_SUCCESS)
+        DisplayError(L"Failed to set credential attribute", dwResult);
 
-    return lResult;
+    return dwResult;
 }
 
 static DWORD
@@ -334,20 +364,20 @@ DoSetCredSubjectAltName(HKEY hSspKey, int argc, WCHAR *argv[])
 }
 
 static void
-DisplayError(LPCWSTR Message, DWORD lResult)
+DisplayError(LPCWSTR Message, DWORD dwResult)
 {
     WCHAR wszMsgBuf[128] = L"";
 
     FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                   NULL,
-                  lResult,
+                  dwResult,
                   MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                   (LPWSTR)wszMsgBuf,
                   sizeof(wszMsgBuf),
                   NULL);
 
     wprintf(L"%s: %s\n", Message, wszMsgBuf);
-    ExitProcess(lResult);
+    ExitProcess(dwResult);
 }
 
 static struct _MS_CMD_OPTION {
@@ -415,6 +445,14 @@ static struct _MS_CMD_OPTION {
         L"\tDeletes SSP configuration flags\n",
         FLAG_WRITE,
         DoDeleteSspFlags
+    },
+    {
+        L"/SetDefaultCertStore",
+        L"<CertStore>",
+        L"\tSets default certificate store name\n"
+        L"\t(will enforce certificate validation)\n",
+        FLAG_WRITE,
+        DoSetDefaultCertStore
     },
     {
         L"/SetCredCACert",
@@ -495,7 +533,7 @@ HandleInvalidArg(LPCWSTR Arg)
 int wmain(int argc, WCHAR *argv[])
 {
     HKEY hSspKey = NULL;
-    DWORD lResult;
+    DWORD dwResult;
     LPWSTR wszServer = NULL;
     DWORD i;
     struct _MS_CMD_OPTION *Option = NULL;
@@ -527,22 +565,22 @@ int wmain(int argc, WCHAR *argv[])
     }
 
     if (!(Option->Flags & FLAG_NO_KEY)) {
-        lResult = MsOpenKey(wszServer, !!(Option->Flags & FLAG_WRITE),
+        dwResult = MsOpenKey(wszServer, !!(Option->Flags & FLAG_WRITE),
                             &hSspKey);
-        if (lResult != 0) {
-            if (lResult == ERROR_FILE_NOT_FOUND)
+        if (dwResult != 0) {
+            if (dwResult == ERROR_FILE_NOT_FOUND)
                 wprintf(L"Moonshot SSP is not installed on this machine.\n");
             else
-                DisplayError(L"Failed to open SSP key", lResult);
-            ExitProcess(lResult);
+                DisplayError(L"Failed to open SSP key", dwResult);
+            ExitProcess(dwResult);
         }
     }
 
-    lResult = (*Option->Callback)(hSspKey, argc, argv);
+    dwResult = (*Option->Callback)(hSspKey, argc, argv);
 
     if (hSspKey != NULL)
         MsCloseKey(hSspKey);
 
-    ExitProcess(lResult);
-    return lResult;
+    ExitProcess(dwResult);
+    return dwResult;
 }
