@@ -974,33 +974,6 @@ SpAcceptCredentialsEapAes256(
 #define SERVER_HASH_PREFIX             HASH_PREFIX "server/sha256/"
 #define SERVER_HASH_PREFIX_LEN         (sizeof(SERVER_HASH_PREFIX) - 1)
 
-static OM_uint32
-AppendServerCertHashPrefix(
-    OM_uint32 *Minor,
-    gss_buffer_t Src)
-{
-    ULONG cbDstLen;
-    gss_buffer_desc Dst;
-
-    cbDstLen = SERVER_HASH_PREFIX_LEN + Src->length;
-
-    if (GsspAlloc(cbDstLen + 1, &Dst.value) != STATUS_SUCCESS) {
-        *Minor = ENOMEM;
-        return GSS_S_FAILURE;
-    }
-
-    RtlCopyMemory(Dst.value, SERVER_HASH_PREFIX, SERVER_HASH_PREFIX_LEN);
-    RtlCopyMemory((char *)Dst.value + SERVER_HASH_PREFIX_LEN, Src->value, Src->length);
-
-    ((char *)Dst.value)[cbDstLen] = '\0';
-    Dst.length = cbDstLen;
-
-    GsspReleaseBuffer(Minor, Src);
-    *Src = Dst;
-
-    return GSS_S_COMPLETE;
-}
-
 /*
  * Return the imported GSS name for a certificate name.
  */
@@ -1166,6 +1139,134 @@ SetClientCertificate(
     return Major;
 }
 
+static NTSTATUS
+HandleCMCaCertAttr(
+    PCREDENTIAL_ATTRIBUTE Attribute,
+    gss_cred_id_t GssCred)
+{
+    NTSTATUS Status;
+    UNICODE_STRING CaCertificate;
+
+    /* Certificate path is stored as a Unicode string */
+    CaCertificate.Length        = Attribute->ValueSize;
+    CaCertificate.MaximumLength = Attribute->ValueSize;
+    CaCertificate.Buffer        = (PWSTR)Attribute->Value;
+
+    Status = GsspUnicodeStringToGssBuffer(&CaCertificate,
+                                          &GssCred->caCertificate);
+
+    return Status;
+}
+
+static NTSTATUS
+HandleCMServerCertHashAttr(
+    PCREDENTIAL_ATTRIBUTE Attribute,
+    gss_cred_id_t GssCred)
+{
+    NTSTATUS Status;
+    DWORD cchHash;
+    LPSTR szHash;
+
+    /* Path to server certificate file */
+    cchHash = SERVER_HASH_PREFIX_LEN + (2 * Attribute->ValueSize);
+
+    Status = GsspAlloc(cchHash + 1, &szHash);
+    if (Status != STATUS_SUCCESS)
+        return Status;
+
+    wpa_snprintf_hex(&szHash[SERVER_HASH_PREFIX_LEN],
+                     cchHash + 1 - SERVER_HASH_PREFIX_LEN,
+                     Attribute->Value,
+                     Attribute->ValueSize);
+
+    GssCred->caCertificate.length = cchHash;
+    GssCred->caCertificate.value = szHash;
+
+    return STATUS_SUCCESS;
+}
+
+static NTSTATUS
+HandleCMSubjectNameAttr(
+    PCREDENTIAL_ATTRIBUTE Attribute,
+    gss_cred_id_t GssCred)
+{
+    NTSTATUS Status;
+    DWORD cbSize;
+    CERT_NAME_BLOB CertNameBlob;
+    UNICODE_STRING CertName;
+
+    RtlInitUnicodeString(&CertName, NULL);
+
+    /* Subject name is stored as an encoded certificate name blob */
+    CertNameBlob.cbData = Attribute->ValueSize;
+    CertNameBlob.pbData = Attribute->Value;
+
+    cbSize = CertNameToStr(X509_ASN_ENCODING,
+                           &CertNameBlob,
+                           CERT_X500_NAME_STR,
+                           NULL,
+                           0);
+
+    if (cbSize == 0)
+        return GetLastError();
+    else if (cbSize == 1)
+        return STATUS_SUCCESS;
+
+    Status = GsspAlloc((cbSize + 1) * sizeof(WCHAR), &CertName.Buffer);
+    if (Status != STATUS_SUCCESS)
+        return Status;
+
+    cbSize = CertNameToStr(X509_ASN_ENCODING,
+                           &CertNameBlob,
+                           CERT_X500_NAME_STR,
+                           CertName.Buffer,
+                           cbSize);
+    if (cbSize == 0)
+        return GetLastError();
+
+    CertName.Length = cbSize * sizeof(WCHAR);
+    CertName.MaximumLength = CertName.Length;
+
+    Status = GsspUnicodeStringToGssBuffer(&CertName,
+                                          &GssCred->subjectNameConstraint);
+
+    GsspFree(CertName.Buffer);
+
+    return Status;
+}
+
+static NTSTATUS
+HandleCMSubjectAltNameAttr(
+    PCREDENTIAL_ATTRIBUTE Attribute,
+    gss_cred_id_t GssCred)
+{
+    NTSTATUS Status;
+    UNICODE_STRING SubjectAltName;
+
+    /* Subject alt name is stored as a Unicode string */
+    SubjectAltName.Length        = Attribute->ValueSize;
+    SubjectAltName.MaximumLength = Attribute->ValueSize;
+    SubjectAltName.Buffer        = (PWSTR)Attribute->Value;
+
+    Status = GsspUnicodeStringToGssBuffer(&SubjectAltName,
+                                          &GssCred->subjectAltNameConstraint);
+
+    return Status;
+}
+
+typedef NTSTATUS (*CredManAttrHandlerFn)(PCREDENTIAL_ATTRIBUTE Attr,
+                                         gss_cred_id_t GssCred);
+
+static struct {
+    LPWSTR Attribute;
+    CredManAttrHandlerFn Handler;
+} CredManAttrHandlers[] = {
+    { L"Moonshot_CACertificate",            HandleCMCaCertAttr          },
+    { L"Moonshot_ServerCertificateHash",    HandleCMServerCertHashAttr  },
+    { L"Moonshot_SubjectNameConstraint",    HandleCMSubjectNameAttr     },
+    { L"Moonshot_SubjectAltNameConstraint", HandleCMSubjectAltNameAttr  },
+};
+
 static OM_uint32
 ConvertCredManCredToGssCred(
     OM_uint32 *Minor,
@@ -1292,43 +1393,25 @@ ConvertCredManCredToGssCred(
      */
     for (i = 0; i < Credential->AttributeCount; i++) {
         PCREDENTIAL_ATTRIBUTE Attribute = &Credential->Attributes[i];
-        UNICODE_STRING UnicodeValue;
-        gss_buffer_t Value;
-        BOOLEAN bServerHash = FALSE;
+        DWORD j;
 
         if (Attribute->Keyword == NULL)
             continue;
 
-        if (wcscmp(Attribute->Keyword, L"Moonshot_CACertificate") == 0)
-            Value = &GssCred->caCertificate;
-        else if (wcscmp(Attribute->Keyword,
-                        L"Moonshot_ServerCertificateHash") == 0) {
-            Value = &GssCred->caCertificate;
-            bServerHash = TRUE;
-        } else if (wcscmp(Attribute->Keyword,
-                          L"Moonshot_SubjectNameConstraint") == 0)
-            Value = &GssCred->subjectNameConstraint;
-        else if (wcscmp(Attribute->Keyword,
-                        L"Moonshot_SubjectAltNameConstraint") == 0)
-            Value = &GssCred->subjectAltNameConstraint;
-        else
-            continue;
-
-        UnicodeValue.Length        = Attribute->ValueSize;
-        UnicodeValue.MaximumLength = Attribute->ValueSize;
-        UnicodeValue.Buffer        = (PWSTR)Attribute->Value;
-
-        Status = GsspUnicodeStringToGssBuffer(&UnicodeValue, Value);
-        if (Status != STATUS_SUCCESS) {
-            Major = GSS_S_FAILURE;
-            *Minor = ENOMEM;
-            goto cleanup;
-        }
-
-        if (bServerHash) {
-            Major = AppendServerCertHashPrefix(Minor, Value);
-            if (GSS_ERROR(Major))
-                goto cleanup;
+        for (j = 0;
+             j < sizeof(CredManAttrHandlers) / sizeof(CredManAttrHandlers[0]);
+             j++) {
+            if (wcscmp(Attribute->Keyword,
+                       CredManAttrHandlers[i].Attribute) == 0) {
+                Status = CredManAttrHandlers[i].Handler(Attribute, GssCred);
+                if (Status != STATUS_SUCCESS) {
+                    Major = GSS_S_FAILURE;
+                    *Minor = (Status == STATUS_NO_MEMORY)
+                             ? ENOMEM : GSSEAP_BAD_CRED_OPTION;
+                    goto cleanup;
+                }
+                break;
+            }
         }
     }
 
