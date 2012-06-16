@@ -315,7 +315,7 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 				   0,
 				   CERT_STORE_OPEN_EXISTING_FLAG |
 				   CERT_STORE_READONLY_FLAG,
-				   ca_path);
+				   ca_cert);
 	} else {
 		return 0;
 	}
