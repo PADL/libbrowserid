@@ -15,18 +15,18 @@ typedef DWORD (*MsCredAttrHandlerFn)(
     LPWSTR UserName,
     LPWSTR StringValue,
     PCREDENTIAL_ATTRIBUTE Attribute,
-    BOOLEAN *pbFreeAttr);
+    BOOLEAN *pbFreeAttrValue);
 
 static DWORD
 MsSetCredCaCert(LPWSTR TargetName,
                 LPWSTR UserName,
                 LPWSTR CaCertFilename,
                 PCREDENTIAL_ATTRIBUTE Attribute,
-                BOOLEAN *pbFreeAttr)
+                BOOLEAN *pbFreeAttrValue)
 {
     Attribute->Value = (PBYTE)CaCertFilename;
     Attribute->ValueSize = wcslen(CaCertFilename) * sizeof(WCHAR);
-    *pbFreeAttr = FALSE;
+    *pbFreeAttrValue = FALSE;
 
     return ERROR_SUCCESS;
 }
@@ -74,7 +74,7 @@ MsSetCredServerCert(LPWSTR TargetName,
                     LPWSTR UserName,
                     LPWSTR CertName,
                     PCREDENTIAL_ATTRIBUTE Attribute,
-                    BOOLEAN *pbFreeAttr)
+                    BOOLEAN *pbFreeAttrValue)
 {
     HCERTSTORE cs = NULL;
     PCCERT_CONTEXT cc = NULL;
@@ -101,7 +101,7 @@ MsSetCredServerCert(LPWSTR TargetName,
         goto cleanup;
     }
 
-    *pbFreeAttr = TRUE;
+    *pbFreeAttrValue = TRUE;
 
     if (!CertGetCertificateContextProperty(cc, CERT_HASH_PROP_ID,
                                            Attribute->Value,
@@ -126,7 +126,7 @@ MsSetCredSubjectName(LPWSTR TargetName,
                      LPWSTR UserName,
                      LPWSTR SubjectName,
                      PCREDENTIAL_ATTRIBUTE Attribute,
-                     BOOLEAN *pbFreeAttr)
+                     BOOLEAN *pbFreeAttrValue)
 {
     DWORD cbSize;
 
@@ -154,7 +154,7 @@ MsSetCredSubjectName(LPWSTR TargetName,
         return GetLastError();
     }
 
-    *pbFreeAttr = TRUE;
+    *pbFreeAttrValue = TRUE;
     return ERROR_SUCCESS;
 }
 
@@ -163,11 +163,11 @@ MsSetCredSubjectAltName(LPWSTR TargetName,
                         LPWSTR UserName,
                         LPWSTR SubjectAltName,
                         PCREDENTIAL_ATTRIBUTE Attribute,
-                        BOOLEAN *pbFreeAttr)
+                        BOOLEAN *pbFreeAttrValue)
 {
     Attribute->Value = (PBYTE)SubjectAltName;
     Attribute->ValueSize = wcslen(SubjectAltName) * sizeof(WCHAR);
-    *pbFreeAttr = FALSE;
+    *pbFreeAttrValue = FALSE;
 
     return ERROR_SUCCESS;
 }
@@ -183,55 +183,138 @@ static struct _MS_CRED_ATTR_HANDLER {
     { L"Moonshot_SubjectAltNameConstraint", MsSetCredSubjectAltName     },
 };
 
-DWORD
-MsSetCredAttribute(
+static DWORD
+UpdateExistingCred(
     LPWSTR TargetName,
     LPWSTR UserName,
-    DWORD dwAttribute,
-    LPWSTR AttributeValue)
+    DWORD dwAttrType,
+    LPWSTR AttributeValue,
+    PCREDENTIAL ExistingCred)
 {
     DWORD dwResult;
+    LONG i, iAttr = -1;
     CREDENTIAL Credential = { 0 };
-    CREDENTIAL_ATTRIBUTE Attribute = { 0 };
     struct _MS_CRED_ATTR_HANDLER *Handler;
-    BOOLEAN bFreeAttr = FALSE;
+    BOOLEAN bFreeAttrValue = FALSE;
 
-    if (dwAttribute == 0 || dwAttribute >= MS_CRED_ATTR_MAX)
-        return ERROR_INVALID_PARAMETER;
-
-    Handler = &msCredAttrHandlers[dwAttribute];
+    Handler = &msCredAttrHandlers[dwAttrType];
 
     assert(Handler->Attribute != NULL);
     assert(Handler->AttrHandler != NULL);
 
-    Attribute.Keyword = Handler->Attribute;
-    Attribute.Flags = 0;
+    Credential = *ExistingCred;
 
-    dwResult = Handler->AttrHandler(TargetName,
-                                    UserName,
-                                    AttributeValue,
-                                    &Attribute,
-                                    &bFreeAttr);
-    if (dwResult != ERROR_SUCCESS)
-        return dwResult;
-
-    Credential.Flags = 0;
-    Credential.Type = CRED_TYPE_DOMAIN_PASSWORD;
-    Credential.TargetName = TargetName;
-    Credential.CredentialBlobSize = 0;
-    Credential.CredentialBlob = NULL;
-    Credential.AttributeCount = 1;
-    Credential.Attributes = &Attribute;
-    Credential.UserName = UserName;
-
-    if (!CredWrite(&Credential, CRED_PRESERVE_CREDENTIAL_BLOB))
+    Credential.AttributeCount = 0;
+    Credential.Attributes = LocalAlloc(LPTR,
+        (ExistingCred->AttributeCount + 1) * sizeof(CREDENTIAL_ATTRIBUTE));
+    if (Credential.Attributes == NULL) {
         dwResult = GetLastError();
-    else
+        goto cleanup;
+    }
+
+    for (i = 0, iAttr = -1; i < ExistingCred->AttributeCount; i++) {
+        PCREDENTIAL_ATTRIBUTE Attr = &ExistingCred->Attributes[i];
+
+        if (wcsicmp(Attr->Keyword, Handler->Attribute) == 0)
+            iAttr = i;
+
+        if (iAttr == i && AttributeValue == NULL)
+            continue; /* remove this attribute */
+
+        Credential.Attributes[Credential.AttributeCount++] = *Attr;
+    }
+
+    if (AttributeValue != NULL) {
+        if (iAttr == -1)
+            iAttr = Credential.AttributeCount++;
+
+        Credential.Attributes[iAttr].Keyword = Handler->Attribute;
+        Credential.Attributes[iAttr].Flags = 0;
+
+        dwResult = Handler->AttrHandler(TargetName,
+                                        UserName,
+                                        AttributeValue,
+                                        &Credential.Attributes[iAttr],
+                                        &bFreeAttrValue);
+        if (dwResult != ERROR_SUCCESS)
+            goto cleanup;
+    }
+
+    if (!CredWrite(&Credential, CRED_PRESERVE_CREDENTIAL_BLOB)) {
+        dwResult = GetLastError();
+        fwprintf(stderr, L"CredWrite failed: 0x%08x\n", dwResult);
+    } else {
         dwResult = ERROR_SUCCESS;
+    }
 
-    if (bFreeAttr && Attribute.Value != NULL)
-        LocalFree(Attribute.Value);
+cleanup:
+    if (Credential.Attributes != NULL) {
+        if (iAttr != -1 &&
+            bFreeAttrValue &&
+            Credential.Attributes[iAttr].Value != NULL)
+            LocalFree(Credential.Attributes[iAttr].Value);
+        LocalFree(Credential.Attributes);
+    }
 
+    return dwResult;
+}
+
+DWORD
+MsSetCredAttribute(
+    LPWSTR TargetName,
+    LPWSTR UserName,
+    DWORD dwAttrType,
+    LPWSTR AttributeValue)
+{
+    DWORD dwResult;
+    DWORD dwCredCount = 0, i;
+    BOOLEAN bFoundCred = FALSE;
+    PCREDENTIAL_TARGET_INFORMATION TargetInfo = NULL;
+    PCREDENTIAL *ExistingCreds = NULL;
+
+    if (dwAttrType == 0 || dwAttrType >= MS_CRED_ATTR_MAX) {
+        dwResult = ERROR_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    if (!CredGetTargetInfo(TargetName, 0, &TargetInfo)) {
+        dwResult = GetLastError();
+        fwprintf(stderr, L"CredGetTargetInfo failed: 0x%08x\n", dwResult);
+        goto cleanup;
+    }
+
+    if (!CredReadDomainCredentials(TargetInfo, 0,
+                                   &dwCredCount, &ExistingCreds)) {
+        dwResult = GetLastError();
+        if (dwResult == ERROR_NOT_FOUND)
+            fwprintf(stderr, L"No existing credential for %s\n", TargetName);
+        else
+            fwprintf(stderr, L"CredReadDomainCredentials failed: 0x%08x\n", dwResult);
+        goto cleanup;
+    }
+
+    for (i = 0, bFoundCred = FALSE; i < dwCredCount; i++) {
+        if (wcsicmp(ExistingCreds[i]->UserName, UserName) == 0) {
+            dwResult = UpdateExistingCred(TargetName, UserName, dwAttrType,
+                                          AttributeValue, ExistingCreds[i]);
+            if (dwResult != ERROR_SUCCESS)
+                goto cleanup;
+            if (!bFoundCred)
+                bFoundCred = TRUE;
+        }
+    }
+
+    if (!bFoundCred) {
+        fwprintf(stderr, L"No credentials for %s match username %s\n", TargetName, UserName);
+        dwResult = ERROR_NOT_FOUND;
+        goto cleanup;
+    }
+
+cleanup:
+    if (ExistingCreds != NULL)
+        CredFree(ExistingCreds);
+    if (TargetInfo != NULL)
+        CredFree(TargetInfo);
     return dwResult;
 }
 
