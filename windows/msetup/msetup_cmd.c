@@ -320,14 +320,14 @@ DoSetCredAttr(DWORD dwAttribute, int argc, WCHAR *argv[])
     LPWSTR TargetName, UserName, AttributeValue;
     DWORD dwResult;
 
-    if (argc < 2 || argc > 4) {
+    if (argc < 3 || argc > 4) {
         DisplayUsage(argv[0]);
         ExitProcess(ERROR_INVALID_PARAMETER);
     }
 
     TargetName = argv[1];
     UserName = argv[2];
-    AttributeValue = argv[3];
+    AttributeValue = argc > 3 ? argv[3] : NULL;
 
     dwResult = MsSetCredAttribute(TargetName,
                                   UserName,
@@ -461,29 +461,31 @@ static struct _MS_CMD_OPTION {
         L"/SetCredCACert",
         L"<TargetName> <NAI> <CertFile> |\n"
         L"               <TargetName> <NAI> cert_store://<CertStore>\n"
-        L"               <TargetName> <NAI> hash://server/sha1/<Hash>",
-        L"\tBinds a certificate to a stored credential\n",
+        L"               <TargetName> <NAI> hash://server/sha1/<Hash>\n"
+        L"               <TargetName> <NAI> (to remove)",
+        L"\tBinds/unbinds a certificate to a stored credential\n",
         FLAG_NO_KEY,
         DoSetCredCACert
     },
     {
         L"/SetCredServerCert",
-        L"<TargetName> <NAI> <ServerCert>",
-        L"\tBinds a server certificate to a stored credential\n",
+        L"<TargetName> <NAI> [<ServerCert>]",
+        L"\tBinds/unbinds a server certificate to a stored credential\n"
+        L"\t(This is mutually exclusive with /SetCredCACert)\n",
         FLAG_NO_KEY,
         DoSetCredServerCert
     },
     {
         L"/SetCredSubjectName",
-        L"<TargetName> <NAI> <SubjectNameConstraint>",
-        L"\tBinds a subject name constraint to a stored credential\n",
+        L"<TargetName> <NAI> [<SubjectNameConstraint>]",
+        L"\tBinds/unbinds a subject name constraint to a stored credential\n",
         FLAG_NO_KEY,
         DoSetCredSubjectName
     },
     {
         L"/SetCredSubjectAltName",
-        L"<TargetName> <NAI> <SANConstraint>",
-        L"\tBinds a subject alternative name constraint to a\n"
+        L"<TargetName> <NAI> [<SANConstraint>]",
+        L"\tBinds/unbinds a subject alternative name constraint to a\n"
         L"\tstored credential\n",
         FLAG_NO_KEY,
         DoSetCredSubjectAltName

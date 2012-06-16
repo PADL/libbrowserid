@@ -10,7 +10,7 @@
 
 #include "msetup.h"
 
-typedef DWORD (*MsCredAttrHandlerFn)(
+typedef DWORD (*MsAttrSetterFn)(
     LPWSTR TargetName,
     LPWSTR UserName,
     LPWSTR StringValue,
@@ -174,8 +174,8 @@ MsSetCredSubjectAltName(LPWSTR TargetName,
 
 static struct _MS_CRED_ATTR_HANDLER {
     LPWSTR Attribute;
-    MsCredAttrHandlerFn AttrHandler;
-} msCredAttrHandlers[] = {
+    MsAttrSetterFn AttrSetter;
+} msCredAttrSetters[] = {
     { NULL,                                 NULL                        },
     { L"Moonshot_CACertificate",            MsSetCredCaCert             },
     { L"Moonshot_ServerCertificateHash",    MsSetCredServerCert         },
@@ -197,10 +197,10 @@ UpdateExistingCred(
     struct _MS_CRED_ATTR_HANDLER *Handler;
     BOOLEAN bFreeAttrValue = FALSE;
 
-    Handler = &msCredAttrHandlers[dwAttrType];
+    Handler = &msCredAttrSetters[dwAttrType];
 
     assert(Handler->Attribute != NULL);
-    assert(Handler->AttrHandler != NULL);
+    assert(Handler->AttrSetter != NULL);
 
     Credential = *ExistingCred;
 
@@ -218,8 +218,12 @@ UpdateExistingCred(
         if (wcsicmp(Attr->Keyword, Handler->Attribute) == 0)
             iAttr = i;
 
-        if (iAttr == i && AttributeValue == NULL)
+        if (iAttr == i && AttributeValue == NULL) {
+#ifdef DEBUG
+            fwprintf(stderr, L"Clearing attribute %s\n", Attr->Keyword);
+#endif
             continue; /* remove this attribute */
+        }
 
         Credential.Attributes[Credential.AttributeCount++] = *Attr;
     }
@@ -231,13 +235,26 @@ UpdateExistingCred(
         Credential.Attributes[iAttr].Keyword = Handler->Attribute;
         Credential.Attributes[iAttr].Flags = 0;
 
-        dwResult = Handler->AttrHandler(TargetName,
+        dwResult = Handler->AttrSetter(TargetName,
                                         UserName,
                                         AttributeValue,
                                         &Credential.Attributes[iAttr],
                                         &bFreeAttrValue);
         if (dwResult != ERROR_SUCCESS)
             goto cleanup;
+
+#ifdef DEBUG
+        fwprintf(stderr, L"Set attribute %s length %u\n",
+                 Credential.Attributes[iAttr].Keyword,
+                 Credential.Attributes[iAttr].ValueSize);
+#endif
+    } else if (iAttr == -1) {
+#ifdef DEBUG
+        fwprintf(stderr, L"No such attribute %s; nothing to do\n",
+                 Handler->Attribute);
+#endif
+        dwResult = ERROR_SUCCESS;
+        goto cleanup;
     }
 
     if (!CredWrite(&Credential, CRED_PRESERVE_CREDENTIAL_BLOB)) {
