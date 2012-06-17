@@ -33,8 +33,9 @@ EapSSP Beta Installation Notes
         >logman stop mysession -ets
         >tracerpt eapssp.etl
 
-   or, if you have a debug build or have enabled the debugging registry
-   setting, you can use DebugView:
+   or, if you have enabled the debugging registry setting with msetup,
+   you can use DebugView (you need to run this as administrator and capture
+   global Win32 events):
 
         http://technet.microsoft.com/en-us/sysinternals/bb896647.aspx
 

@@ -169,6 +169,10 @@ SpUserModeInitialize(
     OUT PSECPKG_USER_FUNCTION_TABLE *ppTables,
     OUT PULONG pcTables)
 {
+#if 0
+    static HMODULE hAdvApi32 = NULL; /* leaks */
+#endif
+
     *PackageVersion = 0;
     *ppTables = NULL;
     *pcTables = 0;
@@ -180,7 +184,11 @@ SpUserModeInitialize(
     InitializeListHead(&GsspUserContexts);
 
 #if 0
-    GsspInitTrace(hAdvApi32);
+    hAdvApi32 = LoadLibrary(L"Advapi32.dll");
+    if (hAdvApi32 != NULL) {
+        /* Event API for tracing */
+        GsspInitEvent(hAdvApi32);
+    }
 #endif
 
     *PackageVersion = SECPKG_INTERFACE_VERSION;

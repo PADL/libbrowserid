@@ -46,7 +46,6 @@
 #include <NTSecPkg.h>
 #include <winmeta.h>
 #include <Authz.h>
-#include <Evntprov.h>
 #include <Sddl.h>
 
 #include <gssapi/gssapi.h>
