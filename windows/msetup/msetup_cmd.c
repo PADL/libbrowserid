@@ -363,6 +363,45 @@ DoSetCredSubjectAltName(HKEY hSspKey, int argc, WCHAR *argv[])
     return DoSetCredAttr(MS_CRED_ATTR_SUBJECT_ALT_NAME, argc, argv);
 }
 
+static DWORD
+DoListCredBindings(HKEY hSspKey, int argc, WCHAR *argv[])
+{
+    LPWSTR TargetName, UserName;
+    LPWSTR *DisplayNames = NULL;
+    LPWSTR *DisplayValues = NULL;
+    DWORD dwResult, i;
+
+    if (argc != 3) {
+        DisplayUsage(argv[0]);
+        ExitProcess(ERROR_INVALID_PARAMETER);
+    }
+
+    TargetName = argv[1];
+    UserName = argv[2];
+
+    dwResult = MsGetCredAttribute(TargetName,
+                                  UserName,
+                                  &DisplayNames,
+                                  &DisplayValues);
+    if (dwResult != ERROR_SUCCESS) {
+        DisplayError(L"Failed to get credential attributes", dwResult);
+        return dwResult;
+    }
+
+    for (i = 0; DisplayNames[i] != NULL; i++) {
+        wprintf(L"%-26s %s\n", DisplayNames[i],
+                DisplayValues[i] != NULL ? DisplayValues[i] : L"<not set>");
+        LocalFree(DisplayNames[i]);
+        if (DisplayValues[i] != NULL)
+            LocalFree(DisplayValues[i]);
+    }
+
+    LocalFree(DisplayNames);
+    LocalFree(DisplayValues);
+
+    return ERROR_SUCCESS;
+}
+
 static void
 DisplayError(LPCWSTR Message, DWORD dwResult)
 {
@@ -492,6 +531,13 @@ static struct _MS_CMD_OPTION {
         L"\tstored credential\n",
         FLAG_NO_KEY,
         DoSetCredSubjectAltName
+    },
+    {
+        L"/ListCredBindings",
+        L"<TargetName> <NAI>",
+        L"\tShows bindings associated with a stored credential\n",
+        FLAG_NO_KEY,
+        DoListCredBindings
     },
     {
         L"/Help",

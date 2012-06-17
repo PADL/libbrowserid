@@ -138,7 +138,8 @@ MsDeleteAaaServer(
  * msetup_cred.c
  */
 typedef enum _MS_CRED_ATTR {
-    MS_CRED_ATTR_CA_CERTIFICATE = 1,
+    MS_CRED_ATTR_MIN = 1,
+    MS_CRED_ATTR_CA_CERTIFICATE = MS_CRED_ATTR_MIN,
     MS_CRED_ATTR_SERVER_CERT,
     MS_CRED_ATTR_SUBJECT_NAME,
     MS_CRED_ATTR_SUBJECT_ALT_NAME,
@@ -153,10 +154,16 @@ MsSetCredAttribute(
     LPWSTR AttributeValue);
 
 DWORD
+MsGetCredAttribute(
+    LPWSTR TargetName,
+    LPWSTR UserName,
+    LPWSTR **pDisplayNames,
+    LPWSTR **pDisplayValues);
+
+DWORD
 MsSetDefaultCertStore(
     HKEY hSspKey,
     LPWSTR Store);
-
 
 DWORD
 MsGetDefaultCertStore(

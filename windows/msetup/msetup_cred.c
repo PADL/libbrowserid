@@ -17,6 +17,12 @@ typedef DWORD (*MsAttrSetterFn)(
     PCREDENTIAL_ATTRIBUTE Attribute,
     BOOLEAN *pbFreeAttrValue);
 
+typedef DWORD (*MsAttrGetterFn)(
+    LPWSTR TargetName,
+    LPWSTR UserName,
+    PCREDENTIAL_ATTRIBUTE Attribute,
+    LPWSTR *pStringValue);
+
 static DWORD
 MsSetCredCaCert(LPWSTR TargetName,
                 LPWSTR UserName,
@@ -32,7 +38,27 @@ MsSetCredCaCert(LPWSTR TargetName,
 }
 
 static DWORD
-FindCertBySubject(  
+MsGetCredCaCert(LPWSTR TargetName,
+                LPWSTR UserName,
+                PCREDENTIAL_ATTRIBUTE Attribute,
+                LPWSTR *pCredCaCert)
+{
+    LPWSTR CredCaCert;
+
+    CredCaCert = LocalAlloc(LPTR, Attribute->ValueSize + sizeof(WCHAR));
+    if (CredCaCert == NULL)
+        return GetLastError();
+
+    memcpy(CredCaCert, Attribute->Value, Attribute->ValueSize);
+    CredCaCert[Attribute->ValueSize / sizeof(WCHAR)] = 0;
+
+    *pCredCaCert = CredCaCert;
+
+    return ERROR_SUCCESS;
+}
+
+static DWORD
+FindCertBySubject(
     LPWSTR Store,
     LPWSTR SubjectName,
     HCERTSTORE *pCs,
@@ -122,6 +148,28 @@ cleanup:
 }
 
 static DWORD
+MsGetCredServerHash(LPWSTR TargetName,
+                    LPWSTR UserName,
+                    PCREDENTIAL_ATTRIBUTE Attribute,
+                    LPWSTR *StringValue)
+{
+    LPWSTR szHash;
+    DWORD i;
+
+    szHash = LocalAlloc(LPTR, (Attribute->ValueSize * 2 + 1) * sizeof(WCHAR));
+    if (szHash == NULL)
+        return GetLastError();
+
+    for (i = 0; i < Attribute->ValueSize; i++) {
+        _snwprintf(&szHash[i * 2], 4, L"%02x", Attribute->Value[i]);
+    }
+    szHash[i * 2] = 0;
+
+    *StringValue = szHash;
+    return ERROR_SUCCESS;
+}
+
+static DWORD
 MsSetCredSubjectName(LPWSTR TargetName,
                      LPWSTR UserName,
                      LPWSTR SubjectName,
@@ -164,6 +212,49 @@ MsSetCredSubjectName(LPWSTR TargetName,
 }
 
 static DWORD
+MsGetCredSubjectName(LPWSTR TargetName,
+                     LPWSTR UserName,
+                     PCREDENTIAL_ATTRIBUTE Attribute,
+                     LPWSTR *pSubjectName)
+{
+    LPWSTR SubjectName;
+    CERT_NAME_BLOB CertNameBlob;
+    DWORD cbSize;
+
+    *pSubjectName = NULL;
+
+    CertNameBlob.cbData = Attribute->ValueSize;
+    CertNameBlob.pbData = Attribute->Value;
+
+    cbSize = CertNameToStr(X509_ASN_ENCODING,
+                           &CertNameBlob,
+                           CERT_X500_NAME_STR,
+                           NULL,
+                           0);
+    if (cbSize == 0)
+        return GetLastError();
+    else if (cbSize == 1)
+        return ERROR_SUCCESS;
+
+    SubjectName = LocalAlloc(LPTR, (cbSize + 1) * sizeof(WCHAR));
+    if (SubjectName == NULL)
+        return GetLastError();
+
+    cbSize = CertNameToStr(X509_ASN_ENCODING,
+                           &CertNameBlob,
+                           CERT_X500_NAME_STR,
+                           SubjectName,
+                           cbSize);
+    if (cbSize == 0)
+        return GetLastError();
+
+    SubjectName[cbSize] = 0;
+    *pSubjectName = SubjectName;
+
+    return ERROR_SUCCESS;
+}
+
+static DWORD
 MsSetCredSubjectAltName(LPWSTR TargetName,
                         LPWSTR UserName,
                         LPWSTR SubjectAltName,
@@ -177,15 +268,60 @@ MsSetCredSubjectAltName(LPWSTR TargetName,
     return ERROR_SUCCESS;
 }
 
+static DWORD
+MsGetCredSubjectAltName(LPWSTR TargetName,
+                        LPWSTR UserName,
+                        PCREDENTIAL_ATTRIBUTE Attribute,
+                        LPWSTR *pCredSan)
+{
+    LPWSTR CredSan;
+
+    CredSan = LocalAlloc(LPTR, Attribute->ValueSize + sizeof(WCHAR));
+    if (CredSan == NULL)
+        return GetLastError();
+
+    memcpy(CredSan, Attribute->Value, Attribute->ValueSize);
+    CredSan[Attribute->ValueSize / sizeof(WCHAR)] = 0;
+
+    *pCredSan = CredSan;
+
+    return ERROR_SUCCESS;
+}
+
 static struct _MS_CRED_ATTR_HANDLER {
     LPWSTR Attribute;
+    LPWSTR DisplayName;
     MsAttrSetterFn AttrSetter;
+    MsAttrGetterFn AttrGetter;
 } msCredAttrSetters[] = {
-    { NULL,                                 NULL                        },
-    { L"Moonshot_CACertificate",            MsSetCredCaCert             },
-    { L"Moonshot_ServerCertificateHash",    MsSetCredServerCert         },
-    { L"Moonshot_SubjectNameConstraint",    MsSetCredSubjectName        },
-    { L"Moonshot_SubjectAltNameConstraint", MsSetCredSubjectAltName     },
+    {
+        NULL,
+        NULL
+    },
+    {
+        L"Moonshot_CACertificate",
+        L"CA Certificate",
+        MsSetCredCaCert,
+        MsGetCredCaCert,
+    },
+    {
+        L"Moonshot_ServerCertificateHash",
+        L"Server fingerprint",
+        MsSetCredServerCert,
+        MsGetCredServerHash,
+    },
+    {
+        L"Moonshot_SubjectNameConstraint",
+        L"Subject name",
+        MsSetCredSubjectName,
+        MsGetCredSubjectName,
+    },
+    {
+        L"Moonshot_SubjectAltNameConstraint",
+        L"Subject alternative name",
+        MsSetCredSubjectAltName,
+        MsGetCredSubjectAltName,
+    },
 };
 
 static DWORD
@@ -241,10 +377,10 @@ UpdateExistingCred(
         Credential.Attributes[iAttr].Flags = 0;
 
         dwResult = Handler->AttrSetter(TargetName,
-                                        UserName,
-                                        AttributeValue,
-                                        &Credential.Attributes[iAttr],
-                                        &bFreeAttrValue);
+                                       UserName,
+                                       AttributeValue,
+                                       &Credential.Attributes[iAttr],
+                                       &bFreeAttrValue);
         if (dwResult != ERROR_SUCCESS)
             goto cleanup;
 
@@ -281,6 +417,54 @@ cleanup:
     return dwResult;
 }
 
+static DWORD
+FormatDisplayCred(
+    LPWSTR TargetName,
+    LPWSTR UserName,
+    DWORD dwAttrType,
+    PCREDENTIAL Cred,
+    LPWSTR *pDisplayName,
+    LPWSTR *pDisplayValue)
+{
+    DWORD dwResult;
+    LONG i, iAttr = -1;
+    struct _MS_CRED_ATTR_HANDLER *Handler;
+
+    Handler = &msCredAttrSetters[dwAttrType];
+
+    assert(Handler->Attribute != NULL);
+    assert(Handler->AttrGetter != NULL);
+
+    *pDisplayName = NULL;
+    *pDisplayValue = NULL;
+
+    for (i = 0, iAttr = -1; i < Cred->AttributeCount; i++) {
+        PCREDENTIAL_ATTRIBUTE Attr = &Cred->Attributes[i];
+
+        if (_wcsicmp(Attr->Keyword, Handler->Attribute) == 0) {
+            iAttr = i;
+            break;
+        }
+    }
+
+    *pDisplayName = LocalAlloc(LPTR,
+                               (wcslen(Handler->DisplayName) + 1) * sizeof(WCHAR));
+    if (*pDisplayName == NULL)
+        return GetLastError();
+
+    wcscpy(*pDisplayName, Handler->DisplayName);
+
+    if (iAttr == -1)
+        return ERROR_NOT_FOUND;
+
+    dwResult = Handler->AttrGetter(TargetName,
+                                   UserName,
+                                   &Cred->Attributes[iAttr],
+                                   pDisplayValue);
+
+    return dwResult;
+}
+
 DWORD
 MsSetCredAttribute(
     LPWSTR TargetName,
@@ -294,7 +478,7 @@ MsSetCredAttribute(
     PCREDENTIAL_TARGET_INFORMATION TargetInfo = NULL;
     PCREDENTIAL *ExistingCreds = NULL;
 
-    if (dwAttrType == 0 || dwAttrType > MS_CRED_ATTR_MAX) {
+    if (dwAttrType < MS_CRED_ATTR_MIN || dwAttrType > MS_CRED_ATTR_MAX) {
         dwResult = ERROR_INVALID_PARAMETER;
         goto cleanup;
     }
@@ -337,6 +521,84 @@ cleanup:
         CredFree(ExistingCreds);
     if (TargetInfo != NULL)
         CredFree(TargetInfo);
+    return dwResult;
+}
+
+DWORD
+MsGetCredAttribute(
+    LPWSTR TargetName,
+    LPWSTR UserName,
+    LPWSTR **pDisplayNames,
+    LPWSTR **pDisplayValues)
+{
+    DWORD dwResult;
+    DWORD dwCredCount = 0, i;
+    LONG iCred;
+    BOOLEAN bFoundAttr;
+    PCREDENTIAL_TARGET_INFORMATION TargetInfo = NULL;
+    PCREDENTIAL *Creds = NULL;
+
+    *pDisplayNames = NULL;
+    *pDisplayValues = NULL;
+
+    if (!CredGetTargetInfo(TargetName, 0, &TargetInfo)) {
+        dwResult = GetLastError();
+        if (dwResult == ERROR_NOT_FOUND)
+            fwprintf(stderr, L"No existing credential for %s\n", TargetName);
+        else
+            fwprintf(stderr, L"CredGetTargetInfo failed: 0x%08x\n", dwResult);
+        goto cleanup;
+    }
+
+    if (!CredReadDomainCredentials(TargetInfo, 0,
+                                   &dwCredCount, &Creds)) {
+        dwResult = GetLastError();
+        fwprintf(stderr, L"CredReadDomainCredentials failed: 0x%08x\n", dwResult);
+        goto cleanup;
+    }
+
+    for (i = 0, iCred = -1; i < dwCredCount; i++) {
+        if (_wcsicmp(Creds[i]->UserName, UserName) == 0) {
+            iCred = i;
+            break;
+        }
+    }
+
+    if (iCred == -1) {
+        fwprintf(stderr, L"No credentials for %s match username %s\n", TargetName, UserName);
+        dwResult = ERROR_NOT_FOUND;
+        goto cleanup;
+    }
+
+    *pDisplayNames = LocalAlloc(LPTR, MS_CRED_ATTR_MAX * sizeof(LPWSTR));
+    if (*pDisplayNames == NULL) {
+        dwResult = GetLastError();
+        goto cleanup;
+    }
+
+    *pDisplayValues = LocalAlloc(LPTR, MS_CRED_ATTR_MAX * sizeof(LPWSTR));
+    if (*pDisplayValues == NULL) {
+        dwResult = GetLastError();
+        goto cleanup;
+    }
+
+    for (i = 0, bFoundAttr = FALSE; i < MS_CRED_ATTR_MAX; i++) {
+        dwResult = FormatDisplayCred(TargetName, UserName, i + MS_CRED_ATTR_MIN,
+                                     Creds[iCred],
+                                     &(*pDisplayNames)[i],
+                                     &(*pDisplayValues)[i]);
+        if (dwResult == ERROR_SUCCESS)
+            bFoundAttr = TRUE;
+    }
+
+    dwResult = bFoundAttr ? ERROR_SUCCESS : ERROR_NOT_FOUND;
+
+cleanup:
+    if (Creds != NULL)
+        CredFree(Creds);
+    if (TargetInfo != NULL)
+        CredFree(TargetInfo);
+
     return dwResult;
 }
 
