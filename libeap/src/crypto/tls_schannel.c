@@ -558,7 +558,7 @@ static int tls_connection_verify(void *tls_ctx,
 						PKCS_7_ASN_ENCODING,
 						&serverCert->pCertInfo->Subject,
 						&conn->subject_match)) {
-			global->last_error = GetLastError();
+			global->last_error = CERT_E_INVALID_NAME;
 			return -1;
 		}
 	}
