@@ -4,7 +4,7 @@
 
 RELDIR=msetup
 
-!include ../NTMakefile.w32 
+!include ../NTMakefile.w32
 
 cdefines = $(cdefines) -DUNICODE -D_UNICODE
 
