@@ -26,7 +26,17 @@ EapSSP Beta Installation Notes
 
         > windbg -premote tcp:server=192.168.1.1,port=1234 -pXXX
 
-   replacing the IP address and setting XXX to the PID of Lsass.exe.
+   replacing the IP address and setting XXX to the PID of Lsass.exe. If you
+   just want trace information without starting the debugger, use:
+
+        >logman start mysession -p {b85c67ff-f395-4e75-8836-dc395f022125} -o eapssp.etl -ets
+        >logman stop mysession -ets
+        >tracerpt eapssp.etl
+
+   or, if you have a debug build or have enabled the debugging registry
+   setting, you can use DebugView:
+
+        http://technet.microsoft.com/en-us/sysinternals/bb896647.aspx
 
 5. Users must be mapped to a Windows account, even for identification
    contexts (GSS_C_IDENTIFY_FLAG). However in the case of identification
