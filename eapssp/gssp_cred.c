@@ -1244,6 +1244,8 @@ CMAttrSetServerCertHash(
     if (Status != STATUS_SUCCESS)
         return Status;
 
+    RtlCopyMemory(szHash, SERVER_HASH_PREFIX, SERVER_HASH_PREFIX_LEN);
+
     wpa_snprintf_hex(&szHash[SERVER_HASH_PREFIX_LEN],
                      cchHash + 1 - SERVER_HASH_PREFIX_LEN,
                      Attribute->Value,
