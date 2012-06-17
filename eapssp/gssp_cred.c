@@ -1473,8 +1473,8 @@ ConvertCredManCredToGssCred(
         for (j = 0;
              j < sizeof(CMAttrSetters) / sizeof(CMAttrSetters[0]);
              j++) {
-            if (wcscmp(Attribute->Keyword, CMAttrSetters[i].Attribute) == 0) {
-                Status = CMAttrSetters[i].Setter(Attribute, GssCred);
+            if (wcscmp(Attribute->Keyword, CMAttrSetters[j].Attribute) == 0) {
+                Status = CMAttrSetters[j].Setter(Attribute, GssCred);
                 if (Status != STATUS_SUCCESS) {
                     Major = GSS_S_FAILURE;
                     *Minor = (Status == STATUS_NO_MEMORY)
