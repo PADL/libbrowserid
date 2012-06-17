@@ -268,7 +268,6 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
 			return -1;
 
 		conn->subject_match.pbData = os_malloc(cbSize);
-
 		if (conn->subject_match.pbData == NULL)
 			return -1;
 
@@ -277,12 +276,13 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
 				   CERT_X500_NAME_STR,
 				   NULL,
 				   conn->subject_match.pbData,
-				   &conn->subject_match.cbData,
+				   &cbSize,
 				   NULL)) {
 			os_free(conn->subject_match.pbData);
 			conn->subject_match.pbData = NULL;
 			return -1;
 		}
+		conn->subject_match.cbData = cbSize;
 	}
 
 	os_free(conn->altsubject_match);
@@ -588,7 +588,7 @@ static int tls_connection_verify(void *tls_ctx,
 				  szSubjectAltName,
 				  cbSize);
 
-		if (!os_strcmp(conn->altsubject_match, szSubjectAltName)) {
+		if (os_strcmp(conn->altsubject_match, szSubjectAltName) != 0) {
 			global->last_error = CERT_E_INVALID_NAME;
 			os_free(szSubjectAltName);
 			return -1;
