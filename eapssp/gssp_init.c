@@ -47,6 +47,11 @@ GsspGetRegFlags(void)
         RegCloseKey(hKey);
     }
 
+#ifdef DEBUG
+    /* Debug builds always have debugging enabled */
+    dwEapSspFlags |= GSSP_FLAG_DEBUG;
+#endif
+
     return dwEapSspFlags & GSSP_FLAG_REG_MASK;
 }
 
