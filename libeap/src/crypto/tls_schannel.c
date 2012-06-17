@@ -28,7 +28,11 @@
 #include "tls.h"
 
 struct tls_global {
-	int check_crl;
+	void (*event_cb)(void *ctx, enum tls_event ev,
+			 union tls_event_data *data);
+	void *cb_ctx;
+	int check_crl : 1;
+	int cert_in_cb : 1;
 	SECURITY_STATUS last_error;
 };
 
@@ -48,7 +52,9 @@ struct tls_connection {
 	CredHandle creds;
 	CtxtHandle context;
 
-	int verify_peer;
+	unsigned int ca_cert_verify : 1;
+	unsigned int cert_probe : 1;
+	unsigned int server_cert_only : 1;
 };
 
 void * tls_init(const struct tls_config *conf)
@@ -58,6 +64,12 @@ void * tls_init(const struct tls_config *conf)
 	global = os_zalloc(sizeof(*global));
 	if (global == NULL)
 		return NULL;
+
+	if (conf != NULL) {
+		global->event_cb = conf->event_cb;
+		global->cb_ctx = conf->cb_ctx;
+		global->cert_in_cb = conf->cert_in_cb;
+	}
 
 	return global;
 }
@@ -149,14 +161,14 @@ int tls_global_set_verify(void *ssl_ctx, int check_crl)
 
 	global->check_crl = check_crl;
 
-	return -1;
+	return 0;
 }
 
 
 int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
-			      int verify_peer)
+			      int ca_cert_verify)
 {
-	conn->verify_peer = !!verify_peer;
+	conn->ca_cert_verify = !!ca_cert_verify;
 	return 0;
 }
 
@@ -302,6 +314,8 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
  * to contain indirecting URIs. Iff this parameter is absent, then the server
  * certificate will not be verified.
  *
+ *	probe://			Probe for server certificate only
+ *
  *	ca_cert_blob present?		Parse ASN.1 encoded blob directly
  *
  *	cert_store://<store>		Use Windows certificate store <store>;
@@ -321,7 +335,14 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 	HCERTSTORE cs = NULL;
 	const char *pos;
 
-	if (ca_cert_blob != NULL) {
+	if (ca_cert != NULL &&
+	    os_strncmp(ca_cert, "probe://", 8) == 0) {
+		wpa_printf(MSG_DEBUG, "SChannel: Probe for server certificate "
+			   "chain");
+		conn->cert_probe = 1;
+		conn->ca_cert_verify = 0;
+		return 0;
+	} else if (ca_cert_blob != NULL) {
 		cs = CertOpenStore(CERT_STORE_PROV_MEMORY,
 				   0, (HCRYPTPROV_LEGACY)0,
 				   CERT_STORE_CREATE_NEW_FLAG, NULL);
@@ -362,6 +383,7 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 			os_free(conn->server_cert_hash.pbData);
 		conn->server_cert_hash.cbData = len / 2;
 		conn->server_cert_hash.pbData = certhash;
+		conn->server_cert_only = 1;
 
 		cs = CertOpenStore(CERT_STORE_PROV_SYSTEM,
 				   X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
@@ -378,11 +400,11 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 				   ca_cert);
 	} else {
 		/* No store specified, don't verify peer */
-		conn->verify_peer = 0;
+		conn->ca_cert_verify = 0;
 		return 0;
 	}
 
-	conn->verify_peer = 1;
+	conn->ca_cert_verify = 1;
 
 	if (cs == NULL) {
 		global->last_error = GetLastError();
@@ -416,11 +438,196 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 	return 0;
 }
 
+/*
+ * Convert a CryptoAPI error code to a libeap TLS one.
+ */
+static enum tls_fail_reason schannel_tls_fail_reason(DWORD dwError)
+{
+	switch (dwError) {
+	case CRYPT_E_REVOKED:
+		return TLS_FAIL_REVOKED;
+	case TRUST_E_TIME_STAMP:
+	case CERT_E_VALIDITYPERIODNESTING:
+		return TLS_FAIL_NOT_YET_VALID;
+	case CERT_E_EXPIRED:
+		return TLS_FAIL_EXPIRED;
+	case CRYPT_E_HASH_VALUE:
+	case CERT_E_INVALID_NAME:
+	case CERT_E_UNTRUSTEDCA:
+	case CERT_E_UNTRUSTEDROOT:
+	case CERT_E_CN_NO_MATCH:
+	case TRUST_E_SYSTEM_ERROR:
+	case TRUST_E_SUBJECT_NOT_TRUSTED:
+	case TRUST_E_EXPLICIT_DISTRUST:
+		return TLS_FAIL_UNTRUSTED;
+	case CERT_E_MALFORMED:
+	case CERT_E_INVALID_NAME:
+	case CERT_E_WRONG_USAGE:
+	case TRUST_E_NO_SIGNER_CERT:
+	case TRUST_E_CERT_SIGNATURE:
+	case TRUST_E_BAD_DIGEST:
+	case TRUST_E_BAD_CONSTRAINTS:
+	case TRUST_E_SUBJECT_FORM_UNKNOWN:
+	case TRUST_E_NOSIGNATURE:
+		return TLS_FAIL_BAD_CERTIFICATE;
+	default:
+		return TLS_FAIL_UNSPECIFIED;
+	}
+}
+
+static char *schannel_get_subject(PCERT_CONTEXT serverCert)
+{
+	char *subject;
+	DWORD cbSize;
+
+	if (serverCert->pCertInfo == NULL)
+		return NULL;
+
+	cbSize = CertNameToStr(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+			       &serverCert->pCertInfo->Subject,
+			       CERT_X500_NAME_STR,
+			       NULL,
+			       0);
+	if (cbSize <= 1)
+		return NULL;
+
+	subject = os_alloc(LPTR, (cbSize + 1) * sizeof(WCHAR));
+	if (subject == NULL)
+		return NULL;
+
+	cbSize = CertNameToStr(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+       			       &serverCert->pCertInfo->Subject,
+			       CERT_X500_NAME_STR,
+			       subject,
+			       cbSize);
+
+	subject[cbSize] = 0;
+
+	return subject;
+}
+
+static void schannel_tls_fail_event(struct tls_global *global,
+				    struct tls_connection *conn,
+				    PCERT_CONTEXT serverCert,
+				    PCCERT_CHAIN_CONTEXT pChainContext,
+				    LONG lDepth,
+				    const char *subject, const char *err_str,
+				    enum tls_fail_reason reason)
+{
+	union tls_event_data ev;
+	struct wpabuf *cert = NULL;
+
+	if (tls_global->event_cb == NULL)
+		return;
+
+	cert = wpabuf_alloc_copy(serverCert->pbCertEncoded,
+				 serverCert->cbCertEncoded);
+
+	os_memset(&ev, 0, sizeof(ev));
+	ev.cert_fail.reason = reason != TLS_FAIL_UNSPECIFIED ?
+		reason : schannel_tls_fail_reason(global->last_error);
+	ev.cert_fail.depth = lDepth;
+	ev.cert_fail.subject = schannel_get_subject(serverCert);
+	ev.cert_fail.reason_txt = err_str;
+	ev.cert_fail.cert = cert;
+
+	tls_global->event_cb(tls_global->cb_ctx, TLS_CERT_CHAIN_FAILURE, &ev);
+
+	wpabuf_free(cert);
+	if (ev_peer_cert.subject != NULL)
+		os_free(ev_peer_cert.subject);
+}
+
+static int schannel_hash_cert(struct tls_global *global,
+			      PCERT_CONTEXT serverCert,
+			      PBYTE *ppbHash
+			      DWORD *pcbHash)
+{
+	DWORD cbHash = 0;
+	PBYTE pbHash;
+
+	*ppbHash = NULL;
+	*pcbHash = 0;
+
+	if (!CertGetCertificateContextProperty(serverCert,
+					       CERT_HASH_PROP_ID,
+					       NULL,
+					       &cbHash)) {
+		global->last_error = GetLastError();
+		wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
+			   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
+		return -1;
+	}
+
+	pbHash = os_malloc(cbHash);
+	if (pbHash == NULL)
+		return -1;
+
+	if (!CertGetCertificateContextProperty(serverCert,
+					       CERT_HASH_PROP_ID,
+					       pbHash,
+					       &cbHash)) {
+		global->last_error = GetLastError();
+		wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
+			   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
+		os_free(pbHash);
+		return -1;
+	}
+
+	*ppbHash = pbHash;
+	*pcbHash = cbHash;
+
+	return 0;
+}
+
+static void schannel_tls_cert_event(struct tls_global *global,
+				    struct tls_connection *conn,
+				    PCERT_CONTEXT serverCert,
+				    LONG lDepth)
+{
+	struct wpabuf *cert = NULL;
+	union tls_event_data ev;
+	PBYTE pbHash = NULL;
+	DWORD cbHash;
+
+	if (tls_global->event_cb == NULL)
+		return;
+
+	os_memset(&ev, 0, sizeof(ev));
+
+	if (conn->cert_probe || tls_global->cert_in_cb) {
+		cert = wpabuf_alloc_copy(serverCert->pbCertEncoded,
+					 serverCert->cbCertEncoded);
+		ev.peer_cert.cert = cert;
+	}
+
+	if (cert != NULL) {
+		if (schannel_hash_cert(global, serverCert, &pbHash, &cbHash) == 0) {
+			ev.peer_cert.hash = pbHash;
+			ev.peer_cert.hash_len = cbHash;
+		}
+	}
+	ev.cert_fail.depth = lDepth;
+	ev.peer_cert.subject = schannel_get_subject(serverCert);
+
+	tls_global->event_cb(tls_global->cb_ctx, TLS_PEER_CERTIFICATE, &ev);
+
+	wpabuf_free(cert);
+	if (pbHash != NULL)
+		os_free(pbHash);
+	if (ev_peer_cert.subject != NULL)
+		os_free(ev_peer_cert.subjecT);
+}
+
 static int tls_connection_verify(void *tls_ctx,
 				 struct tls_connection *conn)
 {
 	struct tls_global *global = tls_ctx;
+	enum tls_fail_reason reason reason = TLS_FAIL_UNSPECIFIED;
+	const char *err_str = NULL;
+	int ret = -1, i, j;
 	SECURITY_STATUS status;
+	DWORD dwFlags;
 	PCERT_CONTEXT serverCert;
 	PCCERT_CHAIN_CONTEXT pChainContext = NULL;
 	CERT_CHAIN_PARA chainPara = { 0 };
@@ -444,50 +651,33 @@ static int tls_connection_verify(void *tls_ctx,
 			   "SECPKG_ATTR_REMOTE_CERT_CONTEXT) failed (0x%08x)",
 			   __func__, (int) status);
 		global->last_error = status;
-		return -1;
+		goto cleanup;
 	}
 
 	/*
 	 * Validate the server fingerprint (hash), if any.
 	 */
-	if (conn->server_cert_hash.pbData != NULL) {
+	if (conn->server_cert_only) {
 		DWORD cbHash = 0;
-		PBYTE *pbHash;
+		PBYTE pbHash = NULL;
 		BOOLEAN bHashMatch;
 
-		CertGetCertificateContextProperty(serverCert,
-						  CERT_HASH_PROP_ID,
-						  NULL,
-						  &cbHash);
+		if (schannel_cert_hash(global, serverCert, &pbHash, &cbHash) != 0)
+			goto cleanup;
 
 		if (cbHash != conn->server_cert_hash.cbData) {
-			wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
-				   "CERT_HASH_PROP_ID) length mismatch", __func__);
-			return -1;
-		}
-
-		pbHash = os_malloc(cbHash);
-		if (pbHash == NULL)
-			return -1;
-
-		if (!CertGetCertificateContextProperty(serverCert,
-						       CERT_HASH_PROP_ID,
-						       pbHash,
-						       &cbHash)) {
-			global->last_error = GetLastError();
-			wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
-				   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
+			global->last_error = CRYPT_E_HASH_VALUE;
 			os_free(pbHash);
-			return -1;
+			goto cleanup;
 		}
 
-		bHashMatch = (os_memcmp(conn->server_cert_hash.pbData,
-					pbHash, cbHash) == 0);
+		bHashMatch = (os_memcmp(conn->server_cert_hash.pbData, pbHash, cbHash) == 0);
 		os_free(pbHash);
 
 		if (bHashMatch == FALSE) {
 			global->last_error = CRYPT_E_HASH_VALUE;
-			return -1;
+			err_str = "Server certificate mismatch";
+			goto cleanup;
 		}
 	}
 
@@ -496,30 +686,37 @@ static int tls_connection_verify(void *tls_ctx,
 		sizeof(rgszUsages) / sizeof(rgszUsages[0]);
 	chainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
 
+	/*
+	 * Obtain the certificate (CA) chain for the server cert.
+	 */
+	dwFlags = CERT_CHAIN_ENABLE_PEER_TRUST;
+	if (global->check_crl) {
+		dwFlags |= conn->server_cert_only
+			? CERT_REVOCATION_CHECK_END_CERT :
+			  CERT_CHAIN_REVOCATION_CHECK_CHAIN;
+	}
+
 	if (!CertGetCertificateChain(NULL,
 				     serverCert,
 				     NULL,		/* pTime */
 				     (conn->server_cert_store != NULL)
-                                        ? conn->server_cert_store
-                                        : serverCert->hCertStore,
+					? conn->server_cert_store
+					: serverCert->hCertStore,
 				     &chainPara,
-				     CERT_CHAIN_ENABLE_PEER_TRUST,
+				     dwFlags,
 				     NULL,		/* pvReserved */
 				     &pChainContext)) {
 		global->last_error = GetLastError();
 		wpa_printf(MSG_DEBUG, "%s: CertGetCertificateChain failed "
 			   "(0x%08x)", __func__, global->last_error);
-		return -1;
+		goto cleanup;
 	}
 
 	/*
-	 * If there is only a self-signed certificate, and we already
-	 * verified the certificate fingerprint (hash), then we can skip
-	 * the verification of the certificate chain policy.
+	 * Verify certificate chain policy, unless server certificate
+	 * fingerprint checking is enabled.
 	 */
-	if (conn->verify_peer != 0 &&
-	    (pChainContext->cChain > 1 ||
-	     conn->server_cert_hash.pbData == NULL)) {
+	if (conn->ca_cert_verify && !conn->server_cert_only) {
 		extraPolicyPara.cbStruct = sizeof(extraPolicyPara);
 		extraPolicyPara.dwAuthType = AUTHTYPE_SERVER;
 		extraPolicyPara.fdwChecks = 0;
@@ -535,19 +732,15 @@ static int tls_connection_verify(void *tls_ctx,
 			global->last_error = GetLastError();
 			wpa_printf(MSG_DEBUG,"%s: CertVerifyCertificatePolicy failed "
 				   "(0x%08x)", __func__, global->last_error);
-			CertFreeCertificateChain(pChainContext);
-			return -1;
+			goto cleanup;
 		}
 
 		if (chainPolicyStatus.dwError != ERROR_SUCCESS) {
 			global->last_error = chainPolicyStatus.dwError;
-			CertFreeCertificateChain(pChainContext);
-			return -1;
+			err_str = "Certificate policy error";
+			goto cleanup;
 		}
 	}
-
-	CertFreeCertificateChain(pChainContext);
-	pChainContext = NULL;
 
 	/*
 	 * Validate the subject, if subject name constraints set.
@@ -559,7 +752,11 @@ static int tls_connection_verify(void *tls_ctx,
 						&serverCert->pCertInfo->Subject,
 						&conn->subject_match)) {
 			global->last_error = CERT_E_INVALID_NAME;
-			return -1;
+			wpa_printf(MSG_WARNING, "TLS: Subject did not "
+				   "match with '%s'", conn->subject_match);
+			err_str = "Subject mismatch";
+			reason = TLS_FAIL_SUBJECT_MISMATCH;
+			goto cleanup;
 		}
 	}
 
@@ -578,8 +775,10 @@ static int tls_connection_verify(void *tls_ctx,
 					   0);
 
 		szSubjectAltName = os_malloc(cbSize);
-		if (szSubjectAltName == NULL)
-			return -1;
+		if (szSubjectAltName == NULL) {
+			global->last_error = GetLastError();
+			goto cleanup;
+		}
 
 		CertGetNameString(serverCert,
 				  CERT_NAME_SIMPLE_DISPLAY_TYPE,
@@ -590,14 +789,48 @@ static int tls_connection_verify(void *tls_ctx,
 
 		if (os_strcmp(conn->altsubject_match, szSubjectAltName) != 0) {
 			global->last_error = CERT_E_INVALID_NAME;
+			wpa_printf(MSG_WARNING, "TLS: altSubjectName match "
+				   "'%s' not found", conn->altsubject_match);
+			err_str = "AltSubject mismatch";
+			reason = TLS_FAIL_ALTSUBJECT_MISMATCH;
 			os_free(szSubjectAltName);
-			return -1;
+			goto cleanup;
 		}
 
 		os_free(szSubjectAltName);
 	}
 
-	return 0;
+	for (i = 0; i < pChainContext->cChain; i++) {
+		PCERT_SIMPLE_CHAIN pSimpleChain = &pChainContext->rgpChain[i];
+
+		for (j = 0; j < pSimpleChain->cElement; j++) {
+			PCCERT_CHAIN_ELEMENT pChain = &pSimpleChain->rgpElement[j];
+
+			schannel_tls_cert_event(global, conn, pChain->pCertContext, j);
+		}
+	}
+
+	if (conn->cert_probe) {
+		wpa_printf(MSG_DEBUG, "SChannel: Reject server certificate "
+			   "on probe-only run");
+		err_str = "Server certificate chain probe";
+		reason = TLS_FAIL_SERVER_CHAIN_PROBE;
+		goto cleanup;
+	}
+
+	ret = 0;
+
+cleanup:
+	if (ret != 0) {
+		schannel_tls_fail_event(global, conn, serverCert,
+					chainPolicyStatus.lChainIndex,
+					err_str, reason);
+	}
+	if (pChainContext != NULL) {
+		CertFreeCertificateChain(pChainContext);
+	}
+
+	return ret;
 }
 
 static struct wpabuf * tls_conn_hs_clienthello(struct tls_global *global,

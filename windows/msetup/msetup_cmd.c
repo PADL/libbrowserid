@@ -107,7 +107,7 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
             DWORD cchAaaServer = sizeof(wszAaaServer) / sizeof(WCHAR);
 
             dwResult = RegEnumKeyEx(hSubKey, i, wszAaaServer, &cchAaaServer,
-                                   NULL, NULL, NULL, NULL);
+                                    NULL, NULL, NULL, NULL);
             if (dwResult == ERROR_NO_MORE_ITEMS) {
                 break;
             } else if (dwResult != ERROR_SUCCESS) {
@@ -131,8 +131,8 @@ DoDumpState(HKEY hSspKey, int argc, WCHAR *argv[])
             DWORD dwType = REG_SZ;
 
             dwResult = RegEnumValue(hSubKey, i, wszPrincipal,
-                                   &cchPrincipal, NULL,
-                                   &dwType, (PBYTE)wszAccount, &cbAccount);
+                                    &cchPrincipal, NULL,
+                                    &dwType, (PBYTE)wszAccount, &cbAccount);
             if (dwResult != ERROR_SUCCESS)
                 break;
 
