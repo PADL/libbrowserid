@@ -289,24 +289,24 @@ MsSetCredAttribute(
     PCREDENTIAL_TARGET_INFORMATION TargetInfo = NULL;
     PCREDENTIAL *ExistingCreds = NULL;
 
-    if (dwAttrType == 0 || dwAttrType >= MS_CRED_ATTR_MAX) {
+    if (dwAttrType == 0 || dwAttrType > MS_CRED_ATTR_MAX) {
         dwResult = ERROR_INVALID_PARAMETER;
         goto cleanup;
     }
 
     if (!CredGetTargetInfo(TargetName, 0, &TargetInfo)) {
         dwResult = GetLastError();
-        fwprintf(stderr, L"CredGetTargetInfo failed: 0x%08x\n", dwResult);
+        if (dwResult == ERROR_NOT_FOUND)
+            fwprintf(stderr, L"No existing credential for %s\n", TargetName);
+        else
+            fwprintf(stderr, L"CredGetTargetInfo failed: 0x%08x\n", dwResult);
         goto cleanup;
     }
 
     if (!CredReadDomainCredentials(TargetInfo, 0,
                                    &dwCredCount, &ExistingCreds)) {
         dwResult = GetLastError();
-        if (dwResult == ERROR_NOT_FOUND)
-            fwprintf(stderr, L"No existing credential for %s\n", TargetName);
-        else
-            fwprintf(stderr, L"CredReadDomainCredentials failed: 0x%08x\n", dwResult);
+        fwprintf(stderr, L"CredReadDomainCredentials failed: 0x%08x\n", dwResult);
         goto cleanup;
     }
 
