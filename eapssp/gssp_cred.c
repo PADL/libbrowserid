@@ -1237,7 +1237,7 @@ CMAttrSetServerCertHash(
     LPSTR szHash;
     OM_uint32 Minor;
 
-    /* Path to server certificate file */
+    /* Server certificate SHA-1 hash */
     cchHash = SERVER_HASH_PREFIX_LEN + (2 * Attribute->ValueSize);
 
     Status = GsspAlloc(cchHash + 1, &szHash);
