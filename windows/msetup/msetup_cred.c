@@ -128,18 +128,21 @@ MsSetCredSubjectName(LPWSTR TargetName,
                      PCREDENTIAL_ATTRIBUTE Attribute,
                      BOOLEAN *pbFreeAttrValue)
 {
-    DWORD cbSize;
+    DWORD dwResult;
 
     if (!CertStrToName(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                        SubjectName,
                        CERT_X500_NAME_STR,
                        NULL,
                        NULL,
-                       &cbSize,
-                       NULL))
-        return GetLastError();
+                       &Attribute->ValueSize,
+                       NULL)) {
+        dwResult = GetLastError();
+        fwprintf(stderr, L"CertStrToName failed: 0x%08x\n", dwResult);
+        return dwResult;
+    }
 
-    Attribute->Value = LocalAlloc(LPTR, cbSize);
+    Attribute->Value = LocalAlloc(LPTR, Attribute->ValueSize);
     if (Attribute->Value == NULL)
         return GetLastError();
 
@@ -150,8 +153,10 @@ MsSetCredSubjectName(LPWSTR TargetName,
                        Attribute->Value,
                        &Attribute->ValueSize,
                        NULL)) {
+        dwResult = GetLastError();
+        fwprintf(stderr, L"CertStrToName failed: 0x%08x\n", dwResult);
         LocalFree(Attribute->Value);
-        return GetLastError();
+        return dwResult;
     }
 
     *pbFreeAttrValue = TRUE;
