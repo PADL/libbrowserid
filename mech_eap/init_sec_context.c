@@ -188,6 +188,23 @@ peerNotifyPending(void *ctx GSSEAP_UNUSED)
 {
 }
 
+static void
+peerEapParamNeeded(void *ctx,
+                   enum wpa_ctrl_req_type field,
+                   const char *text)
+{
+}
+
+static void
+peerNotifyCert(void *ctx,
+               int depth,
+               const char *subject,
+               const char *cert_hash,
+               const struct wpabuf *certificate)
+{
+    gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
+}
+
 static struct eapol_callbacks gssEapPolicyCallbacks = {
     peerGetConfig,
     peerGetBool,
@@ -198,6 +215,8 @@ static struct eapol_callbacks gssEapPolicyCallbacks = {
     peerSetConfigBlob,
     peerGetConfigBlob,
     peerNotifyPending,
+    peerEapParamNeeded,
+    peerNotifyCert
 };
 
 #ifdef GSSEAP_DEBUG
@@ -270,7 +289,12 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     }
 
     /* certs */
-    eapPeerConfig->ca_cert = (unsigned char *)cred->caCertificate.value;
+    if (ctx->flags & CTX_FLAG_SERVER_PROBE) {
+        /* in this pass, just return information about the server */
+        eapPeerConfig->ca_cert = (unsigned char *)"probe://";
+    } else {
+        eapPeerConfig->ca_cert = (unsigned char *)cred->caCertificate.value;
+    }
     eapPeerConfig->subject_match = (unsigned char *)cred->subjectNameConstraint.value;
     eapPeerConfig->altsubject_match = (unsigned char *)cred->subjectAltNameConstraint.value;
 
