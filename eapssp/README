@@ -58,8 +58,7 @@ EapSSP Beta Installation Notes
    If you're not using Active Directory, you can setup a local user mapping
    with the following:
 
-        [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\EapSSP\UserList]
-        "steve@PROJECT-MOONSHOT.ORG"="steve"
+        msetup /MapUser steve@PROJECT-MOONSHOT.ORG steve
 
    It's also possible to tunnel a PAC in a RADIUS response using the
    rlm_mspac module.
@@ -73,3 +72,4 @@ EapSSP Beta Installation Notes
 
         cmdkey /add:server.project-moonshot.org /user:steve@PROJECT-MOONSHOT.ORG /pass:foo
 
+   You can bind the credential to a certificate with msetup.
