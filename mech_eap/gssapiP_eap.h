@@ -203,6 +203,9 @@ struct gss_eap_initiator_ctx {
     struct eap_sm *eap;
     struct wpabuf reqData;
     struct wpa_config_blob configBlobs[CONFIG_BLOB_MAX];
+    gss_buffer_desc serverSubject;
+    gss_buffer_desc serverHash;
+    gss_buffer_desc serverCert;
 };
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR

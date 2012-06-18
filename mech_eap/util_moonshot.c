@@ -201,9 +201,6 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
         serverCertificateHashLen = 0;
 
     if (serverCertificateHashLen != 0) {
-        #define HASH_PREFIX             "hash://server/sha256/"
-        #define HASH_PREFIX_LEN         (sizeof(HASH_PREFIX) - 1)
-
         cred->caCertificate.value = GSSEAP_MALLOC(HASH_PREFIX_LEN +
                                                   serverCertificateHashLen + 1);
         if (cred->caCertificate.value == NULL) {

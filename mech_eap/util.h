@@ -186,6 +186,8 @@ enum gss_eap_token_type {
     TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
     TOK_TYPE_INITIATOR_CONTEXT       = 0x0601,  /* initiator-sent context token */
     TOK_TYPE_ACCEPTOR_CONTEXT        = 0x0602,  /* acceptor-sent context token */
+    TOK_TYPE_INITIATOR_META_DATA     = 0x0603,  /* NegoEx meta data from initiator */
+    TOK_TYPE_ACCEPTOR_META_DATA      = 0x0604,  /* NegoEx meta data from acceptor */
 };
 
 /* inner token types and flags */
@@ -547,6 +549,14 @@ gss_OID
 gssEapSaslNameToOid(const gss_buffer_t name);
 
 /* util_moonshot.c */
+#ifdef GSSEAP_SSP
+#define HASH_PREFIX                    "hash://server/sha1/"
+#define HASH_PREFIX_LEN                (sizeof(HASH_PREFIX) - 1)
+#else
+#define HASH_PREFIX                    "hash://server/sha256/"
+#define HASH_PREFIX_LEN                (sizeof(HASH_PREFIX) - 1)
+#endif
+
 OM_uint32
 libMoonshotResolveDefaultIdentity(OM_uint32 *minor,
                                   const gss_cred_id_t cred,
@@ -602,6 +612,23 @@ gssEapCompareName(OM_uint32 *minor,
                   gss_name_t name1,
                   gss_name_t name2,
                   int *name_equal);
+
+/* util_negoex.c */
+/* NegoEx metadata inner token types */
+#define ITOK_TYPE_INITIATOR_NAME_MD     0x00001000 /* anonymised initiator name */
+#define ITOK_TYPE_SERVER_SHA256_MD      0x00001001 /* EAP server certificate hash */
+#define ITOK_TYPE_SERVER_SUBJECT_MD     0x00001002 /* EAP server subject name */
+#define ITOK_TYPE_SERVER_CERT_MD        0x00001003 /* EAP server certificate */
+
+OM_uint32
+gssEapProbe(OM_uint32 *minor,
+            gss_const_OID mech,
+            gss_cred_id_t cred,
+            gss_ctx_id_t ctx,
+            const gss_name_t target,
+            OM_uint32 req_flags,
+            gss_const_buffer_t input_token,
+            gss_buffer_t output_token);
 
 /* util_oid.c */
 OM_uint32
@@ -677,9 +704,9 @@ enum gss_eap_state {
 #endif
     GSSEAP_STATE_ESTABLISHED    = 0x20,     /* context established */
 #ifdef GSSEAP_SSP
-    GSSEAP_STATE_MECHLIST_MIC   = 0x40,     /* make SPNEGO checksum */
+    GSSEAP_STATE_MECHLIST_MIC   = 0x100,    /* make SPNEGO checksum */
 #endif
-    GSSEAP_STATE_ALL            = 0x3F
+    GSSEAP_STATE_ALL            = 0x3F,
 };
 
 #define GSSEAP_STATE_NEXT(s)    ((s) << 1)
@@ -723,6 +750,15 @@ struct gss_eap_sm {
 
 #define SM_ITOK_FLAG_REQUIRED               0x00000001  /* received tokens must be present */
 
+struct gss_eap_sm_step_args {
+#define SM_STEP_ALLOW_EMPTY_TOKEN           0x00000001
+    struct gss_eap_sm *sm;
+    size_t smCount;
+    enum gss_eap_token_type initiatorTokType;
+    enum gss_eap_token_type acceptorTokType;
+    OM_uint32 flags;
+};
+
 OM_uint32
 gssEapSmStep(OM_uint32 *minor,
              gss_cred_id_t cred,
@@ -734,8 +770,7 @@ gssEapSmStep(OM_uint32 *minor,
              gss_channel_bindings_t chanBindings,
              gss_buffer_t inputToken,
              gss_buffer_t outputToken,
-             struct gss_eap_sm *sm,
-             size_t smCount);
+             struct gss_eap_sm_step_args *args);
 
 void
 gssEapSmTransition(gss_ctx_id_t ctx, enum gss_eap_state state);

@@ -38,11 +38,11 @@
 
 OM_uint32
 gssEapQueryMetaData(OM_uint32 *minor,
-                    gss_const_OID mech GSSEAP_UNUSED,
+                    gss_const_OID mech,
                     gss_cred_id_t cred,
                     gss_ctx_id_t *context_handle,
                     const gss_name_t name,
-                    OM_uint32 req_flags GSSEAP_UNUSED,
+                    OM_uint32 req_flags,
                     gss_buffer_t meta_data)
 {
     OM_uint32 major = GSS_S_COMPLETE;
@@ -61,20 +61,15 @@ gssEapQueryMetaData(OM_uint32 *minor,
             ctx->flags |= CTX_FLAG_INITIATOR;
     }
 
-    if (ctx->cred == GSS_C_NO_CREDENTIAL) {
-        if (isInitiator) {
-            major = gssEapResolveInitiatorCred(minor, cred,
-                                               name, &ctx->cred);
-        } else {
-            major = gssEapAcquireCred(minor,
-                                      GSS_C_NO_NAME,
-                                      GSS_C_INDEFINITE,
-                                      GSS_C_NO_OID_SET,
-                                      GSS_C_ACCEPT,
-                                      &ctx->cred,
-                                      NULL,
-                                      NULL);
-        }
+    if (ctx->cred == GSS_C_NO_CREDENTIAL && isInitiator) {
+        major = gssEapResolveInitiatorCred(minor, cred,
+                                           name, &ctx->cred);
+    }
+
+    if (major == GSS_S_COMPLETE) {
+        major = gssEapProbe(minor, mech, cred, ctx,
+                            name, req_flags,
+                            GSS_C_NO_BUFFER, meta_data);
     }
 
     if (*context_handle == GSS_C_NO_CONTEXT)

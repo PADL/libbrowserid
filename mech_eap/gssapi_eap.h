@@ -90,6 +90,14 @@ extern gss_OID GSS_EAP_CRED_SET_CRED_PRIVATE_KEY;
  */
 #define GSS_EAP_DISABLE_LOCAL_ATTRS_FLAG    0x00000001
 
+/*
+ * Credentials flag indicating that the acceptor should
+ * probe the EAP server, if requested by the initiator,
+ * for its certificate hash. This involves additional
+ * round trips to the AAA server and so can be expensive.
+ */
+#define GSS_EAP_PROBE_EAP_SERVER            0x00000002
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

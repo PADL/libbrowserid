@@ -196,19 +196,52 @@ peerEapParamNeeded(void *ctx GSSEAP_UNUSED,
 }
 
 static void
-peerNotifyCert(void *ctx GSSEAP_UNUSED,
-               int depth GSSEAP_UNUSED,
-               const char *subject GSSEAP_UNUSED,
-               const char *cert_hash GSSEAP_UNUSED,
-               const struct wpabuf *certificate GSSEAP_UNUSED)
+peerNotifyCert(void *ctx,
+               int depth,
+               const char *subject,
+               const char *cert_hash,
+               const struct wpabuf *certificate)
 {
-#ifdef GSSEAP_SSP
     gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
 
+#ifdef GSSEAP_SSP
     GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
                    L"Server Certificate[%d]: Subject \"%S\" Hash %S",
                    depth, subject, cert_hash);
 #endif
+
+    if ((gssCtx->flags & CTX_FLAG_SERVER_PROBE) && depth == 0) {
+        struct gss_eap_initiator_ctx *initCtx = &gssCtx->initiatorCtx;
+        OM_uint32 tmpMinor;
+        gss_buffer_desc certBuf;
+
+        /* Server certificate subject */
+        if (subject != NULL) {
+            gss_release_buffer(&tmpMinor, &initCtx->serverSubject);
+            makeStringBuffer(&tmpMinor, subject, &initCtx->serverSubject);
+        }
+
+        /* Server certificate hash */
+        if (cert_hash != NULL) {
+            size_t len = strlen(cert_hash);
+
+            GSSEAP_ASSERT((len & 1) == 0);
+
+            initCtx->serverHash.value = GSSEAP_MALLOC(len / 2);
+            if (initCtx->serverHash.value != NULL) {
+                initCtx->serverHash.length = len / 2;
+                hexstr2bin(cert_hash, initCtx->serverHash.value, initCtx->serverHash.length);
+            }
+        }
+
+        /* Server certificate */
+        if (certificate != NULL) {
+            gss_release_buffer(&tmpMinor, &initCtx->serverCert);
+            certBuf.length = wpabuf_len(certificate);
+            certBuf.value = (void *)wpabuf_head(certificate);
+            duplicateBuffer(&tmpMinor, &certBuf, &gssCtx->initiatorCtx.serverCert);
+        }
+    }
 }
 
 static struct eapol_callbacks gssEapPolicyCallbacks = {
@@ -1044,6 +1077,7 @@ gssEapInitSecContext(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     int initialContextToken = (ctx->mechanismUsed == GSS_C_NO_OID);
+    struct gss_eap_sm_step_args smArgs;
 
     /*
      * XXX is acquiring the credential lock here necessary? The password is
@@ -1074,6 +1108,12 @@ gssEapInitSecContext(OM_uint32 *minor,
             goto cleanup;
     }
 
+    smArgs.sm = eapGssInitiatorSm;
+    smArgs.smCount = sizeof(eapGssInitiatorSm) / sizeof(eapGssInitiatorSm[0]);
+    smArgs.initiatorTokType = TOK_TYPE_INITIATOR_CONTEXT;
+    smArgs.acceptorTokType = TOK_TYPE_ACCEPTOR_CONTEXT;
+    smArgs.flags = 0;
+
     major = gssEapSmStep(minor,
                          cred,
                          ctx,
@@ -1084,8 +1124,7 @@ gssEapInitSecContext(OM_uint32 *minor,
                          input_chan_bindings,
                          input_token,
                          output_token,
-                         eapGssInitiatorSm,
-                         sizeof(eapGssInitiatorSm) / sizeof(eapGssInitiatorSm[0]));
+                         &smArgs);
     if (GSS_ERROR(major))
         goto cleanup;
 
