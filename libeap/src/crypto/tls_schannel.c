@@ -829,7 +829,7 @@ static int tls_connection_verify(void *tls_ctx,
 cleanup:
 	if (ret != 0) {
 		schannel_tls_fail_event(global, conn, serverCert,
-					chainPolicyStatus.lChainIndex,
+					chainPolicyStatus.lElementIndex,
 					err_str, reason);
 	}
 	if (pChainContext != NULL) {
