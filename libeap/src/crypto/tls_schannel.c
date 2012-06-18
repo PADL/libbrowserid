@@ -461,12 +461,10 @@ static enum tls_fail_reason schannel_tls_fail_reason(DWORD dwError)
 	case TRUST_E_EXPLICIT_DISTRUST:
 		return TLS_FAIL_UNTRUSTED;
 	case CERT_E_MALFORMED:
-	case CERT_E_INVALID_NAME:
 	case CERT_E_WRONG_USAGE:
 	case TRUST_E_NO_SIGNER_CERT:
 	case TRUST_E_CERT_SIGNATURE:
 	case TRUST_E_BAD_DIGEST:
-	case TRUST_E_BAD_CONSTRAINTS:
 	case TRUST_E_SUBJECT_FORM_UNKNOWN:
 	case TRUST_E_NOSIGNATURE:
 		return TLS_FAIL_BAD_CERTIFICATE;
@@ -475,7 +473,7 @@ static enum tls_fail_reason schannel_tls_fail_reason(DWORD dwError)
 	}
 }
 
-static char *schannel_get_subject(PCERT_CONTEXT serverCert)
+static char *schannel_get_subject(PCCERT_CONTEXT serverCert)
 {
 	char *subject;
 	DWORD cbSize;
@@ -491,7 +489,7 @@ static char *schannel_get_subject(PCERT_CONTEXT serverCert)
 	if (cbSize <= 1)
 		return NULL;
 
-	subject = os_alloc(LPTR, (cbSize + 1) * sizeof(WCHAR));
+	subject = os_zalloc((cbSize + 1) * sizeof(WCHAR));
 	if (subject == NULL)
 		return NULL;
 
@@ -508,17 +506,19 @@ static char *schannel_get_subject(PCERT_CONTEXT serverCert)
 
 static void schannel_tls_fail_event(struct tls_global *global,
 				    struct tls_connection *conn,
-				    PCERT_CONTEXT serverCert,
-				    PCCERT_CHAIN_CONTEXT pChainContext,
+				    PCCERT_CONTEXT serverCert,
 				    LONG lDepth,
-				    const char *subject, const char *err_str,
+				    const char *err_str,
 				    enum tls_fail_reason reason)
 {
 	union tls_event_data ev;
 	struct wpabuf *cert = NULL;
+	char *subject;
 
-	if (tls_global->event_cb == NULL)
+	if (global->event_cb == NULL)
 		return;
+
+	subject = schannel_get_subject(serverCert);
 
 	cert = wpabuf_alloc_copy(serverCert->pbCertEncoded,
 				 serverCert->cbCertEncoded);
@@ -527,20 +527,20 @@ static void schannel_tls_fail_event(struct tls_global *global,
 	ev.cert_fail.reason = reason != TLS_FAIL_UNSPECIFIED ?
 		reason : schannel_tls_fail_reason(global->last_error);
 	ev.cert_fail.depth = lDepth;
-	ev.cert_fail.subject = schannel_get_subject(serverCert);
+	ev.cert_fail.subject = subject;
 	ev.cert_fail.reason_txt = err_str;
 	ev.cert_fail.cert = cert;
 
-	tls_global->event_cb(tls_global->cb_ctx, TLS_CERT_CHAIN_FAILURE, &ev);
+	global->event_cb(global->cb_ctx, TLS_CERT_CHAIN_FAILURE, &ev);
 
 	wpabuf_free(cert);
-	if (ev_peer_cert.subject != NULL)
-		os_free(ev_peer_cert.subject);
+	if (subject != NULL)
+		os_free(subject);
 }
 
 static int schannel_hash_cert(struct tls_global *global,
-			      PCERT_CONTEXT serverCert,
-			      PBYTE *ppbHash
+			      PCCERT_CONTEXT serverCert,
+			      PBYTE *ppbHash,
 			      DWORD *pcbHash)
 {
 	DWORD cbHash = 0;
@@ -582,20 +582,23 @@ static int schannel_hash_cert(struct tls_global *global,
 
 static void schannel_tls_cert_event(struct tls_global *global,
 				    struct tls_connection *conn,
-				    PCERT_CONTEXT serverCert,
+				    PCCERT_CONTEXT serverCert,
 				    LONG lDepth)
 {
 	struct wpabuf *cert = NULL;
 	union tls_event_data ev;
+	char *subject;
 	PBYTE pbHash = NULL;
 	DWORD cbHash;
 
-	if (tls_global->event_cb == NULL)
+	if (global->event_cb == NULL)
 		return;
+
+	subject = schannel_get_subject(serverCert);
 
 	os_memset(&ev, 0, sizeof(ev));
 
-	if (conn->cert_probe || tls_global->cert_in_cb) {
+	if (conn->cert_probe || global->cert_in_cb) {
 		cert = wpabuf_alloc_copy(serverCert->pbCertEncoded,
 					 serverCert->cbCertEncoded);
 		ev.peer_cert.cert = cert;
@@ -608,22 +611,22 @@ static void schannel_tls_cert_event(struct tls_global *global,
 		}
 	}
 	ev.cert_fail.depth = lDepth;
-	ev.peer_cert.subject = schannel_get_subject(serverCert);
+	ev.peer_cert.subject = subject;
 
-	tls_global->event_cb(tls_global->cb_ctx, TLS_PEER_CERTIFICATE, &ev);
+	global->event_cb(global->cb_ctx, TLS_PEER_CERTIFICATE, &ev);
 
 	wpabuf_free(cert);
 	if (pbHash != NULL)
 		os_free(pbHash);
-	if (ev_peer_cert.subject != NULL)
-		os_free(ev_peer_cert.subjecT);
+	if (subject != NULL)
+		os_free(subject);
 }
 
 static int tls_connection_verify(void *tls_ctx,
 				 struct tls_connection *conn)
 {
 	struct tls_global *global = tls_ctx;
-	enum tls_fail_reason reason reason = TLS_FAIL_UNSPECIFIED;
+	enum tls_fail_reason reason = TLS_FAIL_UNSPECIFIED;
 	const char *err_str = NULL;
 	int ret = -1, i, j;
 	SECURITY_STATUS status;
@@ -647,10 +650,10 @@ static int tls_connection_verify(void *tls_ctx,
 					SECPKG_ATTR_REMOTE_CERT_CONTEXT,
 					&serverCert);
 	if (status != SEC_E_OK) {
+		global->last_error = status;
 		wpa_printf(MSG_DEBUG, "%s: QueryContextAttributes("
 			   "SECPKG_ATTR_REMOTE_CERT_CONTEXT) failed (0x%08x)",
-			   __func__, (int) status);
-		global->last_error = status;
+			   __func__, global->last_error);
 		goto cleanup;
 	}
 
@@ -662,7 +665,8 @@ static int tls_connection_verify(void *tls_ctx,
 		PBYTE pbHash = NULL;
 		BOOLEAN bHashMatch;
 
-		if (schannel_cert_hash(global, serverCert, &pbHash, &cbHash) != 0)
+		if (schannel_hash_cert(global, serverCert,
+				       &pbHash, &cbHash) != 0)
 			goto cleanup;
 
 		if (cbHash != conn->server_cert_hash.cbData) {
@@ -671,7 +675,8 @@ static int tls_connection_verify(void *tls_ctx,
 			goto cleanup;
 		}
 
-		bHashMatch = (os_memcmp(conn->server_cert_hash.pbData, pbHash, cbHash) == 0);
+		bHashMatch = (os_memcmp(conn->server_cert_hash.pbData,
+			      pbHash, cbHash) == 0);
 		os_free(pbHash);
 
 		if (bHashMatch == FALSE) {
@@ -692,7 +697,7 @@ static int tls_connection_verify(void *tls_ctx,
 	dwFlags = CERT_CHAIN_ENABLE_PEER_TRUST;
 	if (global->check_crl) {
 		dwFlags |= conn->server_cert_only
-			? CERT_REVOCATION_CHECK_END_CERT :
+			? CERT_CHAIN_REVOCATION_CHECK_END_CERT :
 			  CERT_CHAIN_REVOCATION_CHECK_CHAIN;
 	}
 
@@ -801,12 +806,13 @@ static int tls_connection_verify(void *tls_ctx,
 	}
 
 	for (i = 0; i < pChainContext->cChain; i++) {
-		PCERT_SIMPLE_CHAIN pSimpleChain = &pChainContext->rgpChain[i];
+		PCERT_SIMPLE_CHAIN pSimpleChain = pChainContext->rgpChain[i];
 
 		for (j = 0; j < pSimpleChain->cElement; j++) {
-			PCCERT_CHAIN_ELEMENT pChain = &pSimpleChain->rgpElement[j];
+			PCCERT_CHAIN_ELEMENT pChain = pSimpleChain->rgpElement[j];
 
-			schannel_tls_cert_event(global, conn, pChain->pCertContext, j);
+			schannel_tls_cert_event(global, conn,
+						pChain->pCertContext, j);
 		}
 	}
 
