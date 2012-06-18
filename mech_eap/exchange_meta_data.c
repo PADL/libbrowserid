@@ -38,15 +38,32 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gssEapExchangeMetaData(OM_uint32 *minor,
-                       gss_const_OID mech GSSEAP_UNUSED,
-                       gss_cred_id_t cred GSSEAP_UNUSED,
-                       gss_ctx_id_t *ctx GSSEAP_UNUSED,
-                       const gss_name_t name GSSEAP_UNUSED,
-                       OM_uint32 req_flags GSSEAP_UNUSED,
-                       gss_const_buffer_t meta_data GSSEAP_UNUSED)
+                       gss_const_OID mech,
+                       gss_cred_id_t cred,
+                       gss_ctx_id_t *context_handle,
+                       const gss_name_t name,
+                       OM_uint32 req_flags,
+                       gss_const_buffer_t meta_data)
 {
-    *minor = 0;
-    return GSS_S_COMPLETE;
+    OM_uint32 major;
+    int isInitiator = (name != GSS_C_NO_NAME);
+    gss_ctx_id_t ctx = *context_handle;
+
+    if (ctx == GSS_C_NO_CONTEXT) {
+        major = gssEapAllocContext(minor, &ctx);
+        if (GSS_ERROR(major))
+            return major;
+
+        if (isInitiator)
+            ctx->flags |= CTX_FLAG_INITIATOR;
+    }
+
+    major = gssEapProbe(minor, mech, cred, ctx,
+                        name, req_flags, meta_data, GSS_C_NO_BUFFER);
+
+    *context_handle = ctx;
+
+    return major;
 }
 
 #ifndef GSSEAP_SSP
@@ -65,7 +82,7 @@ gss_exchange_meta_data(OM_uint32 *minor,
     if (cred != GSS_C_NO_CREDENTIAL)
         GSSEAP_MUTEX_LOCK(&cred->mutex);
 
-    if (*context_handle != GSS_C_NO_CONTEXT)
+    if (ctx != GSS_C_NO_CONTEXT)
         GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     major = gssEapExchangeMetaData(minor, mech, cred, &ctx,

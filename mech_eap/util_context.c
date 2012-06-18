@@ -85,7 +85,12 @@ gssEapAllocContext(OM_uint32 *minor,
 static void
 releaseInitiatorContext(struct gss_eap_initiator_ctx *ctx)
 {
+    OM_uint32 minor;
+
     eap_peer_sm_deinit(ctx->eap);
+    gss_release_buffer(&minor, &ctx->serverSubject);
+    gss_release_buffer(&minor, &ctx->serverHash);
+    gss_release_buffer(&minor, &ctx->serverCert);
 }
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR

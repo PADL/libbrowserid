@@ -880,6 +880,7 @@ gssEapAcceptSecContext(OM_uint32 *minor,
                        gss_cred_id_t *delegated_cred_handle)
 {
     OM_uint32 major, tmpMinor;
+    struct gss_eap_sm_step_args smArgs;
 
     if (cred == GSS_C_NO_CREDENTIAL) {
         if (ctx->cred == GSS_C_NO_CREDENTIAL) {
@@ -912,6 +913,12 @@ gssEapAcceptSecContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+    smArgs.sm = eapGssAcceptorSm;
+    smArgs.smCount = sizeof(eapGssAcceptorSm) / sizeof(eapGssAcceptorSm[0]);
+    smArgs.initiatorTokType = TOK_TYPE_INITIATOR_CONTEXT;
+    smArgs.acceptorTokType = TOK_TYPE_ACCEPTOR_CONTEXT;
+    smArgs.flags = 0;
+
     major = gssEapSmStep(minor,
                          cred,
                          ctx,
@@ -922,8 +929,7 @@ gssEapAcceptSecContext(OM_uint32 *minor,
                          input_chan_bindings,
                          input_token,
                          output_token,
-                         eapGssAcceptorSm,
-                         sizeof(eapGssAcceptorSm) / sizeof(eapGssAcceptorSm[0]));
+                         &smArgs);
     if (GSS_ERROR(major))
         goto cleanup;
 
