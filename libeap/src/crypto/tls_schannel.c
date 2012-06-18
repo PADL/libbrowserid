@@ -553,8 +553,9 @@ static int schannel_hash_cert(struct tls_global *global,
 					       CERT_HASH_PROP_ID,
 					       NULL,
 					       &cbHash)) {
-		if (global != NULL)
-			global->last_error = GetLastError();
+		global->last_error = GetLastError();
+		wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
+			   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
 		return -1;
 	}
 
@@ -566,8 +567,9 @@ static int schannel_hash_cert(struct tls_global *global,
 					       CERT_HASH_PROP_ID,
 					       pbHash,
 					       &cbHash)) {
-		if (global != NULL)
-			global->last_error = GetLastError();
+		global->last_error = GetLastError();
+		wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
+			   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
 		os_free(pbHash);
 		return -1;
 	}
@@ -578,7 +580,8 @@ static int schannel_hash_cert(struct tls_global *global,
 	return 0;
 }
 
-static void schannel_tls_cert_event(struct tls_connection *conn,
+static void schannel_tls_cert_event(struct tls_global *global,
+				    struct tls_connection *conn,
 				    PCERT_CONTEXT serverCert,
 				    LONG lDepth)
 {
@@ -599,7 +602,7 @@ static void schannel_tls_cert_event(struct tls_connection *conn,
 	}
 
 	if (cert != NULL) {
-		if (schannel_hash_cert(NULL, serverCert, &pbHash, &cbHash) == 0) {
+		if (schannel_hash_cert(global, serverCert, &pbHash, &cbHash) == 0) {
 			ev.peer_cert.hash = pbHash;
 			ev.peer_cert.hash_len = cbHash;
 		}
@@ -659,11 +662,8 @@ static int tls_connection_verify(void *tls_ctx,
 		PBYTE pbHash = NULL;
 		BOOLEAN bHashMatch;
 
-		if (schannel_cert_hash(global, serverCert, &pbHash, &cbHash) != 0) {
-			wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
-				   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
+		if (schannel_cert_hash(global, serverCert, &pbHash, &cbHash) != 0)
 			goto cleanup;
-		}
 
 		if (cbHash != conn->server_cert_hash.cbData) {
 			global->last_error = CRYPT_E_HASH_VALUE;
@@ -686,6 +686,9 @@ static int tls_connection_verify(void *tls_ctx,
 		sizeof(rgszUsages) / sizeof(rgszUsages[0]);
 	chainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
 
+	/*
+	 * Obtain the certificate (CA) chain for the server cert.
+	 */
 	dwFlags = CERT_CHAIN_ENABLE_PEER_TRUST;
 	if (global->check_crl) {
 		dwFlags |= conn->server_cert_only
@@ -803,7 +806,7 @@ static int tls_connection_verify(void *tls_ctx,
 		for (j = 0; j < pSimpleChain->cElement; j++) {
 			PCCERT_CHAIN_ELEMENT pChain = &pSimpleChain->rgpElement[j];
 
-			schannel_tls_cert_event(conn, pChain->pCertContext, j);
+			schannel_tls_cert_event(global, conn, pChain->pCertContext, j);
 		}
 	}
 
