@@ -202,8 +202,12 @@ peerNotifyCert(void *ctx GSSEAP_UNUSED,
                const char *cert_hash GSSEAP_UNUSED,
                const struct wpabuf *certificate GSSEAP_UNUSED)
 {
-#if 0
+#ifdef GSSEAP_SSP
     gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
+
+    GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
+                   L"Server Certificate[%d]: Subject \"%S\" Hash %S",
+                   depth, subject, cert_hash);
 #endif
 }
 
