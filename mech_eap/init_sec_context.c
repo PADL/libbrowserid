@@ -189,20 +189,22 @@ peerNotifyPending(void *ctx GSSEAP_UNUSED)
 }
 
 static void
-peerEapParamNeeded(void *ctx,
-                   enum wpa_ctrl_req_type field,
-                   const char *text)
+peerEapParamNeeded(void *ctx GSSEAP_UNUSED,
+                   enum wpa_ctrl_req_type field GSSEAP_UNUSED,
+                   const char *text GSSEAP_UNUSED)
 {
 }
 
 static void
-peerNotifyCert(void *ctx,
-               int depth,
-               const char *subject,
-               const char *cert_hash,
-               const struct wpabuf *certificate)
+peerNotifyCert(void *ctx GSSEAP_UNUSED,
+               int depth GSSEAP_UNUSED,
+               const char *subject GSSEAP_UNUSED,
+               const char *cert_hash GSSEAP_UNUSED,
+               const struct wpabuf *certificate GSSEAP_UNUSED)
 {
+#if 0
     gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
+#endif
 }
 
 static struct eapol_callbacks gssEapPolicyCallbacks = {
