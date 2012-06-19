@@ -17,7 +17,7 @@
 #define CLIENT_HASH_PREFIX              "hash://"
 #define CLIENT_HASH_PREFIX_LEN          (sizeof(CLIENT_HASH_PREFIX) - 1)
 
-#define HASH_PREFIX                     HASH_PREFIX "server/sha256/"
+#define HASH_PREFIX                     "hash://server/sha256/"
 #define HASH_PREFIX_LEN                 (sizeof(HASH_PREFIX) - 1)
 
 #define CERT_STORE_PREFIX              "cert_store://"
