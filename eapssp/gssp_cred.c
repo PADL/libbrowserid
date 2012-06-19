@@ -14,11 +14,11 @@
     (((Flags) & SEC_WINNT_AUTH_IDENTITY_ANSI) || \
      ((Flags) & SEC_WINNT_AUTH_IDENTITY_UNICODE))
 
-#define HASH_PREFIX                    "hash://"
-#define HASH_PREFIX_LEN                (sizeof(HASH_PREFIX) - 1)
+#define CLIENT_HASH_PREFIX              "hash://"
+#define CLIENT_HASH_PREFIX_LEN          (sizeof(CLIENT_HASH_PREFIX) - 1)
 
-#define SERVER_HASH_PREFIX             HASH_PREFIX "server/sha256/"
-#define SERVER_HASH_PREFIX_LEN         (sizeof(SERVER_HASH_PREFIX) - 1)
+#define HASH_PREFIX                     HASH_PREFIX "server/sha256/"
+#define HASH_PREFIX_LEN                 (sizeof(HASH_PREFIX) - 1)
 
 #define CERT_STORE_PREFIX              "cert_store://"
 #define CERT_STORE_PREFIX_LEN          (sizeof(CERT_STORE_PREFIX) - 1)
@@ -1168,7 +1168,7 @@ SetClientCertificate(
 {
     PCERT_CREDENTIAL_INFO pCertCredInfo;
     CRED_MARSHAL_TYPE CredType;
-    char CertHashData[HASH_PREFIX_LEN + 2 * CERT_HASH_LENGTH + 1] = HASH_PREFIX;
+    char CertHashData[CLIENT_HASH_PREFIX_LEN + 2 * CERT_HASH_LENGTH + 1] = CLIENT_HASH_PREFIX;
     gss_buffer_desc GssCertHash;
     OM_uint32 Major;
 
@@ -1189,14 +1189,12 @@ SetClientCertificate(
 
     GetClientCertificateSubject(pCertCredInfo, &GssCred->name);
 
-    RtlCopyMemory(CertHashData, HASH_PREFIX, HASH_PREFIX_LEN);
-
-    wpa_snprintf_hex(&CertHashData[HASH_PREFIX_LEN],
-                     sizeof(CertHashData) - HASH_PREFIX_LEN,
+    wpa_snprintf_hex(&CertHashData[CLIENT_HASH_PREFIX_LEN],
+                     sizeof(CertHashData) - CLIENT_HASH_PREFIX_LEN,
                      pCertCredInfo->rgbHashOfCert,
                      CERT_HASH_LENGTH);
 
-    GssCertHash.length = HASH_PREFIX_LEN + 2 * CERT_HASH_LENGTH;
+    GssCertHash.length = CLIENT_HASH_PREFIX_LEN + 2 * CERT_HASH_LENGTH;
     GssCertHash.value = CertHashData;
 
     Major = gssEapSetCredClientCertificate(Minor, GssCred,
@@ -1240,16 +1238,16 @@ CMAttrSetServerCertHash(
     OM_uint32 Minor;
 
     /* Server certificate SHA-1 hash */
-    cchHash = SERVER_HASH_PREFIX_LEN + (2 * Attribute->ValueSize);
+    cchHash = HASH_PREFIX_LEN + (2 * Attribute->ValueSize);
 
     Status = GsspAlloc(cchHash + 1, &szHash);
     if (Status != STATUS_SUCCESS)
         return Status;
 
-    RtlCopyMemory(szHash, SERVER_HASH_PREFIX, SERVER_HASH_PREFIX_LEN);
+    RtlCopyMemory(szHash, HASH_PREFIX, HASH_PREFIX_LEN);
 
-    wpa_snprintf_hex(&szHash[SERVER_HASH_PREFIX_LEN],
-                     cchHash + 1 - SERVER_HASH_PREFIX_LEN,
+    wpa_snprintf_hex(&szHash[HASH_PREFIX_LEN],
+                     cchHash + 1 - HASH_PREFIX_LEN,
                      Attribute->Value,
                      Attribute->ValueSize);
 
