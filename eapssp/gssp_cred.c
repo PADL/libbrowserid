@@ -20,8 +20,8 @@
 #define HASH_PREFIX                     "hash://server/sha256/"
 #define HASH_PREFIX_LEN                 (sizeof(HASH_PREFIX) - 1)
 
-#define CERT_STORE_PREFIX              "cert_store://"
-#define CERT_STORE_PREFIX_LEN          (sizeof(CERT_STORE_PREFIX) - 1)
+#define CERT_STORE_PREFIX               "cert_store://"
+#define CERT_STORE_PREFIX_LEN           (sizeof(CERT_STORE_PREFIX) - 1)
 
 VOID
 GsspCredAddRef(gss_cred_id_t GssCred)
