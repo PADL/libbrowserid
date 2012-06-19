@@ -86,7 +86,7 @@ SpQueryMetaData(
     GsspContextAddRefAndLock(GssContext);
 
     Major = gssEapQueryMetaData(&Minor,
-                                GSS_C_NO_OID,
+                                GssMech,
                                 GssCred,
                                 &GssContext,
                                 GssTargetName,
