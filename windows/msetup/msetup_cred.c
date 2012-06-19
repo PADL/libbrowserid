@@ -365,6 +365,11 @@ UpdateExistingCred(
         if (dwResult != ERROR_SUCCESS)
             goto cleanup;
 
+        if (Credential.Attributes[iAttr].ValueSize > CRED_MAX_VALUE_SIZE) {
+            dwResult = ERROR_BAD_LENGTH;
+            goto cleanup;
+        }
+
 #ifdef DEBUG
         fwprintf(stderr, L"Set attribute %s length %u\n",
                  Credential.Attributes[iAttr].Keyword,
