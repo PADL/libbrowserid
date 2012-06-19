@@ -59,8 +59,12 @@ eapNegoSmInitInitiatorName(OM_uint32 *minor,
         return GSS_S_BAD_NAME;
     }
 
+#ifdef GSSEAP_SSP
+    ctx->cred->flags |= GSS_EAP_PROBE_EAP_SERVER;
+#else
     if (getenv("GSSEAP_PROBE"))
         ctx->cred->flags |= GSS_EAP_PROBE_EAP_SERVER;
+#endif
 
     /*
      * If the context is already associated with a certificate or server
@@ -512,7 +516,11 @@ gssEapProbe(OM_uint32 *minor,
     smArgs.acceptorTokType  = TOK_TYPE_ACCEPTOR_META_DATA;
     smArgs.flags            = SM_STEP_ALLOW_EMPTY_TOKEN;
 
-    ctx->mechanismUsed = (gss_OID)mech;
+    /*
+     * Select a mechanism so we can emit a token.
+     */
+    ctx->mechanismUsed = (mech != GSS_C_NO_OID)
+        ? (gss_OID)mech : GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM;
     ctx->state = CTX_IS_INITIATOR(ctx) ^ exchangeMetaData
                  ? GSSEAP_STATE_INITIAL : GSSEAP_STATE_AUTHENTICATE;
 
