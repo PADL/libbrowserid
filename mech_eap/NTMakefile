@@ -33,6 +33,7 @@ libmech_eap_OBJS =    					\
 	$(OBJ)\util_lucid.obj				\
 	$(OBJ)\util_mech.obj				\
 	$(OBJ)\util_name.obj				\
+	$(OBJ)\util_negoex.obj				\
 	$(OBJ)\util_oid.obj				\
 	$(OBJ)\util_ordering.obj			\
 	$(OBJ)\util_sm.obj				\
