@@ -499,14 +499,6 @@ static struct _MS_CMD_OPTION {
     {
         L"/SetCredCACert",
         L"<TargetName> <NAI> [<CertFile>]"
-#if 0
-        /*
-         * This is an implementation detail we probably don't want to expose
-         */
-        L"| \n               <TargetName> <NAI> cert_store://<CertStore>\n"
-        L"               <TargetName> <NAI> hash://server/sha1/<Hash>\n"
-#endif
-        ,
         L"\tBinds/unbinds a certificate to a stored credential\n",
         FLAG_NO_KEY,
         DoSetCredCACert

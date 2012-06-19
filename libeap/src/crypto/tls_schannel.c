@@ -549,13 +549,16 @@ static int schannel_hash_cert(struct tls_global *global,
 	*ppbHash = NULL;
 	*pcbHash = 0;
 
-	if (!CertGetCertificateContextProperty(serverCert,
-					       CERT_HASH_PROP_ID,
-					       NULL,
-					       &cbHash)) {
+	if (!CryptHashCertificate(serverCert,
+				  CALG_SHA_256,
+				  0,
+				  serverCert->pbCertEncoded,
+				  serverCert->cbCertEncoded,
+				  NULL,
+				  &cbHash)) {
 		global->last_error = GetLastError();
-		wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
-			   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
+		wpa_printf(MSG_DEBUG, "%s: CryptHashCertificate"
+			   "failed", __func__, global->last_error);
 		return -1;
 	}
 
@@ -563,13 +566,16 @@ static int schannel_hash_cert(struct tls_global *global,
 	if (pbHash == NULL)
 		return -1;
 
-	if (!CertGetCertificateContextProperty(serverCert,
-					       CERT_HASH_PROP_ID,
-					       pbHash,
-					       &cbHash)) {
+	if (!CryptHashCertificate(serverCert,
+				  CALG_SHA_256,
+				  0,
+				  serverCert->pbCertEncoded,
+				  serverCert->cbCertEncoded,
+				  pbHash,
+				  &cbHash)) {
 		global->last_error = GetLastError();
-		wpa_printf(MSG_DEBUG, "%s: CertGetCertificateContextProperty("
-			   "CERT_HASH_PROP_ID) failed", __func__, global->last_error);
+		wpa_printf(MSG_DEBUG, "%s: CryptHashCertificate failed"
+			   __func__, global->last_error);
 		os_free(pbHash);
 		return -1;
 	}
