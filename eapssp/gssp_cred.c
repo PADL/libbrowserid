@@ -1189,6 +1189,8 @@ SetClientCertificate(
 
     GetClientCertificateSubject(pCertCredInfo, &GssCred->name);
 
+    RtlCopyMemory(CertHashData, HASH_PREFIX, HASH_PREFIX_LEN);
+
     wpa_snprintf_hex(&CertHashData[HASH_PREFIX_LEN],
                      sizeof(CertHashData) - HASH_PREFIX_LEN,
                      pCertCredInfo->rgbHashOfCert,
