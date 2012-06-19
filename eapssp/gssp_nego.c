@@ -40,6 +40,7 @@ SpQueryMetaData(
     gss_ctx_id_t GssContext = (gss_ctx_id_t)*ContextHandle;
     gss_name_t GssTargetName = GSS_C_NO_NAME;
     gss_buffer_desc GssMetaData = GSS_C_EMPTY_BUFFER;
+    gss_OID GssMech = GSS_C_NO_OID;
 
     *MetaDataLength = 0;
     *MetaData = NULL;
@@ -54,6 +55,8 @@ SpQueryMetaData(
         Status = GsspCredAddRefAndLock(GssCred);
         if (Status != STATUS_SUCCESS)
             return Status;
+
+        GssMech = gssEapPrimaryMechForCred(GssCred);
     }
 
     /* Credential is now locked, if present. */
