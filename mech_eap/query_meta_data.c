@@ -55,7 +55,7 @@ gssEapQueryMetaData(OM_uint32 *minor,
     if (ctx == GSS_C_NO_CONTEXT) {
         major = gssEapAllocContext(minor, &ctx);
         if (GSS_ERROR(major))
-            return major;
+            goto cleanup;
 
         if (isInitiator)
             ctx->flags |= CTX_FLAG_INITIATOR;
@@ -64,13 +64,17 @@ gssEapQueryMetaData(OM_uint32 *minor,
     if (ctx->cred == GSS_C_NO_CREDENTIAL && isInitiator) {
         major = gssEapResolveInitiatorCred(minor, cred,
                                            name, &ctx->cred);
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
 
-    if (major == GSS_S_COMPLETE) {
-        major = gssEapProbe(minor, mech, cred, ctx,
-                            name, req_flags,
-                            GSS_C_NO_BUFFER, meta_data);
-    }
+    major = gssEapProbe(minor, mech, cred, ctx,
+                        name, req_flags,
+                        GSS_C_NO_BUFFER, meta_data);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
 
     if (*context_handle == GSS_C_NO_CONTEXT)
         *context_handle = ctx;
