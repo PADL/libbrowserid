@@ -519,8 +519,7 @@ gssEapProbe(OM_uint32 *minor,
     /*
      * Select a mechanism so we can emit a token.
      */
-    ctx->mechanismUsed = (mech != GSS_C_NO_OID)
-        ? (gss_OID)mech : GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM;
+    ctx->mechanismUsed = mech;
     ctx->state = CTX_IS_INITIATOR(ctx) ^ exchangeMetaData
                  ? GSSEAP_STATE_INITIAL : GSSEAP_STATE_AUTHENTICATE;
 
