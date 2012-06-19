@@ -96,55 +96,36 @@ FindCertBySubject(
 }
 
 static DWORD
-MsSetCredServerCert(LPWSTR TargetName,
+MsSetCredServerHash(LPWSTR TargetName,
                     LPWSTR UserName,
-                    LPWSTR CertName,
+                    LPWSTR CertHash,
                     PCREDENTIAL_ATTRIBUTE Attribute,
                     BOOLEAN *pbFreeAttrValue)
 {
-    HCERTSTORE cs = NULL;
-    PCCERT_CONTEXT cc = NULL;
-    DWORD dwResult;
+    DWORD dwLength;
+    DWORD i;
 
-    dwResult = FindCertBySubject(L"MY", CertName, &cs, &cc);
-#if 0
-    if (dwResult == CRYPT_E_NOT_FOUND)
-        dwResult = FindCertBySubject(L"TrustedPeople", CertName, &cs, &cc);
-#endif
-    if (dwResult != ERROR_SUCCESS)
-        goto cleanup;
+    dwLength = wcslen(CertHash) + 1;
+    if (dwLength % 3)
+        return ERROR_BAD_LENGTH;
 
-    CertGetCertificateContextProperty(cc, CERT_HASH_PROP_ID,
-                                      NULL, &Attribute->ValueSize);
-    if (Attribute->ValueSize == 0) {
-        dwResult = GetLastError();
-        goto cleanup;
-    }
-
+    Attribute->ValueSize = dwLength / 3;
     Attribute->Value = LocalAlloc(LPTR, Attribute->ValueSize);
-    if (Attribute->Value == NULL) {
-        dwResult = GetLastError();
-        goto cleanup;
-    }
+    if (Attribute->Value == NULL)
+        return GetLastError();
 
     *pbFreeAttrValue = TRUE;
 
-    if (!CertGetCertificateContextProperty(cc, CERT_HASH_PROP_ID,
-                                           Attribute->Value,
-                                           &Attribute->ValueSize)) {
-        dwResult = GetLastError();
-        goto cleanup;
+    for (i = 0; i < Attribute->ValueSize; i++) {
+        int iByte;
+
+        if (_snwscanf(&CertHash[3 * i], 3, L"%02x", &iByte) != 1)
+            return ERROR_BAD_FORMAT;
+
+        Attribute->Value[i] = iByte & 0xFF;
     }
 
-    dwResult = ERROR_SUCCESS;
-
-cleanup:
-    if (cs != NULL)
-        CertCloseStore(cs, 0);
-    if (cc != NULL)
-        CertFreeCertificateContext(cc);
-
-    return dwResult;
+    return ERROR_SUCCESS;
 }
 
 static DWORD
@@ -161,7 +142,7 @@ MsGetCredServerHash(LPWSTR TargetName,
         return GetLastError();
 
     for (i = 0; i < Attribute->ValueSize; i++) {
-        _snwprintf(&szHash[i * 2], 4, L"%02x", Attribute->Value[i]);
+        _snwprintf(&szHash[i * 2], 4, L"%02x:", Attribute->Value[i]);
     }
     szHash[i * 2] = 0;
 
@@ -307,7 +288,7 @@ static struct _MS_CRED_ATTR_HANDLER {
     {
         L"Moonshot_ServerCertificateHash",
         L"Server fingerprint",
-        MsSetCredServerCert,
+        MsSetCredServerHash,
         MsGetCredServerHash,
     },
     {

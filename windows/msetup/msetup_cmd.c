@@ -346,9 +346,9 @@ DoSetCredCACert(HKEY hSspKey, int argc, WCHAR *argv[])
 }
 
 static DWORD
-DoSetCredServerCert(HKEY hSspKey, int argc, WCHAR *argv[])
+DoSetCredServerHash(HKEY hSspKey, int argc, WCHAR *argv[])
 {
-    return DoSetCredAttr(MS_CRED_ATTR_SERVER_CERT, argc, argv);
+    return DoSetCredAttr(MS_CRED_ATTR_SERVER_HASH, argc, argv);
 }
 
 static DWORD
@@ -510,12 +510,12 @@ static struct _MS_CMD_OPTION {
         DoSetCredCACert
     },
     {
-        L"/SetCredServerCert",
-        L"<TargetName> <NAI> [<ServerCert>]",
-        L"\tBinds/unbinds a server certificate to a stored credential\n"
+        L"/SetCredServerHash",
+        L"<TargetName> <NAI> [<ServerHash>]",
+        L"\tBinds/unbinds a server fingerprint to a stored credential\n"
         L"\t(This is mutually exclusive with /SetCredCACert)\n",
         FLAG_NO_KEY,
-        DoSetCredServerCert
+        DoSetCredServerHash
     },
     {
         L"/SetCredSubjectName",
