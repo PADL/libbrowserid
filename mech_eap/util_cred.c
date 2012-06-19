@@ -241,13 +241,14 @@ cleanup:
 gss_OID
 gssEapPrimaryMechForCred(gss_cred_id_t cred)
 {
-    gss_OID nameMech = GSS_C_NO_OID;
+    gss_OID credMech = GSS_C_NO_OID;
 
-    if (cred->mechanisms != GSS_C_NO_OID_SET &&
+    if (cred != GSS_C_NO_CREDENTIAL &&
+        cred->mechanisms != GSS_C_NO_OID_SET &&
         cred->mechanisms->count == 1)
-        nameMech = &cred->mechanisms->elements[0];
+        credMech = &cred->mechanisms->elements[0];
 
-    return nameMech;
+    return credMech;
 }
 
 OM_uint32
