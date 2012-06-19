@@ -498,7 +498,7 @@ static struct _MS_CMD_OPTION {
     },
     {
         L"/SetCredCACert",
-        L"<TargetName> <NAI> [<CertFile>]"
+        L"<TargetName> <NAI> [<CertFile>]",
         L"\tBinds/unbinds a certificate to a stored credential\n",
         FLAG_NO_KEY,
         DoSetCredCACert

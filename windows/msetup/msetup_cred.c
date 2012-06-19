@@ -104,12 +104,22 @@ MsSetCredServerHash(LPWSTR TargetName,
 {
     DWORD dwLength;
     DWORD i;
+    BOOLEAN bColonSeparated;
 
-    dwLength = wcslen(CertHash) + 1;
-    if (dwLength % 3)
-        return ERROR_BAD_LENGTH;
+    bColonSeparated = (wcschr(CertHash, ':') != NULL);
 
-    Attribute->ValueSize = dwLength / 3;
+    if (bColonSeparated) {
+        dwLength = wcslen(CertHash) + 1;
+        if (dwLength % 3)
+            return ERROR_BAD_LENGTH;
+        Attribute->ValueSize = dwLength / 3;
+    } else {
+        dwLength = wcslen(CertHash);
+        if (dwLength % 2)
+            return ERROR_BAD_LENGTH;
+        Attribute->ValueSize = dwLength / 2;
+    }
+
     Attribute->Value = LocalAlloc(LPTR, Attribute->ValueSize);
     if (Attribute->Value == NULL)
         return GetLastError();
@@ -117,9 +127,9 @@ MsSetCredServerHash(LPWSTR TargetName,
     *pbFreeAttrValue = TRUE;
 
     for (i = 0; i < Attribute->ValueSize; i++) {
-        int iByte;
+        int iByte, iChar = bColonSeparated ? 3 : 2;
 
-        if (_snwscanf(&CertHash[3 * i], 3, L"%02x", &iByte) != 1)
+        if (_snwscanf(&CertHash[i * iChar], iChar, L"%02x", &iByte) != 1)
             return ERROR_BAD_FORMAT;
 
         Attribute->Value[i] = iByte & 0xFF;
