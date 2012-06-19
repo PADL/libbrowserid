@@ -50,7 +50,7 @@ LsaApInitializePackage(
     LsaAuthenticationPackageId = AuthenticationPackageId;
     LsaDispatchTable = DispatchTable;
 
-    Status = GsspStringToLsaString(EAP_AES256_PACKAGE_NAME_A,
+    Status = GsspStringToLsaString(EAP_AES128_PACKAGE_NAME_A,
                                    AuthenticationPackageName);
     GSSP_BAIL_ON_ERROR(Status);
 
@@ -267,7 +267,7 @@ GsspInitAcceptSecContext(
                                     &InitiatorTime,
                                     &MappedContext,
                                     NULL, /* ContextData */
-                                    GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM);
+                                    GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM);
         if (Status != SEC_E_OK && Status != SEC_I_CONTINUE_NEEDED)
             goto cleanup;
 
