@@ -549,7 +549,7 @@ static int schannel_hash_cert(struct tls_global *global,
 	*ppbHash = NULL;
 	*pcbHash = 0;
 
-	if (!CryptHashCertificate(serverCert,
+	if (!CryptHashCertificate((HCRYPTPROV_LEGACY)0,
 				  CALG_SHA_256,
 				  0,
 				  serverCert->pbCertEncoded,
@@ -566,7 +566,7 @@ static int schannel_hash_cert(struct tls_global *global,
 	if (pbHash == NULL)
 		return -1;
 
-	if (!CryptHashCertificate(serverCert,
+	if (!CryptHashCertificate((HCRYPTPROV_LEGACY)0,
 				  CALG_SHA_256,
 				  0,
 				  serverCert->pbCertEncoded,
