@@ -155,7 +155,6 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
     char *subjectNameConstraint = NULL;
     char *subjectAltNameConstraint = NULL;
     MoonshotError *error = NULL;
-    size_t serverCertificateHashLen;
 
     if (cred->name != GSS_C_NO_NAME) {
         major = gssEapExportName(minor, cred->name, &initiator);
@@ -207,12 +206,10 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
     if (!stringEmpty(serverCertificateHash)) {
         size_t len = strlen(serverCertificateHash);
 
-    if (serverCertificateHashLen != 0) {
         #define HASH_PREFIX             "hash://server/sha256/"
         #define HASH_PREFIX_LEN         (sizeof(HASH_PREFIX) - 1)
 
-        cred->caCertificate.value = GSSEAP_MALLOC(HASH_PREFIX_LEN +
-                                                  serverCertificateHashLen + 1);
+        cred->caCertificate.value = GSSEAP_MALLOC(HASH_PREFIX_LEN + len + 1);
         if (cred->caCertificate.value == NULL) {
             major = GSS_S_FAILURE;
             *minor = ENOMEM;
@@ -220,10 +217,9 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
         }
 
         memcpy(cred->caCertificate.value, HASH_PREFIX, HASH_PREFIX_LEN);
-        memcpy((char *)cred->caCertificate.value + HASH_PREFIX_LEN,
-               serverCertificateHash, serverCertificateHashLen);
+        memcpy((char *)cred->caCertificate.value + HASH_PREFIX_LEN, serverCertificateHash, len);
 
-        ((char *)cred->caCertificate.value)[HASH_PREFIX_LEN + serverCertificateHashLen] = '\0';
+        ((char *)cred->caCertificate.value)[HASH_PREFIX_LEN + len] = '\0';
 
         cred->caCertificate.length = HASH_PREFIX_LEN + len;
     } else if (!stringEmpty(caCertificate)) {
