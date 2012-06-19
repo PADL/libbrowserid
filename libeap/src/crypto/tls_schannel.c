@@ -39,12 +39,12 @@ struct tls_global {
 struct tls_connection {
 	int established, start;
 	int failed, read_alerts, write_alerts;
+	BYTE srv_cert_hash[32];
 
 	CERT_NAME_BLOB subject_match;
 	LPSTR altsubject_match;
 	HCERTSTORE client_cert_store;
 	HCERTSTORE server_cert_store;
-	CRYPT_HASH_BLOB server_cert_hash;
 	SCHANNEL_CRED schannel_cred;
 	ALG_ID algs[2];
 	PCCERT_CONTEXT cert_context;
@@ -112,8 +112,6 @@ void tls_connection_deinit(void *ssl_ctx, struct tls_connection *conn)
 		CertCloseStore(conn->client_cert_store, 0);
 	if (conn->server_cert_store)
 		CertCloseStore(conn->server_cert_store, 0);
-	if (conn->server_cert_hash.pbData)
-		os_free(conn->server_cert_hash.pbData);
 	os_free(conn);
 }
 
@@ -321,7 +319,7 @@ static int tls_connection_set_subject_match(struct tls_connection *conn,
  *	cert_store://<store>		Use Windows certificate store <store>;
  *					if that is absent, use personal store
  *
- *	hash://server/sha1/<hash>	Match certificate in personal store
+ *	hash://server/sha256/<hash>	Match certificate in personal store
  *					with the specified hash
  *
  *	<filename>			Open store from specified PEM file
@@ -359,38 +357,29 @@ static int tls_connection_ca_cert(void *tls_ctx, struct tls_connection *conn,
 				   CERT_SYSTEM_STORE_CURRENT_USER,
 				   pos);
 	} else if (ca_cert != NULL &&
-		   os_strncmp(ca_cert, "hash://server/sha1/", 19) == 0) {
-		size_t len;
-		u8 *certhash;
+		   os_strncmp(ca_cert, "hash://", 7) == 0) {
+		const char *pos = ca_cert + 7;
 
-		pos = ca_cert + 19;
-		len = os_strlen(pos);
-
-		certhash = os_malloc(len / 2);
-		if (certhash == NULL) {
-			global->last_error = GetLastError();
+		if (os_strncmp(pos, "server/sha256/", 14) != 0) {
+			wpa_printf(MSG_DEBUG, "SChannel: Unsupported ca_cert "
+				   "hash value '%s'", ca_cert);
 			return -1;
 		}
-
-		if (hexstr2bin(pos, certhash, len / 2)) {
-			os_free(certhash);
-			wpa_printf(MSG_DEBUG, "SChannel: Invalid hash "
+		pos += 14;
+		if (os_strlen(pos) != 32 * 2) {
+			wpa_printf(MSG_DEBUG, "SChannel: Unexpected SHA256 "
+				   "hash length in ca_cert '%s'", ca_cert);
+			return -1;
+		}
+		if (hexstr2bin(pos, conn->srv_cert_hash, 32) < 0) {
+			wpa_printf(MSG_DEBUG, "SChannel: Invalid SHA256 hash "
 				   "value in ca_cert '%s'", ca_cert);
 			return -1;
 		}
-
-		if (conn->server_cert_hash.pbData != NULL)
-			os_free(conn->server_cert_hash.pbData);
-		conn->server_cert_hash.cbData = len / 2;
-		conn->server_cert_hash.pbData = certhash;
 		conn->server_cert_only = 1;
-
-		cs = CertOpenStore(CERT_STORE_PROV_SYSTEM,
-				   X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-				   (HCRYPTPROV_LEGACY)0,
-				   CERT_SYSTEM_STORE_CURRENT_USER,
-				   "MY");
-		/* Actual hash value is verified later */
+		wpa_printf(MSG_DEBUG, "SChannel: Checking only server "
+			   "certificate match");
+		return 0;
 	} else if (ca_cert != NULL) {
 		cs = CertOpenStore(CERT_STORE_PROV_FILENAME,
 				   X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
@@ -675,14 +664,13 @@ static int tls_connection_verify(void *tls_ctx,
 				       &pbHash, &cbHash) != 0)
 			goto cleanup;
 
-		if (cbHash != conn->server_cert_hash.cbData) {
+		if (cbHash != sizeof(conn->srv_cert_hash)) {
 			global->last_error = CRYPT_E_HASH_VALUE;
 			os_free(pbHash);
 			goto cleanup;
 		}
 
-		bHashMatch = (os_memcmp(conn->server_cert_hash.pbData,
-			      pbHash, cbHash) == 0);
+		bHashMatch = (os_memcmp(conn->srv_cert_hash, pbHash, cbHash) == 0);
 		os_free(pbHash);
 
 		if (bHashMatch == FALSE) {
