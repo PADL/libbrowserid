@@ -59,8 +59,12 @@ eapNegoSmInitInitiatorName(OM_uint32 *minor,
         return GSS_S_BAD_NAME;
     }
 
+#ifdef GSSEAP_SSP
+    ctx->cred->flags |= GSS_EAP_PROBE_EAP_SERVER;
+#else
     if (getenv("GSSEAP_PROBE"))
         ctx->cred->flags |= GSS_EAP_PROBE_EAP_SERVER;
+#endif
 
     /*
      * If the context is already associated with a certificate or server
@@ -497,6 +501,21 @@ gssEapProbe(OM_uint32 *minor,
         }
     }
 
+    /*
+     * We need a mechanism to generate and validate correct token headers.
+     */
+    if (mech == GSS_C_NO_OID) {
+        mech = gssEapPrimaryMechForCred(CTX_IS_INITIATOR(ctx)
+                                        ? ctx->cred : cred);
+    }
+
+    major = gssEapCanonicalizeOid(minor,
+                                  (gss_OID)mech,
+                                  OID_FLAG_NULL_VALID | OID_FLAG_MAP_NULL_TO_DEFAULT_MECH,
+                                  &ctx->mechanismUsed);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
     if (output_token == GSS_C_NO_BUFFER)
         output_token = &buffer;
 
@@ -512,7 +531,6 @@ gssEapProbe(OM_uint32 *minor,
     smArgs.acceptorTokType  = TOK_TYPE_ACCEPTOR_META_DATA;
     smArgs.flags            = SM_STEP_ALLOW_EMPTY_TOKEN;
 
-    ctx->mechanismUsed = (gss_OID)mech;
     ctx->state = CTX_IS_INITIATOR(ctx) ^ exchangeMetaData
                  ? GSSEAP_STATE_INITIAL : GSSEAP_STATE_AUTHENTICATE;
 
@@ -528,7 +546,6 @@ gssEapProbe(OM_uint32 *minor,
                          output_token,
                          &smArgs);
 
-    ctx->mechanismUsed = GSS_C_NO_OID;
     ctx->state = oldState;
 
     GSSEAP_ASSERT(major == GSS_S_COMPLETE || !CTX_IS_ESTABLISHED(ctx));
@@ -536,6 +553,7 @@ gssEapProbe(OM_uint32 *minor,
 cleanup:
     if (GSS_ERROR(major))
         gss_release_buffer(&tmpMinor, output_token);
+    gssEapReleaseOid(&tmpMinor, &ctx->mechanismUsed);
 
     /* squash GSS_C_CONTINUE_NEEDED as mechglue will treat that as an error */
 
