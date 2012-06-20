@@ -435,6 +435,7 @@ extern SECPKG_PARAMETERS SpParameters;
 #define GSSP_FLAG_FORCE_KERB_RPCID  0x00000010  /* Fake RpcID for Exchange */
 #define GSSP_FLAG_LOGON             0x00000020  /* Support interactive logon */
 #define GSSP_FLAG_LOGON_CREDS       0x00000040  /* Store domain logon credentials */
+#define GSSP_FLAG_SERVER_PROBE      0x00000100  /* Server probe */
 #define GSSP_FLAG_REG_MASK          0x0000FFFF  /* Settable through registry */
 
 /*

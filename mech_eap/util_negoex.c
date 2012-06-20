@@ -60,11 +60,11 @@ eapNegoSmInitInitiatorName(OM_uint32 *minor,
     }
 
 #ifdef GSSEAP_SSP
-    ctx->cred->flags |= GSS_EAP_PROBE_EAP_SERVER;
+    if (GsspFlags & GSSP_FLAG_SERVER_PROBE)
 #else
     if (getenv("GSSEAP_PROBE"))
-        ctx->cred->flags |= GSS_EAP_PROBE_EAP_SERVER;
 #endif
+        ctx->cred->flags |= GSS_EAP_PROBE_EAP_SERVER;
 
     /*
      * If the context is already associated with a certificate or server
