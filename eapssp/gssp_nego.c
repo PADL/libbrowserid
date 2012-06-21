@@ -498,8 +498,31 @@ GsspSetNegoExCred(gss_cred_id_t GssCred,
     return Status;
 }
 
+#if 0
+static NTSTATUS
+PersistServerHash(gss_ctx_id_t GssContext)
+{
+}
+#endif
+
+static NTSTATUS
+AcceptServerHash(gss_ctx_id_t GssContext)
+{
+    OM_uint32 Minor;
+    NTSTATUS Status;
+
+    Status = GsspCredSetServerCertHash(GssContext->cred,
+                                       &GssContext->initiatorCtx.serverHash);
+
+    if (Status == STATUS_SUCCESS)
+        GsspReleaseBuffer(&Minor, &GssContext->initiatorCtx.serverHash);
+
+    return Status;
+}
+
 NTSTATUS
-GsspQueryContextCredInfo(gss_ctx_id_t GssContext,
+GsspQueryContextCredInfo(
+    gss_ctx_id_t GssContext,
     ULONG ContextAttribute,
     PVOID Buffer)
 {
@@ -515,7 +538,12 @@ GsspQueryContextCredInfo(gss_ctx_id_t GssContext,
     CredInfo->CredClass = SecPkgCredClass_PersistedSpecific;
     CredInfo->IsPromptingNeeded = 0;
 
-    if (!GsspIsCredResolved(GssContext->cred)) {
+    /*
+     * If server probing returned a certificate hash (fingerprint), then
+     * we want to present that to the user.
+     */
+    if (!GsspIsCredResolved(GssContext->cred) ||
+        (0 && GssContext->initiatorCtx.serverHash.length)) {
         CredInfo->IsPromptingNeeded = 1;
         return STATUS_SUCCESS;
     }
@@ -524,29 +552,75 @@ GsspQueryContextCredInfo(gss_ctx_id_t GssContext,
 }
 
 static NTSTATUS
-CopyCredUIContextToClient(
-    PSEC_WINNT_CREDUI_CONTEXT_VECTOR CredUIContext,
-    PULONG FlatCredUIContextLength,
-    PUCHAR* FlatCredUIContext)
-{
-}
-
-/*
- * We can in theory use this to preset a list of server certificates for
- * leap of faith authentication.
- */
-static NTSTATUS
-GsspMakeCredUIContext(
-    gss_ctx_id_t GssContext,
-    PSEC_WINNT_CREDUI_CONTEXT_VECTOR *ppCredUIContext)
+BufferToWideHexString(gss_buffer_t Buffer, LPWSTR *pszOut)
 {
     NTSTATUS Status;
+    LPWSTR szHex;
+    DWORD i;
 
-    GsspContextAddRefAndLock(GssContext);
+    Status = GsspAlloc(3 * Buffer->length * sizeof(WCHAR), &szHex);
+    if (Status != STATUS_SUCCESS)
+        return Status;
 
-    Status = SEC_E_UNSUPPORTED_FUNCTION;
+    for (i = 0; i < Buffer->length; i++) {
+        _snwprintf(&szHex[i * 3], 4, L"%02x:", ((PBYTE)Buffer->value)[i]);
+    }
+    szHex[i * 3 - 1] = 0;
 
-    GsspContextUnlockAndRelease(GssContext);
+    *pszOut = szHex;
+    return STATUS_SUCCESS;
+}
+
+static NTSTATUS
+GetCredUIContext(
+    gss_ctx_id_t GssContext,
+    PULONG FlatCredUIContextLength,
+    PUCHAR *FlatCredUIContext)
+{
+    gss_buffer_t ServerHash = &GssContext->initiatorCtx.serverHash;
+
+    NTSTATUS Status;
+    CREDUIWIN_MARSHALED_CONTEXT MarshaledContext;
+    SEC_WINNT_CREDUI_CONTEXT CredUIContext = { 0 };
+    CREDUI_INFOW UIInfo = { 0 };
+    LPWSTR pszServerHash = NULL;
+    PUCHAR ContextData;
+
+    *FlatCredUIContextLength = 0;
+    *FlatCredUIContext = NULL;
+
+    GSSP_ASSERT(ServerHash->length != 0);
+
+    Status = BufferToWideHexString(ServerHash, &pszServerHash);
+    GSSP_BAIL_ON_ERROR(Status);
+
+    UIInfo.cbSize = sizeof(UIInfo);
+    UIInfo.hwndParent = NULL;
+    UIInfo.pszMessageText = pszServerHash;
+    UIInfo.pszCaptionText = L"Verify server fingerprint";
+    UIInfo.hbmBanner = NULL;
+
+    CredUIContext.cbHeaderLength = sizeof(CredUIContext);
+    CredUIContext.CredUIContextHandle = NULL;
+    CredUIContext.UIInfo = &UIInfo;
+    CredUIContext.dwAuthError = (ULONG)SEC_E_ISSUING_CA_UNTRUSTED;
+    CredUIContext.pInputAuthIdentity = NULL;
+    CredUIContext.TargetName = NULL;
+
+    MarshaledContext.StructureType = CREDUIWIN_STRUCTURE_TYPE_SSPIPFC;
+    MarshaledContext.cbHeaderLength = sizeof(MarshaledContext);
+    MarshaledContext.LogonId = GssContext->LogonId;
+    MarshaledContext.MarshaledDataType = SSPIPFC_STRUCTURE_TYPE_CREDUI_CONTEXT;
+    MarshaledContext.MarshaledDataOffset = MarshaledContext.cbHeaderLength;
+
+    Status = GsspAlloc(MarshaledContext.cbHeaderLength + MarshaledContext.MarshaledDataLength, &ContextData);
+    GSSP_BAIL_ON_ERROR(Status);
+
+    RtlCopyMemory(ContextData, &MarshaledContext, MarshaledContext.cbHeaderLength);
+
+
+cleanup:
+    GsspFree(pszServerHash);
 
     return Status;
 }
@@ -554,9 +628,9 @@ GsspMakeCredUIContext(
 NTSTATUS NTAPI
 SpGetCredUIContext(
    __in LSA_SEC_HANDLE ContextHandle,
-   __in GUID* CredType,
+   __in LPGUID CredType,
    __out PULONG FlatCredUIContextLength,
-   __deref_out_bcount(*FlatCredUIContextLength)  PUCHAR* FlatCredUIContext)
+   __deref_out_bcount(*FlatCredUIContextLength)  PUCHAR *FlatCredUIContext)
 {
     NTSTATUS Status;
 

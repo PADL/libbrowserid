@@ -1227,10 +1227,10 @@ CMAttrSetCACert(
     return Status;
 }
 
-static NTSTATUS
-CMAttrSetServerCertHash(
-    PCREDENTIAL_ATTRIBUTE Attribute,
-    gss_cred_id_t GssCred)
+NTSTATUS
+GsspCredSetServerCertHash(
+    gss_cred_id_t GssCred,
+    gss_buffer_t ServerHash)
 {
     NTSTATUS Status;
     DWORD cchHash;
@@ -1238,7 +1238,7 @@ CMAttrSetServerCertHash(
     OM_uint32 Minor;
 
     /* Server certificate SHA-1 hash */
-    cchHash = HASH_PREFIX_LEN + (2 * Attribute->ValueSize);
+    cchHash = HASH_PREFIX_LEN + (2 * ServerHash->length);
 
     Status = GsspAlloc(cchHash + 1, &szHash);
     if (Status != STATUS_SUCCESS)
@@ -1248,8 +1248,8 @@ CMAttrSetServerCertHash(
 
     wpa_snprintf_hex(&szHash[HASH_PREFIX_LEN],
                      cchHash + 1 - HASH_PREFIX_LEN,
-                     Attribute->Value,
-                     Attribute->ValueSize);
+                     ServerHash->value,
+                     ServerHash->length);
 
     GsspReleaseBuffer(&Minor, &GssCred->caCertificate);
 
@@ -1257,6 +1257,19 @@ CMAttrSetServerCertHash(
     GssCred->caCertificate.value = szHash;
 
     return STATUS_SUCCESS;
+}
+
+static NTSTATUS
+CMAttrSetServerCertHash(
+    PCREDENTIAL_ATTRIBUTE Attribute,
+    gss_cred_id_t GssCred)
+{
+    gss_buffer_desc ServerHash;
+
+    ServerHash.length = Attribute->ValueSize;
+    ServerHash.value = Attribute->Value;
+
+    return GsspCredSetServerCertHash(GssCred, &ServerHash);
 }
 
 static NTSTATUS
