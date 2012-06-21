@@ -147,14 +147,14 @@ MsGetCredServerHash(LPWSTR TargetName,
     LPWSTR szHash;
     DWORD i;
 
-    szHash = LocalAlloc(LPTR, (Attribute->ValueSize * 2 + 1) * sizeof(WCHAR));
+    szHash = LocalAlloc(LPTR, Attribute->ValueSize * 3 * sizeof(WCHAR));
     if (szHash == NULL)
         return GetLastError();
 
     for (i = 0; i < Attribute->ValueSize; i++) {
-        _snwprintf(&szHash[i * 2], 4, L"%02x:", Attribute->Value[i]);
+        _snwprintf(&szHash[i * 3], 4, L"%02x:", Attribute->Value[i]);
     }
-    szHash[i * 2] = 0;
+    szHash[i * 3 - 1] = 0;
 
     *StringValue = szHash;
     return ERROR_SUCCESS;
@@ -471,7 +471,8 @@ MsSetCredAttribute(
     DWORD dwResult;
     DWORD dwCredCount = 0, i;
     BOOLEAN bFoundCred = FALSE;
-    PCREDENTIAL_TARGET_INFORMATION TargetInfo = NULL;
+    PCREDENTIAL_TARGET_INFORMATION pTargetInfo = NULL;
+    CREDENTIAL_TARGET_INFORMATION TargetInfo = { 0 };
     PCREDENTIAL *ExistingCreds = NULL;
 
     if (dwAttrType < MS_CRED_ATTR_MIN || dwAttrType > MS_CRED_ATTR_MAX) {
@@ -479,19 +480,26 @@ MsSetCredAttribute(
         goto cleanup;
     }
 
-    if (!CredGetTargetInfo(TargetName, 0, &TargetInfo)) {
+    if (!CredGetTargetInfo(TargetName, 0, &pTargetInfo)) {
         dwResult = GetLastError();
-        if (dwResult == ERROR_NOT_FOUND)
-            fwprintf(stderr, L"No existing credential for %s\n", TargetName);
-        else
+        if (dwResult == ERROR_NOT_FOUND) {
+            /* try directly */
+            TargetInfo.TargetName = TargetName;
+            pTargetInfo = &TargetInfo;
+        } else {
             fwprintf(stderr, L"CredGetTargetInfo failed: 0x%08x\n", dwResult);
-        goto cleanup;
+            goto cleanup;
+        }
     }
 
-    if (!CredReadDomainCredentials(TargetInfo, 0,
+    if (!CredReadDomainCredentials(pTargetInfo, 0,
                                    &dwCredCount, &ExistingCreds)) {
         dwResult = GetLastError();
-        fwprintf(stderr, L"CredReadDomainCredentials failed: 0x%08x\n", dwResult);
+        if (dwResult == ERROR_NOT_FOUND) {
+            fwprintf(stderr, L"No existing credential for %s\n", TargetName);
+        } else {
+            fwprintf(stderr, L"CredReadDomainCredentials failed: 0x%08x\n", dwResult);
+        }
         goto cleanup;
     }
 
@@ -515,8 +523,8 @@ MsSetCredAttribute(
 cleanup:
     if (ExistingCreds != NULL)
         CredFree(ExistingCreds);
-    if (TargetInfo != NULL)
-        CredFree(TargetInfo);
+    if (pTargetInfo != NULL && pTargetInfo != &TargetInfo)
+        CredFree(pTargetInfo);
     return dwResult;
 }
 
@@ -531,25 +539,33 @@ MsGetCredAttribute(
     DWORD dwCredCount = 0, i;
     LONG iCred;
     BOOLEAN bFoundAttr;
-    PCREDENTIAL_TARGET_INFORMATION TargetInfo = NULL;
+    PCREDENTIAL_TARGET_INFORMATION pTargetInfo = NULL;
     PCREDENTIAL *Creds = NULL;
+    CREDENTIAL_TARGET_INFORMATION TargetInfo = { 0 };
 
     *pDisplayNames = NULL;
     *pDisplayValues = NULL;
 
-    if (!CredGetTargetInfo(TargetName, 0, &TargetInfo)) {
+    if (!CredGetTargetInfo(TargetName, 0, &pTargetInfo)) {
         dwResult = GetLastError();
-        if (dwResult == ERROR_NOT_FOUND)
-            fwprintf(stderr, L"No existing credential for %s\n", TargetName);
-        else
+        if (dwResult == ERROR_NOT_FOUND) {
+            /* try directly */
+            TargetInfo.TargetName = TargetName;
+            pTargetInfo = &TargetInfo;
+        } else {
             fwprintf(stderr, L"CredGetTargetInfo failed: 0x%08x\n", dwResult);
-        goto cleanup;
+            goto cleanup;
+        }
     }
 
-    if (!CredReadDomainCredentials(TargetInfo, 0,
+    if (!CredReadDomainCredentials(pTargetInfo, 0,
                                    &dwCredCount, &Creds)) {
         dwResult = GetLastError();
-        fwprintf(stderr, L"CredReadDomainCredentials failed: 0x%08x\n", dwResult);
+        if (dwResult == ERROR_NOT_FOUND) {
+            fwprintf(stderr, L"No existing credential for %s\n", TargetName);
+        } else {
+            fwprintf(stderr, L"CredReadDomainCredentials failed: 0x%08x\n", dwResult);
+        }
         goto cleanup;
     }
 
@@ -592,8 +608,8 @@ MsGetCredAttribute(
 cleanup:
     if (Creds != NULL)
         CredFree(Creds);
-    if (TargetInfo != NULL)
-        CredFree(TargetInfo);
+    if (pTargetInfo != NULL && pTargetInfo != &TargetInfo)
+        CredFree(pTargetInfo);
 
     return dwResult;
 }
