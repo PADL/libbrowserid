@@ -120,6 +120,10 @@ MsSetCredServerHash(LPWSTR TargetName,
         Attribute->ValueSize = dwLength / 2;
     }
 
+    /* Fix to SHA256 length for now */
+    if (Attribute->ValueSize != 32)
+        return ERROR_BAD_LENGTH;
+
     Attribute->Value = LocalAlloc(LPTR, Attribute->ValueSize);
     if (Attribute->Value == NULL)
         return GetLastError();
