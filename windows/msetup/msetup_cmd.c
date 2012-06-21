@@ -508,7 +508,7 @@ static struct _MS_CMD_OPTION {
         L"<TargetName> <NAI> [<ServerHash>]",
         L"\tBinds/unbinds a server fingerprint to a stored credential\n"
         L"\t(This is mutually exclusive with /SetCredCACert.\n"
-        L"\tFingerprint is a colon-separated hex SHA1 hash.)\n",
+        L"\tFingerprint is a colon-separated hex SHA256 hash.)\n",
         FLAG_NO_KEY,
         DoSetCredServerHash
     },
