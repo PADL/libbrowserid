@@ -129,15 +129,6 @@ cleanup:
     return major;
 }
 
-static int stringEmpty(const char * s)
-{
-    if (s == NULL)
-      return 1;
-    if (strlen(s) > 0)
-	return 0;
-    return 1;
-}
-
 OM_uint32
 libMoonshotResolveInitiatorCred(OM_uint32 *minor,
                                 gss_cred_id_t cred,
@@ -203,7 +194,7 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
     gss_release_buffer(&tmpMinor, &cred->subjectNameConstraint);
     gss_release_buffer(&tmpMinor, &cred->subjectAltNameConstraint);
 
-    if (!stringEmpty(serverCertificateHash)) {
+    if (serverCertificateHash != NULL) {
         size_t len = strlen(serverCertificateHash);
 
         #define HASH_PREFIX             "hash://server/sha256/"
@@ -222,13 +213,13 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
         ((char *)cred->caCertificate.value)[HASH_PREFIX_LEN + len] = '\0';
 
         cred->caCertificate.length = HASH_PREFIX_LEN + len;
-    } else if (!stringEmpty(caCertificate)) {
+    } else if (caCertificate != NULL) {
         makeStringBufferOrCleanup(caCertificate, &cred->caCertificate);
     }
 
-    if (!stringEmpty(subjectNameConstraint))
+    if (subjectNameConstraint != NULL)
         makeStringBufferOrCleanup(subjectNameConstraint, &cred->subjectNameConstraint);
-    if (!stringEmpty(subjectAltNameConstraint))
+    if (subjectAltNameConstraint != NULL)
         makeStringBufferOrCleanup(subjectAltNameConstraint, &cred->subjectAltNameConstraint);
 
 cleanup:

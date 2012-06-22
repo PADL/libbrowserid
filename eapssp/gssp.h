@@ -296,6 +296,11 @@ MaybeAppendDomain(
     gss_buffer_t User,
     gss_buffer_t Domain);
 
+NTSTATUS
+GsspCredSetServerCertHash(
+    gss_cred_id_t GssCred,
+    gss_buffer_t ServerHash);
+
 /* gssp_credlist.c */
 #define CRED_SSP_FLAG_SHARED                0x00000001
 #define CRED_SSP_FLAG_CREDMAN               0x00000002
