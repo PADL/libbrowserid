@@ -502,7 +502,8 @@ gssEapProbe(OM_uint32 *minor,
     }
 
     /*
-     * We need a mechanism to generate and validate correct token headers.
+     * We need a mechanism OID in order to generate and validate the
+     * correct token headers.
      */
     if (mech == GSS_C_NO_OID) {
         mech = gssEapPrimaryMechForCred(CTX_IS_INITIATOR(ctx)
