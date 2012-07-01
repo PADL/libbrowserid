@@ -109,6 +109,11 @@ static struct {
         L"UseLogonCreds",
         L"Use domain logon credentials"
     },
+    {
+        GSSP_FLAG_SERVER_PROBE,
+        L"ServerProbe",
+        L"Probe EAP server certificate"
+    },
 };
 
 LPCWSTR
