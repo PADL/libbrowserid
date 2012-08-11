@@ -121,6 +121,11 @@ gssEapExportSecContext(OM_uint32 *minor,
     key.length = KRB_KEY_LENGTH(&ctx->rfc3961Key);
     key.value  = KRB_KEY_DATA(&ctx->rfc3961Key);
 
+    /*
+     * As a shortcut, we omit the mechanism OID of the initiator name because
+     * we know it will match the context mechanism. The acceptor name mech OID
+     * is always included.
+     */
     if (ctx->initiatorName != GSS_C_NO_NAME) {
         major = gssEapExportNameInternal(minor, ctx->initiatorName,
                                          &initiatorName,
@@ -132,7 +137,7 @@ gssEapExportSecContext(OM_uint32 *minor,
     if (ctx->acceptorName != GSS_C_NO_NAME) {
         major = gssEapExportNameInternal(minor, ctx->acceptorName,
                                          &acceptorName,
-                                         EXPORT_NAME_FLAG_COMPOSITE);
+                                         EXPORT_NAME_FLAG_OID | EXPORT_NAME_FLAG_COMPOSITE);
         if (GSS_ERROR(major))
             goto cleanup;
     }
