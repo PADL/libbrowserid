@@ -315,7 +315,7 @@ GsspGetInfo(IN gss_OID Oid, OUT PSecPkgInfo PackageInfo)
     PackageInfo->cbMaxToken = EAPSSP_MAX_TOKEN_SIZE;
 
     if (oidEqual(Oid, GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM)) {
-        PackageInfo->wRPCID = RPC_C_AUTHN_GSS_EAP_AES256;
+        PackageInfo->wRPCID = EAP_AES256_RPCID;
         PackageInfo->Name = EAP_AES256_PACKAGE_NAME_W;
     } else if (oidEqual(Oid, GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM)) {
         /*
@@ -327,7 +327,7 @@ GsspGetInfo(IN gss_OID Oid, OUT PSecPkgInfo PackageInfo)
          if (GsspFlags & GSSP_FLAG_LOGON)
             PackageInfo->fCapabilities |= SECPKG_FLAG_LOGON;
 
-        PackageInfo->wRPCID = RPC_C_AUTHN_GSS_EAP_AES128;
+        PackageInfo->wRPCID = EAP_AES128_RPCID;
         PackageInfo->Name = EAP_AES128_PACKAGE_NAME_W;
     } else {
         GsspDebugTrace(WINEVENT_LEVEL_WARNING,

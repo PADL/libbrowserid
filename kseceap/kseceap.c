@@ -512,7 +512,7 @@ EapQueryContextAttributes(
         PackageInfo->PackageInfo->Name          = (PWSTR)((PUCHAR)PackageInfo->PackageInfo + sizeof(SecPkgInfo));
 
         RtlCopyMemory(PackageInfo->PackageInfo->Name,
-                      (RpcId == RPC_C_AUTHN_GSS_EAP_AES256)
+                      (RpcId == EAP_AES256_RPCID)
                         ? EAP_AES256_PACKAGE_NAME_W
                         : EAP_AES128_PACKAGE_NAME_W,
                       cbPkgName);
@@ -579,7 +579,7 @@ EapAes128QueryContextAttributes(
     KSECEAP_PAGED_CODE();
 
     return EapQueryContextAttributes(ContextId, Attribute, Buffer,
-                                     RPC_C_AUTHN_GSS_EAP_AES128);
+                                     EAP_AES128_RPCID);
 }
 
 NTSTATUS
@@ -591,7 +591,7 @@ EapAes256QueryContextAttributes(
     KSECEAP_PAGED_CODE();
 
     return EapQueryContextAttributes(ContextId, Attribute, Buffer,
-                                     RPC_C_AUTHN_GSS_EAP_AES256);
+                                     EAP_AES256_RPCID);
 }
 
 NTSTATUS
