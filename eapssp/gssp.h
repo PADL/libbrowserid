@@ -95,8 +95,8 @@ extern "C" {
 /*
  * DCE defines not in public headers
  */
-#define RPC_C_AUTHN_GSS_EAP_AES128      96
-#define RPC_C_AUTHN_GSS_EAP_AES256      97
+#define EAP_AES128_RPCID                96
+#define EAP_AES256_RPCID                97
 
 /*
  * This structure is encoded as-is; pointers are encoded as

@@ -249,11 +249,12 @@ importKerberosKey(OM_uint32 *minor,
 
 static OM_uint32
 importName(OM_uint32 *minor,
+           gss_OID mech,
            unsigned char **pBuf,
            size_t *pRemain,
            gss_name_t *pName)
 {
-    OM_uint32 major;
+    OM_uint32 major, tmpMinor, flags;
     unsigned char *p = *pBuf;
     size_t remain = *pRemain;
     gss_buffer_desc tmp;
@@ -272,10 +273,21 @@ importName(OM_uint32 *minor,
 
         tmp.value = p + 4;
 
-        major = gssEapImportNameInternal(minor, &tmp, pName,
-                                         EXPORT_NAME_FLAG_COMPOSITE);
+        flags = EXPORT_NAME_FLAG_COMPOSITE;
+        if (mech == GSS_C_NO_OID)
+            flags |= EXPORT_NAME_FLAG_OID;
+
+        major = gssEapImportNameInternal(minor, &tmp, pName, flags);
         if (GSS_ERROR(major))
             return major;
+
+        if ((flags & EXPORT_NAME_FLAG_OID) == 0) {
+            major = gssEapCanonicalizeOid(minor, mech, 0, &(*pName)->mechanismUsed);
+            if (GSS_ERROR(major)) {
+                gssEapReleaseName(&tmpMinor, pName);
+                return major;
+            }
+        }
     }
 
     *pBuf    += 4 + tmp.length;
@@ -328,11 +340,12 @@ gssEapImportContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    major = importName(minor, &p, &remain, &ctx->initiatorName);
+    /* Initiator name OID matches the context mechanism, so it's not encoded */
+    major = importName(minor, ctx->mechanismUsed, &p, &remain, &ctx->initiatorName);
     if (GSS_ERROR(major))
         return major;
 
-    major = importName(minor, &p, &remain, &ctx->acceptorName);
+    major = importName(minor, GSS_C_NO_OID, &p, &remain, &ctx->acceptorName);
     if (GSS_ERROR(major))
         return major;
 

@@ -266,7 +266,10 @@ sequenceExternalize(OM_uint32 *minor,
         *minor = GSSEAP_WRONG_SIZE;
         return GSS_S_FAILURE;
     }
-    memcpy(*buf, vqueue, sizeof(queue));
+    if (vqueue != NULL)
+        memcpy(*buf, vqueue, sizeof(queue));
+    else
+        memset(*buf, 0, sizeof(queue));
     *buf += sizeof(queue);
     *lenremain -= sizeof(queue);
 
