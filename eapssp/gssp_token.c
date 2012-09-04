@@ -737,6 +737,13 @@ cleanup:
     return Status;
 }
 
+#if 0
+/*
+ * This is not current with Windows 8 FCS. TokenUserClaimAttributes is now
+ * a PCLAIMS_BLOB which is an opaque encoded claims set. Additionally, we
+ * may need to create a token with the claims as it's unlikely we can adjust
+ * the token claims after token creation.
+ */
 static NTSTATUS
 AddTokenClaims(gss_ctx_id_t GssContext)
 {
@@ -755,6 +762,7 @@ AddTokenClaims(gss_ctx_id_t GssContext)
 
     return Status;
 }
+#endif
 
 /*
  * The token returned by S4U has a DACL which prevents it from working
