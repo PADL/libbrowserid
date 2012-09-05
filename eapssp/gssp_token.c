@@ -939,7 +939,7 @@ CreateTokenFromS4U(gss_ctx_id_t GssContext)
     QUOTA_LIMITS QuotaLimits;
     LUID LogonId;
 
-    RtlInitString(&LogonProcessName, "eap");
+    RtlInitString(&LogonProcessName, "EapSspProtocolTransition");
     RtlInitString(&PackageName, MICROSOFT_KERBEROS_NAME_A);
     RtlInitString(&OriginName, EAPSSP_ORIGIN_S4U);
 
