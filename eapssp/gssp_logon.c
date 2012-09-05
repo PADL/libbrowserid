@@ -710,7 +710,7 @@ GsspTokenInfoClasses[] = {
     TokenPrivileges,
     TokenOwner,
     TokenDefaultDacl,
-#if NTDDI_VERSION >= NTDDI_WIN8
+#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
     TokenUserClaimAttributes,
     TokenDeviceClaimAttributes,
     TokenDeviceGroups,
@@ -728,7 +728,7 @@ GsspMakeTokenInformation(
     PVOID *pTokenInformation
     )
 {
-#if NTDDI_VERSION >= NTDDI_WIN8
+#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
     PLSA_TOKEN_INFORMATION_V3 TokenInformation = NULL;
 #else
     PLSA_TOKEN_INFORMATION_V2 TokenInformation = NULL;
@@ -797,7 +797,7 @@ GsspMakeTokenInformation(
         *((PTOKEN_OWNER)(pbTokenBuffer + TokenOffsets[TokenOwner]));
     TokenInformation->DefaultDacl =
         *((PTOKEN_DEFAULT_DACL)(pbTokenBuffer + TokenOffsets[TokenDefaultDacl]));
-#if NTDDI_VERSION >= NTDDI_WIN8
+#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
     TokenInformation->UserClaims =
         *((PTOKEN_USER_CLAIMS)(pbTokenBuffer + TokenOffsets[TokenUserClaimAttributes]));
     TokenInformation->DeviceClaims =
@@ -1162,7 +1162,7 @@ LsaApLogonUserEx2(
     LogonId->LowPart        = 0;
     LogonId->HighPart       = 0;
     *SubStatus              = STATUS_SUCCESS;
-#if NTDDI_VERSION >= NTDDI_WIN8
+#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
     *TokenInformationType   = LsaTokenInformationV3;
 #else
     *TokenInformationType   = LsaTokenInformationV2;
