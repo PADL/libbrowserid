@@ -728,6 +728,7 @@ static NTSTATUS
 GsspMakeTokenInformation(
     gss_ctx_id_t GssContext,
     PTimeStamp ExpirationTime,
+    PLSA_TOKEN_INFORMATION_TYPE pTokenInformationType,
     PVOID *pTokenInformation
     )
 {
@@ -745,6 +746,13 @@ GsspMakeTokenInformation(
     cbTokenInformation = sizeof(*TokenInformation);
     cbTokenInformation += TYPE_ALIGNMENT(PVOID) -
                           (cbTokenInformation % TYPE_ALIGNMENT(PVOID));
+
+#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
+    if (GsspFlags & GSSP_FLAG_TOKEN_CLAIMS)
+        *pTokenInformationType = LsaTokenInformationV3;
+    else
+#endif
+        *pTokenInformationType = LsaTokenInformationV2;
 
     for (i = 0; i < sizeof(GsspTokenInfoClasses) / sizeof(GsspTokenInfoClasses[0]); i++) {
         TOKEN_INFORMATION_CLASS InfoClass = GsspTokenInfoClasses[i];
@@ -1097,7 +1105,7 @@ GsspLogonUser(
     GSSP_BAIL_ON_ERROR(Status);
 
     Status = GsspMakeTokenInformation(AcceptorContext, &ExpirationTime,
-                                      TokenInformation);
+                                      TokenInformationType, TokenInformation);
     GSSP_BAIL_ON_ERROR(Status);
 
     if (AuthenticatingAuthority != NULL) {
@@ -1187,12 +1195,7 @@ LsaApLogonUserEx2(
     LogonId->LowPart        = 0;
     LogonId->HighPart       = 0;
     *SubStatus              = STATUS_SUCCESS;
-#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
-    if (GsspFlags & GSSP_FLAG_TOKEN_CLAIMS)
-        *TokenInformationType = LsaTokenInformationV3;
-    else
-#endif
-        *TokenInformationType = LsaTokenInformationV2;
+    *TokenInformationType   = LsaTokenInformationNull;
     *AccountName = NULL;
     if (AuthenticatingAuthority != NULL)
         *AuthenticatingAuthority = NULL;
