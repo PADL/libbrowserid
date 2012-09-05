@@ -702,6 +702,21 @@ cleanup:
     return Status;
 }
 
+static TOKEN_INFORMATION_CLASS
+GsspTokenInfoClasses[] = {
+    TokenUser,
+    TokenGroups,
+    TokenPrimaryGroup,
+    TokenPrivileges,
+    TokenOwner,
+    TokenDefaultDacl,
+#if NTDDI_VERSION >= NTDDI_WIN8
+    TokenUserClaimAttributes,
+    TokenDeviceClaimAttributes,
+    TokenDeviceGroups,
+#endif
+};
+
 /*
  * Copy the token identity, privileges, owner and default DACL from
  * the context's token into a contiguous LSA_TOKEN_INFORMATION buffer.
@@ -710,20 +725,26 @@ static NTSTATUS
 GsspMakeTokenInformation(
     gss_ctx_id_t GssContext,
     PTimeStamp ExpirationTime,
-    PLSA_TOKEN_INFORMATION_V2 *pTokenInformation)
+    PVOID *pTokenInformation
+    )
 {
+#if NTDDI_VERSION >= NTDDI_WIN8
+    PLSA_TOKEN_INFORMATION_V3 TokenInformation = NULL;
+#else
     PLSA_TOKEN_INFORMATION_V2 TokenInformation = NULL;
+#endif
     NTSTATUS Status;
     DWORD cbTokenInformation = 0;
-    TOKEN_INFORMATION_CLASS InfoClass;
+    DWORD i;
     PBYTE pbTokenBuffer;
-    DWORD TokenOffsets[TokenDefaultDacl + 1];
+    DWORD TokenOffsets[MaxTokenInfoClass] = { 0 };
 
     cbTokenInformation = sizeof(*TokenInformation);
     cbTokenInformation += TYPE_ALIGNMENT(PVOID) -
                           (cbTokenInformation % TYPE_ALIGNMENT(PVOID));
 
-    for (InfoClass = TokenUser; InfoClass <= TokenDefaultDacl; InfoClass++) {
+    for (i = 0; i < sizeof(GsspTokenInfoClasses) / sizeof(GsspTokenInfoClasses[0]); i++) {
+        TOKEN_INFORMATION_CLASS InfoClass = GsspTokenInfoClasses[i];
         DWORD cbInfo = 0;
 
         Status = NtQueryInformationToken(GssContext->TokenHandle,
@@ -746,7 +767,8 @@ GsspMakeTokenInformation(
 
     cbTokenInformation -= TokenOffsets[TokenUser]; /* start at first offset */
 
-    for (InfoClass = TokenUser; InfoClass <= TokenDefaultDacl; InfoClass++) {
+    for (i = 0; i < sizeof(GsspTokenInfoClasses) / sizeof(GsspTokenInfoClasses[0]); i++) {
+        TOKEN_INFORMATION_CLASS InfoClass = GsspTokenInfoClasses[i];
         DWORD cbInfo = 0;
         PBYTE pbTokenInfo = pbTokenBuffer + TokenOffsets[InfoClass];
 
@@ -775,13 +797,20 @@ GsspMakeTokenInformation(
         *((PTOKEN_OWNER)(pbTokenBuffer + TokenOffsets[TokenOwner]));
     TokenInformation->DefaultDacl =
         *((PTOKEN_DEFAULT_DACL)(pbTokenBuffer + TokenOffsets[TokenDefaultDacl]));
+#if NTDDI_VERSION >= NTDDI_WIN8
+    TokenInformation->UserClaims =
+        *((PTOKEN_USER_CLAIMS)(pbTokenBuffer + TokenOffsets[TokenUserClaimAttributes]));
+    TokenInformation->DeviceClaims =
+        *((PTOKEN_DEVICE_CLAIMS)(pbTokenBuffer + TokenOffsets[TokenDeviceClaimAttributes]));
+    TokenInformation->DeviceGroups =
+        ((PTOKEN_GROUPS)(pbTokenBuffer + TokenOffsets[TokenDeviceGroups]));
+#endif
 
     /* XXX filter out builtin groups */
-    /* XXX support LSA_TOKEN_INFORMATION_V3 */
 
     Status = STATUS_SUCCESS;
 
-    *pTokenInformation = TokenInformation;
+    *pTokenInformation = (PVOID)TokenInformation;
     TokenInformation = NULL;
 
 cleanup:
@@ -1043,7 +1072,7 @@ GsspLogonUser(
     GSSP_BAIL_ON_ERROR(Status);
 
     Status = GsspMakeTokenInformation(AcceptorContext, &ExpirationTime,
-                                (PLSA_TOKEN_INFORMATION_V2 *)TokenInformation);
+                                      TokenInformation);
     GSSP_BAIL_ON_ERROR(Status);
 
     if (AuthenticatingAuthority != NULL) {
@@ -1133,7 +1162,11 @@ LsaApLogonUserEx2(
     LogonId->LowPart        = 0;
     LogonId->HighPart       = 0;
     *SubStatus              = STATUS_SUCCESS;
+#if NTDDI_VERSION >= NTDDI_WIN8
+    *TokenInformationType   = LsaTokenInformationV3;
+#else
     *TokenInformationType   = LsaTokenInformationV2;
+#endif
     *AccountName = NULL;
     if (AuthenticatingAuthority != NULL)
         *AuthenticatingAuthority = NULL;
