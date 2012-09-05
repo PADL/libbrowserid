@@ -754,9 +754,7 @@ AddTokenClaims(gss_ctx_id_t GssContext)
                                                 SECPKG_ATTR_SUBJECT_SECURITY_ATTRIBUTES,
                                                 &Attributes);
     if (Status == STATUS_SUCCESS) {
-        Status = NtSetInformationToken(GssContext->TokenHandle,
-                                       TokenUserClaimAttributes,
-                                       Attributes, sizeof(Attributes));
+        /* Call NtAdjustTokenClaimsAndDeviceGroups */
     }
     /* XXX leaky on error case */
 
