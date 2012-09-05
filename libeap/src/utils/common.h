@@ -87,7 +87,9 @@ typedef int socklen_t;
 #endif /* CONFIG_NATIVE_WINDOWS */
 
 #ifdef _MSC_VER
+#ifndef __cplusplus
 #define inline __inline
+#endif
 
 #undef vsnprintf
 #define vsnprintf _vsnprintf

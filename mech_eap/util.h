@@ -73,7 +73,9 @@
 #include <krb5.h>
 
 #ifdef WIN32
-#define inline __inline
+# ifndef __cplusplus
+# define inline __inline
+# endif
 #define snprintf _snprintf
 #endif
 
