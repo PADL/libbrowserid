@@ -710,10 +710,13 @@ GsspTokenInfoClasses[] = {
     TokenPrivileges,
     TokenOwner,
     TokenDefaultDacl,
+#if 0
+    /* not supported/tested yet */
 #if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
     TokenUserClaimAttributes,
     TokenDeviceClaimAttributes,
     TokenDeviceGroups,
+#endif /* NTDDI_WIN8 */
 #endif
 };
 
@@ -747,6 +750,15 @@ GsspMakeTokenInformation(
         TOKEN_INFORMATION_CLASS InfoClass = GsspTokenInfoClasses[i];
         DWORD cbInfo = 0;
 
+#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
+        /*
+         * Only propagate claims if the runtime environment supports them.
+         */
+        if ((GsspFlags & GSSP_FLAG_TOKEN_CLAIMS) == 0 &&
+            InfoClass >= TokenUserClaimAttributes)
+            break;
+#endif /* NTDDI_WIN8 */
+
         Status = NtQueryInformationToken(GssContext->TokenHandle,
                                          InfoClass, NULL, 0, &cbInfo);
         if (Status == STATUS_BUFFER_TOO_SMALL)
@@ -771,6 +783,12 @@ GsspMakeTokenInformation(
         TOKEN_INFORMATION_CLASS InfoClass = GsspTokenInfoClasses[i];
         DWORD cbInfo = 0;
         PBYTE pbTokenInfo = pbTokenBuffer + TokenOffsets[InfoClass];
+
+#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
+        if ((GsspFlags & GSSP_FLAG_TOKEN_CLAIMS) == 0 &&
+            InfoClass >= TokenUserClaimAttributes)
+            break;
+#endif /* NTDDI_WIN8 */
 
         Status = NtQueryInformationToken(GssContext->TokenHandle,
                                          InfoClass, pbTokenInfo,
@@ -797,14 +815,21 @@ GsspMakeTokenInformation(
         *((PTOKEN_OWNER)(pbTokenBuffer + TokenOffsets[TokenOwner]));
     TokenInformation->DefaultDacl =
         *((PTOKEN_DEFAULT_DACL)(pbTokenBuffer + TokenOffsets[TokenDefaultDacl]));
-#if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
-    TokenInformation->UserClaims =
-        *((PTOKEN_USER_CLAIMS)(pbTokenBuffer + TokenOffsets[TokenUserClaimAttributes]));
-    TokenInformation->DeviceClaims =
-        *((PTOKEN_DEVICE_CLAIMS)(pbTokenBuffer + TokenOffsets[TokenDeviceClaimAttributes]));
-    TokenInformation->DeviceGroups =
-        ((PTOKEN_GROUPS)(pbTokenBuffer + TokenOffsets[TokenDeviceGroups]));
-#endif
+    /*
+     * XXX this is commented out for now because it's not clear how the
+     * memory management works, we probably need to fix up the pointers
+     * inside the CLAIMS_BLOB.
+     */
+#if 0 /* defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8) */
+    if (GsspFlags & GSSP_FLAG_TOKEN_CLAIMS) {
+        TokenInformation->UserClaims =
+            *((PTOKEN_USER_CLAIMS)(pbTokenBuffer + TokenOffsets[TokenUserClaimAttributes]));
+        TokenInformation->DeviceClaims =
+            *((PTOKEN_DEVICE_CLAIMS)(pbTokenBuffer + TokenOffsets[TokenDeviceClaimAttributes]));
+        TokenInformation->DeviceGroups =
+            ((PTOKEN_GROUPS)(pbTokenBuffer + TokenOffsets[TokenDeviceGroups]));
+    }
+#endif /* NTDDI_WIN8 */
 
     /* XXX filter out builtin groups */
 
@@ -1163,10 +1188,11 @@ LsaApLogonUserEx2(
     LogonId->HighPart       = 0;
     *SubStatus              = STATUS_SUCCESS;
 #if defined(NTDDI_WIN8) && (NTDDI_VERSION >= NTDDI_WIN8)
-    *TokenInformationType   = LsaTokenInformationV3;
-#else
-    *TokenInformationType   = LsaTokenInformationV2;
+    if (GsspFlags & GSSP_FLAG_TOKEN_CLAIMS)
+        *TokenInformationType = LsaTokenInformationV3;
+    else
 #endif
+        *TokenInformationType = LsaTokenInformationV2;
     *AccountName = NULL;
     if (AuthenticatingAuthority != NULL)
         *AuthenticatingAuthority = NULL;
