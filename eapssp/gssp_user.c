@@ -83,6 +83,9 @@ GsspUserContextLocate(
 
     *pGssContext = GSS_C_NO_CONTEXT;
 
+    if (LsaHandle == (LSA_SEC_HANDLE)-1)
+        return SEC_E_INVALID_HANDLE;
+
     EnterCriticalSection(&GsspUserContextsLock);
 
     for (pListEntry = GsspUserContexts.Flink;
@@ -249,7 +252,7 @@ UnpackGssContext(
         return GsspMapStatus(Major, Minor);
     }
 
-    if (ContextHandle != 0)
+    if (ContextHandle != (LSA_SEC_HANDLE)-1)
         GssContext->LsaHandle = ContextHandle;
     if (TokenHandle != NULL)
         GssContext->TokenHandle = TokenHandle;
@@ -507,7 +510,7 @@ SpImportSecurityContext(
     NTSTATUS Status;
     gss_ctx_id_t GssContext;
 
-    Status = UnpackGssContext(0, pPackedContext, NULL, &GssContext);
+    Status = UnpackGssContext((LSA_SEC_HANDLE)-1, pPackedContext, NULL, &GssContext);
     if (Status != SEC_E_OK)
         return Status;
 
