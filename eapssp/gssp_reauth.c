@@ -19,17 +19,17 @@ gssEapStoreReauthCreds(OM_uint32 *Minor,
     NTSTATUS Status, SubStatus;
     KERB_SUBMIT_TKT_REQUEST *pSubmitTktRequest = NULL;
     DWORD cbSubmitTktRequest;
-    UNICODE_STRING AuthenticationPackage;
+    LSA_STRING LogonProcessName;
+    LSA_STRING PackageName;
+    ULONG AuthenticationPackage;
+    HANDLE LsaHandle = NULL;
+    LSA_OPERATIONAL_MODE SecurityMode;
 
-    /*
-     * Storing reauth credentials on standalone machines seems to cause the
-     * LSA to crash in the Kerberos security package.
-     */
-    if (CredBuf->length == 0 || GssCred == GSS_C_NO_CREDENTIAL ||
-        (SpParameters.MachineState & SECPKG_STATE_STANDALONE))
+    RtlInitString(&LogonProcessName, "EapSspFastReauth");
+    RtlInitString(&PackageName, MICROSOFT_KERBEROS_NAME_A);
+
+    if (CredBuf->length == 0 || GssCred == GSS_C_NO_CREDENTIAL)
         return GSS_S_COMPLETE;
-
-    RtlInitUnicodeString(&AuthenticationPackage, MICROSOFT_KERBEROS_NAME_W);
 
     cbSubmitTktRequest = sizeof(*pSubmitTktRequest) +
                          KRB_KEY_LENGTH(&GssContext->rfc3961Key) +
@@ -62,15 +62,26 @@ gssEapStoreReauthCreds(OM_uint32 *Minor,
     RtlCopyMemory((PUCHAR)pSubmitTktRequest + pSubmitTktRequest->KerbCredOffset,
                   CredBuf->value, CredBuf->length);
 
-    Status = LsaSpFunctionTable->CallPackage(&AuthenticationPackage,
-                                             pSubmitTktRequest,
-                                             cbSubmitTktRequest,
-                                             NULL,
-                                             NULL,
-                                             &SubStatus);
+    Status = LsaRegisterLogonProcess(&LogonProcessName, &LsaHandle, &SecurityMode);
+    GSSP_BAIL_ON_ERROR(Status);
+
+    Status = LsaLookupAuthenticationPackage(LsaHandle, &PackageName, &AuthenticationPackage);
+    GSSP_BAIL_ON_ERROR(Status);
+
+    Status = LsaCallAuthenticationPackage(LsaHandle,
+                                          AuthenticationPackage,
+                                          pSubmitTktRequest,
+                                          cbSubmitTktRequest,
+                                          NULL,
+                                          NULL,
+                                          &SubStatus);
     if (Status == STATUS_SUCCESS)
         Status = SubStatus;
+    GSSP_BAIL_ON_ERROR(Status);
 
+cleanup:
+    if (LsaHandle != NULL)
+        LsaClose(LsaHandle);
     GsspFreePtr(pSubmitTktRequest);
 
     /* Don't hard-error if this fails. */

@@ -118,6 +118,7 @@ RC=rc
 # DDK macros
 #
 DDKBINDIR	=$(DDKDIR)\bin
+DDKINCDIR	=$(DDKDIR)\inc\ddk
 DDKLIBDIR	=$(DDKDIR)\lib\$(BUILD_TARGET)\$(CPU)
 DIFXDIR		=$(DDKDIR)\redist\DIFx
 INF2CAT		=$(DDKBINDIR)\selfsign\inf2cat.exe
@@ -163,7 +164,9 @@ LIGHT=$(LIGHT_CMD) -nologo
 cflags=$(cflags) /EHsc
 !endif
 
-cincdirs=$(cincdirs) -I$(INCDIR) \
+cincdirs=$(cincdirs) \
+	-I$(INCDIR) \
+	-I$(DDKINCDIR) \
 	-I$(HEIMDAL_SDKINCDIR) \
 	-I$(HEIMDAL_SDKINCDIR)\heimdal \
 	-I$(HEIMDAL_SDKINCDIR)\krb5 \

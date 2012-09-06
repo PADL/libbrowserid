@@ -737,6 +737,13 @@ cleanup:
     return Status;
 }
 
+#if 0
+/*
+ * This is not current with Windows 8 FCS. TokenUserClaimAttributes is now
+ * a PCLAIMS_BLOB which is an opaque encoded claims set. Additionally, we
+ * may need to create a token with the claims as it's unlikely we can adjust
+ * the token claims after token creation.
+ */
 static NTSTATUS
 AddTokenClaims(gss_ctx_id_t GssContext)
 {
@@ -747,14 +754,13 @@ AddTokenClaims(gss_ctx_id_t GssContext)
                                                 SECPKG_ATTR_SUBJECT_SECURITY_ATTRIBUTES,
                                                 &Attributes);
     if (Status == STATUS_SUCCESS) {
-        Status = NtSetInformationToken(GssContext->TokenHandle,
-                                       TokenUserClaimAttributes,
-                                       Attributes, sizeof(Attributes));
+        /* Call NtAdjustTokenClaimsAndDeviceGroups */
     }
     /* XXX leaky on error case */
 
     return Status;
 }
+#endif
 
 /*
  * The token returned by S4U has a DACL which prevents it from working
@@ -933,7 +939,7 @@ CreateTokenFromS4U(gss_ctx_id_t GssContext)
     QUOTA_LIMITS QuotaLimits;
     LUID LogonId;
 
-    RtlInitString(&LogonProcessName, "eap");
+    RtlInitString(&LogonProcessName, "EapSspProtocolTransition");
     RtlInitString(&PackageName, MICROSOFT_KERBEROS_NAME_A);
     RtlInitString(&OriginName, EAPSSP_ORIGIN_S4U);
 

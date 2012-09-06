@@ -524,6 +524,8 @@ MsSetCredAttribute(
         goto cleanup;
     }
 
+    dwResult = ERROR_SUCCESS;
+
 cleanup:
     if (ExistingCreds != NULL)
         CredFree(ExistingCreds);

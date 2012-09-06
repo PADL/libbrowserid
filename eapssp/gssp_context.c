@@ -430,7 +430,7 @@ GsspInitSecContext(
     struct gss_channel_bindings_struct GssChannelBindings;
     gss_name_t GssTargetName = GSS_C_NO_NAME;
 
-    *NewContextHandle = 0;
+    *NewContextHandle = (LSA_SEC_HANDLE)-1;
 
     GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
                    L"GsspInitSecContext: CredHandle %p CtxHandle %p "
@@ -619,7 +619,7 @@ GsspAcceptSecContext(
     gss_buffer_desc OutputToken = GSS_C_EMPTY_BUFFER;
     struct gss_channel_bindings_struct GssChannelBindings;
 
-    *NewContextHandle = 0;
+    *NewContextHandle = (LSA_SEC_HANDLE)-1;
     *MappedContext = FALSE;
 
     GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
