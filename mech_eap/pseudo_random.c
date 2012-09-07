@@ -64,7 +64,6 @@ gssEapPseudoRandom(OM_uint32 *minor,
                    gss_ctx_id_t ctx,
                    int prf_key,
                    const gss_buffer_t prf_in,
-                   ssize_t desired_output_len,
                    gss_buffer_t prf_out)
 {
     krb5_error_code code;
@@ -74,9 +73,7 @@ gssEapPseudoRandom(OM_uint32 *minor,
     krb5_data t, ns;
     unsigned char *p;
     krb5_context krbContext;
-
-    prf_out->length = 0;
-    prf_out->value = NULL;
+    ssize_t desired_output_len = prf_out->length;
 
     *minor = 0;
 
@@ -90,13 +87,6 @@ gssEapPseudoRandom(OM_uint32 *minor,
         code = GSSEAP_BAD_PRF_KEY;
         goto cleanup;
     }
-
-    prf_out->value = GSSEAP_MALLOC(desired_output_len);
-    if (prf_out->value == NULL) {
-        code = ENOMEM;
-        goto cleanup;
-    }
-    prf_out->length = desired_output_len;
 
     code = krb5_c_prf_length(krbContext,
                              ctx->encryptionType,
@@ -181,14 +171,25 @@ gss_pseudo_random(OM_uint32 *minor,
 
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
-    if (CTX_IS_ESTABLISHED(ctx)) {
-        major = gssEapPseudoRandom(minor, ctx, prf_key,
-                                   prf_in, desired_output_len, prf_out);
-    } else {
+    if (!CTX_IS_ESTABLISHED(ctx)) {
         major = GSS_S_NO_CONTEXT;
         *minor = GSSEAP_CONTEXT_INCOMPLETE;
+        goto cleanup;
     }
 
+    prf_out->value = GSSEAP_MALLOC(desired_output_len);
+    if (prf_out->value == NULL) {
+        major = GSS_S_FAILURE;
+        *minor = ENOMEM;
+        goto cleanup;
+    }
+
+    prf_out->length = desired_output_len;
+
+    major = gssEapPseudoRandom(minor, ctx, prf_key,
+                               prf_in, prf_out);
+
+cleanup:
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
 
     return major;
