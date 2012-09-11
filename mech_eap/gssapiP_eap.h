@@ -178,6 +178,7 @@ struct gss_cred_id_struct
 
 #define CTX_FLAG_INITIATOR                  0x00000001
 #define CTX_FLAG_KRB_REAUTH                 0x00000002
+#define CTX_FLAG_CHANNEL_BINDINGS_VERIFIED  0x00000004
 
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
@@ -256,6 +257,10 @@ struct gss_ctx_id_struct
 #define KEY_USAGE_ACCEPTOR_SIGN             23
 #define KEY_USAGE_INITIATOR_SEAL            24
 #define KEY_USAGE_INITIATOR_SIGN            25
+
+#define KEY_USAGE_GSSEAP_CHBIND_MIC         60
+#define KEY_USAGE_GSSEAP_ACCTOKEN_MIC       61
+#define KEY_USAGE_GSSEAP_INITOKEN_MIC       62
 
 /* accept_sec_context.c */
 OM_uint32
