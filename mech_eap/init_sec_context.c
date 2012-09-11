@@ -561,16 +561,35 @@ eapGssSmInitAcceptorName(OM_uint32 *minor,
                                   outputToken, NULL);
         if (GSS_ERROR(major))
             return major;
-    } else if (inputToken != GSS_C_NO_BUFFER &&
-               ctx->acceptorName == GSS_C_NO_NAME) {
-        /* Accept target name hint from acceptor */
+    } else if (inputToken != GSS_C_NO_BUFFER) {
+        /* Accept target name hint from acceptor or verify acceptor*/
+	gss_name_t importedName;
         major = gssEapImportName(minor, inputToken,
                                  GSS_C_NT_USER_NAME,
                                  ctx->mechanismUsed,
-                                 &ctx->acceptorName);
+                                 &importedName);
         if (GSS_ERROR(major))
             return major;
+	if (ctx->acceptorName) {
+	    /* verify name */
+	    int equal = 0;
+	    OM_uint32 ignoredMinor = 0;
+	    major = gss_compare_name(minor, importedName,
+				     ctx->acceptorName, &equal);
+	    gss_release_name(&ignoredMinor, &importedName);
+	    if (GSS_ERROR(major))
+		return major;
+	    if (!equal) {
+		*minor = GSSEAP_BAD_CONTEXT_TOKEN;
+		return GSS_S_DEFECTIVE_TOKEN;
+	    }
+	} else {
+	    /* accept acceptor name hint */
+	    ctx->acceptorName = importedName;
+	    importedName = NULL;
+	}
     }
+
 
     /*
      * Currently, other parts of the code assume that the acceptor name
@@ -892,7 +911,8 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
     {
         ITOK_TYPE_ACCEPTOR_NAME_RESP,
         ITOK_TYPE_ACCEPTOR_NAME_REQ,
-        GSSEAP_STATE_INITIAL | GSSEAP_STATE_AUTHENTICATE,
+        GSSEAP_STATE_INITIAL | GSSEAP_STATE_AUTHENTICATE
+	| GSSEAP_STATE_ACCEPTOR_EXTS ,
         0,
         eapGssSmInitAcceptorName
     },

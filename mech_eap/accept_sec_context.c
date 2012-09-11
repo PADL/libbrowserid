@@ -851,6 +851,13 @@ static struct gss_eap_sm eapGssAcceptorSm[] = {
 #endif
     {
         ITOK_TYPE_NONE,
+        ITOK_TYPE_ACCEPTOR_NAME_RESP,
+        GSSEAP_STATE_ACCEPTOR_EXTS,
+        0,
+        eapGssSmAcceptAcceptorName
+    },
+    {
+        ITOK_TYPE_NONE,
         ITOK_TYPE_ACCEPTOR_MIC,
         GSSEAP_STATE_ACCEPTOR_EXTS,
         0,
