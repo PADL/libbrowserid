@@ -16,8 +16,8 @@ Shibboleth
 * Add a mapping from the PAC RADIUS attribute to urn:mspac: in the file
   /usr/local/etc/shibboleth/attribute-map.xml:
 
-  <GSSAPIAttribute name="urn:ietf:params:gss-eap:radius-avp urn:x-radius:1679163525"
-                   id="urn:mspac:" binary="true"/>
+  <GSSAPIAttribute name="urn:ietf:params:gssapi:aaa-radius 26.25622.133"
+   id="urn:mspac:" binary="true"/>
 
 FreeRADIUS
 ----------

@@ -46,7 +46,7 @@ struct radius_ad_context {
 };
 
 static krb5_data radius_ad_attr = {
-    KV5M_DATA, sizeof("urn:authdata-radius-avp") - 1, "urn:authdata-radius-avp" };
+    KV5M_DATA, sizeof("urn:authdata-aaa-radius") - 1, "urn:authdata-aaa-radius" };
 
 static krb5_error_code
 radius_ad_init(krb5_context kcontext GSSEAP_UNUSED,

@@ -103,6 +103,7 @@ gss_eap_saml_assertion_provider::initWithGssContext(const gss_eap_attr_ctx *mana
     gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
     int authenticated, complete;
     OM_uint32 minor;
+    gss_eap_attrid attrid(VENDORPEC_UKERNA, PW_SAML_AAA_ASSERTION);
 
     GSSEAP_ASSERT(m_assertion == NULL);
 
@@ -115,9 +116,7 @@ gss_eap_saml_assertion_provider::initWithGssContext(const gss_eap_attr_ctx *mana
     radius = static_cast<const gss_eap_radius_attr_provider *>
         (m_manager->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
-        radius->getFragmentedAttribute(PW_SAML_AAA_ASSERTION,
-                                       VENDORPEC_UKERNA,
-                                       &authenticated, &complete, &value)) {
+        radius->getFragmentedAttribute(attrid, &authenticated, &complete, &value)) {
         setAssertion(&value, authenticated);
         gss_release_buffer(&minor, &value);
     } else {

@@ -39,6 +39,8 @@
 
 #ifdef __cplusplus
 
+typedef std::pair <unsigned int, unsigned int> gss_eap_attrid;
+
 struct gss_eap_radius_attr_provider : gss_eap_attr_provider {
 public:
     gss_eap_radius_attr_provider(void);
@@ -72,30 +74,18 @@ public:
                            JSONObject &obj);
     JSONObject jsonRepresentation(void) const;
 
-    bool getAttribute(uint32_t attribute,
-                      int *authenticated,
-                      int *complete,
-                      gss_buffer_t value,
-                      gss_buffer_t display_value,
-                      int *more) const;
-    bool getAttribute(uint16_t attribute,
-                      uint16_t vendor,
+    bool getAttribute(const gss_eap_attrid &attrid,
                       int *authenticated,
                       int *complete,
                       gss_buffer_t value,
                       gss_buffer_t display_value,
                       int *more) const;
     bool setAttribute(int complete,
-                      uint32_t attribute,
+                      const gss_eap_attrid &attrid,
                       const gss_buffer_t value);
-    bool deleteAttribute(uint32_t attribute);
+    bool deleteAttribute(const gss_eap_attrid &attrid);
 
-    bool getFragmentedAttribute(uint16_t attribute,
-                                uint16_t vendor,
-                                int *authenticated,
-                                int *complete,
-                                gss_buffer_t value) const;
-    bool getFragmentedAttribute(uint32_t attrid,
+    bool getFragmentedAttribute(const gss_eap_attrid &attrid,
                                 int *authenticated,
                                 int *complete,
                                 gss_buffer_t value) const;
@@ -110,11 +100,11 @@ public:
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:
-    const VALUE_PAIR *getAvps(void) const {
+    rs_const_avp *getAvps(void) const {
         return m_vps;
     }
 
-    VALUE_PAIR *m_vps;
+    rs_avp *m_vps;
     bool m_authenticated;
 };
 
@@ -124,28 +114,28 @@ extern "C" {
 
 OM_uint32
 gssEapRadiusAddAvp(OM_uint32 *minor,
-                   VALUE_PAIR **vp,
-                   uint16_t type,
-                   uint16_t vendor,
+                   struct rs_packet *pkt,
+                   unsigned int type,
+                   unsigned int vendor,
                    const gss_buffer_t buffer);
 
 OM_uint32
 gssEapRadiusGetAvp(OM_uint32 *minor,
-                   VALUE_PAIR *vps,
-                   uint16_t type,
-                   uint16_t vendor,
+                   struct rs_packet *pkt,
+                   unsigned int type,
+                   unsigned int vendor,
                    gss_buffer_t buffer,
                    int concat);
 
 OM_uint32
 gssEapRadiusGetRawAvp(OM_uint32 *minor,
-                      VALUE_PAIR *vps,
-                      uint16_t type,
-                      uint16_t vendor,
-                      VALUE_PAIR **vp);
+                      rs_const_avp *vps,
+                      unsigned int type,
+                      unsigned int vendor,
+                      rs_const_avp **vp);
 OM_uint32
 gssEapRadiusFreeAvps(OM_uint32 *minor,
-                     VALUE_PAIR **vps);
+                     rs_avp **vps);
 
 OM_uint32 gssEapRadiusAttrProviderInit(OM_uint32 *minor);
 OM_uint32 gssEapRadiusAttrProviderFinalize(OM_uint32 *minor);
@@ -161,20 +151,6 @@ gssEapCreateRadiusContext(OM_uint32 *minor,
 
 /* This really needs to be a function call on Windows */
 #define RS_CONFIG_FILE      SYSCONFDIR "/radsec.conf"
-
-#define VENDORPEC_MS                        311 /* RFC 2548 */
-
-#define PW_MS_MPPE_SEND_KEY                 16
-#define PW_MS_MPPE_RECV_KEY                 17
-
-#define VENDORPEC_UKERNA                    25622
-
-#define PW_GSS_ACCEPTOR_SERVICE_NAME        128
-#define PW_GSS_ACCEPTOR_HOST_NAME           129
-#define PW_GSS_ACCEPTOR_SERVICE_SPECIFIC    130
-#define PW_GSS_ACCEPTOR_REALM_NAME          131
-#define PW_SAML_AAA_ASSERTION               132
-#define PW_MS_WINDOWS_AUTH_DATA             133
 
 #ifdef __cplusplus
 }

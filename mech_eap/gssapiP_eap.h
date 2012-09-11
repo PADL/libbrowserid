@@ -90,28 +90,11 @@ typedef const gss_OID_desc *gss_const_OID;
 #include <wpabuf.h>
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR
-/* FreeRADIUS headers */
-#ifdef __cplusplus
-extern "C" {
-#ifndef WIN32
-#define operator fr_operator
-#endif
-#endif
-#include <freeradius/libradius.h>
-#include <freeradius/radius.h>
-
-#undef pid_t
-
 /* libradsec headers */
 #include <radsec/radsec.h>
 #include <radsec/request.h>
-#ifdef __cplusplus
-#ifndef WIN32
-#undef operator
+#include <radsec/radius.h>
 #endif
-}
-#endif
-#endif /* GSSEAP_ENABLE_ACCEPTOR */
 
 #include "gsseap_err.h"
 #include "radsec_err.h"
@@ -209,7 +192,7 @@ struct gss_eap_acceptor_ctx {
     struct rs_connection *radConn;
     char *radServer;
     gss_buffer_desc state;
-    VALUE_PAIR *vps;
+    rs_avp *vps;
 };
 #endif
 
@@ -343,9 +326,12 @@ gssEapDisplayStatus(OM_uint32 *minor,
 #define IS_WIRE_ERROR(err)              ((err) > GSSEAP_RESERVED && \
                                          (err) <= GSSEAP_RADIUS_PROT_FAILURE)
 
-/* upper bound of RADIUS error range must be kept in sync with radsec.h */
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 #define IS_RADIUS_ERROR(err)            ((err) >= ERROR_TABLE_BASE_rse && \
-                                         (err) <= ERROR_TABLE_BASE_rse + 20)
+                                         (err) <= ERROR_TABLE_BASE_rse + RSE_MAX)
+#else
+#define IS_RADIUS_ERROR(err)            (0)
+#endif
 
 /* exchange_meta_data.c */
 OM_uint32 GSSAPI_CALLCONV

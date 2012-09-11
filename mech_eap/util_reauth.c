@@ -635,7 +635,7 @@ cleanup:
 
 #ifndef HAVE_HEIMDAL_VERSION
 static gss_buffer_desc radiusAvpKrbAttr = {
-    sizeof("urn:authdata-radius-avp") - 1, "urn:authdata-radius-avp"
+    sizeof("urn:authdata-aaa-radius") - 1, "urn:authdata-aaa-radius"
 };
 #endif
 
