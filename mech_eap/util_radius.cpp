@@ -822,7 +822,7 @@ gss_eap_radius_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
 const char *
 gss_eap_radius_attr_provider::prefix(void) const
 {
-    return "urn:ietf:params:gssapi:aaa-radius";
+    return "urn:ietf:params:gss:radius-attribute";
 }
 
 JSONObject
