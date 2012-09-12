@@ -12,3 +12,5 @@ build-aux
 !build-aux/compile
 mech_eap.spec
 mech_eap*tar*
+*.lo
+*#
