@@ -252,7 +252,7 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
     ssize_t checksumIndex = -1;
 
     krb5_keyusage usage;
-    krb5_error_code code;
+    krb5_error_code code = 0;
     krb5_context krbContext;
     krb5_crypto_iov *kiov = NULL;
 #ifdef HAVE_HEIMDAL_VERSION
