@@ -352,7 +352,7 @@ setAcceptorIdentity(OM_uint32 *minor,
 
     major = gssEapRadiusAddAvp(minor, req,
                                PW_GSS_ACCEPTOR_SERVICE_NAME,
-                               VENDORPEC_UKERNA,
+                               0,
                                &nameBuf);
     if (GSS_ERROR(major))
         return major;
@@ -362,7 +362,7 @@ setAcceptorIdentity(OM_uint32 *minor,
 
     major = gssEapRadiusAddAvp(minor, req,
                                PW_GSS_ACCEPTOR_HOST_NAME,
-                               VENDORPEC_UKERNA,
+                               0,
                                &nameBuf);
     if (GSS_ERROR(major))
         return major;
@@ -384,8 +384,8 @@ setAcceptorIdentity(OM_uint32 *minor,
         nameBuf.length = strlen(ssi);
 
         major = gssEapRadiusAddAvp(minor, req,
-                                   PW_GSS_ACCEPTOR_SERVICE_SPECIFIC,
-                                   VENDORPEC_UKERNA,
+                                   PW_GSS_ACCEPTOR_SERVICE_SPECIFICS,
+                                   0,
                                    &nameBuf);
 
         if (GSS_ERROR(major)) {
@@ -400,7 +400,7 @@ setAcceptorIdentity(OM_uint32 *minor,
         /* Acceptor-Realm-Name */
         major = gssEapRadiusAddAvp(minor, req,
                                    PW_GSS_ACCEPTOR_REALM_NAME,
-                                   VENDORPEC_UKERNA,
+                                   0,
                                    &nameBuf);
         if (GSS_ERROR(major))
             return major;

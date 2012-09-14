@@ -171,10 +171,6 @@ isInternalAttributeP(const gss_eap_attrid &attrid)
     switch (attrid.first) {
     case VENDORPEC_UKERNA:
         switch (attrid.second) {
-        case PW_GSS_ACCEPTOR_SERVICE_NAME:
-        case PW_GSS_ACCEPTOR_HOST_NAME:
-        case PW_GSS_ACCEPTOR_SERVICE_SPECIFIC:
-        case PW_GSS_ACCEPTOR_REALM_NAME:
         case PW_SAML_AAA_ASSERTION:
             bInternalAttribute = true;
             break;
@@ -182,6 +178,18 @@ isInternalAttributeP(const gss_eap_attrid &attrid)
             break;
         }
         break;
+    case 0:
+	switch (attrid.second) {
+	            case PW_GSS_ACCEPTOR_SERVICE_NAME:
+        case PW_GSS_ACCEPTOR_HOST_NAME:
+        case PW_GSS_ACCEPTOR_SERVICE_SPECIFICS:
+        case PW_GSS_ACCEPTOR_REALM_NAME:
+            bInternalAttribute = true;
+	    break;
+	default:
+	    break;
+	}
+	break;
     default:
         break;
     }
