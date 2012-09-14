@@ -61,7 +61,7 @@
 
 static gss_OID_desc gssEapNtEapName = {
     /* 1.3.6.1.4.1.5322.22.2.1  */
-    10, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x02\x01"
+    8, "\x2B\x06\x01\x05\x05\x0f\x02\x01"
 };
 
 gss_OID GSS_EAP_NT_EAP_NAME = &gssEapNtEapName;

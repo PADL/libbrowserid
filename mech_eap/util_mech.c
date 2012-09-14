@@ -37,18 +37,21 @@
 #include "gssapiP_eap.h"
 
 /*
- * 1.3.6.1.4.1.5322(padl)
+ * Many OIDs are taken from 1.3.6.1.4.1.5322(padl)
  *      gssEap(22)
- *       mechanisms(1)
+ *       mechanisms(1) (no longer used)
  *        eap-aes128-cts-hmac-sha1-96(17)
  *        eap-aes256-cts-hmac-sha1-96(18)
- *       nameTypes(2)
+ *       nameTypes(2) (no longer used)
  *       apiExtensions(3)
  *        inquireSecContextByOid(1)
  *        inquireCredByOid(2)
  *        setSecContextOption(3)
  *        setCredOption(4)
  *        mechInvoke(5)
+ *        Mechanisms and name types are now taken from
+ *      http://www.iana.org/assignments/smi-numbers . See Prefix:
+ *      iso.org.dod.internet.security.mechanisms.abfab (1.3.6.1.5.5.15)
  */
 
 /*
