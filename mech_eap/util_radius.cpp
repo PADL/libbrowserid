@@ -179,17 +179,17 @@ isInternalAttributeP(const gss_eap_attrid &attrid)
         }
         break;
     case 0:
-	switch (attrid.second) {
-	            case PW_GSS_ACCEPTOR_SERVICE_NAME:
+        switch (attrid.second) {
+        case PW_GSS_ACCEPTOR_SERVICE_NAME:
         case PW_GSS_ACCEPTOR_HOST_NAME:
         case PW_GSS_ACCEPTOR_SERVICE_SPECIFICS:
         case PW_GSS_ACCEPTOR_REALM_NAME:
             bInternalAttribute = true;
-	    break;
-	default:
-	    break;
-	}
-	break;
+            break;
+        default:
+            break;
+        }
+        break;
     default:
         break;
     }

@@ -562,32 +562,38 @@ eapGssSmInitAcceptorName(OM_uint32 *minor,
         if (GSS_ERROR(major))
             return major;
     } else if (inputToken != GSS_C_NO_BUFFER) {
-        /* Accept target name hint from acceptor or verify acceptor*/
-	gss_name_t importedName;
+        OM_uint32 tmpMinor;
+        gss_name_t nameHint;
+        int equal;
+
+        /* Accept target name hint from acceptor or verify acceptor */
         major = gssEapImportName(minor, inputToken,
                                  GSS_C_NT_USER_NAME,
                                  ctx->mechanismUsed,
-                                 &importedName);
+                                 &nameHint);
         if (GSS_ERROR(major))
             return major;
-	if (ctx->acceptorName) {
-	    /* verify name */
-	    int equal = 0;
-	    OM_uint32 ignoredMinor = 0;
-	    major = gss_compare_name(minor, importedName,
-				     ctx->acceptorName, &equal);
-	    gss_release_name(&ignoredMinor, &importedName);
-	    if (GSS_ERROR(major))
-		return major;
-	    if (!equal) {
-		*minor = GSSEAP_BAD_CONTEXT_TOKEN;
-		return GSS_S_DEFECTIVE_TOKEN;
-	    }
-	} else {
-	    /* accept acceptor name hint */
-	    ctx->acceptorName = importedName;
-	    importedName = NULL;
-	}
+
+        if (ctx->acceptorName != GSS_C_NO_NAME) {
+            /* verify name hint matched asserted acceptor name  */
+            major = gss_compare_name(minor, nameHint,
+                                     ctx->acceptorName, &equal);
+            if (GSS_ERROR(major)) {
+                gss_release_name(&tmpMinor, &nameHint);
+                return major;
+            }
+
+            gss_release_name(&tmpMinor, &nameHint);
+
+            if (!equal) {
+                *minor = GSSEAP_BAD_CONTEXT_TOKEN;
+                return GSS_S_DEFECTIVE_TOKEN;
+            }
+        } else {
+            /* accept acceptor name hint */
+            ctx->acceptorName = nameHint;
+            nameHint = GSS_C_NO_NAME;
+        }
     }
 
 
