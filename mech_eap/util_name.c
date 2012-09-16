@@ -60,7 +60,7 @@
 #include "gssapiP_eap.h"
 
 static gss_OID_desc gssEapNtEapName = {
-    /* 1.3.6.1.4.1.5322.22.2.1  */
+    /* 1.3.6.1.5.5.15.2.1 */
     8, "\x2B\x06\x01\x05\x05\x0f\x02\x01"
 };
 
