@@ -42,10 +42,11 @@
  *
  *      abfab(15)
  *       mechanisms(1)
- *        eap-aes128-cts-hmac-sha1-96(17)
- *        eap-aes256-cts-hmac-sha1-96(18)
- *       nameTypes(2)
- *        eap-name(1)
+ *        gss-eap-v1(1)
+ *         eap-aes128-cts-hmac-sha1-96(17)
+ *         eap-aes256-cts-hmac-sha1-96(18)
+ *       nametypes(2)
+ *        GSS_EAP_NT_EAP_NAME(1)
  *
  * Implementation-internal OIDs are taken from 1.3.6.1.4.1.5322(padl)
  *      gssEap(22)
