@@ -37,12 +37,19 @@
 #include "gssapiP_eap.h"
 
 /*
- * 1.3.6.1.4.1.5322(padl)
- *      gssEap(22)
+ * Mechanism and name types are taken from 1.3.6.1.5.5(mechanisms)
+ * assigned at http://www.iana.org/assignments/smi-numbers
+ *
+ *      abfab(15)
  *       mechanisms(1)
- *        eap-aes128-cts-hmac-sha1-96(17)
- *        eap-aes256-cts-hmac-sha1-96(18)
- *       nameTypes(2)
+ *        gss-eap-v1(1)
+ *         eap-aes128-cts-hmac-sha1-96(17)
+ *         eap-aes256-cts-hmac-sha1-96(18)
+ *       nametypes(2)
+ *        GSS_EAP_NT_EAP_NAME(1)
+ *
+ * Implementation-internal OIDs are taken from 1.3.6.1.4.1.5322(padl)
+ *      gssEap(22)
  *       apiExtensions(3)
  *        inquireSecContextByOid(1)
  *        inquireCredByOid(2)
@@ -56,12 +63,12 @@
  * canonicalized exported names.
  */
 static gss_OID_desc gssEapMechOids[] = {
-    /* 1.3.6.1.4.1.5322.22.1  */
-    { 9, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x01" },
-    /* 1.3.6.1.4.1.5322.22.1.17 */
-    { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x01\x11" },
-    /* 1.3.6.1.4.1.5322.22.1.18 */
-    { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x16\x01\x12" }
+    /* 1.3.6.1.5.5.15.1.1  */
+    { 8, "\x2B\x06\x01\x05\x05\x0f\x01\x01" },
+    /* 1.3.6.1.5.5.15.1.1.17  */
+    { 9, "\x2B\x06\x01\x05\x05\x0f\x01\x01\x11" },
+    /* 1.3.6.1.5.5.15.1.1.18  */
+    { 9, "\x2B\x06\x01\x05\x05\x0f\x01\x01\x12" },
 };
 
 gss_OID GSS_EAP_MECHANISM                            = &gssEapMechOids[0];

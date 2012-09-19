@@ -387,6 +387,16 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
 
 #define KRB_DATA_INIT(d)        krb5_data_zero((d))
 
+#define KRB_CHECKSUM_TYPE(c)    ((c)->cksumtype)
+#define KRB_CHECKSUM_LENGTH(c)  ((c)->checksum.length)
+#define KRB_CHECKSUM_DATA(c)    ((c)->checksum.data)
+
+#define KRB_CHECKSUM_INIT(cksum, type, d)      do { \
+        (cksum)->cksumtype = (type);                \
+        (cksum)->checksum.length = (d)->length;     \
+        (cksum)->checksum.data = (d)->value;        \
+    } while (0)
+
 #else
 
 #define KRB_TIME_FOREVER        KRB5_INT32_MAX
@@ -409,6 +419,16 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
         (d)->magic = KV5M_DATA;             \
         (d)->length = 0;                    \
         (d)->data = NULL;                   \
+    } while (0)
+
+#define KRB_CHECKSUM_TYPE(c)    ((c)->checksum_type)
+#define KRB_CHECKSUM_LENGTH(c)  ((c)->length)
+#define KRB_CHECKSUM_DATA(c)    ((c)->contents)
+
+#define KRB_CHECKSUM_INIT(cksum, type, d)      do { \
+        (cksum)->checksum_type = (type);            \
+        (cksum)->length = (d)->length;              \
+        (cksum)->contents = (d)->value;             \
     } while (0)
 
 #endif /* HAVE_HEIMDAL_VERSION */

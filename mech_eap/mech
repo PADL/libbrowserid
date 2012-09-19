@@ -4,5 +4,5 @@
 # Any encryption type supported by Kerberos can be defined as the
 # last element of the OID arc.
 #
-eap-aes128		1.3.6.1.4.1.5322.22.1.17	mech_eap.so
-eap-aes256		1.3.6.1.4.1.5322.22.1.18	mech_eap.so
+eap-aes128		1.3.6.1.5.5.15.1.1.17		mech_eap.so
+eap-aes256		1.3.6.1.5.5.15.1.1.18		mech_eap.so

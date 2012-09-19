@@ -171,11 +171,19 @@ isInternalAttributeP(const gss_eap_attrid &attrid)
     switch (attrid.first) {
     case VENDORPEC_UKERNA:
         switch (attrid.second) {
+        case PW_SAML_AAA_ASSERTION:
+            bInternalAttribute = true;
+            break;
+        default:
+            break;
+        }
+        break;
+    case 0:
+        switch (attrid.second) {
         case PW_GSS_ACCEPTOR_SERVICE_NAME:
         case PW_GSS_ACCEPTOR_HOST_NAME:
-        case PW_GSS_ACCEPTOR_SERVICE_SPECIFIC:
+        case PW_GSS_ACCEPTOR_SERVICE_SPECIFICS:
         case PW_GSS_ACCEPTOR_REALM_NAME:
-        case PW_SAML_AAA_ASSERTION:
             bInternalAttribute = true;
             break;
         default:
@@ -822,7 +830,7 @@ gss_eap_radius_attr_provider::initWithJsonObject(const gss_eap_attr_ctx *ctx,
 const char *
 gss_eap_radius_attr_provider::prefix(void) const
 {
-    return "urn:ietf:params:gssapi:aaa-radius";
+    return "urn:ietf:params:gss:radius-attribute";
 }
 
 JSONObject

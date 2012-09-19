@@ -632,16 +632,41 @@ eapGssSmInitAcceptorName(OM_uint32 *minor,
                                   outputToken, NULL);
         if (GSS_ERROR(major))
             return major;
-    } else if (inputToken != GSS_C_NO_BUFFER &&
-               ctx->acceptorName == GSS_C_NO_NAME) {
-        /* Accept target name hint from acceptor */
+    } else if (inputToken != GSS_C_NO_BUFFER) {
+        OM_uint32 tmpMinor;
+        gss_name_t nameHint;
+        int equal;
+
+        /* Accept target name hint from acceptor or verify acceptor */
         major = gssEapImportName(minor, inputToken,
                                  GSS_C_NT_USER_NAME,
                                  ctx->mechanismUsed,
-                                 &ctx->acceptorName);
+                                 &nameHint);
         if (GSS_ERROR(major))
             return major;
+
+        if (ctx->acceptorName != GSS_C_NO_NAME) {
+            /* verify name hint matched asserted acceptor name  */
+            major = gssEapCompareName(minor, nameHint,
+                                      ctx->acceptorName, &equal);
+            if (GSS_ERROR(major)) {
+                gss_release_name(&tmpMinor, &nameHint);
+                return major;
+            }
+
+            gss_release_name(&tmpMinor, &nameHint);
+
+            if (!equal) {
+                *minor = GSSEAP_BAD_CONTEXT_TOKEN;
+                return GSS_S_DEFECTIVE_TOKEN;
+            }
+        } else {
+            /* accept acceptor name hint */
+            ctx->acceptorName = nameHint;
+            nameHint = GSS_C_NO_NAME;
+        }
     }
+
 
     /*
      * Currently, other parts of the code assume that the acceptor name
@@ -839,20 +864,44 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
                                OM_uint32 *smFlags)
 {
     OM_uint32 major;
-    gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
+    krb5_error_code code;
+    krb5_context krbContext;
+    krb5_data data;
+    krb5_checksum cksum;
+    gss_buffer_desc cksumBuffer;
 
-    if (chanBindings != GSS_C_NO_CHANNEL_BINDINGS)
-        buffer = chanBindings->application_data;
+    if (chanBindings == GSS_C_NO_CHANNEL_BINDINGS ||
+        chanBindings->application_data.length == 0)
+        return GSS_S_CONTINUE_NEEDED;
 
-    major = gssEapWrap(minor, ctx, TRUE, GSS_C_QOP_DEFAULT,
-                       &buffer, NULL, outputToken);
-    if (GSS_ERROR(major))
+    GSSEAP_KRB_INIT(&krbContext);
+
+    KRB_DATA_INIT(&data);
+
+    gssBufferToKrbData(&chanBindings->application_data, &data);
+
+    code = krb5_c_make_checksum(krbContext, ctx->checksumType,
+                                &ctx->rfc3961Key,
+                                KEY_USAGE_GSSEAP_CHBIND_MIC,
+                                &data, &cksum);
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_FAILURE;
+    }
+
+    cksumBuffer.length = KRB_CHECKSUM_LENGTH(&cksum);
+    cksumBuffer.value  = KRB_CHECKSUM_DATA(&cksum);
+
+    major = duplicateBuffer(minor, &cksumBuffer, outputToken);
+    if (GSS_ERROR(major)) {
+        krb5_free_checksum_contents(krbContext, &cksum);
         return major;
-
-    GSSEAP_ASSERT(outputToken->value != NULL);
+    }
 
     *minor = 0;
     *smFlags |= SM_FLAG_OUTPUT_TOKEN_CRITICAL;
+
+    krb5_free_checksum_contents(krbContext, &cksum);
 
     return GSS_S_CONTINUE_NEEDED;
 }
@@ -883,7 +932,7 @@ eapGssSmInitInitiatorMIC(OM_uint32 *minor,
 
     return GSS_S_CONTINUE_NEEDED;
 }
- 
+
 #ifdef GSSEAP_ENABLE_REAUTH
 static OM_uint32
 eapGssSmInitReauthCreds(OM_uint32 *minor,
@@ -948,7 +997,8 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
     {
         ITOK_TYPE_ACCEPTOR_NAME_RESP,
         ITOK_TYPE_ACCEPTOR_NAME_REQ,
-        GSSEAP_STATE_INITIAL | GSSEAP_STATE_AUTHENTICATE,
+        GSSEAP_STATE_INITIAL | GSSEAP_STATE_AUTHENTICATE |
+        GSSEAP_STATE_ACCEPTOR_EXTS,
         0,
         eapGssSmInitAcceptorName
     },
@@ -998,7 +1048,7 @@ static struct gss_eap_sm eapGssInitiatorSm[] = {
         ITOK_TYPE_NONE,
         ITOK_TYPE_GSS_CHANNEL_BINDINGS,
         GSSEAP_STATE_INITIATOR_EXTS,
-        SM_ITOK_FLAG_REQUIRED,
+        0,
         eapGssSmInitGssChannelBindings
     },
     {

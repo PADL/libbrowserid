@@ -156,6 +156,7 @@ error_code GSSEAP_SHIB_LISTENER_FAILURE,        "Failed to communicate with loca
 # Extensions
 #
 error_code GSSEAP_BINDINGS_MISMATCH,            "Channel bindings do not match"
+error_code GSSEAP_MISSING_BINDINGS,             "Channel binding token missing"
 error_code GSSEAP_NO_MECHGLUE_SYMBOL,           "Could not find symbol in mechanism glue"
 error_code GSSEAP_BAD_INVOCATION,               "Bad mechanism invoke OID"
 

@@ -283,11 +283,7 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
     if (*minor != 0)
         return GSS_S_FAILURE;
 
-#ifdef HAVE_HEIMDAL_VERSION
-    *cksumtype = cksum.cksumtype;
-#else
-    *cksumtype = cksum.checksum_type;
-#endif
+    *cksumtype = KRB_CHECKSUM_TYPE(&cksum);
 
     krb5_free_checksum_contents(krbContext, &cksum);
 #endif /* HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE */

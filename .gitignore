@@ -22,3 +22,5 @@ mech_eap*tar*
 *.exe
 out/
 diffs
+*.lo
+*#
