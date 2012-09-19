@@ -576,7 +576,7 @@ eapGssSmInitAcceptorName(OM_uint32 *minor,
 
         if (ctx->acceptorName != GSS_C_NO_NAME) {
             /* verify name hint matched asserted acceptor name  */
-            major = gss_compare_name(minor, nameHint,
+            major = gssEapCompareName(minor, nameHint,
                                      ctx->acceptorName, &equal);
             if (GSS_ERROR(major)) {
                 gss_release_name(&tmpMinor, &nameHint);
