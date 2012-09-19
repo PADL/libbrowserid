@@ -579,11 +579,11 @@ eapGssSmInitAcceptorName(OM_uint32 *minor,
             major = gssEapCompareName(minor, nameHint,
                                       ctx->acceptorName, &equal);
             if (GSS_ERROR(major)) {
-                gss_release_name(&tmpMinor, &nameHint);
+                gssEapReleaseName(&tmpMinor, &nameHint);
                 return major;
             }
 
-            gss_release_name(&tmpMinor, &nameHint);
+            gssEapReleaseName(&tmpMinor, &nameHint);
 
             if (!equal) {
                 *minor = GSSEAP_BAD_CONTEXT_TOKEN;
