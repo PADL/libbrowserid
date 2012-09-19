@@ -1021,8 +1021,12 @@ SpAcceptCredentialsEapAes128(
     IN PSECPKG_PRIMARY_CRED PrimaryCredentials,
     IN PSECPKG_SUPPLEMENTAL_CRED SupplementalCredentials)
 {
-    /* This is a NOOP because logon credentials are only AES256 */
-    return SEC_E_UNSUPPORTED_FUNCTION;
+    if ((GsspFlags & GSSP_FLAG_LOGON_CREDS) == 0)
+        return SEC_E_UNSUPPORTED_FUNCTION;
+
+    return GsspAcceptCredentials(LogonType, AccountName,
+                                 PrimaryCredentials, SupplementalCredentials,
+                                 GSS_EAP_AES128_CTS_HMAC_SHA1_96_MECHANISM);
 }
 
 NTSTATUS NTAPI
@@ -1032,12 +1036,8 @@ SpAcceptCredentialsEapAes256(
     IN PSECPKG_PRIMARY_CRED PrimaryCredentials,
     IN PSECPKG_SUPPLEMENTAL_CRED SupplementalCredentials)
 {
-    if ((GsspFlags & (GSSP_FLAG_LOGON_CREDS)) == 0)
-        return SEC_E_UNSUPPORTED_FUNCTION;
-
-    return GsspAcceptCredentials(LogonType, AccountName,
-                                 PrimaryCredentials, SupplementalCredentials,
-                                 GSS_EAP_AES256_CTS_HMAC_SHA1_96_MECHANISM);
+    /* This is a NOOP because logon credentials are only AES128 */
+    return SEC_E_UNSUPPORTED_FUNCTION;
 }
 
 /*

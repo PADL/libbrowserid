@@ -16,7 +16,7 @@ Shibboleth
 * Add a mapping from the PAC RADIUS attribute to urn:mspac: in the file
   /usr/local/etc/shibboleth/attribute-map.xml:
 
-  <GSSAPIAttribute name="urn:ietf:params:gssapi:aaa-radius 26.25622.133"
+  <GSSAPIAttribute name="urn:ietf:params:gss:radius-attribute 26.25622.133"
    id="urn:mspac:" binary="true"/>
 
 FreeRADIUS
@@ -46,7 +46,7 @@ on OS X it was necessary to start it with -M single to function under gdb.
 
 For the client, the GSS EAP mechanism can be specified on the command line:
 
-smbclient --password samba --mechanism 1.3.6.1.4.1.5322.22.1.18 '\\host\share'".
+smbclient --password samba --mechanism 1.3.6.1.5.5.15.1.1.18 '\\host\share'".
 
 There is no Moonshot SSPI implementation as yet, so it is not possible to test
 with a Windows client.

@@ -267,20 +267,45 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
                            int verifyMIC)
 {
     OM_uint32 major;
-    gss_iov_buffer_desc *iov = NULL;
     size_t i = 0, j;
     enum gss_eap_token_type tokType;
     OM_uint32 micTokType;
     unsigned char wireTokType[2];
     unsigned char *innerTokTypes = NULL, *innerTokLengths = NULL;
     const struct gss_eap_token_buffer_set *tokens;
+    ssize_t checksumIndex = -1;
+
+    krb5_keyusage usage;
+    krb5_error_code code = 0;
+    krb5_context krbContext;
+    krb5_crypto_iov *kiov = NULL;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto = NULL;
+    krb5_cksumtype cksumType;
+#endif
+    size_t kiovCount;
+
+    GSSEAP_KRB_INIT(&krbContext);
 
     tokens = verifyMIC ? ctx->inputTokens : ctx->outputTokens;
 
     GSSEAP_ASSERT(tokens != NULL);
 
-    iov = GSSEAP_CALLOC(2 + (3 * tokens->buffers.count) + 1, sizeof(*iov));
-    if (iov == NULL) {
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_init(krbContext, &ctx->rfc3961Key, ETYPE_NULL, &krbCrypto);
+    if (code != 0)
+        goto cleanup;
+#endif
+
+    kiovCount = 2 + (3 * tokens->buffers.count) + 1;
+
+    if (verifyMIC) {
+        assert(tokens->buffers.count != 0);
+        kiovCount -= 3;
+    }
+
+    kiov = GSSEAP_CALLOC(kiovCount, sizeof(*kiov));
+    if (kiov == NULL) {
         major = GSS_S_FAILURE;
         *minor = ENOMEM;
         goto cleanup;
@@ -302,76 +327,134 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
 
     /* Mechanism OID */
     GSSEAP_ASSERT(ctx->mechanismUsed != GSS_C_NO_OID);
-    iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
-    iov[i].buffer.length = ctx->mechanismUsed->length;
-    iov[i].buffer.value = ctx->mechanismUsed->elements;
+    kiov[i].flags = KRB5_CRYPTO_TYPE_SIGN_ONLY;
+    kiov[i].data.length = ctx->mechanismUsed->length;
+    kiov[i].data.data = ctx->mechanismUsed->elements;
     i++;
 
     /* Token type */
     if (CTX_IS_INITIATOR(ctx) ^ verifyMIC) {
         tokType = TOK_TYPE_INITIATOR_CONTEXT;
         micTokType = ITOK_TYPE_INITIATOR_MIC;
+        usage = KEY_USAGE_GSSEAP_INITOKEN_MIC;
     } else {
         tokType = TOK_TYPE_ACCEPTOR_CONTEXT;
         micTokType = ITOK_TYPE_ACCEPTOR_MIC;
+        usage = KEY_USAGE_GSSEAP_ACCTOKEN_MIC;
     }
     store_uint16_be(tokType, wireTokType);
 
-    iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
-    iov[i].buffer.length = sizeof(wireTokType);
-    iov[i].buffer.value = wireTokType;
+    kiov[i].flags = KRB5_CRYPTO_TYPE_SIGN_ONLY;
+    kiov[i].data.length = sizeof(wireTokType);
+    kiov[i].data.data = (char *)wireTokType;
     i++;
 
     for (j = 0; j < tokens->buffers.count; j++) {
         if (verifyMIC &&
-            (tokens->types[j] & ITOK_TYPE_MASK) == micTokType)
-            continue; /* will use this slot for trailer */
+            (tokens->types[j] & ITOK_TYPE_MASK) == micTokType) {
+            continue;
+        }
 
-        iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
-        iov[i].buffer.length = 4;
-        iov[i].buffer.value = &innerTokTypes[j * 4];
+        kiov[i].flags = KRB5_CRYPTO_TYPE_SIGN_ONLY;
+        kiov[i].data.length = 4;
+        kiov[i].data.data = (char *)&innerTokTypes[j * 4];
         store_uint32_be(tokens->types[j] & ~(ITOK_FLAG_VERIFIED),
-                        iov[i].buffer.value);
+                        kiov[i].data.data);
         i++;
 
-        iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
-        iov[i].buffer.length = 4;
-        iov[i].buffer.value = &innerTokLengths[j * 4];
+        kiov[i].flags = KRB5_CRYPTO_TYPE_SIGN_ONLY;
+        kiov[i].data.length = 4;
+        kiov[i].data.data = (char *)&innerTokLengths[j * 4];
         store_uint32_be(tokens->buffers.elements[j].length,
-                        iov[i].buffer.value);
+                        kiov[i].data.data);
         i++;
 
-        iov[i].type = GSS_IOV_BUFFER_TYPE_DATA;
-        iov[i].buffer = tokens->buffers.elements[j];
+        kiov[i].flags = KRB5_CRYPTO_TYPE_SIGN_ONLY;
+        gssBufferToKrbData(&tokens->buffers.elements[j], &kiov[i].data);
         i++;
     }
 
+    kiov[i].flags = KRB5_CRYPTO_TYPE_CHECKSUM;
     if (verifyMIC) {
-        GSSEAP_ASSERT(tokenMIC->length >= 16);
-
-        GSSEAP_ASSERT(i < 2 + (3 * tokens->buffers.count));
-
-        iov[i].type = GSS_IOV_BUFFER_TYPE_HEADER;
-        iov[i].buffer = *tokenMIC;
-        i++;
-
-        major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
-                                        iov, i, TOK_TYPE_MIC);
+        gssBufferToKrbData(tokenMIC, &kiov[i].data);
     } else {
-        iov[i++].type = GSS_IOV_BUFFER_TYPE_HEADER | GSS_IOV_BUFFER_FLAG_ALLOCATE;
-        major = gssEapWrapOrGetMIC(minor, ctx, FALSE, NULL,
-                                   iov, i, TOK_TYPE_MIC);
-        if (!GSS_ERROR(major))
-            *tokenMIC = iov[i - 1].buffer;
+        size_t checksumSize;
+
+        code = krb5_c_checksum_length(krbContext, ctx->checksumType,
+                                      &checksumSize);
+        if (code != 0)
+            goto cleanup;
+
+        kiov[i].data.data = GSSEAP_MALLOC(checksumSize);
+        if (kiov[i].data.data == NULL) {
+            code = ENOMEM;
+            goto cleanup;
+        }
+        kiov[i].data.length = checksumSize;
+        checksumIndex = i;
+    }
+    i++;
+    GSSEAP_ASSERT(i == kiovCount);
+
+#ifdef HAVE_HEIMDAL_VERSION
+    cksumType = ctx->checksumType;
+
+    if (verifyMIC) {
+        code = krb5_verify_checksum_iov(krbContext, krbCrypto, usage,
+                                        kiov, i, &cksumType);
+    } else {
+        code = krb5_create_checksum_iov(krbContext, krbCrypto, usage,
+                                        kiov, i, &cksumType);
+    }
+#else
+    if (verifyMIC) {
+        krb5_boolean kvalid = FALSE;
+
+        code = krb5_c_verify_checksum_iov(krbContext, ctx->checksumType,
+                                          &ctx->rfc3961Key,
+                                          usage, kiov, i, &kvalid);
+        if (code == 0 && !kvalid) {
+            code = KRB5KRB_AP_ERR_BAD_INTEGRITY;
+        }
+    } else {
+        code = krb5_c_make_checksum_iov(krbContext, ctx->checksumType,
+                                        &ctx->rfc3961Key,
+                                        usage, kiov, i);
+    }
+#endif /* HAVE_HEIMDAL_VERSION */
+
+    if (code == 0 && !verifyMIC) {
+        krbDataToGssBuffer(&kiov[checksumIndex].data, tokenMIC);
+        checksumIndex = -1;
     }
 
 cleanup:
-    if (iov != NULL)
-        gssEapReleaseIov(iov, tokens->buffers.count);
+    if (checksumIndex != -1)
+        GSSEAP_FREE(kiov[checksumIndex].data.data);
+    if (kiov != NULL)
+        GSSEAP_FREE(kiov);
     if (innerTokTypes != NULL)
         GSSEAP_FREE(innerTokTypes);
     if (innerTokLengths != NULL)
         GSSEAP_FREE(innerTokLengths);
+#ifdef HAVE_HEIMDAL_VERSION
+    if (krbCrypto != NULL)
+        krb5_crypto_destroy(krbContext, krbCrypto);
+#endif
+
+    *minor = code;
+
+    switch (code) {
+    case KRB5KRB_AP_ERR_BAD_INTEGRITY:
+        major = GSS_S_BAD_SIG;
+        break;
+    case 0:
+        major = GSS_S_COMPLETE;
+        break;
+    default:
+        major = GSS_S_FAILURE;
+        break;
+    }
 
     return major;
 }
@@ -392,10 +475,5 @@ gssEapVerifyTokenMIC(OM_uint32 *minor,
                      gss_ctx_id_t ctx,
                      const gss_buffer_t tokenMIC)
 {
-    if (tokenMIC->length < 16) {
-        *minor = GSSEAP_TOK_TRUNC;
-        return GSS_S_BAD_SIG;
-    }
-
     return gssEapMakeOrVerifyTokenMIC(minor, ctx, tokenMIC, TRUE);
 }

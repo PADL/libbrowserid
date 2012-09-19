@@ -316,7 +316,7 @@ gss_eap_saml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSE
 const char *
 gss_eap_saml_assertion_provider::prefix(void) const
 {
-    return "urn:ietf:params:gss-eap:saml-aaa-assertion";
+    return "urn:ietf:params:gss:federated-saml-assertion";
 }
 
 bool
@@ -413,7 +413,7 @@ gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAtt
      *   Each attribute carried in the assertion SHOULD also be a GSS name
      *   attribute.  The name of this attribute has three parts, all separated
      *   by an ASCII space character.  The first part is
-     *   urn:ietf:params:gss-eap:saml-attr.  The second part is the URI for
+     *   urn:ietf:params:gss:federated-saml-attribute.  The second part is the URI for
      *   the SAML attribute name format.  The final part is the name of the
      *   SAML attribute.  If the mechanism performs an additional attribute
      *   query, the retrieved attributes SHOULD be GSS-API name attributes
@@ -729,7 +729,7 @@ gss_eap_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UN
 const char *
 gss_eap_saml_attr_provider::prefix(void) const
 {
-    return "urn:ietf:params:gss-eap:saml-attr";
+    return "urn:ietf:params:gss:federated-saml-attribute";
 }
 
 bool

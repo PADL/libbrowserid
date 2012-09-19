@@ -111,7 +111,7 @@ Sample usage is given below. Substitute <user>, <pass> and <host>
 appropriately (<host> is the name of the host running the server,
 not the RADIUS server).
 
-% gss-client -port 5555 -spnego -mech "{1 3 6 1 4 1 5322 22 1 18}" \
+% gss-client -port 5555 -spnego -mech "{1 3 6 1 5 5 15 1 1 18}" \
   -user <user>@<realm> -pass <pass> <host> host@<host> \
   "Testing GSS EAP"
 % gss-server -port 5555 -export host@<host>
