@@ -873,3 +873,29 @@ gssEapCompareName(OM_uint32 *minor,
 
     return GSS_S_COMPLETE;
 }
+
+OM_uint32
+gssEapCompareNameAnyRealm(OM_uint32 *minor,
+                          gss_name_t name1,
+                          gss_name_t name2,
+                          int *name_equal)
+{
+    krb5_context krbContext;
+
+    *minor = 0;
+
+    if (name1 == GSS_C_NO_NAME && name2 == GSS_C_NO_NAME) {
+        *name_equal = 1;
+    } else if (name1 != GSS_C_NO_NAME && name2 != GSS_C_NO_NAME) {
+        GSSEAP_KRB_INIT(&krbContext);
+
+        /* krbPrincipal is immutable, so lock not required */
+        *name_equal = krb5_principal_compare_any_realm(krbContext,
+                                                       name1->krbPrincipal,
+                                                       name2->krbPrincipal);
+    } else {
+        *name_equal = 0;
+    }
+
+    return GSS_S_COMPLETE;
+}

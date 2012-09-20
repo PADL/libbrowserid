@@ -625,6 +625,12 @@ gssEapCompareName(OM_uint32 *minor,
                   gss_name_t name2,
                   int *name_equal);
 
+OM_uint32
+gssEapCompareNameAnyRealm(OM_uint32 *minor,
+                         gss_name_t name1,
+                         gss_name_t name2,
+                         int *name_equal);
+
 /* util_oid.c */
 OM_uint32
 composeOid(OM_uint32 *minor_status,
