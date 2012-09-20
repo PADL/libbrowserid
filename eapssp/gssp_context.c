@@ -430,7 +430,7 @@ GsspInitSecContext(
     struct gss_channel_bindings_struct GssChannelBindings;
     gss_name_t GssTargetName = GSS_C_NO_NAME;
 
-    *NewContextHandle = (LSA_SEC_HANDLE)GSS_C_NO_CONTEXT;
+    *NewContextHandle = (LSA_SEC_HANDLE)0;
 
     GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
                    L"GsspInitSecContext: CredHandle %p CtxHandle %p "
@@ -453,8 +453,6 @@ GsspInitSecContext(
         if (Status != STATUS_SUCCESS)
             return Status;
     }
-
-    *NewContextHandle = (LSA_SEC_HANDLE)GssContext;
 
     GsspContextAddRefAndLock(GssContext);
 
@@ -510,7 +508,7 @@ GsspInitSecContext(
 
         *MappedContext = TRUE;
 
-        Status = STATUS_SUCCESS;
+        Status = SEC_E_OK;
 
         /*
          * If the resolved credential was successfully used to authenticate,
@@ -531,6 +529,13 @@ cleanup:
     GsspContextUnlockAndRelease(GssContext);
     gssEapReleaseName(&Minor, &GssTargetName);
     GsspReleaseBuffer(&Minor, &OutputToken);
+
+    /* On first call, we release the context in case of an error */
+    if (ContextHandle == (LSA_SEC_HANDLE)0 &&
+        (Status != SEC_E_OK && Status != SEC_I_CONTINUE_NEEDED))
+        GsspContextRelease(GssContext);
+    else
+        *NewContextHandle = (LSA_SEC_HANDLE)GssContext;
 
     return Status;
 }
@@ -619,7 +624,7 @@ GsspAcceptSecContext(
     gss_buffer_desc OutputToken = GSS_C_EMPTY_BUFFER;
     struct gss_channel_bindings_struct GssChannelBindings;
 
-    *NewContextHandle = (LSA_SEC_HANDLE)GSS_C_NO_CONTEXT;
+    *NewContextHandle = (LSA_SEC_HANDLE)0;
     *MappedContext = FALSE;
 
     GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
@@ -641,8 +646,6 @@ GsspAcceptSecContext(
 
         GssContext->gssFlags |= (ReqFlags & GSSP_ASC_REQ_FLAGS_MASK);
     }
-
-    *NewContextHandle = (LSA_SEC_HANDLE)GssContext;
 
     GsspContextAddRefAndLock(GssContext);
 
@@ -719,6 +722,13 @@ GsspAcceptSecContext(
 cleanup:
     GsspContextUnlockAndRelease(GssContext);
     GsspReleaseBuffer(&Minor, &OutputToken);
+
+    /* On first call, we release the context in case of an error */
+    if (ContextHandle == (LSA_SEC_HANDLE)0 &&
+        (Status != SEC_E_OK && Status != SEC_I_CONTINUE_NEEDED))
+        GsspContextRelease(GssContext);
+    else
+        *NewContextHandle = (LSA_SEC_HANDLE)GssContext;
 
     return Status;
 }
