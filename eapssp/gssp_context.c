@@ -430,7 +430,7 @@ GsspInitSecContext(
     struct gss_channel_bindings_struct GssChannelBindings;
     gss_name_t GssTargetName = GSS_C_NO_NAME;
 
-    *NewContextHandle = (LSA_SEC_HANDLE)-1;
+    *NewContextHandle = (LSA_SEC_HANDLE)GSS_C_NO_CONTEXT;
 
     GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
                    L"GsspInitSecContext: CredHandle %p CtxHandle %p "
@@ -453,6 +453,8 @@ GsspInitSecContext(
         if (Status != STATUS_SUCCESS)
             return Status;
     }
+
+    *NewContextHandle = (LSA_SEC_HANDLE)GssContext;
 
     GsspContextAddRefAndLock(GssContext);
 
@@ -496,8 +498,6 @@ GsspInitSecContext(
                                GsspLocateSecBuffer(OutputBuffers, SECBUFFER_TOKEN),
                                !!(ContextRequirements & ISC_REQ_ALLOCATE_MEMORY));
     GSSP_BAIL_ON_ERROR(Status);
-
-    *NewContextHandle = (LSA_SEC_HANDLE)GssContext;
 
     if (Major == GSS_S_COMPLETE) {
         Status = GsspInitiatorNego(GssContext, InputBuffers, OutputBuffers);
@@ -619,7 +619,7 @@ GsspAcceptSecContext(
     gss_buffer_desc OutputToken = GSS_C_EMPTY_BUFFER;
     struct gss_channel_bindings_struct GssChannelBindings;
 
-    *NewContextHandle = (LSA_SEC_HANDLE)-1;
+    *NewContextHandle = (LSA_SEC_HANDLE)GSS_C_NO_CONTEXT;
     *MappedContext = FALSE;
 
     GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
@@ -641,6 +641,8 @@ GsspAcceptSecContext(
 
         GssContext->gssFlags |= (ReqFlags & GSSP_ASC_REQ_FLAGS_MASK);
     }
+
+    *NewContextHandle = (LSA_SEC_HANDLE)GssContext;
 
     GsspContextAddRefAndLock(GssContext);
 
@@ -686,8 +688,6 @@ GsspAcceptSecContext(
                                GsspLocateSecBuffer(OutputBuffers, SECBUFFER_TOKEN),
                                !!(ContextRequirements & ASC_REQ_ALLOCATE_MEMORY));
     GSSP_BAIL_ON_ERROR(Status);
-
-    *NewContextHandle = (LSA_SEC_HANDLE)GssContext;
 
     if (Major == GSS_S_COMPLETE) {
         if (GssContext->state == GSSEAP_STATE_MECHLIST_MIC) {
