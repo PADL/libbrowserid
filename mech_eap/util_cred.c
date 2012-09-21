@@ -779,7 +779,8 @@ staticIdentityFileResolveInitiatorCred(OM_uint32 *minor, gss_cred_id_t cred)
             isDefaultIdentity = TRUE;
         } else {
             major = gssEapCompareName(minor, cred->name,
-                                      defaultIdentityName, &isDefaultIdentity);
+                                      defaultIdentityName, 0,
+                                      &isDefaultIdentity);
             if (GSS_ERROR(major))
                 goto cleanup;
         }

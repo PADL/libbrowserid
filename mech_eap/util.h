@@ -619,10 +619,13 @@ gssEapDisplayName(OM_uint32 *minor,
                   gss_buffer_t output_name_buffer,
                   gss_OID *output_name_type);
 
+#define COMPARE_NAME_FLAG_IGNORE_EMPTY_REALMS   0x1
+
 OM_uint32
 gssEapCompareName(OM_uint32 *minor,
                   gss_name_t name1,
                   gss_name_t name2,
+                  OM_uint32 flags,
                   int *name_equal);
 
 /* util_oid.c */
