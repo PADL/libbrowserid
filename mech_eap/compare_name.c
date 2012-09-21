@@ -42,5 +42,5 @@ gss_compare_name(OM_uint32 *minor,
                  gss_name_t name2,
                  int *name_equal)
 {
-    return gssEapCompareName(minor, name1, name2, name_equal);
+    return gssEapCompareName(minor, name1, name2, 0, name_equal);
 }
