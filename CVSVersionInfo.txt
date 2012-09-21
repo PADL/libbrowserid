@@ -2,5 +2,5 @@
 # $Id: checkpoint,v 1.5 1999/04/05 01:38:26 lukeh Exp $
 # $Name:  $
 ProjectName: EapSSP
-ProjectVersion: 76
+ProjectVersion: 77
 ProjectMaintainer: lukeh
