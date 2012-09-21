@@ -193,13 +193,16 @@ GsspEqualCred(
         return FALSE;
 
     Major = gssEapCompareName(&Minor, GssCred->name,
-                              GssUserName, &bEqual);
+                              GssUserName, 0, &bEqual);
     if (GSS_ERROR(Major))
         return FALSE;
 
     if (bEqual && GssTargetName != GSS_C_NO_NAME) {
-        Major = gssEapCompareName(&Minor, GssCred->target,
-                                  GssTargetName, &bEqual);
+        Major = gssEapCompareName(&Minor,
+                                  GssCred->target,
+                                  GssTargetName,
+                                  COMPARE_NAME_FLAG_IGNORE_EMPTY_REALMS,
+                                  &bEqual);
         if (GSS_ERROR(Major))
             return FALSE;
     }

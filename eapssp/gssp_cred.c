@@ -1408,7 +1408,7 @@ ConvertCredManCredToGssCred(
          * and a qualifying username was passed in, check for a match.
          */
         Major = gssEapCompareName(Minor, GssCred->name,
-                                  NameMatch, &IsDesiredName);
+                                  NameMatch, 0, &IsDesiredName);
         if (GSS_ERROR(Major))
             goto cleanup;
 
