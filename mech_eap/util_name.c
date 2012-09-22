@@ -874,7 +874,6 @@ gssEapCompareName(OM_uint32 *minor,
         GSSEAP_KRB_INIT(&krbContext);
 
         /* krbPrincipal is immutable, so lock not required */
-
         if ((flags & COMPARE_NAME_FLAG_IGNORE_EMPTY_REALMS) &&
             (hasRealmP(name1) == FALSE || hasRealmP(name2) == FALSE)) {
             *name_equal = krb5_principal_compare_any_realm(krbContext,
