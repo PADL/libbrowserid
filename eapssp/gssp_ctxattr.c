@@ -549,6 +549,7 @@ GsspSetContextAttributes(
 
     switch (ContextAttribute) {
     case SECPKG_ATTR_CONTEXT_DELETED:
+        ContextHandle->flags |= CTX_FLAG_DELETED;
         Status = STATUS_SUCCESS;
         break;
     default:

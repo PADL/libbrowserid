@@ -197,6 +197,8 @@ GsspQuerySubjectSecurityAttributes(
 
 /* set this if context is created from LSA AP */
 #define CTX_FLAG_LOGON                      0x00001000
+/* set if context is about to be deleted */
+#define CTX_FLAG_DELETED                    0x00002000
 
 /*
  * LSA-mode context functions
