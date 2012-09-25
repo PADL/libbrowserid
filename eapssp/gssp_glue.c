@@ -491,6 +491,7 @@ GsspSecBuffersToIov(
             }
             break;
         case SECBUFFER_TOKEN:
+            /* XXX it should be valid to have a readonly token on unwrap */
             if (Buffer->BufferType & SECBUFFER_READONLY) {
                 Status = SEC_E_INVALID_TOKEN;
                 goto cleanup;
