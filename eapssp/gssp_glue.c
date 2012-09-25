@@ -483,14 +483,7 @@ GsspSecBuffersToIov(
             if (Buffer->BufferType & SECBUFFER_READONLY_WITH_CHECKSUM) {
                 GssBuffer->type = GSS_IOV_BUFFER_TYPE_SIGN_ONLY;
             } else if (Buffer->BufferType & SECBUFFER_READONLY) {
-                /*
-                 * Exactly the purpose of read-only buffers is not clear from
-                 * MSDN. Apparently they are intended for checksumming, but
-                 * is this for EncryptMessage or MakeSignature or both?
-                 */
-                GssBuffer->type = bWrap ?
-                    GSS_IOV_BUFFER_TYPE_EMPTY :
-                    GSS_IOV_BUFFER_TYPE_SIGN_ONLY;
+                GssBuffer->type = GSS_IOV_BUFFER_TYPE_EMPTY;
             } else {
                 GssBuffer->type = GSS_IOV_BUFFER_TYPE_DATA;
                 if (DataIov == GSS_C_NO_IOV_BUFFER)
