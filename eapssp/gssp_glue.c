@@ -501,15 +501,11 @@ GsspSecBuffersToIov(
             GssBuffer->type = GSS_IOV_BUFFER_TYPE_MECH_PARAMS;
             break;
         case SECBUFFER_PADDING:
-            /*
-             * If we can't change the padding length, then we will need
-             * to initialize it and include it as data.
-             */
             if (Buffer->BufferType & SECBUFFER_READONLY) {
-                RtlZeroMemory(GssBuffer->buffer.value, GssBuffer->buffer.length);
-                GssBuffer->type = GSS_IOV_BUFFER_TYPE_DATA;
-            } else
-                GssBuffer->type = GSS_IOV_BUFFER_TYPE_PADDING;
+                Status = SEC_E_INVALID_TOKEN;
+                goto cleanup;
+            }
+            GssBuffer->type = GSS_IOV_BUFFER_TYPE_PADDING;
             break;
         case SECBUFFER_STREAM:
             GssBuffer->type = GSS_IOV_BUFFER_TYPE_STREAM;
