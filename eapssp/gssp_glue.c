@@ -502,11 +502,10 @@ GsspSecBuffersToIov(
             GssBuffer->type = GSS_IOV_BUFFER_TYPE_MECH_PARAMS;
             break;
         case SECBUFFER_PADDING:
-            if (Buffer->BufferType & SECBUFFER_READONLY) {
-                Status = SEC_E_INVALID_TOKEN;
-                goto cleanup;
-            }
-            GssBuffer->type = GSS_IOV_BUFFER_TYPE_PADDING;
+            if (Buffer->BufferType & SECBUFFER_READONLY)
+                GssBuffer->type = GSS_IOV_BUFFER_TYPE_EMPTY;
+            else
+                GssBuffer->type = GSS_IOV_BUFFER_TYPE_PADDING;
             break;
         case SECBUFFER_STREAM:
             GssBuffer->type = GSS_IOV_BUFFER_TYPE_STREAM;
