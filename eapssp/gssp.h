@@ -410,12 +410,12 @@ NTSTATUS GsspGetGssChannelBindings(
 NTSTATUS GsspSecBuffersToIov(
     PSecBufferDesc Buffers,
     gss_iov_buffer_t *pIov,
-    BOOLEAN bWrap);
+    BOOLEAN bWrapOrGetMIC);
 
 NTSTATUS GsspIovToSecBuffers(
     gss_iov_buffer_t Iov,
     PSecBufferDesc Buffers,
-    BOOLEAN bWrap);
+    BOOLEAN bWrapOrGetMIC);
 
 /* gssp_info.c */
 SpGetUserInfoFn                 SpGetUserInfo;

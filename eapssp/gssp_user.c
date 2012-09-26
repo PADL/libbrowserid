@@ -305,7 +305,7 @@ GsspWrapOrGetMIC(
     if (QualityOfProtection != GSS_C_QOP_DEFAULT)
         return SEC_E_QOP_NOT_SUPPORTED;
 
-    Status = GsspSecBuffersToIov(MessageBuffers, &Iov, bWrap);
+    Status = GsspSecBuffersToIov(MessageBuffers, &Iov, TRUE);
     GSSP_BAIL_ON_ERROR(Status);
 
     Status = GsspUserContextLocateAndLock(ContextHandle, &GssContext);
@@ -322,7 +322,7 @@ GsspWrapOrGetMIC(
 
     GSSP_BAIL_ON_GSS_ERROR(Major, Minor);
 
-    Status = GsspIovToSecBuffers(Iov, MessageBuffers, bWrap);
+    Status = GsspIovToSecBuffers(Iov, MessageBuffers, TRUE);
     GSSP_BAIL_ON_ERROR(Status);
 
 cleanup:
@@ -348,7 +348,7 @@ GsspUnwrapOrVerifyMIC(
     gss_ctx_id_t GssContext;
     enum gss_eap_token_type TokType = bWrap ? TOK_TYPE_WRAP : TOK_TYPE_MIC;
 
-    Status = GsspSecBuffersToIov(MessageBuffers, &Iov, bWrap);
+    Status = GsspSecBuffersToIov(MessageBuffers, &Iov, FALSE);
     GSSP_BAIL_ON_ERROR(Status);
 
     Status = GsspUserContextLocateAndLock(ContextHandle, &GssContext);
@@ -365,7 +365,7 @@ GsspUnwrapOrVerifyMIC(
 
     GSSP_BAIL_ON_GSS_ERROR(Major, Minor);
 
-    Status = GsspIovToSecBuffers(Iov, MessageBuffers, bWrap);
+    Status = GsspIovToSecBuffers(Iov, MessageBuffers, FALSE);
     GSSP_BAIL_ON_ERROR(Status);
 
     if (QualityOfProtection != NULL) {

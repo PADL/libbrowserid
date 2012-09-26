@@ -452,7 +452,7 @@ NTSTATUS
 GsspSecBuffersToIov(
     PSecBufferDesc Buffers,
     gss_iov_buffer_t *pIov,
-    BOOLEAN bWrap)
+    BOOLEAN bWrapOrGetMIC)
 {
     NTSTATUS Status;
     gss_iov_buffer_t Iov;
@@ -491,8 +491,7 @@ GsspSecBuffersToIov(
             }
             break;
         case SECBUFFER_TOKEN:
-            /* XXX it should be valid to have a readonly token on unwrap */
-            if (Buffer->BufferType & SECBUFFER_READONLY) {
+            if (bWrapOrGetMIC && (Buffer->BufferType & SECBUFFER_READONLY)) {
                 Status = SEC_E_INVALID_TOKEN;
                 goto cleanup;
             }
@@ -551,7 +550,7 @@ NTSTATUS
 GsspIovToSecBuffers(
     gss_iov_buffer_t Iov,
     PSecBufferDesc Buffers,
-    BOOLEAN bWrap)
+    BOOLEAN bWrapOrGetMIC)
 {
     NTSTATUS Status;
     ULONG i;
