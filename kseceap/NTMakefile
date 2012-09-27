@@ -38,7 +38,7 @@ kseceap.rc: kseceap.rc.in $(SRC)/CVSVersionInfo.txt
 		-e "s,[@]version[@],$(KSECEAPVER),g" < kseceap.rc.in > $@
 
 $(KSECEAPSYS): kseceap.c kseceap.rc
-	$(SETENV) && cd $(SRCDIR) && $(DDKBUILD) /C /W
+	$(SETENV) && set INCLUDE=C:\Program Files\Microsoft SDKs\Windows\v7.1\INCLUDE;$(INCLUDE) && cd $(SRCDIR) && $(DDKBUILD) /C /W
 	$(_CODESIGN)
 
 $(KSECEAPINF):: $(SRC)/CVSVersionInfo.txt
