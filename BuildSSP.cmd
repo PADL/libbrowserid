@@ -12,8 +12,8 @@
 ::
  
 :: set these as appropriate
-SET PATH=C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin;%PATH%
-SET SSP_ROOT=C:\padlssp
+::SET PATH=C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin;%PATH%
+::SET SSP_ROOT=C:\padlssp
 SET MOONSHOT_DIR=%SSP_ROOT%\mech_eap
 SET HEIMDAL_DIR=%SSP_ROOT%\heimdal
 SET LEVENT_DIR=%SSP_ROOT%\levent
