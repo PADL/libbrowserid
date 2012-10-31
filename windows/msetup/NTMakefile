@@ -6,12 +6,12 @@ RELDIR=msetup
 
 !include ../NTMakefile.w32
 
-cdefines = $(cdefines) -DUNICODE -D_UNICODE
+cdefines = $(cdefines) -DUNICODE -D_UNICODE -DMSETUP_CREATEDLL
 
 #
 # msetup library
 #
-LIBMSETUP =$(LIBDIR)\libmsetup.lib
+LIBMSETUP =$(BINDIR)\libmsetup.dll
 
 libmsetup_OBJS =    					\
 	$(OBJ)\msetup_aaa.obj				\
@@ -21,7 +21,7 @@ libmsetup_OBJS =    					\
 	$(OBJ)\msetup_reg.obj				
 
 $(LIBMSETUP): $(libmsetup_OBJS)
-	$(LIBCON)
+	$(DLLCONLINK) crypt32.lib
 
 #
 # msetup console utility
@@ -30,8 +30,8 @@ MSETUP = $(BINDIR)\msetup.exe
 
 msetup_OBJS = $(OBJ)\msetup_cmd.obj
 
-$(MSETUP): $(msetup_OBJS) $(LIBMSETUP)
-	$(EXECONLINK) crypt32.lib
+$(MSETUP): $(msetup_OBJS)
+	$(EXECONLINK) $(BINDIR)\libmsetup.lib
 
 all:: $(LIBMSETUP) $(MSETUP)
 

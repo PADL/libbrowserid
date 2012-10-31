@@ -29,19 +29,27 @@
 
 #include "gssp.h"           /* for flags */
 
+#ifdef MSETUP_USEDLL
+#define MSETUPDLL _declspec(dllimport)
+#elif MSETUP_CREATEDLL
+#define MSETUPDLL _declspec(dllexport)
+#else
+#define MSETUPDLL
+#endif
+
 /*
  * msetup_reg.c
  */
 /*
  * Opens registry key at SSP configuration root.
  */
-DWORD
+MSETUPDLL DWORD
 MsOpenKey(LPWSTR wszServer, BOOLEAN fWritable, PHKEY phkResult);
 
 /*
  * Closes SSP configuration registry key.
  */
-DWORD
+MSETUPDLL DWORD
 MsCloseKey(HKEY hKey);
 
 /*
@@ -53,10 +61,10 @@ MsCloseKey(HKEY hKey);
  * wildcard mapping. If Account is NULL, then the mapping
  * is deleted.
  */
-DWORD
+MSETUPDLL DWORD
 MsMapUser(HKEY hKey, LPCWSTR wszPrincipal, LPCWSTR wszAccount);
 
-DWORD
+MSETUPDLL DWORD
 MsOpenUserListKey(HKEY hKey, BOOLEAN fWritable, PHKEY hMapKey);
 
 #if 0
@@ -66,7 +74,7 @@ MsOpenUserListKey(HKEY hKey, BOOLEAN fWritable, PHKEY hMapKey);
 /*
  * Enable or disable SSP.
  */
-DWORD
+MSETUPDLL DWORD
 MsSetSspEnabled(HKEY hKey, BOOLEAN fEnableSsp);
 #endif
 
@@ -76,7 +84,7 @@ MsSetSspEnabled(HKEY hKey, BOOLEAN fEnableSsp);
 /*
  * Get SSP flags
  */
-DWORD
+MSETUPDLL DWORD
 MsQuerySspFlags(HKEY hKey, DWORD *pdwSspFlags);
 
 typedef enum _SSP_FLAG_OP {
@@ -88,19 +96,19 @@ typedef enum _SSP_FLAG_OP {
 /*
  * Modify SSP flags
  */
-DWORD
+MSETUPDLL DWORD
 MsModifySspFlags(
     HKEY hKey,
-    SSP_FLAG_OP fOp,
+    DWORD fOp,
     DWORD dwSspFlags);
 
-LPCWSTR
+MSETUPDLL LPCWSTR
 MsSspFlagToString(DWORD dwSspFlag);
 
-DWORD
+MSETUPDLL DWORD
 MsStringToSspFlag(LPCWSTR wszSspFlag);
 
-DWORD
+MSETUPDLL DWORD
 MsListSspFlags(FILE *fp);
 
 /*
@@ -118,10 +126,10 @@ typedef struct _AAA_SERVER_INFO {
 
 typedef AAA_SERVER_INFO *PAAA_SERVER_INFO;
 
-DWORD
+MSETUPDLL DWORD
 MsOpenRadiusKey(HKEY hKey, BOOLEAN fWritable, PHKEY hRadiusKey);
 
-DWORD
+MSETUPDLL DWORD
 MsAddAaaServer(
     HKEY hKey,
     PAAA_SERVER_INFO ServerInfo);
@@ -129,7 +137,7 @@ MsAddAaaServer(
 /*
  * Deletes existing AAA server tuple.
  */
-DWORD
+MSETUPDLL DWORD
 MsDeleteAaaServer(
     HKEY hKey,
     PAAA_SERVER_INFO ServerInfo);
@@ -146,26 +154,26 @@ typedef enum _MS_CRED_ATTR {
     MS_CRED_ATTR_MAX = MS_CRED_ATTR_SUBJECT_ALT_NAME
 } MS_CRED_ATTR;
 
-DWORD
+MSETUPDLL DWORD
 MsSetCredAttribute(
     LPWSTR TargetName,
     LPWSTR UserName,
     DWORD dwAttribute,
     LPWSTR AttributeValue);
 
-DWORD
+MSETUPDLL DWORD
 MsGetCredAttribute(
     LPWSTR TargetName,
     LPWSTR UserName,
     LPWSTR **pDisplayNames,
     LPWSTR **pDisplayValues);
 
-DWORD
+MSETUPDLL DWORD
 MsSetDefaultCertStore(
     HKEY hSspKey,
     LPWSTR Store);
 
-DWORD
+MSETUPDLL DWORD
 MsGetDefaultCertStore(
     HKEY hSspKey,
     LPWSTR *pStore);

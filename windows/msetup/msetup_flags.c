@@ -28,7 +28,7 @@ MsQuerySspFlags(HKEY hKey, DWORD *pdwSspFlags)
 DWORD
 MsModifySspFlags(
     HKEY hKey,
-    SSP_FLAG_OP fOp,
+    DWORD fOp,
     DWORD dwSspFlags)
 {
     DWORD dwResult;
