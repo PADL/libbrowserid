@@ -9,6 +9,7 @@
  */
 
 #include <assert.h>
+#define MSETUP_USEDLL
 #include "msetup.h"
 
 #define FLAG_WRITE          1
