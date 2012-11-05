@@ -50,6 +50,7 @@ namespace msetupgui
                 this.DefaultCertStoreName.Text = "<None specified>";
 
             UInt32 serverIndex=0;
+            ServerGrid.Rows.Clear();
             do
             {
                 String[] server = new String[]{"",""};
@@ -62,6 +63,7 @@ namespace msetupgui
             } while (result == 0);
 
             UInt32 userIndex = 0;
+            UserMappingGrid.Rows.Clear();
             do
             {
                 String[] userMapping = new String[] { "", "" };
