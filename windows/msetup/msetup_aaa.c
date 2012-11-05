@@ -210,3 +210,78 @@ MsDeleteAaaServer(
     return dwResult;
 }
 
+/* returns ERROR_NO_MORE_ITEMS if dwServerIndex is out of range */
+/* allocates outServer and outService strings on success.       */
+DWORD
+MsQueryAaaServer(HKEY hSspKey,
+                 DWORD dwServerIndex,
+                 LPWSTR *outServer,
+                 LPWSTR *outService)
+{
+    DWORD dwResult;
+    HKEY hAaaKey;
+    WCHAR wszAaaServer[256];
+    WCHAR wszService[256];
+    LPWSTR tmpService = NULL;
+    LPWSTR tmpServer = NULL;
+    DWORD cchService = sizeof(wszService)/sizeof(wszService[0]);
+    DWORD cchAaaServer = sizeof(wszAaaServer)/sizeof(wszAaaServer[0]);
+    DWORD dwType;
+    HKEY hRadiusKey = NULL;
+
+    dwResult = MsOpenRadiusKey(hSspKey, TRUE, &hRadiusKey);
+    if (dwResult != ERROR_SUCCESS)
+        goto cleanup;
+
+    dwResult = RegEnumKeyEx(hRadiusKey, dwServerIndex, wszAaaServer, &cchAaaServer,
+                            NULL, NULL, NULL, NULL);
+    if (dwResult == ERROR_NO_MORE_ITEMS) {
+        goto cleanup;
+    } else if (dwResult != ERROR_SUCCESS) {
+        fwprintf(stderr, L"Failed Enumerating Radius registry key", dwResult);
+        goto cleanup;
+    }
+
+    dwResult = RegOpenKeyEx(hRadiusKey, wszAaaServer,
+                            0, KEY_QUERY_VALUE, &hAaaKey);
+    if (dwResult != ERROR_SUCCESS)
+        goto cleanup;
+
+    dwResult = RegQueryValueEx(hAaaKey, L"Service", NULL, &dwType,
+                               (PBYTE)wszService, &cchService);
+    if (dwResult != ERROR_SUCCESS)
+        goto cleanup;
+
+    tmpService = HeapAlloc(GetProcessHeap(),
+                           0,
+                           (cchService+1) * sizeof(tmpService[0]));
+    if (tmpService == NULL) {
+        dwResult = ENOMEM;
+        goto cleanup;
+    }
+
+    tmpServer = HeapAlloc(GetProcessHeap(),
+                          0,
+                          (cchAaaServer+1) * sizeof(tmpServer[0]));
+    if (tmpServer == NULL) {
+        dwResult = ENOMEM;
+        goto cleanup;
+    }
+    memcpy(tmpServer, wszAaaServer, cchAaaServer * sizeof(wszAaaServer[0]));
+    tmpServer[cchAaaServer]=0;
+    memcpy(tmpService, wszService, cchService * sizeof(wszService[0]));
+    tmpService[cchService]=0;
+    *outServer = tmpServer;
+    tmpServer = NULL;
+    *outService = tmpService;
+    tmpService = NULL;
+cleanup:
+    if (tmpService)
+        HeapFree(GetProcessHeap(), 0, tmpService);
+    if (tmpServer)
+        HeapFree(GetProcessHeap(), 0, tmpServer);
+    if (hRadiusKey != NULL)
+        RegCloseKey(hRadiusKey);
+    return dwResult;
+}
+

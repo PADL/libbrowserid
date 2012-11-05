@@ -38,6 +38,18 @@
             this.DefaultCertStoreLabel = new System.Windows.Forms.Label();
             this.DefaultCertStoreName = new System.Windows.Forms.Label();
             this.DefaultCertStoreEdit = new System.Windows.Forms.Button();
+            this.UserMappingLabel = new System.Windows.Forms.Label();
+            this.AddUserMapping = new System.Windows.Forms.Button();
+            this.UserMappingGrid = new System.Windows.Forms.DataGridView();
+            this.ServerLabel = new System.Windows.Forms.Label();
+            this.AddServer = new System.Windows.Forms.Button();
+            this.ServerGrid = new System.Windows.Forms.DataGridView();
+            this.User = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Account = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.ServerAddress = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.ServiceOrPort = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            ((System.ComponentModel.ISupportInitialize)(this.UserMappingGrid)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ServerGrid)).BeginInit();
             this.SuspendLayout();
             // 
             // GSSP_Flag_Debug
@@ -137,7 +149,7 @@
             // 
             // DefaultCertStoreEdit
             // 
-            this.DefaultCertStoreEdit.Location = new System.Drawing.Point(326, 30);
+            this.DefaultCertStoreEdit.Location = new System.Drawing.Point(338, 30);
             this.DefaultCertStoreEdit.Name = "DefaultCertStoreEdit";
             this.DefaultCertStoreEdit.Size = new System.Drawing.Size(75, 23);
             this.DefaultCertStoreEdit.TabIndex = 10;
@@ -145,11 +157,114 @@
             this.DefaultCertStoreEdit.UseVisualStyleBackColor = true;
             this.DefaultCertStoreEdit.Click += new System.EventHandler(this.DefaultCertStoreEdit_Click);
             // 
+            // UserMappingLabel
+            // 
+            this.UserMappingLabel.AutoSize = true;
+            this.UserMappingLabel.Location = new System.Drawing.Point(12, 62);
+            this.UserMappingLabel.Name = "UserMappingLabel";
+            this.UserMappingLabel.Size = new System.Drawing.Size(103, 17);
+            this.UserMappingLabel.TabIndex = 11;
+            this.UserMappingLabel.Text = "User Mappings";
+            // 
+            // AddUserMapping
+            // 
+            this.AddUserMapping.Location = new System.Drawing.Point(233, 62);
+            this.AddUserMapping.Name = "AddUserMapping";
+            this.AddUserMapping.Size = new System.Drawing.Size(171, 23);
+            this.AddUserMapping.TabIndex = 12;
+            this.AddUserMapping.Text = "Add User Mapping";
+            this.AddUserMapping.UseVisualStyleBackColor = true;
+            // 
+            // UserMappingGrid
+            // 
+            this.UserMappingGrid.AllowUserToAddRows = false;
+            this.UserMappingGrid.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.UserMappingGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.UserMappingGrid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.User,
+            this.Account});
+            this.UserMappingGrid.Location = new System.Drawing.Point(12, 91);
+            this.UserMappingGrid.Name = "UserMappingGrid";
+            this.UserMappingGrid.RowHeadersVisible = false;
+            this.UserMappingGrid.RowTemplate.Height = 24;
+            this.UserMappingGrid.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.UserMappingGrid.Size = new System.Drawing.Size(480, 227);
+            this.UserMappingGrid.TabIndex = 17;
+            // 
+            // ServerLabel
+            // 
+            this.ServerLabel.AutoSize = true;
+            this.ServerLabel.Location = new System.Drawing.Point(12, 337);
+            this.ServerLabel.Name = "ServerLabel";
+            this.ServerLabel.Size = new System.Drawing.Size(57, 17);
+            this.ServerLabel.TabIndex = 18;
+            this.ServerLabel.Text = "Servers";
+            // 
+            // AddServer
+            // 
+            this.AddServer.Location = new System.Drawing.Point(233, 337);
+            this.AddServer.Name = "AddServer";
+            this.AddServer.Size = new System.Drawing.Size(171, 23);
+            this.AddServer.TabIndex = 19;
+            this.AddServer.Text = "Add Server";
+            this.AddServer.UseVisualStyleBackColor = true;
+            // 
+            // ServerGrid
+            // 
+            this.ServerGrid.AllowUserToAddRows = false;
+            this.ServerGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.ServerGrid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.ServerAddress,
+            this.ServiceOrPort});
+            this.ServerGrid.Location = new System.Drawing.Point(12, 366);
+            this.ServerGrid.Name = "ServerGrid";
+            this.ServerGrid.RowHeadersVisible = false;
+            this.ServerGrid.RowTemplate.Height = 24;
+            this.ServerGrid.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.ServerGrid.Size = new System.Drawing.Size(480, 175);
+            this.ServerGrid.TabIndex = 20;
+            // 
+            // User
+            // 
+            this.User.HeaderText = "User (NAI)";
+            this.User.Name = "User";
+            this.User.ReadOnly = true;
+            this.User.Width = 240;
+            // 
+            // Account
+            // 
+            this.Account.HeaderText = "Account";
+            this.Account.Name = "Account";
+            this.Account.ReadOnly = true;
+            this.Account.Width = 240;
+            // 
+            // ServerAddress
+            // 
+            this.ServerAddress.HeaderText = "Server Address";
+            this.ServerAddress.Name = "ServerAddress";
+            this.ServerAddress.ReadOnly = true;
+            this.ServerAddress.Width = 240;
+            // 
+            // ServiceOrPort
+            // 
+            this.ServiceOrPort.HeaderText = "Service/Port";
+            this.ServiceOrPort.Name = "ServiceOrPort";
+            this.ServiceOrPort.ReadOnly = true;
+            this.ServiceOrPort.Width = 240;
+            // 
             // Moonshot
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(797, 351);
+            this.ClientSize = new System.Drawing.Size(797, 575);
+            this.Controls.Add(this.ServerGrid);
+            this.Controls.Add(this.AddServer);
+            this.Controls.Add(this.ServerLabel);
+            this.Controls.Add(this.UserMappingGrid);
+            this.Controls.Add(this.AddUserMapping);
+            this.Controls.Add(this.UserMappingLabel);
             this.Controls.Add(this.DefaultCertStoreEdit);
             this.Controls.Add(this.DefaultCertStoreName);
             this.Controls.Add(this.DefaultCertStoreLabel);
@@ -163,6 +278,8 @@
             this.Name = "Moonshot";
             this.Text = "Moonshot SSP Configuration";
             this.Load += new System.EventHandler(this.Form1_Load);
+            ((System.ComponentModel.ISupportInitialize)(this.UserMappingGrid)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ServerGrid)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -180,6 +297,16 @@
         private System.Windows.Forms.Label DefaultCertStoreLabel;
         private System.Windows.Forms.Label DefaultCertStoreName;
         private System.Windows.Forms.Button DefaultCertStoreEdit;
+        private System.Windows.Forms.Label UserMappingLabel;
+        private System.Windows.Forms.Button AddUserMapping;
+        private System.Windows.Forms.DataGridView UserMappingGrid;
+        private System.Windows.Forms.Label ServerLabel;
+        private System.Windows.Forms.Button AddServer;
+        private System.Windows.Forms.DataGridView ServerGrid;
+        private System.Windows.Forms.DataGridViewTextBoxColumn User;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Account;
+        private System.Windows.Forms.DataGridViewTextBoxColumn ServerAddress;
+        private System.Windows.Forms.DataGridViewTextBoxColumn ServiceOrPort;
     }
 }
 

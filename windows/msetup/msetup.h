@@ -67,6 +67,9 @@ MsMapUser(HKEY hKey, LPCWSTR wszPrincipal, LPCWSTR wszAccount);
 MSETUPDLL DWORD
 MsOpenUserListKey(HKEY hKey, BOOLEAN fWritable, PHKEY hMapKey);
 
+MSETUPDLL DWORD
+MsQueryUser(HKEY hKey, DWORD index, LPWSTR *outPrincipal, LPWSTR *outAccount);
+
 #if 0
 /*
  * msetup_ssp.c
@@ -141,6 +144,13 @@ MSETUPDLL DWORD
 MsDeleteAaaServer(
     HKEY hKey,
     PAAA_SERVER_INFO ServerInfo);
+
+MSETUPDLL DWORD
+MsQueryAaaServer(
+    HKEY hKey,
+    DWORD index,
+    LPWSTR *outServer,
+    LPWSTR *outService);
 
 /*
  * msetup_cred.c

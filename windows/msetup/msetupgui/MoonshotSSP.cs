@@ -48,6 +48,33 @@ namespace msetupgui
                 this.DefaultCertStoreName.Text = s;
             else
                 this.DefaultCertStoreName.Text = "<None specified>";
+
+            UInt32 serverIndex=0;
+            do
+            {
+                String[] server = new String[]{"",""};
+                result = msetupdll.MsQueryAaaServer(this.hkey, serverIndex++, ref server[0], ref server[1]);
+                if (result == 0)
+                {
+                    ServerGrid.Rows.Add(server);
+                    // free strings here?
+                }
+            } while (result == 0);
+
+            UInt32 userIndex = 0;
+            do
+            {
+                String[] userMapping = new String[] { "", "" };
+                result = msetupdll.MsQueryUser(this.hkey,
+                                               userIndex++,
+                                               ref userMapping[0],
+                                               ref userMapping[1]);
+                if (result == 0)
+                {
+                    UserMappingGrid.Rows.Add(userMapping);
+                    // free strings here?
+                }
+            } while (result == 0);
         }
 
         private void UpdateFlags()
@@ -154,5 +181,13 @@ namespace msetupgui
         public static extern UInt32 MsSetDefaultCertStore(IntPtr key, [MarshalAs(UnmanagedType.LPWStr)]String str);
         [DllImport("libmsetup.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 MsOpenKey(string server, byte writable, ref IntPtr outKey);
+        [DllImport("libmsetup.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 MsQueryAaaServer(IntPtr key, UInt32 index,
+            [MarshalAs(UnmanagedType.LPWStr)]ref String outServer,
+            [MarshalAs(UnmanagedType.LPWStr)]ref String outService);
+        [DllImport("libmsetup.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 MsQueryUser(IntPtr key, UInt32 index,
+            [MarshalAs(UnmanagedType.LPWStr)]ref String outUser,
+            [MarshalAs(UnmanagedType.LPWStr)]ref String outAccount);
     }
 }

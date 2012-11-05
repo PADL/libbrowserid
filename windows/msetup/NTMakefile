@@ -33,7 +33,46 @@ msetup_OBJS = $(OBJ)\msetup_cmd.obj
 $(MSETUP): $(msetup_OBJS)
 	$(EXECONLINK) $(BINDIR)\libmsetup.lib
 
-all:: $(LIBMSETUP) $(MSETUP)
+#
+# msetup gui
+#
+MSETUPGUI = $(BINDIR)\msetupgui.exe
+CSC_OPTS = /noconfig /nowarn:1701,1702 /nostdlib+ /platform:x86 /errorreport:prompt /warn:4 /define:DEBUG;TRACE
+CSC_LIBPATH = "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0\Profile\Client"
+CSC = csc.exe
+CSC_LIBS = /lib:$(CSC_LIBPATH)					\
+	/reference:Microsoft.CSharp.dll				\
+	/reference:mscorlib.dll					\
+	/reference:System.Core.dll				\
+	/reference:System.Data.dll				\
+	/reference:System.Data.DataSetExtensions.dll		\
+	/reference:System.Deployment.dll			\
+	/reference:System.dll					\
+	/reference:System.Drawing.dll				\
+	/reference:System.Windows.Forms.dll			\
+	/reference:System.Xml.dll				\
+	/reference:System.Xml.Linq.dll
+
+CSC_DBG = /debug+ /debug:full /filealign:512 /optimize-
+CSC_OUT = /out:$@
+# This should be changed to BINDIR when we have correct rules for building resources
+# for now, dev-studio-built resources are checked in to source control
+RESDIR = msetupgui
+CSC_RES = /resource:$(RESDIR)\msetupgui.DefaultCertPopup.resources /resource:$(RESDIR)\msetupgui.Moonshot.resources
+MSETUPGUI_SRC =							\
+	msetupgui\DefaultCertPopup.cs				\
+	msetupgui\DefaultCertPopup.Designer.cs			\
+	msetupgui\MoonshotSSP.cs				\
+	msetupgui\MoonshotSSP.Designer.cs			\
+	msetupgui\Program.cs					\
+	msetupgui\Properties\AssemblyInfo.cs			\
+	msetupgui\Properties\Resources.Designer.cs		\
+	msetupgui\Properties\Settings.Designer.cs
+
+$(MSETUPGUI) : $(MSETUPGUI_SRC)
+	$(CSC) $(CSC_OPTS) $(CSC_LIBS) $(CSC_DBG) $(CSC_OUT) $(CSC_RES) /target:winexe $(MSETUPGUI_SRC)
+
+all:: $(LIBMSETUP) $(MSETUP) $(MSETUPGUI)
 
 clean::
 
