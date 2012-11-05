@@ -41,11 +41,11 @@
             this.UserMappingLabel = new System.Windows.Forms.Label();
             this.AddUserMapping = new System.Windows.Forms.Button();
             this.UserMappingGrid = new System.Windows.Forms.DataGridView();
+            this.User = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Account = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ServerLabel = new System.Windows.Forms.Label();
             this.AddServer = new System.Windows.Forms.Button();
             this.ServerGrid = new System.Windows.Forms.DataGridView();
-            this.User = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Account = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ServerAddress = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ServiceOrPort = new System.Windows.Forms.DataGridViewTextBoxColumn();
             ((System.ComponentModel.ISupportInitialize)(this.UserMappingGrid)).BeginInit();
@@ -168,7 +168,7 @@
             // 
             // AddUserMapping
             // 
-            this.AddUserMapping.Location = new System.Drawing.Point(233, 62);
+            this.AddUserMapping.Location = new System.Drawing.Point(321, 62);
             this.AddUserMapping.Name = "AddUserMapping";
             this.AddUserMapping.Size = new System.Drawing.Size(171, 23);
             this.AddUserMapping.TabIndex = 12;
@@ -193,6 +193,20 @@
             this.UserMappingGrid.Size = new System.Drawing.Size(480, 227);
             this.UserMappingGrid.TabIndex = 17;
             // 
+            // User
+            // 
+            this.User.HeaderText = "User (NAI)";
+            this.User.Name = "User";
+            this.User.ReadOnly = true;
+            this.User.Width = 240;
+            // 
+            // Account
+            // 
+            this.Account.HeaderText = "Account";
+            this.Account.Name = "Account";
+            this.Account.ReadOnly = true;
+            this.Account.Width = 240;
+            // 
             // ServerLabel
             // 
             this.ServerLabel.AutoSize = true;
@@ -204,7 +218,7 @@
             // 
             // AddServer
             // 
-            this.AddServer.Location = new System.Drawing.Point(233, 337);
+            this.AddServer.Location = new System.Drawing.Point(321, 337);
             this.AddServer.Name = "AddServer";
             this.AddServer.Size = new System.Drawing.Size(171, 23);
             this.AddServer.TabIndex = 19;
@@ -225,20 +239,6 @@
             this.ServerGrid.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.ServerGrid.Size = new System.Drawing.Size(480, 175);
             this.ServerGrid.TabIndex = 20;
-            // 
-            // User
-            // 
-            this.User.HeaderText = "User (NAI)";
-            this.User.Name = "User";
-            this.User.ReadOnly = true;
-            this.User.Width = 240;
-            // 
-            // Account
-            // 
-            this.Account.HeaderText = "Account";
-            this.Account.Name = "Account";
-            this.Account.ReadOnly = true;
-            this.Account.Width = 240;
             // 
             // ServerAddress
             // 
