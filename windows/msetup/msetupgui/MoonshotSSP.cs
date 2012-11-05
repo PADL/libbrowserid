@@ -156,6 +156,13 @@ namespace msetupgui
             popup.ShowDialog();
             this.SyncWithRegistry();
         }
+
+        private void AddUserMapping_Click(object sender, EventArgs e)
+        {
+            Form popup = new AddUserMapping(hkey);
+            popup.ShowDialog();
+            this.SyncWithRegistry();
+        }
     }
 
     public class msetupdll
@@ -191,5 +198,9 @@ namespace msetupgui
         public static extern UInt32 MsQueryUser(IntPtr key, UInt32 index,
             [MarshalAs(UnmanagedType.LPWStr)]ref String outUser,
             [MarshalAs(UnmanagedType.LPWStr)]ref String outAccount);
+        [DllImport("libmsetup.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 MsMapUser(IntPtr key,
+            [MarshalAs(UnmanagedType.LPWStr)]String userName,
+            [MarshalAs(UnmanagedType.LPWStr)]String accountName);
     }
 }

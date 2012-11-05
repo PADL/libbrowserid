@@ -174,6 +174,7 @@
             this.AddUserMapping.TabIndex = 12;
             this.AddUserMapping.Text = "Add User Mapping";
             this.AddUserMapping.UseVisualStyleBackColor = true;
+            this.AddUserMapping.Click += new System.EventHandler(this.AddUserMapping_Click);
             // 
             // UserMappingGrid
             // 

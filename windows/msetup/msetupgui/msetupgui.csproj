@@ -52,6 +52,12 @@
     <Compile Include="DefaultCertPopup.Designer.cs">
       <DependentUpon>DefaultCertPopup.cs</DependentUpon>
     </Compile>
+    <Compile Include="AddUserMapping.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AddUserMapping.Designer.cs">
+      <DependentUpon>AddUserMapping.cs</DependentUpon>
+    </Compile>
     <Compile Include="MoonshotSSP.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -60,6 +66,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="AddUserMapping.resx">
+      <DependentUpon>AddUserMapping.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="DefaultCertPopup.resx">
       <DependentUpon>DefaultCertPopup.cs</DependentUpon>
     </EmbeddedResource>

@@ -22,7 +22,7 @@ namespace msetupgui
         {
             UInt32 result = msetupdll.MsSetDefaultCertStore(this.hkey, this.DefaultCertStoreName.Text);
             if (result != 0)
-                MessageBox.Show("Set failed");
+                MessageBox.Show("Set Default Cert Store failed");
             this.Close();
         }
 
