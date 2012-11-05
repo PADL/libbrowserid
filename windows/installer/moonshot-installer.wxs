@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="windows-1252"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:netfx="http://schemas.microsoft.com/wix/NetFxExtension"
      xmlns:difx="http://schemas.microsoft.com/wix/DifxAppExtension">
 
   <?define SupportWinXP=yes ?>
@@ -20,11 +21,15 @@
            Id="*" UpgradeCode="81E64C32-1D09-4E3D-9EA2-EECD9C4D16CE"
            Language="!(loc.LanguageCode)" Codepage="1252" Version="$(var.Version)"
            Manufacturer="!(loc.Manufacturer)">
-
     <Package Id="*" Description="!(loc.Description)"
              Manufacturer="!(loc.Manufacturer)"
              InstallerVersion="300" Languages="!(loc.LanguageCode)"
              Compressed="yes" SummaryCodepage="1252" />
+
+    <PropertyRef Id="NETFRAMEWORK40CLIENT"/>
+    <Condition Message="This application requires .NET Framework 4.0. Please install the .NET Framework then run this installer again.">
+      <![CDATA[Installed OR NETFRAMEWORK40CLIENT]]>
+    </Condition>
 
     <Directory Id="TARGETDIR" Name="SourceDir" DiskId="1">
       <?ifdef Target32?>

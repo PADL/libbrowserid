@@ -111,10 +111,10 @@ $(MSETUPMODULE): $(OBJ)\Moonshot-MSetup.wixobj
 	$(LIGHT) -out $@ $** -ext WixUtilExtension
 
 $(OBJ)\Moonshot-MSetup.wixobj: Moonshot-MSetup.wxs
-	$(CANDLE) -arch $(PLATFORM) -o $@ $**	\
-		-dVersion=$(VERSION)		\
-		-dBinDir=$(BINDIR)		\
-		-dPlatform=$(PLATFORM)		\
+	$(CANDLE) -arch $(PLATFORM) -o $@ $**		\
+		-dVersion=$(VERSION)			\
+		-dBinDir=$(SRC)\out\dest_i386\bin	\
+		-dPlatform=$(PLATFORM)			\
 
 all:: $(MSETUPMODULE)
 
@@ -240,12 +240,13 @@ $(INSTALLER): $(WIXOBJ) $(THIRDPARTYOBJS) $(INSTDEPS) lang\en-us.wxl $(SPINSTALL
 		-dWixUILicenseRtf=lang\license-en-us.rtf	\
 		-dWixUIDialogBmp=lang\dialog-en-us.bmp          \
 		-ext WixUIExtension -ext WixUtilExtension       \
-		-ext $(DIFXAPPEXT)
+		-ext $(DIFXAPPEXT)				\
+		-ext WiXNetFxExtension
 	$(_CODESIGN)
 
 $(WIXOBJ): Moonshot-installer.wxs Moonshot-KSecEap.wxs Moonshot-MSetup.wxs Moonshot-registry.wxi
 	$(CANDLE) -arch $(PLATFORM) -o $@ Moonshot-installer.wxs \
-		$(CANDLEOPTS) $(THIRDPARTYOPTS)
+		$(CANDLEOPTS) $(THIRDPARTYOPTS) -ext WiXNetFxExtension
 
 all:: $(INSTALLER)
 

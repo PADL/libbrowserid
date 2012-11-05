@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="windows-1252"?>
- <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <!-- always just install 32 bit msetup for now
   <?if $(var.Platform)=x64 ?>
     <?define Win64=yes ?>
     <?define GuidPackage=eab00180-5796-417b-877e-b2888da7d927 ?>
     <?define GuidMSetup=a3f1e5de-6937-4c11-867b-f12a745af877 ?>
+    <?define GuidMSetupGui=E597FFB1-2BAA-4da1-AD74-186DDD202AB5 ?>
+    <?define GuidMSetupDll=29115527-AA45-4d5a-9A4C-8C75C35B50D2 ?>
     <?define PlatformProgramFilesFolder="ProgramFiles64Folder" ?>
-  <?else?>
-    <?define Win64=no ?>
-    <?define GuidPackage=3e1d5806-443a-4f61-823c-e7ceb4f0175e ?>
-    <?define GuidMSetup=af5b4929-2f4e-4675-bb5b-69af31336641 ?>
-    <?define PlatformProgramFilesFolder="ProgramFilesFolder" ?>
-  <?endif?>
+  <?else?> -->
+  <?define Win64=no ?>
+  <?define GuidPackage=3e1d5806-443a-4f61-823c-e7ceb4f0175e ?>
+  <?define GuidMSetup=af5b4929-2f4e-4675-bb5b-69af31336641 ?>
+  <?define GuidMSetupGui=0617FDFD-8CCB-4176-90EA-02FEE69AB92B ?>
+  <?define GuidMSetupDll=08D1B28F-CDFF-4770-8217-BC02BB2F96A4 ?>
+  <?define PlatformProgramFilesFolder="ProgramFilesFolder" ?>
+  <!-- <?endif?> -->
 
   <Module Id="M_MSetup" Language="0" Version="$(var.Version)">
     <Package Id="$(var.GuidPackage)"
@@ -18,6 +23,7 @@
              Languages="1033" Manufacturer="PADL"
              SummaryCodepage="1252" AdminImage="no"
              Platform="$(var.Platform)" />
+
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="D_Module" Name="Moonshot" FileSource="$(var.BinDir)">
         <Component Id="C_MSetup"
@@ -25,6 +31,17 @@
                    Win64="$(var.Win64)">
           <File Name="MSetup.exe" KeyPath="yes" />
           <File Name="MSetup.pdb" />
+        </Component>
+        <Component Id="C_MSetupGui"
+                   Guid="$(var.GuidMSetupGui)"
+                   Win64="$(var.Win64)">
+          <File Name="MSetupGui.exe" KeyPath="yes" />
+          <File Name="MSetupGui.pdb" />
+        </Component>
+        <Component Id="C_MSetupDll"
+                   Guid="$(var.GuidMSetupDll)"
+                   Win64="$(var.Win64)">
+          <File Name="LibMSetup.dll" KeyPath="yes" />
         </Component>
       </Directory>
     </Directory>
