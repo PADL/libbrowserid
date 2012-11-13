@@ -903,13 +903,11 @@ gssEapAcceptSecContext(OM_uint32 *minor,
      * credential handle.
      */
 
-    /*
-     * Calling gssEapInquireCred() forces the default acceptor credential name
-     * to be resolved.
-     */
-    major = gssEapInquireCred(minor, cred, &ctx->acceptorName, NULL, NULL, NULL);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    if (cred->name != GSS_C_NO_NAME) {
+        major = gssEapDuplicateName(minor, cred->name, &ctx->acceptorName);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
     major = gssEapSmStep(minor,
                          cred,

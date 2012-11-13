@@ -214,6 +214,11 @@ gssEapMakeReauthCreds(OM_uint32 *minor,
     credBuf->length = 0;
     credBuf->value = NULL;
 
+    if (ctx->acceptorName == GSS_C_NO_NAME) {
+        *minor = GSSEAP_NO_ACCEPTOR_NAME;
+        return GSS_S_UNAVAILABLE;
+    }
+
     GSSEAP_KRB_INIT(&krbContext);
 
     code = getAcceptorKey(krbContext, ctx, cred, &server, &acceptorKey);
