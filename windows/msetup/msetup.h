@@ -137,6 +137,13 @@ MsAddAaaServer(
     HKEY hKey,
     PAAA_SERVER_INFO ServerInfo);
 
+MSETUPDLL DWORD
+MsAddAaaServerWrapper(
+    HKEY hKey,
+    LPWSTR Server,
+    LPWSTR Service,
+    LPWSTR Secret);
+
 /*
  * Deletes existing AAA server tuple.
  */

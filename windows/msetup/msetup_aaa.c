@@ -127,6 +127,19 @@ cleanup:
 }
 
 DWORD
+MsAddAaaServerWrapper(HKEY hSspKey,
+                      LPWSTR Server,
+                      LPWSTR Service,
+                      LPWSTR Secret)
+{
+    AAA_SERVER_INFO ServerInfo;
+    ServerInfo.Server = Server;
+    ServerInfo.Service = Service;
+    ServerInfo.Secret = Secret;
+    return MsAddAaaServer(hSspKey, &ServerInfo);
+}
+
+DWORD
 MsAddAaaServer(
     HKEY hSspKey,
     PAAA_SERVER_INFO ServerInfo)
