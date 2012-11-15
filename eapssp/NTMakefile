@@ -29,7 +29,12 @@ EAPSSP_OBJS = $(EAPSSP_OBJS)    \
 	$(OBJ)\gssp_token.obj
 !endif
 
+
 cdefines=$(cdefines) -DBUILD_GSSEAP_SSP -DUNICODE -D_UNICODE
+
+!ifdef GSSEAP_BETA
+cdefines=$(cdefines) -DEAPSSP_EXPIRY_YEAR=2013 -DEAPSSP_EXPIRY_MONTH=1 -DEAPSSP_EXPIRY_DAY=3
+!endif
 
 #
 # Resource

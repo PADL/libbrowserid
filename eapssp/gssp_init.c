@@ -229,6 +229,20 @@ SpShutdown(VOID)
     return STATUS_SUCCESS;
 }
 
+/* check for beta expiration. Return 0 if not expired. */
+static DWORD checkExpiry()
+{
+#ifdef EAPSSP_EXPIRY_YEAR
+    SYSTEMTIME t;
+    GetSystemTime(&t);
+    if ((t.wYear >= EAPSSP_EXPIRY_YEAR) &&
+        (t.wMonth >= EAPSSP_EXPIRY_MONTH) &&
+        (t.wDay >= EAPSSP_EXPIRY_DAY))
+        return 1;
+#endif
+    return 0;
+}
+
 NTSTATUS NTAPI
 SpLsaModeInitialize(
     IN ULONG LsaVersion,
@@ -273,6 +287,12 @@ SpLsaModeInitialize(
     if (*PackageVersion == 0) {
         GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
                         L"SpLsaModeInitialize: not supported on this version of Windows");
+        return STATUS_NOT_SUPPORTED;
+    }
+
+    if (checkExpiry()) {
+        GsspDebugTrace(WINEVENT_LEVEL_VERBOSE,
+                        L"SpLsaModeInitialize: expired beta");
         return STATUS_NOT_SUPPORTED;
     }
 
