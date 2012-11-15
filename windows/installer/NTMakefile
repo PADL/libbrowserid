@@ -210,12 +210,18 @@ CANDLEOPTS=$(CANDLEOPTS) -dTarget64	\
 	-dHeimdalModule32=$(HEIMDALMODULE32)	\
 	-dHeimdalModule64=$(HEIMDALMODULE64)    \
 
+!ifdef GUI_ONLY
+INSTDEPS=$(MSETUPMODULE)
+!else
 INSTDEPS=$(EAPSSPMODULE) $(KSECEAPOBJ) $(MSETUPMODULE) $(SPINSTALLOBJ)
+!endif
 
 !ifdef MULTIPLATFORM_INSTALLER
 CANDLEOPTS=$(CANDLEOPTS) -dTarget32
 TYPEOPT=-full
+!ifndef GUI_ONLY
 INSTDEPS=$(INSTDEPS) $(INSTDIR32)\Moonshot-EapSSP.msm
+!endif
 !else
 !  message Excluding 32-bit components from installer
 TYPEOPT=
@@ -233,9 +239,14 @@ CANDLEOPTS=$(CANDLEOPTS) -dTarget32		\
 
 INSTALLER=$(INSTDIR)\Moonshot-$(CPU)$(DEBUGOPT)$(TYPEOPT)-$(VERSIOND).msi
 WIXOBJ=$(OBJ)\Moonshot-installer$(TYPEOPT).wixobj
+!ifdef GUI_ONLY
+MSIOBJS = $(WIXOBJ)
+!else
+MSIOBJS = $(WIXOBJ) $(THIRDPARTYOBJS) $(KSECEAPOBJ) $(SPINSTALLOBJ)
+!endif
 
 $(INSTALLER): $(WIXOBJ) $(THIRDPARTYOBJS) $(INSTDEPS) lang\en-us.wxl $(SPINSTALL_DLL) lang\license-en-us.rtf lang\dialog-en-us.bmp
-	$(LIGHT) -out $@ $(WIXOBJ) $(THIRDPARTYOBJS) $(KSECEAPOBJ) $(SPINSTALLOBJ) \
+	$(LIGHT) -out $@ $(MSIOBJS) \
 		-sval -cultures:en-us -loc lang\en-us.wxl	\
 		-dWixUILicenseRtf=lang\license-en-us.rtf	\
 		-dWixUIDialogBmp=lang\dialog-en-us.bmp          \
@@ -244,7 +255,13 @@ $(INSTALLER): $(WIXOBJ) $(THIRDPARTYOBJS) $(INSTDEPS) lang\en-us.wxl $(SPINSTALL
 		-ext WiXNetFxExtension
 	$(_CODESIGN)
 
-$(WIXOBJ): Moonshot-installer.wxs Moonshot-KSecEap.wxs Moonshot-MSetup.wxs Moonshot-registry.wxi
+!ifdef GUI_ONLY
+WIXOBJDEPS = Moonshot-installer.wxs Moonshot-MSetup.wxs Moonshot-registry.wxi
+!else
+WIXOBJDEPS = Moonshot-installer.wxs Moonshot-KSecEap.wxs Moonshot-MSetup.wxs Moonshot-registry.wxi
+!endif
+
+$(WIXOBJ): $(WIXOBJDEPS)
 	$(CANDLE) -arch $(PLATFORM) -o $@ Moonshot-installer.wxs \
 		$(CANDLEOPTS) $(THIRDPARTYOPTS) -ext WiXNetFxExtension
 

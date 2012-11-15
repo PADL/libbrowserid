@@ -40,7 +40,7 @@
       <?endif?>
       <Directory Id="$(var.PlatformProgramFilesFolder)" />
     </Directory>
-
+    <?ifndef GuiOnly?>
     <?ifdef Target32?>
       <DirectoryRef Id="SystemFolder" DiskId="1">
         <Merge Id="M_Runtime32" Language="0"
@@ -61,6 +61,12 @@
         <Merge Id="M_EapSSP64" Language="0"
                SourceFile="$(var.InstDir64)\Moonshot-EapSSP.msm" />
       </DirectoryRef>
+    <?endif?>
+    <?else?> <!-- !GuiOnly -->
+    <DirectoryRef Id="SystemFolder" DiskId="1">
+      <Merge Id="M_Runtime32" Language="0"
+             SourceFile="$(var.RuntimeModule32)" />
+    </DirectoryRef>
     <?endif?>
 
     <DirectoryRef Id="$(var.PlatformProgramFilesFolder)" DiskId="1">
@@ -97,6 +103,7 @@
              Title="!(loc.FeaMainTitle)"
              Description="!(loc.FeaMainDesc)" Display="expand"
              Level="1" TypicalDefault="install" InstallDefault="local">
+      <?ifndef GuiOnly?>
       <?ifdef Target64?>
         <MergeRef Id="M_Runtime64" />
         <MergeRef Id="M_Heimdal64" />
@@ -107,8 +114,13 @@
         <MergeRef Id="M_Heimdal32" />
         <MergeRef Id="M_EapSSP32" />
       <?endif?>
+      <?else?>
+      <MergeRef Id="M_Runtime32"/>
+      <?endif?>
+
       <MergeRef Id="M_MSetup" />
       <ComponentRef Id="C_EapSSPRegistry" />
+      <?ifndef GuiOnly?>
       <Feature Id="F_KSecEap"
                ConfigurableDirectory="INSTALLLOCATION"
                Title="!(loc.FeaKernTitle)"
@@ -116,6 +128,7 @@
                Level="1" TypicalDefault="install" InstallDefault="local">
         <ComponentRef Id="C_KSecEap" />
       </Feature>
+      <?endif?>
     </Feature>
 
     <!-- Properties for Add/Remove Programs -->
