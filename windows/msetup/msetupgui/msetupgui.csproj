@@ -46,6 +46,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AddServer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AddServer.Designer.cs">
+      <DependentUpon>AddServer.cs</DependentUpon>
+    </Compile>
     <Compile Include="DefaultCertPopup.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -66,6 +72,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="AddServer.resx">
+      <DependentUpon>AddServer.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="AddUserMapping.resx">
       <DependentUpon>AddUserMapping.cs</DependentUpon>
     </EmbeddedResource>

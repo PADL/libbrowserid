@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -159,9 +160,31 @@ namespace msetupgui
 
         private void AddUserMapping_Click(object sender, EventArgs e)
         {
-            Form popup = new AddUserMapping(hkey);
+            Form popup = new AddUserMapping(this.hkey);
             popup.ShowDialog();
             this.SyncWithRegistry();
+        }
+
+        private void AddServerButton_Click(object sender, EventArgs e)
+        {
+            Form popup = new AddServer(this.hkey);
+            popup.ShowDialog();
+            this.SyncWithRegistry();
+        }
+
+        private void RemoveUserMappingButton_Click(object sender, EventArgs e)
+        {
+            DataGridViewSelectedRowCollection selected = this.UserMappingGrid.SelectedRows;
+            for (int i=0; i<selected.Count; i++)
+            {
+                msetupdll.MsMapUser(this.hkey, selected[i].Cells[0].Value.ToString(), null);
+            }
+            this.SyncWithRegistry();
+        }
+
+        private void UserMappingGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            this.RemoveUserMappingButton.Enabled = (this.UserMappingGrid.SelectedRows.Count > 0);
         }
     }
 
@@ -202,5 +225,10 @@ namespace msetupgui
         public static extern UInt32 MsMapUser(IntPtr key,
             [MarshalAs(UnmanagedType.LPWStr)]String userName,
             [MarshalAs(UnmanagedType.LPWStr)]String accountName);
+        [DllImport("libmsetup.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 MsAddAaaServerWrapper(IntPtr key,
+            [MarshalAs(UnmanagedType.LPWStr)]String address,
+            [MarshalAs(UnmanagedType.LPWStr)]String port,
+            [MarshalAs(UnmanagedType.LPWStr)]String secret);
     }
 }

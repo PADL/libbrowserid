@@ -28,6 +28,10 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
             this.GSSP_Flag_Debug = new System.Windows.Forms.CheckBox();
             this.GSSP_Flag_Disable_SPNEGO = new System.Windows.Forms.CheckBox();
             this.GSSP_Flag_Disable_NegoEx = new System.Windows.Forms.CheckBox();
@@ -39,15 +43,16 @@
             this.DefaultCertStoreName = new System.Windows.Forms.Label();
             this.DefaultCertStoreEdit = new System.Windows.Forms.Button();
             this.UserMappingLabel = new System.Windows.Forms.Label();
-            this.AddUserMapping = new System.Windows.Forms.Button();
+            this.AddUserMappingButton = new System.Windows.Forms.Button();
             this.UserMappingGrid = new System.Windows.Forms.DataGridView();
             this.User = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Account = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ServerLabel = new System.Windows.Forms.Label();
-            this.AddServer = new System.Windows.Forms.Button();
+            this.AddServerButton = new System.Windows.Forms.Button();
             this.ServerGrid = new System.Windows.Forms.DataGridView();
             this.ServerAddress = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ServiceOrPort = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.RemoveUserMappingButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.UserMappingGrid)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.ServerGrid)).BeginInit();
             this.SuspendLayout();
@@ -166,47 +171,66 @@
             this.UserMappingLabel.TabIndex = 11;
             this.UserMappingLabel.Text = "User Mappings";
             // 
-            // AddUserMapping
+            // AddUserMappingButton
             // 
-            this.AddUserMapping.Location = new System.Drawing.Point(321, 62);
-            this.AddUserMapping.Name = "AddUserMapping";
-            this.AddUserMapping.Size = new System.Drawing.Size(171, 23);
-            this.AddUserMapping.TabIndex = 12;
-            this.AddUserMapping.Text = "Add User Mapping";
-            this.AddUserMapping.UseVisualStyleBackColor = true;
-            this.AddUserMapping.Click += new System.EventHandler(this.AddUserMapping_Click);
+            this.AddUserMappingButton.Location = new System.Drawing.Point(132, 62);
+            this.AddUserMappingButton.Name = "AddUserMappingButton";
+            this.AddUserMappingButton.Size = new System.Drawing.Size(171, 23);
+            this.AddUserMappingButton.TabIndex = 12;
+            this.AddUserMappingButton.Text = "Add User Mapping";
+            this.AddUserMappingButton.UseVisualStyleBackColor = true;
+            this.AddUserMappingButton.Click += new System.EventHandler(this.AddUserMapping_Click);
             // 
             // UserMappingGrid
             // 
             this.UserMappingGrid.AllowUserToAddRows = false;
+            this.UserMappingGrid.AllowUserToDeleteRows = false;
             this.UserMappingGrid.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.UserMappingGrid.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.UserMappingGrid.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
             this.UserMappingGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.UserMappingGrid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.User,
             this.Account});
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.UserMappingGrid.DefaultCellStyle = dataGridViewCellStyle2;
             this.UserMappingGrid.Location = new System.Drawing.Point(12, 91);
             this.UserMappingGrid.Name = "UserMappingGrid";
+            this.UserMappingGrid.ReadOnly = true;
             this.UserMappingGrid.RowHeadersVisible = false;
             this.UserMappingGrid.RowTemplate.Height = 24;
             this.UserMappingGrid.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.UserMappingGrid.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.UserMappingGrid.Size = new System.Drawing.Size(480, 227);
             this.UserMappingGrid.TabIndex = 17;
+            this.UserMappingGrid.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.UserMappingGrid_CellContentClick);
             // 
             // User
             // 
             this.User.HeaderText = "User (NAI)";
             this.User.Name = "User";
             this.User.ReadOnly = true;
-            this.User.Width = 240;
             // 
             // Account
             // 
             this.Account.HeaderText = "Account";
             this.Account.Name = "Account";
             this.Account.ReadOnly = true;
-            this.Account.Width = 240;
             // 
             // ServerLabel
             // 
@@ -217,22 +241,40 @@
             this.ServerLabel.TabIndex = 18;
             this.ServerLabel.Text = "Servers";
             // 
-            // AddServer
+            // AddServerButton
             // 
-            this.AddServer.Location = new System.Drawing.Point(321, 337);
-            this.AddServer.Name = "AddServer";
-            this.AddServer.Size = new System.Drawing.Size(171, 23);
-            this.AddServer.TabIndex = 19;
-            this.AddServer.Text = "Add Server";
-            this.AddServer.UseVisualStyleBackColor = true;
+            this.AddServerButton.Location = new System.Drawing.Point(321, 337);
+            this.AddServerButton.Name = "AddServerButton";
+            this.AddServerButton.Size = new System.Drawing.Size(171, 23);
+            this.AddServerButton.TabIndex = 19;
+            this.AddServerButton.Text = "Add Server";
+            this.AddServerButton.UseVisualStyleBackColor = true;
+            this.AddServerButton.Click += new System.EventHandler(this.AddServerButton_Click);
             // 
             // ServerGrid
             // 
             this.ServerGrid.AllowUserToAddRows = false;
+            this.ServerGrid.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.ServerGrid.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle3;
             this.ServerGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.ServerGrid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.ServerAddress,
             this.ServiceOrPort});
+            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle4.Font = new System.Drawing.Font("Microsoft Sans Serif", 7.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle4.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.ServerGrid.DefaultCellStyle = dataGridViewCellStyle4;
             this.ServerGrid.Location = new System.Drawing.Point(12, 366);
             this.ServerGrid.Name = "ServerGrid";
             this.ServerGrid.RowHeadersVisible = false;
@@ -246,25 +288,34 @@
             this.ServerAddress.HeaderText = "Server Address";
             this.ServerAddress.Name = "ServerAddress";
             this.ServerAddress.ReadOnly = true;
-            this.ServerAddress.Width = 240;
             // 
             // ServiceOrPort
             // 
             this.ServiceOrPort.HeaderText = "Service/Port";
             this.ServiceOrPort.Name = "ServiceOrPort";
             this.ServiceOrPort.ReadOnly = true;
-            this.ServiceOrPort.Width = 240;
+            // 
+            // RemoveUserMappingButton
+            // 
+            this.RemoveUserMappingButton.Location = new System.Drawing.Point(325, 62);
+            this.RemoveUserMappingButton.Name = "RemoveUserMappingButton";
+            this.RemoveUserMappingButton.Size = new System.Drawing.Size(167, 23);
+            this.RemoveUserMappingButton.TabIndex = 21;
+            this.RemoveUserMappingButton.Text = "Remove User Mapping";
+            this.RemoveUserMappingButton.UseVisualStyleBackColor = true;
+            this.RemoveUserMappingButton.Click += new System.EventHandler(this.RemoveUserMappingButton_Click);
             // 
             // Moonshot
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(797, 575);
+            this.Controls.Add(this.RemoveUserMappingButton);
             this.Controls.Add(this.ServerGrid);
-            this.Controls.Add(this.AddServer);
+            this.Controls.Add(this.AddServerButton);
             this.Controls.Add(this.ServerLabel);
             this.Controls.Add(this.UserMappingGrid);
-            this.Controls.Add(this.AddUserMapping);
+            this.Controls.Add(this.AddUserMappingButton);
             this.Controls.Add(this.UserMappingLabel);
             this.Controls.Add(this.DefaultCertStoreEdit);
             this.Controls.Add(this.DefaultCertStoreName);
@@ -299,15 +350,16 @@
         private System.Windows.Forms.Label DefaultCertStoreName;
         private System.Windows.Forms.Button DefaultCertStoreEdit;
         private System.Windows.Forms.Label UserMappingLabel;
-        private System.Windows.Forms.Button AddUserMapping;
+        private System.Windows.Forms.Button AddUserMappingButton;
         private System.Windows.Forms.DataGridView UserMappingGrid;
         private System.Windows.Forms.Label ServerLabel;
-        private System.Windows.Forms.Button AddServer;
+        private System.Windows.Forms.Button AddServerButton;
         private System.Windows.Forms.DataGridView ServerGrid;
-        private System.Windows.Forms.DataGridViewTextBoxColumn User;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Account;
         private System.Windows.Forms.DataGridViewTextBoxColumn ServerAddress;
         private System.Windows.Forms.DataGridViewTextBoxColumn ServiceOrPort;
+        private System.Windows.Forms.DataGridViewTextBoxColumn User;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Account;
+        private System.Windows.Forms.Button RemoveUserMappingButton;
     }
 }
 

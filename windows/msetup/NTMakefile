@@ -58,8 +58,17 @@ CSC_OUT = /out:$@
 # This should be changed to BINDIR when we have correct rules for building resources
 # for now, dev-studio-built resources are checked in to source control
 RESDIR = msetupgui
-CSC_RES = /resource:$(RESDIR)\msetupgui.DefaultCertPopup.resources /resource:$(RESDIR)\msetupgui.Moonshot.resources
+CSC_RES = \
+	/resource:$(RESDIR)\msetupgui.AddUserMapping.resources		\
+	/resource:$(RESDIR)\msetupgui.AddServer.resources		\
+	/resource:$(RESDIR)\msetupgui.DefaultCertPopup.resources	\
+	/resource:$(RESDIR)\msetupgui.Moonshot.resources
+
 MSETUPGUI_SRC =							\
+	msetupgui\AddUserMapping.cs				\
+	msetupgui\AddUserMapping.Designer.cs			\
+	msetupgui\AddServer.cs					\
+	msetupgui\AddServer.Designer.cs				\
 	msetupgui\DefaultCertPopup.cs				\
 	msetupgui\DefaultCertPopup.Designer.cs			\
 	msetupgui\MoonshotSSP.cs				\
