@@ -153,6 +153,11 @@ MsDeleteAaaServer(
     PAAA_SERVER_INFO ServerInfo);
 
 MSETUPDLL DWORD
+MsDeleteAaaServerWrapper(
+    HKEY hKey,
+    LPWSTR Server);
+
+MSETUPDLL DWORD
 MsQueryAaaServer(
     HKEY hKey,
     DWORD index,

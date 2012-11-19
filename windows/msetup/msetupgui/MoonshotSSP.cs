@@ -186,6 +186,16 @@ namespace msetupgui
         {
             this.RemoveUserMappingButton.Enabled = (this.UserMappingGrid.SelectedRows.Count > 0);
         }
+
+        private void RemoveServerButton_Click(object sender, EventArgs e)
+        {
+            DataGridViewSelectedRowCollection selected = this.ServerGrid.SelectedRows;
+            for (int i = 0; i < selected.Count; i++)
+            {
+                msetupdll.MsDeleteAaaServerWrapper(this.hkey, selected[i].Cells[0].Value.ToString());
+            }
+            this.SyncWithRegistry();
+        }
     }
 
     public class msetupdll
@@ -230,5 +240,8 @@ namespace msetupgui
             [MarshalAs(UnmanagedType.LPWStr)]String address,
             [MarshalAs(UnmanagedType.LPWStr)]String port,
             [MarshalAs(UnmanagedType.LPWStr)]String secret);
+        [DllImport("libmsetup.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 MsDeleteAaaServerWrapper(IntPtr key,
+            [MarshalAs(UnmanagedType.LPWStr)]String address);
     }
 }

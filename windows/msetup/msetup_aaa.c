@@ -223,6 +223,18 @@ MsDeleteAaaServer(
     return dwResult;
 }
 
+DWORD
+MsDeleteAaaServerWrapper(
+    HKEY hSspKey,
+    LPWSTR Server)
+{
+    AAA_SERVER_INFO ServerInfo = {
+        Server,
+        NULL,
+        NULL
+    };
+    return MsDeleteAaaServer(hSspKey, &ServerInfo);
+}
 /* returns ERROR_NO_MORE_ITEMS if dwServerIndex is out of range */
 /* allocates outServer and outService strings on success.       */
 DWORD

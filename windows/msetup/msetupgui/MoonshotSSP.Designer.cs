@@ -53,6 +53,7 @@
             this.ServerAddress = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ServiceOrPort = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.RemoveUserMappingButton = new System.Windows.Forms.Button();
+            this.RemoveServerButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.UserMappingGrid)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.ServerGrid)).BeginInit();
             this.SuspendLayout();
@@ -243,7 +244,7 @@
             // 
             // AddServerButton
             // 
-            this.AddServerButton.Location = new System.Drawing.Point(321, 337);
+            this.AddServerButton.Location = new System.Drawing.Point(132, 331);
             this.AddServerButton.Name = "AddServerButton";
             this.AddServerButton.Size = new System.Drawing.Size(171, 23);
             this.AddServerButton.TabIndex = 19;
@@ -280,6 +281,7 @@
             this.ServerGrid.RowHeadersVisible = false;
             this.ServerGrid.RowTemplate.Height = 24;
             this.ServerGrid.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.ServerGrid.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.ServerGrid.Size = new System.Drawing.Size(480, 175);
             this.ServerGrid.TabIndex = 20;
             // 
@@ -305,11 +307,22 @@
             this.RemoveUserMappingButton.UseVisualStyleBackColor = true;
             this.RemoveUserMappingButton.Click += new System.EventHandler(this.RemoveUserMappingButton_Click);
             // 
+            // RemoveServerButton
+            // 
+            this.RemoveServerButton.Location = new System.Drawing.Point(325, 331);
+            this.RemoveServerButton.Name = "RemoveServerButton";
+            this.RemoveServerButton.Size = new System.Drawing.Size(167, 23);
+            this.RemoveServerButton.TabIndex = 22;
+            this.RemoveServerButton.Text = "Remove Server";
+            this.RemoveServerButton.UseVisualStyleBackColor = true;
+            this.RemoveServerButton.Click += new System.EventHandler(this.RemoveServerButton_Click);
+            // 
             // Moonshot
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(797, 575);
+            this.Controls.Add(this.RemoveServerButton);
             this.Controls.Add(this.RemoveUserMappingButton);
             this.Controls.Add(this.ServerGrid);
             this.Controls.Add(this.AddServerButton);
@@ -360,6 +373,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn User;
         private System.Windows.Forms.DataGridViewTextBoxColumn Account;
         private System.Windows.Forms.Button RemoveUserMappingButton;
+        private System.Windows.Forms.Button RemoveServerButton;
     }
 }
 
