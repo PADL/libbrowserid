@@ -229,7 +229,7 @@ cleanup:
     if (code != 0)
         krb5_free_keyblock_contents(krbContext, &kd);
 #ifdef HAVE_HEIMDAL_VERSION
-    krb5_free_data_contents(krbContext, &t);
+    krb5_data_free(&t);
 #else
     if (t.data != NULL) {
         memset(t.data, 0, t.length);
