@@ -752,12 +752,13 @@ gssEapDisplayName(OM_uint32 *minor,
     }
 
     major = makeStringBuffer(minor, krbName, output_name_buffer);
-    if (GSS_ERROR(major)) {
-        krb5_free_unparsed_name(krbContext, krbName);
-        return major;
-    }
-
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_xfree(krbName);
+#else
     krb5_free_unparsed_name(krbContext, krbName);
+#endif
+    if (GSS_ERROR(major))
+        return major;
 
     if (output_name_buffer->length == 0) {
         name_type = GSS_C_NT_ANONYMOUS;
