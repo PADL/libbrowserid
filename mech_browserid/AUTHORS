@@ -1,0 +1,8 @@
+The initial implementation of mech_eap was written by PADL Software
+under contract to JANET(UK).
+
+The BrowserID mechanism was implemented by PADL Software.
+
+--
+Luke Howard <lukeh@padl.com>
+January, 2013

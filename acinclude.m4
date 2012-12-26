@@ -8,6 +8,14 @@ AC_MSG_RESULT($target_windows)
 AM_CONDITIONAL(TARGET_WINDOWS,test "x$target_windows" = "xyes")
 ])dnl
 
+AC_DEFUN([AX_CHECK_MACOSX],
+[AC_MSG_CHECKING(for OSX)
+target_macosx="no"
+AC_CHECK_HEADER(Availability.h,[target_macosx="yes"],[target_macosx="no"])
+AC_MSG_RESULT($target_macosx)
+AM_CONDITIONAL(TARGET_MACOSX,test "x$target_macosx" = "xyes")
+])dnl
+
 AC_DEFUN([AX_CHECK_KRB5],
 [AC_MSG_CHECKING(for GSS-API and Kerberos implementation)
 KRB5_DIR=
@@ -58,71 +66,6 @@ else
 	AC_CHECK_LIB(krb5, gss_krb5_import_cred, [AC_DEFINE_UNQUOTED([HAVE_GSS_KRB5_IMPORT_CRED], 1, [Define if GSS-API library supports gss_krb5_import_cred])], [], "$KRB5_LIBS")
 	AC_CHECK_LIB(krb5, heimdal_version, [AC_DEFINE_UNQUOTED([HAVE_HEIMDAL_VERSION], 1, [Define if building against Heimdal Kerberos implementation]), heimdal=yes], [heimdal=no], "$KRB5_LIBS")
 	AM_CONDITIONAL(HEIMDAL, test "x$heimdal" != "xno")
-fi
-])dnl
-
-AC_DEFUN([AX_CHECK_EAP],
-[AC_MSG_CHECKING(for EAP implementation)
-EAP_DIR=
-found_eap="no"
-AC_ARG_WITH(eap,
-    AC_HELP_STRING([--with-eap],
-       [Use eap (in specified installation directory)]),
-    [check_eap_dir="$withval"],
-    [check_eap_dir=])
-for dir in $check_eap_dir $prefix /usr /usr/local ../libeap ; do
-   eapdir="$dir"
-   if test -f "$dir/src/eap_peer/eap.h"; then
-     found_eap="yes";
-     EAP_DIR="${eapdir}"
-     EAP_CFLAGS="-I$eapdir/src/common -I$eapdir/src -I$eapdir/src/utils";
-     break;
-   fi
-done
-AC_MSG_RESULT($found_eap)
-if test x_$found_eap != x_yes; then
-   AC_MSG_ERROR([
-----------------------------------------------------------------------
-  Cannot find EAP libraries.
-
-  Please install wpa_supplicant or specify installation directory with
-  --with-eap=(dir).
-----------------------------------------------------------------------
-])
-else
-	printf "EAP found in $eapdir\n";
-	EAP_CFLAGS="$EAP_CFLAGS \
--DEAP_TLS \
--DEAP_PEAP \
--DEAP_TTLS \
--DEAP_MD5 \
--DEAP_MSCHAPv2 \
--DEAP_GTC \
--DEAP_OTP \
--DEAP_LEAP \
--DEAP_PSK \
--DEAP_PAX \
--DEAP_SAKE \
--DEAP_GPSK \
--DEAP_GPSK_SHA256 \
--DEAP_SERVER_IDENTITY \
--DEAP_SERVER_TLS \
--DEAP_SERVER_PEAP \
--DEAP_SERVER_TTLS \
--DEAP_SERVER_MD5 \
--DEAP_SERVER_MSCHAPV2 \
--DEAP_SERVER_GTC \
--DEAP_SERVER_PSK \
--DEAP_SERVER_PAX \
--DEAP_SERVER_SAKE \
--DEAP_SERVER_GPSK \
--DEAP_SERVER_GPSK_SHA256 \
--DIEEE8021X_EAPOL";
-	EAP_LIBS="-leap -lutils -lcrypto -ltls";
-	EAP_LDFLAGS="-L$eapdir/eap_example -L$eapdir/src/utils -L$eapdir/src/crypto -L$eapdir/src/tls";
-	AC_SUBST(EAP_CFLAGS)
-	AC_SUBST(EAP_LDFLAGS)
-	AC_SUBST(EAP_LIBS)
 fi
 ])dnl
 
@@ -252,44 +195,6 @@ fi
 fi
 ])dnl
 
-AC_DEFUN([AX_CHECK_RADSEC],
-[AC_MSG_CHECKING(for radsec)
-RADSEC_DIR=
-found_radsec="no"
-AC_ARG_WITH(radsec,
-    AC_HELP_STRING([--with-radsec],
-       [Use radsec (in specified installation directory)]),
-    [check_radsec_dir="$withval"],
-    [check_radsec_dir=])
-for dir in $check_radsec_dir $prefix /usr /usr/local ; do
-   radsecdir="$dir"
-   if test -f "$dir/include/radsec/radsec.h"; then
-     found_radsec="yes";
-     RADSEC_DIR="${radsecdir}"
-     RADSEC_CFLAGS="-I$radsecdir/include";
-     break;
-   fi
-done
-AC_MSG_RESULT($found_radsec)
-if test x_$found_radsec != x_yes; then
-   AC_MSG_ERROR([
-----------------------------------------------------------------------
-  Cannot find radsec libraries.
-
-  Please install libradsec or specify installation directory with
-  --with-radsec=(dir).
-----------------------------------------------------------------------
-])
-else
-	printf "radsec found in $radsecdir\n";
-	RADSEC_LIBS="-lradsec";
-	RADSEC_LDFLAGS="-L$radsecdir/lib";
-	AC_SUBST(RADSEC_CFLAGS)
-	AC_SUBST(RADSEC_LDFLAGS)
-	AC_SUBST(RADSEC_LIBS)
-fi
-])dnl
-
 AC_DEFUN([AX_CHECK_JANSSON],
 [AC_MSG_CHECKING(for jansson)
 JANSSON_DIR=
@@ -328,37 +233,41 @@ else
 fi
 ])dnl
 
-AC_DEFUN([AX_CHECK_LIBMOONSHOT],
-[AC_MSG_CHECKING(for Moonshot identity selector implementation)
-LIBMOONSHOT_DIR=
-LIBMOONSHOT_CFLAGS=
-LIBMOONSHOT_LDFLAGS=
-LIBMOONSHOT_LIBS=
-found_libmoonshot="no"
-AC_ARG_WITH(libmoonshot,
-    AC_HELP_STRING([--with-libmoonshot],
-       [Use libmoonshot (in specified installation directory)]),
-    [check_libmoonshot_dir="$withval"],
-    [check_libmoonshot_dir=])
-for dir in $check_libmoonshot_dir $prefix /usr /usr/local ; do
-   libmoonshotdir="$dir"
-   if test -f "$dir/include/libmoonshot.h"; then
-     found_libmoonshot="yes";
-     LIBMOONSHOT_DIR="${libmoonshotdir}"
-     LIBMOONSHOT_CFLAGS="-I$libmoonshotdir/include";
+AC_DEFUN([AX_CHECK_CURL],
+[AC_MSG_CHECKING(for curl)
+CURL_DIR=
+found_curl="no"
+AC_ARG_WITH(curl,
+    AC_HELP_STRING([--with-curl],
+       [Use curl (in specified installation directory)]),
+    [check_curl_dir="$withval"],
+    [check_curl_dir=])
+for dir in $check_curl_dir $prefix /usr /usr/local ; do
+   curldir="$dir"
+   if test -f "$dir/include/curl/curl.h"; then
+     found_curl="yes";
+     CURL_DIR="${curldir}"
+     CURL_CFLAGS="-I$curldir/include";
      break;
    fi
 done
-AC_MSG_RESULT($found_libmoonshot)
-if test x_$found_libmoonshot = x_yes; then
-    printf "libmoonshot found in $libmoonshotdir\n";
-    LIBMOONSHOT_LIBS="-lmoonshot";
-    LIBMOONSHOT_LDFLAGS="-L$libmoonshot/lib";
-    AC_CHECK_LIB(moonshot, moonshot_get_identity, [AC_DEFINE_UNQUOTED([HAVE_MOONSHOT_GET_IDENTITY], 1, [Define if Moonshot identity selector is available])], [], "$LIBMOONSHOT_LIBS")
+AC_MSG_RESULT($found_curl)
+if test x_$found_curl != x_yes; then
+   AC_MSG_ERROR([
+----------------------------------------------------------------------
+  Cannot find curl libraries.
+
+  Please install libcurl or specify installation directory with
+  --with-curl=(dir).
+----------------------------------------------------------------------
+])
+else
+	printf "curl found in $curldir\n";
+	CURL_LIBS="-lcurl";
+	CURL_LDFLAGS="-L$curldir/lib";
+	AC_SUBST(CURL_CFLAGS)
+	AC_SUBST(CURL_LDFLAGS)
+	AC_SUBST(CURL_LIBS)
 fi
-    AC_SUBST(LIBMOONSHOT_CFLAGS)
-    AC_SUBST(LIBMOONSHOT_LDFLAGS)
-    AC_SUBST(LIBMOONSHOT_LIBS)
-    AM_CONDITIONAL(LIBMOONSHOT, test "x$found_libmoonshot" != "xno")
 ])dnl
 

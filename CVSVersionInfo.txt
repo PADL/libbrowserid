@@ -1,0 +1,6 @@
+# Created and modified by checkpoint; do not edit
+# $Id: checkpoint,v 1.5 1999/04/05 01:38:26 lukeh Exp $
+# $Name:  $
+ProjectName: gss-browserid
+ProjectVersion: 1
+ProjectMaintainer: lukeh
