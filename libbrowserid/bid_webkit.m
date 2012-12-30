@@ -367,23 +367,22 @@ _BIDWebkitGetAssertion(
 
     *pAssertion = NULL;
 
+#ifdef GSSBID_DEBUG
     /*
      * Only applications that are NSApplicationActivationPolicyRegular or
      * NSApplicationActivationPolicyAccessory can interact with the user.
      * Don't try to show UI if this is not the case, unless building with
      * compile time debugging.
      */
-    if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited) {
-#ifdef GSSBID_DEBUG
+    if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited ||
+        ![NSApp isRunning]) {
         ProcessSerialNumber psn = { 0, kCurrentProcess };
-        if (TransformProcessType(&psn, kProcessTransformToUIElementApplication) != noErr)
-            return BID_S_INTERACT_UNAVAILABLE;
-#else
-        return BID_S_INTERACT_UNAVAILABLE;
-#endif
+        TransformProcessType(&psn, kProcessTransformToUIElementApplication);
     }
+#endif /* GSSBID_DEBUG */
 
-    if (!NSApplicationLoad())
+    if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited ||
+        !NSApplicationLoad())
         return BID_S_INTERACT_UNAVAILABLE;
 
     @autoreleasepool {
