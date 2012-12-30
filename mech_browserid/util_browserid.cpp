@@ -174,6 +174,8 @@ gss_bid_jwt_attr_provider::getAttribute(const gss_buffer_t attr,
     bool isBinary = false;
     char *szValue = NULL;
 
+    *more = 0;
+
     nValues = jAttr.isArray() ? jAttr.size() : 1;
     if (i == -1)
         i = 0;
@@ -316,7 +318,7 @@ gss_bid_jwt_attr_provider::prefix(void) const
 JSONObject
 gss_bid_jwt_attr_provider::jsonRepresentation(void) const
 {
-    return m_attrs;
+    return JSONObject(*m_attrs);
 }
 
 time_t
