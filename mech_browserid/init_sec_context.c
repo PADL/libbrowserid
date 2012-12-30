@@ -137,6 +137,65 @@ cleanup:
     return major;
 }
 
+static OM_uint32
+initBegin(OM_uint32 *minor,
+          gss_ctx_id_t ctx,
+          gss_name_t target,
+          gss_OID mech,
+          OM_uint32 reqFlags GSSBID_UNUSED,
+          OM_uint32 timeReq,
+          gss_channel_bindings_t chanBindings GSSBID_UNUSED)
+{
+    OM_uint32 major;
+    gss_cred_id_t cred = ctx->cred;
+
+    GSSBID_ASSERT(cred != GSS_C_NO_CREDENTIAL);
+
+    if (cred->expiryTime)
+        ctx->expiryTime = cred->expiryTime;
+    else if (timeReq == 0 || timeReq == GSS_C_INDEFINITE)
+        ctx->expiryTime = 0;
+    else
+        ctx->expiryTime = time(NULL) + timeReq;
+
+    /*
+     * The credential mutex protects its name, however we need to
+     * explicitly lock the acceptor name (unlikely as it may be
+     * that it has attributes set on it).
+     */
+    major = gssBidDuplicateName(minor, cred->name, &ctx->initiatorName);
+    if (GSS_ERROR(major))
+        return major;
+
+    if (target != GSS_C_NO_NAME) {
+        GSSBID_MUTEX_LOCK(&target->mutex);
+
+        major = gssBidDuplicateName(minor, target, &ctx->acceptorName);
+        if (GSS_ERROR(major)) {
+            GSSBID_MUTEX_UNLOCK(&target->mutex);
+            return major;
+        }
+
+        GSSBID_MUTEX_UNLOCK(&target->mutex);
+    }
+
+    major = gssBidCanonicalizeOid(minor,
+                                  mech,
+                                  OID_FLAG_NULL_VALID | OID_FLAG_MAP_NULL_TO_DEFAULT_MECH,
+                                  &ctx->mechanismUsed);
+    if (GSS_ERROR(major))
+        return major;
+
+    /* If credentials were provided, check they're usable with this mech */
+    if (!gssBidCredAvailable(cred, ctx->mechanismUsed)) {
+        *minor = GSSBID_CRED_MECH_MISMATCH;
+        return GSS_S_BAD_MECH;
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
 OM_uint32
 gssBidInitSecContext(OM_uint32 *minor,
                      gss_cred_id_t cred,
@@ -153,6 +212,7 @@ gssBidInitSecContext(OM_uint32 *minor,
                      OM_uint32 *time_rec)
 {
     OM_uint32 major, tmpMinor;
+    int initialContextToken = (ctx->mechanismUsed == GSS_C_NO_OID);
 
     if (cred != GSS_C_NO_CREDENTIAL)
         GSSBID_MUTEX_LOCK(&cred->mutex);
@@ -171,6 +231,13 @@ gssBidInitSecContext(OM_uint32 *minor,
     GSSBID_MUTEX_LOCK(&ctx->cred->mutex);
     GSSBID_ASSERT(ctx->cred->flags & CRED_FLAG_RESOLVED);
     GSSBID_ASSERT(ctx->cred->flags & CRED_FLAG_INITIATE);
+
+    if (initialContextToken) {
+        major = initBegin(minor, ctx, target_name, mech_type,
+                          req_flags, time_req, input_chan_bindings);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
     switch (ctx->state) {
     case GSSBID_STATE_INITIAL:
