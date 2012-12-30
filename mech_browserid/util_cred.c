@@ -479,6 +479,8 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
             goto cleanup;
     }
 
+    BID_ASSERT(resolvedCred->assertion.length != 0);
+
     err = BIDGetIdentityEmail(ctx->bidContext, ctx->bidIdentity, (const char **)&bufEmail.value);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
