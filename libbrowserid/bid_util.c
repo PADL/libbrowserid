@@ -746,9 +746,11 @@ _BIDUnpackAudience(
 #else
     p = strrchr(szPackedAudience, '#');
 #endif
-    if (p != NULL && p[1] != '\0') {
-        err = _BIDBase64UrlDecode(p + 1, ppbChannelBindings, pcbChannelBindings);
-        BID_BAIL_ON_ERROR(err);
+    if (p != NULL) {
+        if (p[1] != '\0') {
+            err = _BIDBase64UrlDecode(p + 1, ppbChannelBindings, pcbChannelBindings);
+            BID_BAIL_ON_ERROR(err);
+        }
 
         cchAudienceOrSpn = p - szPackedAudience;
     } else {
