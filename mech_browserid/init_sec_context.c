@@ -102,9 +102,21 @@ gssBidInitResponseToken(OM_uint32 *minor,
     BIDError err;
 
     if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {
+        gss_buffer_desc bufInnerToken = GSS_C_EMPTY_BUFFER;
+        enum gss_bid_token_type actualTokenType;
         const char *status;
 
-        major = bufferToString(minor, input_token, &szJson);
+        major = gssBidVerifyToken(minor, ctx, input_token, &actualTokenType, &bufInnerToken);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        if (actualTokenType != TOK_TYPE_ACCEPTOR_CONTEXT) {
+            major = GSS_S_DEFECTIVE_TOKEN;
+            *minor = GSSBID_WRONG_TOK_ID;
+            goto cleanup;
+        }
+
+        major = bufferToString(minor, &bufInnerToken, &szJson);
         if (GSS_ERROR(major))
             goto cleanup;
 
@@ -261,6 +273,9 @@ gssBidInitSecContext(OM_uint32 *minor,
         goto cleanup;
     }
 
+    if (GSS_ERROR(major))
+        goto cleanup;
+
     if (actual_mech_type != NULL) {
         OM_uint32 tmpMajor;
 
@@ -279,7 +294,6 @@ gssBidInitSecContext(OM_uint32 *minor,
     GSSBID_ASSERT(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 
 cleanup:
-
     if (cred != GSS_C_NO_CREDENTIAL)
         GSSBID_MUTEX_UNLOCK(&cred->mutex);
     if (ctx->cred != GSS_C_NO_CREDENTIAL)
@@ -320,8 +334,6 @@ gss_init_sec_context(OM_uint32 *minor,
         major = gssBidAllocContext(minor, TRUE, &ctx);
         if (GSS_ERROR(major))
             return major;
-
-        ctx->flags |= CTX_FLAG_INITIATOR;
 
         *context_handle = ctx;
     }

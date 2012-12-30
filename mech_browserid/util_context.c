@@ -60,6 +60,11 @@ gssBidAllocContext(OM_uint32 *minor,
         return GSS_S_FAILURE;
     }
 
+    if (isInitiator)
+        ctx->flags |= CTX_FLAG_INITIATOR;
+    ctx->state = GSSBID_STATE_INITIAL;
+    ctx->mechanismUsed = GSS_C_NO_OID;
+
     contextParams = BID_CONTEXT_GSS;
     contextParams |= isInitiator ? BID_CONTEXT_USER_AGENT : BID_CONTEXT_RP;
 
@@ -69,9 +74,6 @@ gssBidAllocContext(OM_uint32 *minor,
         gssBidReleaseContext(&tmpMinor, &ctx);
         return major;
     }
-
-    ctx->state = GSSBID_STATE_INITIAL;
-    ctx->mechanismUsed = GSS_C_NO_OID;
 
     /*
      * Integrity, confidentiality, sequencing and replay detection are
@@ -280,11 +282,13 @@ gssBidContextReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     if (GSS_ERROR(major))
         return major;
 
-    major = gssBidCreateAttrContext(minor, cred, ctx,
-                                    &ctx->initiatorName->attrCtx,
-                                    &ctx->expiryTime);
-    if (GSS_ERROR(major))
-        return major;
+    if ((ctx->flags & CTX_FLAG_INITIATOR) == 0) {
+        major = gssBidCreateAttrContext(minor, cred, ctx,
+                                        &ctx->initiatorName->attrCtx,
+                                        &ctx->expiryTime);
+        if (GSS_ERROR(major))
+            return major;
+    }
 
     if (ctx->expiryTime != 0 && ctx->expiryTime < time(NULL)) {
         *minor = GSSBID_CRED_EXPIRED;

@@ -51,36 +51,43 @@ makeResponseToken(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     gss_buffer_desc bufJson = GSS_C_EMPTY_BUFFER;
-    json_t *response, *status;
+    json_t *response = NULL, *status;
     BIDError err;
 
     response = json_object();
     if (response == NULL) {
+        major = GSS_S_FAILURE;
         *minor = ENOMEM;
-        return GSS_S_FAILURE;
+        goto cleanup;
     }
 
     status = json_string(protocolMajor == GSS_S_COMPLETE ? "okay" : "failure");
     if (json_object_set(response, "status", status) != 0) {
+        major = GSS_S_FAILURE;
         *minor = ENOMEM;
-        return GSS_S_FAILURE;
+        goto cleanup;
     }
 
     err = _BIDEncodeJson(ctx->bidContext, response, (char **)&bufJson.value, &bufJson.length);
     if (err != BID_S_OK) {
-        json_decref(response);
-        return gssBidMapError(minor, err);
+        major =  gssBidMapError(minor, err);
+        goto cleanup;
     }
 
     major = gssBidMakeToken(&tmpMinor, ctx, &bufJson, TOK_TYPE_ACCEPTOR_CONTEXT, outputToken);
     if (GSS_ERROR(major)) {
-        BIDFree(bufJson.value);
-        *minor = tmpMinor;
-        return major;
+        major =  gssBidMapError(minor, err);
+        goto cleanup;
     }
 
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    json_decref(response);
     BIDFree(bufJson.value);
-    return GSS_S_COMPLETE;
+
+    return major;
 }
 
 OM_uint32
@@ -171,7 +178,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    GSSBID_SM_TRANSITION_NEXT(ctx);
+    GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
 
     if (cred->name != GSS_C_NO_NAME) {
         major = gssBidDuplicateName(minor, cred->name, &ctx->acceptorName);
