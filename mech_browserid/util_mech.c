@@ -378,3 +378,40 @@ gssBidSaslNameToOid(const gss_buffer_t name)
 
     return GSS_C_NO_OID;
 }
+
+void gssBidFinalize(void) GSSBID_DESTRUCTOR;
+
+OM_uint32
+gssBidInitiatorInit(OM_uint32 *minor)
+{
+    initialize_bidg_error_table();
+    initialize_lbid_error_table();
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+void
+gssBidFinalize(void)
+{
+#ifdef GSSBID_ENABLE_ACCEPTOR
+    OM_uint32 minor;
+
+    gssBidAttrProvidersFinalize(&minor);
+#endif
+}
+
+#ifdef GSSBID_CONSTRUCTOR
+static void gssBidInitiatorInitAssert(void) GSSBID_CONSTRUCTOR;
+
+static void
+gssBidInitiatorInitAssert(void)
+{
+    OM_uint32 major, minor;
+
+    major = gssBidInitiatorInit(&minor);
+
+    GSSBID_ASSERT(!GSS_ERROR(major));
+}
+#endif
+
