@@ -35,11 +35,6 @@ int main(int argc, const char *argv[])
     time_t expires;
     json_t *j = NULL;
 
-#ifdef __APPLE__
-    ProcessSerialNumber psn = { 0, kCurrentProcess };
-    TransformProcessType(&psn, kProcessTransformToUIElementApplication);
-#endif
-
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_GSS;
 
 #ifndef BUILD_AS_DSO
