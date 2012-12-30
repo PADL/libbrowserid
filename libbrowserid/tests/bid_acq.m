@@ -14,15 +14,24 @@
 
 #include <AppKit/AppKit.h>
 
+#ifdef BUILD_AS_DSO
+int _BIDTestAcquire(void)
+#else
 int main(int argc, const char *argv[])
+#endif
 {
     BIDError err;
     BIDContext context = NULL;
     char *assertion = NULL;
     const char *s;
     BIDIdentity identity = NULL;
+#if 1
+    unsigned char *fakeChannelBindingInfo = NULL;
+    size_t fakeChannelBindingLen = 0;
+#else
     unsigned char fakeChannelBindingInfo[] = { "\x7B\x28\xE1\x6E\x07\x22\xA2\x28\xEC\xBB\x38\xB5\x9E\x28\xFD" };
     size_t fakeChannelBindingLen = sizeof(fakeChannelBindingInfo) - 1;
+#endif
     time_t expires;
     json_t *j = NULL;
 
@@ -33,13 +42,16 @@ int main(int argc, const char *argv[])
 
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_GSS;
 
+#ifndef BUILD_AS_DSO
     if (argc > 1 && !strcmp(argv[1], "-remote"))
         options |= BID_CONTEXT_VERIFY_REMOTE;
+#endif
 
     err = BIDAcquireContext(options, &context);
     BID_BAIL_ON_ERROR(err);
 
 #if 1
+//    err = _BIDBrowserGetAssertion(context, "gss://host.rand.mit.de.padl.com.eyJhbGciOiJSUzI1NiJ9", &assertion);
     err = _BIDBrowserGetAssertion(context, "gss://host.rand.mit.de.padl.com.", &assertion);
     BID_BAIL_ON_ERROR(err);
 #else
