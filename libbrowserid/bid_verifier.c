@@ -147,6 +147,11 @@ BIDGetIdentityAttribute(
     }
 
     *pValue = json_string_value(value);
+    if (*pValue == NULL) {
+        err = BID_S_UNKNOWN_ATTRIBUTE;
+        goto cleanup;
+    }
+
     err = BID_S_OK;
 
 cleanup:

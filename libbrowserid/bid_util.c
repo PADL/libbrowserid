@@ -676,12 +676,12 @@ _BIDPopulateIdentity(
     identity->Attributes = json_object();
 
     principal = json_object_get(leafCert, "principal");
-    if (principal == NULL) {
+    if (principal == NULL || json_object_get(principal, "email") == NULL) {
         err = BID_S_MISSING_PRINCIPAL;
         goto cleanup;
     }
 
-    if (json_object_set(identity->Attributes, "email",    principal)                         ||
+    if (json_object_set(identity->Attributes, "email",    json_object_get(principal, "email")) ||
         json_object_set(identity->Attributes, "audience", json_object_get(assertion, "aud")) ||
         json_object_set(identity->Attributes, "issuer",   json_object_get(leafCert, "iss"))  ||
         json_object_set(identity->Attributes, "expires",  json_object_get(assertion, "exp"))) {

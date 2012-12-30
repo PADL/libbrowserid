@@ -67,9 +67,12 @@ BIDAcquireAssertionInteractive(
     err = BIDAcquireAssertion(context, szAssertion, pAssertedIdentity, ptExpiryTime);
     BID_BAIL_ON_ERROR(err);
 
+    *pAssertion = szAssertion;
+
 cleanup:
+    if (err != BID_S_OK)
+        BIDFree(szAssertion);
     _BIDReleaseBackedAssertion(context, backedAssertion);
-    BIDFree(szAssertion);
     BIDFree(szPackedAudience);
 
     return err;
