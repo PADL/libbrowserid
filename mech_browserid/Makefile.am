@@ -42,7 +42,7 @@ endif
 mech_browserid_la_LIBADD   = @KRB5_LIBS@ ../libbrowserid/libbrowserid.la \
 		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@ @CURL_LIBS@
 if TARGET_MACOSX
-mech_browserid_la_LDFLAGS += -framework WebKit -framework AppKit
+mech_browserid_la_LDFLAGS += -framework WebKit -framework AppKit -Wl,-sectcreate,__TEXT,__info_plist,Info.plist
 endif
 
 mech_browserid_la_SOURCES =    			\

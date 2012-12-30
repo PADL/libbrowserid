@@ -93,7 +93,7 @@
     NSString *audience;
     NSString *assertion;
     BIDLoginPanel *panel;
-    BIDError err;
+    BIDError bidError;
 }
 + (BOOL)isKeyExcludedFromWebScript:(const char *)name;
 - (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request;
@@ -106,7 +106,7 @@
 - (NSString *)assertion;
 - (void)setAssertion:(NSString *)value;
 - (WebView *)newWebView;
-- (BIDError)err;
+- (BIDError)bidError;
 @end
 
 @implementation BIDAssertionLoader
@@ -154,9 +154,9 @@
     }
 }
 
-- (BIDError)err
+- (BIDError)bidError
 {
-    return err;
+    return bidError;
 }
 
 - init
@@ -164,7 +164,7 @@
     audience = nil;
     assertion = nil;
     panel = nil;
-    err = BID_S_INTERACT_FAILURE;
+    bidError = BID_S_INTERACT_FAILURE;
 
     return [super init];
 }
@@ -196,12 +196,12 @@
 - (void)abortLoading:(NSError *)error
 {
     if (error == nil)
-        err = (assertion != nil && [assertion length]) ? BID_S_OK : BID_S_INTERACT_FAILURE;
+        bidError = (assertion != nil && [assertion length]) ? BID_S_OK : BID_S_INTERACT_FAILURE;
     else if ([[error domain] isEqualToString:NSURLErrorDomain] ||
              [[error domain] isEqualToString:WebKitErrorDomain])
-        err = BID_S_HTTP_ERROR;
+        bidError = BID_S_HTTP_ERROR;
     else
-        err = BID_S_INTERACT_FAILURE;
+        bidError = BID_S_INTERACT_FAILURE;
 
     [panel close];
     [NSApp stopModal];
@@ -328,7 +328,7 @@
     WebView *webView;
 
     if (baseURL == nil) {
-        err = BID_S_INVALID_AUDIENCE_URN;
+        bidError = BID_S_INVALID_AUDIENCE_URN;
         return;
     }
 
@@ -365,10 +365,17 @@ _BIDWebkitGetAssertion(
     /*
      * Only applications that are NSApplicationActivationPolicyRegular or
      * NSApplicationActivationPolicyAccessory can interact with the user.
-     * Don't try to show UI if this is not the case.
+     * Don't try to show UI if this is not the case, unless building with
+     * compile time debugging.
      */
-    if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited)
+    if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited) {
+#ifdef GSSBID_DEBUG
+        ProcessSerialNumber psn = { 0, kCurrentProcess };
+        TransformProcessType(&psn, kProcessTransformToUIElementApplication);
+#else
         return BID_S_INTERACT_UNAVAILABLE;
+#endif
+    }
 
     @autoreleasepool {
         loader = [[BIDAssertionLoader alloc] init];
@@ -377,7 +384,7 @@ _BIDWebkitGetAssertion(
 
         NSLog(@"assertion = %@", [loader assertion]);
 
-        err = [loader err];
+        err = [loader bidError];
         if (err == BID_S_OK)
             err = _BIDDuplicateString(context, [[loader assertion] cString], pAssertion);
 

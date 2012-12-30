@@ -668,13 +668,7 @@ enum gss_bid_state {
 
 #define GSSBID_SM_STATE(ctx)                ((ctx)->state)
 
-#ifdef GSSBID_DEBUG
-void gssBidSmTransition(gss_ctx_id_t ctx, enum gss_bid_state state);
-#define GSSBID_SM_TRANSITION(ctx, state)    gssBidSmTransition((ctx), (state))
-#else
 #define GSSBID_SM_TRANSITION(ctx, newstate)    do { (ctx)->state = (newstate); } while (0)
-#endif
-
 #define GSSBID_SM_TRANSITION_NEXT(ctx)      GSSBID_SM_TRANSITION((ctx), GSSBID_STATE_NEXT(GSSBID_SM_STATE((ctx))))
 
 /* util_token.c */
