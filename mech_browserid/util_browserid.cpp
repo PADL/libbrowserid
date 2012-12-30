@@ -75,16 +75,20 @@ gss_bid_jwt_attr_provider::initWithGssContext(const gss_bid_attr_ctx *manager,
 
     if (gssCtx != GSS_C_NO_CONTEXT) {
         BIDError err;
-        json_t *json;
+        json_t *jAttrs = NULL;
 
         err = BIDGetIdentityJsonObject(gssCtx->bidContext,
                                        gssCtx->bidIdentity,
                                        NULL,
-                                       &json);
-        if (err != BID_S_OK)
+                                       &jAttrs);
+        if (err != BID_S_OK || !json_is_object(jAttrs)) {
+            json_decref(jAttrs);
             return false;
+        }
 
-        m_attrs = new JSONObject(json, false);
+        m_attrs = new JSONObject(jAttrs, false); /* steal reference */
+
+        BID_ASSERT(m_attrs->isObject());
     }
 
     return true;
