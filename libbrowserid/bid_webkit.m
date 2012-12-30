@@ -212,6 +212,11 @@
     [self abortLoading:nil];
 }
 
+- (void)webView:(WebView *)sender didCommitLoadForFrame:(WebFrame *)frame
+{
+    NSLog(@"webView:%@ didCommitLoadForFrame:%@ (parent %@)", [sender description], [frame name], [[frame parentFrame] name]);
+}
+
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame;
 {
     NSLog(@"webView:%@ didFinishLoadForFrame:%@", [sender description], [frame name]);
@@ -225,11 +230,6 @@
 - (void)webView:(WebView *)webView windowScriptObjectAvailable:(WebScriptObject *)windowScriptObject
 {
     [windowScriptObject setValue:self forKey:@"AssertionLoader"];
-}
-
-- (void)webView:(WebView *)sender didCommitLoadForFrame:(WebFrame *)frame
-{
-    NSLog(@"webView:%@ didCommitLoadForFrame:%@ (parent %@)", [sender description], [frame name], [[frame parentFrame] name]);
 }
 
 - (void)webView:(WebView *)sender didFailLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
@@ -272,7 +272,7 @@
     WebView *webView = [self newWebView];
     BIDLoginPanel *newPanel = [BIDLoginPanel panel];
 
-    [newPanel setParentWindow:window];
+    [newPanel setParentWindow:panel];
     [newPanel setContentView:webView];
 
     return webView;
@@ -301,6 +301,11 @@
 }
 
 #if 0
+- (void)webViewClose:(WebView *)sender
+{
+    [self abortLoading:nil];
+}
+
 - (void)webView:(WebView *)sender makeFirstResponder:(NSResponder *)responder
 {
     [panel makeFirstResponder:responder];
@@ -310,7 +315,6 @@
 #if 0
 - (NSURLRequest *)webView:(WebView *)sender resource:(id)identifier willSendRequest:(NSURLRequest *)request redirectResponse:(NSURLResponse *)redirectResponse fromDataSource:(WebDataSource *)dataSource
 {
-    NSLog(@"webView %@ resource %@ request %@", sender, identifier, request);
     return request;
 }
 
@@ -349,6 +353,7 @@
     [panel orderOut:nil];
     [NSURLProtocol unregisterClass:[BIDGSSURLProtocol class]];
 }
+
 @end
 
 static BIDError
@@ -371,11 +376,15 @@ _BIDWebkitGetAssertion(
     if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited) {
 #ifdef GSSBID_DEBUG
         ProcessSerialNumber psn = { 0, kCurrentProcess };
-        TransformProcessType(&psn, kProcessTransformToUIElementApplication);
+        if (TransformProcessType(&psn, kProcessTransformToUIElementApplication) != noErr)
+            return BID_S_INTERACT_UNAVAILABLE;
 #else
         return BID_S_INTERACT_UNAVAILABLE;
 #endif
     }
+
+    if (!NSApplicationLoad())
+        return BID_S_INTERACT_UNAVAILABLE;
 
     @autoreleasepool {
         loader = [[BIDAssertionLoader alloc] init];
@@ -393,7 +402,7 @@ _BIDWebkitGetAssertion(
 
     return err;
 }
-#endif
+#endif /* __APPLE__ */
 
 BIDError
 _BIDBrowserGetAssertion(
