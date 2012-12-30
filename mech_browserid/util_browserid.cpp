@@ -405,7 +405,7 @@ gssBidMapError(OM_uint32 *minor, BIDError err)
         *minor = BID_MAP_ERROR(err);
 
     BIDErrorToString(err, &msg);
-    gssBidSaveStatusInfo(*minor, "%s", msg);
+    gssBidSaveStatusInfo(*minor, "BrowserID: %s", msg);
 
     return major;
 }
