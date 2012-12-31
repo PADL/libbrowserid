@@ -11,6 +11,9 @@
 #include "browserid.h"
 #include "bid_private.h"
 
+/*
+ * Test authority document retrieval.
+ */
 int main(int argc, char *argv[])
 {
     BIDError err;

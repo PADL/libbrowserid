@@ -11,6 +11,10 @@
 #include "browserid.h"
 #include "bid_private.h"
 
+/*
+ * Test DSA/RSA.
+ */
+
 static char
 DsaPublicKey[] =
 "{\"algorithm\":\"DS\",\"version\":\"2012.08.15\",\"y\":\"EgxmUUA4YD/wNDJH3mX+QTIiIwDtn2cAaCkXr0HGKFN3eTuoOqt6iCvTXEkFZCSIog9ml6wKIasJO8mcT+ZVD+40oD+CXKeRJ7LXPnpSuB5rSvgUxEtVY4/8wWra5RnhoHn8BOgb6tq/zOn9EEV6nE6h/t4rVb/dLW1QTono1Q8=\",\"p\":\"/2AEg9tqv8W0Xqt4WUs1M9VQ2fG/Kpkqeo2qbcNPgEWtTm4MQp0zTu6q79fiPUgQvgDkzBSSy6MluoH/LVpbMFqNF+s79KBqNJ05LgDTKXRKUXk4A0ToKhjEeTNDj4keIq7vgS1pyPdeMmy3DqAAw/d239vWBGOMLvcX/CbQLhc=\",\"q\":\"4h4E+RHR7XmRAI7Kqzv3dZhDCcM=\",\"g\":\"xSpKD/O35h/fGGfOhBODaaYVT0r6kpZuPIJ+Jc+mz1CLkOXeQZ4TN+B6Lp4qPNXepwTRdfjr9q85fWnhELlq+xfHoDJZMp5IKbDQO7x4lrFbSt5T4TCFjMNNliaaqJBB9AkTbHJCo4iVydW8ytTzia8dekvROYvQct/6iWIzOXo=\"}";
@@ -241,11 +245,16 @@ int main(int argc, char *argv[])
     BID_BAIL_ON_ERROR(err);
 
     printf("Test DSA sign = ERROR %d\n", TestDsaSignVerify(context, DsaPublicKey, DsaSecretKey));
-//    printf("Test RSA sign = ERROR %d\n", TestRsaSignVerify(context));
+#if 0
+    printf("Test RSA sign = ERROR %d\n", TestRsaSignVerify(context));
+#endif
 
 cleanup:
     BIDReleaseContext(context);
-    if (err)
-        fprintf(stderr, "Error %d\n", err);
+    if (err != BID_S_OK) {
+        const char *s;
+        BIDErrorToString(err, &s);
+        fprintf(stderr, "libbrowserid error %s[%d]\n", s, err);
+    }
     exit(err);
 }

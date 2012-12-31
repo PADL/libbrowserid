@@ -1,6 +1,15 @@
+/*
+ * Copyright (C) 2013 PADL Software Pty Ltd.
+ * All rights reserved.
+ * Use is subject to license.
+ */
+
 #include <stdlib.h>
 #include <dlfcn.h>
 
+/*
+ * Test using libbrowserid from a shared object.
+ */
 int main(int argc, char *argv[])
 {
     int (*sym)(void);
