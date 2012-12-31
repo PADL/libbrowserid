@@ -95,36 +95,37 @@
     BIDLoginPanel *panel;
     BIDError bidError;
 }
-+ (BOOL)isKeyExcludedFromWebScript:(const char *)name;
-- (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request;
-- (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame;
-- (void)loadAssertion;
-- (void)abortLoading:(NSError *)error;
-- (void)didFinishLoading;
-- (NSString *)audience;
+
+/* accessors */
 - (void)setAudience:(NSString *)value;
-- (NSString *)assertion;
+- (NSString *)audience;
 - (void)setAssertion:(NSString *)value;
-- (WebView *)newWebView;
+- (NSString *)assertion;
 - (BIDError)bidError;
+
+/* JavaScript called methods */
++ (BOOL)isKeyExcludedFromWebScript:(const char *)name;
+- (void)onlogin:(NSString *)string;
+- (void)onlogout;
+
+/* helpers */
+- (void)closePanelAndStopModal;
+- (void)didAbortLoad:(NSError *)error;
+- (void)didLoadAssertion;
+- (WebView *)newWebView;
 @end
 
 @implementation BIDAssertionLoader
 + (BOOL)isKeyExcludedFromWebScript:(const char *)name
 {
-#if 0
-    NSLog(@"isKeyExcludedFromWebScript:%s", name);
-    if (strcmp(name, "assertion") == 0)
-        return NO;
-#endif
-
     return YES;
 }
 
 + (BOOL)isSelectorExcludedFromWebScript:(SEL)selector
 {
-    if (selector == @selector(didFinishLoading) || selector == @selector(setAssertion:))
+    if (selector == @selector(onlogin:) || selector == @selector(onlogout))
         return NO;
+
     return YES;
 }
 
@@ -193,23 +194,39 @@
     return webView;
 }
 
-- (void)abortLoading:(NSError *)error
+- (void)closePanelAndStopModal
 {
-    if (error == nil)
-        bidError = (assertion != nil && [assertion length]) ? BID_S_OK : BID_S_INTERACT_FAILURE;
-    else if ([[error domain] isEqualToString:NSURLErrorDomain] ||
-             [[error domain] isEqualToString:WebKitErrorDomain])
-        bidError = BID_S_HTTP_ERROR;
-    else
-        bidError = BID_S_INTERACT_FAILURE;
-
     [panel close];
     [NSApp stopModal];
 }
 
-- (void)didFinishLoading
+- (void)didAbortLoad:(NSError *)error
 {
-    [self abortLoading:nil];
+    if (error != nil &&
+        ([[error domain] isEqualToString:NSURLErrorDomain] ||
+         [[error domain] isEqualToString:WebKitErrorDomain]))
+        bidError = BID_S_HTTP_ERROR;
+    else
+        bidError = BID_S_INTERACT_FAILURE;
+
+    [self closePanelAndStopModal];
+}
+
+- (void)didLoadAssertion
+{
+    bidError = (assertion != nil && [assertion length]) ? BID_S_OK : BID_S_INTERACT_FAILURE;
+    [self closePanelAndStopModal];
+}
+
+- (void)onlogin:(NSString *)string
+{
+    [self setAssertion:string];
+    [self didLoadAssertion];
+}
+
+- (void)onlogout
+{
+    [self didAbortLoad:nil];
 }
 
 - (void)webView:(WebView *)sender didCommitLoadForFrame:(WebFrame *)frame
@@ -217,12 +234,20 @@
     NSLog(@"webView:%@ didCommitLoadForFrame:%@ (parent %@)", [sender description], [frame name], [[frame parentFrame] name]);
 }
 
-- (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame;
+- (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
 {
     NSLog(@"webView:%@ didFinishLoadForFrame:%@", [sender description], [frame name]);
 
     if ([[frame name] length] == 0) {
-        NSString *function = @"navigator.id.get(function(a) { var loader = window.AssertionLoader; loader.setAssertion_(a); loader.didFinishLoading(); });";
+        NSString *function = @"                                                                             \
+            navigator.id.watch({                                                                            \
+                onlogin: function(assertion) { window.AssertionLoader.onlogin_(assertion); },               \
+                onlogout: function() { window.AssertionLoader.onlogout; }                                   \
+            });                                                                                             \
+                                                                                                            \
+            navigator.id.request();                                                                         \
+         ";
+
         [sender stringByEvaluatingJavaScriptFromString:function];
     }
 }
@@ -239,13 +264,13 @@
     if ([error code] == NSURLErrorCancelled)
         return;
     else
-        [self abortLoading:error];
+        [self didAbortLoad:error];
 }
 
 - (void)webView:(WebView *)sender didFailProvisionalLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
 {
     NSLog(@"webView:%@ didFailProvisionalLoadWithError:%@ forFrame:%@", [sender description], [error description], [frame name]);
-    [self abortLoading:error];
+    [self didAbortLoad:error];
 }
 
 - (void)webView:(WebView *)sender decidePolicyForNavigationAction:(NSDictionary *)actionInformation request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id<WebPolicyDecisionListener>)listener
@@ -303,7 +328,7 @@
 #if 0
 - (void)webViewClose:(WebView *)sender
 {
-    [self abortLoading:nil];
+    [self didAbortLoad:nil];
 }
 
 - (void)webView:(WebView *)sender makeFirstResponder:(NSResponder *)responder
@@ -320,7 +345,7 @@
 
 - (void)webView:(WebView *)sender resource:(id)identifier didFailLoadingWithError:(NSError *)error fromDataSource:(WebDataSource *)dataSource
 {
-    [self abortLoading:error];
+    [self didAbortLoad:error];
 }
 #endif
 
