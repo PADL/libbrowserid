@@ -173,6 +173,44 @@ _BIDFindKeyInKeyset(
 }
 
 BIDError
+_BIDValidateJWTHeader(
+    BIDContext context,
+    json_t *header)
+{
+    void *iter;
+
+    if (!json_is_object(header))
+        return BID_S_INVALID_JSON_WEB_TOKEN;
+
+    /*
+     * According to draft-ietf-oauth-json-web-token, implementations MUST
+     * understand the entire contents of the header; otherwise, the JWT
+     * MUST be rejected for processing.
+     */
+    for (iter = json_object_iter(header);
+         iter != NULL;
+         iter = json_object_iter_next(header, iter)) {
+        const char *key = json_object_iter_key(iter);
+
+        if (strcmp(key, "typ") == 0) {
+            const char *typ = json_string_value(json_object_iter_value(iter));
+
+            if (typ == NULL)
+                return BID_S_INVALID_JSON_WEB_TOKEN;
+
+            if (strcmp(typ, "JWT") != 0 &&
+                strcmp(typ, "urn:ietf:params:oauth:token-type:jwt") != 0)
+                return BID_S_INVALID_JSON_WEB_TOKEN;
+        } else if (strcmp(key, "alg") == 0)
+            continue;
+        else
+            return BID_S_INVALID_JSON_WEB_TOKEN;
+    }
+
+    return BID_S_OK;
+}
+
+BIDError
 _BIDParseJWT(
     BIDContext context,
     const char *szJwt,
@@ -182,8 +220,6 @@ _BIDParseJWT(
     BIDError err;
     char *szHeader, *szPayload, *szSignature;
     size_t cbSignature;
-    const char *typ;
-    const char *cty;
 
     *pJwt = NULL;
 
@@ -215,21 +251,8 @@ _BIDParseJWT(
     err = _BIDDecodeJson(context, szHeader, &jwt->Header);
     BID_BAIL_ON_ERROR(err);
 
-    typ = json_string_value(json_object_get(jwt->Header, "typ"));
-    if (typ != NULL &&
-        !(strcmp(typ, "JWT") == 0 ||
-          strcmp(typ, "urn:ietf:params:oauth:token-type:jwt") == 0)) {
-        err = BID_S_INVALID_JSON_WEB_TOKEN;
-        goto cleanup;
-    }
-
-    cty = json_string_value(json_object_get(jwt->Header, "cty"));
-    if (cty != NULL) {
-        err = BID_S_INVALID_JSON_WEB_TOKEN;
-        goto cleanup;
-    }
-
-    /* XXX check for other header attributes we do not understand */
+    err = _BIDValidateJWTHeader(context, jwt->Header);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDDecodeJson(context, szPayload, &jwt->Payload);
     BID_BAIL_ON_ERROR(err);
