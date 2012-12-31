@@ -49,14 +49,14 @@ namespace shibresolver {
     class ShibbolethResolver;
 };
 
-struct gss_bid_shib_attr_provider : gss_bid_attr_provider {
+struct BIDGSSShibbolethAttributeProvider : BIDGSSAttributeProvider {
 public:
-    gss_bid_shib_attr_provider(void);
-    ~gss_bid_shib_attr_provider(void);
+    BIDGSSShibbolethAttributeProvider(void);
+    ~BIDGSSShibbolethAttributeProvider(void);
 
-    bool initWithExistingContext(const gss_bid_attr_ctx *source,
-                                 const gss_bid_attr_provider *ctx);
-    bool initWithGssContext(const gss_bid_attr_ctx *source,
+    bool initWithExistingContext(const BIDGSSAttributeContext *source,
+                                 const BIDGSSAttributeProvider *ctx);
+    bool initWithGssContext(const BIDGSSAttributeContext *source,
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
@@ -64,7 +64,7 @@ public:
                       const gss_buffer_t attr,
                       const gss_buffer_t value);
     bool deleteAttribute(const gss_buffer_t value);
-    bool getAttributeTypes(gss_bid_attr_enumeration_cb, void *data) const;
+    bool getAttributeTypes(BIDGSSAttributeIterator, void *data) const;
     bool getAttribute(const gss_buffer_t attr,
                       int *authenticated,
                       int *complete,
@@ -78,7 +78,7 @@ public:
 
     const char *prefix(void) const;
     const char *name(void) const;
-    bool initWithJsonObject(const gss_bid_attr_ctx *manager,
+    bool initWithJsonObject(const BIDGSSAttributeContext *manager,
                             JSONObject &obj);
     JSONObject jsonRepresentation(void) const;
 
@@ -87,7 +87,7 @@ public:
 
     OM_uint32 mapException(OM_uint32 *minor, std::exception &e) const;
 
-    static gss_bid_attr_provider *createAttrContext(void);
+    static BIDGSSAttributeProvider *createAttrContext(void);
 
     std::vector<shibsp::Attribute *> getAttributes(void) const {
         return m_attributes;

@@ -78,13 +78,13 @@ using namespace opensaml;
 using namespace xercesc;
 #endif
 
-gss_bid_shib_attr_provider::gss_bid_shib_attr_provider(void)
+BIDGSSShibbolethAttributeProvider::BIDGSSShibbolethAttributeProvider(void)
 {
     m_initialized = false;
     m_authenticated = false;
 }
 
-gss_bid_shib_attr_provider::~gss_bid_shib_attr_provider(void)
+BIDGSSShibbolethAttributeProvider::~BIDGSSShibbolethAttributeProvider(void)
 {
     for_each(m_attributes.begin(),
              m_attributes.end(),
@@ -93,18 +93,18 @@ gss_bid_shib_attr_provider::~gss_bid_shib_attr_provider(void)
 }
 
 bool
-gss_bid_shib_attr_provider::initWithExistingContext(const gss_bid_attr_ctx *manager,
-                                                    const gss_bid_attr_provider *ctx)
+BIDGSSShibbolethAttributeProvider::initWithExistingContext(const BIDGSSAttributeContext *manager,
+                                                    const BIDGSSAttributeProvider *ctx)
 {
-    const gss_bid_shib_attr_provider *shib;
+    const BIDGSSShibbolethAttributeProvider *shib;
 
-    if (!gss_bid_attr_provider::initWithExistingContext(manager, ctx)) {
+    if (!BIDGSSAttributeProvider::initWithExistingContext(manager, ctx)) {
         return false;
     }
 
     m_authenticated = false;
 
-    shib = static_cast<const gss_bid_shib_attr_provider *>(ctx);
+    shib = static_cast<const BIDGSSShibbolethAttributeProvider *>(ctx);
     if (shib != NULL) {
         m_attributes = duplicateAttributes(shib->getAttributes());
         m_authenticated = shib->authenticated();
@@ -116,11 +116,11 @@ gss_bid_shib_attr_provider::initWithExistingContext(const gss_bid_attr_ctx *mana
 }
 
 bool
-gss_bid_shib_attr_provider::initWithGssContext(const gss_bid_attr_ctx *manager,
+BIDGSSShibbolethAttributeProvider::initWithGssContext(const BIDGSSAttributeContext *manager,
                                                const gss_cred_id_t gssCred,
                                                const gss_ctx_id_t gssCtx)
 {
-    if (!gss_bid_attr_provider::initWithGssContext(manager, gssCred, gssCtx))
+    if (!BIDGSSAttributeProvider::initWithGssContext(manager, gssCred, gssCtx))
         return false;
 
     auto_ptr<ShibbolethResolver> resolver(ShibbolethResolver::create());
@@ -152,30 +152,32 @@ gss_bid_shib_attr_provider::initWithGssContext(const gss_bid_attr_ctx *manager,
     }
 
 #ifdef HAVE_OPENSAML
-    const gss_bid_saml_assertion_provider *saml;
-    saml = static_cast<const gss_bid_saml_assertion_provider *>
+    const BIDGSSSAMLAssertionProvider *saml;
+    saml = static_cast<const BIDGSSSAMLAssertionProvider *>
         (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     if (saml != NULL && saml->getAssertion() != NULL) {
         resolver->addToken(saml->getAssertion());
     }
 #else
     /* If no OpenSAML, parse the XML assertion explicitly */
-    const gss_bid_radius_attr_provider *radius;
+    const BIDGSSJWTAssertionProvider *jwt;
     int authenticated, complete;
     gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
 
-    radius = static_cast<const gss_bid_radius_attr_provider *>
-        (m_manager->getProvider(ATTR_TYPE_RADIUS));
-    if (radius != NULL &&
-        radius->getFragmentedAttribute(PW_SAML_AAA_ASSERTION,
-                                       VENDORPEC_UKERNA,
-                                       &authenticated, &complete, &value)) {
-        string str((char *)value.value, value.length);
+    jwt = static_cast<const BIDGSSJWTAssetionProvider *>
+        (m_manager->getProvider(ATTR_TYPE_JWT));
+    if (jwt != NULL) {
+        JSONObject samlAttribute = jwt->jsonRepresentation().get("saml");
+        if (samlAttribute.isString()) {
+            gss_buffer_desc value = samlAttribute.buffer();
+            setAssertion(&value, jwt->authenticated());
+        }
+
+        string str(samlAttribute.string(), strlen(samlAttribute.string()));
         istringstream istream(str);
         DOMDocument *doc = XMLToolingConfig::getConfig().getParser().parse(istream);
         const XMLObjectBuilder *b = XMLObjectBuilder::getBuilder(doc->getDocumentElement());
         resolver->addToken(b->buildFromDocument(doc));
-        gss_release_buffer(&minor, &value);
     }
 #endif /* HAVE_OPENSAML */
 
@@ -194,7 +196,7 @@ gss_bid_shib_attr_provider::initWithGssContext(const gss_bid_attr_ctx *manager,
 }
 
 ssize_t
-gss_bid_shib_attr_provider::getAttributeIndex(const gss_buffer_t attr) const
+BIDGSSShibbolethAttributeProvider::getAttributeIndex(const gss_buffer_t attr) const
 {
     int i = 0;
 
@@ -218,7 +220,7 @@ gss_bid_shib_attr_provider::getAttributeIndex(const gss_buffer_t attr) const
 }
 
 bool
-gss_bid_shib_attr_provider::setAttribute(int complete GSSBID_UNUSED,
+BIDGSSShibbolethAttributeProvider::setAttribute(int complete GSSBID_UNUSED,
                                          const gss_buffer_t attr,
                                          const gss_buffer_t value)
 {
@@ -241,7 +243,7 @@ gss_bid_shib_attr_provider::setAttribute(int complete GSSBID_UNUSED,
 }
 
 bool
-gss_bid_shib_attr_provider::deleteAttribute(const gss_buffer_t attr)
+BIDGSSShibbolethAttributeProvider::deleteAttribute(const gss_buffer_t attr)
 {
     int i;
 
@@ -257,8 +259,8 @@ gss_bid_shib_attr_provider::deleteAttribute(const gss_buffer_t attr)
 }
 
 bool
-gss_bid_shib_attr_provider::getAttributeTypes(gss_bid_attr_enumeration_cb addAttribute,
-                                              void *data) const
+BIDGSSShibbolethAttributeProvider::getAttributeTypes(BIDGSSAttributeIterator addAttribute,
+                                                     void *data) const
 {
     GSSBID_ASSERT(m_initialized);
 
@@ -279,7 +281,7 @@ gss_bid_shib_attr_provider::getAttributeTypes(gss_bid_attr_enumeration_cb addAtt
 }
 
 const Attribute *
-gss_bid_shib_attr_provider::getAttribute(const gss_buffer_t attr) const
+BIDGSSShibbolethAttributeProvider::getAttribute(const gss_buffer_t attr) const
 {
     const Attribute *ret = NULL;
 
@@ -306,12 +308,12 @@ gss_bid_shib_attr_provider::getAttribute(const gss_buffer_t attr) const
 }
 
 bool
-gss_bid_shib_attr_provider::getAttribute(const gss_buffer_t attr,
-                                         int *authenticated,
-                                         int *complete,
-                                         gss_buffer_t value,
-                                         gss_buffer_t display_value,
-                                         int *more) const
+BIDGSSShibbolethAttributeProvider::getAttribute(const gss_buffer_t attr,
+                                                int *authenticated,
+                                                int *complete,
+                                                gss_buffer_t value,
+                                                gss_buffer_t display_value,
+                                                int *more) const
 {
     const Attribute *shibAttr = NULL;
     const BinaryAttribute *binaryAttr;
@@ -369,8 +371,8 @@ gss_bid_shib_attr_provider::getAttribute(const gss_buffer_t attr,
 }
 
 gss_any_t
-gss_bid_shib_attr_provider::mapToAny(int authenticated,
-                                     gss_buffer_t type_id GSSBID_UNUSED) const
+BIDGSSShibbolethAttributeProvider::mapToAny(int authenticated,
+                                            gss_buffer_t type_id GSSBID_UNUSED) const
 {
     gss_any_t output;
 
@@ -387,8 +389,8 @@ gss_bid_shib_attr_provider::mapToAny(int authenticated,
 }
 
 void
-gss_bid_shib_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UNUSED,
-                                                  gss_any_t input) const
+BIDGSSShibbolethAttributeProvider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UNUSED,
+                                                         gss_any_t input) const
 {
     GSSBID_ASSERT(m_initialized);
 
@@ -397,19 +399,19 @@ gss_bid_shib_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UN
 }
 
 const char *
-gss_bid_shib_attr_provider::prefix(void) const
+BIDGSSShibbolethAttributeProvider::prefix(void) const
 {
     return NULL;
 }
 
 const char *
-gss_bid_shib_attr_provider::name(void) const
+BIDGSSShibbolethAttributeProvider::name(void) const
 {
     return "local";
 }
 
 JSONObject
-gss_bid_shib_attr_provider::jsonRepresentation(void) const
+BIDGSSShibbolethAttributeProvider::jsonRepresentation(void) const
 {
     JSONObject obj;
 
@@ -433,10 +435,10 @@ gss_bid_shib_attr_provider::jsonRepresentation(void) const
 }
 
 bool
-gss_bid_shib_attr_provider::initWithJsonObject(const gss_bid_attr_ctx *ctx,
-                                               JSONObject &obj)
+BIDGSSShibbolethAttributeProvider::initWithJsonObject(const BIDGSSAttributeContext *ctx,
+                                                      JSONObject &obj)
 {
-    if (!gss_bid_attr_provider::initWithJsonObject(ctx, obj))
+    if (!BIDGSSAttributeProvider::initWithJsonObject(ctx, obj))
         return false;
 
     GSSBID_ASSERT(m_authenticated == false);
@@ -460,7 +462,7 @@ gss_bid_shib_attr_provider::initWithJsonObject(const gss_bid_attr_ctx *ctx,
 }
 
 bool
-gss_bid_shib_attr_provider::init(void)
+BIDGSSShibbolethAttributeProvider::init(void)
 {
     bool ret = false;
 
@@ -470,21 +472,21 @@ gss_bid_shib_attr_provider::init(void)
     }
 
     if (ret)
-        gss_bid_attr_ctx::registerProvider(ATTR_TYPE_LOCAL, createAttrContext);
+        BIDGSSAttributeContext::registerProvider(ATTR_TYPE_LOCAL, createAttrContext);
 
     return ret;
 }
 
 void
-gss_bid_shib_attr_provider::finalize(void)
+BIDGSSShibbolethAttributeProvider::finalize(void)
 {
-    gss_bid_attr_ctx::unregisterProvider(ATTR_TYPE_LOCAL);
+    BIDGSSAttributeContext::unregisterProvider(ATTR_TYPE_LOCAL);
     ShibbolethResolver::term();
 }
 
 OM_uint32
-gss_bid_shib_attr_provider::mapException(OM_uint32 *minor,
-                                         std::exception &e) const
+BIDGSSShibbolethAttributeProvider::mapException(OM_uint32 *minor,
+                                                std::exception &e) const
 {
     if (typeid(e) == typeid(AttributeException))
         *minor = GSSBID_SHIB_ATTR_FAILURE;
@@ -506,14 +508,14 @@ gss_bid_shib_attr_provider::mapException(OM_uint32 *minor,
     return GSS_S_FAILURE;
 }
 
-gss_bid_attr_provider *
-gss_bid_shib_attr_provider::createAttrContext(void)
+BIDGSSAttributeProvider *
+BIDGSSShibbolethAttributeProvider::createAttrContext(void)
 {
-    return new gss_bid_shib_attr_provider;
+    return new BIDGSSShibbolethAttributeProvider;
 }
 
 Attribute *
-gss_bid_shib_attr_provider::duplicateAttribute(const Attribute *src)
+BIDGSSShibbolethAttributeProvider::duplicateAttribute(const Attribute *src)
 {
     DDF obj = src->marshall();
     Attribute *attribute = Attribute::unmarshall(obj);
@@ -523,7 +525,7 @@ gss_bid_shib_attr_provider::duplicateAttribute(const Attribute *src)
 }
 
 vector <Attribute *>
-gss_bid_shib_attr_provider::duplicateAttributes(const vector <Attribute *>src)
+BIDGSSShibbolethAttributeProvider::duplicateAttributes(const vector <Attribute *>src)
 {
     vector <Attribute *> dst;
 
@@ -538,7 +540,7 @@ gss_bid_shib_attr_provider::duplicateAttributes(const vector <Attribute *>src)
 OM_uint32
 gssBidLocalAttrProviderInit(OM_uint32 *minor)
 {
-    if (!gss_bid_shib_attr_provider::init()) {
+    if (!BIDGSSShibbolethAttributeProvider::init()) {
         *minor = GSSBID_SHIB_INIT_FAILURE;
         return GSS_S_FAILURE;
     }
@@ -548,7 +550,7 @@ gssBidLocalAttrProviderInit(OM_uint32 *minor)
 OM_uint32
 gssBidLocalAttrProviderFinalize(OM_uint32 *minor)
 {
-    gss_bid_shib_attr_provider::finalize();
+    BIDGSSShibbolethAttributeProvider::finalize();
 
     *minor = 0;
     return GSS_S_COMPLETE;

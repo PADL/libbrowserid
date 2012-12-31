@@ -41,14 +41,14 @@
 #include <string>
 #include <new>
 
-using namespace gss_bid_util;
+using namespace BIDGSSUtility;
 
-struct gss_bid_attr_provider;
-struct gss_bid_attr_ctx;
+struct BIDGSSAttributeProvider;
+struct BIDGSSAttributeContext;
 
 typedef bool
-(*gss_bid_attr_enumeration_cb)(const gss_bid_attr_ctx *ctx,
-                               const gss_bid_attr_provider *source,
+(*BIDGSSAttributeIterator)(const BIDGSSAttributeContext *ctx,
+                               const BIDGSSAttributeProvider *source,
                                const gss_buffer_t attribute,
                                void *data);
 
@@ -67,32 +67,32 @@ typedef bool
  * Attribute provider: this represents a source of attributes derived
  * from the security context.
  */
-struct gss_bid_attr_provider
+struct BIDGSSAttributeProvider
 {
 public:
-    gss_bid_attr_provider(void) {}
-    virtual ~gss_bid_attr_provider(void) {}
+    BIDGSSAttributeProvider(void) {}
+    virtual ~BIDGSSAttributeProvider(void) {}
 
-    bool initWithManager(const gss_bid_attr_ctx *manager)
+    bool initWithManager(const BIDGSSAttributeContext *manager)
     {
         m_manager = manager;
         return true;
     }
 
-    virtual bool initWithExistingContext(const gss_bid_attr_ctx *manager,
-                                         const gss_bid_attr_provider *ctx GSSBID_UNUSED)
+    virtual bool initWithExistingContext(const BIDGSSAttributeContext *manager,
+                                         const BIDGSSAttributeProvider *ctx GSSBID_UNUSED)
     {
         return initWithManager(manager);
     }
 
-    virtual bool initWithGssContext(const gss_bid_attr_ctx *manager,
+    virtual bool initWithGssContext(const BIDGSSAttributeContext *manager,
                                     const gss_cred_id_t cred GSSBID_UNUSED,
                                     const gss_ctx_id_t ctx GSSBID_UNUSED)
     {
         return initWithManager(manager);
     }
 
-    virtual bool getAttributeTypes(gss_bid_attr_enumeration_cb GSSBID_UNUSED,
+    virtual bool getAttributeTypes(BIDGSSAttributeIterator GSSBID_UNUSED,
                                    void *data GSSBID_UNUSED) const
     {
         return false;
@@ -143,7 +143,7 @@ public:
         return NULL;
     }
 
-    virtual bool initWithJsonObject(const gss_bid_attr_ctx *manager,
+    virtual bool initWithJsonObject(const BIDGSSAttributeContext *manager,
                                     JSONObject &object GSSBID_UNUSED)
     {
         return initWithManager(manager);
@@ -166,34 +166,34 @@ public:
     static bool init(void) { return true; }
     static void finalize(void) {}
 
-    static gss_bid_attr_provider *createAttrContext(void) { return NULL; }
+    static BIDGSSAttributeProvider *createAttrContext(void) { return NULL; }
 
 protected:
-    const gss_bid_attr_ctx *m_manager;
+    const BIDGSSAttributeContext *m_manager;
 
 private:
     /* make non-copyable */
-    gss_bid_attr_provider(const gss_bid_attr_provider&);
-    gss_bid_attr_provider& operator=(const gss_bid_attr_provider&);
+    BIDGSSAttributeProvider(const BIDGSSAttributeProvider&);
+    BIDGSSAttributeProvider& operator=(const BIDGSSAttributeProvider&);
 };
 
-typedef gss_bid_attr_provider *(*gss_bid_attr_create_provider)(void);
+typedef BIDGSSAttributeProvider *(*BIDGSSAttributeFactory)(void);
 
 /*
  * Attribute context: this manages a set of providers for a given
  * security context.
  */
-struct gss_bid_attr_ctx
+struct BIDGSSAttributeContext
 {
 public:
-    gss_bid_attr_ctx(void);
-    ~gss_bid_attr_ctx(void);
+    BIDGSSAttributeContext(void);
+    ~BIDGSSAttributeContext(void);
 
-    bool initWithExistingContext(const gss_bid_attr_ctx *manager);
+    bool initWithExistingContext(const BIDGSSAttributeContext *manager);
     bool initWithGssContext(const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
-    bool getAttributeTypes(gss_bid_attr_enumeration_cb, void *data) const;
+    bool getAttributeTypes(BIDGSSAttributeIterator, void *data) const;
     bool getAttributeTypes(gss_buffer_set_t *attrs);
 
     bool setAttribute(int complete,
@@ -238,11 +238,11 @@ public:
                          const gss_buffer_t suffix,
                          gss_buffer_t attribute) const;
 
-    gss_bid_attr_provider *getProvider(unsigned int type) const;
+    BIDGSSAttributeProvider *getProvider(unsigned int type) const;
 
     static void
     registerProvider(unsigned int type,
-                     gss_bid_attr_create_provider factory);
+                     BIDGSSAttributeFactory factory);
     static void
     unregisterProvider(unsigned int type);
 
@@ -259,14 +259,14 @@ private:
     bool initWithJsonObject(JSONObject &object);
     JSONObject jsonRepresentation(void) const;
 
-    gss_bid_attr_provider *getPrimaryProvider(void) const;
+    BIDGSSAttributeProvider *getPrimaryProvider(void) const;
 
     /* make non-copyable */
-    gss_bid_attr_ctx(const gss_bid_attr_ctx&);
-    gss_bid_attr_ctx& operator=(const gss_bid_attr_ctx&);
+    BIDGSSAttributeContext(const BIDGSSAttributeContext&);
+    BIDGSSAttributeContext& operator=(const BIDGSSAttributeContext&);
 
     uint32_t m_flags;
-    gss_bid_attr_provider *m_providers[ATTR_TYPE_MAX + 1];
+    BIDGSSAttributeProvider *m_providers[ATTR_TYPE_MAX + 1];
 };
 
 #endif /* __cplusplus */
@@ -298,7 +298,7 @@ duplicateBuffer(std::string &str, gss_buffer_t buffer)
 }
 
 #else
-struct gss_bid_attr_ctx;
+struct BIDGSSAttributeContext;
 #endif
 
 #ifdef __cplusplus
@@ -315,7 +315,7 @@ OM_uint32
 gssBidCreateAttrContext(OM_uint32 *minor,
                         gss_cred_id_t acceptorCred,
                         gss_ctx_id_t acceptorCtx,
-                        struct gss_bid_attr_ctx **pAttrCtx,
+                        struct BIDGSSAttributeContext **pAttrCtx,
                         time_t *pExpiryTime);
 
 OM_uint32

@@ -39,18 +39,18 @@
 
 #ifdef __cplusplus
 
-struct gss_bid_jwt_attr_provider : gss_bid_attr_provider {
+struct BIDGSSJWTAttributeProvider : BIDGSSAttributeProvider {
 public:
-    gss_bid_jwt_attr_provider(void);
-    ~gss_bid_jwt_attr_provider(void);
+    BIDGSSJWTAttributeProvider(void);
+    ~BIDGSSJWTAttributeProvider(void);
 
-    bool initWithExistingContext(const gss_bid_attr_ctx *source,
-                                 const gss_bid_attr_provider *ctx);
-    bool initWithGssContext(const gss_bid_attr_ctx *source,
+    bool initWithExistingContext(const BIDGSSAttributeContext *source,
+                                 const BIDGSSAttributeProvider *ctx);
+    bool initWithGssContext(const BIDGSSAttributeContext *source,
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
-    bool getAttributeTypes(gss_bid_attr_enumeration_cb, void *data) const;
+    bool getAttributeTypes(BIDGSSAttributeIterator, void *data) const;
     bool setAttribute(int complete,
                       const gss_buffer_t attr,
                       const gss_buffer_t value);
@@ -68,7 +68,7 @@ public:
 
     const char *prefix(void) const;
     const char *name(void) const;
-    bool initWithJsonObject(const gss_bid_attr_ctx *manager,
+    bool initWithJsonObject(const BIDGSSAttributeContext *manager,
                            JSONObject &obj);
     JSONObject jsonRepresentation(void) const;
 
@@ -79,7 +79,7 @@ public:
     static bool init(void);
     static void finalize(void);
 
-    static gss_bid_attr_provider *createAttrContext(void);
+    static BIDGSSAttributeProvider *createAttrContext(void);
 
 private:
     JSONObject *m_attrs;

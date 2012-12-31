@@ -48,7 +48,7 @@
 using namespace shibsp;
 #endif
 
-namespace gss_bid_util {
+namespace BIDGSSUtility {
     class JSONObject;
 
     class JSONException : public std::exception {

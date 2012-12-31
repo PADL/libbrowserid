@@ -62,51 +62,51 @@ static const XMLCh
 base64Binary[] = {'b','a','s','e','6','4','B','i','n','a','r','y',0};
 
 /*
- * gss_bid_saml_assertion_provider is for retrieving the underlying
+ * BIDGSSSAMLAssertionProvider is for retrieving the underlying
  * assertion.
  */
-gss_bid_saml_assertion_provider::gss_bid_saml_assertion_provider(void)
+BIDGSSSAMLAssertionProvider::BIDGSSSAMLAssertionProvider(void)
 {
     m_assertion = NULL;
     m_authenticated = false;
 }
 
-gss_bid_saml_assertion_provider::~gss_bid_saml_assertion_provider(void)
+BIDGSSSAMLAssertionProvider::~BIDGSSSAMLAssertionProvider(void)
 {
     delete m_assertion;
 }
 
 bool
-gss_bid_saml_assertion_provider::initWithExistingContext(const gss_bid_attr_ctx *manager,
-                                                         const gss_bid_attr_provider *ctx)
+BIDGSSSAMLAssertionProvider::initWithExistingContext(const BIDGSSAttributeContext *manager,
+                                                     const BIDGSSAttributeProvider *ctx)
 {
     /* Then we may be creating from an existing attribute context */
-    const gss_bid_saml_assertion_provider *saml;
+    const BIDGSSSAMLAssertionProvider *saml;
 
     GSSBID_ASSERT(m_assertion == NULL);
 
-    if (!gss_bid_attr_provider::initWithExistingContext(manager, ctx))
+    if (!BIDGSSAttributeProvider::initWithExistingContext(manager, ctx))
         return false;
 
-    saml = static_cast<const gss_bid_saml_assertion_provider *>(ctx);
+    saml = static_cast<const BIDGSSSAMLAssertionProvider *>(ctx);
     setAssertion(saml->getAssertion(), saml->authenticated());
 
     return true;
 }
 
 bool
-gss_bid_saml_assertion_provider::initWithGssContext(const gss_bid_attr_ctx *manager,
-                                                    const gss_cred_id_t gssCred,
-                                                    const gss_ctx_id_t gssCtx)
+BIDGSSSAMLAssertionProvider::initWithGssContext(const BIDGSSAttributeContext *manager,
+                                                const gss_cred_id_t gssCred,
+                                                const gss_ctx_id_t gssCtx)
 {
-    const gss_bid_jwt_attr_provider *jwt;
+    const BIDGSSJWTAttributeProvider *jwt;
 
     GSSBID_ASSERT(m_assertion == NULL);
 
-    if (!gss_bid_attr_provider::initWithGssContext(manager, gssCred, gssCtx))
+    if (!BIDGSSAttributeProvider::initWithGssContext(manager, gssCred, gssCtx))
         return false;
 
-    jwt = static_cast<const gss_bid_jwt_attr_provider *>
+    jwt = static_cast<const BIDGSSJWTAttributeProvider *>
         (m_manager->getProvider(ATTR_TYPE_JWT));
     if (jwt != NULL) {
         JSONObject samlAttribute = jwt->jsonRepresentation().get("saml");
@@ -122,8 +122,8 @@ gss_bid_saml_assertion_provider::initWithGssContext(const gss_bid_attr_ctx *mana
 }
 
 void
-gss_bid_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion,
-                                              bool authenticated)
+BIDGSSSAMLAssertionProvider::setAssertion(const saml2::Assertion *assertion,
+                                          bool authenticated)
 {
 
     delete m_assertion;
@@ -142,8 +142,8 @@ gss_bid_saml_assertion_provider::setAssertion(const saml2::Assertion *assertion,
 }
 
 void
-gss_bid_saml_assertion_provider::setAssertion(const gss_buffer_t buffer,
-                                              bool authenticated)
+BIDGSSSAMLAssertionProvider::setAssertion(const gss_buffer_t buffer,
+                                          bool authenticated)
 {
     delete m_assertion;
 
@@ -152,7 +152,7 @@ gss_bid_saml_assertion_provider::setAssertion(const gss_buffer_t buffer,
 }
 
 saml2::Assertion *
-gss_bid_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
+BIDGSSSAMLAssertionProvider::parseAssertion(const gss_buffer_t buffer)
 {
     string str((char *)buffer->value, buffer->length);
     istringstream istream(str);
@@ -177,8 +177,8 @@ gss_bid_saml_assertion_provider::parseAssertion(const gss_buffer_t buffer)
 }
 
 bool
-gss_bid_saml_assertion_provider::getAttributeTypes(gss_bid_attr_enumeration_cb addAttribute,
-                                                   void *data) const
+BIDGSSSAMLAssertionProvider::getAttributeTypes(BIDGSSAttributeIterator addAttribute,
+                                               void *data) const
 {
     bool ret;
 
@@ -192,9 +192,9 @@ gss_bid_saml_assertion_provider::getAttributeTypes(gss_bid_attr_enumeration_cb a
 }
 
 bool
-gss_bid_saml_assertion_provider::setAttribute(int complete GSSBID_UNUSED,
-                                              const gss_buffer_t attr,
-                                              const gss_buffer_t value)
+BIDGSSSAMLAssertionProvider::setAttribute(int complete GSSBID_UNUSED,
+                                          const gss_buffer_t attr,
+                                          const gss_buffer_t value)
 {
     if (attr == GSS_C_NO_BUFFER || attr->length == 0) {
         setAssertion(value);
@@ -205,7 +205,7 @@ gss_bid_saml_assertion_provider::setAttribute(int complete GSSBID_UNUSED,
 }
 
 bool
-gss_bid_saml_assertion_provider::deleteAttribute(const gss_buffer_t value GSSBID_UNUSED)
+BIDGSSSAMLAssertionProvider::deleteAttribute(const gss_buffer_t value GSSBID_UNUSED)
 {
     delete m_assertion;
     m_assertion = NULL;
@@ -215,7 +215,7 @@ gss_bid_saml_assertion_provider::deleteAttribute(const gss_buffer_t value GSSBID
 }
 
 time_t
-gss_bid_saml_assertion_provider::getExpiryTime(void) const
+BIDGSSSAMLAssertionProvider::getExpiryTime(void) const
 {
     saml2::Conditions *conditions;
     time_t expiryTime = 0;
@@ -232,8 +232,8 @@ gss_bid_saml_assertion_provider::getExpiryTime(void) const
 }
 
 OM_uint32
-gss_bid_saml_assertion_provider::mapException(OM_uint32 *minor,
-                                              std::exception &e) const
+BIDGSSSAMLAssertionProvider::mapException(OM_uint32 *minor,
+                                          std::exception &e) const
 {
     if (typeid(e) == typeid(SecurityPolicyException))
         *minor = GSSBID_SAML_SEC_POLICY_FAILURE;
@@ -256,12 +256,12 @@ gss_bid_saml_assertion_provider::mapException(OM_uint32 *minor,
 }
 
 bool
-gss_bid_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
-                                              int *authenticated,
-                                              int *complete,
-                                              gss_buffer_t value,
-                                              gss_buffer_t display_value GSSBID_UNUSED,
-                                              int *more) const
+BIDGSSSAMLAssertionProvider::getAttribute(const gss_buffer_t attr,
+                                          int *authenticated,
+                                          int *complete,
+                                          gss_buffer_t value,
+                                          gss_buffer_t display_value GSSBID_UNUSED,
+                                          int *more) const
 {
     string str;
 
@@ -292,8 +292,8 @@ gss_bid_saml_assertion_provider::getAttribute(const gss_buffer_t attr,
 }
 
 gss_any_t
-gss_bid_saml_assertion_provider::mapToAny(int authenticated,
-                                          gss_buffer_t type_id GSSBID_UNUSED) const
+BIDGSSSAMLAssertionProvider::mapToAny(int authenticated,
+                                      gss_buffer_t type_id GSSBID_UNUSED) const
 {
     if (authenticated && !m_authenticated)
         return (gss_any_t)NULL;
@@ -302,20 +302,20 @@ gss_bid_saml_assertion_provider::mapToAny(int authenticated,
 }
 
 void
-gss_bid_saml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UNUSED,
-                                                       gss_any_t input) const
+BIDGSSSAMLAssertionProvider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UNUSED,
+                                                   gss_any_t input) const
 {
     delete ((saml2::Assertion *)input);
 }
 
 const char *
-gss_bid_saml_assertion_provider::prefix(void) const
+BIDGSSSAMLAssertionProvider::prefix(void) const
 {
     return "urn:ietf:params:gss:federated-saml-assertion";
 }
 
 bool
-gss_bid_saml_assertion_provider::init(void)
+BIDGSSSAMLAssertionProvider::init(void)
 {
     bool ret = false;
 
@@ -325,25 +325,25 @@ gss_bid_saml_assertion_provider::init(void)
     }
 
     if (ret)
-        gss_bid_attr_ctx::registerProvider(ATTR_TYPE_SAML_ASSERTION, createAttrContext);
+        BIDGSSAttributeContext::registerProvider(ATTR_TYPE_SAML_ASSERTION, createAttrContext);
 
     return ret;
 }
 
 void
-gss_bid_saml_assertion_provider::finalize(void)
+BIDGSSSAMLAssertionProvider::finalize(void)
 {
-    gss_bid_attr_ctx::unregisterProvider(ATTR_TYPE_SAML_ASSERTION);
+    BIDGSSAttributeContext::unregisterProvider(ATTR_TYPE_SAML_ASSERTION);
 }
 
-gss_bid_attr_provider *
-gss_bid_saml_assertion_provider::createAttrContext(void)
+BIDGSSAttributeProvider *
+BIDGSSSAMLAssertionProvider::createAttrContext(void)
 {
-    return new gss_bid_saml_assertion_provider;
+    return new BIDGSSSAMLAssertionProvider;
 }
 
 saml2::Assertion *
-gss_bid_saml_assertion_provider::initAssertion(void)
+BIDGSSSAMLAssertionProvider::initAssertion(void)
 {
     delete m_assertion;
     m_assertion = saml2::AssertionBuilder::buildAssertion();
@@ -353,21 +353,21 @@ gss_bid_saml_assertion_provider::initAssertion(void)
 }
 
 /*
- * gss_bid_saml_attr_provider is for retrieving the underlying attributes.
+ * BIDGSSSAMLAttributeProvider is for retrieving the underlying attributes.
  */
 bool
-gss_bid_saml_attr_provider::getAssertion(int *authenticated,
-                                         saml2::Assertion **pAssertion,
-                                         bool createIfAbsent) const
+BIDGSSSAMLAttributeProvider::getAssertion(int *authenticated,
+                                          saml2::Assertion **pAssertion,
+                                          bool createIfAbsent) const
 {
-    gss_bid_saml_assertion_provider *saml;
+    BIDGSSSAMLAssertionProvider *saml;
 
     if (authenticated != NULL)
         *authenticated = false;
     if (pAssertion != NULL)
         *pAssertion = NULL;
 
-    saml = static_cast<gss_bid_saml_assertion_provider *>
+    saml = static_cast<BIDGSSSAMLAssertionProvider *>
         (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
     if (saml == NULL)
         return false;
@@ -391,8 +391,8 @@ gss_bid_saml_attr_provider::getAssertion(int *authenticated,
 }
 
 bool
-gss_bid_saml_attr_provider::getAttributeTypes(gss_bid_attr_enumeration_cb addAttribute,
-                                              void *data) const
+BIDGSSSAMLAttributeProvider::getAttributeTypes(BIDGSSAttributeIterator addAttribute,
+                                               void *data) const
 {
     saml2::Assertion *assertion;
     int authenticated;
@@ -469,9 +469,9 @@ decomposeAttributeName(const gss_buffer_t attr)
 }
 
 bool
-gss_bid_saml_attr_provider::setAttribute(int complete GSSBID_UNUSED,
-                                         const gss_buffer_t attr,
-                                         const gss_buffer_t value)
+BIDGSSSAMLAttributeProvider::setAttribute(int complete GSSBID_UNUSED,
+                                          const gss_buffer_t attr,
+                                          const gss_buffer_t value)
 {
     saml2::Assertion *assertion;
     saml2::Attribute *attribute;
@@ -512,7 +512,7 @@ gss_bid_saml_attr_provider::setAttribute(int complete GSSBID_UNUSED,
 }
 
 bool
-gss_bid_saml_attr_provider::deleteAttribute(const gss_buffer_t attr)
+BIDGSSSAMLAttributeProvider::deleteAttribute(const gss_buffer_t attr)
 {
     saml2::Assertion *assertion;
     bool ret = false;
@@ -560,10 +560,10 @@ gss_bid_saml_attr_provider::deleteAttribute(const gss_buffer_t attr)
 }
 
 bool
-gss_bid_saml_attr_provider::getAttribute(const gss_buffer_t attr,
-                                         int *authenticated,
-                                         int *complete,
-                                         const saml2::Attribute **pAttribute) const
+BIDGSSSAMLAttributeProvider::getAttribute(const gss_buffer_t attr,
+                                          int *authenticated,
+                                          int *complete,
+                                          const saml2::Attribute **pAttribute) const
 {
     saml2::Assertion *assertion;
 
@@ -639,12 +639,12 @@ isBase64EncodedAttributeValueP(const saml2::AttributeValue *av)
 }
 
 bool
-gss_bid_saml_attr_provider::getAttribute(const gss_buffer_t attr,
-                                         int *authenticated,
-                                         int *complete,
-                                         gss_buffer_t value,
-                                         gss_buffer_t display_value,
-                                         int *more) const
+BIDGSSSAMLAttributeProvider::getAttribute(const gss_buffer_t attr,
+                                          int *authenticated,
+                                          int *complete,
+                                          gss_buffer_t value,
+                                          gss_buffer_t display_value,
+                                          int *more) const
 {
     const saml2::Attribute *a;
     const saml2::AttributeValue *av;
@@ -709,48 +709,48 @@ gss_bid_saml_attr_provider::getAttribute(const gss_buffer_t attr,
 }
 
 gss_any_t
-gss_bid_saml_attr_provider::mapToAny(int authenticated GSSBID_UNUSED,
-                                     gss_buffer_t type_id GSSBID_UNUSED) const
+BIDGSSSAMLAttributeProvider::mapToAny(int authenticated GSSBID_UNUSED,
+                                      gss_buffer_t type_id GSSBID_UNUSED) const
 {
     return (gss_any_t)NULL;
 }
 
 void
-gss_bid_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UNUSED,
-                                                  gss_any_t input GSSBID_UNUSED) const
+BIDGSSSAMLAttributeProvider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UNUSED,
+                                                   gss_any_t input GSSBID_UNUSED) const
 {
 }
 
 const char *
-gss_bid_saml_attr_provider::prefix(void) const
+BIDGSSSAMLAttributeProvider::prefix(void) const
 {
     return "urn:ietf:params:gss:federated-saml-attribute";
 }
 
 bool
-gss_bid_saml_attr_provider::init(void)
+BIDGSSSAMLAttributeProvider::init(void)
 {
-    gss_bid_attr_ctx::registerProvider(ATTR_TYPE_SAML, createAttrContext);
+    BIDGSSAttributeContext::registerProvider(ATTR_TYPE_SAML, createAttrContext);
     return true;
 }
 
 void
-gss_bid_saml_attr_provider::finalize(void)
+BIDGSSSAMLAttributeProvider::finalize(void)
 {
-    gss_bid_attr_ctx::unregisterProvider(ATTR_TYPE_SAML);
+    BIDGSSAttributeContext::unregisterProvider(ATTR_TYPE_SAML);
 }
 
-gss_bid_attr_provider *
-gss_bid_saml_attr_provider::createAttrContext(void)
+BIDGSSAttributeProvider *
+BIDGSSSAMLAttributeProvider::createAttrContext(void)
 {
-    return new gss_bid_saml_attr_provider;
+    return new BIDGSSSAMLAttributeProvider;
 }
 
 OM_uint32
 gssBidSamlAttrProvidersInit(OM_uint32 *minor)
 {
-    if (!gss_bid_saml_assertion_provider::init() ||
-        !gss_bid_saml_attr_provider::init()) {
+    if (!BIDGSSSAMLAssertionProvider::init() ||
+        !BIDGSSSAMLAttributeProvider::init()) {
         *minor = GSSBID_SAML_INIT_FAILURE;
         return GSS_S_FAILURE;
     }
@@ -761,8 +761,8 @@ gssBidSamlAttrProvidersInit(OM_uint32 *minor)
 OM_uint32
 gssBidSamlAttrProvidersFinalize(OM_uint32 *minor)
 {
-    gss_bid_saml_attr_provider::finalize();
-    gss_bid_saml_assertion_provider::finalize();
+    BIDGSSSAMLAttributeProvider::finalize();
+    BIDGSSSAMLAssertionProvider::finalize();
 
     *minor = 0;
     return GSS_S_COMPLETE;

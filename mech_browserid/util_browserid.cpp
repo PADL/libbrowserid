@@ -38,26 +38,26 @@
 
 #define BID_MAP_ERROR(code)  (ERROR_TABLE_BASE_lbid + (code))
 
-gss_bid_jwt_attr_provider::gss_bid_jwt_attr_provider(void)
+BIDGSSJWTAttributeProvider::BIDGSSJWTAttributeProvider(void)
 {
     m_attrs = NULL;
 }
 
-gss_bid_jwt_attr_provider::~gss_bid_jwt_attr_provider(void)
+BIDGSSJWTAttributeProvider::~BIDGSSJWTAttributeProvider(void)
 {
     delete m_attrs;
 }
 
 bool
-gss_bid_jwt_attr_provider::initWithExistingContext(const gss_bid_attr_ctx *manager,
-                                                      const gss_bid_attr_provider *ctx)
+BIDGSSJWTAttributeProvider::initWithExistingContext(const BIDGSSAttributeContext *manager,
+                                                    const BIDGSSAttributeProvider *ctx)
 {
-    const gss_bid_jwt_attr_provider *jwt;
+    const BIDGSSJWTAttributeProvider *jwt;
 
-    if (!gss_bid_attr_provider::initWithExistingContext(manager, ctx))
+    if (!BIDGSSAttributeProvider::initWithExistingContext(manager, ctx))
         return false;
 
-    jwt = static_cast<const gss_bid_jwt_attr_provider *>(ctx);
+    jwt = static_cast<const BIDGSSJWTAttributeProvider *>(ctx);
 
     if (jwt->m_attrs != NULL)
         m_attrs = new JSONObject(*jwt->m_attrs);
@@ -66,11 +66,11 @@ gss_bid_jwt_attr_provider::initWithExistingContext(const gss_bid_attr_ctx *manag
 }
 
 bool
-gss_bid_jwt_attr_provider::initWithGssContext(const gss_bid_attr_ctx *manager,
-                                              const gss_cred_id_t gssCred,
-                                              const gss_ctx_id_t gssCtx)
+BIDGSSJWTAttributeProvider::initWithGssContext(const BIDGSSAttributeContext *manager,
+                                               const gss_cred_id_t gssCred,
+                                               const gss_ctx_id_t gssCtx)
 {
-    if (!gss_bid_attr_provider::initWithGssContext(manager, gssCred, gssCtx))
+    if (!BIDGSSAttributeProvider::initWithGssContext(manager, gssCred, gssCtx))
         return false;
 
     if (gssCtx != GSS_C_NO_CONTEXT) {
@@ -109,8 +109,8 @@ isStringBuffer(const gss_buffer_t value)
 }
 
 bool
-gss_bid_jwt_attr_provider::getAttributeTypes(gss_bid_attr_enumeration_cb addAttribute,
-                                             void *data) const
+BIDGSSJWTAttributeProvider::getAttributeTypes(BIDGSSAttributeIterator addAttribute,
+                                              void *data) const
 {
     JSONIterator iter = m_attrs->iterator();
 
@@ -128,9 +128,9 @@ gss_bid_jwt_attr_provider::getAttributeTypes(gss_bid_attr_enumeration_cb addAttr
 }
 
 bool
-gss_bid_jwt_attr_provider::setAttribute(int complete GSSBID_UNUSED,
-                                        const gss_buffer_t attr,
-                                        const gss_buffer_t value)
+BIDGSSJWTAttributeProvider::setAttribute(int complete GSSBID_UNUSED,
+                                         const gss_buffer_t attr,
+                                         const gss_buffer_t value)
 {
     bool isString = isStringBuffer(value);
     char *szValue;
@@ -153,19 +153,19 @@ gss_bid_jwt_attr_provider::setAttribute(int complete GSSBID_UNUSED,
 }
 
 bool
-gss_bid_jwt_attr_provider::deleteAttribute(const gss_buffer_t attr)
+BIDGSSJWTAttributeProvider::deleteAttribute(const gss_buffer_t attr)
 {
     m_attrs->del((const char *)attr->value);
     return true;
 }
 
 bool
-gss_bid_jwt_attr_provider::getAttribute(const gss_buffer_t attr,
-                                        int *authenticated,
-                                        int *complete,
-                                        gss_buffer_t value,
-                                        gss_buffer_t display_value,
-                                        int *more) const
+BIDGSSJWTAttributeProvider::getAttribute(const gss_buffer_t attr,
+                                         int *authenticated,
+                                         int *complete,
+                                         gss_buffer_t value,
+                                         gss_buffer_t display_value,
+                                         int *more) const
 {
     JSONObject jAttr = m_attrs->get((const char *)attr->value);
     gss_buffer_desc valueBuf = GSS_C_EMPTY_BUFFER;
@@ -236,8 +236,8 @@ gss_bid_jwt_attr_provider::getAttribute(const gss_buffer_t attr,
 }
 
 gss_any_t
-gss_bid_jwt_attr_provider::mapToAny(int authenticated GSSBID_UNUSED,
-                                    gss_buffer_t type_id GSSBID_UNUSED) const
+BIDGSSJWTAttributeProvider::mapToAny(int authenticated GSSBID_UNUSED,
+                                     gss_buffer_t type_id GSSBID_UNUSED) const
 {
     if (m_attrs == NULL)
         return (gss_any_t)NULL;
@@ -246,36 +246,36 @@ gss_bid_jwt_attr_provider::mapToAny(int authenticated GSSBID_UNUSED,
 }
 
 void
-gss_bid_jwt_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UNUSED,
-                                                 gss_any_t input) const
+BIDGSSJWTAttributeProvider::releaseAnyNameMapping(gss_buffer_t type_id GSSBID_UNUSED,
+                                                  gss_any_t input) const
 {
     json_decref((json_t *)input);
 }
 
 bool
-gss_bid_jwt_attr_provider::init(void)
+BIDGSSJWTAttributeProvider::init(void)
 {
-    gss_bid_attr_ctx::registerProvider(ATTR_TYPE_JWT, createAttrContext);
+    BIDGSSAttributeContext::registerProvider(ATTR_TYPE_JWT, createAttrContext);
 
     return true;
 }
 
 void
-gss_bid_jwt_attr_provider::finalize(void)
+BIDGSSJWTAttributeProvider::finalize(void)
 {
-    gss_bid_attr_ctx::unregisterProvider(ATTR_TYPE_JWT);
+    BIDGSSAttributeContext::unregisterProvider(ATTR_TYPE_JWT);
 }
 
-gss_bid_attr_provider *
-gss_bid_jwt_attr_provider::createAttrContext(void)
+BIDGSSAttributeProvider *
+BIDGSSJWTAttributeProvider::createAttrContext(void)
 {
-    return new gss_bid_jwt_attr_provider;
+    return new BIDGSSJWTAttributeProvider;
 }
 
 OM_uint32
 gssBidJwtAttrProviderInit(OM_uint32 *minor)
 {
-    if (!gss_bid_jwt_attr_provider::init())
+    if (!BIDGSSJWTAttributeProvider::init())
         return GSS_S_FAILURE;
 
     *minor = 0;
@@ -285,23 +285,23 @@ gssBidJwtAttrProviderInit(OM_uint32 *minor)
 OM_uint32
 gssBidJwtAttrProviderFinalize(OM_uint32 *minor)
 {
-    gss_bid_jwt_attr_provider::finalize();
+    BIDGSSJWTAttributeProvider::finalize();
 
     *minor = 0;
     return GSS_S_COMPLETE;
 }
 
 const char *
-gss_bid_jwt_attr_provider::name(void) const
+BIDGSSJWTAttributeProvider::name(void) const
 {
     return "jwt";
 }
 
 bool
-gss_bid_jwt_attr_provider::initWithJsonObject(const gss_bid_attr_ctx *ctx,
-                                              JSONObject &obj)
+BIDGSSJWTAttributeProvider::initWithJsonObject(const BIDGSSAttributeContext *ctx,
+                                               JSONObject &obj)
 {
-    if (!gss_bid_attr_provider::initWithJsonObject(ctx, obj))
+    if (!BIDGSSAttributeProvider::initWithJsonObject(ctx, obj))
         return false;
 
     m_attrs = new JSONObject(obj);
@@ -310,19 +310,19 @@ gss_bid_jwt_attr_provider::initWithJsonObject(const gss_bid_attr_ctx *ctx,
 }
 
 const char *
-gss_bid_jwt_attr_provider::prefix(void) const
+BIDGSSJWTAttributeProvider::prefix(void) const
 {
     return "urn:ietf:params:gss:jwt";
 }
 
 JSONObject
-gss_bid_jwt_attr_provider::jsonRepresentation(void) const
+BIDGSSJWTAttributeProvider::jsonRepresentation(void) const
 {
     return JSONObject(*m_attrs);
 }
 
 time_t
-gss_bid_jwt_attr_provider::getExpiryTime(void) const
+BIDGSSJWTAttributeProvider::getExpiryTime(void) const
 {
     return (*m_attrs)["expires"].integer();
 }

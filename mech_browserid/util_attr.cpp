@@ -108,14 +108,14 @@ gssBidAttrProvidersFinalize(OM_uint32 *minor)
     return GSS_S_COMPLETE;
 }
 
-static gss_bid_attr_create_provider gssBidAttrFactories[ATTR_TYPE_MAX + 1];
+static BIDGSSAttributeFactory gssBidAttrFactories[ATTR_TYPE_MAX + 1];
 
 /*
  * Register a provider for a particular type and prefix
  */
 void
-gss_bid_attr_ctx::registerProvider(unsigned int type,
-                                   gss_bid_attr_create_provider factory)
+BIDGSSAttributeContext::registerProvider(unsigned int type,
+                                         BIDGSSAttributeFactory factory)
 {
     GSSBID_ASSERT(type <= ATTR_TYPE_MAX);
 
@@ -128,7 +128,7 @@ gss_bid_attr_ctx::registerProvider(unsigned int type,
  * Unregister a provider
  */
 void
-gss_bid_attr_ctx::unregisterProvider(unsigned int type)
+BIDGSSAttributeContext::unregisterProvider(unsigned int type)
 {
     GSSBID_ASSERT(type <= ATTR_TYPE_MAX);
 
@@ -138,12 +138,12 @@ gss_bid_attr_ctx::unregisterProvider(unsigned int type)
 /*
  * Create an attribute context, that manages instances of providers
  */
-gss_bid_attr_ctx::gss_bid_attr_ctx(void)
+BIDGSSAttributeContext::BIDGSSAttributeContext(void)
 {
     m_flags = 0;
 
     for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_bid_attr_provider *provider;
+        BIDGSSAttributeProvider *provider;
 
         if (gssBidAttrFactories[i] != NULL) {
             provider = (gssBidAttrFactories[i])();
@@ -159,7 +159,7 @@ gss_bid_attr_ctx::gss_bid_attr_ctx(void)
  * Convert an attribute prefix to a type
  */
 unsigned int
-gss_bid_attr_ctx::attributePrefixToType(const gss_buffer_t prefix) const
+BIDGSSAttributeContext::attributePrefixToType(const gss_buffer_t prefix) const
 {
     unsigned int i;
 
@@ -185,7 +185,7 @@ gss_bid_attr_ctx::attributePrefixToType(const gss_buffer_t prefix) const
  * Convert a type to an attribute prefix
  */
 gss_buffer_desc
-gss_bid_attr_ctx::attributeTypeToPrefix(unsigned int type) const
+BIDGSSAttributeContext::attributeTypeToPrefix(unsigned int type) const
 {
     gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
 
@@ -203,7 +203,7 @@ gss_bid_attr_ctx::attributeTypeToPrefix(unsigned int type) const
 }
 
 bool
-gss_bid_attr_ctx::providerEnabled(unsigned int type) const
+BIDGSSAttributeContext::providerEnabled(unsigned int type) const
 {
     if (type == ATTR_TYPE_LOCAL &&
         (m_flags & ATTR_FLAG_DISABLE_LOCAL))
@@ -216,7 +216,7 @@ gss_bid_attr_ctx::providerEnabled(unsigned int type) const
 }
 
 void
-gss_bid_attr_ctx::releaseProvider(unsigned int type)
+BIDGSSAttributeContext::releaseProvider(unsigned int type)
 {
     delete m_providers[type];
     m_providers[type] = NULL;
@@ -226,14 +226,14 @@ gss_bid_attr_ctx::releaseProvider(unsigned int type)
  * Initialize a context from an existing context.
  */
 bool
-gss_bid_attr_ctx::initWithExistingContext(const gss_bid_attr_ctx *manager)
+BIDGSSAttributeContext::initWithExistingContext(const BIDGSSAttributeContext *manager)
 {
     bool ret = true;
 
     m_flags = manager->m_flags;
 
     for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_bid_attr_provider *provider;
+        BIDGSSAttributeProvider *provider;
 
         if (!providerEnabled(i)) {
             releaseProvider(i);
@@ -257,8 +257,8 @@ gss_bid_attr_ctx::initWithExistingContext(const gss_bid_attr_ctx *manager)
  * Initialize a context from a GSS credential and context.
  */
 bool
-gss_bid_attr_ctx::initWithGssContext(const gss_cred_id_t cred,
-                                     const gss_ctx_id_t ctx)
+BIDGSSAttributeContext::initWithGssContext(const gss_cred_id_t cred,
+                                           const gss_ctx_id_t ctx)
 {
     bool ret = true;
 
@@ -268,7 +268,7 @@ gss_bid_attr_ctx::initWithGssContext(const gss_cred_id_t cred,
     }
 
     for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_bid_attr_provider *provider;
+        BIDGSSAttributeProvider *provider;
 
         if (!providerEnabled(i)) {
             releaseProvider(i);
@@ -288,7 +288,7 @@ gss_bid_attr_ctx::initWithGssContext(const gss_cred_id_t cred,
 }
 
 bool
-gss_bid_attr_ctx::initWithJsonObject(JSONObject &obj)
+BIDGSSAttributeContext::initWithJsonObject(JSONObject &obj)
 {
     bool ret = false;
     bool foundSource[ATTR_TYPE_MAX + 1];
@@ -306,7 +306,7 @@ gss_bid_attr_ctx::initWithJsonObject(JSONObject &obj)
 
     /* Initialize providers from serialized state */
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++) {
-        gss_bid_attr_provider *provider;
+        BIDGSSAttributeProvider *provider;
         const char *key;
 
         if (!providerEnabled(type)) {
@@ -331,7 +331,7 @@ gss_bid_attr_ctx::initWithJsonObject(JSONObject &obj)
 
     /* Initialize remaining providers from initialized providers */
     for (type = ATTR_TYPE_MIN; type <= ATTR_TYPE_MAX; type++) {
-        gss_bid_attr_provider *provider;
+        BIDGSSAttributeProvider *provider;
 
         if (foundSource[type] || !providerEnabled(type))
             continue;
@@ -351,7 +351,7 @@ gss_bid_attr_ctx::initWithJsonObject(JSONObject &obj)
 }
 
 JSONObject
-gss_bid_attr_ctx::jsonRepresentation(void) const
+BIDGSSAttributeContext::jsonRepresentation(void) const
 {
     JSONObject obj, sources;
     unsigned int i;
@@ -360,7 +360,7 @@ gss_bid_attr_ctx::jsonRepresentation(void) const
     obj.set("flags", m_flags);
 
     for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_bid_attr_provider *provider;
+        BIDGSSAttributeProvider *provider;
         const char *key;
 
         provider = m_providers[i];
@@ -384,7 +384,7 @@ gss_bid_attr_ctx::jsonRepresentation(void) const
  * Initialize a context from an exported context or name token
  */
 bool
-gss_bid_attr_ctx::initWithBuffer(const gss_buffer_t buffer)
+BIDGSSAttributeContext::initWithBuffer(const gss_buffer_t buffer)
 {
     OM_uint32 major, minor;
     bool ret;
@@ -406,7 +406,7 @@ gss_bid_attr_ctx::initWithBuffer(const gss_buffer_t buffer)
     return ret;
 }
 
-gss_bid_attr_ctx::~gss_bid_attr_ctx(void)
+BIDGSSAttributeContext::~BIDGSSAttributeContext(void)
 {
     for (unsigned int i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++)
         delete m_providers[i];
@@ -415,8 +415,8 @@ gss_bid_attr_ctx::~gss_bid_attr_ctx(void)
 /*
  * Locate provider for a given type
  */
-gss_bid_attr_provider *
-gss_bid_attr_ctx::getProvider(unsigned int type) const
+BIDGSSAttributeProvider *
+BIDGSSAttributeContext::getProvider(unsigned int type) const
 {
     GSSBID_ASSERT(type >= ATTR_TYPE_MIN && type <= ATTR_TYPE_MAX);
     return m_providers[type];
@@ -426,8 +426,8 @@ gss_bid_attr_ctx::getProvider(unsigned int type) const
  * Get primary provider. Only the primary provider is serialised when
  * gss_export_sec_context() or gss_export_name_composite() is called.
  */
-gss_bid_attr_provider *
-gss_bid_attr_ctx::getPrimaryProvider(void) const
+BIDGSSAttributeProvider *
+BIDGSSAttributeContext::getPrimaryProvider(void) const
 {
     return m_providers[ATTR_TYPE_MIN];
 }
@@ -436,13 +436,13 @@ gss_bid_attr_ctx::getPrimaryProvider(void) const
  * Set an attribute
  */
 bool
-gss_bid_attr_ctx::setAttribute(int complete,
-                               const gss_buffer_t attr,
-                               const gss_buffer_t value)
+BIDGSSAttributeContext::setAttribute(int complete,
+                                     const gss_buffer_t attr,
+                                     const gss_buffer_t value)
 {
     gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
     unsigned int type;
-    gss_bid_attr_provider *provider;
+    BIDGSSAttributeProvider *provider;
     bool ret = false;
 
     decomposeAttributeName(attr, &type, &suffix);
@@ -461,11 +461,11 @@ gss_bid_attr_ctx::setAttribute(int complete,
  * Delete an attrbiute
  */
 bool
-gss_bid_attr_ctx::deleteAttribute(const gss_buffer_t attr)
+BIDGSSAttributeContext::deleteAttribute(const gss_buffer_t attr)
 {
     gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
     unsigned int type;
-    gss_bid_attr_provider *provider;
+    BIDGSSAttributeProvider *provider;
     bool ret = false;
 
     decomposeAttributeName(attr, &type, &suffix);
@@ -482,13 +482,13 @@ gss_bid_attr_ctx::deleteAttribute(const gss_buffer_t attr)
  * Enumerate attribute types with callback
  */
 bool
-gss_bid_attr_ctx::getAttributeTypes(gss_bid_attr_enumeration_cb cb, void *data) const
+BIDGSSAttributeContext::getAttributeTypes(BIDGSSAttributeIterator cb, void *data) const
 {
     bool ret = false;
     size_t i;
 
     for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_bid_attr_provider *provider = m_providers[i];
+        BIDGSSAttributeProvider *provider = m_providers[i];
 
         if (provider == NULL)
             continue;
@@ -507,8 +507,8 @@ struct bid_gss_get_attr_types_args {
 };
 
 static bool
-addAttribute(const gss_bid_attr_ctx *manager,
-             const gss_bid_attr_provider *provider GSSBID_UNUSED,
+addAttribute(const BIDGSSAttributeContext *manager,
+             const BIDGSSAttributeProvider *provider GSSBID_UNUSED,
              const gss_buffer_t attribute,
              void *data)
 {
@@ -531,7 +531,7 @@ addAttribute(const gss_bid_attr_ctx *manager,
  * Enumerate attribute types, output is buffer set
  */
 bool
-gss_bid_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
+BIDGSSAttributeContext::getAttributeTypes(gss_buffer_set_t *attrs)
 {
     bid_gss_get_attr_types_args args;
     OM_uint32 major, minor;
@@ -545,7 +545,7 @@ gss_bid_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
     args.attrs = *attrs;
 
     for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_bid_attr_provider *provider = m_providers[i];
+        BIDGSSAttributeProvider *provider = m_providers[i];
 
         args.type = i;
 
@@ -567,16 +567,16 @@ gss_bid_attr_ctx::getAttributeTypes(gss_buffer_set_t *attrs)
  * Get attribute with given name
  */
 bool
-gss_bid_attr_ctx::getAttribute(const gss_buffer_t attr,
-                               int *authenticated,
-                               int *complete,
-                               gss_buffer_t value,
-                               gss_buffer_t display_value,
-                               int *more) const
+BIDGSSAttributeContext::getAttribute(const gss_buffer_t attr,
+                                     int *authenticated,
+                                     int *complete,
+                                     gss_buffer_t value,
+                                     gss_buffer_t display_value,
+                                     int *more) const
 {
     gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
     unsigned int type;
-    gss_bid_attr_provider *provider;
+    BIDGSSAttributeProvider *provider;
     bool ret;
 
     decomposeAttributeName(attr, &type, &suffix);
@@ -596,11 +596,11 @@ gss_bid_attr_ctx::getAttribute(const gss_buffer_t attr,
  * Map attribute context to C++ object
  */
 gss_any_t
-gss_bid_attr_ctx::mapToAny(int authenticated,
-                           gss_buffer_t type_id) const
+BIDGSSAttributeContext::mapToAny(int authenticated,
+                                 gss_buffer_t type_id) const
 {
     unsigned int type;
-    gss_bid_attr_provider *provider;
+    BIDGSSAttributeProvider *provider;
     gss_buffer_desc suffix;
 
     decomposeAttributeName(type_id, &type, &suffix);
@@ -616,11 +616,11 @@ gss_bid_attr_ctx::mapToAny(int authenticated,
  * Release mapped context
  */
 void
-gss_bid_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
-                                        gss_any_t input) const
+BIDGSSAttributeContext::releaseAnyNameMapping(gss_buffer_t type_id,
+                                              gss_any_t input) const
 {
     unsigned int type;
-    gss_bid_attr_provider *provider;
+    BIDGSSAttributeProvider *provider;
     gss_buffer_desc suffix;
 
     decomposeAttributeName(type_id, &type, &suffix);
@@ -634,7 +634,7 @@ gss_bid_attr_ctx::releaseAnyNameMapping(gss_buffer_t type_id,
  * Export attribute context to buffer
  */
 void
-gss_bid_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
+BIDGSSAttributeContext::exportToBuffer(gss_buffer_t buffer) const
 {
     OM_uint32 minor;
     char *s;
@@ -655,13 +655,13 @@ gss_bid_attr_ctx::exportToBuffer(gss_buffer_t buffer) const
  * Return soonest expiry time of providers
  */
 time_t
-gss_bid_attr_ctx::getExpiryTime(void) const
+BIDGSSAttributeContext::getExpiryTime(void) const
 {
     unsigned int i;
     time_t expiryTime = 0;
 
     for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_bid_attr_provider *provider = m_providers[i];
+        BIDGSSAttributeProvider *provider = m_providers[i];
         time_t providerExpiryTime;
 
         if (provider == NULL)
@@ -679,7 +679,7 @@ gss_bid_attr_ctx::getExpiryTime(void) const
 }
 
 OM_uint32
-gss_bid_attr_ctx::mapException(OM_uint32 *minor, std::exception &e) const
+BIDGSSAttributeContext::mapException(OM_uint32 *minor, std::exception &e) const
 {
     unsigned int i;
     OM_uint32 major;
@@ -700,7 +700,7 @@ gss_bid_attr_ctx::mapException(OM_uint32 *minor, std::exception &e) const
     major = GSS_S_CONTINUE_NEEDED;
 
     for (i = ATTR_TYPE_MIN; i <= ATTR_TYPE_MAX; i++) {
-        gss_bid_attr_provider *provider = m_providers[i];
+        BIDGSSAttributeProvider *provider = m_providers[i];
 
         if (provider == NULL)
             continue;
@@ -725,9 +725,9 @@ cleanup:
  * Decompose attribute name into prefix and suffix
  */
 void
-gss_bid_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
-                                         gss_buffer_t prefix,
-                                         gss_buffer_t suffix)
+BIDGSSAttributeContext::decomposeAttributeName(const gss_buffer_t attribute,
+                                               gss_buffer_t prefix,
+                                               gss_buffer_t suffix)
 {
     char *p = NULL;
     size_t i;
@@ -755,9 +755,9 @@ gss_bid_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
  * Decompose attribute name into type and suffix
  */
 void
-gss_bid_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
-                                         unsigned int *type,
-                                         gss_buffer_t suffix) const
+BIDGSSAttributeContext::decomposeAttributeName(const gss_buffer_t attribute,
+                                               unsigned int *type,
+                                               gss_buffer_t suffix) const
 {
     gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
 
@@ -769,8 +769,8 @@ gss_bid_attr_ctx::decomposeAttributeName(const gss_buffer_t attribute,
  * Compose attribute name from prefix, suffix; returns C++ string
  */
 std::string
-gss_bid_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
-                                       const gss_buffer_t suffix)
+BIDGSSAttributeContext::composeAttributeName(const gss_buffer_t prefix,
+                                             const gss_buffer_t suffix)
 {
     std::string str;
 
@@ -791,8 +791,8 @@ gss_bid_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
  * Compose attribute name from type, suffix; returns C++ string
  */
 std::string
-gss_bid_attr_ctx::composeAttributeName(unsigned int type,
-                                       const gss_buffer_t suffix)
+BIDGSSAttributeContext::composeAttributeName(unsigned int type,
+                                             const gss_buffer_t suffix)
 {
     gss_buffer_desc prefix = attributeTypeToPrefix(type);
 
@@ -803,9 +803,9 @@ gss_bid_attr_ctx::composeAttributeName(unsigned int type,
  * Compose attribute name from prefix, suffix; returns GSS buffer
  */
 void
-gss_bid_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
-                                       const gss_buffer_t suffix,
-                                       gss_buffer_t attribute)
+BIDGSSAttributeContext::composeAttributeName(const gss_buffer_t prefix,
+                                             const gss_buffer_t suffix,
+                                             gss_buffer_t attribute)
 {
     std::string str = composeAttributeName(prefix, suffix);
 
@@ -821,9 +821,9 @@ gss_bid_attr_ctx::composeAttributeName(const gss_buffer_t prefix,
  * Compose attribute name from type, suffix; returns GSS buffer
  */
 void
-gss_bid_attr_ctx::composeAttributeName(unsigned int type,
-                                       const gss_buffer_t suffix,
-                                       gss_buffer_t attribute) const
+BIDGSSAttributeContext::composeAttributeName(unsigned int type,
+                                             const gss_buffer_t suffix,
+                                             gss_buffer_t attribute) const
 {
     gss_buffer_desc prefix = attributeTypeToPrefix(type);
 
@@ -1007,7 +1007,7 @@ gssBidImportAttrContext(OM_uint32 *minor,
                         gss_buffer_t buffer,
                         gss_name_t name)
 {
-    gss_bid_attr_ctx *ctx = NULL;
+    BIDGSSAttributeContext *ctx = NULL;
     OM_uint32 major = GSS_S_FAILURE;
 
     GSSBID_ASSERT(name->attrCtx == NULL);
@@ -1019,7 +1019,7 @@ gssBidImportAttrContext(OM_uint32 *minor,
         return GSS_S_COMPLETE;
 
     try {
-        ctx = new gss_bid_attr_ctx();
+        ctx = new BIDGSSAttributeContext();
 
         if (ctx->initWithBuffer(buffer)) {
             name->attrCtx = ctx;
@@ -1047,7 +1047,7 @@ gssBidDuplicateAttrContext(OM_uint32 *minor,
                            gss_name_t in,
                            gss_name_t out)
 {
-    gss_bid_attr_ctx *ctx = NULL;
+    BIDGSSAttributeContext *ctx = NULL;
     OM_uint32 major = GSS_S_FAILURE;
 
     GSSBID_ASSERT(out->attrCtx == NULL);
@@ -1061,7 +1061,7 @@ gssBidDuplicateAttrContext(OM_uint32 *minor,
         return GSS_S_UNAVAILABLE;
 
     try {
-        ctx = new gss_bid_attr_ctx();
+        ctx = new BIDGSSAttributeContext();
 
         if (ctx->initWithExistingContext(in->attrCtx)) {
             out->attrCtx = ctx;
@@ -1151,10 +1151,10 @@ OM_uint32
 gssBidCreateAttrContext(OM_uint32 *minor,
                         gss_cred_id_t gssCred,
                         gss_ctx_id_t gssCtx,
-                        struct gss_bid_attr_ctx **pAttrContext,
+                        struct BIDGSSAttributeContext **pAttrContext,
                         time_t *pExpiryTime)
 {
-    gss_bid_attr_ctx *ctx = NULL;
+    BIDGSSAttributeContext *ctx = NULL;
     OM_uint32 major;
 
     GSSBID_ASSERT(gssCtx != GSS_C_NO_CONTEXT);
@@ -1167,7 +1167,7 @@ gssBidCreateAttrContext(OM_uint32 *minor,
 
     try {
         /* Set *pAttrContext here to for reentrancy */
-        *pAttrContext = ctx = new gss_bid_attr_ctx();
+        *pAttrContext = ctx = new BIDGSSAttributeContext();
 
         if (ctx->initWithGssContext(gssCred, gssCtx)) {
             *pExpiryTime = ctx->getExpiryTime();

@@ -101,8 +101,8 @@ extern "C" {
 #define NAME_FLAG_SERVICE                   0x00000002
 #define NAME_FLAG_COMPOSITE                 0x00000004
 
-struct gss_bid_saml_attr_ctx;
-struct gss_bid_attr_ctx;
+struct BIDGSSSAMLAttributeContext;
+struct BIDGSSAttributeContext;
 
 #ifdef HAVE_HEIMDAL_VERSION
 struct gss_name_t_desc_struct
@@ -115,7 +115,7 @@ struct gss_name_struct
     gss_OID mechanismUsed; /* this is immutable */
     krb5_principal krbPrincipal; /* this is immutable */
 #ifdef GSSBID_ENABLE_ACCEPTOR
-    struct gss_bid_attr_ctx *attrCtx;
+    struct BIDGSSAttributeContext *attrCtx;
 #endif
 };
 

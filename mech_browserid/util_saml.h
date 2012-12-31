@@ -47,18 +47,18 @@ namespace opensaml {
     };
 };
 
-struct gss_bid_saml_assertion_provider : gss_bid_attr_provider {
+struct BIDGSSSAMLAssertionProvider : BIDGSSAttributeProvider {
 public:
-    gss_bid_saml_assertion_provider(void);
-    ~gss_bid_saml_assertion_provider(void);
+    BIDGSSSAMLAssertionProvider(void);
+    ~BIDGSSSAMLAssertionProvider(void);
 
-    bool initWithExistingContext(const gss_bid_attr_ctx *source,
-                                 const gss_bid_attr_provider *ctx);
-    bool initWithGssContext(const gss_bid_attr_ctx *source,
+    bool initWithExistingContext(const BIDGSSAttributeContext *source,
+                                 const BIDGSSAttributeProvider *ctx);
+    bool initWithGssContext(const BIDGSSAttributeContext *source,
                             const gss_cred_id_t cred,
                             const gss_ctx_id_t ctx);
 
-    bool getAttributeTypes(gss_bid_attr_enumeration_cb, void *data) const;
+    bool getAttributeTypes(BIDGSSAttributeIterator, void *data) const;
     bool setAttribute(int complete,
                       const gss_buffer_t attr,
                       const gss_buffer_t value);
@@ -76,7 +76,7 @@ public:
 
     const char *prefix(void) const;
     const char *name(void) const { return NULL; }
-    bool initWithJsonObject(const gss_bid_attr_ctx *manager GSSBID_UNUSED,
+    bool initWithJsonObject(const BIDGSSAttributeContext *manager GSSBID_UNUSED,
                            JSONObject &object GSSBID_UNUSED) {
         return false;
     }
@@ -99,7 +99,7 @@ public:
     static bool init(void);
     static void finalize(void);
 
-    static gss_bid_attr_provider *createAttrContext(void);
+    static BIDGSSAttributeProvider *createAttrContext(void);
 
 private:
     static opensaml::saml2::Assertion *
@@ -114,12 +114,12 @@ private:
     bool m_authenticated;
 };
 
-struct gss_bid_saml_attr_provider : gss_bid_attr_provider {
+struct BIDGSSSAMLAttributeProvider : BIDGSSAttributeProvider {
 public:
-    gss_bid_saml_attr_provider(void) {}
-    ~gss_bid_saml_attr_provider(void) {}
+    BIDGSSSAMLAttributeProvider(void) {}
+    ~BIDGSSSAMLAttributeProvider(void) {}
 
-    bool getAttributeTypes(gss_bid_attr_enumeration_cb, void *data) const;
+    bool getAttributeTypes(BIDGSSAttributeIterator, void *data) const;
     bool setAttribute(int complete,
                       const gss_buffer_t attr,
                       const gss_buffer_t value);
@@ -139,7 +139,7 @@ public:
     const char *name(void) const {
         return NULL;
     }
-    bool initWithJsonObject(const gss_bid_attr_ctx *manager GSSBID_UNUSED,
+    bool initWithJsonObject(const BIDGSSAttributeContext *manager GSSBID_UNUSED,
                             JSONObject &object GSSBID_UNUSED) {
         return false;
     }
@@ -158,7 +158,7 @@ public:
     static bool init(void);
     static void finalize(void);
 
-    static gss_bid_attr_provider *createAttrContext(void);
+    static BIDGSSAttributeProvider *createAttrContext(void);
 
 private:
 };
