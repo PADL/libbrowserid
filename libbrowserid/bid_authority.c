@@ -84,47 +84,49 @@ _BIDIssuerIsAuthoritative(
         goto cleanup;
     }
 
-    if (strcasecmp(szHostname, szIssuer) == 0) {
+    /* XXX case-sensitive? */
+    if (strcasecmp(szHostname, szIssuer) == 0)
         ok = 1;
-    } else {
+
+    if (!ok) {
         for (i = 0; _BIDSecondaryAuthorities[i] != NULL; i++) {
             if (strcasecmp(szIssuer, _BIDSecondaryAuthorities[i]) == 0) {
                 ok = 1;
                 break;
             }
         }
+    }
 
-        if (!ok) {
-            uint32_t maxDelegs;
-            const char *szAuthority;
+    if (!ok) {
+        uint32_t maxDelegs;
+        const char *szAuthority;
 
-            err = BIDGetContextParam(context, BID_PARAM_MAX_DELEGATIONS, (void **)&maxDelegs);
-            BID_BAIL_ON_ERROR(err);
+        err = BIDGetContextParam(context, BID_PARAM_MAX_DELEGATIONS, (void **)&maxDelegs);
+        BID_BAIL_ON_ERROR(err);
 
-            err = _BIDAcquireAuthority(context, szHostname, &authority);
-            BID_BAIL_ON_ERROR(err);
+        err = _BIDAcquireAuthority(context, szHostname, &authority);
+        BID_BAIL_ON_ERROR(err);
 
-            for (i = 0, ok = -1; i < maxDelegs; i++) {
-                szAuthority = json_string_value(json_object_get(authority, "authority"));
-                if (szAuthority != NULL) {
-                    if (strcasecmp(szIssuer, szAuthority) == 0) {
-                        ok = 1;
-                    } else {
-                        BIDAuthority tmp;
-
-                        err = _BIDAcquireAuthority(context, szAuthority, &tmp);
-                        BID_BAIL_ON_ERROR(err);
-
-                        json_decref(authority);
-                        authority = tmp;
-                    }
+        for (i = 0, ok = -1; i < maxDelegs; i++) {
+            szAuthority = json_string_value(json_object_get(authority, "authority"));
+            if (szAuthority != NULL) {
+                if (strcasecmp(szIssuer, szAuthority) == 0) {
+                    ok = 1;
                 } else {
-                    ok = 0;
-                }
+                    BIDAuthority tmp;
 
-                if (ok != -1) {
-                    break;
+                    err = _BIDAcquireAuthority(context, szAuthority, &tmp);
+                    BID_BAIL_ON_ERROR(err);
+
+                    json_decref(authority);
+                    authority = tmp;
                 }
+            } else {
+                ok = 0;
+            }
+
+            if (ok != -1) {
+                break;
             }
         }
     }
