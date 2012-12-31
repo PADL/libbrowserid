@@ -6,6 +6,12 @@
 
 #include "bid_private.h"
 
+/*
+ * Implementation of JSON Web Tokens. Note that this is not a generalised
+ * implementation; it does not support encryption (JWE) and it requires
+ * that the payload be valid JSON. It's enough to support BrowserID.
+ */
+
 typedef struct BIDJWTAlgorithmDesc {
     const char *szAlgID;
     const char *szKeyAlgID;
