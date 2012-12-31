@@ -12,6 +12,8 @@
 #include <openssl/rand.h>
 #include <openssl/err.h>
 
+#include <ctype.h>
+
 #define BID_CRYPTO_DEBUG    1
 
 #if BID_CRYPTO_DEBUG
@@ -51,10 +53,18 @@ _BIDGetJsonBNValue(
                 err = BID_S_OK;
             memset(buf, 0, sizeof(buf));
         }
-    } else if (err != BID_S_OK && BN_dec2bn(bn, value)) {
-        err = BID_S_OK;
-    } else if (err != BID_S_OK && BN_hex2bn(bn, value)) {
-        err = BID_S_OK;
+    } else {
+        size_t len = strlen(value), i;
+        size_t cchDecimal = 0;
+
+        /* XXX this is bogus, a hex string could also be a valid decimal string. */
+        for (i = 0; i < len; i++) {
+            if (isdigit(value[i]))
+                cchDecimal++;
+        }
+
+        if (cchDecimal == len ? BN_dec2bn(bn, value) : BN_hex2bn(bn, value))
+            err = BID_S_OK;
     }
 
     return err;
