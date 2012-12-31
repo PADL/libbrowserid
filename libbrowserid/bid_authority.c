@@ -37,7 +37,10 @@ _BIDAcquireAuthority(
         err = _BIDRetrieveDocument(context, szHostname, BID_WELL_KNOWN_URL, 0, &authority);
         BID_BAIL_ON_ERROR(err);
 
-        json_object_set(context->AuthorityCache, szHostname, authority);
+        if (json_object_set(context->AuthorityCache, szHostname, authority) < 0) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
     }
 
     *pAuthority = authority;
