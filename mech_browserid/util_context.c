@@ -282,6 +282,7 @@ gssBidContextReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     if (GSS_ERROR(major))
         return major;
 
+#ifdef GSSBID_ENABLE_ACCEPTOR
     if ((ctx->flags & CTX_FLAG_INITIATOR) == 0) {
         major = gssBidCreateAttrContext(minor, cred, ctx,
                                         &ctx->initiatorName->attrCtx,
@@ -289,6 +290,7 @@ gssBidContextReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
         if (GSS_ERROR(major))
             return major;
     }
+#endif
 
     if (ctx->expiryTime != 0 && ctx->expiryTime < time(NULL)) {
         *minor = GSSBID_CRED_EXPIRED;
