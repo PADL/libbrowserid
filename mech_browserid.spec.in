@@ -1,19 +1,16 @@
-%global _moonshot_krb5 %{!?_moonshot_krb5:krb5-devel}%{?_moonshot_krb5}
 Name:		padl-gss-browserid
 Version:	@VERSION@
 Release:	4%{?dist}
-Summary:	Moonshot GSS-API Mechanism
+Summary:	BrowserID GSS-API Mechanism
 
 Group:		Security Tools
 License:	BSD
-URL:		http://www.project-moonshot.org/
+URL:		http://www.browserid.org/
 Source0:	gss_browserid-%{version}.tar.gz
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root
 
-BuildRequires:	 %{_moonshot_krb5} >= 1.9.1
-#BuildRequires:	 moonshot-ui-devel
+BuildRequires:	 %{krb5-devel} >= 1.9.1
 BuildRequires: jansson-devel
-#Requires:	moonshot-ui
 BuildRequires: libradsec-devel
 BuildRequires: shibboleth-devel >= 2.5
 BuildRequires: libshibresolver-devel
@@ -21,8 +18,7 @@ BuildRequires: libshibresolver-devel
 
 
 %description
-Project Moonshot provides federated access management.
-
+GSS-API mechanism for the BrowserID security protocol.
 
 %prep
 %setup -q -n gss_browserid-%{version}
@@ -30,7 +26,7 @@ Project Moonshot provides federated access management.
 
 %build
 	export LDFLAGS='-L/usr/%{_lib}/freeradius -Wl,--rpath=/usr/%{_lib}/freeradius'
-%configure  --with-libmoonshot=%{_prefix} --with-krb5=%{_prefix} --disable-reauth
+%configure --with-krb5=%{_prefix}
 make %{?_smp_mflags}
 
 
@@ -51,12 +47,6 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/gss/gss_browserid.so
 %exclude %{_libdir}/gss/gss_browserid.la
 %{_includedir}/gssapi/*.h
-#%exclude %{_libdir}/krb5/plugins/authdata/*la
-#%{_libdir}/krb5/plugins/authdata/*.so
-
-
 
 %changelog
-* Wed Sep 28 2011  <hartmans@moonbuildcentos.dev.ja.net> - @VERSION@-2
-- Add radius_ad plugin
 

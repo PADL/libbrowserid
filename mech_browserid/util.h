@@ -533,17 +533,6 @@ gssBidOidToSaslName(const gss_OID oid);
 gss_OID
 gssBidSaslNameToOid(const gss_buffer_t name);
 
-/* util_moonshot.c */
-OM_uint32
-libMoonshotResolveDefaultIdentity(OM_uint32 *minor,
-                                  const gss_cred_id_t cred,
-                                  gss_name_t *pName);
-
-OM_uint32
-libMoonshotResolveInitiatorCred(OM_uint32 *minor,
-                                gss_cred_id_t cred,
-                                const gss_name_t targetName);
-
 /* util_name.c */
 #define EXPORT_NAME_FLAG_OID                    0x1
 #define EXPORT_NAME_FLAG_COMPOSITE              0x2
