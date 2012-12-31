@@ -14,9 +14,7 @@
 
 #include <ctype.h>
 
-#define BID_CRYPTO_DEBUG    1
-
-#if BID_CRYPTO_DEBUG
+#ifdef GSSBID_DEBUG
 #define BID_CRYPTO_PRINT_ERRORS() do { ERR_print_errors_fp(stderr); } while (0)
 #else
 #define BID_CRYPTO_PRINT_ERRORS()
