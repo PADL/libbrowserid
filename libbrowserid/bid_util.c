@@ -327,6 +327,7 @@ _BIDInitCurlHandle(
 {
     CURLcode cc;
     CURL *curlHandle = NULL;
+    char szUserAgent[64];
 
     *pCurlHandle = NULL;
 
@@ -340,8 +341,10 @@ _BIDInitCurlHandle(
     cc = curl_easy_setopt(curlHandle, CURLOPT_FOLLOWLOCATION, 1);
     BID_BAIL_ON_ERROR(cc);
 
+#ifdef GSSBID_DEBUG
     cc = curl_easy_setopt(curlHandle, CURLOPT_VERBOSE, 1);
     BID_BAIL_ON_ERROR(cc);
+#endif
 
     cc = curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, _BIDCurlWriteCB);
     BID_BAIL_ON_ERROR(cc);
@@ -352,10 +355,11 @@ _BIDInitCurlHandle(
     cc = curl_easy_setopt(curlHandle, CURLOPT_FILETIME, 1);
     BID_BAIL_ON_ERROR(cc);
 
-/*
-    cc = curl_easy_setopt(curlHandle, CURLOPT_USERAGENT, "libbrowserid");
+    snprintf(szUserAgent, sizeof(szUserAgent), "libbrowserid/%s", VERS_NUM);
+
+    cc = curl_easy_setopt(curlHandle, CURLOPT_USERAGENT, szUserAgent);
     BID_BAIL_ON_ERROR(cc);
-*/
+
     *pCurlHandle = curlHandle;
 
 cleanup:

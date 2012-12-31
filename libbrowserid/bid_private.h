@@ -346,6 +346,12 @@ _BIDBrowserGetAssertion(
     const char *szPackedAudience,
     char **pAssertion);
 
+/*
+ * vers.c
+ */
+extern const char SGS_VERS[];
+extern const char VERS_NUM[];
+
 #ifdef __cplusplus
 }
 #endif

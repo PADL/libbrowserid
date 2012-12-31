@@ -10,6 +10,15 @@ libbrowserid_la_SOURCES =   \
     bid_user.c              \
     bid_util.c              \
     bid_webkit.m            \
-    bid_verifier.c
+    bid_verifier.m          \
+    vers.c
 
 noinst_LTLIBRARIES = libbrowserid.la
+
+BUILT_SOURCES = vers.c
+
+vers.c: $(top_srcdir)/CVSVersionInfo.txt
+	CVSVERSIONDIR=$(top_srcdir) $(top_srcdir)/build/vers_string -v
+
+clean-generic:
+	$(RM) vers.c

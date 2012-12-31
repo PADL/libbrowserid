@@ -1,0 +1,83 @@
+#!/usr/bin/perl
+#
+#ident $Id: vers_string,v 1.10 1999/04/05 01:38:26 lukeh Exp $
+#
+# Implementation of SGS vers_string which uses CVSVersionInfo.txt.
+
+require "../build/cvslib.pl";
+
+$OUTFILE = (-f "version.h") ? "version.h" : "vers.c";
+$AUTHOR = `whoami`;
+$HEADER = '$Id: vers_string,v 1.10 1999/04/05 01:38:26 lukeh Exp $';
+
+if ($ENV{'PROGRAM'}) { $PROGRAM = $ENV{'PROGRAM'}; }
+
+chop($AUTHOR);
+chop($DATE=`date -u`);
+chop($CWD=`pwd`);
+
+($PROJECT, $VERSION) = split(/\-/, &getCVSVersionInfo(), 2);
+
+if (!defined($PROJECT)) {
+	$PROJECT = "Unknown";
+	$PROGRAM = "Unknown";
+} else {
+	$SEP = "-";
+	if (!defined($PROGRAM)) {
+		chop($PROGRAM=`basename $CWD`);
+	}
+}
+
+if ($ARGV[0] eq "-f") {
+	print $PROJECT, $SEP, $VERSION, "\n";
+} elsif ($ARGV[0] eq "-l") {
+	print "static const char SGS_VERS[] = \"";
+	print '@(#)LIBRARY:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:', $DATE;
+	print "\";\n";
+} elsif ($ARGV[0] eq "-c") {
+	print "const char SGS_VERS[] = \"";
+	print '@(#)PROGRAM:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:', $DATE;
+	print "\";\n";
+	print "const char VERS_NUM[] = \"$VERSION\";\n";
+} elsif ($ARGV[0] eq "-n") {
+	print "$VERSION\n";
+} elsif ($ARGV[0] eq "-B") {
+	print 'PROGRAM:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:NO DATE SET (-B used)',"\n";
+} elsif ($ARGV[0] eq "-v") {
+	unlink($OUTFILE);
+	open(OUTFILE,">$OUTFILE");
+	print OUTFILE "/* $OUTFILE built by $HEADER */\n";
+	print OUTFILE "\n";
+	if ($OUTFILE eq "version.h") {
+		print OUTFILE "#define USE_SGS_VERS\n\n";
+	}
+	print OUTFILE "const char SGS_VERS[] = \"";
+	print OUTFILE '@(#)PROGRAM:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:', $DATE;
+	print OUTFILE "\";\n\n";
+	print OUTFILE "const char VERS_NUM[] = \"$VERSION\";\n\n";
+	close(OUTFILE);
+} elsif ($ARGV[0] ne "") {
+	print STDERR "$HEADER\n";
+	print STDERR "Copyright (C) 1997-2012 PADL Software Pty Ltd.\n";
+	print STDERR "\n";
+	print STDERR "Unknown command line option $ARGV[0].\n";
+	print STDERR "Usage: vers_string [-f|-l|-c|-n|-B|-v]\n";
+	print STDERR "\t-f: echo project-n to stdout\n";
+	print STDERR "\t-l: echo static const char SGS_VERS to stdout\n";
+	print STDERR "\t-c: echo const char VERS_NUM and SGS_VERS to stdout\n";
+	print STDERR "\t-n: echo version number to stdout\n";
+	print STDERR "\t-B: emulate vers_string -B (why?)\n";
+	print STDERR "\t-v: generate $OUTFILE\n";
+	print STDERR "\tother options same as vers_string\n";
+	print STDERR "\n";
+	print STDERR "\tTo attach a project name and version number to a CVS\n";
+	print STDERR "\tmodule, use checkpoint\n";
+	print STDERR "\tTo find out the current project version, type cvsver\n";
+	print STDERR "\tTo create a new project, type cvsnew [project]\n";
+	print STDERR "\tTo sync with an existing project, type cvssync\n";
+	print STDERR "\tTo create a project distribution, type tarup\n";
+	print STDERR "\tTo commit a project, type commit [message]\n";
+} else {
+	print 'PROGRAM:', $PROGRAM, '  PROJECT:', $PROJECT, $SEP, $VERSION, '  DEVELOPER:', $AUTHOR,  '  BUILT:', $DATE;
+	print "\n";
+}
