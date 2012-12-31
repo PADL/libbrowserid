@@ -309,6 +309,21 @@ _BIDPackAudience(
     size_t cbChannelBindings,
     char **pszPackedAudience);
 
+#if 0
+typedef enum {
+    BID_ENCODING_UNKNOWN,
+    BID_ENCODING_DECIMAL,
+    BID_ENCODING_HEX,
+    BID_ENCODING_BASE64,
+} BIDEncoding;
+
+BIDError
+_BIDGuessEncoding(
+    BIDContext context,
+    const char *value,
+    BIDEncoding *pEncoding);
+#endif
+
 /*
  * bid_verifier.c
  */
