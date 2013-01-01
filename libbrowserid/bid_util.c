@@ -801,8 +801,10 @@ _BIDUnpackAudience(
     unsigned char *pbChannelBindings = NULL;
 
     *pszAudienceOrSpn = NULL;
-    *ppbChannelBindings = NULL;
-    *pcbChannelBindings = 0;
+    if (ppbChannelBindings != NULL) {
+        *ppbChannelBindings = NULL;
+        *pcbChannelBindings = 0;
+    }
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -835,7 +837,7 @@ _BIDUnpackAudience(
     p = strrchr(szPackedAudience, '#');
 #endif
     if (p != NULL) {
-        if (p[1] != '\0') {
+        if (p[1] != '\0' && ppbChannelBindings != NULL) {
             err = _BIDBase64UrlDecode(p + 1, ppbChannelBindings, pcbChannelBindings);
             BID_BAIL_ON_ERROR(err);
         }

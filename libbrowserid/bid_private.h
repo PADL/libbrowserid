@@ -162,8 +162,8 @@ struct BIDCacheOps {
     BIDError (*SetObject)(struct BIDCacheOps *, BIDContext, void *, const char *key, json_t *val);
     BIDError (*RemoveObject)(struct BIDCacheOps *, BIDContext, void *, const char *key);
 
-    BIDError (*FirstObject)(struct BIDCacheOps *, BIDContext, void *, json_t **val);
-    BIDError (*NextObject)(struct BIDCacheOps *, BIDContext, void *, json_t **val);
+    BIDError (*FirstObject)(struct BIDCacheOps *, BIDContext, void *, const char **, json_t **val);
+    BIDError (*NextObject)(struct BIDCacheOps *, BIDContext, void *, const char **, json_t **val);
 };
 
 BIDError
@@ -218,6 +218,20 @@ _BIDGetCacheLastChangedTime(
     BIDContext context,
     BIDCache cache,
     time_t *ptLastChanged);
+
+BIDError
+_BIDGetFirstCacheObject(
+    BIDContext context,
+    BIDCache cache,
+    const char **pKey,
+    json_t **pValue);
+
+BIDError
+_BIDGetNextCacheObject(
+    BIDContext context,
+    BIDCache cache,
+    const char **pKey,
+    json_t **pValue);
 
 /*
  * bid_context.c

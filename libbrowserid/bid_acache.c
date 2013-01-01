@@ -34,9 +34,9 @@ _BIDAcquireDefaultAssertionCache(BIDContext context)
     if (stat(szFileName, &sb) < 0)
         mkdir(szFileName, 0700);
 
-    snprintf(szFileName, sizeof(szFileName), "%s/Library/Caches/com.padl.gss.BrowserID/browserid-assertions.json", pw->pw_dir);
+    snprintf(szFileName, sizeof(szFileName), "%s/Library/Caches/com.padl.gss.BrowserID/browserid.assertion.json", pw->pw_dir);
 #else
-    snprintf(szFileName, sizeof(szFileName), "/tmp/.browserid-assertions.%d.json", geteuid());
+    snprintf(szFileName, sizeof(szFileName), "/tmp/.browserid.assertion.%d.json", geteuid());
 #endif
 
     err = _BIDAcquireCache(context, szFileName, &context->AssertionCache);

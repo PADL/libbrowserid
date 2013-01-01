@@ -688,6 +688,7 @@ _BIDFileCacheFirstObject(
     struct BIDCacheOps *ops,
     BIDContext context,
     void *cache,
+    const char **key,
     json_t **val)
 {
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
@@ -695,6 +696,7 @@ _BIDFileCacheFirstObject(
     json_t *data = NULL, *d = NULL;
     int fd = -1;
 
+    *key = NULL;
     *val = NULL;
 
     if (fc == NULL) {
@@ -721,14 +723,15 @@ _BIDFileCacheFirstObject(
         goto cleanup;
     }
 
-    *val = json_object_iter_value(fc->Iterator);
-    if (*val == NULL) {
+    *key = json_object_iter_key(fc->Iterator);
+    *val = json_incref(json_object_iter_value(fc->Iterator));
+    if (*key == NULL || *val == NULL) {
         err = BID_S_NO_MORE_ITEMS;
         goto cleanup;
     }
 
     json_decref(fc->Data);
-    fc->Data = d;
+    fc->Data = json_incref(d);
 
     err = BID_S_OK;
 
@@ -746,11 +749,13 @@ _BIDFileCacheNextObject(
     struct BIDCacheOps *ops,
     BIDContext context,
     void *cache,
+    const char **key,
     json_t **val)
 {
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
     BIDError err;
 
+    *key = NULL;
     *val = NULL;
 
     if (fc == NULL || fc->Data == NULL) {
@@ -764,8 +769,9 @@ _BIDFileCacheNextObject(
         goto cleanup;
     }
 
-    *val = json_object_iter_value(fc->Iterator);
-    if (*val == NULL) {
+    *key = json_object_iter_key(fc->Iterator);
+    *val = json_incref(json_object_iter_value(fc->Iterator));
+    if (*key == NULL || *val == NULL) {
         err = BID_S_NO_MORE_ITEMS;
         goto cleanup;
     }

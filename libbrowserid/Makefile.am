@@ -1,5 +1,7 @@
 AUTOMAKE_OPTIONS = foreign
 
+bin_PROGRAMS = bidtool
+
 libbrowserid_la_SOURCES =   \
     bid_acache.c            \
     bid_authority.c         \
@@ -25,3 +27,6 @@ vers.c: $(top_srcdir)/CVSVersionInfo.txt
 
 clean-generic:
 	$(RM) vers.c
+
+bidtool_SOURCES = bidtool.c
+bidtool_LDADD = $(noinst_LTLIBRARIES) @JANSSON_LDFLAGS@ @CURL_LDFLAGS@ @TARGET_LDFLAGS@ @JANSSON_LIBS@ @CURL_LIBS@

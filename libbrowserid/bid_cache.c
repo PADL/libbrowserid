@@ -246,3 +246,52 @@ _BIDGetCacheLastChangedTime(
     return err;
 }
 
+BIDError
+_BIDGetFirstCacheObject(
+    BIDContext context,
+    BIDCache cache,
+    const char **pKey,
+    json_t **pValue)
+{
+    BIDError err;
+
+    *pKey = NULL;
+    *pValue = NULL;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    if (cache->Ops->FirstObject == NULL)
+        return BID_S_NOT_IMPLEMENTED;
+
+    err = cache->Ops->FirstObject(cache->Ops, context, cache->Data, pKey, pValue);
+
+    return err;
+}
+
+BIDError
+_BIDGetNextCacheObject(
+    BIDContext context,
+    BIDCache cache,
+    const char **pKey,
+    json_t **pValue)
+{
+    BIDError err;
+
+    *pKey = NULL;
+    *pValue = NULL;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    if (cache->Ops->NextObject == NULL)
+        return BID_S_NOT_IMPLEMENTED;
+
+    err = cache->Ops->NextObject(cache->Ops, context, cache->Data, pKey, pValue);
+
+    return err;
+}
