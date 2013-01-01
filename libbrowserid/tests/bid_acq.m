@@ -34,7 +34,7 @@ int main(int argc, const char *argv[])
     json_t *j = NULL;
 
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT |
-                       BID_CONTEXT_GSS | BID_CONTEXT_ASSERTION_CACHE | BID_CONTEXT_AUTHORITY_CACHE;
+                       BID_CONTEXT_GSS | /*BID_CONTEXT_ASSERTION_CACHE | */BID_CONTEXT_AUTHORITY_CACHE;
 
 #ifndef BUILD_AS_DSO
     if (argc > 1 && !strcmp(argv[1], "-remote")) {

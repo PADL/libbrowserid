@@ -20,6 +20,7 @@ BIDAcquireAssertion(
     BIDBackedAssertion backedAssertion = NULL;
     char *szAssertion = NULL;
     char *szPackedAudience = NULL;
+    const char *szSiteName = NULL;
 
     *pAssertion = NULL;
     if (pAssertedIdentity != NULL)
@@ -41,7 +42,11 @@ BIDAcquireAssertion(
         err = _BIDPackAudience(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, &szPackedAudience);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDBrowserGetAssertion(context, szPackedAudience, &szAssertion);
+        szSiteName = strchr(szAudienceOrSpn, '/');
+        if (szSiteName != NULL)
+            szSiteName++;
+
+        err = _BIDBrowserGetAssertion(context, szPackedAudience, szSiteName, &szAssertion);
         BID_BAIL_ON_ERROR(err);
     }
 

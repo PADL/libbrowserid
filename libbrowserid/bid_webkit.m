@@ -91,6 +91,7 @@
 {
 @private
     NSString *audience;
+    NSString *siteName;
     NSString *assertion;
     BIDLoginPanel *panel;
     BIDError bidError;
@@ -99,6 +100,8 @@
 /* accessors */
 - (void)setAudience:(NSString *)value;
 - (NSString *)audience;
+- (void)setSiteName:(NSString *)value;
+- (NSString *)siteName;
 - (void)setAssertion:(NSString *)value;
 - (NSString *)assertion;
 - (BIDError)bidError;
@@ -129,6 +132,19 @@
     if (value != audience) {
         [audience release];
         audience = [value copy];
+    }
+}
+
+- (NSString *)siteName
+{
+    return [[siteName retain] autorelease];
+}
+
+- (void)setSiteName:(NSString *)value
+{
+    if (value != siteName) {
+        [siteName release];
+        siteName = [value copy];
     }
 }
 
@@ -206,6 +222,14 @@
 
 #pragma mark - delegates
 
++ (BOOL)isKeyExcludedFromWebScript:(const char *)property
+{
+    if (strcmp(property, "siteName") == 0)
+        return NO;
+
+    return YES;
+}
+
 + (BOOL)isSelectorExcludedFromWebScript:(SEL)selector
 {
     if (selector == @selector(onlogin:) || selector == @selector(onlogout))
@@ -230,7 +254,7 @@
                 onlogout: function() { window.AssertionLoader.onlogout; }                                   \
             });                                                                                             \
                                                                                                             \
-            navigator.id.request();                                                                         \
+            navigator.id.request({siteName: window.AssertionLoader.siteName});  \
          ";
 
         [sender stringByEvaluatingJavaScriptFromString:function];
@@ -391,6 +415,7 @@ static BIDError
 _BIDWebkitGetAssertion(
     BIDContext context,
     const char *szAudience,
+    const char *szSiteName,
     char **pAssertion)
 {
     BIDError err = BID_S_INTERACT_FAILURE;
@@ -419,6 +444,7 @@ _BIDWebkitGetAssertion(
     @autoreleasepool {
         loader = [[BIDAssertionLoader alloc] init];
         [loader setAudience:[NSString stringWithCString:szAudience]];
+        [loader setSiteName:[NSString stringWithCString:szSiteName]];
         [loader performSelectorOnMainThread:@selector(loadAssertion) withObject:nil waitUntilDone:TRUE];
 
         NSLog(@"assertion = %@", [loader assertion]);
@@ -438,10 +464,11 @@ BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
     const char *szAudience,
+    const char *szSiteName,
     char **pAssertion)
 {
 #ifdef __APPLE__
-    return _BIDWebkitGetAssertion(context, szAudience, pAssertion);
+    return _BIDWebkitGetAssertion(context, szAudience, szSiteName, pAssertion);
 #else
     return BID_S_INTERACT_UNAVAILABLE;
 #endif
