@@ -67,7 +67,7 @@ gssBidAllocContext(OM_uint32 *minor,
 
     contextParams = BID_CONTEXT_GSS;
     if (isInitiator)
-        contextParams |= BID_CONTEXT_USER_AGENT | BID_CONTEXT_ASSERTION_CACHE;
+        contextParams |= BID_CONTEXT_USER_AGENT; /* | BID_CONTEXT_ASSERTION_CACHE; */
     else
         contextParams |= BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE;
 
