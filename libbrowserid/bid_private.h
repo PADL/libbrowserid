@@ -215,6 +215,7 @@ _BIDGetNextCacheObject(
  */
 struct BIDContextDesc {
     uint32_t ContextOptions;
+    char **SecondaryAuthorities;
     json_error_t JsonError;
     char *VerifierUrl;
     uint32_t MaxDelegations;

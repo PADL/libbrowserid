@@ -6,16 +6,6 @@
 
 #include "bid_private.h"
 
-/* TODO make these configurable per context */
-static const char *
-_BIDSecondaryAuthorities[] = {
-    "browserid.org",
-    "diresworb.org",
-    "dev.diresworb.org",
-    "login.anosrep.org",
-    "login.persona.org",
-};
-
 BIDError
 _BIDAcquireDefaultAuthorityCache(BIDContext context)
 {
@@ -97,6 +87,7 @@ _BIDIssuerIsAuthoritative(
     size_t i;
     int ok = 0;
     BIDAuthority authority = NULL;
+    const char **secondaryAuthorities;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -110,8 +101,11 @@ _BIDIssuerIsAuthoritative(
         ok = 1;
 
     if (!ok) {
-        for (i = 0; _BIDSecondaryAuthorities[i] != NULL; i++) {
-            if (strcasecmp(szIssuer, _BIDSecondaryAuthorities[i]) == 0) {
+        err = BIDGetContextParam(context, BID_PARAM_SECONDARY_AUTHORITIES, (void **)&secondaryAuthorities);
+        BID_BAIL_ON_ERROR(err);
+
+        for (i = 0; secondaryAuthorities[i] != NULL; i++) {
+            if (strcasecmp(szIssuer, secondaryAuthorities[i]) == 0) {
                 ok = 1;
                 break;
             }

@@ -6,6 +6,15 @@
 
 #include "bid_private.h"
 
+static const char *
+_BIDSecondaryAuthorities[] = {
+    "browserid.org",
+    "diresworb.org",
+    "dev.diresworb.org",
+    "login.anosrep.org",
+    "login.persona.org",
+};
+
 BIDError
 BIDAcquireContext(
     uint32_t ulContextOptions,
@@ -61,6 +70,14 @@ BIDReleaseContext(BIDContext context)
     if (context == BID_C_NO_CONTEXT)
         return BID_S_NO_CONTEXT;
 
+    if (context->SecondaryAuthorities) {
+        char **p;
+
+        for (p = context->SecondaryAuthorities; *p != NULL; p++)
+            BIDFree(*p);
+        BIDFree(context->SecondaryAuthorities);
+    }
+
     BIDFree(context->VerifierUrl);
     _BIDReleaseCache(context, context->AuthorityCache);
     _BIDReleaseCache(context, context->ReplayCache);
@@ -82,6 +99,9 @@ BIDSetContextParam(
     BID_CONTEXT_VALIDATE(context);
 
     switch (ulParam) {
+    case BID_PARAM_SECONDARY_AUTHORITIES:
+        err = BID_S_NOT_IMPLEMENTED;
+        break;
     case BID_PARAM_VERIFIER_URL:
         err = _BIDDuplicateString(context, value, &context->VerifierUrl);
         break;
@@ -136,6 +156,11 @@ BIDGetContextParam(
     *pValue = NULL;
 
     switch (ulParam) {
+    case BID_PARAM_SECONDARY_AUTHORITIES:
+        *pValue = context->SecondaryAuthorities;
+        if (*pValue == NULL)
+            *pValue = _BIDSecondaryAuthorities;
+        break;
     case BID_PARAM_VERIFIER_URL:
         if (context->VerifierUrl != NULL)
             *pValue = context->VerifierUrl;
