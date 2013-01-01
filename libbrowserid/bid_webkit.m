@@ -104,7 +104,6 @@
 - (BIDError)bidError;
 
 /* JavaScript called methods */
-+ (BOOL)isKeyExcludedFromWebScript:(const char *)name;
 - (void)onlogin:(NSString *)string;
 - (void)onlogout;
 
@@ -113,22 +112,13 @@
 - (void)didAbortLoad:(NSError *)error;
 - (void)didLoadAssertion;
 - (WebView *)newWebView;
+
+/* public interface */
+- (BIDError)loadAssertion;
 @end
 
 @implementation BIDAssertionLoader
-+ (BOOL)isKeyExcludedFromWebScript:(const char *)name
-{
-    return YES;
-}
-
-+ (BOOL)isSelectorExcludedFromWebScript:(SEL)selector
-{
-    if (selector == @selector(onlogin:) || selector == @selector(onlogout))
-        return NO;
-
-    return YES;
-}
-
+#pragma mark - accessors
 - (NSString *)audience
 {
     return [[audience retain] autorelease];
@@ -160,24 +150,7 @@
     return bidError;
 }
 
-- init
-{
-    audience = nil;
-    assertion = nil;
-    panel = nil;
-    bidError = BID_S_INTERACT_FAILURE;
-
-    return [super init];
-}
-
-- (void)dealloc
-{
-    [super dealloc];
-
-    [audience release];
-    [assertion release];
-    [panel release];
-}
+#pragma mark - helpers
 
 - (WebView *)newWebView
 {
@@ -218,6 +191,8 @@
     [self closePanelAndStopModal];
 }
 
+#pragma mark - javascript
+
 - (void)onlogin:(NSString *)string
 {
     [self setAssertion:string];
@@ -227,6 +202,16 @@
 - (void)onlogout
 {
     [self didAbortLoad:nil];
+}
+
+#pragma mark - delegates
+
++ (BOOL)isSelectorExcludedFromWebScript:(SEL)selector
+{
+    if (selector == @selector(onlogin:) || selector == @selector(onlogout))
+        return NO;
+
+    return YES;
 }
 
 - (void)webView:(WebView *)sender didCommitLoadForFrame:(WebFrame *)frame
@@ -349,7 +334,27 @@
 }
 #endif
 
-- (void)loadAssertion
+#pragma mark - public
+- init
+{
+    audience = nil;
+    assertion = nil;
+    panel = nil;
+    bidError = BID_S_INTERACT_FAILURE;
+
+    return [super init];
+}
+
+- (void)dealloc
+{
+    [super dealloc];
+
+    [audience release];
+    [assertion release];
+    [panel release];
+}
+
+- (BIDError)loadAssertion
 {
     NSApplication *app = [NSApplication sharedApplication];
     NSURL *baseURL = [NSURL URLWithString:audience];
@@ -358,7 +363,7 @@
 
     if (baseURL == nil) {
         bidError = BID_S_INVALID_AUDIENCE_URN;
-        return;
+        return bidError;
     }
 
     [NSURLProtocol registerClass:[BIDGSSURLProtocol class]];
@@ -377,8 +382,9 @@
     [app runModalForWindow:panel];
     [panel orderOut:nil];
     [NSURLProtocol unregisterClass:[BIDGSSURLProtocol class]];
-}
 
+    return bidError;
+}
 @end
 
 static BIDError
