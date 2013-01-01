@@ -109,6 +109,7 @@
 /* JavaScript called methods */
 - (void)onlogin:(NSString *)string;
 - (void)onlogout;
+- (void)oncancel;
 
 /* helpers */
 - (void)closePanelAndStopModal;
@@ -220,6 +221,11 @@
     [self didAbortLoad:nil];
 }
 
+- (void)oncancel
+{
+    [self didAbortLoad:nil];
+}
+
 #pragma mark - delegates
 
 + (BOOL)isKeyExcludedFromWebScript:(const char *)property
@@ -232,7 +238,9 @@
 
 + (BOOL)isSelectorExcludedFromWebScript:(SEL)selector
 {
-    if (selector == @selector(onlogin:) || selector == @selector(onlogout))
+    if (selector == @selector(onlogin:) ||
+        selector == @selector(onlogout) ||
+        selector == @selector(oncancel))
         return NO;
 
     return YES;
@@ -251,10 +259,13 @@
         NSString *function = @"                                                                             \
             navigator.id.watch({                                                                            \
                 onlogin: function(assertion) { window.AssertionLoader.onlogin_(assertion); },               \
-                onlogout: function() { window.AssertionLoader.onlogout; }                                   \
+                onlogout: function() { window.AssertionLoader.onlogout(); }                                 \
             });                                                                                             \
                                                                                                             \
-            navigator.id.request({siteName: window.AssertionLoader.siteName});  \
+            navigator.id.request({                                                                          \
+                siteName: window.AssertionLoader.siteName,                                                  \
+                oncancel: function() { window.AssertionLoader.oncancel(); }                                 \
+            });                                                                                             \
          ";
 
         [sender stringByEvaluatingJavaScriptFromString:function];
