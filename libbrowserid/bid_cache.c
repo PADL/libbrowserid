@@ -102,10 +102,13 @@ _BIDInitializeCache(
 
     BID_CONTEXT_VALIDATE(context);
 
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
     if (cache->Ops->Initialize == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
-    err = cache->Ops->Initialize(cache->Ops, context, cache->Data, "2013.01.01");
+    err = cache->Ops->Initialize(cache->Ops, context, cache->Data);
 
     return err;
 }
@@ -118,6 +121,9 @@ _BIDDestroyCache(
     BIDError err;
 
     BID_CONTEXT_VALIDATE(context);
+
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
 
     if (cache->Ops->Destroy == NULL)
         return BID_S_NOT_IMPLEMENTED;
@@ -138,6 +144,9 @@ _BIDGetCacheName(
     *pszName = NULL;
 
     BID_CONTEXT_VALIDATE(context);
+
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
 
     if (cache->Ops->GetName == NULL)
         return BID_S_NOT_IMPLEMENTED;
@@ -160,6 +169,9 @@ _BIDGetCacheObject(
 
     BID_CONTEXT_VALIDATE(context);
 
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
     if (cache->Ops->GetObject == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
@@ -179,6 +191,9 @@ _BIDSetCacheObject(
 
     BID_CONTEXT_VALIDATE(context);
 
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
     if (cache->Ops->SetObject == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
@@ -196,6 +211,9 @@ _BIDRemoveCacheObject(
     BIDError err;
 
     BID_CONTEXT_VALIDATE(context);
+
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
 
     if (cache->Ops->RemoveObject == NULL)
         return BID_S_NOT_IMPLEMENTED;
@@ -217,7 +235,8 @@ _BIDGetCacheLastChangedTime(
 
     BID_CONTEXT_VALIDATE(context);
 
-    err = BID_S_NOT_IMPLEMENTED;
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
 
     if (cache->Ops->GetLastChangedTime == NULL)
         return BID_S_NOT_IMPLEMENTED;
