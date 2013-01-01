@@ -33,7 +33,8 @@ int main(int argc, const char *argv[])
     time_t expires;
     json_t *j = NULL;
 
-    uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_GSS;
+    uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT |
+                       BID_CONTEXT_GSS | BID_CONTEXT_ASSERTION_CACHE | BID_CONTEXT_AUTHORITY_CACHE;
 
 #ifndef BUILD_AS_DSO
     if (argc > 1 && !strcmp(argv[1], "-remote")) {
@@ -43,6 +44,16 @@ int main(int argc, const char *argv[])
     }
     if (argc > 1 && !strcmp(argv[1], "-nogss")) {
         options &= ~(BID_CONTEXT_GSS);
+        argc--;
+        argv++;
+    }
+    if (argc > 1 && !strcmp(argv[1], "-nocache")) {
+        options &= ~(BID_CONTEXT_ASSERTION_CACHE);
+        argc--;
+        argv++;
+    }
+    if (argc > 1 && !strcmp(argv[1], "-noauthoritycache")) {
+        options &= ~(BID_CONTEXT_AUTHORITY_CACHE);
         argc--;
         argv++;
     }
@@ -56,7 +67,8 @@ int main(int argc, const char *argv[])
     err = BIDAcquireContext(options, &context);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDBrowserGetAssertion(context, audience ? audience : "gss://host.www.browserid.org.", &assertion);
+    err = BIDAcquireAssertion(context, "host/www.browserid.org", NULL, 0,
+                              &assertion, NULL, &expires);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDVerifyAssertion(context, assertion, audience ? audience : "host/www.browserid.org",

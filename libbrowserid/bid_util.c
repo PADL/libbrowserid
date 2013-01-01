@@ -34,6 +34,36 @@ _BIDDuplicateString(
 }
 
 BIDError
+_BIDJsonBinaryValue(
+    BIDContext context,
+    unsigned char *pbData,
+    size_t cbData,
+    json_t **pJson)
+{
+    BIDError err;
+    char *szData;
+    size_t len;
+    json_t *json;
+
+    *pJson = NULL;
+
+    err = _BIDBase64UrlEncode(pbData, cbData, &szData, &len);
+    if (err != BID_S_OK)
+        return err;
+
+    json = json_string(szData);
+    if (json == NULL) {
+        BIDFree(szData);
+        return BID_S_NO_MEMORY;
+    }
+
+    *pJson = json;
+    BIDFree(szData);
+
+    return BID_S_OK;
+}
+
+BIDError
 _BIDEncodeJson(
     BIDContext context,
     json_t *jData,
@@ -290,6 +320,11 @@ struct BIDCurlBufferDesc {
     size_t Size;
 };
 
+struct BIDCurlHeaderDesc {
+    time_t Date;
+    time_t Expires;
+};
+
 static size_t
 _BIDCurlWriteCB(void *ptr, size_t size, size_t nmemb, void *stream)
 {
@@ -319,9 +354,24 @@ _BIDCurlWriteCB(void *ptr, size_t size, size_t nmemb, void *stream)
     return size * nmemb;
 }
 
+static size_t
+_BIDCurlHeaderCB(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+    struct BIDCurlHeaderDesc *headers = (struct BIDCurlHeaderDesc *)stream;
+    const char *s = (const char *)ptr;
+
+    if (strncmp(s, "Date: ", 6) == 0)
+        headers->Date = curl_getdate(&s[6], NULL);
+    else if (strncmp(s, "Expires: ", 9) == 0)
+        headers->Expires = curl_getdate(&s[9], NULL);
+
+    return size * nmemb;
+}
+
 static BIDError
 _BIDInitCurlHandle(
     BIDContext context,
+    struct BIDCurlHeaderDesc *headers,
     struct BIDCurlBufferDesc *buffer,
     CURL **pCurlHandle)
 {
@@ -345,6 +395,14 @@ _BIDInitCurlHandle(
     cc = curl_easy_setopt(curlHandle, CURLOPT_VERBOSE, 1);
     BID_BAIL_ON_ERROR(cc);
 #endif
+
+    if (headers != NULL) {
+        cc = curl_easy_setopt(curlHandle, CURLOPT_HEADERFUNCTION, _BIDCurlHeaderCB);
+        BID_BAIL_ON_ERROR(cc);
+
+        cc = curl_easy_setopt(curlHandle, CURLOPT_HEADERDATA, headers);
+        BID_BAIL_ON_ERROR(cc);
+    }
 
     cc = curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, _BIDCurlWriteCB);
     BID_BAIL_ON_ERROR(cc);
@@ -457,13 +515,17 @@ _BIDRetrieveDocument(
     const char *szHostname,
     const char *szRelativeUrl,
     time_t tIfModifiedSince,
-    json_t **pJsonDoc)
+    json_t **pJsonDoc,
+    time_t *pExpiryTime)
 {
     BIDError err;
     CURL *curlHandle = NULL;
+    struct BIDCurlHeaderDesc headers = { 0 };
     struct BIDCurlBufferDesc buffer = { NULL };
 
     *pJsonDoc = NULL;
+    if (pExpiryTime != NULL)
+        *pExpiryTime = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -475,7 +537,7 @@ _BIDRetrieveDocument(
         goto cleanup;
     }
 
-    err = _BIDInitCurlHandle(context, &buffer, &curlHandle);
+    err = _BIDInitCurlHandle(context, &headers, &buffer, &curlHandle);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetCurlCompositeUrl(context, curlHandle, szHostname, szRelativeUrl);
@@ -486,6 +548,13 @@ _BIDRetrieveDocument(
 
     err = _BIDMakeHttpRequest(context, &buffer, curlHandle, pJsonDoc);
     BID_BAIL_ON_ERROR(err);
+
+    if (pExpiryTime != NULL) {
+        if (headers.Expires != 0)
+            *pExpiryTime = headers.Expires;
+        else
+            *pExpiryTime = headers.Date + 60 * 60 * 24;
+    }
 
 cleanup:
     curl_easy_cleanup(curlHandle);
@@ -517,7 +586,7 @@ _BIDPostDocument(
         goto cleanup;
     }
 
-    err = _BIDInitCurlHandle(context, &buffer, &curlHandle);
+    err = _BIDInitCurlHandle(context, NULL, &buffer, &curlHandle);
     BID_BAIL_ON_ERROR(err);
 
     err = CURLcodeToBIDError(curl_easy_setopt(curlHandle, CURLOPT_URL, szUrl));
@@ -628,6 +697,8 @@ const char *_BIDErrorTable[] = {
     "Invalid cache version",
     "Cache scheme unknown",
     "Cache already exists",
+    "Cache not found",
+    "Cache key not found",
     "Unknown error code"
 };
 
@@ -895,6 +966,42 @@ cleanup:
     if (err != BID_S_OK)
         BIDFree(szPackedAudience);
     BIDFree(szEncodedChannelBindings);
+
+    return err;
+}
+
+BIDError
+BIDAcquireAssertionFromString(
+    BIDContext context,
+    const char *szAssertion,
+    BIDIdentity *pAssertedIdentity,
+    time_t *ptExpiryTime)
+{
+    BIDError err;
+    BIDBackedAssertion backedAssertion = NULL;
+
+    if (pAssertedIdentity != NULL)
+        *pAssertedIdentity = NULL;
+    if (ptExpiryTime != NULL)
+        *ptExpiryTime = 0;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
+    BID_BAIL_ON_ERROR(err);
+
+    if (pAssertedIdentity != NULL) {
+        err = _BIDPopulateIdentity(context, backedAssertion, pAssertedIdentity);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    err = BID_S_OK;
+
+    if (ptExpiryTime != NULL)
+        *ptExpiryTime = json_integer_value(json_object_get(backedAssertion->Assertion->Payload, "exp"));
+
+cleanup:
+    _BIDReleaseBackedAssertion(context, backedAssertion);
 
     return err;
 }

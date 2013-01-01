@@ -17,30 +17,51 @@ _BIDSecondaryAuthorities[] = {
 };
 
 BIDError
+_BIDAcquireDefaultAuthorityCache(BIDContext context)
+{
+    BIDError err;
+
+    err = _BIDAcquireCache(context, ".browserid_authorities.json", &context->AuthorityCache);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    return err;
+}
+
+BIDError
 _BIDAcquireAuthority(
     BIDContext context,
     const char *szHostname,
     BIDAuthority *pAuthority)
 {
-    BIDError err;
+    BIDError err = BID_S_CACHE_NOT_FOUND;
     json_t *authority = NULL;
+    time_t expiryTime = 0;
 
     *pAuthority = NULL;
 
     BID_CONTEXT_VALIDATE(context);
 
-    authority = json_object_get(context->AuthorityCache, szHostname);
-    if (authority != NULL) {
-        json_incref(authority);
-        err = BID_S_OK;
-    } else { 
-        err = _BIDRetrieveDocument(context, szHostname, BID_WELL_KNOWN_URL, 0, &authority);
+    if (context->ContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
+        err = _BIDGetCacheObject(context, context->AuthorityCache, szHostname, &authority);
+        if (err == BID_S_OK) {
+            expiryTime = json_integer_value(json_object_get(authority, "expires"));
+            if (expiryTime != 0 && expiryTime < time(NULL))
+                err = BID_S_EXPIRED_CERT;
+        }
+    }
+
+    if (err != BID_S_OK) {
+        err = _BIDRetrieveDocument(context, szHostname, BID_WELL_KNOWN_URL, 0, &authority, &expiryTime);
         BID_BAIL_ON_ERROR(err);
 
-        if (json_object_set(context->AuthorityCache, szHostname, authority) < 0) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        if (expiryTime != 0)
+            json_object_set_new(authority, "expires", json_integer(expiryTime));
+
+        json_dumpf(authority, stdout, JSON_INDENT(4));
+
+        if (context->ContextOptions & BID_CONTEXT_AUTHORITY_CACHE)
+            _BIDSetCacheObject(context, context->AuthorityCache, szHostname, authority);
     }
 
     *pAuthority = authority;

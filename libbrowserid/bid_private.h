@@ -36,15 +36,6 @@
 extern "C" {
 #endif
 
-struct BIDContextDesc {
-    uint32_t ContextOptions;
-    json_error_t JsonError;
-    char *VerifierUrl;
-    json_t *AuthorityCache;
-    uint32_t MaxDelegations;
-    uint32_t Skew;
-};
-
 #define BIDCalloc                   calloc
 #define BIDMalloc                   malloc
 #define BIDFree                     free
@@ -70,6 +61,29 @@ struct BIDContextDesc {
     } while (0)
 
 /*
+ * bid_acache.c
+ */
+BIDError
+_BIDAcquireDefaultAssertionCache(
+    BIDContext context);
+
+BIDError
+_BIDGetCachedAssertion(
+    BIDContext context,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    char **pAssertion);
+
+BIDError
+_BIDCacheAssertion(
+    BIDContext context,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    const char *pAssertion);
+
+/*
  * bid_authority.c
  */
 #define BID_WELL_KNOWN_URL          "/.well-known/browserid"
@@ -88,6 +102,10 @@ struct BIDContextDesc {
 typedef json_t *BIDAuthority;
 typedef json_t *BIDJWK;
 typedef json_t *BIDJWKSet;
+
+BIDError
+_BIDAcquireDefaultAuthorityCache(
+    BIDContext context);
 
 BIDError
 _BIDAcquireAuthority(
@@ -134,7 +152,7 @@ struct BIDCacheOps {
     BIDError (*Acquire)(struct BIDCacheOps *, BIDContext, void **, const char *);
     BIDError (*Release)(struct BIDCacheOps *, BIDContext, void *);
 
-    BIDError (*Initialize)(struct BIDCacheOps *, BIDContext, void *, const char *version);
+    BIDError (*Initialize)(struct BIDCacheOps *, BIDContext, void *);
     BIDError (*Destroy)(struct BIDCacheOps *, BIDContext, void *);
 
     BIDError (*GetName)(struct BIDCacheOps *, BIDContext, void *, const char **);
@@ -201,19 +219,18 @@ _BIDGetCacheLastChangedTime(
     BIDCache cache,
     time_t *ptLastChanged);
 
-BIDError
-_BIDCacheLock(
-    BIDContext context,
-    BIDCache cache);
-
-BIDError
-_BIDCacheUnlock(
-    BIDContext context,
-    BIDCache cache);
-
 /*
  * bid_context.c
  */
+struct BIDContextDesc {
+    uint32_t ContextOptions;
+    json_error_t JsonError;
+    char *VerifierUrl;
+    uint32_t MaxDelegations;
+    uint32_t Skew;
+    BIDCache AuthorityCache;
+    BIDCache AssertionCache;
+};
 
 /*
  * bid_fcache.c
@@ -278,6 +295,12 @@ struct BIDIdentityDesc {
 };
 
 BIDError
+_BIDValidateExpiry(
+    BIDContext context,
+    time_t verificationTime,
+    json_t *assertion);
+
+BIDError
 _BIDVerifyLocal(
     BIDContext context,
     const char *szAssertion,
@@ -305,6 +328,13 @@ _BIDVerifyRemote(
 /*
  * bid_util.c
  */
+BIDError
+_BIDJsonBinaryValue(
+    BIDContext context,
+    unsigned char *pbData,
+    size_t cbData,
+    json_t **pJson);
+
 BIDError
 _BIDGetJsonStringValue(
     BIDContext context,
@@ -363,7 +393,8 @@ _BIDRetrieveDocument(
     const char *szHostname,
     const char *szRelativeUrl,
     time_t tIfModifiedSince,
-    json_t **pJsonDoc);
+    json_t **pJsonDoc,
+    time_t *pExpiryTime);
 
 BIDError
 _BIDPostDocument(

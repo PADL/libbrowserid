@@ -48,13 +48,13 @@ _BIDValidateCertIssuer(
     return err;
 }
 
-static BIDError
+BIDError
 _BIDValidateExpiry(
     BIDContext context,
     time_t verificationTime,
-    BIDJWT jwt)
+    json_t *assertion)
 {
-    time_t expiryTime = json_integer_value(json_object_get(jwt->Payload, "exp"));
+    time_t expiryTime = json_integer_value(json_object_get(assertion, "exp"));
     uint32_t skew;
 
     BIDGetContextParam(context, BID_PARAM_SKEW, (void **)&skew);
@@ -98,7 +98,7 @@ _BIDValidateCertChain(
     for (i = 0; i < backedAssertion->cCertificates; i++) {
         BIDJWT cert = backedAssertion->rCertificates[i];
 
-        err = _BIDValidateExpiry(context, verificationTime, cert);
+        err = _BIDValidateExpiry(context, verificationTime, cert->Payload);
         BID_BAIL_ON_ERROR(err);
 
         /* XXX collate some attributes into identity object? */
@@ -169,7 +169,7 @@ _BIDVerifyLocal(
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDValidateExpiry(context, verificationTime, backedAssertion->Assertion);
+    err = _BIDValidateExpiry(context, verificationTime, backedAssertion->Assertion->Payload);
     BID_BAIL_ON_ERROR(err);
 
     /* Only allow one certificate for now */

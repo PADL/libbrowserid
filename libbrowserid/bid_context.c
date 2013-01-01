@@ -11,27 +11,48 @@ BIDAcquireContext(
     uint32_t ulContextOptions,
     BIDContext *pContext)
 {
-    BIDContext context;
+    BIDError err;
+    BIDContext context = NULL;
 
     *pContext = BID_C_NO_CONTEXT;
 
     context = BIDCalloc(1, sizeof(*context));
-    if (context == NULL)
-        return BID_S_NO_MEMORY;
+    if (context == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     context->ContextOptions = ulContextOptions;
     context->MaxDelegations = 6;
 
-    if (ulContextOptions & BID_CONTEXT_RP) {
-        context->AuthorityCache = json_object();
-        if (context->AuthorityCache == NULL) {
-            BIDReleaseContext(context);
-            return BID_S_NO_MEMORY;
+    if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
+        if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
+            err = BID_S_INVALID_PARAMETER;
+            goto cleanup;
         }
+
+        err = _BIDAcquireDefaultAuthorityCache(context);
+        BID_BAIL_ON_ERROR(err);
     }
 
+    if (ulContextOptions & BID_CONTEXT_ASSERTION_CACHE) {
+        if ((ulContextOptions & BID_CONTEXT_USER_AGENT) == 0) {
+            err = BID_S_INVALID_PARAMETER;
+            goto cleanup;
+        }
+
+        err = _BIDAcquireDefaultAssertionCache(context);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    err = BID_S_OK;
     *pContext = context;
-    return BID_S_OK;
+
+cleanup:
+    if (err != BID_S_OK)
+        BIDReleaseContext(context);
+
+    return err;
 }
 
 BIDError
@@ -41,7 +62,8 @@ BIDReleaseContext(BIDContext context)
         return BID_S_NO_CONTEXT;
 
     BIDFree(context->VerifierUrl);
-    json_decref(context->AuthorityCache);
+    _BIDReleaseCache(context, context->AuthorityCache);
+    _BIDReleaseCache(context, context->AssertionCache);
 
     memset(context, 0, sizeof(*context));
     BIDFree(context);
@@ -69,6 +91,30 @@ BIDSetContextParam(
     case BID_PARAM_SKEW:
         context->Skew = *(uint32_t *)value;
         break;
+    case BID_PARAM_AUTHORITY_CACHE:
+    case BID_PARAM_ASSERTION_CACHE: {
+        const char *szCacheName;
+        BIDCache cache, *pCache;
+
+        if (ulParam == BID_PARAM_AUTHORITY_CACHE)
+            pCache = &context->AuthorityCache;
+        else
+            pCache = &context->AssertionCache;
+
+        err = _BIDGetCacheName(context, *pCache, &szCacheName);
+        if (err != BID_S_OK)
+            return err;
+
+        if (strcmp(szCacheName, (const char *)value) == 0)
+            break;
+
+        err = _BIDAcquireCache(context, (const char *)value, &cache);
+        if (err == BID_S_OK) {
+            _BIDReleaseCache(context, context->AssertionCache);
+            *pCache = cache;
+        }
+        break;
+    }
     default:
         err = BID_S_INVALID_PARAMETER;
         break;
@@ -108,6 +154,11 @@ BIDGetContextParam(
     case BID_PARAM_CONTEXT_OPTIONS:
         *((uint32_t *)pValue) = context->ContextOptions;
         break;
+    case BID_PARAM_ASSERTION_CACHE:
+        err = _BIDGetCacheName(context, context->AssertionCache, (const char **)pValue);
+        break;
+    case BID_PARAM_AUTHORITY_CACHE:
+        err = _BIDGetCacheName(context, context->AuthorityCache, (const char **)pValue);
     default:
         err = BID_S_INVALID_PARAMETER;
         break;

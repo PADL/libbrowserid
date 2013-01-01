@@ -1,6 +1,7 @@
 AUTOMAKE_OPTIONS = foreign
 
 libbrowserid_la_SOURCES =   \
+    bid_acache.c            \
     bid_authority.c         \
     bid_base64.c            \
     bid_cache.c             \

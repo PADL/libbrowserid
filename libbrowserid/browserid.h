@@ -72,6 +72,8 @@ typedef enum {
     BID_S_CACHE_INVALID_VERSION,
     BID_S_CACHE_SCHEME_UNKNOWN,
     BID_S_CACHE_ALREADY_EXISTS,
+    BID_S_CACHE_NOT_FOUND,
+    BID_S_CACHE_KEY_NOT_FOUND,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -103,7 +105,7 @@ typedef struct BIDContextDesc *BIDContext;
 /*
  * Context uses persistent authority cache.
  */
-#define BID_CONTEXT_PERSIST_AUTH_CACHE  0x00000008
+#define BID_CONTEXT_AUTHORITY_CACHE     0x00000008
 
 /*
  * Context is for GSS, required for channel binding support.
@@ -114,6 +116,11 @@ typedef struct BIDContextDesc *BIDContext;
  * Use assertion cache.
  */
 #define BID_CONTEXT_ASSERTION_CACHE     0x00000020
+
+/*
+ * Disable interaction with user.
+ */
+#define BID_USER_INTERACTION_DISABLED   0x00000040
 
 /*
  * Context management.
@@ -132,6 +139,7 @@ BIDReleaseContext(BIDContext context);
 #define BID_PARAM_SKEW                  0x00000006
 #define BID_PARAM_CONTEXT_OPTIONS       0x00000007
 #define BID_PARAM_ASSERTION_CACHE       0x00000008
+#define BID_PARAM_AUTHORITY_CACHE       0x00000009
 
 BIDError
 BIDSetContextParam(BIDContext context, uint32_t ulParam, void *value);
@@ -146,14 +154,14 @@ typedef struct BIDIdentityDesc *BIDIdentity;
  * User agent.
  */
 BIDError
-BIDAcquireAssertion(
+BIDAcquireAssertionFromString(
     BIDContext context,
     const char *szAssertion,
     BIDIdentity *pAssertedIdentity,
     time_t *pExpiryTime);
 
 BIDError
-BIDAcquireAssertionInteractive(
+BIDAcquireAssertion(
     BIDContext context,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,

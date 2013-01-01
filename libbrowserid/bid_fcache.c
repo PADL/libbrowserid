@@ -182,6 +182,9 @@ _BIDFileCacheOpen(
     fd = open(fc->Name, flags, mode);
     if (fd < 0) {
         switch (errno) {
+        case ENOENT:
+            err = BID_S_CACHE_NOT_FOUND;
+            break;
         case EPERM:
             err = BID_S_CACHE_PERMISSION_DENIED;
             break;
@@ -324,7 +327,9 @@ _BIDFileCacheStore(
 
     cchJson = strlen(szJson);
 
-    cbWritten = write(fd, szJson, cchJson + 1);
+    cbWritten = write(fd, szJson, cchJson);
+    if (cbWritten == cchJson)
+        cbWritten += write(fd, "\n", 1);
 
     BIDFree(szJson);
 
@@ -339,19 +344,43 @@ _BIDFileCacheLoad(
     int fd,
     json_t **pData)
 {
+    FILE *fp;
     json_t *data;
-    ssize_t cbRead = 0;
-    char bJson[BUFSIZ]; /* XXX */
+    int fd2; /* lazy */
 
-    *pData = NULL;
-
-    do {
-        cbRead = read(fd, bJson, sizeof(bJson) - cbRead);
-    } while (cbRead < 0 && errno == EINTR);
-   
-    data = json_loads(bJson, 0, &context->JsonError);
-    if (data == NULL)
+    fd2 = fcntl(fd, F_DUPFD, 0);
+    if (fd2 < 0)
         return BID_S_CACHE_READ_ERROR;
+   
+    fp = fdopen(fd2, "r");
+    if (fp == NULL) {
+        close(fd2);
+        return BID_S_CACHE_READ_ERROR;
+    }
+
+    data = json_loadf(fp, 0, &context->JsonError);
+
+    *pData = data;
+
+    fclose(fp);
+    return (data == NULL) ? BID_S_CACHE_READ_ERROR : BID_S_OK;
+}
+
+static BIDError
+_BIDFileCacheNew(
+    struct BIDCacheOps *ops,
+    BIDContext context,
+    struct BIDFileCache *fc,
+    json_t **pData)
+{
+    json_t *data = NULL;
+
+    data = json_object();
+    if (data == NULL ||
+        json_object_set_new(data, "v", json_string("2013.01.01")) < 0 ||
+        json_object_set_new(data, "d", json_object()) < 0) {
+        return BID_S_NO_MEMORY;
+    }
 
     *pData = data;
 
@@ -362,8 +391,7 @@ static BIDError
 _BIDFileCacheInitialize(
     struct BIDCacheOps *ops,
     BIDContext context,
-    void *cache,
-    const char *version)
+    void *cache)
 {
     BIDError err, err2;
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
@@ -374,13 +402,8 @@ _BIDFileCacheInitialize(
     if (fc == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    data = json_object();
-    if (data == NULL ||
-        json_object_set_new(data, "v", json_string(version)) < 0 ||
-        json_object_set_new(data, "d", json_object())) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDFileCacheNew(ops, context, fc, &data);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDFileCacheOpen(ops, context, fc, flags, 0600, &fd);
     BID_BAIL_ON_ERROR(err);
@@ -406,13 +429,15 @@ _BIDFileCacheRead(
 {
     BIDError err;
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
+    const char *version;
 
     *pData = NULL;
 
     err = _BIDFileCacheLoad(ops, context, fc, fd, pData);
     BID_BAIL_ON_ERROR(err);
 
-    if (json_string_value(json_object_get(*pData, "v")) == NULL) {
+    version = json_string_value(json_object_get(*pData, "v"));
+    if (version == NULL || strcmp(version, "2013.01.01") != 0) {
         err = BID_S_CACHE_INVALID_VERSION;
         goto cleanup;
     }
@@ -580,7 +605,7 @@ _BIDFileCacheGetObject(
     *val = json_incref(json_object_get(d, key));
 
     if (*val == NULL)
-        err = BID_S_UNKNOWN_JSON_KEY;
+        err = BID_S_CACHE_KEY_NOT_FOUND;
     else
         err = BID_S_OK;
 
@@ -605,18 +630,20 @@ _BIDFileCacheSetOrRemoveObject(
     json_t *data = NULL, *d;
     int fd = -1;
 
-    if (fc == NULL) {
+    if (fc == NULL || (val == NULL && !remove)) {
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
     }
 
-    err = _BIDFileCacheOpen(ops, context, fc, O_RDWR | O_CLOEXEC, 0600, &fd);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDFileCacheRead(ops, context, cache, fd, &data);
+    err = _BIDFileCacheOpen(ops, context, fc, O_RDWR | O_CREAT | O_CLOEXEC, 0600, &fd);
+    if (err == BID_S_OK)
+        err = _BIDFileCacheRead(ops, context, cache, fd, &data);
+    if (err == BID_S_CACHE_NOT_FOUND || err == BID_S_CACHE_READ_ERROR)
+        err = _BIDFileCacheNew(ops, context, fc, &data);
     BID_BAIL_ON_ERROR(err);
 
     d = json_object_get(data, "d");
+    BID_ASSERT(d != NULL);
 
     if ((remove ? json_object_del(d, key) : json_object_set(d, key, val)) < 0) {
         err = BID_S_NO_MEMORY;
@@ -690,7 +717,7 @@ _BIDFileCacheFirstObject(
 
     fc->Iterator = json_object_iter(d);
     if (fc->Iterator == NULL) {
-        err = BID_S_UNKNOWN_JSON_KEY;
+        err = BID_S_CACHE_KEY_NOT_FOUND;
         goto cleanup;
     }
 
