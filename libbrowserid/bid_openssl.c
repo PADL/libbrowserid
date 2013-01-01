@@ -4,6 +4,8 @@
  * Use is subject to license.
  */
 
+#include "bid_private.h"
+
 #include <openssl/obj_mac.h>
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
@@ -459,3 +461,105 @@ cleanup:
 
     return err;
 }
+
+BIDError
+_BIDDigestAssertion(
+    BIDContext context,
+    const char *szAssertion,
+    unsigned char *digest,
+    size_t *digestLength)
+{
+    const EVP_MD *md = EVP_sha256();
+    EVP_MD_CTX mdCtx;
+    unsigned int mdLength = *digestLength;
+
+    if (*digestLength < EVP_MD_size(md))
+        return BID_S_BUFFER_TOO_SMALL;
+
+    EVP_DigestInit(&mdCtx, md);
+    EVP_DigestUpdate(&mdCtx, szAssertion, strlen(szAssertion));
+    EVP_DigestFinal(&mdCtx, digest, &mdLength);
+
+    *digestLength = mdLength;
+
+    return BID_S_OK;
+}
+
+struct BIDJWTAlgorithmDesc
+_BIDJWTAlgorithms[] = {
+#if 0
+    {
+        "RS512",
+        "RSA",
+        0,
+        (const unsigned char *)"\x30\x51\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x40",
+        19,
+        _RSAMakeSignature,
+        _RSAVerifySignature,
+        _RSAKeySize,
+    },
+    {
+        "RS384",
+        "RSA",
+        0,
+        (const unsigned char *)"\x30\x41\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x30",
+        19,
+        _RSAMakeSignature,
+        _RSAVerifySignature,
+        _RSAKeySize,
+    },
+#endif
+    {
+        "RS256",
+        "RSA",
+        0,
+        (const unsigned char *)"\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x20",
+        19,
+        _RSAMakeSignature,
+        _RSAVerifySignature,
+        _RSAKeySize,
+    },
+    {
+        "RS128",
+        "RSA",
+        0,
+        (const unsigned char *)"\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x20",
+        19,
+        _RSAMakeSignature,
+        _RSAVerifySignature,
+        _RSAKeySize,
+    },
+    {
+        "RS64",
+        "RSA",
+        0,
+        (const unsigned char *)"\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x20",
+        19,
+        _RSAMakeSignature,
+        _RSAVerifySignature,
+        _RSAKeySize,
+    },
+    {
+        "DS256",
+        "DSA",
+        256,
+        NULL,
+        0,
+        _DSAMakeSignature,
+        _DSAVerifySignature,
+        _DSAKeySize,
+    },
+    {
+        "DS128",
+        "DSA",
+        160,
+        NULL,
+        0,
+        _DSAMakeSignature,
+        _DSAVerifySignature,
+        _DSAKeySize,
+    },
+    {
+        NULL
+    },
+};

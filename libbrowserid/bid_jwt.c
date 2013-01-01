@@ -12,95 +12,6 @@
  * that the payload be valid JSON. It's enough to support BrowserID.
  */
 
-typedef struct BIDJWTAlgorithmDesc {
-    const char *szAlgID;
-    const char *szKeyAlgID;
-    size_t cbKey;
-    const unsigned char *pbOid;
-    size_t cbOid;
-    BIDError (*MakeSignature)(struct BIDJWTAlgorithmDesc *, BIDContext, BIDJWT, BIDJWK);
-    BIDError (*VerifySignature)(struct BIDJWTAlgorithmDesc *, BIDContext, BIDJWT, BIDJWK, int *);
-    BIDError (*KeySize)(struct BIDJWTAlgorithmDesc *desc, BIDContext, BIDJWK, size_t *);
-} *BIDJWTAlgorithm;
-
-#include "bid_openssl.c"
-
-static struct BIDJWTAlgorithmDesc
-_BIDJWTAlgorithms[] = {
-#if 0
-    {
-        "RS512",
-        "RSA",
-        0,
-        (const unsigned char *)"\x30\x51\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x40",
-        19,
-        _RSAMakeSignature,
-        _RSAVerifySignature,
-        _RSAKeySize,
-    },
-    {
-        "RS384",
-        "RSA",
-        0,
-        (const unsigned char *)"\x30\x41\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x30",
-        19,
-        _RSAMakeSignature,
-        _RSAVerifySignature,
-        _RSAKeySize,
-    },
-#endif
-    {
-        "RS256",
-        "RSA",
-        0,
-        (const unsigned char *)"\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x20",
-        19,
-        _RSAMakeSignature,
-        _RSAVerifySignature,
-        _RSAKeySize,
-    },
-    {
-        "RS128",
-        "RSA",
-        0,
-        (const unsigned char *)"\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x20",
-        19,
-        _RSAMakeSignature,
-        _RSAVerifySignature,
-        _RSAKeySize,
-    },
-    {
-        "RS64",
-        "RSA",
-        0,
-        (const unsigned char *)"\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x20",
-        19,
-        _RSAMakeSignature,
-        _RSAVerifySignature,
-        _RSAKeySize,
-    },
-    {
-        "DS256",
-        "DSA",
-        256,
-        NULL,
-        0,
-        _DSAMakeSignature,
-        _DSAVerifySignature,
-        _DSAKeySize,
-    },
-    {
-        "DS128",
-        "DSA",
-        160,
-        NULL,
-        0,
-        _DSAMakeSignature,
-        _DSAVerifySignature,
-        _DSAKeySize,
-    },
-};
-
 static int
 _BIDKeyMatchesP(
     BIDContext context,
@@ -352,7 +263,7 @@ _BIDMakeSignature(
 
     err = BID_S_UNKNOWN_ALGORITHM;
 
-    for (i = 0; i < sizeof(_BIDJWTAlgorithms) / sizeof(_BIDJWTAlgorithms[0]); i++) {
+    for (i = 0; _BIDJWTAlgorithms[i].szAlgID != NULL; i++) {
         alg = &_BIDJWTAlgorithms[i];
 
         err = _BIDFindKeyInKeyset(context, alg, keyset, &key);
@@ -440,7 +351,7 @@ _BIDVerifySignature(
 
     err = BID_S_UNKNOWN_ALGORITHM;
 
-    for (i = 0; i < sizeof(_BIDJWTAlgorithms) / sizeof(_BIDJWTAlgorithms[0]); i++) {
+    for (i = 0; _BIDJWTAlgorithms[i].szAlgID != NULL; i++) {
         alg = &_BIDJWTAlgorithms[i];
 
         if (strcmp(alg->szAlgID, sigAlg) == 0) {

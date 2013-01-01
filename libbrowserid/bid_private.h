@@ -61,29 +61,6 @@ extern "C" {
     } while (0)
 
 /*
- * bid_acache.c
- */
-BIDError
-_BIDAcquireDefaultAssertionCache(
-    BIDContext context);
-
-BIDError
-_BIDGetCachedAssertion(
-    BIDContext context,
-    const char *szAudienceOrSpn,
-    const unsigned char *pbChannelBindings,
-    size_t cbChannelBindings,
-    char **pAssertion);
-
-BIDError
-_BIDCacheAssertion(
-    BIDContext context,
-    const char *szAudienceOrSpn,
-    const unsigned char *pbChannelBindings,
-    size_t cbChannelBindings,
-    const char *pAssertion);
-
-/*
  * bid_authority.c
  */
 #define BID_WELL_KNOWN_URL          "/.well-known/browserid"
@@ -243,7 +220,7 @@ struct BIDContextDesc {
     uint32_t MaxDelegations;
     uint32_t Skew;
     BIDCache AuthorityCache;
-    BIDCache AssertionCache;
+    BIDCache ReplayCache;
 };
 
 /*
@@ -263,6 +240,17 @@ typedef struct BIDJWTDesc {
     unsigned char *Signature;
     size_t SignatureLength;
 } *BIDJWT;
+
+typedef struct BIDJWTAlgorithmDesc {
+    const char *szAlgID;
+    const char *szKeyAlgID;
+    size_t cbKey;
+    const unsigned char *pbOid;
+    size_t cbOid;
+    BIDError (*MakeSignature)(struct BIDJWTAlgorithmDesc *, BIDContext, BIDJWT, BIDJWK);
+    BIDError (*VerifySignature)(struct BIDJWTAlgorithmDesc *, BIDContext, BIDJWT, BIDJWK, int *);
+    BIDError (*KeySize)(struct BIDJWTAlgorithmDesc *desc, BIDContext, BIDJWK, size_t *);
+} *BIDJWTAlgorithm;
 
 int
 _BIDIsLegacyJWK(BIDContext context, BIDJWK jwt);
@@ -324,6 +312,18 @@ _BIDVerifyLocal(
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime);
+
+/*
+ * bid_openssl.c
+ */
+extern struct BIDJWTAlgorithmDesc _BIDJWTAlgorithms[];
+
+BIDError
+_BIDDigestAssertion(
+    BIDContext context,
+    const char *szAssertion,
+    unsigned char *digest,
+    size_t *digestLength);
 
 /*
  * bid_remote.c
@@ -463,6 +463,23 @@ _BIDGuessEncoding(
     const char *value,
     BIDEncoding *pEncoding);
 #endif
+
+/*
+ * bid_rcache.c
+ */
+BIDError
+_BIDAcquireDefaultReplayCache(
+    BIDContext context);
+
+BIDError
+_BIDCheckReplayCache(
+    BIDContext context,
+    const char *szAssertion);
+
+BIDError
+_BIDUpdateReplayCache(
+    BIDContext context,
+    const char *pAssertion);
 
 /*
  * bid_verifier.c
