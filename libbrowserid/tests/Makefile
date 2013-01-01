@@ -1,4 +1,4 @@
-all: bid_sig bid_vfy bid_doc bid_acq bid_b64 bid_acq.so bid_acq_ldr
+all: bid_sig bid_vfy bid_doc bid_acq bid_b64 bid_acq.so bid_acq_ldr bid_fct
 
 bid_sig: bid_sig.c ../libbrowserid.la
 	clang -I../.. -I.. -g -Wall -o bid_sig bid_sig.c -lcrypto -L../.libs -lbrowserid -L/usr/local/lib -ljansson -lcurl
@@ -23,6 +23,9 @@ bid_acq_ldr: bid_acq_ldr.c
 bid_b64: bid_b64.c ../libbrowserid.la
 	clang -I../.. -I.. -g -Wall -o bid_b64 bid_b64.c -lcrypto -L../.libs -lbrowserid -L/usr/local/lib -ljansson -lcurl -framework WebKit -framework AppKit
 
+bid_fct: bid_fct.c ../libbrowserid.la
+	clang -I../.. -I.. -g -Wall -o bid_fct bid_fct.c -lcrypto -L../.libs -lbrowserid -L/usr/local/lib -ljansson -lcurl -framework WebKit -framework AppKit
+
 clean:
-	rm -f bid_sig bid_vfy bid_doc bid_acq bid_b64 bid_acq_ldr bid_acq.so
+	rm -f bid_sig bid_vfy bid_doc bid_acq bid_b64 bid_acq_ldr bid_acq.so bid_fct
 

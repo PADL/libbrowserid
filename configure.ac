@@ -15,7 +15,7 @@ dnl AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_OBJC
 AC_CONFIG_HEADERS([config.h])
-AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h)
+AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h fcntl.h)
 AC_REPLACE_FUNCS(vasprintf)
 
 dnl Check if we're on Solaris and set CFLAGS accordingly

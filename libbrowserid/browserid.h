@@ -59,6 +59,19 @@ typedef enum {
     BID_S_INTERACT_FAILURE,
     BID_S_INVALID_AUDIENCE_URN,
     BID_S_INVALID_JSON_WEB_TOKEN,
+    BID_S_NO_MORE_ITEMS,
+    BID_S_CACHE_OPEN_ERROR,
+    BID_S_CACHE_READ_ERROR,
+    BID_S_CACHE_WRITE_ERROR,
+    BID_S_CACHE_CLOSE_ERROR,
+    BID_S_CACHE_LOCK_ERROR,
+    BID_S_CACHE_LOCK_TIMEOUT,
+    BID_S_CACHE_UNLOCK_ERROR,
+    BID_S_CACHE_DESTROY_ERROR,
+    BID_S_CACHE_PERMISSION_DENIED,
+    BID_S_CACHE_INVALID_VERSION,
+    BID_S_CACHE_SCHEME_UNKNOWN,
+    BID_S_CACHE_ALREADY_EXISTS,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -98,6 +111,11 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_CONTEXT_GSS                 0x00000010
 
 /*
+ * Use assertion cache.
+ */
+#define BID_CONTEXT_ASSERTION_CACHE     0x00000020
+
+/*
  * Context management.
  */
 BIDError
@@ -113,6 +131,7 @@ BIDReleaseContext(BIDContext context);
 #define BID_PARAM_MAX_DELEGATIONS       0x00000005
 #define BID_PARAM_SKEW                  0x00000006
 #define BID_PARAM_CONTEXT_OPTIONS       0x00000007
+#define BID_PARAM_ASSERTION_CACHE       0x00000008
 
 BIDError
 BIDSetContextParam(BIDContext context, uint32_t ulParam, void *value);

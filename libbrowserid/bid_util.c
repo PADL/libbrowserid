@@ -615,6 +615,19 @@ const char *_BIDErrorTable[] = {
     "Failed to acquire assertion interactively",
     "Invalid audience URN",
     "Invalid JSON web token",
+    "No more items",
+    "Cache open error",
+    "Cache read error",
+    "Cache write error",
+    "Cache close error",
+    "Cache lock error",
+    "Cache lock timed out",
+    "Cache unlock error",
+    "Cache delete error",
+    "Cache permission denied",
+    "Invalid cache version",
+    "Cache scheme unknown",
+    "Cache already exists",
     "Unknown error code"
 };
 

@@ -123,8 +123,103 @@ BIDError
 _BIDBase64UrlDecode(const char *str, unsigned char **pData, size_t *cbData);
 
 /*
+ * bid_cache.c
+ */
+struct BIDCacheDesc;
+typedef struct BIDCacheDesc *BIDCache;
+
+struct BIDCacheOps {
+    const char *Scheme;
+
+    BIDError (*Acquire)(struct BIDCacheOps *, BIDContext, void **, const char *);
+    BIDError (*Release)(struct BIDCacheOps *, BIDContext, void *);
+
+    BIDError (*Initialize)(struct BIDCacheOps *, BIDContext, void *, const char *version);
+    BIDError (*Destroy)(struct BIDCacheOps *, BIDContext, void *);
+
+    BIDError (*GetName)(struct BIDCacheOps *, BIDContext, void *, const char **);
+    BIDError (*GetLastChangedTime)(struct BIDCacheOps *, BIDContext, void *, time_t *time);
+
+    BIDError (*GetObject)(struct BIDCacheOps *, BIDContext, void *, const char *key, json_t **val);
+    BIDError (*SetObject)(struct BIDCacheOps *, BIDContext, void *, const char *key, json_t *val);
+    BIDError (*RemoveObject)(struct BIDCacheOps *, BIDContext, void *, const char *key);
+
+    BIDError (*FirstObject)(struct BIDCacheOps *, BIDContext, void *, json_t **val);
+    BIDError (*NextObject)(struct BIDCacheOps *, BIDContext, void *, json_t **val);
+};
+
+BIDError
+_BIDAcquireCache(
+    BIDContext context,
+    const char *szCacheName,
+    BIDCache *pCache);
+
+BIDError
+_BIDReleaseCache(
+    BIDContext context,
+    BIDCache cache);
+
+BIDError
+_BIDInitializeCache(
+    BIDContext context,
+    BIDCache cache);
+
+BIDError
+_BIDDestroyCache(
+    BIDContext context,
+    BIDCache cache);
+
+BIDError
+_BIDGetCacheName(
+    BIDContext context,
+    BIDCache cache,
+    const char **pszName);
+
+BIDError
+_BIDGetCacheObject(
+    BIDContext context,
+    BIDCache cache,
+    const char *key,
+    json_t **pValue);
+
+BIDError
+_BIDSetCacheObject(
+    BIDContext context,
+    BIDCache cache,
+    const char *key,
+    json_t *value);
+
+BIDError
+_BIDRemoveCacheObject(
+    BIDContext context,
+    BIDCache cache,
+    const char *key);
+
+BIDError
+_BIDGetCacheLastChangedTime(
+    BIDContext context,
+    BIDCache cache,
+    time_t *ptLastChanged);
+
+BIDError
+_BIDCacheLock(
+    BIDContext context,
+    BIDCache cache);
+
+BIDError
+_BIDCacheUnlock(
+    BIDContext context,
+    BIDCache cache);
+
+/*
  * bid_context.c
  */
+
+/*
+ * bid_fcache.c
+ */
+
+extern struct BIDCacheOps _BIDFileCache;
 
 /*
  * bid_jwt.c
