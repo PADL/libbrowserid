@@ -639,6 +639,26 @@ _BIDGetJsonBinaryValue(
     return _BIDBase64UrlDecode(src, pbData, cbData);
 }
 
+BIDError
+_BIDGetJsonTimestampValue(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    time_t *ts)
+{
+    json_t *j = json_object_get(json, key);
+
+    *ts = 0;
+
+    if (j == NULL)
+        return BID_S_UNKNOWN_JSON_KEY;
+
+    *ts = json_integer_value(j);
+    *ts /= 1000;
+
+    return BID_S_OK;
+}
+
 const char *_BIDErrorTable[] = {
     "Success",
     "No context",
@@ -699,6 +719,7 @@ const char *_BIDErrorTable[] = {
     "Cache already exists",
     "Cache not found",
     "Cache key not found",
+    "Assertion is a replay",
     "Unknown error code"
 };
 
@@ -1000,7 +1021,7 @@ BIDAcquireAssertionFromString(
     err = BID_S_OK;
 
     if (ptExpiryTime != NULL)
-        *ptExpiryTime = json_integer_value(json_object_get(backedAssertion->Assertion->Payload, "exp"));
+        _BIDGetJsonTimestampValue(context, backedAssertion->Assertion->Payload, "exp", ptExpiryTime);
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);

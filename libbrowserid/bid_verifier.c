@@ -198,6 +198,9 @@ BIDGetIdentitySessionKey(
 {
     BIDError err;
 
+    *ppbSessionKey = NULL;
+    *pcbSessionKey = 0;
+
     BID_CONTEXT_VALIDATE(context);
 
     if (identity == BID_C_NO_IDENTITY) {
@@ -205,9 +208,7 @@ BIDGetIdentitySessionKey(
         goto cleanup;
     }
 
-    err = _BIDGetJsonBinaryValue(context, identity->Attributes, "skey", ppbSessionKey, pcbSessionKey);
-    if (err == BID_S_UNKNOWN_JSON_KEY)
-        err = BID_S_NO_SESSION_KEY;
+    err = BID_S_NOT_IMPLEMENTED;
 
 cleanup:
     return err;
@@ -233,4 +234,20 @@ BIDFreeIdentitySessionKey(
 
 cleanup:
     return BID_S_OK;
+}
+
+BIDError
+BIDGetIdentityExpiryTime(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *attribute,
+    time_t *value)
+{
+
+    BID_CONTEXT_VALIDATE(context);
+
+    if (identity == BID_C_NO_IDENTITY)
+        return BID_S_INVALID_PARAMETER;
+
+    return _BIDGetJsonTimestampValue(context, identity->Attributes, "expires", value);
 }

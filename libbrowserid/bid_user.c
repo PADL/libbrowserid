@@ -30,9 +30,6 @@ BIDAcquireAssertion(
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (context->ContextOptions & BID_CONTEXT_ASSERTION_CACHE)
-        err = _BIDGetCachedAssertion(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, &szAssertion);
-
     if (err != BID_S_OK) {
         if (context->ContextOptions & BID_USER_INTERACTION_DISABLED) {
             err = BID_S_INTERACT_UNAVAILABLE;
@@ -52,9 +49,6 @@ BIDAcquireAssertion(
 
     err = BIDAcquireAssertionFromString(context, szAssertion, pAssertedIdentity, ptExpiryTime);
     BID_BAIL_ON_ERROR(err);
-
-    if (context->ContextOptions & BID_CONTEXT_ASSERTION_CACHE)
-        _BIDCacheAssertion(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, szAssertion);
 
     *pAssertion = szAssertion;
 

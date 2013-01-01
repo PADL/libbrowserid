@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     BIDIdentity id = NULL;
     time_t expires;
     json_t *j = NULL;
-    uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_GSS;
+    uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
 
     if (argc > 1 && !strcmp(argv[1], "-remote")) {
         options |= BID_CONTEXT_VERIFY_REMOTE;
@@ -36,9 +36,19 @@ int main(int argc, char *argv[])
         argc--;
         argv++;
     }
+    if (argc > 1 && !strcmp(argv[1], "-rcache")) {
+        options |= BID_CONTEXT_REPLAY_CACHE;
+        argc--;
+        argv++;
+    }
+    if (argc > 1 && !strcmp(argv[1], "-noauthoritycache")) {
+        options &= ~(BID_CONTEXT_AUTHORITY_CACHE);
+        argc--;
+        argv++;
+    }
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s [-remote] [-nogss] assertion\n", argv[0]);
+        fprintf(stderr, "Usage: %s [-remote] [-nogss] [-rcache] [-noauthoritycache] assertion\n", argv[0]);
         exit(BID_S_INVALID_PARAMETER);
     }
 

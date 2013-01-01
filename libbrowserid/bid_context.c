@@ -35,13 +35,13 @@ BIDAcquireContext(
         BID_BAIL_ON_ERROR(err);
     }
 
-    if (ulContextOptions & BID_CONTEXT_ASSERTION_CACHE) {
-        if ((ulContextOptions & BID_CONTEXT_USER_AGENT) == 0) {
+    if (ulContextOptions & BID_CONTEXT_REPLAY_CACHE) {
+        if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
             err = BID_S_INVALID_PARAMETER;
             goto cleanup;
         }
 
-        err = _BIDAcquireDefaultAssertionCache(context);
+        err = _BIDAcquireDefaultReplayCache(context);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -63,7 +63,7 @@ BIDReleaseContext(BIDContext context)
 
     BIDFree(context->VerifierUrl);
     _BIDReleaseCache(context, context->AuthorityCache);
-    _BIDReleaseCache(context, context->AssertionCache);
+    _BIDReleaseCache(context, context->ReplayCache);
 
     memset(context, 0, sizeof(*context));
     BIDFree(context);
@@ -92,14 +92,14 @@ BIDSetContextParam(
         context->Skew = *(uint32_t *)value;
         break;
     case BID_PARAM_AUTHORITY_CACHE:
-    case BID_PARAM_ASSERTION_CACHE: {
+    case BID_PARAM_REPLAY_CACHE: {
         const char *szCacheName;
         BIDCache cache, *pCache;
 
         if (ulParam == BID_PARAM_AUTHORITY_CACHE)
             pCache = &context->AuthorityCache;
         else
-            pCache = &context->AssertionCache;
+            pCache = &context->ReplayCache;
 
         err = _BIDGetCacheName(context, *pCache, &szCacheName);
         if (err != BID_S_OK)
@@ -110,7 +110,7 @@ BIDSetContextParam(
 
         err = _BIDAcquireCache(context, (const char *)value, &cache);
         if (err == BID_S_OK) {
-            _BIDReleaseCache(context, context->AssertionCache);
+            _BIDReleaseCache(context, *pCache);
             *pCache = cache;
         }
         break;
@@ -154,8 +154,8 @@ BIDGetContextParam(
     case BID_PARAM_CONTEXT_OPTIONS:
         *((uint32_t *)pValue) = context->ContextOptions;
         break;
-    case BID_PARAM_ASSERTION_CACHE:
-        err = _BIDGetCacheName(context, context->AssertionCache, (const char **)pValue);
+    case BID_PARAM_REPLAY_CACHE:
+        err = _BIDGetCacheName(context, context->ReplayCache, (const char **)pValue);
         break;
     case BID_PARAM_AUTHORITY_CACHE:
         err = _BIDGetCacheName(context, context->AuthorityCache, (const char **)pValue);

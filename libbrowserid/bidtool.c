@@ -21,81 +21,44 @@ static void
 BIDAbortError(const char *szMessage, BIDError err);
 
 static BIDError
-BIDPrintAssertionCacheEntry(json_t *j)
+BIDPrintReplayCacheEntry(const char *k, json_t *j)
 {
     BIDError err;
-    BIDBackedAssertion backedAssertion = NULL;
-    BIDIdentity identity = NULL;
-    char *szSpn = NULL;
-    char *szExpiry;
-    time_t expiryTime;
+    unsigned char *hash = NULL;
+    size_t cbHash, i;
+    time_t exp, ts;
 
-    err = _BIDUnpackBackedAssertion(gContext, json_string_value(j), &backedAssertion);
-    if (err != BID_S_OK) {
-        BIDAbortError("Failed to unpack assertion", err);
-        goto cleanup;
-    }
+    err = _BIDBase64UrlDecode(k, &hash, &cbHash);
+    BID_BAIL_ON_ERROR(err);
 
-    err = _BIDPopulateIdentity(gContext, backedAssertion, &identity);
-    if (err != BID_S_OK) {
-        BIDAbortError("Failed to parse assertion", err);
-        goto cleanup;
-    }
+    _BIDGetJsonTimestampValue(gContext, j, "ts", &ts);
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &exp);
 
-    expiryTime = json_integer_value(json_object_get(identity->Attributes, "expires"));
+    printf("%-24.24s  ", ctime(&ts));
 
-    err = _BIDUnpackAudience(gContext,
-                             json_string_value(json_object_get(identity->Attributes, "audience")),
-                             &szSpn, NULL, 0);
-    if (err != BID_S_OK) {
-        BIDAbortError("Failed to parse audience", err);
-        goto cleanup;
-    }
+    for (i = 0; i < cbHash; i++)
+        printf("%02X", hash[i] & 0xff);
 
-    szExpiry = gNow < expiryTime ? ctime(&expiryTime) : ">>> Expired <<<";
-
-    printf("%-15.15s %-25.25s %-18.18s %-20.20s\n",
-           json_string_value(json_object_get(identity->Attributes, "email")),
-           szSpn,
-           json_string_value(json_object_get(identity->Attributes, "issuer")),
-           szExpiry);
+    printf("\n");
 
 cleanup:
-    _BIDReleaseBackedAssertion(gContext, backedAssertion);
-    BIDReleaseIdentity(gContext, identity);
-    BIDFree(szSpn);
+    BIDFree(hash);
 
     return err;
 }
 
 static int
-BIDShouldPurgeAssertionP(json_t *j)
+BIDShouldPurgeReplayCacheEntryP(json_t *j)
 {
-    BIDError err;
-    BIDBackedAssertion backedAssertion = NULL;
-    BIDIdentity identity = NULL;
     time_t expiryTime;
 
-    err = _BIDUnpackBackedAssertion(gContext, json_string_value(j), &backedAssertion);
-    if (err != BID_S_OK)
-        return 1;
-
-    err = _BIDPopulateIdentity(gContext, backedAssertion, &identity);
-    if (err != BID_S_OK) {
-        _BIDReleaseBackedAssertion(gContext, backedAssertion);
-        return 1;
-    }
-
-    expiryTime = json_integer_value(json_object_get(identity->Attributes, "expires"));
-
-    _BIDReleaseBackedAssertion(gContext, backedAssertion);
-    BIDReleaseIdentity(gContext, identity);
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
 
     return expiryTime == 0 || gNow >= expiryTime;
 }
 
 static BIDError
-BIDListAssertionCache(int argc, char *argv[])
+BIDListReplayCache(int argc, char *argv[])
 {
     BIDError err;
     const char *k = NULL;
@@ -105,19 +68,18 @@ BIDListAssertionCache(int argc, char *argv[])
     if (argc)
         BIDToolUsage();
 
-    if (gContext->AssertionCache == NULL)
+    if (gContext->ReplayCache == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    printf("%-15.15s %-25.25s %-18.18s %-20.20s\n",
-           "Identity", "Audience", "Issuer", "Expires");
-    for (i = 0; i < 80; i++)
+    printf("%-24.24s  %s\n", "Timestamp", "Hash");
+    for (i = 0; i < 90; i++)
         printf("-");
     printf("\n");
 
-    for (err = _BIDGetFirstCacheObject(gContext, gContext->AssertionCache, &k, &j);
+    for (err = _BIDGetFirstCacheObject(gContext, gContext->ReplayCache, &k, &j);
          err == BID_S_OK;
-         err = _BIDGetNextCacheObject(gContext, gContext->AssertionCache, &k, &j)) {
-        BIDPrintAssertionCacheEntry(j);
+         err = _BIDGetNextCacheObject(gContext, gContext->ReplayCache, &k, &j)) {
+        BIDPrintReplayCacheEntry(k, j);
         json_decref(j);
         j = NULL;
     }
@@ -142,9 +104,9 @@ BIDPurgeCache(int argc, char *argv[], BIDCache cache, int (*shouldPurgeP)(json_t
     if (cache == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    for (err = _BIDGetFirstCacheObject(gContext, gContext->AssertionCache, &k, &j);
+    for (err = _BIDGetFirstCacheObject(gContext, gContext->ReplayCache, &k, &j);
          err == BID_S_OK;
-         err = _BIDGetNextCacheObject(gContext, gContext->AssertionCache, &k, &j)) {
+         err = _BIDGetNextCacheObject(gContext, gContext->ReplayCache, &k, &j)) {
         if (shouldPurgeP(j))
             _BIDRemoveCacheObject(gContext, cache, k);
     }
@@ -157,21 +119,21 @@ BIDPurgeCache(int argc, char *argv[], BIDCache cache, int (*shouldPurgeP)(json_t
 }
 
 static BIDError
-BIDPurgeAssertionCache(int argc, char *argv[])
+BIDPurgeReplayCache(int argc, char *argv[])
 {
-    return BIDPurgeCache(argc, argv, gContext->AssertionCache, BIDShouldPurgeAssertionP);
+    return BIDPurgeCache(argc, argv, gContext->ReplayCache, BIDShouldPurgeReplayCacheEntryP);
 }
 
 static BIDError
-BIDDestroyAssertionCache(int argc, char *argv[])
+BIDDestroyReplayCache(int argc, char *argv[])
 {
     if (argc)
         BIDToolUsage();
 
-    if (gContext->AssertionCache == NULL)
+    if (gContext->ReplayCache == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    return _BIDDestroyCache(gContext, gContext->AssertionCache);
+    return _BIDDestroyCache(gContext, gContext->ReplayCache);
 }
 
 static int
@@ -312,15 +274,15 @@ static struct {
     const char *Argument;
     const char *Usage;
     BIDError (*Handler)(int argc, char *argv[]);
-    enum { NO_CACHE, ASSERTION_CACHE, AUTHORITY_CACHE } CacheUsage;
+    enum { NO_CACHE, REPLAY_CACHE, AUTHORITY_CACHE } CacheUsage;
 } _BIDToolHandlers[] = {
-    { "list",         "", BIDListAssertionCache,          ASSERTION_CACHE         },
-    { "purge",        "", BIDPurgeAssertionCache,         ASSERTION_CACHE         },
-    { "destroy",      "", BIDDestroyAssertionCache,       ASSERTION_CACHE         },
+    { "rlist",        "", BIDListReplayCache,             REPLAY_CACHE         },
+    { "rpurge",       "", BIDPurgeReplayCache,            REPLAY_CACHE         },
+    { "rdestroy",     "", BIDDestroyReplayCache,          REPLAY_CACHE         },
 
-    { "certlist",     "", BIDListAuthorityCache,          AUTHORITY_CACHE         },
-    { "certpurge",    "", BIDPurgeAuthorityCache,         AUTHORITY_CACHE         },
-    { "certdestroy",  "", BIDDestroyAuthorityCache,       AUTHORITY_CACHE         },
+    { "certlist",     "", BIDListAuthorityCache,          AUTHORITY_CACHE      },
+    { "certpurge",    "", BIDPurgeAuthorityCache,         AUTHORITY_CACHE      },
+    { "certdestroy",  "", BIDDestroyAuthorityCache,       AUTHORITY_CACHE      },
 
     { "verify",       "[assertion] [audience]", BIDVerifyAssertionFromString, NO_CACHE },
 
@@ -372,7 +334,7 @@ int main(int argc, char *argv[])
     ulOptions = BID_CONTEXT_RP              |
                 BID_CONTEXT_USER_AGENT      |
                 BID_CONTEXT_GSS             |
-                BID_CONTEXT_ASSERTION_CACHE |
+                BID_CONTEXT_REPLAY_CACHE |
                 BID_CONTEXT_AUTHORITY_CACHE;
 
     err = BIDAcquireContext(ulOptions, &gContext);
@@ -400,8 +362,8 @@ int main(int argc, char *argv[])
     for (i = 0; i < sizeof(_BIDToolHandlers) / sizeof(_BIDToolHandlers[0]); i++) {
         if (strcmp(argv[0], _BIDToolHandlers[i].Argument) == 0) {
             switch (_BIDToolHandlers[i].CacheUsage) {
-            case ASSERTION_CACHE:
-                ulCacheOpt = BID_PARAM_ASSERTION_CACHE;
+            case REPLAY_CACHE:
+                ulCacheOpt = BID_PARAM_REPLAY_CACHE;
                 break;
             case AUTHORITY_CACHE:
                 ulCacheOpt = BID_PARAM_AUTHORITY_CACHE;

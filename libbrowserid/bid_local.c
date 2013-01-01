@@ -54,12 +54,11 @@ _BIDValidateExpiry(
     time_t verificationTime,
     json_t *assertion)
 {
-    time_t expiryTime = json_integer_value(json_object_get(assertion, "exp"));
-    uint32_t skew;
+    time_t expiryTime;
 
-    BIDGetContextParam(context, BID_PARAM_SKEW, (void **)&skew);
+    _BIDGetJsonTimestampValue(context, assertion, "exp", &expiryTime);
 
-    if (expiryTime + skew < verificationTime)
+    if (expiryTime + context->Skew < verificationTime)
         return BID_S_EXPIRED_ASSERTION;
     else
         return BID_S_OK;
@@ -187,12 +186,28 @@ _BIDVerifyLocal(
     err = _BIDVerifyAssertionSignature(context, backedAssertion);
     BID_BAIL_ON_ERROR(err);
 
+    if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
+        err = _BIDCheckReplayCache(context, szAssertion, verificationTime);
+        BID_BAIL_ON_ERROR(err);
+    }
+
     err = _BIDPopulateIdentity(context, backedAssertion, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
 
-    err = BID_S_OK;
+    err = _BIDGetJsonTimestampValue(context, backedAssertion->Assertion->Payload, "exp", pExpiryTime);
+    if (err != BID_S_OK)
+        *pExpiryTime = verificationTime + 300; /* default expires in 5 minutes */
 
-    *pExpiryTime = json_integer_value(json_object_get(backedAssertion->Assertion->Payload, "exp"));
+    if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
+        json_t *expiryTime; /* preserve precision */
+
+        expiryTime = json_object_get(backedAssertion->Assertion->Payload, "exp");
+
+        err = _BIDUpdateReplayCache(context, szAssertion, verificationTime, expiryTime);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    err = BID_S_OK;
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);

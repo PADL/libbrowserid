@@ -3,7 +3,6 @@ AUTOMAKE_OPTIONS = foreign
 bin_PROGRAMS = bidtool
 
 libbrowserid_la_SOURCES =   \
-    bid_acache.c            \
     bid_authority.c         \
     bid_base64.c            \
     bid_cache.c             \
@@ -11,6 +10,8 @@ libbrowserid_la_SOURCES =   \
     bid_context.c           \
     bid_jwt.c               \
     bid_local.c             \
+    bid_openssl.c           \
+    bid_rcache.c            \
     bid_remote.c            \
     bid_user.c              \
     bid_util.c              \

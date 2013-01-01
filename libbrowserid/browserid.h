@@ -74,6 +74,7 @@ typedef enum {
     BID_S_CACHE_ALREADY_EXISTS,
     BID_S_CACHE_NOT_FOUND,
     BID_S_CACHE_KEY_NOT_FOUND,
+    BID_S_REPLAYED_ASSERTION,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -113,9 +114,9 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_CONTEXT_GSS                 0x00000010
 
 /*
- * Use assertion cache.
+ * Use replay cache.
  */
-#define BID_CONTEXT_ASSERTION_CACHE     0x00000020
+#define BID_CONTEXT_REPLAY_CACHE        0x00000020
 
 /*
  * Disable interaction with user.
@@ -143,7 +144,7 @@ BIDReleaseContext(BIDContext context);
 #define BID_PARAM_MAX_DELEGATIONS       0x00000005
 #define BID_PARAM_SKEW                  0x00000006
 #define BID_PARAM_CONTEXT_OPTIONS       0x00000007
-#define BID_PARAM_ASSERTION_CACHE       0x00000008
+#define BID_PARAM_REPLAY_CACHE          0x00000008
 #define BID_PARAM_AUTHORITY_CACHE       0x00000009
 
 BIDError
@@ -220,6 +221,13 @@ BIDGetIdentityAttribute(
     BIDIdentity identity,
     const char *attribute,
     const char **pValue);
+
+BIDError
+BIDGetIdentityExpiryTime(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *attribute,
+    time_t *value);
 
 #ifdef JANSSON_H
 /* Caller frees reference; pass NULL to get root object. */

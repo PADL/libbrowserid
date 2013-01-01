@@ -365,6 +365,13 @@ _BIDGetJsonBinaryValue(
     size_t *cbData);
 
 BIDError
+_BIDGetJsonTimestampValue(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    time_t *ts);
+
+BIDError
 _BIDDuplicateString(
     BIDContext context,
     const char *szSrc,
@@ -474,12 +481,15 @@ _BIDAcquireDefaultReplayCache(
 BIDError
 _BIDCheckReplayCache(
     BIDContext context,
-    const char *szAssertion);
+    const char *szAssertion,
+    time_t verificationTime);
 
 BIDError
 _BIDUpdateReplayCache(
     BIDContext context,
-    const char *pAssertion);
+    const char *pAssertion,
+    time_t verificationTime,
+    json_t *expiryTime);
 
 /*
  * bid_verifier.c
