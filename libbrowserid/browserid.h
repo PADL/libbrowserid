@@ -123,6 +123,11 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_USER_INTERACTION_DISABLED   0x00000040
 
 /*
+ * Do not prompt user if cached credentials are available.
+ */
+#define BID_USE_CACHED_CREDENTIALS      0x00000080
+
+/*
  * Context management.
  */
 BIDError

@@ -31,8 +31,6 @@
     NSURLRequest *request = [self request];
     id client = [self client];
 
-    NSLog(@"BIDURLProtocol start loading");
-
     response = [[NSHTTPURLResponse alloc] initWithURL:[request URL]
                                            statusCode:200
                                           HTTPVersion:@"HTTP/1.1"
@@ -65,7 +63,7 @@
                               backing:NSBackingStoreBuffered
                                 defer:YES];
 
-    [self setHidesOnDeactivate:NO];
+    [self setHidesOnDeactivate:YES];
     [self setWorksWhenModal:YES];
 
     return self;
@@ -90,6 +88,7 @@
 @interface BIDAssertionLoader : NSObject <NSWindowDelegate>
 {
 @private
+    uint32_t contextOptions;
     NSString *audience;
     NSString *siteName;
     NSString *assertion;
@@ -119,10 +118,13 @@
 
 /* public interface */
 - (BIDError)loadAssertion;
+- (id)initWithContextOptions:(uint32_t )contextOptions;
 @end
 
 @implementation BIDAssertionLoader
+
 #pragma mark - accessors
+
 - (NSString *)audience
 {
     return [[audience retain] autorelease];
@@ -246,14 +248,9 @@
     return YES;
 }
 
-- (void)webView:(WebView *)sender didCommitLoadForFrame:(WebFrame *)frame
+- (void)webView:(WebView *)webView didFinishLoadForFrame:(WebFrame *)frame
 {
-    NSLog(@"webView:%@ didCommitLoadForFrame:%@ (parent %@)", [sender description], [frame name], [[frame parentFrame] name]);
-}
-
-- (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
-{
-    NSLog(@"webView:%@ didFinishLoadForFrame:%@", [sender description], [frame name]);
+//    NSLog(@"webView:%@ didFinishLoadForFrame:%@", [webView description], [frame name]);
 
     if ([[frame name] length] == 0) {
         NSString *function = @"                                                                             \
@@ -268,7 +265,17 @@
             });                                                                                             \
          ";
 
-        [sender stringByEvaluatingJavaScriptFromString:function];
+        [webView stringByEvaluatingJavaScriptFromString:function];
+    } else if ([[frame name] isEqualToString:@"__persona_dialog"]) {
+        DOMElement *signInButton = [[frame DOMDocument] getElementById:@"signInButton"];
+
+        if (signInButton != nil && (contextOptions & BID_USE_CACHED_CREDENTIALS)) {
+            [signInButton callWebScriptMethod:@"click" withArguments:nil];
+        } else {
+            [panel makeFirstResponder:webView];
+            [panel makeKeyAndOrderFront:nil];
+            [panel center];
+        }
     }
 }
 
@@ -295,20 +302,34 @@
 
 - (void)webView:(WebView *)sender decidePolicyForNavigationAction:(NSDictionary *)actionInformation request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id<WebPolicyDecisionListener>)listener
 {
-    NSLog(@"webView:%@ decidePolicyForNavigationAction:%@ request:%@ frame:%@ decisionListener:%@", sender, [actionInformation objectForKey:WebActionOriginalURLKey], request, [frame name], listener);
+//    NSLog(@"webView:%@ decidePolicyForNavigationAction:%@ request:%@ frame:%@ decisionListener:%@", sender, [actionInformation objectForKey:WebActionOriginalURLKey], request, [frame name], listener);
     [listener use];
 }
 
 - (void)webView:(WebView *)webView decidePolicyForNewWindowAction:(NSDictionary *)actionInformation request:(NSURLRequest *)request newFrameName:(NSString *)frameName decisionListener:(id < WebPolicyDecisionListener >)listener
 {
-    NSLog(@"webView:%@ decidePolicyForNewWindowAction:%@ request:%@ frame:%@", webView, [actionInformation objectForKey:WebActionOriginalURLKey], request, frameName);
-
+//    NSLog(@"webView:%@ decidePolicyForNewWindowAction:%@ request:%@ frame:%@", webView, [actionInformation objectForKey:WebActionOriginalURLKey], request, frameName);
     if ([actionInformation objectForKey:WebActionElementKey]) {
         [listener ignore];
         [[NSWorkspace sharedWorkspace] openURL:[request URL]];
     } else {
         [listener use];
     }
+}
+
+- (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request
+{
+    WebView *webView = [self newWebView];
+
+    NSLog(@"createWebViewWithRequest %@", request);
+    [panel setContentView:webView];
+
+    return webView;
+}
+
+- (void)webViewShow:(WebView *)webView
+{
+    [panel orderOut:self];
 }
 
 #if 0
@@ -329,22 +350,6 @@
 }
 #endif
 
-- (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request
-{
-    WebView *webView = [self newWebView];
-
-    [panel setContentView:webView];
-
-    return webView;
-}
-
-- (void)webViewShow:(WebView *)webView
-{
-    [panel makeKeyAndOrderFront:nil];
-    [panel makeFirstResponder:webView];
-    [panel center];
-}
-
 #if 0
 - (void)webViewClose:(WebView *)sender
 {
@@ -357,21 +362,16 @@
 }
 #endif
 
-#if 0
-- (NSURLRequest *)webView:(WebView *)sender resource:(id)identifier willSendRequest:(NSURLRequest *)request redirectResponse:(NSURLResponse *)redirectResponse fromDataSource:(WebDataSource *)dataSource
-{
-    return request;
-}
-
-- (void)webView:(WebView *)sender resource:(id)identifier didFailLoadingWithError:(NSError *)error fromDataSource:(WebDataSource *)dataSource
-{
-    [self didAbortLoad:error];
-}
-#endif
-
 #pragma mark - public
+
 - init
 {
+    return [self initWithContextOptions:BID_CONTEXT_USER_AGENT];
+}
+
+- initWithContextOptions:(uint32_t)flags
+{
+    contextOptions = flags;
     audience = nil;
     assertion = nil;
     panel = nil;
@@ -393,7 +393,6 @@
 {
     NSApplication *app = [NSApplication sharedApplication];
     NSURL *baseURL = [NSURL URLWithString:audience];
-    WebFrame *mainFrame;
     WebView *webView;
 
     if (baseURL == nil) {
@@ -408,18 +407,15 @@
     [panel setDelegate:self];
 
     webView = [self newWebView];
-
-    mainFrame = [webView mainFrame];
-
-    [mainFrame loadHTMLString:@"<script src=\"https://browserid.org/include.js\" type=\"text/javascript\"></script>"
-               baseURL:baseURL];
+    [[webView mainFrame] loadHTMLString:@"<script src=\"https://browserid.org/include.js\" type=\"text/javascript\"></script>"
+                                baseURL:baseURL];
 
     [app runModalForWindow:panel];
-    [panel orderOut:nil];
     [NSURLProtocol unregisterClass:[BIDGSSURLProtocol class]];
 
     return bidError;
 }
+
 @end
 
 static BIDError
@@ -453,7 +449,7 @@ _BIDWebkitGetAssertion(
         return BID_S_INTERACT_UNAVAILABLE;
 
     @autoreleasepool {
-        loader = [[BIDAssertionLoader alloc] init];
+        loader = [[BIDAssertionLoader alloc] initWithContextOptions:context->ContextOptions];
         [loader setAudience:[NSString stringWithCString:szAudience]];
         [loader setSiteName:[NSString stringWithCString:szSiteName]];
         [loader performSelectorOnMainThread:@selector(loadAssertion) withObject:nil waitUntilDone:TRUE];
