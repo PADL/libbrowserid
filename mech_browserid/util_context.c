@@ -66,7 +66,10 @@ gssBidAllocContext(OM_uint32 *minor,
     ctx->mechanismUsed = GSS_C_NO_OID;
 
     contextParams = BID_CONTEXT_GSS;
-    contextParams |= isInitiator ? BID_CONTEXT_USER_AGENT : BID_CONTEXT_RP;
+    if (isInitiator)
+        contextParams |= BID_CONTEXT_USER_AGENT | BID_CONTEXT_ASSERTION_CACHE;
+    else
+        contextParams |= BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE;
 
     err = BIDAcquireContext(contextParams, &ctx->bidContext);
     if (err != BID_S_OK) {

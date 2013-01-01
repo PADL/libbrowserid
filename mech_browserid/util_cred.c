@@ -444,10 +444,10 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
 
     /* XXX API is not a good fit here, but we will rework later */
     if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
-        err = BIDAcquireAssertion(ctx->bidContext,
-                                  (const char *)resolvedCred->assertion.value,
-                                  &ctx->bidIdentity,
-                                  &resolvedCred->expiryTime);
+        err = BIDAcquireAssertionFromString(ctx->bidContext,
+                                            (const char *)resolvedCred->assertion.value,
+                                            &ctx->bidIdentity,
+                                            &resolvedCred->expiryTime);
     } else {
         if (channelBindings != GSS_C_NO_CHANNEL_BINDINGS) {
             pbChannelBindings = (const unsigned char *)channelBindings->application_data.value;
@@ -459,13 +459,13 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
             goto cleanup;
 
 
-        err = BIDAcquireAssertionInteractive(ctx->bidContext,
-                                             (const char *)bufAudienceOrSpn.value,
-                                             pbChannelBindings,
-                                             cbChannelBindings,
-                                             &szAssertion,
-                                             &ctx->bidIdentity,
-                                             &resolvedCred->expiryTime);
+        err = BIDAcquireAssertion(ctx->bidContext,
+                                  (const char *)bufAudienceOrSpn.value,
+                                  pbChannelBindings,
+                                  cbChannelBindings,
+                                  &szAssertion,
+                                  &ctx->bidIdentity,
+                                  &resolvedCred->expiryTime);
     }
 
     if (err != BID_S_OK) {
