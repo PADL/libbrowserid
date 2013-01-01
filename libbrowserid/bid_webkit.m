@@ -191,7 +191,7 @@
     [self closePanelAndStopModal];
 }
 
-#pragma mark - javascript
+#pragma mark - javascript methods
 
 - (void)onlogin:(NSString *)string
 {
