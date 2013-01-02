@@ -202,7 +202,7 @@ _BIDMakeAuthenticator(
     BID_CONTEXT_VALIDATE(context);
 
     if (tkt == NULL) {
-        err = BID_S_INVALID_PARAMETER;
+        err = BID_S_BAD_TICKET_CACHE;
         goto cleanup;
     }
 
@@ -320,7 +320,7 @@ _BIDGetReauthAssertion(
     json_t *tkt = NULL;
     BIDJWT ap = NULL;
     struct BIDBackedAssertionDesc backedAssertion = { 0 };
-    time_t ts = 0;
+    time_t tsNow = 0;
 
     BID_CONTEXT_VALIDATE(context);
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_REAUTH);
@@ -335,16 +335,17 @@ _BIDGetReauthAssertion(
     err = _BIDGetCacheObject(context, context->TicketCache, szCacheKey, &cred);
     BID_BAIL_ON_ERROR(err);
 
-    tkt = json_object_get(json_object_get(cred, "tkt"), "jti");
+    tkt = json_object_get(cred, "tkt");
     if (tkt == NULL) {
         err = BID_S_BAD_TICKET_CACHE;
         goto cleanup;
     }
 
-    err = _BIDMakeAuthenticator(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, tkt, &ap, &ts);
+    err = _BIDMakeAuthenticator(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
+                                json_object_get(tkt, "jti"), &ap, &tsNow);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDValidateExpiry(context, ts, tkt, ptExpiryTime);
+    err = _BIDValidateExpiry(context, tsNow, json_object_get(tkt, "exp"), ptExpiryTime);
     BID_BAIL_ON_ERROR(err);
 
     backedAssertion.Assertion = ap;

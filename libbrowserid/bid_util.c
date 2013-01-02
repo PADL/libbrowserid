@@ -677,10 +677,11 @@ _BIDGetJsonTimestampValue(
     const char *key,
     time_t *ts)
 {
-    json_t *j = json_object_get(json, key);
+    json_t *j;
 
     *ts = 0;
 
+    j = (key != NULL) ? json_object_get(json, key) : json;
     if (j == NULL)
         return BID_S_UNKNOWN_JSON_KEY;
 

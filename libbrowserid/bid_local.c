@@ -52,16 +52,13 @@ BIDError
 _BIDValidateExpiry(
     BIDContext context,
     time_t verificationTime,
-    json_t *assertion,
+    json_t *expiry,
     time_t *pExpiryTime)
 {
     BIDError err;
     time_t expiryTime;
 
-    /* XXX have to check both for reauth */
-    err = _BIDGetJsonTimestampValue(context, assertion, "r-expires", &expiryTime);
-    if (err != BID_S_OK)
-        err = _BIDGetJsonTimestampValue(context, assertion, "exp", &expiryTime);
+    err = _BIDGetJsonTimestampValue(context, expiry, NULL, &expiryTime);
     if (err != BID_S_OK)
         expiryTime = verificationTime + 300; /* default expires in 5 minutes */
 
@@ -103,8 +100,9 @@ _BIDValidateCertChain(
 
     for (i = 0; i < backedAssertion->cCertificates; i++) {
         BIDJWT cert = backedAssertion->rCertificates[i];
+        json_t *exp = json_object_get(cert->Payload, "exp");
 
-        err = _BIDValidateExpiry(context, verificationTime, cert->Payload, &expiryTime);
+        err = _BIDValidateExpiry(context, verificationTime, exp, &expiryTime);
         BID_BAIL_ON_ERROR(err);
 
         /* XXX collate some attributes into identity object? */
@@ -159,7 +157,9 @@ _BIDVerifyLocal(
 {
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
+    BIDIdentity verifiedIdentity = BID_C_NO_IDENTITY;
     BIDJWK reauthCred = NULL;
+    json_t *expires;
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pExpiryTime = 0;
@@ -184,7 +184,7 @@ _BIDVerifyLocal(
             goto cleanup;
         }
 
-        err = _BIDVerifyReauthAssertion(context, backedAssertion, pVerifiedIdentity, &reauthCred);
+        err = _BIDVerifyReauthAssertion(context, backedAssertion, &verifiedIdentity, &reauthCred);
         BID_BAIL_ON_ERROR(err);
 
         *pulFlags |= BID_VERIFY_FLAG_REAUTH;
@@ -193,7 +193,12 @@ _BIDVerifyLocal(
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDValidateExpiry(context, verificationTime, backedAssertion->Assertion->Payload, pExpiryTime);
+    if (verifiedIdentity != BID_C_NO_IDENTITY)
+        expires = json_object_get(verifiedIdentity->Attributes, "expires");
+    else
+        expires = json_object_get(backedAssertion->Assertion->Payload, "exp");
+
+    err = _BIDValidateExpiry(context, verificationTime, expires, pExpiryTime);
     BID_BAIL_ON_ERROR(err);
 
     /* Only allow one certificate for now */
@@ -213,15 +218,18 @@ _BIDVerifyLocal(
     err = _BIDVerifyAssertionSignature(context, backedAssertion, reauthCred);
     BID_BAIL_ON_ERROR(err);
 
-    if (*pVerifiedIdentity == BID_C_NO_IDENTITY) {
-        err = _BIDPopulateIdentity(context, backedAssertion, pVerifiedIdentity);
+    if (verifiedIdentity == BID_C_NO_IDENTITY) {
+        err = _BIDPopulateIdentity(context, backedAssertion, &verifiedIdentity);
         BID_BAIL_ON_ERROR(err);
     }
 
     err = BID_S_OK;
+    *pVerifiedIdentity = verifiedIdentity;
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);
+    if (err != BID_S_OK)
+        BIDReleaseIdentity(context, verifiedIdentity);
     json_decref(reauthCred);
     
     return err;
