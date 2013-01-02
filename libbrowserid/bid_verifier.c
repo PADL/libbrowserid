@@ -7,6 +7,42 @@
 #include "bid_private.h"
 
 BIDError
+_BIDVerifierDHKeyEx(
+    BIDContext context,
+    BIDIdentity identity)
+{
+    BIDError err;
+    json_t *dh;
+    json_t *params;
+    json_t *key = NULL;
+
+    BID_ASSERT(context->ContextOptions & BID_CONTEXT_DH_KEYEX);
+    BID_ASSERT(identity != BID_C_NO_IDENTITY);
+
+    dh = json_object_get(identity->PrivateAttributes, "dh");
+    if (dh == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    params = json_object_get(dh, "params");
+
+    err = _BIDGenerateDHKey(context, params, &key);
+    BID_BAIL_ON_ERROR(err);
+
+    if (json_object_set(dh, "x", json_object_get(key, "x")) < 0 ||
+        json_object_set(dh, "y", json_object_get(key, "y")) < 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+cleanup:
+    json_decref(key);
+
+    return err;
+}
+
+BIDError
 BIDVerifyAssertion(
     BIDContext context,
     const char *szAssertion,
@@ -17,6 +53,8 @@ BIDVerifyAssertion(
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime)
 {
+    BIDError err;
+
     BID_CONTEXT_VALIDATE(context);
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
@@ -28,13 +66,18 @@ BIDVerifyAssertion(
         return BID_S_INVALID_USAGE;
 
     if (context->ContextOptions & BID_CONTEXT_VERIFY_REMOTE)
-        return _BIDVerifyRemote(context, szAssertion, szAudience,
-                                pbChannelBindings, cbChannelBindings, verificationTime,
-                                pVerifiedIdentity, pExpiryTime);
-    else
-        return _BIDVerifyLocal(context, szAssertion, szAudience,
+        err = _BIDVerifyRemote(context, szAssertion, szAudience,
                                pbChannelBindings, cbChannelBindings, verificationTime,
                                pVerifiedIdentity, pExpiryTime);
+    else
+        err = _BIDVerifyLocal(context, szAssertion, szAudience,
+                              pbChannelBindings, cbChannelBindings, verificationTime,
+                              pVerifiedIdentity, pExpiryTime);
+
+    if (err == BID_S_OK && (context->ContextOptions & BID_CONTEXT_DH_KEYEX))
+        err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
+
+    return err;
 }
 
 BIDError
@@ -46,6 +89,7 @@ BIDReleaseIdentity(
         return BID_S_INVALID_PARAMETER;
 
     json_decref(identity->Attributes);
+    json_decref(identity->PrivateAttributes);
     BIDFree(identity);
 
     return BID_S_OK;
@@ -127,6 +171,117 @@ BIDGetIdentityIssuer(
 }
 
 BIDError
+_BIDGetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t **pY)
+{
+    BIDError err;
+    json_t *dh = NULL;
+    json_t *y = NULL;
+
+    *pY = NULL;
+
+    if (identity->PrivateAttributes == NULL                                   ||
+        (dh     = json_object_get(identity->PrivateAttributes, "dh")) == NULL ||
+        (y      = json_object_get(dh, "y")) == NULL) {
+        err = BID_S_NO_KEY;
+        goto cleanup;
+    }
+
+    *pY = json_object();
+    if (*pY == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (json_object_set(*pY, "y", y) < 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+
+cleanup:
+    if (err != BID_S_OK && *pY != NULL) {
+        json_decref(*pY);
+        *pY = NULL;
+    }
+
+    return err;
+}
+
+BIDError
+BIDGetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    unsigned char **pY,
+    size_t *pcbY)
+{
+    BIDError err;
+    json_t *dh;
+
+    *pY = NULL;
+    *pcbY = 0;
+
+    err = _BIDGetIdentityDHPublicValue(context, identity, &dh);
+    if (err != BID_S_OK)
+        return err;
+
+    err = _BIDGetJsonBinaryValue(context, dh, "y", pY, pcbY);
+
+    return err;
+}
+
+BIDError
+_BIDSetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t *y)
+{
+    json_t *dh;
+    json_t *params;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    dh = json_object_get(identity->PrivateAttributes, "dh");
+    if (dh == NULL)
+        return BID_S_NO_KEY;
+
+    params = json_object_get(dh, "params");
+    if (params == NULL)
+        return BID_S_NO_KEY;
+
+    if (json_object_set(params, "y", y) < 0)
+        return BID_S_NO_MEMORY;
+
+    return BID_S_OK;
+}
+
+BIDError
+BIDSetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    const unsigned char *pY,
+    size_t cbY)
+{
+    BIDError err;
+    json_t *y;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    err = _BIDJsonBinaryValue(context, pY, cbY, &y);
+    if (err != BID_S_OK)
+        return err;
+
+    err = _BIDSetIdentityDHPublicValue(context, identity, y);
+
+    json_decref(y);
+
+    return err;
+}
+
+BIDError
 BIDGetIdentityAttribute(
     BIDContext context,
     BIDIdentity identity,
@@ -197,6 +352,8 @@ BIDGetIdentitySessionKey(
     size_t *pcbSessionKey)
 {
     BIDError err;
+    json_t *dh;
+    json_t *params;
 
     *ppbSessionKey = NULL;
     *pcbSessionKey = 0;
@@ -208,7 +365,16 @@ BIDGetIdentitySessionKey(
         goto cleanup;
     }
 
-    err = BID_S_NOT_IMPLEMENTED;
+    dh = json_object_get(identity->PrivateAttributes, "dh");
+    if (dh == NULL) {
+        err = BID_S_NO_KEY;
+        goto cleanup;
+    }
+
+    params = json_object_get(dh, "params");
+
+    err = _BIDComputeDHKey(context, dh, params, ppbSessionKey, pcbSessionKey);
+    BID_BAIL_ON_ERROR(err);
 
 cleanup:
     return err;

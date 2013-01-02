@@ -741,6 +741,12 @@ const char *_BIDErrorTable[] = {
     "Cache not found",
     "Cache key not found",
     "Assertion is a replay",
+    "Failed to generate Diffie-Hellman parameters",
+    "Failed to generate Diffie-Hellman key",
+    "Diffie-Helman check not prime",
+    "Diffie-Helman check not safe prime",
+    "Diffie-Helman not suitable generator",
+    "Diffie-Helman unable to check generator",
     "Unknown error code"
 };
 
@@ -804,6 +810,10 @@ _BIDPopulateIdentity(
     }
 
     identity->Attributes = json_object();
+    if (identity->Attributes == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     principal = json_object_get(leafCert, "principal");
     if (principal == NULL || json_object_get(principal, "email") == NULL) {
@@ -811,12 +821,33 @@ _BIDPopulateIdentity(
         goto cleanup;
     }
 
-    if (json_object_set(identity->Attributes, "email",    json_object_get(principal, "email")) ||
-        json_object_set(identity->Attributes, "audience", json_object_get(assertion, "aud")) ||
-        json_object_set(identity->Attributes, "issuer",   json_object_get(leafCert, "iss"))  ||
-        json_object_set(identity->Attributes, "expires",  json_object_get(assertion, "exp"))) {
+    if (json_object_set(identity->Attributes, "email",    json_object_get(principal, "email")) < 0 ||
+        json_object_set(identity->Attributes, "audience", json_object_get(assertion, "aud"))   < 0 ||
+        json_object_set(identity->Attributes, "issuer",   json_object_get(leafCert, "iss"))    < 0 ||
+        json_object_set(identity->Attributes, "expires",  json_object_get(assertion, "exp"))   < 0) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
+    }
+
+    identity->PrivateAttributes = json_object();
+    if (identity->PrivateAttributes == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
+        json_t *params = json_object_get(backedAssertion->Claims, "dh");
+
+        if (params != NULL) {
+            json_t *dh = json_object();
+
+            if (dh == NULL                                          ||
+                json_object_set(dh, "params", params) < 0           ||
+                json_object_set(identity->PrivateAttributes, "dh", dh) < 0) {
+                err = BID_S_NO_MEMORY;
+                goto cleanup;
+            }
+        }
     }
 
     *pIdentity = identity;
@@ -1059,51 +1090,3 @@ cleanup:
     return err;
 }
 
-BIDError
-_BIDMakeClaims(
-    BIDContext context,
-    const char *szAudienceOrSpn,
-    const unsigned char *pbChannelBindings,
-    size_t cbChannelBindings,
-    json_t **pClaims)
-{
-    BIDError err;
-    json_t *claims = NULL;
-    json_t *cbt = NULL;
-
-    *pClaims = NULL;
-
-    if (szAudienceOrSpn == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
-    claims = json_object();
-    if (claims == NULL ||
-        json_object_set_new(claims, "aud", json_string(szAudienceOrSpn)) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    json_object_set_new(claims, "ver", json_string("2013.01.01"));
-
-    if (pbChannelBindings != NULL) {
-        err = _BIDJsonBinaryValue(context, pbChannelBindings, cbChannelBindings, &cbt);
-        BID_BAIL_ON_ERROR(err);
-
-        if (json_object_set(claims, "cbt", cbt) < 0) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
-    }
-
-    err = BID_S_OK;
-    *pClaims = claims;
-
-cleanup:
-    if (err != BID_S_OK)
-        json_decref(claims);
-    json_decref(cbt);
-
-    return err;
-}

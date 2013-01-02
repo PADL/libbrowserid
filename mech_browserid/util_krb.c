@@ -101,6 +101,26 @@ gssBidKerberosInit(OM_uint32 *minor, krb5_context *context)
     return (*minor == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
 }
 
+OM_uint32
+gssBidRfc3961KeySize(OM_uint32 *minor,
+                     krb5_enctype encryptionType,
+                     size_t *keyLength)
+{
+    krb5_context krbContext;
+    krb5_error_code code;
+    size_t randomLength;
+
+    GSSBID_KRB_INIT(&krbContext);
+    GSSBID_ASSERT(encryptionType != ENCTYPE_NULL);
+
+    code = krb5_c_keylengths(krbContext, encryptionType,
+                             &randomLength, keyLength);
+
+    *minor = code;
+
+    return (code == 0) ? GSS_S_COMPLETE : GSS_S_FAILURE;
+}
+
 /*
  * Derive a key K for RFC 4121 use by using the following
  * derivation function (based on RFC 4402);

@@ -231,6 +231,7 @@ struct BIDContextDesc {
     uint32_t Skew;
     BIDCache AuthorityCache;
     BIDCache ReplayCache;
+    uint32_t DhKeySize;
 };
 
 /*
@@ -305,6 +306,7 @@ typedef struct BIDBackedAssertionDesc {
 
 struct BIDIdentityDesc {
     json_t *Attributes;
+    json_t *PrivateAttributes;
 };
 
 BIDError
@@ -335,6 +337,25 @@ _BIDDigestAssertion(
     const char *szAssertion,
     unsigned char *digest,
     size_t *digestLength);
+
+BIDError
+_BIDGenerateDHKey(
+    BIDContext context,
+    json_t *dhParams,
+    BIDJWK *pDhKey);
+
+BIDError
+_BIDGenerateDHParams(
+    BIDContext context,
+    json_t **pDhParams);
+
+BIDError
+_BIDComputeDHKey(
+    BIDContext context,
+    BIDJWK dhKey,
+    json_t *pubValue,
+    unsigned char **ppbKey,
+    size_t *pcbKey);
 
 /*
  * bid_remote.c
@@ -388,8 +409,9 @@ _BIDDuplicateString(
     const char *szSrc,
     char **szDst);
 
-#define BID_JSON_ENCODING_BASE64    0
-#define BID_JSON_ENCODING_BASE32    1
+#define BID_JSON_ENCODING_UNKNOWN   0
+#define BID_JSON_ENCODING_BASE64    1
+#define BID_JSON_ENCODING_BASE32    2
 
 BIDError
 _BIDEncodeJson(
@@ -468,14 +490,6 @@ _BIDPackAudience(
     json_t *claims,
     char **pszPackedAudience);
 
-BIDError
-_BIDMakeClaims(
-    BIDContext context,
-    const char *szAudienceOrSpn,
-    const unsigned char *pbChannelBindings,
-    size_t cbChannelBindings,
-    json_t **pClaims);
-
 /*
  * bid_rcache.c
  */
@@ -497,9 +511,25 @@ _BIDUpdateReplayCache(
     json_t *expiryTime);
 
 /*
+ * bid_user.c
+ */
+
+/*
  * bid_verifier.c
  */
 #define BID_VERIFIER_URL            "https://verifier.login.persona.org/verify"
+
+BIDError
+_BIDSetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t *y);
+
+BIDError
+_BIDGetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t **y);
 
 BIDError
 _BIDValidateAudience(

@@ -284,7 +284,7 @@ gss_import_sec_context(OM_uint32 *minor,
         return GSS_S_DEFECTIVE_TOKEN;
     }
 
-    major = gssBidAllocContext(minor, FALSE, &ctx); /* XXX isInitiator */
+    major = gssBidAllocContext(minor, FALSE, GSS_C_NO_OID, &ctx); /* XXX isInitiator */
     if (GSS_ERROR(major))
         goto cleanup;
 

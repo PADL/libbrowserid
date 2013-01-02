@@ -75,6 +75,12 @@ typedef enum {
     BID_S_CACHE_NOT_FOUND,
     BID_S_CACHE_KEY_NOT_FOUND,
     BID_S_REPLAYED_ASSERTION,
+    BID_S_DH_PARAM_GENERATION_FAILURE,
+    BID_S_DH_KEY_GENERATION_FAILURE,
+    BID_S_DH_CHECK_P_NOT_PRIME,
+    BID_S_DH_CHECK_P_NOT_SAFE_PRIME,
+    BID_S_DH_NOT_SUITABLE_GENERATOR,
+    BID_S_DH_UNABLE_TO_CHECK_GENERATOR,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -151,6 +157,7 @@ BIDReleaseContext(BIDContext context);
 #define BID_PARAM_CONTEXT_OPTIONS       0x00000007
 #define BID_PARAM_REPLAY_CACHE          0x00000008
 #define BID_PARAM_AUTHORITY_CACHE       0x00000009
+#define BID_PARAM_DH_KEYEX_SIZE         0x0000000A
 
 BIDError
 BIDSetContextParam(BIDContext context, uint32_t ulParam, void *value);
@@ -243,6 +250,20 @@ BIDGetIdentityJsonObject(
     const char *attribute,
     json_t **pJsonValue);
 #endif
+
+BIDError
+BIDGetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    unsigned char **pY,
+    size_t *pcbY);
+
+BIDError
+BIDSetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    const unsigned char *Y,
+    size_t cbY);
 
 BIDError
 BIDGetIdentitySessionKey(

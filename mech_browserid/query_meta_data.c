@@ -38,7 +38,7 @@
 
 OM_uint32
 gssBidQueryMetaData(OM_uint32 *minor,
-                    gss_const_OID mech GSSBID_UNUSED,
+                    gss_const_OID mech,
                     gss_cred_id_t cred,
                     gss_ctx_id_t *context_handle,
                     const gss_name_t name,
@@ -53,7 +53,7 @@ gssBidQueryMetaData(OM_uint32 *minor,
     meta_data->value = NULL;
 
     if (ctx == GSS_C_NO_CONTEXT) {
-        major = gssBidAllocContext(minor, isInitiator, &ctx);
+        major = gssBidAllocContext(minor, isInitiator, mech, &ctx);
         if (GSS_ERROR(major))
             return major;
 

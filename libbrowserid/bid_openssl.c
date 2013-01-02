@@ -12,6 +12,7 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
+#include <openssl/dh.h>
 #include <openssl/err.h>
 
 #include <ctype.h>
@@ -27,26 +28,36 @@ _BIDGetJsonBNValue(
     BIDContext context,
     BIDJWK jwk,
     const char *key,
+    uint32_t encoding,
     BIGNUM **bn)
 {
     BIDError err;
-    const char *value;
+    json_t *value;
+    const char *szValue;
 
     *bn = NULL;
 
-    value = json_string_value(json_object_get(jwk, key));
+    if (key != NULL)
+        value = json_object_get(jwk, key);
+    else
+        value = jwk;
     if (value == NULL)
-        return BID_S_UNKNOWN_JSON_KEY;
+        return BID_S_NO_KEY;
+
+    szValue = json_string_value(value);
+    if (szValue == NULL)
+        return BID_S_INVALID_KEY;
 
     err = BID_S_INVALID_KEY;
 
-    if (!_BIDIsLegacyJWK(context, jwk)) {
+    if ((encoding == BID_JSON_ENCODING_BASE64) ||
+        !_BIDIsLegacyJWK(context, jwk)) {
         unsigned char buf[512];
         unsigned char *pBuf = buf;
         size_t len = sizeof(buf);
         BIDError err2;
 
-        err2 = _BIDBase64UrlDecode(value, &pBuf, &len);
+        err2 = _BIDBase64UrlDecode(szValue, &pBuf, &len);
         if (err2 == BID_S_OK) {
             *bn = BN_bin2bn(buf, len, NULL);
             if (*bn != NULL)
@@ -54,18 +65,56 @@ _BIDGetJsonBNValue(
             memset(buf, 0, sizeof(buf));
         }
     } else {
-        size_t len = strlen(value), i;
+        size_t len = strlen(szValue), i;
         size_t cchDecimal = 0;
 
         /* XXX this is bogus, a hex string could also be a valid decimal string. */
         for (i = 0; i < len; i++) {
-            if (isdigit(value[i]))
+            if (isdigit(szValue[i]))
                 cchDecimal++;
         }
 
-        if (cchDecimal == len ? BN_dec2bn(bn, value) : BN_hex2bn(bn, value))
+        if (cchDecimal == len ? BN_dec2bn(bn, szValue) : BN_hex2bn(bn, szValue))
             err = BID_S_OK;
     }
+
+    return err;
+}
+
+static BIDError
+_BIDSetJsonBNValue(
+    BIDContext context,
+    BIDJWK jwk,
+    const char *key,
+    BIGNUM *bn)
+{
+    BIDError err;
+    unsigned char buf[1024];
+    unsigned char *pbData;
+    size_t cbData;
+    int bFreeData = 0;
+    json_t *j = NULL;
+
+    cbData = BN_num_bytes(bn);
+    if (cbData > sizeof(buf)) {
+        pbData = BIDMalloc(cbData);
+        if (pbData == NULL)
+            return BID_S_NO_MEMORY;
+        bFreeData = 1;
+    } else
+        pbData = buf;
+
+    cbData = BN_bn2bin(bn, pbData);
+
+    err = _BIDJsonBinaryValue(context, pbData, cbData, &j);
+    if (err == BID_S_OK) {
+        if (json_object_set(jwk, key, j) < 0)
+            err = BID_S_NO_MEMORY;
+    }
+
+    if (bFreeData)
+        BIDFree(pbData);
+    json_decref(j);
 
     return err;
 }
@@ -131,14 +180,14 @@ _BIDMakeRsaKey(
         goto cleanup;
     }
 
-    err = _BIDGetJsonBNValue(context, jwk, "n", &rsa->n);
+    err = _BIDGetJsonBNValue(context, jwk, "n", BID_JSON_ENCODING_UNKNOWN, &rsa->n);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBNValue(context, jwk, "e", &rsa->e);
+    err = _BIDGetJsonBNValue(context, jwk, "e", BID_JSON_ENCODING_UNKNOWN, &rsa->e);
     BID_BAIL_ON_ERROR(err);
 
     if (!public) {
-        err = _BIDGetJsonBNValue(context, jwk, "d", &rsa->d);
+        err = _BIDGetJsonBNValue(context, jwk, "d", BID_JSON_ENCODING_UNKNOWN, &rsa->d);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -295,19 +344,19 @@ _BIDMakeDsaKey(BIDContext context, BIDJWK jwk, int public, DSA **pDsa)
         goto cleanup;
     }
 
-    err = _BIDGetJsonBNValue(context, jwk, "p", &dsa->p);
+    err = _BIDGetJsonBNValue(context, jwk, "p", BID_JSON_ENCODING_UNKNOWN, &dsa->p);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBNValue(context, jwk, "q", &dsa->q);
+    err = _BIDGetJsonBNValue(context, jwk, "q", BID_JSON_ENCODING_UNKNOWN, &dsa->q);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBNValue(context, jwk, "g", &dsa->g);
+    err = _BIDGetJsonBNValue(context, jwk, "g", BID_JSON_ENCODING_UNKNOWN, &dsa->g);
     BID_BAIL_ON_ERROR(err);
 
     if (public)
-        err = _BIDGetJsonBNValue(context, jwk, "y", &dsa->pub_key);
+        err = _BIDGetJsonBNValue(context, jwk, "y", BID_JSON_ENCODING_UNKNOWN, &dsa->pub_key);
     else
-        err = _BIDGetJsonBNValue(context, jwk, "x", &dsa->priv_key);
+        err = _BIDGetJsonBNValue(context, jwk, "x", BID_JSON_ENCODING_UNKNOWN, &dsa->priv_key);
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
@@ -331,7 +380,7 @@ _DSAKeySize(
     BIGNUM *p;
     size_t cbKey;
 
-    err = _BIDGetJsonBNValue(context, jwk, "p", &p);
+    err = _BIDGetJsonBNValue(context, jwk, "p", BID_JSON_ENCODING_UNKNOWN, &p);
     if (err != BID_S_OK)
         return err;
 
@@ -563,3 +612,233 @@ _BIDJWTAlgorithms[] = {
         NULL
     },
 };
+
+BIDError
+_BIDMakeDHKey(
+    BIDContext context,
+    json_t *dhParams,
+    json_t *dhSecret,
+    DH **pDh)
+{
+    BIDError err;
+    DH *dh = NULL;
+
+    *pDh = NULL;
+
+    if (dhParams == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    dh = DH_new();
+    if (dh == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDGetJsonBNValue(context, dhParams, "p", BID_JSON_ENCODING_BASE64, &dh->p);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDGetJsonBNValue(context, dhParams, "g", BID_JSON_ENCODING_BASE64, &dh->g);
+    BID_BAIL_ON_ERROR(err);
+
+    if (dhSecret != NULL) {
+        err = _BIDGetJsonBNValue(context, dhSecret, "y", BID_JSON_ENCODING_BASE64, &dh->pub_key);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDGetJsonBNValue(context, dhSecret, "x", BID_JSON_ENCODING_BASE64, &dh->priv_key);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    err = BID_S_OK;
+    *pDh = dh;
+
+cleanup:
+    if (err != BID_S_OK)
+        DH_free(dh);
+
+    return err;
+}
+
+BIDError
+_BIDGenerateDHParams(
+    BIDContext context,
+    json_t **pDhParams)
+{
+    BIDError err;
+    json_t *dhParams = NULL;
+    DH *dh = NULL;
+    int codes = 0;
+
+    *pDhParams = NULL;
+
+    dh = DH_new();
+    if (dh == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    BID_ASSERT(context->DhKeySize != 0);
+
+    if (!DH_generate_parameters_ex(dh, context->DhKeySize, DH_GENERATOR_2, NULL)) {
+        err = BID_S_DH_PARAM_GENERATION_FAILURE;
+        goto cleanup;
+    }
+
+    if (!DH_check(dh, &codes)) {
+        err = BID_S_DH_PARAM_GENERATION_FAILURE;
+        goto cleanup;
+    }
+
+    if (codes & DH_CHECK_P_NOT_PRIME)
+        err = BID_S_DH_CHECK_P_NOT_PRIME;
+    else if (codes & DH_CHECK_P_NOT_SAFE_PRIME)
+        err = BID_S_DH_CHECK_P_NOT_SAFE_PRIME;
+    else if (codes & DH_UNABLE_TO_CHECK_GENERATOR)
+        err = BID_S_DH_UNABLE_TO_CHECK_GENERATOR;
+    else if (codes & DH_NOT_SUITABLE_GENERATOR)
+        err = BID_S_DH_NOT_SUITABLE_GENERATOR;
+    else
+        err = BID_S_OK;
+    BID_BAIL_ON_ERROR(err);
+
+    dhParams = json_object();
+    if (dhParams == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDSetJsonBNValue(context, dhParams, "p", dh->p);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonBNValue(context, dhParams, "g", dh->g);
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+    *pDhParams = dhParams;
+
+cleanup:
+    if (err != BID_S_OK) {
+        json_decref(dhParams);
+    }
+    DH_free(dh);
+
+    return err;
+}
+
+BIDError
+_BIDGenerateDHKey(
+    BIDContext context,
+    json_t *dhParams,
+    BIDJWK *pDhKey)
+{
+    BIDError err;
+    DH *dh = NULL;
+    json_t *dhKey = NULL;
+
+    err = _BIDMakeDHKey(context, dhParams, NULL, &dh);
+    BID_BAIL_ON_ERROR(err);
+
+    dhKey = json_object();
+    if (dhKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (!DH_generate_key(dh)) {
+        err = BID_S_DH_KEY_GENERATION_FAILURE;
+        goto cleanup;
+    }
+
+    dhKey = json_object();
+    if (dhKey == NULL ||
+        json_object_set(dhKey, "params", dhParams) < 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDSetJsonBNValue(context, dhKey, "x", dh->priv_key);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonBNValue(context, dhKey, "y", dh->pub_key);
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+    *pDhKey = dhKey;
+
+cleanup:
+    if (err != BID_S_OK) {
+        json_decref(dhKey);
+    }
+    DH_free(dh);
+
+    return err;
+}
+
+BIDError
+_BIDComputeDHKey(
+    BIDContext context,
+    BIDJWK dhKey,
+    json_t *pubValue,
+    unsigned char **ppbKey,
+    size_t *pcbKey)
+{
+    BIDError err;
+    json_t *dhParams;
+    unsigned char *pbKey = NULL;
+    ssize_t cbKey = 0;
+    BIGNUM *pub = NULL;
+    DH *dh = NULL;
+
+    *ppbKey = NULL;
+    *pcbKey = 0;
+
+    if (dhKey == NULL || pubValue == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    dhParams = json_object_get(dhKey, "params");
+    if (dhParams == NULL) {
+        err = BID_S_INVALID_KEY;
+        goto cleanup;
+    }
+
+    err = _BIDGetJsonBNValue(context, pubValue, "y", BID_JSON_ENCODING_BASE64, &pub);
+    BID_BAIL_ON_ERROR(err);
+
+    dh = DH_new();
+
+    err = _BIDMakeDHKey(context, dhParams, dhKey, &dh);
+    BID_BAIL_ON_ERROR(err);
+
+    cbKey = DH_size(dh);
+    if (cbKey < 0) {
+        err = BID_S_INVALID_KEY;
+        goto cleanup;
+    }
+
+    pbKey = BIDMalloc(cbKey);
+    if (pbKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    cbKey = DH_compute_key(pbKey, pub, dh);
+    if (cbKey < 0) {
+        err = BID_S_DH_KEY_GENERATION_FAILURE;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+    *ppbKey = pbKey;
+    *pcbKey = cbKey;
+
+cleanup:
+    if (err != BID_S_OK)
+        BIDFree(pbKey);
+    BN_free(pub);
+    DH_free(dh);
+
+    return err;
+}

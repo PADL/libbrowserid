@@ -33,6 +33,7 @@ BIDAcquireContext(
 
     context->ContextOptions = ulContextOptions;
     context->MaxDelegations = 6;
+    context->DhKeySize = 1024;
 
     if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
         if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
@@ -111,6 +112,9 @@ BIDSetContextParam(
     case BID_PARAM_SKEW:
         context->Skew = *(uint32_t *)value;
         break;
+    case BID_PARAM_DH_KEYEX_SIZE:
+        context->DhKeySize = *(uint32_t *)value;
+        break;
     case BID_PARAM_AUTHORITY_CACHE:
     case BID_PARAM_REPLAY_CACHE: {
         const char *szCacheName;
@@ -184,6 +188,10 @@ BIDGetContextParam(
         break;
     case BID_PARAM_AUTHORITY_CACHE:
         err = _BIDGetCacheName(context, context->AuthorityCache, (const char **)pValue);
+        break;
+    case BID_PARAM_DH_KEYEX_SIZE:
+        *((uint32_t *)pValue) = context->DhKeySize;
+        break;
     default:
         err = BID_S_INVALID_PARAMETER;
         break;

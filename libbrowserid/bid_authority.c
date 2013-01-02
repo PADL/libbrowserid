@@ -48,8 +48,6 @@ _BIDAcquireAuthority(
         if (expiryTime != 0)
             json_object_set_new(authority, "expires", json_integer(expiryTime));
 
-        json_dumpf(authority, stdout, JSON_INDENT(4));
-
         if (context->ContextOptions & BID_CONTEXT_AUTHORITY_CACHE)
             _BIDSetCacheObject(context, context->AuthorityCache, szHostname, authority);
     }

@@ -39,33 +39,56 @@
 OM_uint32
 gssBidAllocContext(OM_uint32 *minor,
                    int isInitiator,
+                   gss_const_OID mech,
                    gss_ctx_id_t *pCtx)
 {
     OM_uint32 major, tmpMinor;
-    gss_ctx_id_t ctx;
+    gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
     BIDError err;
     uint32_t contextParams;
+    size_t cbKey = 0;
 
     GSSBID_ASSERT(*pCtx == GSS_C_NO_CONTEXT);
 
     ctx = (gss_ctx_id_t)GSSBID_CALLOC(1, sizeof(*ctx));
-    if (ctx == NULL) {
+    if (ctx == GSS_C_NO_CONTEXT) {
+        major = GSS_S_FAILURE;
         *minor = ENOMEM;
-        return GSS_S_FAILURE;
+        goto cleanup;
     }
 
     if (GSSBID_MUTEX_INIT(&ctx->mutex) != 0) {
+        major = GSS_S_FAILURE;
         *minor = GSSBID_GET_LAST_ERROR();
-        gssBidReleaseContext(&tmpMinor, &ctx);
-        return GSS_S_FAILURE;
+        goto cleanup;
     }
 
     if (isInitiator)
         ctx->flags |= CTX_FLAG_INITIATOR;
     ctx->state = GSSBID_STATE_INITIAL;
-    ctx->mechanismUsed = GSS_C_NO_OID;
+
+    if (mech != GSS_C_NO_OID) {
+        major = gssBidCanonicalizeOid(minor,
+                                      (gss_OID)mech,
+                                      OID_FLAG_NULL_VALID | OID_FLAG_MAP_NULL_TO_DEFAULT_MECH,
+                                      &ctx->mechanismUsed);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        /* Cache encryption type derived from selected mechanism OID */
+        major = gssBidOidToEnctype(minor, ctx->mechanismUsed,
+                                   &ctx->encryptionType);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gssBidRfc3961KeySize(minor, ctx->encryptionType, &cbKey);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
     contextParams = BID_CONTEXT_GSS;
+    if (ctx->encryptionType != ENCTYPE_NULL)
+        contextParams |= BID_CONTEXT_DH_KEYEX;
     if (isInitiator)
         contextParams |= BID_CONTEXT_USER_AGENT | BID_USE_CACHED_CREDENTIALS;
     else
@@ -74,8 +97,16 @@ gssBidAllocContext(OM_uint32 *minor,
     err = BIDAcquireContext(contextParams, &ctx->bidContext);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
-        gssBidReleaseContext(&tmpMinor, &ctx);
-        return major;
+        goto cleanup;
+    }
+
+    if (mech != GSS_C_NO_OID) {
+        cbKey *= 8; /* from bytes to bits */
+        err = BIDSetContextParam(ctx->bidContext, BID_PARAM_DH_KEYEX_SIZE, &cbKey);
+        if (err != BID_S_OK) {
+            major = gssBidMapError(minor, err);
+            goto cleanup;
+        }
     }
 
     /*
@@ -86,16 +117,22 @@ gssBidAllocContext(OM_uint32 *minor,
      * GSS_Accept_sec_context.
     */
     ctx->gssFlags = GSS_C_TRANS_FLAG;
-#if 0
-                    GSS_C_INTEG_FLAG    |   /* integrity */
-                    GSS_C_CONF_FLAG     |   /* confidentiality */
-                    GSS_C_SEQUENCE_FLAG |   /* sequencing */
-                    GSS_C_REPLAY_FLAG;      /* replay detection */
-#endif
+    if (ctx->encryptionType != ENCTYPE_NULL) {
+        ctx->gssFlags |= GSS_C_INTEG_FLAG    |   /* integrity */
+                         GSS_C_CONF_FLAG     |   /* confidentiality */
+                         GSS_C_SEQUENCE_FLAG |   /* sequencing */
+                         GSS_C_REPLAY_FLAG;      /* replay detection */
+    }
 
+    major = GSS_S_COMPLETE;
+    *minor = 0;
     *pCtx = ctx;
 
-    return GSS_S_COMPLETE;
+cleanup:
+    if (GSS_ERROR(major))
+        gssBidReleaseContext(&tmpMinor, &ctx);
+
+    return major;
 }
 
 OM_uint32
@@ -159,10 +196,10 @@ gssBidMakeToken(OM_uint32 *minor,
 
 OM_uint32
 gssBidVerifyToken(OM_uint32 *minor,
-                  gss_ctx_id_t ctx,
                   const gss_buffer_t inputToken,
                   enum gss_bid_token_type *actualToken,
-                  gss_buffer_t innerInputToken)
+                  gss_buffer_t innerInputToken,
+                  gss_OID *mechanismUsed)
 {
     OM_uint32 major;
     size_t bodySize;
@@ -170,8 +207,8 @@ gssBidVerifyToken(OM_uint32 *minor,
     gss_OID_desc oidBuf;
     gss_OID oid;
 
-    if (ctx->mechanismUsed != GSS_C_NO_OID) {
-        oid = ctx->mechanismUsed;
+    if (*mechanismUsed != GSS_C_NO_OID) {
+        oid = *mechanismUsed;
     } else {
         oidBuf.elements = NULL;
         oidBuf.length = 0;
@@ -183,8 +220,8 @@ gssBidVerifyToken(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
-    if (ctx->mechanismUsed == GSS_C_NO_OID) {
-        major = gssBidCanonicalizeOid(minor, oid, 0, &ctx->mechanismUsed);
+    if (*mechanismUsed == GSS_C_NO_OID) {
+        major = gssBidCanonicalizeOid(minor, oid, 0, mechanismUsed);
         if (GSS_ERROR(major))
             return major;
     }
@@ -233,12 +270,6 @@ gssBidContextReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     unsigned char *pbSessionKey;
     size_t cbSessionKey;
 
-    /* Cache encryption type derived from selected mechanism OID */
-    major = gssBidOidToEnctype(minor, ctx->mechanismUsed,
-                               &ctx->encryptionType);
-    if (GSS_ERROR(major))
-        return major;
-
     gssBidReleaseName(&tmpMinor, &ctx->initiatorName);
 
     err = BIDGetIdentityEmail(ctx->bidContext, ctx->bidIdentity, &email);
@@ -259,9 +290,12 @@ gssBidContextReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     if (GSS_ERROR(major))
         return major;
 
-    err = BIDGetIdentitySessionKey(ctx->bidContext, ctx->bidIdentity,
-                                   &pbSessionKey, &cbSessionKey);
-    if (err == BID_S_OK && ctx->encryptionType != ENCTYPE_NULL) {
+    if (ctx->encryptionType != ENCTYPE_NULL) {
+        err = BIDGetIdentitySessionKey(ctx->bidContext, ctx->bidIdentity,
+                                       &pbSessionKey, &cbSessionKey);
+        if (err != BID_S_OK)
+            return gssBidMapError(minor, err);
+
         major = gssBidDeriveRfc3961Key(minor, pbSessionKey, cbSessionKey,
                                        ctx->encryptionType, &ctx->rfc3961Key);
 

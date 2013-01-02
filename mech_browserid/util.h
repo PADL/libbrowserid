@@ -193,15 +193,18 @@ enum gss_bid_token_type {
                                           GSS_C_IDENTIFY_FLAG           | \
                                           GSS_C_EXTENDED_ERROR_FLAG       )
 
-OM_uint32 gssBidAllocContext(OM_uint32 *minor, int isInitiator, gss_ctx_id_t *pCtx);
+OM_uint32 gssBidAllocContext(OM_uint32 *minor,
+                             int isInitiator,
+                             gss_const_OID mech,
+                             gss_ctx_id_t *pCtx);
 OM_uint32 gssBidReleaseContext(OM_uint32 *minor, gss_ctx_id_t *pCtx);
 
 OM_uint32
 gssBidVerifyToken(OM_uint32 *minor,
-                  gss_ctx_id_t ctx,
                   const gss_buffer_t inputToken,
                   enum gss_bid_token_type *actualToken,
-                  gss_buffer_t innerInputToken);
+                  gss_buffer_t innerInputToken,
+                  gss_OID *pMechanismUsed);
 
 OM_uint32
 gssBidMakeToken(OM_uint32 *minor,
@@ -516,6 +519,11 @@ OM_uint32
 gssBidOidToEnctype(OM_uint32 *minor,
                    const gss_OID oid,
                    krb5_enctype *enctype);
+
+OM_uint32
+gssBidRfc3961KeySize(OM_uint32 *minor,
+                     krb5_enctype enctype,
+                     size_t *keybytes);
 
 int
 gssBidIsMechanismOid(const gss_OID oid);
