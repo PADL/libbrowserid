@@ -267,6 +267,7 @@ _BIDMakeReauthIdentity(
 {
     BIDError err;
     BIDIdentity identity = BID_C_NO_IDENTITY;
+    json_t *rexp;
 
     *pIdentity = NULL;
 
@@ -276,9 +277,16 @@ _BIDMakeReauthIdentity(
         goto cleanup;
     }
 
+    rexp = json_object_get(cred, "r-expires");
+
     identity->Attributes = json_copy(cred);
     json_object_del(identity->Attributes, "tkt");
     json_object_del(identity->Attributes, "ark");
+
+    if (rexp != NULL) {
+        json_object_del(identity->Attributes, "r-expires");
+        json_object_set(identity->Attributes, "expires", rexp);
+    }
 
     err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
                                             &identity->SessionKey, &identity->SessionKeyLength);
@@ -392,6 +400,11 @@ _BIDVerifyReauthAssertion(
 
     err = _BIDMakeReauthIdentity(context, cred, ap, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
+
+#if 0
+    json_dumpf(cred, stdout, JSON_INDENT(4));
+    json_dumpf(ap->Payload, stdout, JSON_INDENT(4));
+#endif
 
 cleanup:
     json_decref(cred);
