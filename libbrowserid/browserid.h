@@ -318,6 +318,9 @@ BIDStoreTicketInCache(
     const char *szAudienceOrSpn,
     const char *szTicket);
 
+struct BIDJWTDesc;
+typedef struct BIDJWTDesc *BIDJWT;
+
 #ifdef JANSSON_H
 BIDError
 BIDMakeJsonWebToken(
@@ -327,9 +330,6 @@ BIDMakeJsonWebToken(
     size_t cbKey,
     char **pszJwt,
     size_t *pchJwt);
-
-struct BIDJWTDesc;
-typedef struct BIDJWTDesc *BIDJWT;
 
 BIDError
 BIDParseJsonWebToken(
