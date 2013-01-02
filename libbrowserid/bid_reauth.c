@@ -187,8 +187,7 @@ _BIDMakeAuthenticator(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     json_t *tkt,
-    BIDJWT *pAuthenticator,
-    time_t *pTimestamp)
+    BIDJWT *pAuthenticator)
 {
     BIDError err;
     BIDJWT ap;
@@ -198,7 +197,6 @@ _BIDMakeAuthenticator(
     json_t *cbt = NULL;
 
     *pAuthenticator = NULL;
-    *pTimestamp = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -246,7 +244,6 @@ _BIDMakeAuthenticator(
     }
 
     *pAuthenticator = ap;
-    _BIDGetJsonTimestampValue(context, ap->Payload, "iat", pTimestamp);
 
     json_dumpf(ap->Payload, stdout, 0);
 
@@ -344,8 +341,10 @@ _BIDGetReauthAssertion(
     }
 
     err = _BIDMakeAuthenticator(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
-                                json_object_get(tkt, "jti"), &ap, &tsNow);
+                                json_object_get(tkt, "jti"), &ap);
     BID_BAIL_ON_ERROR(err);
+
+    _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &tsNow);
 
     err = _BIDValidateExpiry(context, tsNow, json_object_get(tkt, "exp"), ptExpiryTime);
     BID_BAIL_ON_ERROR(err);

@@ -1076,6 +1076,7 @@ _BIDDeriveAuthenticatorSessionKey(
     err = _BIDGetJsonBinaryValue(context, ark, "secret-key", &pbArk, &cbArk);
     BID_BAIL_ON_ERROR(err);
 
+    /* This is the time since Unix epoch in milliseconds, not seconds */
     ts = json_integer_value(json_object_get(ap->Payload, "iat"));
 
     pbTimestamp[0] = (unsigned char)((ts >> 56) & 0xff);
