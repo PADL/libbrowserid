@@ -172,6 +172,9 @@ _BIDGetCacheObject(
     if (cache == NULL)
         return BID_S_INVALID_PARAMETER;
 
+    if (key == NULL)
+        return BID_S_INVALID_PARAMETER;
+
     if (cache->Ops->GetObject == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
@@ -194,6 +197,9 @@ _BIDSetCacheObject(
     if (cache == NULL)
         return BID_S_INVALID_PARAMETER;
 
+    if (key == NULL)
+        return BID_S_INVALID_PARAMETER;
+
     if (cache->Ops->SetObject == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
@@ -213,6 +219,9 @@ _BIDRemoveCacheObject(
     BID_CONTEXT_VALIDATE(context);
 
     if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    if (key == NULL)
         return BID_S_INVALID_PARAMETER;
 
     if (cache->Ops->RemoveObject == NULL)
