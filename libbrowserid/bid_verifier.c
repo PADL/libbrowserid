@@ -60,31 +60,32 @@ _BIDValidateAudience(
     size_t cbChannelBindings)
 {
     BIDError err;
-    json_t *assertion = backedAssertion->Assertion->Payload;
-    const char *assertionAudience = json_string_value(json_object_get(assertion, "aud"));
-    char *szAssertionSpn = NULL;
     unsigned char *pbAssertionCB = NULL;
     size_t cbAssertionCB = 0;
 
-    if (assertionAudience == NULL)
+    if (backedAssertion->Claims == NULL)
         return BID_S_MISSING_AUDIENCE;
 
-    err = _BIDUnpackAudience(context, assertionAudience, &szAssertionSpn, &pbAssertionCB, &cbAssertionCB);
-    BID_BAIL_ON_ERROR(err);
-
     if (szAudienceOrSpn != NULL) {
-        if (strcmp(szAudienceOrSpn, szAssertionSpn) != 0) {
+        const char *szAssertionSpn = json_string_value(json_object_get(backedAssertion->Claims, "aud"));
+
+        if (szAssertionSpn == NULL) {
+            err = BID_S_MISSING_AUDIENCE;
+            goto cleanup;
+        } else if (strcmp(szAudienceOrSpn, szAssertionSpn) != 0) {
             err = BID_S_BAD_AUDIENCE;
             goto cleanup;
         }
     }
 
     if (pbChannelBindings != NULL) {
-        if (cbAssertionCB == 0) {
+        err = _BIDGetJsonBinaryValue(context, backedAssertion->Claims, "cbt", &pbAssertionCB, &cbAssertionCB);
+        if (err == BID_S_UNKNOWN_JSON_KEY)
             err = BID_S_MISSING_CHANNEL_BINDINGS;
-            goto cleanup;
-        } else if (cbChannelBindings != cbAssertionCB ||
-                   memcmp(pbChannelBindings, pbAssertionCB, cbAssertionCB) != 0) {
+        BID_BAIL_ON_ERROR(err);
+
+        if (cbChannelBindings != cbAssertionCB ||
+            memcmp(pbChannelBindings, pbAssertionCB, cbAssertionCB) != 0) {
             err = BID_S_CHANNEL_BINDINGS_MISMATCH;
             goto cleanup;
         }
@@ -93,7 +94,6 @@ _BIDValidateAudience(
     err = BID_S_OK;
 
 cleanup:
-    BIDFree(szAssertionSpn);
     BIDFree(pbAssertionCB);
 
     return err;

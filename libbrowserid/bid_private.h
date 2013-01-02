@@ -109,6 +109,15 @@ _BIDIssuerIsAuthoritative(
 //    BIDAuthority authority);
 
 /*
+ * bid_base32.c
+ */
+BIDError
+_BIDBase32UrlEncode(const unsigned char *data, size_t size, char **str, size_t *cchStr);
+
+BIDError
+_BIDBase32UrlDecode(const char *str, unsigned char **pData, size_t *cbData);
+
+/*
  * bid_base64.c
  */
 BIDError
@@ -291,6 +300,7 @@ typedef struct BIDBackedAssertionDesc {
     BIDJWT Assertion;
     size_t cCertificates;
     BIDJWT rCertificates[BID_MAX_CERTS];
+    json_t *Claims;
 } *BIDBackedAssertion;
 
 struct BIDIdentityDesc {
@@ -346,7 +356,7 @@ _BIDVerifyRemote(
 BIDError
 _BIDJsonBinaryValue(
     BIDContext context,
-    unsigned char *pbData,
+    const unsigned char *pbData,
     size_t cbData,
     json_t **pJson);
 
@@ -378,10 +388,14 @@ _BIDDuplicateString(
     const char *szSrc,
     char **szDst);
 
+#define BID_JSON_ENCODING_BASE64    0
+#define BID_JSON_ENCODING_BASE32    1
+
 BIDError
 _BIDEncodeJson(
     BIDContext context,
     json_t *jData,
+    uint32_t encoding,
     char **pEncodedJson,
     size_t *pEncodedJsonLen);
 
@@ -389,6 +403,7 @@ BIDError
 _BIDDecodeJson(
     BIDContext context,
     const char *encodedJson,
+    uint32_t encoding,
     json_t **pjData);
 
 BIDError
@@ -445,32 +460,21 @@ BIDError
 _BIDUnpackAudience(
     BIDContext context,
     const char *szPackedAudience,
-    char **pszAudienceOrSpn,
-    unsigned char **ppbChannelBindings,
-    size_t *pcbChannelBindings);
+    json_t **pClaims);
 
 BIDError
 _BIDPackAudience(
     BIDContext context,
+    json_t *claims,
+    char **pszPackedAudience);
+
+BIDError
+_BIDMakeClaims(
+    BIDContext context,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
-    char **pszPackedAudience);
-
-#if 0
-typedef enum {
-    BID_ENCODING_UNKNOWN,
-    BID_ENCODING_DECIMAL,
-    BID_ENCODING_HEX,
-    BID_ENCODING_BASE64,
-} BIDEncoding;
-
-BIDError
-_BIDGuessEncoding(
-    BIDContext context,
-    const char *value,
-    BIDEncoding *pEncoding);
-#endif
+    json_t **pClaims);
 
 /*
  * bid_rcache.c

@@ -36,7 +36,7 @@ _BIDDuplicateString(
 BIDError
 _BIDJsonBinaryValue(
     BIDContext context,
-    unsigned char *pbData,
+    const unsigned char *pbData,
     size_t cbData,
     json_t **pJson)
 {
@@ -67,6 +67,7 @@ BIDError
 _BIDEncodeJson(
     BIDContext context,
     json_t *jData,
+    uint32_t encoding,
     char **pEncodedJson,
     size_t *pEncodedJsonLen)
 {
@@ -80,7 +81,10 @@ _BIDEncodeJson(
     if (szJson == NULL)
         return BID_S_CANNOT_ENCODE_JSON;
 
-    err = _BIDBase64UrlEncode((unsigned char *)szJson, strlen(szJson), pEncodedJson, &len);
+    if (encoding == BID_JSON_ENCODING_BASE32)
+        err = _BIDBase32UrlEncode((unsigned char *)szJson, strlen(szJson), pEncodedJson, &len);
+    else
+        err = _BIDBase64UrlEncode((unsigned char *)szJson, strlen(szJson), pEncodedJson, &len);
     if (err != BID_S_OK) {
         BIDFree(szJson);
         return err;
@@ -97,6 +101,7 @@ BIDError
 _BIDDecodeJson(
     BIDContext context,
     const char *encodedJson,
+    uint32_t encoding,
     json_t **pjData)
 {
     BIDError err;
@@ -106,7 +111,10 @@ _BIDDecodeJson(
 
     *pjData = NULL;
 
-    err = _BIDBase64UrlDecode(encodedJson, (unsigned char **)&szJson, &cbJson);
+    if (encoding == BID_JSON_ENCODING_BASE32)
+        err = _BIDBase32UrlDecode(encodedJson, (unsigned char **)&szJson, &cbJson);
+    else
+        err = _BIDBase64UrlDecode(encodedJson, (unsigned char **)&szJson, &cbJson);
     if (err != BID_S_OK) {
         BIDFree(szJson);
         return err;
@@ -136,6 +144,7 @@ _BIDUnpackBackedAssertion(
     BIDError err;
     char *tmp = NULL, *p;
     BIDBackedAssertion assertion = NULL;
+    const char *aud = NULL;
 
     if (encodedJson == NULL) {
         err = BID_S_INVALID_ASSERTION;
@@ -182,6 +191,17 @@ _BIDUnpackBackedAssertion(
         err = BID_S_INVALID_ASSERTION;
         goto cleanup;
     }
+
+    BID_ASSERT(assertion->Assertion->Payload != NULL);
+
+    aud = json_string_value(json_object_get(assertion->Assertion->Payload, "aud"));
+    if (aud == NULL) {
+        err = BID_S_MISSING_AUDIENCE;
+        goto cleanup;
+    }
+
+    err = _BIDUnpackAudience(context, aud, &assertion->Claims);
+    BID_BAIL_ON_ERROR(err);
 
     *pAssertion = assertion;
 
@@ -271,6 +291,7 @@ _BIDReleaseBackedAssertion(
     for (i = 0; i < assertion->cCertificates; i++)
         _BIDReleaseJWT(context, assertion->rCertificates[i]);
 
+    json_decref(assertion->Claims);
     BIDFree(assertion);
 
     return BID_S_OK;
@@ -807,25 +828,22 @@ cleanup:
     return err;
 }
 
+/*
+ * Return a claims dictionary that we have packed into a URL.
+ */
 BIDError
 _BIDUnpackAudience(
     BIDContext context,
     const char *szPackedAudience,
-    char **pszAudienceOrSpn,
-    unsigned char **ppbChannelBindings,
-    size_t *pcbChannelBindings)
+    json_t **pClaims)
 {
     BIDError err;
     const char *p;
     char *szAudienceOrSpn = NULL;
     size_t cchAudienceOrSpn;
-    unsigned char *pbChannelBindings = NULL;
+    json_t *claims = NULL;
 
-    *pszAudienceOrSpn = NULL;
-    if (ppbChannelBindings != NULL) {
-        *ppbChannelBindings = NULL;
-        *pcbChannelBindings = 0;
-    }
+    *pClaims = NULL;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -834,11 +852,20 @@ _BIDUnpackAudience(
         goto cleanup;
     }
 
+    claims = json_object();
+    if (claims == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
     if ((context->ContextOptions & BID_CONTEXT_GSS) == 0) {
-        err = _BIDDuplicateString(context, szPackedAudience, pszAudienceOrSpn);
-        BID_BAIL_ON_ERROR(err);
+        if (json_object_set_new(claims, "aud", json_string(szPackedAudience)) < 0) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
 
         err = BID_S_OK;
+        *pClaims = json_incref(claims);
         goto cleanup;
     }
 
@@ -858,8 +885,8 @@ _BIDUnpackAudience(
     p = strrchr(szPackedAudience, '#');
 #endif
     if (p != NULL) {
-        if (p[1] != '\0' && ppbChannelBindings != NULL) {
-            err = _BIDBase64UrlDecode(p + 1, ppbChannelBindings, pcbChannelBindings);
+        if (p[1] != '\0') {
+            err = _BIDDecodeJson(context, p + 1, BID_JSON_ENCODING_BASE32, &claims);
             BID_BAIL_ON_ERROR(err);
         }
 
@@ -886,14 +913,18 @@ _BIDUnpackAudience(
     *((char *)p) = '/';
 #endif
 
+    if (json_object_set_new(claims, "aud", json_string(szAudienceOrSpn)) < 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
     err = BID_S_OK;
-    *pszAudienceOrSpn = szAudienceOrSpn;
+    *pClaims = claims;
 
 cleanup:
-    if (err != BID_S_OK) {
-        BIDFree(szAudienceOrSpn);
-        BIDFree(pbChannelBindings);
-    }
+    BIDFree(szAudienceOrSpn);
+    if (err != BID_S_OK)
+        json_decref(claims);
 
     return err;
 }
@@ -901,34 +932,35 @@ cleanup:
 BIDError
 _BIDPackAudience(
     BIDContext context,
-    const char *szAudienceOrSpn,
-    const unsigned char *pbChannelBindings,
-    size_t cbChannelBindings,
+    json_t *claims,
     char **pszPackedAudience)
 {
     BIDError err;
+    json_t *protocolClaims = NULL;
+    const char *szAudienceOrSpn;
     char *szPackedAudience = NULL, *p;
     size_t cchAudienceOrSpn, cchPackedAudience;
-    char *szEncodedChannelBindings = NULL;
-    size_t cchEncodedChannelBindings;
+    char *szEncodedClaims = NULL;
+    size_t cchEncodedClaims;
 
     *pszPackedAudience = NULL;
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (szAudienceOrSpn == NULL) {
+    if (claims == NULL) {
         err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    szAudienceOrSpn = json_string_value(json_object_get(claims, "aud"));
+    if (szAudienceOrSpn == NULL) {
+        err = BID_S_MISSING_AUDIENCE;
         goto cleanup;
     }
 
     cchAudienceOrSpn = strlen(szAudienceOrSpn);
 
     if ((context->ContextOptions & BID_CONTEXT_GSS) == 0) {
-        if (pbChannelBindings != NULL) {
-            err = BID_S_INVALID_PARAMETER;
-            goto cleanup;
-        }
-
         err = _BIDDuplicateString(context, szAudienceOrSpn, pszPackedAudience);
         BID_BAIL_ON_ERROR(err);
 
@@ -936,20 +968,18 @@ _BIDPackAudience(
         goto cleanup;
     }
 
-    if (pbChannelBindings != NULL) {
-        err = _BIDBase64UrlEncode(pbChannelBindings, cbChannelBindings, &szEncodedChannelBindings, &cchEncodedChannelBindings);
-        BID_BAIL_ON_ERROR(err);
-    } else {
-        cchEncodedChannelBindings = 0;
+    protocolClaims = json_copy(claims);
+    if (protocolClaims == NULL ||
+        json_object_del(protocolClaims, "aud") < 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
     }
 
+    err = _BIDEncodeJson(context, protocolClaims, BID_JSON_ENCODING_BASE32, &szEncodedClaims, &cchEncodedClaims);
+    BID_BAIL_ON_ERROR(err);
+
     cchPackedAudience = BID_GSS_AUDIENCE_PREFIX_LEN + cchAudienceOrSpn;
-#ifdef BROKEN_URL_PARSER
-        cchPackedAudience += 1 + cchEncodedChannelBindings;
-#else
-    if (cchEncodedChannelBindings != 0)
-        cchPackedAudience += 1 + cchEncodedChannelBindings;
-#endif
+    cchPackedAudience += 1 + cchEncodedClaims;
 
     szPackedAudience = BIDMalloc(cchPackedAudience + 1);
     if (szPackedAudience == NULL) {
@@ -965,11 +995,10 @@ _BIDPackAudience(
 #ifdef BROKEN_URL_PARSER
     *p++ = '.';
 #else
-    if (cchEncodedChannelBindings != 0)
-        *p++ = '#';
+    *p++ = '#';
 #endif
-    memcpy(p, szEncodedChannelBindings, cchEncodedChannelBindings);
-    p += cchEncodedChannelBindings;
+    memcpy(p, szEncodedClaims, cchEncodedClaims);
+    p += cchEncodedClaims;
     *p = '\0';
 
 #ifdef BROKEN_URL_PARSER
@@ -986,9 +1015,10 @@ _BIDPackAudience(
     *pszPackedAudience = szPackedAudience;
 
 cleanup:
+    json_decref(protocolClaims);
     if (err != BID_S_OK)
         BIDFree(szPackedAudience);
-    BIDFree(szEncodedChannelBindings);
+    BIDFree(szEncodedClaims);
 
     return err;
 }
@@ -1025,6 +1055,55 @@ BIDAcquireAssertionFromString(
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);
+
+    return err;
+}
+
+BIDError
+_BIDMakeClaims(
+    BIDContext context,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    json_t **pClaims)
+{
+    BIDError err;
+    json_t *claims = NULL;
+    json_t *cbt = NULL;
+
+    *pClaims = NULL;
+
+    if (szAudienceOrSpn == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    claims = json_object();
+    if (claims == NULL ||
+        json_object_set_new(claims, "aud", json_string(szAudienceOrSpn)) < 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    json_object_set_new(claims, "ver", json_string("2013.01.01"));
+
+    if (pbChannelBindings != NULL) {
+        err = _BIDJsonBinaryValue(context, pbChannelBindings, cbChannelBindings, &cbt);
+        BID_BAIL_ON_ERROR(err);
+
+        if (json_object_set(claims, "cbt", cbt) < 0) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+    }
+
+    err = BID_S_OK;
+    *pClaims = claims;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(claims);
+    json_decref(cbt);
 
     return err;
 }

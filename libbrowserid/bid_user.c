@@ -16,8 +16,9 @@ BIDAcquireAssertion(
     BIDIdentity *pAssertedIdentity,
     time_t *ptExpiryTime)
 {
-    BIDError err = BID_S_CACHE_NOT_FOUND;
+    BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
+    json_t *claims = NULL;
     char *szAssertion = NULL;
     char *szPackedAudience = NULL;
     const char *szSiteName = NULL;
@@ -30,22 +31,23 @@ BIDAcquireAssertion(
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (err != BID_S_OK) {
-        if (context->ContextOptions & BID_USER_INTERACTION_DISABLED) {
-            err = BID_S_INTERACT_UNAVAILABLE;
-            goto cleanup;
-        }
-
-        err = _BIDPackAudience(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, &szPackedAudience);
-        BID_BAIL_ON_ERROR(err);
-
-        szSiteName = strchr(szAudienceOrSpn, '/');
-        if (szSiteName != NULL)
-            szSiteName++;
-
-        err = _BIDBrowserGetAssertion(context, szPackedAudience, szSiteName, &szAssertion);
-        BID_BAIL_ON_ERROR(err);
+    if (context->ContextOptions & BID_USER_INTERACTION_DISABLED) {
+        err = BID_S_INTERACT_UNAVAILABLE;
+        goto cleanup;
     }
+
+    err = _BIDMakeClaims(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, &claims);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDPackAudience(context, claims, &szPackedAudience);
+    BID_BAIL_ON_ERROR(err);
+
+    szSiteName = strchr(szAudienceOrSpn, '/');
+    if (szSiteName != NULL)
+        szSiteName++;
+
+    err = _BIDBrowserGetAssertion(context, szPackedAudience, szSiteName, &szAssertion);
+    BID_BAIL_ON_ERROR(err);
 
     err = BIDAcquireAssertionFromString(context, szAssertion, pAssertedIdentity, ptExpiryTime);
     BID_BAIL_ON_ERROR(err);
@@ -55,6 +57,7 @@ BIDAcquireAssertion(
 cleanup:
     if (err != BID_S_OK)
         BIDFree(szAssertion);
+    json_decref(claims);
     _BIDReleaseBackedAssertion(context, backedAssertion);
     BIDFree(szPackedAudience);
 

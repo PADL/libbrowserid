@@ -129,6 +129,11 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_USE_CACHED_CREDENTIALS      0x00000080
 
 /*
+ * DH key exchange
+ */
+#define BID_CONTEXT_DH_KEYEX            0x00000100
+
+/*
  * Context management.
  */
 BIDError

@@ -59,7 +59,8 @@ _BIDVerifyRemote(
     BIDBackedAssertion backedAssertion = NULL;
     const char *szVerifierUrl;
     char *szPostFields = NULL;
-    char *szPackedAudience = NULL;
+    const char *szPackedAudience = NULL;
+    json_t *claims = NULL;
     json_t *response = NULL;
     size_t cchAssertion, cchPackedAudience;
 
@@ -76,8 +77,14 @@ _BIDVerifyRemote(
     err = _BIDValidateAudience(context, backedAssertion, szAudienceOrSpn, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDPackAudience(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, &szPackedAudience);
-    BID_BAIL_ON_ERROR(err);
+    BID_ASSERT(backedAssertion->Assertion != NULL);
+    BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
+
+    szPackedAudience = json_string_value(json_object_get(backedAssertion->Assertion->Payload, "aud"));
+    if (szPackedAudience == NULL) {
+        err = BID_S_MISSING_AUDIENCE;
+        goto cleanup;
+    }
 
     cchAssertion = strlen(szAssertion);
     cchPackedAudience = strlen(szPackedAudience);
@@ -101,8 +108,8 @@ _BIDVerifyRemote(
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);
-    BIDFree(szPackedAudience);
     BIDFree(szPostFields);
+    json_decref(claims);
     json_decref(response);
 
     return err;

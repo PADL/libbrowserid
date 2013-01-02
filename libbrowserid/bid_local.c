@@ -164,6 +164,7 @@ _BIDVerifyLocal(
 
     BID_ASSERT(backedAssertion->Assertion != NULL);
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
+    BID_ASSERT(backedAssertion->Claims != NULL);
 
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);

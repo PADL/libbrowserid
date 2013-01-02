@@ -165,13 +165,13 @@ _BIDParseJWT(
     }
     *szSignature++ = '\0';
 
-    err = _BIDDecodeJson(context, szHeader, &jwt->Header);
+    err = _BIDDecodeJson(context, szHeader, BID_JSON_ENCODING_BASE64, &jwt->Header);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDValidateJWTHeader(context, jwt->Header);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDDecodeJson(context, szPayload, &jwt->Payload);
+    err = _BIDDecodeJson(context, szPayload, BID_JSON_ENCODING_BASE64, &jwt->Payload);
     BID_BAIL_ON_ERROR(err);
 
     BID_ASSERT(jwt->Signature == NULL);
@@ -211,10 +211,10 @@ _BIDMakeSignatureData(
         jwt->EncDataLength = 0;
     }
 
-    err = _BIDEncodeJson(context, jwt->Header, &szEncodedHeader, &cchEncodedHeader);
+    err = _BIDEncodeJson(context, jwt->Header, BID_JSON_ENCODING_BASE64, &szEncodedHeader, &cchEncodedHeader);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDEncodeJson(context, jwt->Payload, &szEncodedPayload, &cchEncodedPayload);
+    err = _BIDEncodeJson(context, jwt->Payload, BID_JSON_ENCODING_BASE64, &szEncodedPayload, &cchEncodedPayload);
     BID_BAIL_ON_ERROR(err);
 
     jwt->EncData = BIDMalloc(cchEncodedHeader + 1 + cchEncodedPayload + 1);

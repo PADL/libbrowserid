@@ -4,6 +4,7 @@ bin_PROGRAMS = bidtool
 
 libbrowserid_la_SOURCES =   \
     bid_authority.c         \
+    bid_base32.c            \
     bid_base64.c            \
     bid_cache.c             \
     bid_fcache.c            \
