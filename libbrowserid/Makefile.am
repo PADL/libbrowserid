@@ -2,6 +2,7 @@ AUTOMAKE_OPTIONS = foreign
 
 bin_PROGRAMS = bidtool
 
+libbrowserid_la_CPPFLAGS = -DBUILD_GSSBID_LIB -I$(top_srcdir) -I$(top_srcdir)/mech_browserid
 libbrowserid_la_SOURCES =   \
     bid_authority.c         \
     bid_base32.c            \
@@ -18,7 +19,7 @@ libbrowserid_la_SOURCES =   \
     bid_user.c              \
     bid_util.c              \
     bid_webkit.m            \
-    bid_verifier.m          \
+    bid_verifier.c          \
     vers.c
 
 noinst_LTLIBRARIES = libbrowserid.la
@@ -32,4 +33,4 @@ clean-generic:
 	$(RM) vers.c
 
 bidtool_SOURCES = bidtool.c
-bidtool_LDADD = $(noinst_LTLIBRARIES) @JANSSON_LDFLAGS@ @CURL_LDFLAGS@ @TARGET_LDFLAGS@ @JANSSON_LIBS@ @CURL_LIBS@
+bidtool_LDADD = $(noinst_LTLIBRARIES) @JANSSON_LDFLAGS@ @CURL_LDFLAGS@ @KRB5_LIBS@ @TARGET_LDFLAGS@ @JANSSON_LIBS@ @CURL_LIBS@
