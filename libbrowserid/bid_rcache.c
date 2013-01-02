@@ -113,7 +113,7 @@ _BIDUpdateReplayCache(
         goto cleanup;
     }
 
-    json_object_set(tkt, "jti", json_string(szHash));
+    json_object_set_new(tkt, "jti", json_string(szHash));
     json_object_set(tkt, "exp", json_object_get(rdata, "r-expires"));
     json_object_set(identity->PrivateAttributes, "tkt", tkt);
 
