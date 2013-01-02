@@ -324,6 +324,13 @@ _BIDVerifyLocal(
     time_t *pExpiryTime,
     uint32_t *pFlags);
 
+BIDError
+_BIDValidateExpiry(
+    BIDContext context,
+    time_t verificationTime,
+    json_t *assertion,
+    time_t *pExpiryTime);
+
 /*
  * bid_openssl.c
  */
@@ -451,6 +458,13 @@ _BIDGetJsonTimestampValue(
     json_t *json,
     const char *key,
     time_t *ts);
+
+BIDError
+_BIDSetJsonTimestampValue(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    time_t ts);
 
 BIDError
 _BIDDuplicateString(
@@ -587,6 +601,12 @@ _BIDValidateAudience(
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings);
+
+BIDError
+_BIDGetIdentityReauthTicket(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t **pValue);
 
 /*
  * bid_webkit.c

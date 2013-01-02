@@ -155,13 +155,12 @@ gssBidInitResponseToken(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     json_t *response = NULL;
-    json_t *expires = NULL;
+    json_t *tkt = NULL;
     char *szJson = NULL;
     BIDError err;
     gss_buffer_desc bufInnerToken = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc bufAudienceOrSpn = GSS_C_EMPTY_BUFFER;
     enum gss_bid_token_type actualTokenType;
-    const char *status, *ticket;
     BIDJWT jwt = NULL;
 
     if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
@@ -192,14 +191,9 @@ gssBidInitResponseToken(OM_uint32 *minor,
     }
 
     /* XXX allow signed error check? */
-    status = json_string_value(json_object_get(response, "status"));
-    if (status == NULL || strcmp(status, "okay") != 0) {
-        major = json_integer_value(json_object_get(response, "gss-major-value"));
-        if (major == GSS_S_COMPLETE)
-            major = GSS_S_FAILURE;
-        *minor = json_integer_value(json_object_get(response, "gss-minor-value"));
-        if (*minor == 0)
-            *minor = GSSBID_BAD_ERROR_TOKEN;
+    major = json_integer_value(json_object_get(response, "gss-maj"));
+    if (GSS_ERROR(major)) {
+        *minor = json_integer_value(json_object_get(response, "gss-min"));
         goto cleanup;
     }
 
@@ -215,9 +209,8 @@ gssBidInitResponseToken(OM_uint32 *minor,
         }
     }
 
-    expires = json_object_get(response, "expires");
-    if (expires != NULL)
-        ctx->expiryTime = json_integer_value(expires);
+    json_dumpf(response, stdout, JSON_INDENT(8));
+    _BIDGetJsonTimestampValue(ctx->bidContext, response, "exp", &ctx->expiryTime);
 
     major = gssBidContextReady(minor, ctx, cred); /* need key to verify */
     if (GSS_ERROR(major))
@@ -232,12 +225,12 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    ticket = json_string_value(json_object_get(response, "ticket"));
-    if (ticket != NULL) {
+    tkt = json_object_get(response, "tkt");
+    if (tkt != NULL) {
         major = gssBidDisplayName(minor, target_name, &bufAudienceOrSpn, NULL);
         if (major == GSS_S_COMPLETE) {
-            BIDStoreTicketInCache(ctx->bidContext, ctx->bidIdentity,
-                                  (const char *)bufAudienceOrSpn.value, ticket);
+            _BIDStoreTicketInCache(ctx->bidContext, ctx->bidIdentity,
+                                  (const char *)bufAudienceOrSpn.value, tkt);
         }
     }
 

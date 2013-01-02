@@ -51,9 +51,9 @@ makeResponseToken(OM_uint32 *minor,
 {
     OM_uint32 major;
     gss_buffer_desc bufJson = GSS_C_EMPTY_BUFFER;
-    json_t *response = NULL, *status;
+    json_t *response = NULL;
     json_t *dh = NULL;
-    const char *szTicket = NULL;
+    json_t *ticket = NULL;
     BIDError err;
 
     response = json_object();
@@ -80,17 +80,17 @@ makeResponseToken(OM_uint32 *minor,
             goto cleanup;
         }
 
-        if (BIDGetIdentityReauthTicket(ctx->bidContext, ctx->bidIdentity, &szTicket) == BID_S_OK)
-            json_object_set(response, "ticket", json_string(szTicket));
+        if (_BIDGetIdentityReauthTicket(ctx->bidContext, ctx->bidIdentity, &ticket) == BID_S_OK)
+            json_object_set(response, "tkt", ticket);
     }
 
     if (ctx->expiryTime != 0)
-        json_object_set_new(response, "expires", json_integer(ctx->expiryTime));
+        _BIDSetJsonTimestampValue(ctx->bidContext, response, "exp", ctx->expiryTime);
 
-    status = json_string(protocolMajor == GSS_S_COMPLETE ? "okay" : "failure");
-    json_object_set(response, "status", status);
-    json_object_set_new(response, "gss-major-status", json_integer(protocolMajor));
-    json_object_set_new(response, "gss-minor-status", json_integer(protocolMinor));
+    if (GSS_ERROR(protocolMajor)) {
+        json_object_set_new(response, "gss-maj", json_integer(protocolMajor));
+        json_object_set_new(response, "gss-min", json_integer(protocolMinor));
+    }
 
     /* XXX using CRK directly */
     err = BIDMakeJsonWebToken(ctx->bidContext, response,
@@ -110,8 +110,9 @@ makeResponseToken(OM_uint32 *minor,
     *minor = 0;
 
 cleanup:
-    json_decref(response);
+    json_decref(ticket);
     json_decref(dh);
+    json_decref(response);
     BIDFreeData(ctx->bidContext, bufJson.value);
 
     return major;

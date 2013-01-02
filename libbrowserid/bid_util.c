@@ -687,6 +687,33 @@ _BIDGetJsonTimestampValue(
     *ts = json_integer_value(j);
     *ts /= 1000;
 
+#if 0
+    printf("_BIDGetJsonTimestampValue %s: %s", key, ctime(ts));
+#endif
+    return BID_S_OK;
+}
+
+BIDError
+_BIDSetJsonTimestampValue(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    time_t ts)
+{
+    json_t *j;
+
+#if 0
+    printf("_BIDSetJsonTimestampValue %s: %s", key, ctime(&ts));
+#endif
+    ts *= 1000;
+
+    j = json_integer(ts);
+    if (j == NULL)
+        return BID_S_NO_MEMORY;
+
+    if (json_object_set(json, key, j) < 0)
+        return BID_S_NO_MEMORY;
+
     return BID_S_OK;
 }
 

@@ -27,8 +27,9 @@ BIDPrintTicketCacheEntry(json_t *j)
 {
     const char *szExpiry;
     time_t expiryTime;
+    json_t *tkt = json_object_get(j, "tkt");
  
-    expiryTime = json_integer_value(json_object_get(j, "expires"));
+    _BIDGetJsonTimestampValue(gContext, tkt, "exp", &expiryTime);
  
     szExpiry = gNow < expiryTime ? ctime(&expiryTime) : ">>> Expired <<<";
 
@@ -46,8 +47,9 @@ static int
 BIDShouldPurgeTicketCacheEntryP(json_t *j)
 {
     time_t expiryTime;
+    json_t *tkt = json_object_get(j, "tkt");
 
-    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
+    _BIDGetJsonTimestampValue(gContext, tkt, "exp", &expiryTime);
 
     return expiryTime == 0 || gNow >= expiryTime;
 }
@@ -116,7 +118,7 @@ BIDPrintReplayCacheEntry(const char *k, json_t *j)
     err = _BIDBase64UrlDecode(k, &hash, &cbHash);
     BID_BAIL_ON_ERROR(err);
 
-    _BIDGetJsonTimestampValue(gContext, j, "ts", &ts);
+    _BIDGetJsonTimestampValue(gContext, j, "iat", &ts);
     _BIDGetJsonTimestampValue(gContext, j, "exp", &exp);
 
     printf("%-24.24s  ", ctime(&ts));

@@ -135,9 +135,9 @@ _BIDStoreTicketInCache(
     BID_BAIL_ON_ERROR(err);
 
     cred = json_copy(identity->Attributes);
-    if (cred == NULL                                ||
-        json_object_set(cred, "ticket", ticket) < 0 ||
-        json_object_set(cred, "r-ark", ark) < 0) {
+    if (cred == NULL                             ||
+        json_object_set(cred, "tkt", ticket) < 0 ||
+        json_object_set(cred, "ark", ark) < 0) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
@@ -166,8 +166,14 @@ BIDStoreTicketInCache(
     const char *szAudienceOrSpn,
     const char *szTicket)
 {
-    json_t *ticket = json_string(szTicket);
-    BIDError err = _BIDStoreTicketInCache(context, identity, szAudienceOrSpn, ticket);
+    json_t *ticket;
+    BIDError err;
+
+    ticket = json_loads(szTicket, 0, &context->JsonError);
+    if (ticket == NULL)
+        return BID_S_INVALID_JSON;
+
+    err = _BIDStoreTicketInCache(context, identity, szAudienceOrSpn, ticket);
 
     json_decref(ticket);
 
@@ -186,12 +192,12 @@ _BIDMakeAuthenticator(
 {
     BIDError err;
     BIDJWT ap;
-    json_t *ts = NULL;
     json_t *n = NULL;
     json_t *aud = NULL;
     json_t *cbt = NULL;
 
     *pAuthenticator = NULL;
+    *pTimestamp = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -201,11 +207,6 @@ _BIDMakeAuthenticator(
     }
 
     *pTimestamp = time(NULL);
-    ts = json_integer(*pTimestamp);
-    if (ts == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
 
     err = _BIDGenerateNonce(context, &n);
     BID_BAIL_ON_ERROR(err);
@@ -233,8 +234,10 @@ _BIDMakeAuthenticator(
         goto cleanup;
     }
 
-    if (       json_object_set(ap->Payload, "ts", ts) < 0          ||
-               json_object_set(ap->Payload, "n", n) < 0            ||
+    err = _BIDSetJsonTimestampValue(context, ap->Payload, "iat", time(NULL));
+    BID_BAIL_ON_ERROR(err);
+
+    if (       json_object_set(ap->Payload, "n", n) < 0            ||
                json_object_set(ap->Payload, "tkt", tkt) < 0        ||
                json_object_set(ap->Payload, "aud", aud) < 0        ||
         (cbt ? json_object_set(ap->Payload, "cbt", cbt) : 0) < 0) {
@@ -243,11 +246,11 @@ _BIDMakeAuthenticator(
     }
 
     *pAuthenticator = ap;
+    _BIDGetJsonTimestampValue(context, ap->Payload, "iat", pTimestamp);
 
 cleanup:
     if (err != BID_S_OK)
         _BIDReleaseJWT(context, ap);
-    json_decref(ts);
     json_decref(n);
     json_decref(aud);
     json_decref(cbt);
@@ -274,10 +277,10 @@ _BIDMakeReauthIdentity(
     }
 
     identity->Attributes = json_copy(cred);
-    json_object_del(identity->Attributes, "ticket");
-    json_object_del(identity->Attributes, "r-ark");
+    json_object_del(identity->Attributes, "tkt");
+    json_object_del(identity->Attributes, "ark");
 
-    err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "r-ark"), ap,
+    err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
                                             &identity->SessionKey, &identity->SessionKeyLength);
     BID_BAIL_ON_ERROR(err);
 
@@ -324,7 +327,7 @@ _BIDGetReauthAssertion(
     err = _BIDGetCacheObject(context, context->TicketCache, szCacheKey, &cred);
     BID_BAIL_ON_ERROR(err);
 
-    tkt = json_object_get(cred, "ticket");
+    tkt = json_object_get(json_object_get(cred, "tkt"), "jti");
     if (tkt == NULL) {
         err = BID_S_BAD_TICKET_CACHE;
         goto cleanup;
@@ -333,18 +336,18 @@ _BIDGetReauthAssertion(
     err = _BIDMakeAuthenticator(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, tkt, &ap, &ts);
     BID_BAIL_ON_ERROR(err);
 
+    err = _BIDValidateExpiry(context, ts, tkt, ptExpiryTime);
+    BID_BAIL_ON_ERROR(err);
+
     backedAssertion.Assertion = ap;
     backedAssertion.cCertificates = 0;
     backedAssertion.Claims = NULL;
 
-    err = _BIDPackBackedAssertion(context, &backedAssertion, json_object_get(cred, "r-ark"), pAssertion);
+    err = _BIDPackBackedAssertion(context, &backedAssertion, json_object_get(cred, "ark"), pAssertion);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDMakeReauthIdentity(context, cred, ap, pAssertedIdentity);
     BID_BAIL_ON_ERROR(err);
-
-    /* Guess, we will update this later. */
-    *ptExpiryTime = ts + context->TicketLifetime;
 
 cleanup:
     BIDFree(szCacheKey);
@@ -382,7 +385,7 @@ _BIDVerifyReauthAssertion(
         err = BID_S_INVALID_ASSERTION;
     BID_BAIL_ON_ERROR(err);
 
-    *pVerifierCred = json_incref(json_object_get(cred, "r-ark"));
+    *pVerifierCred = json_incref(json_object_get(cred, "ark"));
 
     err = _BIDVerifySignature(context, ap, *pVerifierCred);
     BID_BAIL_ON_ERROR(err);

@@ -324,7 +324,7 @@ BIDGSSJWTAttributeProvider::jsonRepresentation(void) const
 time_t
 BIDGSSJWTAttributeProvider::getExpiryTime(void) const
 {
-    return (*m_attrs)["expires"].integer();
+    return (*m_attrs)["expires"].integer() / 1000;
 }
 
 OM_uint32

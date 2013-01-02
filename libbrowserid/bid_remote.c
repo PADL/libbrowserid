@@ -106,7 +106,7 @@ _BIDVerifyRemote(
     err = _BIDRemoteVerifierResponseToIdentity(context, response, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
 
-    *pExpiryTime = json_integer_value(json_object_get(response, "expires"));
+    _BIDGetJsonTimestampValue(context, response, "expires", pExpiryTime);
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);

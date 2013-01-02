@@ -371,10 +371,10 @@ cleanup:
 }
 
 BIDError
-BIDGetIdentityReauthTicket(
+_BIDGetIdentityReauthTicket(
     BIDContext context,
     BIDIdentity identity,
-    const char **pValue)
+    json_t **pValue)
 {
     BIDError err;
     json_t *value;
@@ -383,11 +383,34 @@ BIDGetIdentityReauthTicket(
 
     BID_CONTEXT_VALIDATE(context);
 
-    value = json_object_get(identity->PrivateAttributes, "ticket");
+    value = json_object_get(identity->PrivateAttributes, "tkt");
     if (value == NULL) {
         err = BID_S_UNKNOWN_ATTRIBUTE;
         goto cleanup;
     }
+
+    err = BID_S_OK;
+    *pValue = json_incref(value);
+
+cleanup:
+    return err;
+}
+
+BIDError
+BIDGetIdentityReauthTicket(
+    BIDContext context,
+    BIDIdentity identity,
+    const char **pValue)
+{
+    BIDError err;
+    json_t *value = NULL;
+
+    *pValue = NULL;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    err = _BIDGetIdentityReauthTicket(context, identity, &value);
+    BID_BAIL_ON_ERROR(err);
 
     *pValue = json_string_value(value);
     if (*pValue == NULL) {
@@ -398,6 +421,8 @@ BIDGetIdentityReauthTicket(
     err = BID_S_OK;
 
 cleanup:
+    json_decref(value);
+
     return err;
 }
 

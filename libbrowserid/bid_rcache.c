@@ -38,17 +38,14 @@ _BIDCheckReplayCache(
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDGetCacheObject(context, context->ReplayCache, szHash, &rdata);
-    if (err == BID_S_CACHE_NOT_FOUND || err == BID_S_CACHE_KEY_NOT_FOUND)
-        err = BID_S_OK;
-    BID_BAIL_ON_ERROR(err);
+    if (err == BID_S_OK) {
+        _BIDGetJsonTimestampValue(context, rdata, "iat", &tsHash);
+        _BIDGetJsonTimestampValue(context, rdata, "exp", &expHash);
 
-    tsHash = json_integer_value(json_object_get(rdata, "ts"));
-    expHash = json_integer_value(json_object_get(rdata, "exp"));
-
-    if (expHash < verificationTime)
+        if (verificationTime < expHash)
+            err = BID_S_REPLAYED_ASSERTION;
+    } else
         err = BID_S_OK;
-    else
-        err = BID_S_REPLAYED_ASSERTION;
 
 cleanup:
     BIDFree(szHash);
@@ -71,6 +68,7 @@ _BIDUpdateReplayCache(
     size_t cbHash = sizeof(hash), cchHash;
     json_t *expiryTime;
     json_t *ark = NULL;
+    json_t *tkt = NULL;
 
     err = _BIDDigestAssertion(context, szAssertion, hash, &cbHash);
     BID_BAIL_ON_ERROR(err);
@@ -78,7 +76,6 @@ _BIDUpdateReplayCache(
     err = _BIDBase64UrlEncode(hash, cbHash, &szHash, &cchHash);
     BID_BAIL_ON_ERROR(err);
 
-    verificationTime *= 1000; /* to ms */
     if (context->ContextOptions & BID_CONTEXT_REAUTH)
         rdata = json_copy(identity->Attributes);
     else
@@ -88,27 +85,37 @@ _BIDUpdateReplayCache(
         goto cleanup;
     }
 
-    json_object_set_new(rdata, "ts", json_integer(verificationTime));
+    err = _BIDSetJsonTimestampValue(context, rdata, "iat", verificationTime);
+    BID_BAIL_ON_ERROR(err);
 
     expiryTime = json_object_get(identity->Attributes, "expires");
     if (expiryTime == NULL)
-        json_object_set(rdata, "expires", json_integer(verificationTime + 300));
-    else if ((context->ContextOptions & BID_CONTEXT_REAUTH) == 0)
+        _BIDSetJsonTimestampValue(context, rdata, "expires", verificationTime + 300);
+    else
         json_object_set(rdata, "expires", expiryTime);
 
     if (context->ContextOptions & BID_CONTEXT_REAUTH) {
         err = _BIDDeriveAuthenticatorRootKey(context, identity, &ark);
         BID_BAIL_ON_ERROR(err);
 
-        json_object_set(rdata, "r-ark", ark);
-        json_object_set(rdata, "r-expires", json_integer(verificationTime + context->TicketLifetime));
+        json_object_set(rdata, "ark", ark);
+        _BIDSetJsonTimestampValue(context, rdata, "r-expires", verificationTime + context->TicketLifetime);
     }
 
     err = _BIDSetCacheObject(context, context->ReplayCache, szHash, rdata);
     BID_BAIL_ON_ERROR(err);
 
     BID_ASSERT(identity->PrivateAttributes != NULL);
-    json_object_set(identity->PrivateAttributes, "ticket", json_string(szHash));
+
+    tkt = json_object();
+    if (tkt == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    json_object_set(tkt, "jti", json_string(szHash));
+    json_object_set(tkt, "exp", json_object_get(rdata, "r-expires"));
+    json_object_set(identity->PrivateAttributes, "tkt", tkt);
 
 cleanup:
     BIDFree(szHash);

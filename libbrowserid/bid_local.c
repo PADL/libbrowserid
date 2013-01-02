@@ -48,7 +48,7 @@ _BIDValidateCertIssuer(
     return err;
 }
 
-static BIDError
+BIDError
 _BIDValidateExpiry(
     BIDContext context,
     time_t verificationTime,
