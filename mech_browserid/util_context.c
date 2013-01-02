@@ -86,13 +86,13 @@ gssBidAllocContext(OM_uint32 *minor,
             goto cleanup;
     }
 
-    contextParams = BID_CONTEXT_GSS;
+    contextParams = BID_CONTEXT_GSS | BID_CONTEXT_REAUTH;
     if (ctx->encryptionType != ENCTYPE_NULL)
         contextParams |= BID_CONTEXT_DH_KEYEX;
     if (isInitiator)
         contextParams |= BID_CONTEXT_USER_AGENT | BID_USE_CACHED_CREDENTIALS;
     else
-        contextParams |= BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE;
+        contextParams |= BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE | BID_CONTEXT_REPLAY_CACHE;
 
     err = BIDAcquireContext(contextParams, &ctx->bidContext);
     if (err != BID_S_OK) {
@@ -116,12 +116,11 @@ gssBidAllocContext(OM_uint32 *minor,
      * to these services in the output of GSS_Init_sec_context and
      * GSS_Accept_sec_context.
     */
-    ctx->gssFlags = GSS_C_TRANS_FLAG;
+    ctx->gssFlags = GSS_C_TRANS_FLAG | GSS_C_REPLAY_FLAG;
     if (ctx->encryptionType != ENCTYPE_NULL) {
         ctx->gssFlags |= GSS_C_INTEG_FLAG    |   /* integrity */
                          GSS_C_CONF_FLAG     |   /* confidentiality */
-                         GSS_C_SEQUENCE_FLAG |   /* sequencing */
-                         GSS_C_REPLAY_FLAG;      /* replay detection */
+                         GSS_C_SEQUENCE_FLAG;    /* sequencing */
     }
 
     major = GSS_S_COMPLETE;

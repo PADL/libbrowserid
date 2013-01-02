@@ -238,6 +238,11 @@ _BIDPackBackedAssertion(
 
     BID_ASSERT(assertion != NULL);
 
+    if (keyset == NULL) {
+        err = BID_S_NO_KEY;
+        goto cleanup;
+    }
+
     err = _BIDMakeSignature(context, assertion->Assertion, keyset, &szEncodedAssertion, &cchEncodedAssertion);
     BID_BAIL_ON_ERROR(err);
 
@@ -1098,3 +1103,14 @@ cleanup:
     return err;
 }
 
+BIDError
+BIDFreeData(
+    BIDContext context,
+    char *s)
+{
+    if (s == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    BIDFree(s);
+    return BID_S_OK;
+}

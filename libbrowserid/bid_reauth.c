@@ -15,22 +15,6 @@
  * Fast reauthentication support
  */
 
-/*
- * Make a ticket that can be used for reauthentication
- */
-
-#if 0
-typedef struct BIDJWTDesc {
-    char *EncData;
-    size_t EncDataLength;
-    json_t *Header;
-    json_t *Payload;
-    unsigned char *Signature;
-    size_t SignatureLength;
-} *BIDJWT;
-#endif
-
-
 BIDError
 _BIDAcquireDefaultTicketCache(BIDContext context)
 {
@@ -388,7 +372,7 @@ _BIDVerifyReauthAssertion(
         err = BID_S_INVALID_ASSERTION;
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDVerifySignature(context, ap, cred);
+    err = _BIDVerifySignature(context, ap, json_object_get(cred, "r-ark"));
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDMakeReauthIdentity(context, cred, ap, pVerifiedIdentity);

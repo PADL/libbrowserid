@@ -147,13 +147,15 @@ _BIDVerifyLocal(
     size_t cbChannelBindings,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime)
+    time_t *pExpiryTime,
+    uint32_t *pulFlags)
 {
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
     BIDJWK reauthCred = NULL;
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
+    *pulFlags = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -176,6 +178,8 @@ _BIDVerifyLocal(
 
         err = _BIDVerifyReauthAssertion(context, backedAssertion, pVerifiedIdentity, &reauthCred);
         BID_BAIL_ON_ERROR(err);
+
+        *pulFlags |= BID_FLAG_REAUTH;
     }
 
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
@@ -201,11 +205,6 @@ _BIDVerifyLocal(
     err = _BIDVerifyAssertionSignature(context, backedAssertion, reauthCred);
     BID_BAIL_ON_ERROR(err);
 
-    if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
-        err = _BIDCheckReplayCache(context, szAssertion, verificationTime);
-        BID_BAIL_ON_ERROR(err);
-    }
-
     if (*pVerifiedIdentity == BID_C_NO_IDENTITY) {
         err = _BIDPopulateIdentity(context, backedAssertion, pVerifiedIdentity);
         BID_BAIL_ON_ERROR(err);
@@ -214,12 +213,6 @@ _BIDVerifyLocal(
     err = _BIDGetJsonTimestampValue(context, backedAssertion->Assertion->Payload, "exp", pExpiryTime);
     if (err != BID_S_OK)
         *pExpiryTime = verificationTime + 300; /* default expires in 5 minutes */
-
-    if ((context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) &&
-        reauthCred == NULL) {
-        err = _BIDUpdateReplayCache(context, *pVerifiedIdentity, szAssertion, verificationTime);
-        BID_BAIL_ON_ERROR(err);
-    }
 
     err = BID_S_OK;
 

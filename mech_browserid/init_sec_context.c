@@ -160,6 +160,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
     gss_buffer_desc bufInnerToken = GSS_C_EMPTY_BUFFER;
     enum gss_bid_token_type actualTokenType;
     const char *status;
+    BIDJWT jwt = NULL;
 
     if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
         major = GSS_S_DEFECTIVE_TOKEN;
@@ -182,15 +183,9 @@ gssBidInitResponseToken(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    err = _BIDDecodeJson(ctx->bidContext, szJson, BID_JSON_ENCODING_BASE64, &response);
+    err = BIDParseJsonWebToken(ctx->bidContext, szJson, &jwt, &response);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
-        goto cleanup;
-    }
-
-    status = json_string_value(json_object_get(response, "status"));
-    if (status == NULL || strcmp(status, "okay") != 0) {
-        major = GSS_S_FAILURE; /* XXX we need better error reporting */
         goto cleanup;
     }
 
@@ -205,9 +200,27 @@ gssBidInitResponseToken(OM_uint32 *minor,
         }
     }
 
-    major = gssBidContextReady(minor, ctx, cred);
+    major = gssBidContextReady(minor, ctx, cred); /* need key to verify */
     if (GSS_ERROR(major))
         goto cleanup;
+
+    err = BIDVerifyJsonWebToken(ctx->bidContext,
+                                jwt,
+                                KRB_KEY_DATA(&ctx->rfc3961Key),
+                                KRB_KEY_LENGTH(&ctx->rfc3961Key));
+    if (err != BID_S_OK) {
+        major = gssBidMapError(minor, err);
+        goto cleanup;
+    }
+
+    status = json_string_value(json_object_get(response, "status"));
+    if (status == NULL || strcmp(status, "okay") != 0) {
+        major = json_integer_value(json_object_get(response, "gss-major-value"));
+        if (major == GSS_S_COMPLETE)
+            major = GSS_S_FAILURE;
+        *minor = json_integer_value(json_object_get(response, "gss-minor-value"));
+        goto cleanup;
+    }
 
     output_token->length = 0;
     output_token->value = NULL;
@@ -217,6 +230,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
 cleanup:
     GSSBID_FREE(szJson);
     json_decref(response);
+    BIDReleaseJsonWebToken(ctx->bidContext, jwt);
 
     return major;
 }

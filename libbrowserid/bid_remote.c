@@ -53,7 +53,8 @@ _BIDVerifyRemote(
     size_t cbChannelBindings,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime)
+    time_t *pExpiryTime,
+    uint32_t *pulFlags)
 {
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
@@ -65,6 +66,7 @@ _BIDVerifyRemote(
     size_t cchAssertion, cchPackedAudience;
 
     *pVerifiedIdentity = NULL;
+    *pulFlags = BID_FLAG_VERIFY_REMOTE;
 
     BID_CONTEXT_VALIDATE(context);
 

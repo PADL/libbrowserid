@@ -54,10 +54,12 @@ BIDVerifyAssertion(
     time_t *pExpiryTime)
 {
     BIDError err;
+    uint32_t ulFlags = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
+    *pExpiryTime = 0;
 
     if (szAssertion == NULL || szAudience == NULL)
         return BID_S_INVALID_PARAMETER;
@@ -65,18 +67,33 @@ BIDVerifyAssertion(
     if ((context->ContextOptions & BID_CONTEXT_RP) == 0)
         return BID_S_INVALID_USAGE;
 
+    if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
+        err = _BIDCheckReplayCache(context, szAssertion, verificationTime);
+        BID_BAIL_ON_ERROR(err);
+    }
+
     if (context->ContextOptions & BID_CONTEXT_VERIFY_REMOTE)
         err = _BIDVerifyRemote(context, szAssertion, szAudience,
                                pbChannelBindings, cbChannelBindings, verificationTime,
-                               pVerifiedIdentity, pExpiryTime);
+                               pVerifiedIdentity, pExpiryTime, &ulFlags);
     else
         err = _BIDVerifyLocal(context, szAssertion, szAudience,
                               pbChannelBindings, cbChannelBindings, verificationTime,
-                              pVerifiedIdentity, pExpiryTime);
+                              pVerifiedIdentity, pExpiryTime, &ulFlags);
+    BID_BAIL_ON_ERROR(err);
 
-    if (err == BID_S_OK && (context->ContextOptions & BID_CONTEXT_DH_KEYEX))
+    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
         err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
+        BID_BAIL_ON_ERROR(err);
+    }
 
+    if ((context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) &&
+        (ulFlags & BID_FLAG_REAUTH) == 0) {
+        err = _BIDUpdateReplayCache(context, *pVerifiedIdentity, szAssertion, verificationTime);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+cleanup:
     return err;
 }
 
@@ -349,6 +366,37 @@ cleanup:
 }
 
 BIDError
+BIDGetIdentityReauthTicket(
+    BIDContext context,
+    BIDIdentity identity,
+    const char **pValue)
+{
+    BIDError err;
+    json_t *value;
+
+    *pValue = NULL;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    value = json_object_get(identity->PrivateAttributes, "ticket");
+    if (value == NULL) {
+        err = BID_S_UNKNOWN_ATTRIBUTE;
+        goto cleanup;
+    }
+
+    *pValue = json_string_value(value);
+    if (*pValue == NULL) {
+        err = BID_S_UNKNOWN_ATTRIBUTE;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+
+cleanup:
+    return err;
+}
+
+BIDError
 BIDGetIdentitySessionKey(
     BIDContext context,
     BIDIdentity identity,
@@ -393,6 +441,8 @@ BIDGetIdentitySessionKey(
 
         memcpy(*ppbSessionKey, identity->SessionKey, identity->SessionKeyLength);
         *pcbSessionKey = identity->SessionKeyLength;
+
+        err = BID_S_OK;
     }
 
 cleanup:

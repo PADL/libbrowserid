@@ -46,13 +46,14 @@ static OM_uint32
 makeResponseToken(OM_uint32 *minor,
                   gss_ctx_id_t ctx,
                   OM_uint32 protocolMajor,
-                  OM_uint32 protocolMinor GSSBID_UNUSED,
+                  OM_uint32 protocolMinor,
                   gss_buffer_t outputToken)
 {
     OM_uint32 major;
     gss_buffer_desc bufJson = GSS_C_EMPTY_BUFFER;
     json_t *response = NULL, *status;
     json_t *dh = NULL;
+    const char *szTicket = NULL;
     BIDError err;
 
     response = json_object();
@@ -76,17 +77,24 @@ makeResponseToken(OM_uint32 *minor,
         }
     }
 
-    status = json_string(protocolMajor == GSS_S_COMPLETE ? "okay" : "failure");
-    if (json_object_set(response, "status", status) != 0) {
-        major = GSS_S_FAILURE;
-        *minor = ENOMEM;
-        goto cleanup;
+    if (ctx->bidIdentity != BID_C_NO_IDENTITY) {
+        err = BIDGetIdentityReauthTicket(ctx->bidContext, ctx->bidIdentity, &szTicket);
+        if (err == BID_S_OK)
+            json_object_set(response, "ticket", json_string(szTicket));
     }
 
-    err = _BIDEncodeJson(ctx->bidContext, response, BID_JSON_ENCODING_BASE64,
-                         (char **)&bufJson.value, &bufJson.length);
+    status = json_string(protocolMajor == GSS_S_COMPLETE ? "okay" : "failure");
+    json_object_set(response, "status", status);
+    json_object_set_new(response, "gss-major-status", json_integer(protocolMajor));
+    json_object_set_new(response, "gss-minor-status", json_integer(protocolMinor));
+
+    /* XXX using CRK directly */
+    err = BIDMakeJsonWebToken(ctx->bidContext, response,
+                              KRB_KEY_DATA(&ctx->rfc3961Key),
+                              KRB_KEY_LENGTH(&ctx->rfc3961Key),
+                              (char **)&bufJson.value, &bufJson.length);
     if (err != BID_S_OK) {
-        major =  gssBidMapError(minor, err);
+        major = gssBidMapError(minor, err);
         goto cleanup;
     }
 
@@ -100,7 +108,7 @@ makeResponseToken(OM_uint32 *minor,
 cleanup:
     json_decref(response);
     json_decref(dh);
-    BIDFree(bufJson.value);
+    BIDFreeData(ctx->bidContext, bufJson.value);
 
     return major;
 }
@@ -170,12 +178,9 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                              &ctx->bidIdentity,
                              &ctx->expiryTime);
     major = gssBidMapError(minor, err);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gssBidContextReady(minor, ctx, cred);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    if (major == GSS_S_COMPLETE) {
+        major = gssBidContextReady(minor, ctx, cred);
+    }
 
     major = makeResponseToken(minor, ctx, major, *minor, output_token);
     if (GSS_ERROR(major))

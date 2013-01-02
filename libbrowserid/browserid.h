@@ -294,11 +294,56 @@ BIDReleaseIdentity(
     BIDIdentity identity);
 
 BIDError
+BIDGetIdentityReauthTicket(
+    BIDContext context,
+    BIDIdentity identity,
+    const char **pValue);
+
+BIDError
 BIDStoreTicketInCache(
     BIDContext context,
     BIDIdentity identity,
     const char *szAudienceOrSpn,
     const char *szTicket);
+
+#ifdef JANSSON_H
+BIDError
+BIDMakeJsonWebToken(
+    BIDContext context,
+    json_t *Payload,
+    const unsigned char *pbKey,
+    size_t cbKey,
+    char **pszJwt,
+    size_t *pchJwt);
+
+struct BIDJWTDesc;
+typedef struct BIDJWTDesc *BIDJWT;
+
+BIDError
+BIDParseJsonWebToken(
+    BIDContext context,
+    const char *szJwt,
+    BIDJWT *pJwt,
+    json_t **pPayload);
+
+BIDError
+BIDVerifyJsonWebToken(
+    BIDContext context,
+    BIDJWT jwt,
+    const unsigned char *pbKey,
+    size_t cbKey);
+
+BIDError
+BIDFreeData(
+    BIDContext context,
+    char *s);
+
+BIDError
+BIDReleaseJsonWebToken(
+    BIDContext context,
+    BIDJWT jwt);
+
+#endif
 
 #ifdef __cplusplus
 }

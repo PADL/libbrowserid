@@ -82,6 +82,25 @@ _BIDGetJsonBNValue(
     return err;
 }
 
+#ifdef GSSBID_DEBUG
+static void
+_BIDDebugJsonBNValue(
+    BIDContext context,
+    BIDJWK jwk,
+    const char *key,
+    uint32_t encoding)
+{
+    BIGNUM *bn;
+
+    if (_BIDGetJsonBNValue(context, jwk, key, encoding, &bn) == BID_S_OK) {
+        fprintf(stderr, "_BIDDebugJsonBNValue %s: ", key);
+        BN_print_fp(stderr, bn);
+        printf("\n");
+        BN_free(bn);
+    }
+}
+#endif
+
 static BIDError
 _BIDSetJsonBNValue(
     BIDContext context,
@@ -724,7 +743,7 @@ _BIDJWTAlgorithms[] = {
     },
     {
         "HS256",
-        "AES",
+        "HS",
         0,
         NULL,
         0,

@@ -244,14 +244,14 @@ extern struct BIDCacheOps _BIDFileCache;
 /*
  * bid_jwt.c
  */
-typedef struct BIDJWTDesc {
+struct BIDJWTDesc {
     char *EncData;
     size_t EncDataLength;
     json_t *Header;
     json_t *Payload;
     unsigned char *Signature;
     size_t SignatureLength;
-} *BIDJWT;
+};
 
 typedef struct BIDJWTAlgorithmDesc {
     const char *szAlgID;
@@ -318,6 +318,9 @@ _BIDValidateExpiry(
     time_t verificationTime,
     json_t *assertion);
 
+#define BID_FLAG_VERIFY_REMOTE      0x00000001
+#define BID_FLAG_REAUTH             0x00000002
+
 BIDError
 _BIDVerifyLocal(
     BIDContext context,
@@ -327,7 +330,8 @@ _BIDVerifyLocal(
     size_t cbChannelBindings,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime);
+    time_t *pExpiryTime,
+    uint32_t *pFlags);
 
 /*
  * bid_openssl.c
@@ -422,7 +426,8 @@ _BIDVerifyRemote(
     size_t cbChannelBindings,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime);
+    time_t *pExpiryTime,
+    uint32_t *pFlags);
 
 /*
  * bid_util.c

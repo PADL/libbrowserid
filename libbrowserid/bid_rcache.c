@@ -100,12 +100,15 @@ _BIDUpdateReplayCache(
         err = _BIDDeriveAuthenticatorRootKey(context, identity, &ark);
         BID_BAIL_ON_ERROR(err);
 
-        json_object_set(rdata, "secret-key", ark);
+        json_object_set(rdata, "r-ark", ark);
         json_object_set(rdata, "r-expires", json_integer(verificationTime + context->TicketLifetime));
     }
 
     err = _BIDSetCacheObject(context, context->ReplayCache, szHash, rdata);
     BID_BAIL_ON_ERROR(err);
+
+    BID_ASSERT(identity->PrivateAttributes != NULL);
+    json_object_set(identity->PrivateAttributes, "ticket", json_string(szHash));
 
 cleanup:
     BIDFree(szHash);
