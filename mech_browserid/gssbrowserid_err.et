@@ -58,6 +58,7 @@ error_code GSSBID_CONTEXT_INCOMPLETE,           "Attempt to use incomplete secur
 error_code GSSBID_BAD_CONTEXT_TOKEN,            "Context token is malformed or corrupt"
 error_code GSSBID_BAD_ERROR_TOKEN,              "Error token is malformed or corrupt"
 error_code GSSBID_BAD_CONTEXT_OPTION,           "Bad context option"
+error_code GSSBID_REAUTH_FAILED,                "Re-authentication failed"
 
 #
 # Name errors

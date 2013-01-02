@@ -192,10 +192,9 @@ gssBidInitResponseToken(OM_uint32 *minor,
 
     /* XXX allow signed error check? */
     major = json_integer_value(json_object_get(response, "gss-maj"));
-    if (GSS_ERROR(major)) {
-        *minor = json_integer_value(json_object_get(response, "gss-min"));
+    *minor = json_integer_value(json_object_get(response, "gss-min"));
+    if (GSS_ERROR(major) || *minor != 0)
         goto cleanup;
-    }
 
     if (ctx->encryptionType != ENCTYPE_NULL &&
         (ctx->flags & CTX_FLAG_REAUTH) == 0) {
@@ -283,28 +282,51 @@ gssBidInitSecContext(OM_uint32 *minor,
     GSSBID_ASSERT(ctx->cred->flags & CRED_FLAG_RESOLVED);
     GSSBID_ASSERT(ctx->cred->flags & CRED_FLAG_INITIATE);
 
-    switch (ctx->state) {
-    case GSSBID_STATE_INITIAL:
-        major = gssBidInitAssertionToken(minor, cred, ctx, target_name,
-                                         mech_type, req_flags, time_req,
-                                         input_chan_bindings, input_token,
-                                         actual_mech_type, output_token,
-                                         ret_flags, time_rec);
-        break;
-    case GSSBID_STATE_AUTHENTICATE:
-        major = gssBidInitResponseToken(minor, cred, ctx, target_name,
-                                        mech_type, req_flags, time_req,
-                                        input_chan_bindings, input_token,
-                                        actual_mech_type, output_token,
-                                        ret_flags, time_rec);
-        break;
-    case GSSBID_STATE_ESTABLISHED:
-    default:
-        major = GSS_S_FAILURE;
-        *minor = GSSBID_CONTEXT_ESTABLISHED;
-        goto cleanup;
-    }
+    *minor = GSSBID_REAUTH_FAILED;
 
+    while (*minor == GSSBID_REAUTH_FAILED) {
+        if (ctx->state == GSSBID_STATE_INITIAL) {
+            major = gssBidInitAssertionToken(minor, cred, ctx, target_name,
+                                             mech_type, req_flags, time_req,
+                                             input_chan_bindings, input_token,
+                                             actual_mech_type, output_token,
+                                             ret_flags, time_rec);
+        } else if (ctx->state == GSSBID_STATE_AUTHENTICATE) {
+            major = gssBidInitResponseToken(minor, cred, ctx, target_name,
+                                            mech_type, req_flags, time_req,
+                                            input_chan_bindings, input_token,
+                                            actual_mech_type, output_token,
+                                            ret_flags, time_rec);
+            if (*minor == GSSBID_REAUTH_FAILED &&
+                (ctx->flags & CTX_FLAG_REAUTH) &&
+                (ctx->flags & CTX_FLAG_REAUTH_FALLBACK) == 0) {
+                GSSBID_ASSERT(output_token->value == NULL);
+
+                GSSBID_MUTEX_UNLOCK(&ctx->cred->mutex);
+                gssBidReleaseCred(&tmpMinor, &ctx->cred);
+
+                major = gssBidResolveInitiatorCred(&tmpMinor, cred, ctx,
+                                                   target_name, input_chan_bindings,
+                                                   &ctx->cred);
+                if (GSS_ERROR(major)) {
+                    *minor = tmpMinor;
+                    goto cleanup;
+                }
+
+                GSSBID_ASSERT((ctx->flags & CTX_FLAG_REAUTH) == 0);
+                ctx->flags |= CTX_FLAG_REAUTH_FALLBACK;
+                ctx->state = GSSBID_STATE_INITIAL;
+
+                input_token = GSS_C_NO_BUFFER;
+
+                GSSBID_MUTEX_LOCK(&ctx->cred->mutex);
+            }
+        } else {
+            major = GSS_S_FAILURE;
+            *minor = GSSBID_CONTEXT_ESTABLISHED;
+            goto cleanup;
+        }
+    }
     if (GSS_ERROR(major))
         goto cleanup;
 

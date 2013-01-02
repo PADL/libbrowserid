@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     BID_BAIL_ON_ERROR(err);
 
     err = BIDVerifyAssertion(context, argv[1], argv[2], NULL, 0,
-                             time(NULL), &id, &expires);
+                             time(NULL), 0, &id, &expires);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDGetIdentityJsonObject(context, id, NULL, &j);

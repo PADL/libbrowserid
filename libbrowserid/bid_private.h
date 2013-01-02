@@ -320,9 +320,10 @@ _BIDVerifyLocal(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime,
+    uint32_t ulReqFlags,
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime,
-    uint32_t *pFlags);
+    uint32_t *pulRetFlags);
 
 BIDError
 _BIDValidateExpiry(
@@ -423,9 +424,10 @@ _BIDVerifyRemote(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime,
+    uint32_t ulReqFlags,
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime,
-    uint32_t *pFlags);
+    uint32_t *pulRetFlags);
 
 /*
  * bid_util.c

@@ -338,7 +338,7 @@ BIDVerifyAssertionFromString(int argc, char *argv[])
     if (argc != 2)
         BIDToolUsage();
 
-    err = BIDVerifyAssertion(gContext, argv[0], argv[1], NULL, 0,
+    err = BIDVerifyAssertion(gContext, argv[0], argv[1], NULL, 0, 0,
                              time(NULL), &identity, &expiryTime, &ulFlags);
     if (err != BID_S_OK) {
         BIDAbortError("Failed to verify assertion", err);

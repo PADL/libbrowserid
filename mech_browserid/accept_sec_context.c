@@ -63,7 +63,7 @@ makeResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (!GSS_ERROR(protocolMajor) &&
+    if (protocolMajor == GSS_S_COMPLETE &&
         ctx->encryptionType != ENCTYPE_NULL &&
         (ctx->flags & CTX_FLAG_REAUTH) == 0) {
         BID_ASSERT(ctx->bidIdentity != BID_C_NO_IDENTITY);
@@ -87,10 +87,10 @@ makeResponseToken(OM_uint32 *minor,
     if (ctx->expiryTime != 0)
         _BIDSetJsonTimestampValue(ctx->bidContext, response, "exp", ctx->expiryTime);
 
-    if (GSS_ERROR(protocolMajor)) {
+    if (GSS_ERROR(protocolMajor))
         json_object_set_new(response, "gss-maj", json_integer(protocolMajor));
+    if (protocolMinor != 0)
         json_object_set_new(response, "gss-min", json_integer(protocolMinor));
-    }
 
     /* XXX using CRK directly */
     err = BIDMakeJsonWebToken(ctx->bidContext, response,
@@ -166,6 +166,12 @@ gssBidAcceptSecContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
+    if (ctx->acceptorName == GSS_C_NO_NAME && cred->name != GSS_C_NO_NAME) {
+        major = gssBidDuplicateName(minor, cred->name, &ctx->acceptorName);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
     major = gssBidDisplayName(minor, cred->name, &bufAudienceOrSpn, NULL);
     if (GSS_ERROR(major))
         goto cleanup;
@@ -181,12 +187,19 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                              pbChannelBindings,
                              cbChannelBindings,
                              time(NULL),
+                             0,
                              &ctx->bidIdentity,
                              &ctx->expiryTime,
                              &ulFlags);
-    if (ulFlags & BID_VERIFY_FLAG_REAUTH)
-        ctx->flags |= CTX_FLAG_REAUTH;
-    major = gssBidMapError(minor, err);
+    if (ulFlags & BID_VERIFY_FLAG_REAUTH) {
+        if (err == BID_S_INVALID_ASSERTION) {
+            ctx->flags |= CTX_FLAG_REAUTH_FALLBACK;
+            major = GSS_S_CONTINUE_NEEDED;
+            *minor = GSSBID_REAUTH_FAILED;
+        } else
+            ctx->flags |= CTX_FLAG_REAUTH;
+    } else
+        major = gssBidMapError(minor, err);
     if (major == GSS_S_COMPLETE)
         major = gssBidContextReady(minor, ctx, cred);
 
@@ -196,13 +209,10 @@ gssBidAcceptSecContext(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
-
-    if (cred->name != GSS_C_NO_NAME) {
-        major = gssBidDuplicateName(minor, cred->name, &ctx->acceptorName);
-        if (GSS_ERROR(major))
-            goto cleanup;
-    }
+    if (major == GSS_S_CONTINUE_NEEDED)
+        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_AUTHENTICATE);
+    else
+        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
 
     GSSBID_ASSERT(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 
@@ -226,7 +236,7 @@ gss_accept_sec_context(OM_uint32 *minor,
                        OM_uint32 *time_rec,
                        gss_cred_id_t *delegated_cred_handle)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major, tmpMajor, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
     gss_buffer_desc innerInputToken = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc innerOutputToken = GSS_C_EMPTY_BUFFER;
@@ -287,9 +297,11 @@ gss_accept_sec_context(OM_uint32 *minor,
         goto cleanup;
 
     if (innerOutputToken.value != NULL) {
-        major = gssBidMakeToken(&tmpMinor, ctx, &innerOutputToken, TOK_TYPE_ACCEPTOR_CONTEXT, output_token);
-        if (GSS_ERROR(major))
+        tmpMajor = gssBidMakeToken(&tmpMinor, ctx, &innerOutputToken, TOK_TYPE_ACCEPTOR_CONTEXT, output_token);
+        if (GSS_ERROR(tmpMajor)) {
+            major = tmpMajor;
             goto cleanup;
+        }
     }
 
     if (mech_type != NULL) {

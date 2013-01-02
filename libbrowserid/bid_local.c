@@ -151,9 +151,10 @@ _BIDVerifyLocal(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime,
+    uint32_t ulReqFlags,
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime,
-    uint32_t *pulFlags)
+    uint32_t *pulRetFlags)
 {
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
@@ -163,7 +164,7 @@ _BIDVerifyLocal(
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pExpiryTime = 0;
-    *pulFlags = 0;
+    *pulRetFlags = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -184,10 +185,10 @@ _BIDVerifyLocal(
             goto cleanup;
         }
 
+        *pulRetFlags |= BID_VERIFY_FLAG_REAUTH;
+
         err = _BIDVerifyReauthAssertion(context, backedAssertion, &verifiedIdentity, &reauthCred);
         BID_BAIL_ON_ERROR(err);
-
-        *pulFlags |= BID_VERIFY_FLAG_REAUTH;
     }
 
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);

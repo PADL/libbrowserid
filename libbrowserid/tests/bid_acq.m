@@ -77,7 +77,7 @@ int main(int argc, const char *argv[])
     BID_BAIL_ON_ERROR(err);
 
     err = BIDVerifyAssertion(context, assertion, audience ? audience : "host/www.browserid.org",
-                             NULL, 0, time(NULL), &identity, &expires);
+                             NULL, 0, time(NULL), 0, &identity, &expires);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDGetIdentityJsonObject(context, identity, NULL, &j);

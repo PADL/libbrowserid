@@ -414,7 +414,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
     char *szAssertion = NULL;
-    uint32_t ulFlags = 0;
+    uint32_t ulRetFlags = 0;
 
     *pResolvedCred = GSS_C_NO_CREDENTIAL;
 
@@ -447,9 +447,10 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
         err = BIDAcquireAssertionFromString(ctx->bidContext,
                                             (const char *)resolvedCred->assertion.value,
+                                            BID_ACQUIRE_FLAG_NO_INTERACT,
                                             &ctx->bidIdentity,
                                             &resolvedCred->expiryTime,
-                                            &ulFlags);
+                                            &ulRetFlags);
     } else {
         if (channelBindings != GSS_C_NO_CHANNEL_BINDINGS) {
             pbChannelBindings = (const unsigned char *)channelBindings->application_data.value;
@@ -464,10 +465,11 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                   (const char *)bufAudienceOrSpn.value,
                                   pbChannelBindings,
                                   cbChannelBindings,
+                                  (ctx->flags & CTX_FLAG_REAUTH) ? BID_ACQUIRE_FLAG_NO_CACHED : 0,
                                   &szAssertion,
                                   &ctx->bidIdentity,
                                   &resolvedCred->expiryTime,
-                                  &ulFlags);
+                                  &ulRetFlags);
     }
 
     if (err != BID_S_OK) {
@@ -475,8 +477,10 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (ulFlags & BID_VERIFY_FLAG_REAUTH)
+    if (ulRetFlags & BID_VERIFY_FLAG_REAUTH)
         ctx->flags |= CTX_FLAG_REAUTH;
+    else
+        ctx->flags &= ~(CTX_FLAG_REAUTH);
 
     if (szAssertion != NULL) {
         major = makeStringBuffer(minor, szAssertion, &resolvedCred->assertion);

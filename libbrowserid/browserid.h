@@ -225,6 +225,7 @@ BIDVerifyAssertion(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t tVerificationTime,
+    uint32_t pulReqFlags,
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime,
     uint32_t *pulVerifyFlags);

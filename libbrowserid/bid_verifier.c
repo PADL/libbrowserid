@@ -50,18 +50,19 @@ BIDVerifyAssertion(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime,
+    uint32_t ulReqFlags,
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime,
-    uint32_t *pulFlags)
+    uint32_t *pulRetFlags)
 {
     BIDError err;
-    uint32_t ulFlags = 0;
+    uint32_t ulRetFlags = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pExpiryTime = 0;
-    *pulFlags = 0;
+    *pulRetFlags = 0;
 
     if (szAssertion == NULL || szAudience == NULL)
         return BID_S_INVALID_PARAMETER;
@@ -76,15 +77,15 @@ BIDVerifyAssertion(
 
     if (context->ContextOptions & BID_CONTEXT_VERIFY_REMOTE)
         err = _BIDVerifyRemote(context, szAssertion, szAudience,
-                               pbChannelBindings, cbChannelBindings, verificationTime,
-                               pVerifiedIdentity, pExpiryTime, &ulFlags);
+                               pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
+                               pVerifiedIdentity, pExpiryTime, &ulRetFlags);
     else
         err = _BIDVerifyLocal(context, szAssertion, szAudience,
-                              pbChannelBindings, cbChannelBindings, verificationTime,
-                              pVerifiedIdentity, pExpiryTime, &ulFlags);
+                              pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
+                              pVerifiedIdentity, pExpiryTime, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
 
-    if ((ulFlags & BID_VERIFY_FLAG_REAUTH) == 0) {
+    if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH) == 0) {
         if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
             err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
             BID_BAIL_ON_ERROR(err);
@@ -96,7 +97,7 @@ BIDVerifyAssertion(
         }
     }
 
-    *pulFlags = ulFlags;
+    *pulRetFlags = ulRetFlags;
 
 cleanup:
     return err;
