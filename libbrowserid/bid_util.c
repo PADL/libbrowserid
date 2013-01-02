@@ -1117,9 +1117,10 @@ BIDError
 BIDAcquireAssertionFromString(
     BIDContext context,
     const char *szAssertion,
+    uint32_t ulReqFlags,
     BIDIdentity *pAssertedIdentity,
     time_t *ptExpiryTime,
-    uint32_t *pulFlags)
+    uint32_t *pulRetFlags)
 {
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
@@ -1128,8 +1129,8 @@ BIDAcquireAssertionFromString(
         *pAssertedIdentity = NULL;
     if (ptExpiryTime != NULL)
         *ptExpiryTime = 0;
-    if (pulFlags != NULL)
-        *pulFlags = 0;
+    if (pulRetFlags != NULL)
+        *pulRetFlags = 0;
 
     BID_CONTEXT_VALIDATE(context);
 

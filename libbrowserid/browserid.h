@@ -180,13 +180,17 @@ typedef struct BIDIdentityDesc *BIDIdentity;
 /*
  * User agent.
  */
+#define BID_ACQUIRE_FLAG_NO_INTERACT    0x00000001
+#define BID_ACQUIRE_FLAG_NO_CACHED      0x00000002
+
 BIDError
 BIDAcquireAssertionFromString(
     BIDContext context,
     const char *szAssertion,
+    uint32_t ulFlags,
     BIDIdentity *pAssertedIdentity,
     time_t *pExpiryTime,
-    uint32_t *ulFlags);
+    uint32_t *pulFlags);
 
 BIDError
 BIDAcquireAssertion(
@@ -194,10 +198,11 @@ BIDAcquireAssertion(
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
+    uint32_t ulFlags,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
     time_t *pExpiryTime,
-    uint32_t *ulFlags);
+    uint32_t *pulFlags);
 
 BIDError
 BIDFreeAssertion(

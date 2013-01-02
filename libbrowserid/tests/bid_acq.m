@@ -72,7 +72,7 @@ int main(int argc, const char *argv[])
     err = BIDAcquireContext(options, &context);
     BID_BAIL_ON_ERROR(err);
 
-    err = BIDAcquireAssertion(context, "host/www.browserid.org", NULL, 0,
+    err = BIDAcquireAssertion(context, "host/www.browserid.org", NULL, 0, 0,
                               &assertion, NULL, &expires);
     BID_BAIL_ON_ERROR(err);
 
