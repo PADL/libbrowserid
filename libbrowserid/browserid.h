@@ -81,6 +81,8 @@ typedef enum {
     BID_S_DH_CHECK_P_NOT_SAFE_PRIME,
     BID_S_DH_NOT_SUITABLE_GENERATOR,
     BID_S_DH_UNABLE_TO_CHECK_GENERATOR,
+    BID_S_NO_TICKET_CACHE,
+    BID_S_BAD_TICKET_CACHE,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -140,6 +142,11 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_CONTEXT_DH_KEYEX            0x00000100
 
 /*
+ * Fast reauthentication support (requires replay cache on RP).
+ */
+#define BID_CONTEXT_REAUTH              0x00000200
+
+/*
  * Context management.
  */
 BIDError
@@ -158,6 +165,8 @@ BIDReleaseContext(BIDContext context);
 #define BID_PARAM_REPLAY_CACHE          0x00000008
 #define BID_PARAM_AUTHORITY_CACHE       0x00000009
 #define BID_PARAM_DH_KEYEX_SIZE         0x0000000A
+#define BID_PARAM_TICKET_CACHE          0x0000000B
+#define BID_PARAM_TICKET_LIFETIME       0x0000000C
 
 BIDError
 BIDSetContextParam(BIDContext context, uint32_t ulParam, void *value);
@@ -283,6 +292,13 @@ BIDError
 BIDReleaseIdentity(
     BIDContext context,
     BIDIdentity identity);
+
+BIDError
+BIDStoreTicketInCache(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *szAudienceOrSpn,
+    const char *szTicket);
 
 #ifdef __cplusplus
 }

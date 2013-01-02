@@ -88,6 +88,10 @@ BIDReleaseIdentity(
     if (identity == BID_C_NO_IDENTITY)
         return BID_S_INVALID_PARAMETER;
 
+    if (identity->SessionKey != NULL) {
+        memset(identity->SessionKey, 0, identity->SessionKeyLength);
+        BIDFree(identity->SessionKey);
+    }
     json_decref(identity->Attributes);
     json_decref(identity->PrivateAttributes);
     BIDFree(identity);
@@ -355,8 +359,10 @@ BIDGetIdentitySessionKey(
     json_t *dh;
     json_t *params;
 
-    *ppbSessionKey = NULL;
-    *pcbSessionKey = 0;
+    if (ppbSessionKey != NULL) {
+        *ppbSessionKey = NULL;
+        *pcbSessionKey = 0;
+    }
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -365,16 +371,29 @@ BIDGetIdentitySessionKey(
         goto cleanup;
     }
 
-    dh = json_object_get(identity->PrivateAttributes, "dh");
-    if (dh == NULL) {
-        err = BID_S_NO_KEY;
-        goto cleanup;
+    if (identity->SessionKey == NULL) {
+        dh = json_object_get(identity->PrivateAttributes, "dh");
+        if (dh == NULL) {
+            err = BID_S_NO_KEY;
+            goto cleanup;
+        }
+
+        params = json_object_get(dh, "params");
+
+        err = _BIDComputeDHKey(context, dh, params, &identity->SessionKey, &identity->SessionKeyLength);
+        BID_BAIL_ON_ERROR(err);
     }
 
-    params = json_object_get(dh, "params");
+    if (ppbSessionKey != NULL) {
+        *ppbSessionKey = BIDMalloc(identity->SessionKeyLength);
+        if (*ppbSessionKey == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
 
-    err = _BIDComputeDHKey(context, dh, params, ppbSessionKey, pcbSessionKey);
-    BID_BAIL_ON_ERROR(err);
+        memcpy(*ppbSessionKey, identity->SessionKey, identity->SessionKeyLength);
+        *pcbSessionKey = identity->SessionKeyLength;
+    }
 
 cleanup:
     return err;
@@ -396,6 +415,7 @@ BIDFreeIdentitySessionKey(
         goto cleanup;
     }
 
+    memset(pbSessionKey, 0, cbSessionKey);
     BIDFree(pbSessionKey);
 
 cleanup:

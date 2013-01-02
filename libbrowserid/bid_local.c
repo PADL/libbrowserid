@@ -119,21 +119,20 @@ cleanup:
 static BIDError
 _BIDVerifyAssertionSignature(
     BIDContext context,
-    BIDBackedAssertion backedAssertion)
+    BIDBackedAssertion backedAssertion,
+    BIDJWK reauthCred)
 {
-    BIDError err;
-    json_t *leafCert;
+    BIDJWK verifyCred;
 
-    BID_ASSERT(backedAssertion->cCertificates > 0);
+    if (backedAssertion->cCertificates == 0) {
+        BID_ASSERT(reauthCred != NULL);
 
-    if (backedAssertion->cCertificates == 0)
-        return BID_S_INVALID_ASSERTION;
+        verifyCred = reauthCred;
+    } else {
+        verifyCred = backedAssertion->rCertificates[backedAssertion->cCertificates - 1]->Payload;
+    }
 
-    leafCert = backedAssertion->rCertificates[backedAssertion->cCertificates - 1]->Payload;
-
-    err = _BIDVerifySignature(context, backedAssertion->Assertion, leafCert);
-
-    return err;
+    return _BIDVerifySignature(context, backedAssertion->Assertion, verifyCred);
 }
 
 /*
@@ -152,6 +151,9 @@ _BIDVerifyLocal(
 {
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
+    BIDJWK reauthCred = NULL;
+
+    *pVerifiedIdentity = BID_C_NO_IDENTITY;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -166,6 +168,16 @@ _BIDVerifyLocal(
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
     BID_ASSERT(backedAssertion->Claims != NULL);
 
+    if (backedAssertion->cCertificates == 0) {
+        if ((context->ContextOptions & BID_CONTEXT_REAUTH) == 0) {
+            err = BID_S_INVALID_ASSERTION;
+            goto cleanup;
+        }
+
+        err = _BIDVerifyReauthAssertion(context, backedAssertion, pVerifiedIdentity, &reauthCred);
+        BID_BAIL_ON_ERROR(err);
+    }
+
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
@@ -173,18 +185,20 @@ _BIDVerifyLocal(
     BID_BAIL_ON_ERROR(err);
 
     /* Only allow one certificate for now */
-    if (backedAssertion->cCertificates != 1) {
+    if (backedAssertion->cCertificates > 1) {
         err = BID_S_TOO_MANY_CERTS;
         goto cleanup;
     }
 
-    err = _BIDValidateCertIssuer(context, backedAssertion);
-    BID_BAIL_ON_ERROR(err);
+    if (backedAssertion->cCertificates > 0) {
+        err = _BIDValidateCertIssuer(context, backedAssertion);
+        BID_BAIL_ON_ERROR(err);
 
-    err = _BIDValidateCertChain(context, backedAssertion, verificationTime);
-    BID_BAIL_ON_ERROR(err);
+        err = _BIDValidateCertChain(context, backedAssertion, verificationTime);
+        BID_BAIL_ON_ERROR(err);
+    }
 
-    err = _BIDVerifyAssertionSignature(context, backedAssertion);
+    err = _BIDVerifyAssertionSignature(context, backedAssertion, reauthCred);
     BID_BAIL_ON_ERROR(err);
 
     if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
@@ -192,19 +206,18 @@ _BIDVerifyLocal(
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDPopulateIdentity(context, backedAssertion, pVerifiedIdentity);
-    BID_BAIL_ON_ERROR(err);
+    if (*pVerifiedIdentity == BID_C_NO_IDENTITY) {
+        err = _BIDPopulateIdentity(context, backedAssertion, pVerifiedIdentity);
+        BID_BAIL_ON_ERROR(err);
+    }
 
     err = _BIDGetJsonTimestampValue(context, backedAssertion->Assertion->Payload, "exp", pExpiryTime);
     if (err != BID_S_OK)
         *pExpiryTime = verificationTime + 300; /* default expires in 5 minutes */
 
-    if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
-        json_t *expiryTime; /* preserve precision */
-
-        expiryTime = json_object_get(backedAssertion->Assertion->Payload, "exp");
-
-        err = _BIDUpdateReplayCache(context, szAssertion, verificationTime, expiryTime);
+    if ((context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) &&
+        reauthCred == NULL) {
+        err = _BIDUpdateReplayCache(context, *pVerifiedIdentity, szAssertion, verificationTime);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -212,6 +225,7 @@ _BIDVerifyLocal(
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);
+    json_decref(reauthCred);
     
     return err;
 }

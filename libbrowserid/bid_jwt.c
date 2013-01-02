@@ -20,13 +20,21 @@ _BIDKeyMatchesP(
 {
     const char *alg;
     size_t keySize;
+    int isSecretKey;
 
     if (jwk == NULL)
         return 0;
 
-    alg = json_string_value(json_object_get(jwk, "algorithm"));
-    if (alg == NULL)
-        alg = json_string_value(json_object_get(jwk, "alg"));
+    isSecretKey = (json_object_get(jwk, "secret-key") != NULL);
+
+    if (isSecretKey) {
+        alg = "HS";
+    } else {
+        alg = json_string_value(json_object_get(jwk, "algorithm"));
+        if (alg == NULL)
+            alg = json_string_value(json_object_get(jwk, "alg"));
+    }
+
     if (alg == NULL)
         return 0;
 
@@ -57,12 +65,12 @@ _BIDFindKeyInKeyset(
 
     *pKey = NULL;
 
+    if (keyset == NULL)
+        return BID_S_INVALID_KEYSET;
+
     keys = json_object_get(keyset, "keys");
     if (keys == NULL) {
         BIDJWK jwk = json_object_get(keyset, "public-key");
-
-        if (jwk == NULL)
-            jwk = json_object_get(keyset, "secret-key");
 
         if (jwk == NULL) /* try directly without container */
             jwk = keyset;
@@ -79,11 +87,9 @@ _BIDFindKeyInKeyset(
     for (i = 0, err = BID_S_NO_KEY; i < cKeys; i++) {
         BIDJWK jwk = json_array_get(keys, i);
 
-        if (_BIDKeyMatchesP(context, algorithm, jwk)) {
-            err = BID_S_OK;
-            *pKey = json_incref(jwk);
+        err = _BIDFindKeyInKeyset(context, algorithm, jwk, pKey);
+        if (err == BID_S_OK)
             break;
-        }
     }
 
     return err;
@@ -337,11 +343,15 @@ _BIDVerifySignature(
     BIDJWK key = NULL;
     size_t i;
     const char *sigAlg;
-    const char *keyAlg;
     BIDJWTAlgorithm alg = NULL;
     int bSignatureValid;
 
     BID_CONTEXT_VALIDATE(context);
+
+    if (jwt == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
 
     sigAlg = json_string_value(json_object_get(jwt->Header, "alg"));
     if (sigAlg == NULL) {
@@ -362,14 +372,6 @@ _BIDVerifySignature(
     }
 
     BID_BAIL_ON_ERROR(err);
-
-    keyAlg = json_string_value(json_object_get(key, "algorithm"));
-    if (keyAlg == NULL)
-        keyAlg = json_string_value(json_object_get(key, "alg"));
-    if (keyAlg == NULL) {
-        err = BID_S_MISSING_ALGORITHM;
-        goto cleanup;
-    }
 
     bSignatureValid = 0;
 

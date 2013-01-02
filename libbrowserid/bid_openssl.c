@@ -13,6 +13,7 @@
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <openssl/dh.h>
+#include <openssl/hmac.h>
 #include <openssl/err.h>
 
 #include <ctype.h>
@@ -120,6 +121,36 @@ _BIDSetJsonBNValue(
 }
 
 static BIDError
+_BIDEvpForAlgorithm(
+    struct BIDJWTAlgorithmDesc *algorithm,
+    const EVP_MD **pMd)
+{
+    const EVP_MD *md;
+
+    *pMd = NULL;
+
+    if (strlen(algorithm->szAlgID) != 5)
+        return BID_S_CRYPTO_ERROR;
+
+    if (strcmp(algorithm->szAlgID, "DS128") == 0) {
+        md = EVP_sha1();
+    } else if (strcmp(&algorithm->szAlgID[1], "S512") == 0) {
+        md = EVP_sha512();
+    } else if (strcmp(&algorithm->szAlgID[1], "S384") == 0) {
+        md = EVP_sha384();
+    } else if (strcmp(&algorithm->szAlgID[1], "S256") == 0) {
+        md = EVP_sha256();
+    } else if (strcmp(&algorithm->szAlgID[1], "S224") == 0) {
+        md = EVP_sha224();
+    } else {
+        return BID_S_CRYPTO_ERROR;
+    }
+
+    *pMd = md;
+    return BID_S_OK;
+}
+
+static BIDError
 _BIDMakeShaDigest(
     struct BIDJWTAlgorithmDesc *algorithm,
     BIDContext context,
@@ -127,26 +158,15 @@ _BIDMakeShaDigest(
     unsigned char *digest,
     size_t *digestLength)
 {
+    BIDError err;
     const EVP_MD *md;
     EVP_MD_CTX mdCtx;
     unsigned char shaMd[EVP_MAX_MD_SIZE] = { 0 };
     unsigned int mdLength = sizeof(md);
 
-    /* Not particularly crypto-agile, but it is a start. */
-    if (strcmp(algorithm->szAlgID, "RS512") == 0) {
-        md = EVP_sha512();
-    } else if (strcmp(algorithm->szAlgID, "RS384") == 0) {
-        md = EVP_sha384();
-    } else if (strcmp(algorithm->szAlgID, "RS224") == 0) {
-        md = EVP_sha224();
-    } else if (strcmp(algorithm->szAlgID, "DS128") == 0) {
-        md = EVP_sha1();
-    } else {
-        md = EVP_sha256();
-    }
-
-    if (md == NULL)
-        return BID_S_CRYPTO_ERROR;
+    err = _BIDEvpForAlgorithm(algorithm, &md);
+    if (err != BID_S_OK)
+        return err;
 
     if (*digestLength < EVP_MD_size(md))
         return BID_S_BUFFER_TOO_SMALL;
@@ -511,6 +531,100 @@ cleanup:
     return err;
 }
 
+static BIDError
+_BIDHMACSHA(
+    struct BIDJWTAlgorithmDesc *algorithm,
+    BIDContext context,
+    BIDJWT jwt,
+    BIDJWK jwk,
+    unsigned char *hmac,
+    size_t *hmacLength)
+{
+    BIDError err;
+    HMAC_CTX h;
+    const EVP_MD *md;
+    unsigned char *pbKey = NULL;
+    size_t cbKey = 0;
+    unsigned int mdLen = *hmacLength;
+
+    BID_ASSERT(jwt->EncData != NULL);
+
+    err = _BIDEvpForAlgorithm(algorithm, &md);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDGetJsonBinaryValue(context, jwk, "secret-key", &pbKey, &cbKey);
+    BID_BAIL_ON_ERROR(err);
+
+    HMAC_Init(&h, pbKey, cbKey, md);
+    HMAC_Update(&h, (const unsigned char *)jwt->EncData, jwt->EncDataLength);
+    HMAC_Final(&h, hmac, &mdLen);
+
+    *hmacLength = mdLen;
+
+cleanup:
+    if (pbKey != NULL) {
+        memset(pbKey, 0, cbKey);
+        BIDFree(pbKey);
+    }
+
+    return err;
+}
+
+static BIDError
+_HMACSHAMakeSignature(
+    struct BIDJWTAlgorithmDesc *algorithm,
+    BIDContext context,
+    BIDJWT jwt,
+    BIDJWK jwk)
+{
+    BIDError err;
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    size_t digestLength = sizeof(digest);
+
+    BID_ASSERT(jwt->EncData != NULL);
+
+    err = _BIDHMACSHA(algorithm, context, jwt, jwk, digest, &digestLength);
+    BID_BAIL_ON_ERROR(err);
+
+    jwt->Signature = BIDMalloc(digestLength);
+    if (jwt->Signature == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    memcpy(jwt->Signature, digest, digestLength);
+    jwt->SignatureLength = digestLength;
+
+cleanup:
+    memset(digest, 0, sizeof(digest));
+
+    return err;
+}
+
+static BIDError
+_HMACSHAVerifySignature(
+    struct BIDJWTAlgorithmDesc *algorithm,
+    BIDContext context,
+    BIDJWT jwt,
+    BIDJWK jwk,
+    int *valid)
+{
+    BIDError err;
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    size_t digestLength = sizeof(digest);
+
+    BID_ASSERT(jwt->EncData != NULL);
+
+    err = _BIDHMACSHA(algorithm, context, jwt, jwk, digest, &digestLength);
+    if (err != BID_S_OK)
+        return err;
+
+    *valid = (jwt->SignatureLength == digestLength) &&
+             (memcmp(jwt->Signature, digest, digestLength) == 0);
+
+    return BID_S_OK;
+}
+
 BIDError
 _BIDDigestAssertion(
     BIDContext context,
@@ -607,6 +721,16 @@ _BIDJWTAlgorithms[] = {
         _DSAMakeSignature,
         _DSAVerifySignature,
         _DSAKeySize,
+    },
+    {
+        "HS256",
+        "AES",
+        0,
+        NULL,
+        0,
+        _HMACSHAMakeSignature,
+        _HMACSHAVerifySignature,
+        NULL,
     },
     {
         NULL
@@ -839,6 +963,138 @@ cleanup:
         BIDFree(pbKey);
     BN_free(pub);
     DH_free(dh);
+
+    return err;
+}
+
+BIDError
+_BIDGenerateNonce(
+    BIDContext context,
+    json_t **pNonce)
+{
+    unsigned char nonce[8];
+
+    *pNonce = NULL;
+
+    if (!RAND_bytes(nonce, sizeof(nonce)))
+        return BID_S_CRYPTO_ERROR;
+
+    return _BIDJsonBinaryValue(context, nonce, sizeof(nonce), pNonce);
+}
+
+static const unsigned char _BIDARKSalt[] = "browserid-reauth";
+
+BIDError
+_BIDDeriveAuthenticatorRootKey(
+    BIDContext context,
+    BIDIdentity identity,
+    BIDJWK *pArk)
+{
+    HMAC_CTX h;
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    unsigned int mdLength = sizeof(digest);
+    BIDError err;
+    BIDJWK ark = NULL;
+    json_t *sk = NULL;
+    unsigned char T0 = 0x00;
+
+    *pArk = NULL;
+
+    err = BIDGetIdentitySessionKey(context, identity, NULL, NULL);
+    BID_BAIL_ON_ERROR(err);
+
+    HMAC_Init(&h, identity->SessionKey, identity->SessionKeyLength, EVP_sha256());
+    HMAC_Update(&h, _BIDARKSalt, sizeof(_BIDARKSalt) - 1);
+    HMAC_Update(&h, &T0, 1);
+    HMAC_Final(&h, digest, &mdLength);
+
+    ark = json_object();
+    if (ark == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonBinaryValue(context, digest, mdLength, &sk);
+    BID_BAIL_ON_ERROR(err);
+
+    if (json_object_set(ark, "secret-key", sk) < 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    *pArk = ark;
+    err = BID_S_OK;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(ark);
+    json_decref(sk);
+    memset(digest, 0, sizeof(digest));
+
+    return err;
+}
+
+BIDError
+_BIDDeriveAuthenticatorSessionKey(
+    BIDContext context,
+    BIDJWK ark,
+    BIDJWT ap,
+    unsigned char **ppbSessionKey,
+    size_t *pcbSessionKey)
+{
+    BIDError err;
+    HMAC_CTX h;
+    unsigned char *pbArk = NULL, *pbNonce = NULL;
+    size_t cbArk, cbNonce;
+    unsigned int mdLength;
+    unsigned char T1 = 0x01;
+    uint64_t ts;
+    unsigned char pbTimestamp[8];
+
+    *ppbSessionKey = NULL;
+    *pcbSessionKey = 0;
+
+    err = _BIDGetJsonBinaryValue(context, ark, "secret-key", &pbArk, &cbArk);
+    BID_BAIL_ON_ERROR(err);
+
+    ts = json_integer_value(json_object_get(ap->Payload, "ts"));
+
+    pbTimestamp[0] = (unsigned char)((ts >> 56) & 0xff);
+    pbTimestamp[1] = (unsigned char)((ts >> 48) & 0xff);
+    pbTimestamp[2] = (unsigned char)((ts >> 40) & 0xff);
+    pbTimestamp[3] = (unsigned char)((ts >> 32) & 0xff);
+    pbTimestamp[4] = (unsigned char)((ts >> 24) & 0xff);
+    pbTimestamp[5] = (unsigned char)((ts >> 16) & 0xff);
+    pbTimestamp[6] = (unsigned char)((ts >>  8) & 0xff);
+    pbTimestamp[7] = (unsigned char)((ts      ) & 0xff);
+
+    err = _BIDGetJsonBinaryValue(context, ark, "n", &pbNonce, &cbNonce);
+    BID_BAIL_ON_ERROR(err);
+
+    HMAC_Init(&h, pbArk, cbArk, EVP_sha256());
+    HMAC_Update(&h, _BIDARKSalt, sizeof(_BIDARKSalt) - 1);
+    HMAC_Update(&h, &T1, 1);
+    HMAC_Update(&h, pbTimestamp, sizeof(pbTimestamp));
+    HMAC_Update(&h, pbNonce, cbNonce);
+
+    *ppbSessionKey = BIDMalloc(SHA256_DIGEST_LENGTH);
+    if (*ppbSessionKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    mdLength = SHA256_DIGEST_LENGTH;
+    HMAC_Final(&h, *ppbSessionKey, &mdLength);
+    *pcbSessionKey = mdLength;
+
+    err = BID_S_OK;
+
+cleanup:
+    if (pbArk != NULL) {
+        memset(pbArk, 0, cbArk);
+        BIDFree(pbArk);
+    }
+    BIDFree(pbNonce);
 
     return err;
 }

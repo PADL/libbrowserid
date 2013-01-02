@@ -34,6 +34,7 @@ BIDAcquireContext(
     context->ContextOptions = ulContextOptions;
     context->MaxDelegations = 6;
     context->DhKeySize = 1024;
+    context->TicketLifetime = 60 * 60 * 10; /* 10 hours */
 
     if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
         if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
@@ -52,6 +53,12 @@ BIDAcquireContext(
         }
 
         err = _BIDAcquireDefaultReplayCache(context);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    if ((ulContextOptions & BID_CONTEXT_REAUTH) &&
+        (ulContextOptions & BID_CONTEXT_USER_AGENT)) {
+        err = _BIDAcquireDefaultTicketCache(context);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -82,6 +89,7 @@ BIDReleaseContext(BIDContext context)
     BIDFree(context->VerifierUrl);
     _BIDReleaseCache(context, context->AuthorityCache);
     _BIDReleaseCache(context, context->ReplayCache);
+    _BIDReleaseCache(context, context->TicketCache);
 
     memset(context, 0, sizeof(*context));
     BIDFree(context);
@@ -116,14 +124,17 @@ BIDSetContextParam(
         context->DhKeySize = *(uint32_t *)value;
         break;
     case BID_PARAM_AUTHORITY_CACHE:
-    case BID_PARAM_REPLAY_CACHE: {
+    case BID_PARAM_REPLAY_CACHE:
+    case BID_PARAM_TICKET_CACHE: {
         const char *szCacheName;
-        BIDCache cache, *pCache;
+        BIDCache cache, *pCache = NULL;
 
         if (ulParam == BID_PARAM_AUTHORITY_CACHE)
             pCache = &context->AuthorityCache;
-        else
+        else if (ulParam == BID_PARAM_REPLAY_CACHE)
             pCache = &context->ReplayCache;
+        else if (ulParam == BID_PARAM_TICKET_CACHE)
+            pCache = &context->TicketCache;
 
         err = _BIDGetCacheName(context, *pCache, &szCacheName);
         if (err != BID_S_OK)
@@ -139,6 +150,9 @@ BIDSetContextParam(
         }
         break;
     }
+    case BID_PARAM_TICKET_LIFETIME:
+        context->TicketLifetime = *(uint32_t *)value;
+        break;
     default:
         err = BID_S_INVALID_PARAMETER;
         break;
@@ -189,8 +203,14 @@ BIDGetContextParam(
     case BID_PARAM_AUTHORITY_CACHE:
         err = _BIDGetCacheName(context, context->AuthorityCache, (const char **)pValue);
         break;
+    case BID_PARAM_TICKET_CACHE:
+        err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
+        break;
     case BID_PARAM_DH_KEYEX_SIZE:
         *((uint32_t *)pValue) = context->DhKeySize;
+        break;
+    case BID_PARAM_TICKET_LIFETIME:
+        *((uint32_t *)pValue) = context->TicketLifetime;
         break;
     default:
         err = BID_S_INVALID_PARAMETER;

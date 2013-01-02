@@ -12,6 +12,7 @@ libbrowserid_la_SOURCES =   \
     bid_jwt.c               \
     bid_local.c             \
     bid_openssl.c           \
+    bid_reauth.c            \
     bid_rcache.c            \
     bid_remote.c            \
     bid_user.c              \

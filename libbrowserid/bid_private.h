@@ -106,7 +106,6 @@ _BIDIssuerIsAuthoritative(
     BIDContext context,
     const char *szHostname,
     const char *szIssuer);
-//    BIDAuthority authority);
 
 /*
  * bid_base32.c
@@ -231,7 +230,9 @@ struct BIDContextDesc {
     uint32_t Skew;
     BIDCache AuthorityCache;
     BIDCache ReplayCache;
-    uint32_t DhKeySize;
+    BIDCache TicketCache;
+    uint32_t DhKeySize; 
+    uint32_t TicketLifetime;
 };
 
 /*
@@ -307,6 +308,8 @@ typedef struct BIDBackedAssertionDesc {
 struct BIDIdentityDesc {
     json_t *Attributes;
     json_t *PrivateAttributes;
+    unsigned char *SessionKey;
+    size_t SessionKeyLength;
 };
 
 BIDError
@@ -356,6 +359,56 @@ _BIDComputeDHKey(
     json_t *pubValue,
     unsigned char **ppbKey,
     size_t *pcbKey);
+
+BIDError
+_BIDDeriveAuthenticatorRootKey(
+    BIDContext context,
+    BIDIdentity identity,
+    BIDJWK *pArk);
+
+BIDError
+_BIDDeriveAuthenticatorSessionKey(
+    BIDContext context,
+    BIDJWK ark,
+    BIDJWT ap,
+    unsigned char **ppbSessionKey,
+    size_t *pcbSessionKey);
+
+BIDError
+_BIDGenerateNonce(
+    BIDContext context,
+    json_t **pNonce);
+
+/*
+ * bid_reauth.c
+ */
+BIDError
+_BIDStoreTicketInCache(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *szAudienceOrSpn,
+    json_t *ticket);
+
+BIDError
+_BIDGetReauthAssertion(
+    BIDContext context,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    char **pAssertion,
+    BIDIdentity *pAssertedIdentity,
+    time_t *ptExpiryTime);
+
+BIDError
+_BIDVerifyReauthAssertion(
+    BIDContext context,
+    BIDBackedAssertion assertion,
+    BIDIdentity *pVerifiedIdentity,
+    BIDJWK *pVerifierCred);
+
+BIDError
+_BIDAcquireDefaultTicketCache(
+    BIDContext context);
 
 /*
  * bid_remote.c
@@ -506,9 +559,9 @@ _BIDCheckReplayCache(
 BIDError
 _BIDUpdateReplayCache(
     BIDContext context,
+    BIDIdentity identity,
     const char *pAssertion,
-    time_t verificationTime,
-    json_t *expiryTime);
+    time_t verificationTime);
 
 /*
  * bid_user.c

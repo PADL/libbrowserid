@@ -60,15 +60,17 @@ cleanup:
 BIDError
 _BIDUpdateReplayCache(
     BIDContext context,
+    BIDIdentity identity,
     const char *szAssertion,
-    time_t verificationTime,
-    json_t *expiryTime)
+    time_t verificationTime)
 {
     BIDError err;
     json_t *rdata;
     unsigned char hash[32];
     char *szHash = NULL;
     size_t cbHash = sizeof(hash), cchHash;
+    json_t *expiryTime;
+    json_t *ark = NULL;
 
     err = _BIDDigestAssertion(context, szAssertion, hash, &cbHash);
     BID_BAIL_ON_ERROR(err);
@@ -77,19 +79,37 @@ _BIDUpdateReplayCache(
     BID_BAIL_ON_ERROR(err);
 
     verificationTime *= 1000; /* to ms */
-
-    rdata = json_object();
-    json_object_set_new(rdata, "ts", json_integer(verificationTime));
-    if (expiryTime != NULL)
-        json_object_set(rdata, "exp", expiryTime);
+    if (context->ContextOptions & BID_CONTEXT_REAUTH)
+        rdata = json_copy(identity->Attributes);
     else
-        json_object_set(rdata, "exp", json_integer(verificationTime + 300));
+        rdata = json_object();
+    if (rdata == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    json_object_set_new(rdata, "ts", json_integer(verificationTime));
+
+    expiryTime = json_object_get(identity->Attributes, "expires");
+    if (expiryTime == NULL)
+        json_object_set(rdata, "expires", json_integer(verificationTime + 300));
+    else if ((context->ContextOptions & BID_CONTEXT_REAUTH) == 0)
+        json_object_set(rdata, "expires", expiryTime);
+
+    if (context->ContextOptions & BID_CONTEXT_REAUTH) {
+        err = _BIDDeriveAuthenticatorRootKey(context, identity, &ark);
+        BID_BAIL_ON_ERROR(err);
+
+        json_object_set(rdata, "secret-key", ark);
+        json_object_set(rdata, "r-expires", json_integer(verificationTime + context->TicketLifetime));
+    }
 
     err = _BIDSetCacheObject(context, context->ReplayCache, szHash, rdata);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
     BIDFree(szHash);
+    json_decref(ark);
     json_decref(rdata);
 
     return err;

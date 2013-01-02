@@ -186,8 +186,7 @@ _BIDUnpackBackedAssertion(
         p = q;
     }
 
-    if (assertion->Assertion == NULL ||
-        assertion->cCertificates == 0) {
+    if (assertion->Assertion == NULL) {
         err = BID_S_INVALID_ASSERTION;
         goto cleanup;
     }
@@ -200,8 +199,14 @@ _BIDUnpackBackedAssertion(
         goto cleanup;
     }
 
-    err = _BIDUnpackAudience(context, aud, &assertion->Claims);
-    BID_BAIL_ON_ERROR(err);
+    if (assertion->cCertificates != 0) {
+        /* no packing for reauth assertions */
+        err = _BIDUnpackAudience(context, aud, &assertion->Claims);
+        BID_BAIL_ON_ERROR(err);
+    } else {
+        /* claims directly stored in assertion for reauth */
+        assertion->Claims = json_incref(assertion->Assertion->Payload);
+    }
 
     *pAssertion = assertion;
 
@@ -747,6 +752,8 @@ const char *_BIDErrorTable[] = {
     "Diffie-Helman check not safe prime",
     "Diffie-Helman not suitable generator",
     "Diffie-Helman unable to check generator",
+    "No ticket cache",
+    "Corrupted ticket cache",
     "Unknown error code"
 };
 
@@ -850,6 +857,7 @@ _BIDPopulateIdentity(
         }
     }
 
+    err = BID_S_OK;
     *pIdentity = identity;
 
 cleanup:
