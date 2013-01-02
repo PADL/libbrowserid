@@ -91,6 +91,15 @@ BIDAcquireAssertion(
 
     BID_CONTEXT_VALIDATE(context);
 
+#if 0
+    if (context->ContextOptions & BID_CONTEXT_REAUTH) {
+        err = _BIDGetReauthAssertion(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
+                                     pAssertion, pAssertedIdentity, ptExpiryTime);
+        if (err == BID_S_OK)
+            goto cleanup;
+    }
+#endif
+
     if (context->ContextOptions & BID_USER_INTERACTION_DISABLED) {
         err = BID_S_INTERACT_UNAVAILABLE;
         goto cleanup;

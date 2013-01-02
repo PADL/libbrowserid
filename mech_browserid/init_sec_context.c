@@ -142,7 +142,7 @@ OM_uint32
 gssBidInitResponseToken(OM_uint32 *minor,
                        gss_cred_id_t cred,
                        gss_ctx_id_t ctx,
-                       gss_name_t target_name GSSBID_UNUSED,
+                       gss_name_t target_name,
                        gss_OID mech_type GSSBID_UNUSED,
                        OM_uint32 req_flags GSSBID_UNUSED,
                        OM_uint32 time_req GSSBID_UNUSED,
@@ -153,13 +153,14 @@ gssBidInitResponseToken(OM_uint32 *minor,
                        OM_uint32 *ret_flags GSSBID_UNUSED,
                        OM_uint32 *time_rec GSSBID_UNUSED)
 {
-    OM_uint32 major;
+    OM_uint32 major, tmpMinor;
     json_t *response = NULL;
     char *szJson = NULL;
     BIDError err;
     gss_buffer_desc bufInnerToken = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc bufAudienceOrSpn = GSS_C_EMPTY_BUFFER;
     enum gss_bid_token_type actualTokenType;
-    const char *status;
+    const char *status, *ticket;
     BIDJWT jwt = NULL;
 
     if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
@@ -189,6 +190,18 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
+    /* XXX allow signed error check? */
+    status = json_string_value(json_object_get(response, "status"));
+    if (status == NULL || strcmp(status, "okay") != 0) {
+        major = json_integer_value(json_object_get(response, "gss-major-value"));
+        if (major == GSS_S_COMPLETE)
+            major = GSS_S_FAILURE;
+        *minor = json_integer_value(json_object_get(response, "gss-minor-value"));
+        if (*minor == 0)
+            *minor = GSSBID_BAD_ERROR_TOKEN;
+        goto cleanup;
+    }
+
     if (ctx->encryptionType != ENCTYPE_NULL) {
         json_t *dh = json_object_get(response, "dh");
 
@@ -213,13 +226,13 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    status = json_string_value(json_object_get(response, "status"));
-    if (status == NULL || strcmp(status, "okay") != 0) {
-        major = json_integer_value(json_object_get(response, "gss-major-value"));
-        if (major == GSS_S_COMPLETE)
-            major = GSS_S_FAILURE;
-        *minor = json_integer_value(json_object_get(response, "gss-minor-value"));
-        goto cleanup;
+    ticket = json_string_value(json_object_get(response, "ticket"));
+    if (ticket != NULL) {
+        major = gssBidDisplayName(minor, target_name, &bufAudienceOrSpn, NULL);
+        if (major == GSS_S_COMPLETE) {
+            BIDStoreTicketInCache(ctx->bidContext, ctx->bidIdentity,
+                                  (const char *)bufAudienceOrSpn.value, ticket);
+        }
     }
 
     output_token->length = 0;
@@ -231,6 +244,7 @@ cleanup:
     GSSBID_FREE(szJson);
     json_decref(response);
     BIDReleaseJsonWebToken(ctx->bidContext, jwt);
+    gss_release_buffer(&tmpMinor, &bufAudienceOrSpn);
 
     return major;
 }

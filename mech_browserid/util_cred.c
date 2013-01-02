@@ -458,7 +458,6 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-
         err = BIDAcquireAssertion(ctx->bidContext,
                                   (const char *)bufAudienceOrSpn.value,
                                   pbChannelBindings,

@@ -19,6 +19,91 @@ static void
 BIDToolUsage(void);
 static void
 BIDAbortError(const char *szMessage, BIDError err);
+static BIDError
+BIDPurgeCache(int argc, char *argv[], BIDCache cache, int (*shouldPurgeP)(json_t *));
+
+static BIDError
+BIDPrintTicketCacheEntry(json_t *j)
+{
+    const char *szExpiry;
+    time_t expiryTime;
+ 
+    expiryTime = json_integer_value(json_object_get(j, "expires"));
+ 
+    szExpiry = gNow < expiryTime ? ctime(&expiryTime) : ">>> Expired <<<";
+
+    printf("%-15.15s %-25.25s %-18.18s %-20.20s\n",
+           json_string_value(json_object_get(j, "email")),
+           json_string_value(json_object_get(j, "audience")),
+           json_string_value(json_object_get(j, "issuer")),
+           szExpiry);
+    printf("\n");
+
+    return BID_S_OK;
+}
+
+static int
+BIDShouldPurgeTicketCacheEntryP(json_t *j)
+{
+    time_t expiryTime;
+
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
+
+    return expiryTime == 0 || gNow >= expiryTime;
+}
+
+static BIDError
+BIDPurgeTicketCache(int argc, char *argv[])
+{
+    return BIDPurgeCache(argc, argv, gContext->TicketCache, BIDShouldPurgeTicketCacheEntryP);
+}
+
+static BIDError
+BIDListTicketCache(int argc, char *argv[])
+{
+    BIDError err;
+    const char *k = NULL;
+    json_t *j = NULL;
+    int i;
+
+    if (argc)
+        BIDToolUsage();
+
+    if (gContext->TicketCache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    printf("%-15.15s %-25.25s %-18.18s %-20.20s\n",
+           "Identity", "Audience", "Issuer", "Expires");
+    for (i = 0; i < 80; i++)
+        printf("-");
+    printf("\n");
+
+    for (err = _BIDGetFirstCacheObject(gContext, gContext->TicketCache, &k, &j);
+         err == BID_S_OK;
+         err = _BIDGetNextCacheObject(gContext, gContext->TicketCache, &k, &j)) {
+        BIDPrintTicketCacheEntry(j);
+        json_decref(j);
+        j = NULL;
+    }
+
+    if (err == BID_S_NO_MORE_ITEMS)
+        err = BID_S_OK;
+
+    json_decref(j);
+    return err;
+}
+
+static BIDError
+BIDDestroyTicketCache(int argc, char *argv[])
+{
+    if (argc)
+        BIDToolUsage();
+
+    if (gContext->TicketCache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    return _BIDDestroyCache(gContext, gContext->TicketCache);
+}
 
 static BIDError
 BIDPrintReplayCacheEntry(const char *k, json_t *j)
@@ -274,8 +359,12 @@ static struct {
     const char *Argument;
     const char *Usage;
     BIDError (*Handler)(int argc, char *argv[]);
-    enum { NO_CACHE, REPLAY_CACHE, AUTHORITY_CACHE } CacheUsage;
+    enum { NO_CACHE, TICKET_CACHE, REPLAY_CACHE, AUTHORITY_CACHE } CacheUsage;
 } _BIDToolHandlers[] = {
+    { "tlist",        "", BIDListTicketCache,             TICKET_CACHE         },
+    { "tpurge",       "", BIDPurgeTicketCache,            TICKET_CACHE         },
+    { "tdestroy",     "", BIDDestroyTicketCache,          TICKET_CACHE         },
+
     { "rlist",        "", BIDListReplayCache,             REPLAY_CACHE         },
     { "rpurge",       "", BIDPurgeReplayCache,            REPLAY_CACHE         },
     { "rdestroy",     "", BIDDestroyReplayCache,          REPLAY_CACHE         },
@@ -334,7 +423,8 @@ int main(int argc, char *argv[])
     ulOptions = BID_CONTEXT_RP              |
                 BID_CONTEXT_USER_AGENT      |
                 BID_CONTEXT_GSS             |
-                BID_CONTEXT_REPLAY_CACHE |
+                BID_CONTEXT_REPLAY_CACHE    |
+                BID_CONTEXT_REAUTH          |
                 BID_CONTEXT_AUTHORITY_CACHE;
 
     err = BIDAcquireContext(ulOptions, &gContext);
@@ -362,6 +452,9 @@ int main(int argc, char *argv[])
     for (i = 0; i < sizeof(_BIDToolHandlers) / sizeof(_BIDToolHandlers[0]); i++) {
         if (strcmp(argv[0], _BIDToolHandlers[i].Argument) == 0) {
             switch (_BIDToolHandlers[i].CacheUsage) {
+            case TICKET_CACHE:
+                ulCacheOpt = BID_PARAM_TICKET_CACHE;
+                break;
             case REPLAY_CACHE:
                 ulCacheOpt = BID_PARAM_REPLAY_CACHE;
                 break;

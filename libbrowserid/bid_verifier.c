@@ -441,9 +441,9 @@ BIDGetIdentitySessionKey(
 
         memcpy(*ppbSessionKey, identity->SessionKey, identity->SessionKeyLength);
         *pcbSessionKey = identity->SessionKeyLength;
-
-        err = BID_S_OK;
     }
+
+    err = BID_S_OK;
 
 cleanup:
     return err;

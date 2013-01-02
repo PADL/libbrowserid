@@ -1092,9 +1092,9 @@ _BIDDeriveAuthenticatorSessionKey(
 
     HMAC_Init(&h, pbArk, cbArk, EVP_sha256());
     HMAC_Update(&h, _BIDARKSalt, sizeof(_BIDARKSalt) - 1);
-    HMAC_Update(&h, &T1, 1);
     HMAC_Update(&h, pbTimestamp, sizeof(pbTimestamp));
     HMAC_Update(&h, pbNonce, cbNonce);
+    HMAC_Update(&h, &T1, 1);
 
     *ppbSessionKey = BIDMalloc(SHA256_DIGEST_LENGTH);
     if (*ppbSessionKey == NULL) {
