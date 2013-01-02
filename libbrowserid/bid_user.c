@@ -96,7 +96,7 @@ BIDAcquireAssertion(
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (context->ContextOptions & BID_CONTEXT_REAUTH &&
+    if ((context->ContextOptions & BID_CONTEXT_REAUTH) &&
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_CACHED) == 0) {
         err = _BIDGetReauthAssertion(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
                                      pAssertion, pAssertedIdentity, ptExpiryTime);
