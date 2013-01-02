@@ -90,7 +90,7 @@ gssBidAllocContext(OM_uint32 *minor,
     if (ctx->encryptionType != ENCTYPE_NULL)
         contextParams |= BID_CONTEXT_DH_KEYEX;
     if (isInitiator)
-        contextParams |= BID_CONTEXT_USER_AGENT | BID_USE_CACHED_CREDENTIALS;
+        contextParams |= BID_CONTEXT_USER_AGENT;
     else
         contextParams |= BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE | BID_CONTEXT_REPLAY_CACHE;
 
