@@ -51,7 +51,8 @@ BIDVerifyAssertion(
     size_t cbChannelBindings,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime)
+    time_t *pExpiryTime,
+    uint32_t *pulFlags)
 {
     BIDError err;
     uint32_t ulFlags = 0;
@@ -60,6 +61,7 @@ BIDVerifyAssertion(
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pExpiryTime = 0;
+    *pulFlags = 0;
 
     if (szAssertion == NULL || szAudience == NULL)
         return BID_S_INVALID_PARAMETER;
@@ -82,16 +84,19 @@ BIDVerifyAssertion(
                               pVerifiedIdentity, pExpiryTime, &ulFlags);
     BID_BAIL_ON_ERROR(err);
 
-    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
-        BID_BAIL_ON_ERROR(err);
+    if ((ulFlags & BID_VERIFY_FLAG_REAUTH) == 0) {
+        if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
+            err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
+            BID_BAIL_ON_ERROR(err);
+        }
+
+        if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
+            err = _BIDUpdateReplayCache(context, *pVerifiedIdentity, szAssertion, verificationTime);
+            BID_BAIL_ON_ERROR(err);
+        }
     }
 
-    if ((context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) &&
-        (ulFlags & BID_FLAG_REAUTH) == 0) {
-        err = _BIDUpdateReplayCache(context, *pVerifiedIdentity, szAssertion, verificationTime);
-        BID_BAIL_ON_ERROR(err);
-    }
+    *pulFlags = ulFlags;
 
 cleanup:
     return err;

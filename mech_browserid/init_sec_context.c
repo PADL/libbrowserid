@@ -155,6 +155,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
 {
     OM_uint32 major, tmpMinor;
     json_t *response = NULL;
+    json_t *expires = NULL;
     char *szJson = NULL;
     BIDError err;
     gss_buffer_desc bufInnerToken = GSS_C_EMPTY_BUFFER;
@@ -202,7 +203,8 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (ctx->encryptionType != ENCTYPE_NULL) {
+    if (ctx->encryptionType != ENCTYPE_NULL &&
+        (ctx->flags & CTX_FLAG_REAUTH) == 0) {
         json_t *dh = json_object_get(response, "dh");
 
         err = _BIDSetIdentityDHPublicValue(ctx->bidContext, ctx->bidIdentity,
@@ -212,6 +214,10 @@ gssBidInitResponseToken(OM_uint32 *minor,
             goto cleanup;
         }
     }
+
+    expires = json_object_get(response, "expires");
+    if (expires != NULL)
+        ctx->expiryTime = json_integer_value(expires);
 
     major = gssBidContextReady(minor, ctx, cred); /* need key to verify */
     if (GSS_ERROR(major))

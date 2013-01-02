@@ -63,7 +63,11 @@ makeResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (ctx->encryptionType != ENCTYPE_NULL) {
+    if (!GSS_ERROR(protocolMajor) &&
+        ctx->encryptionType != ENCTYPE_NULL &&
+        (ctx->flags & CTX_FLAG_REAUTH) == 0) {
+        BID_ASSERT(ctx->bidIdentity != BID_C_NO_IDENTITY);
+
         err = _BIDGetIdentityDHPublicValue(ctx->bidContext, ctx->bidIdentity, &dh);
         if (err != BID_S_OK) {
             major =  gssBidMapError(minor, err);
@@ -75,13 +79,13 @@ makeResponseToken(OM_uint32 *minor,
             *minor = ENOMEM;
             goto cleanup;
         }
-    }
 
-    if (ctx->bidIdentity != BID_C_NO_IDENTITY) {
-        err = BIDGetIdentityReauthTicket(ctx->bidContext, ctx->bidIdentity, &szTicket);
-        if (err == BID_S_OK)
+        if (BIDGetIdentityReauthTicket(ctx->bidContext, ctx->bidIdentity, &szTicket) == BID_S_OK)
             json_object_set(response, "ticket", json_string(szTicket));
     }
+
+    if (ctx->expiryTime != 0)
+        json_object_set_new(response, "expires", json_integer(ctx->expiryTime));
 
     status = json_string(protocolMajor == GSS_S_COMPLETE ? "okay" : "failure");
     json_object_set(response, "status", status);
@@ -126,12 +130,13 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                        OM_uint32 *time_rec GSSBID_UNUSED,
                        gss_cred_id_t *delegated_cred_handle GSSBID_UNUSED)
 {
-    OM_uint32 major, tmpMinor;
+    OM_uint32 major, tmpMajor, tmpMinor;
     BIDError err;
     char *szAssertion = NULL;
     gss_buffer_desc bufAudienceOrSpn = GSS_C_EMPTY_BUFFER;
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
+    uint32_t ulFlags = 0;
 
     if (cred == GSS_C_NO_CREDENTIAL) {
         if (ctx->cred == GSS_C_NO_CREDENTIAL) {
@@ -176,13 +181,17 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                              cbChannelBindings,
                              time(NULL),
                              &ctx->bidIdentity,
-                             &ctx->expiryTime);
+                             &ctx->expiryTime,
+                             &ulFlags);
+    if (ulFlags & BID_VERIFY_FLAG_REAUTH)
+        ctx->flags |= CTX_FLAG_REAUTH;
     major = gssBidMapError(minor, err);
-    if (major == GSS_S_COMPLETE) {
+    if (major == GSS_S_COMPLETE)
         major = gssBidContextReady(minor, ctx, cred);
-    }
 
-    major = makeResponseToken(minor, ctx, major, *minor, output_token);
+    tmpMajor = makeResponseToken(minor, ctx, major, *minor, output_token);
+    if (GSS_ERROR(tmpMajor))
+        major = tmpMajor;
     if (GSS_ERROR(major))
         goto cleanup;
 

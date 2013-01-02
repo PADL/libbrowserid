@@ -66,7 +66,7 @@ _BIDVerifyRemote(
     size_t cchAssertion, cchPackedAudience;
 
     *pVerifiedIdentity = NULL;
-    *pulFlags = BID_FLAG_VERIFY_REMOTE;
+    *pulFlags = BID_VERIFY_FLAG_REMOTE;
 
     BID_CONTEXT_VALIDATE(context);
 

@@ -185,7 +185,8 @@ BIDAcquireAssertionFromString(
     BIDContext context,
     const char *szAssertion,
     BIDIdentity *pAssertedIdentity,
-    time_t *pExpiryTime);
+    time_t *pExpiryTime,
+    uint32_t *ulFlags);
 
 BIDError
 BIDAcquireAssertion(
@@ -195,7 +196,8 @@ BIDAcquireAssertion(
     size_t cbChannelBindings,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
-    time_t *pExpiryTime);
+    time_t *pExpiryTime,
+    uint32_t *ulFlags);
 
 BIDError
 BIDFreeAssertion(
@@ -207,6 +209,9 @@ BIDFreeAssertion(
  * Verifier.
  */
 
+#define BID_VERIFY_FLAG_REMOTE     0x00000001
+#define BID_VERIFY_FLAG_REAUTH     0x00000002
+
 BIDError
 BIDVerifyAssertion(
     BIDContext context,
@@ -216,7 +221,8 @@ BIDVerifyAssertion(
     size_t cbChannelBindings,
     time_t tVerificationTime,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime);
+    time_t *pExpiryTime,
+    uint32_t *pulVerifyFlags);
 
 BIDError
 BIDGetIdentityAudience(

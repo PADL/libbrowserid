@@ -1087,7 +1087,7 @@ _BIDDeriveAuthenticatorSessionKey(
     pbTimestamp[6] = (unsigned char)((ts >>  8) & 0xff);
     pbTimestamp[7] = (unsigned char)((ts      ) & 0xff);
 
-    err = _BIDGetJsonBinaryValue(context, ark, "n", &pbNonce, &cbNonce);
+    err = _BIDGetJsonBinaryValue(context, ap->Payload, "n", &pbNonce, &cbNonce);
     BID_BAIL_ON_ERROR(err);
 
     HMAC_Init(&h, pbArk, cbArk, EVP_sha256());

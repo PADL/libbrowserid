@@ -331,12 +331,13 @@ BIDVerifyAssertionFromString(int argc, char *argv[])
     BIDIdentity identity = NULL;
     time_t expiryTime;
     const char *szExpiryTime;
+    uint32_t ulFlags = 0;
 
     if (argc != 2)
         BIDToolUsage();
 
     err = BIDVerifyAssertion(gContext, argv[0], argv[1], NULL, 0,
-                             time(NULL), &identity, &expiryTime);
+                             time(NULL), &identity, &expiryTime, &ulFlags);
     if (err != BID_S_OK) {
         BIDAbortError("Failed to verify assertion", err);
         goto cleanup;

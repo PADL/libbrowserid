@@ -137,7 +137,7 @@ _BIDStoreTicketInCache(
     cred = json_copy(identity->Attributes);
     if (cred == NULL                                ||
         json_object_set(cred, "ticket", ticket) < 0 ||
-        json_object_set(cred, "secret-key", ark) < 0) {
+        json_object_set(cred, "r-ark", ark) < 0) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
@@ -181,7 +181,8 @@ _BIDMakeAuthenticator(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     json_t *tkt,
-    BIDJWT *pAuthenticator)
+    BIDJWT *pAuthenticator,
+    time_t *pTimestamp)
 {
     BIDError err;
     BIDJWT ap;
@@ -190,10 +191,17 @@ _BIDMakeAuthenticator(
     json_t *aud = NULL;
     json_t *cbt = NULL;
 
-    BID_CONTEXT_VALIDATE(context);
-
     *pAuthenticator = NULL;
 
+    BID_CONTEXT_VALIDATE(context);
+
+    if (tkt == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    *pTimestamp = time(NULL);
+    ts = json_integer(*pTimestamp);
     if (ts == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -267,9 +275,9 @@ _BIDMakeReauthIdentity(
 
     identity->Attributes = json_copy(cred);
     json_object_del(identity->Attributes, "ticket");
-    json_object_del(identity->Attributes, "secret-key");
+    json_object_del(identity->Attributes, "r-ark");
 
-    err = _BIDDeriveAuthenticatorSessionKey(context, cred, ap,
+    err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "r-ark"), ap,
                                             &identity->SessionKey, &identity->SessionKeyLength);
     BID_BAIL_ON_ERROR(err);
 
@@ -301,6 +309,7 @@ _BIDGetReauthAssertion(
     json_t *tkt = NULL;
     BIDJWT ap = NULL;
     struct BIDBackedAssertionDesc backedAssertion = { 0 };
+    time_t ts = 0;
 
     BID_CONTEXT_VALIDATE(context);
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_REAUTH);
@@ -312,7 +321,7 @@ _BIDGetReauthAssertion(
     err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, NULL, &szCacheKey);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetCacheObject(context, context->ReplayCache, szCacheKey, &cred);
+    err = _BIDGetCacheObject(context, context->TicketCache, szCacheKey, &cred);
     BID_BAIL_ON_ERROR(err);
 
     tkt = json_object_get(cred, "ticket");
@@ -321,20 +330,21 @@ _BIDGetReauthAssertion(
         goto cleanup;
     }
 
-    err = _BIDMakeAuthenticator(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, tkt, &ap);
+    err = _BIDMakeAuthenticator(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, tkt, &ap, &ts);
     BID_BAIL_ON_ERROR(err);
 
     backedAssertion.Assertion = ap;
     backedAssertion.cCertificates = 0;
     backedAssertion.Claims = NULL;
 
-    err = _BIDPackBackedAssertion(context, &backedAssertion, cred, pAssertion);
+    err = _BIDPackBackedAssertion(context, &backedAssertion, json_object_get(cred, "r-ark"), pAssertion);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDMakeReauthIdentity(context, cred, ap, pAssertedIdentity);
     BID_BAIL_ON_ERROR(err);
 
-    _BIDGetJsonTimestampValue(context, cred, "expires", ptExpiryTime);
+    /* Guess, we will update this later. */
+    *ptExpiryTime = ts + context->TicketLifetime;
 
 cleanup:
     BIDFree(szCacheKey);
@@ -355,8 +365,8 @@ _BIDVerifyReauthAssertion(
     BIDJWT ap = assertion->Assertion;
     const char *szTicket;
     json_t *cred = NULL;
-    json_t *expires = NULL;
 
+    *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pVerifierCred = NULL;
 
     BID_CONTEXT_VALIDATE(context);
@@ -372,24 +382,16 @@ _BIDVerifyReauthAssertion(
         err = BID_S_INVALID_ASSERTION;
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDVerifySignature(context, ap, json_object_get(cred, "r-ark"));
+    *pVerifierCred = json_incref(json_object_get(cred, "r-ark"));
+
+    err = _BIDVerifySignature(context, ap, *pVerifierCred);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDMakeReauthIdentity(context, cred, ap, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
 
-    /*
-     * Don't trust the client to tell us when the assertion expires as it
-     * is self-issued. Trust the reauthentication cache.
-     */
-    expires = json_object_get(cred, "r-expires");
-    json_object_set(assertion->Claims, "expires", expires);
-
-    *pVerifierCred = cred;
-
 cleanup:
-    if (err != BID_S_OK)
-        json_decref(cred);
+    json_decref(cred);
 
     return err;
 }

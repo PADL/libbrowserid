@@ -152,6 +152,11 @@ _BIDParseJWT(
         goto cleanup;
     }
 
+    if (strlen(szJwt) == 0) {
+        err = BID_S_OK;
+        goto cleanup;
+    }
+
     err = _BIDDuplicateString(context, szJwt, &jwt->EncData);
     BID_BAIL_ON_ERROR(err);
 
@@ -159,7 +164,7 @@ _BIDParseJWT(
 
     szPayload = strchr(szHeader, '.');
     if (szPayload == NULL) {
-        err = BID_S_INVALID_SIGNATURE;
+        err = BID_S_INVALID_JSON_WEB_TOKEN;
         goto cleanup;
     }
     *szPayload++ = '\0';
@@ -505,8 +510,11 @@ BIDParseJsonWebToken(
     *pPayload = NULL;
 
     err = _BIDParseJWT(context, szJwt, pJwt);
-    if (err == BID_S_OK)
+    if (err == BID_S_OK) {
         *pPayload = json_incref((*pJwt)->Payload);
+        if (*pPayload == NULL)
+            err = BID_S_INVALID_JSON_WEB_TOKEN;
+    }
 
     return err;
 }

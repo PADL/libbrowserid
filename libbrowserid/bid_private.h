@@ -313,15 +313,6 @@ struct BIDIdentityDesc {
 };
 
 BIDError
-_BIDValidateExpiry(
-    BIDContext context,
-    time_t verificationTime,
-    json_t *assertion);
-
-#define BID_FLAG_VERIFY_REMOTE      0x00000001
-#define BID_FLAG_REAUTH             0x00000002
-
-BIDError
 _BIDVerifyLocal(
     BIDContext context,
     const char *szAssertion,

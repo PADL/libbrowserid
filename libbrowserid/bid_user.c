@@ -73,7 +73,8 @@ BIDAcquireAssertion(
     size_t cbChannelBindings,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
-    time_t *ptExpiryTime)
+    time_t *ptExpiryTime,
+    uint32_t *pulFlags)
 {
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
@@ -82,23 +83,26 @@ BIDAcquireAssertion(
     char *szAssertion = NULL;
     char *szPackedAudience = NULL;
     const char *szSiteName = NULL;
+    uint32_t ulFlags = 0;
 
     *pAssertion = NULL;
     if (pAssertedIdentity != NULL)
         *pAssertedIdentity = NULL;
     if (ptExpiryTime != NULL)
         *ptExpiryTime = 0;
+    if (pulFlags != NULL)
+        *pulFlags = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
-#if 0
     if (context->ContextOptions & BID_CONTEXT_REAUTH) {
         err = _BIDGetReauthAssertion(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
                                      pAssertion, pAssertedIdentity, ptExpiryTime);
-        if (err == BID_S_OK)
+        if (err == BID_S_OK) {
+            ulFlags |= BID_VERIFY_FLAG_REAUTH;
             goto cleanup;
+        }
     }
-#endif
 
     if (context->ContextOptions & BID_USER_INTERACTION_DISABLED) {
         err = BID_S_INTERACT_UNAVAILABLE;
@@ -128,7 +132,7 @@ BIDAcquireAssertion(
     err = _BIDBrowserGetAssertion(context, szPackedAudience, szSiteName, &szAssertion);
     BID_BAIL_ON_ERROR(err);
 
-    err = BIDAcquireAssertionFromString(context, szAssertion, pAssertedIdentity, ptExpiryTime);
+    err = BIDAcquireAssertionFromString(context, szAssertion, pAssertedIdentity, ptExpiryTime, &ulFlags);
     BID_BAIL_ON_ERROR(err);
 
     if (pAssertedIdentity != NULL && (context->ContextOptions & BID_CONTEXT_DH_KEYEX)) {
@@ -141,6 +145,8 @@ BIDAcquireAssertion(
     *pAssertion = szAssertion;
 
 cleanup:
+    if (pulFlags != NULL)
+        *pulFlags = ulFlags;
     if (err != BID_S_OK)
         BIDFree(szAssertion);
     json_decref(claims);

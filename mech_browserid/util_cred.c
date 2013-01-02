@@ -414,6 +414,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
     char *szAssertion = NULL;
+    uint32_t ulFlags = 0;
 
     *pResolvedCred = GSS_C_NO_CREDENTIAL;
 
@@ -447,7 +448,8 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         err = BIDAcquireAssertionFromString(ctx->bidContext,
                                             (const char *)resolvedCred->assertion.value,
                                             &ctx->bidIdentity,
-                                            &resolvedCred->expiryTime);
+                                            &resolvedCred->expiryTime,
+                                            &ulFlags);
     } else {
         if (channelBindings != GSS_C_NO_CHANNEL_BINDINGS) {
             pbChannelBindings = (const unsigned char *)channelBindings->application_data.value;
@@ -464,13 +466,17 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                   cbChannelBindings,
                                   &szAssertion,
                                   &ctx->bidIdentity,
-                                  &resolvedCred->expiryTime);
+                                  &resolvedCred->expiryTime,
+                                  &ulFlags);
     }
 
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         goto cleanup;
     }
+
+    if (ulFlags & BID_VERIFY_FLAG_REAUTH)
+        ctx->flags |= CTX_FLAG_REAUTH;
 
     if (szAssertion != NULL) {
         major = makeStringBuffer(minor, szAssertion, &resolvedCred->assertion);
