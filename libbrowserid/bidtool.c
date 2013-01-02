@@ -23,7 +23,7 @@ static BIDError
 BIDPurgeCache(int argc, char *argv[], BIDCache cache, int (*shouldPurgeP)(json_t *));
 
 static BIDError
-BIDPrintTicketCacheEntry(json_t *j)
+BIDPrintTicketCacheEntry(const char *k, json_t *j)
 {
     const char *szExpiry;
     time_t expiryTime;
@@ -33,9 +33,9 @@ BIDPrintTicketCacheEntry(json_t *j)
  
     szExpiry = gNow < expiryTime ? ctime(&expiryTime) : ">>> Expired <<<";
 
-    printf("%-15.15s %-25.25s %-18.18s %-20.20s\n",
+    printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
            json_string_value(json_object_get(j, "email")),
-           json_string_value(json_object_get(j, "audience")),
+           k, /*json_string_value(json_object_get(j, "audience")),*/
            json_string_value(json_object_get(j, "issuer")),
            szExpiry);
     printf("\n");
@@ -74,7 +74,7 @@ BIDListTicketCache(int argc, char *argv[])
     if (gContext->TicketCache == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    printf("%-15.15s %-25.25s %-18.18s %-20.20s\n",
+    printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
            "Identity", "Audience", "Issuer", "Expires");
     for (i = 0; i < 80; i++)
         printf("-");
@@ -83,7 +83,7 @@ BIDListTicketCache(int argc, char *argv[])
     for (err = _BIDGetFirstCacheObject(gContext, gContext->TicketCache, &k, &j);
          err == BID_S_OK;
          err = _BIDGetNextCacheObject(gContext, gContext->TicketCache, &k, &j)) {
-        BIDPrintTicketCacheEntry(j);
+        BIDPrintTicketCacheEntry(k, j);
         json_decref(j);
         j = NULL;
     }
