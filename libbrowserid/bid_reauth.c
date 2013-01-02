@@ -193,6 +193,7 @@ _BIDMakeAuthenticator(
     BIDError err;
     BIDJWT ap;
     json_t *n = NULL;
+    json_t *iat = NULL;
     json_t *aud = NULL;
     json_t *cbt = NULL;
 
@@ -206,7 +207,8 @@ _BIDMakeAuthenticator(
         goto cleanup;
     }
 
-    *pTimestamp = time(NULL);
+    err = _BIDGetCurrentJsonTimestamp(context, &iat);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDGenerateNonce(context, &n);
     BID_BAIL_ON_ERROR(err);
@@ -234,10 +236,8 @@ _BIDMakeAuthenticator(
         goto cleanup;
     }
 
-    err = _BIDSetJsonTimestampValue(context, ap->Payload, "iat", time(NULL));
-    BID_BAIL_ON_ERROR(err);
-
-    if (       json_object_set(ap->Payload, "n", n) < 0            ||
+    if (       json_object_set(ap->Payload, "iat", iat) < 0        ||
+               json_object_set(ap->Payload, "n", n) < 0            ||
                json_object_set(ap->Payload, "tkt", tkt) < 0        ||
                json_object_set(ap->Payload, "aud", aud) < 0        ||
         (cbt ? json_object_set(ap->Payload, "cbt", cbt) : 0) < 0) {
@@ -247,6 +247,8 @@ _BIDMakeAuthenticator(
 
     *pAuthenticator = ap;
     _BIDGetJsonTimestampValue(context, ap->Payload, "iat", pTimestamp);
+
+    json_dumpf(ap->Payload, stdout, 0);
 
 cleanup:
     if (err != BID_S_OK)

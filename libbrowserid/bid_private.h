@@ -467,6 +467,11 @@ _BIDSetJsonTimestampValue(
     time_t ts);
 
 BIDError
+_BIDGetCurrentJsonTimestamp(
+    BIDContext context,
+    json_t **pTs);
+
+BIDError
 _BIDDuplicateString(
     BIDContext context,
     const char *szSrc,
