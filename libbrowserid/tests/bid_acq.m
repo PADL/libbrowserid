@@ -32,7 +32,7 @@ int main(int argc, const char *argv[])
     const char *audience = NULL;
     time_t expires;
     json_t *j = NULL;
-
+    uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT |
                        BID_CONTEXT_GSS | BID_USE_CACHED_CREDENTIALS | BID_CONTEXT_AUTHORITY_CACHE;
 
@@ -73,11 +73,11 @@ int main(int argc, const char *argv[])
     BID_BAIL_ON_ERROR(err);
 
     err = BIDAcquireAssertion(context, "host/www.browserid.org", NULL, 0, 0,
-                              &assertion, NULL, &expires);
+                              &assertion, NULL, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDVerifyAssertion(context, assertion, audience ? audience : "host/www.browserid.org",
-                             NULL, 0, time(NULL), 0, &identity, &expires);
+                             NULL, 0, time(NULL), 0, &identity, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDGetIdentityJsonObject(context, identity, NULL, &j);

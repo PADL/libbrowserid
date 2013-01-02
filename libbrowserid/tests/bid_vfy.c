@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     BIDIdentity id = NULL;
     time_t expires;
     json_t *j = NULL;
+    uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
 
     if (argc > 1 && !strcmp(argv[1], "-remote")) {
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
     BID_BAIL_ON_ERROR(err);
 
     err = BIDVerifyAssertion(context, argv[1], argv[2], NULL, 0,
-                             time(NULL), 0, &id, &expires);
+                             time(NULL), 0, &id, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDGetIdentityJsonObject(context, id, NULL, &j);
