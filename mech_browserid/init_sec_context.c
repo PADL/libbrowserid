@@ -240,7 +240,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
     output_token->length = 0;
     output_token->value = NULL;
 
-    GSSBID_SM_TRANSITION_NEXT(ctx);
+    GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
 
 cleanup:
     GSSBID_FREE(szJson);
@@ -289,13 +289,17 @@ gssBidInitSecContext(OM_uint32 *minor,
     *minor = GSSBID_REAUTH_FAILED;
 
     while (*minor == GSSBID_REAUTH_FAILED) {
-        if (ctx->state == GSSBID_STATE_INITIAL) {
+        switch (GSSBID_SM_STATE(ctx)) {
+        case GSSBID_STATE_INITIAL:
+        case GSSBID_STATE_RETRY_INITIAL:
             major = gssBidInitAssertionToken(minor, cred, ctx, target_name,
                                              mech_type, req_flags, time_req,
                                              input_chan_bindings, input_token,
                                              actual_mech_type, output_token,
                                              ret_flags, time_rec);
-        } else if (ctx->state == GSSBID_STATE_AUTHENTICATE) {
+            break;
+        case GSSBID_STATE_AUTHENTICATE:
+        case GSSBID_STATE_RETRY_AUTHENTICATE:
             major = gssBidInitResponseToken(minor, cred, ctx, target_name,
                                             mech_type, req_flags, time_req,
                                             input_chan_bindings, input_token,
@@ -303,7 +307,7 @@ gssBidInitSecContext(OM_uint32 *minor,
                                             ret_flags, time_rec);
             if (*minor == GSSBID_REAUTH_FAILED &&
                 (ctx->flags & CTX_FLAG_REAUTH) &&
-                (ctx->flags & CTX_FLAG_REAUTH_FALLBACK) == 0) {
+                GSSBID_SM_STATE(ctx) != GSSBID_STATE_RETRY_AUTHENTICATE) {
                 GSSBID_ASSERT(output_token->value == NULL);
 
                 GSSBID_MUTEX_UNLOCK(&ctx->cred->mutex);
@@ -318,17 +322,17 @@ gssBidInitSecContext(OM_uint32 *minor,
                 }
 
                 GSSBID_ASSERT((ctx->flags & CTX_FLAG_REAUTH) == 0);
-                ctx->flags |= CTX_FLAG_REAUTH_FALLBACK;
-                ctx->state = GSSBID_STATE_INITIAL;
+                GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_RETRY_INITIAL);
 
                 input_token = GSS_C_NO_BUFFER;
 
                 GSSBID_MUTEX_LOCK(&ctx->cred->mutex);
             }
-        } else {
+            break;
+        case GSSBID_STATE_ESTABLISHED:
             major = GSS_S_FAILURE;
             *minor = GSSBID_CONTEXT_ESTABLISHED;
-            goto cleanup;
+            break;
         }
     }
     if (GSS_ERROR(major))

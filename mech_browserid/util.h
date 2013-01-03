@@ -655,10 +655,11 @@ sequenceInit(OM_uint32 *minor, void **vqueue, uint64_t seqnum,
 
 /* util_sm.c */
 enum gss_bid_state {
-    GSSBID_STATE_INITIAL        = 0x01,     /* initial state */
-    GSSBID_STATE_AUTHENTICATE   = 0x02,     /* exchange assertion */
-    GSSBID_STATE_ESTABLISHED    = 0x04,     /* context established */
-    GSSBID_STATE_ALL            = 0x3F
+    GSSBID_STATE_INITIAL            = 0x01,     /* initial state */
+    GSSBID_STATE_AUTHENTICATE       = 0x02,     /* exchange assertion */
+    GSSBID_STATE_RETRY_INITIAL      = 0x04,     /* retry reauth */
+    GSSBID_STATE_RETRY_AUTHENTICATE = 0x08,     /* retry reauth */
+    GSSBID_STATE_ESTABLISHED        = 0x10,     /* context established */
 };
 
 #define GSSBID_STATE_NEXT(s)    ((s) << 1)

@@ -192,7 +192,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                              pbChannelBindings,
                              cbChannelBindings,
                              time(NULL),
-                             (ctx->flags & CTX_FLAG_REAUTH_FALLBACK) ? BID_VERIFY_FLAG_NO_REAUTH: 0,
+                             GSSBID_SM_STATE(ctx) == GSSBID_STATE_RETRY_INITIAL ? BID_VERIFY_FLAG_NO_REAUTH : 0,
                              &ctx->bidIdentity,
                              &ctx->expiryTime,
                              &ulBidFlags);
@@ -200,7 +200,6 @@ gssBidAcceptSecContext(OM_uint32 *minor,
     if (ulBidFlags & BID_VERIFY_FLAG_REAUTH) {
         /* recoverable errors */
         if (err == BID_S_INVALID_ASSERTION || err == BID_S_EXPIRED_ASSERTION) {
-            ctx->flags |= CTX_FLAG_REAUTH_FALLBACK;
             major = GSS_S_CONTINUE_NEEDED;
             *minor = GSSBID_REAUTH_FAILED;
         } else
@@ -217,7 +216,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
         goto cleanup;
 
     if (major == GSS_S_CONTINUE_NEEDED)
-        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_AUTHENTICATE);
+        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_RETRY_INITIAL);
     else
         GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
 
