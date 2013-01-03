@@ -81,9 +81,11 @@ gssBidAllocContext(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        major = gssBidRfc3961KeySize(minor, ctx->encryptionType, &cbKey);
-        if (GSS_ERROR(major))
-            goto cleanup;
+        if (ctx->encryptionType != ENCTYPE_NULL) {
+            major = gssBidRfc3961KeySize(minor, ctx->encryptionType, &cbKey);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
     }
 
     contextParams = BID_CONTEXT_GSS | BID_CONTEXT_REAUTH;
