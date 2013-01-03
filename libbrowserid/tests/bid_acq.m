@@ -34,7 +34,7 @@ int main(int argc, const char *argv[])
     json_t *j = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT |
-                       BID_CONTEXT_GSS | BID_USE_CACHED_CREDENTIALS | BID_CONTEXT_AUTHORITY_CACHE;
+                       BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
 
 #ifndef BUILD_AS_DSO
     if (argc > 1 && !strcmp(argv[1], "-remote")) {
@@ -47,8 +47,8 @@ int main(int argc, const char *argv[])
         argc--;
         argv++;
     }
-    if (argc > 1 && !strcmp(argv[1], "-nocache")) {
-        options &= ~(BID_USE_CACHED_CREDENTIALS);
+    if (argc > 1 && !strcmp(argv[1], "-cachedbrowserkey")) {
+        options |= BID_CONTEXT_CACHED_BROWSER_KEY;
         argc--;
         argv++;
     }

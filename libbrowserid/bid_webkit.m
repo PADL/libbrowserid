@@ -269,7 +269,7 @@
     } else if ([[frame name] isEqualToString:@"__persona_dialog"]) {
         DOMElement *signInButton = [[frame DOMDocument] getElementById:@"signInButton"];
 
-        if (signInButton != nil && (contextOptions & BID_USE_CACHED_CREDENTIALS)) {
+        if (signInButton != nil && (contextOptions & BID_CONTEXT_CACHED_BROWSER_KEY)) {
             [signInButton callWebScriptMethod:@"click" withArguments:nil];
         } else {
             [panel makeFirstResponder:webView];

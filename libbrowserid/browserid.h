@@ -132,9 +132,12 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_USER_INTERACTION_DISABLED   0x00000040
 
 /*
- * Do not prompt user if cached credentials are available.
+ * Do not prompt user if the browser already has a key
+ * for the user. Note that this is independent of reauth
+ * credentials; this just forces navigator.id.request()
+ * to click OK. Use with care.
  */
-#define BID_USE_CACHED_CREDENTIALS      0x00000080
+#define BID_CONTEXT_CACHED_BROWSER_KEY  0x00000080
 
 /*
  * DH key exchange
