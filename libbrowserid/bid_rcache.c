@@ -67,7 +67,6 @@ _BIDUpdateReplayCache(
     unsigned char hash[32];
     char *szHash = NULL;
     size_t cbHash = sizeof(hash), cchHash;
-    json_t *expiryTime;
     json_t *ark = NULL;
     json_t *tkt = NULL;
     int bStoreReauthCreds;
@@ -78,10 +77,10 @@ _BIDUpdateReplayCache(
     err = _BIDBase64UrlEncode(hash, cbHash, &szHash, &cchHash);
     BID_BAIL_ON_ERROR(err);
 
-    if (context->ContextOptions & BID_CONTEXT_REAUTH)
-        rdata = json_copy(identity->Attributes);
-    else
-        rdata = json_object();
+    bStoreReauthCreds = (context->ContextOptions & BID_CONTEXT_REAUTH) &&
+                        !(ulFlags & BID_VERIFY_FLAG_REAUTH);
+
+    rdata = bStoreReauthCreds ? json_copy(identity->Attributes) : json_object();
     if (rdata == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -90,21 +89,15 @@ _BIDUpdateReplayCache(
     err = _BIDSetJsonTimestampValue(context, rdata, "iat", verificationTime);
     BID_BAIL_ON_ERROR(err);
 
-    expiryTime = json_object_get(identity->Attributes, "exp");
-    if (expiryTime == NULL)
-        _BIDSetJsonTimestampValue(context, rdata, "exp", verificationTime + 300);
-    else
-        json_object_set(rdata, "exp", expiryTime);
-
-    bStoreReauthCreds = (context->ContextOptions & BID_CONTEXT_REAUTH) &&
-                        !(ulFlags & BID_VERIFY_FLAG_REAUTH);
+    json_object_set(rdata, "a-exp", json_object_get(identity->PrivateAttributes, "a-exp"));
 
     if (bStoreReauthCreds) {
         err = _BIDDeriveAuthenticatorRootKey(context, identity, &ark);
         BID_BAIL_ON_ERROR(err);
 
         json_object_set(rdata, "ark", ark);
-        _BIDSetJsonTimestampValue(context, rdata, "r-exp", verificationTime + context->TicketLifetime);
+    } else {
+        json_object_set(rdata, "exp", json_object_get(identity->Attributes, "exp"));
     }
 
     err = _BIDSetCacheObject(context, context->ReplayCache, szHash, rdata);
@@ -120,7 +113,7 @@ _BIDUpdateReplayCache(
         }
 
         json_object_set_new(tkt, "jti", json_string(szHash));
-        json_object_set(tkt, "exp", json_object_get(rdata, "r-exp"));
+        json_object_set(tkt, "exp", json_object_get(rdata, "exp"));
         json_object_set(identity->PrivateAttributes, "tkt", tkt);
     }
 

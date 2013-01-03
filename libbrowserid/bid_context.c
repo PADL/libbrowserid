@@ -35,7 +35,6 @@ BIDAcquireContext(
     context->Skew = 60 * 5; /* 5 minutes */
     context->MaxDelegations = 6;
     context->DhKeySize = 1024;
-    context->TicketLifetime = 60 * 60 * 10; /* 10 hours */
 
     if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
         if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
@@ -151,9 +150,6 @@ BIDSetContextParam(
         }
         break;
     }
-    case BID_PARAM_TICKET_LIFETIME:
-        context->TicketLifetime = *(uint32_t *)value;
-        break;
     default:
         err = BID_S_INVALID_PARAMETER;
         break;
@@ -209,9 +205,6 @@ BIDGetContextParam(
         break;
     case BID_PARAM_DH_KEYEX_SIZE:
         *((uint32_t *)pValue) = context->DhKeySize;
-        break;
-    case BID_PARAM_TICKET_LIFETIME:
-        *((uint32_t *)pValue) = context->TicketLifetime;
         break;
     default:
         err = BID_S_INVALID_PARAMETER;

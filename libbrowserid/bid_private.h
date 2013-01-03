@@ -247,7 +247,16 @@ extern struct BIDCacheOps _BIDFileCache;
 /*
  * bid_identity.c
  */
-#define BID_VERIFIER_URL            "https://verifier.login.persona.org/verify"
+BIDError
+_BIDAllocIdentity(
+    BIDContext context,
+    BIDIdentity *pIdentity);
+
+BIDError
+_BIDPopulateIdentity(
+    BIDContext context,
+    BIDBackedAssertion backedAssertion,
+    BIDIdentity *pIdentity);
 
 BIDError
 _BIDSetIdentityDHPublicValue(
@@ -403,6 +412,8 @@ _BIDAcquireDefaultTicketCache(
 /*
  * bid_rverify.c
  */
+#define BID_VERIFIER_URL            "https://verifier.login.persona.org/verify"
+
 BIDError
 _BIDVerifyRemote(
     BIDContext context,
@@ -530,12 +541,6 @@ _BIDRootCert(
     BIDBackedAssertion backedAssertion);
 
 BIDError
-_BIDPopulateIdentity(
-    BIDContext context,
-    BIDBackedAssertion backedAssertion,
-    BIDIdentity *pIdentity);
-
-BIDError
 _BIDUnpackAudience(
     BIDContext context,
     const char *szPackedAudience,
@@ -617,8 +622,7 @@ BIDError
 _BIDValidateExpiry(
     BIDContext context,
     time_t verificationTime,
-    json_t *assertion,
-    time_t *pExpiryTime);
+    json_t *assertion);
 
 /*
  * bid_webkit.c

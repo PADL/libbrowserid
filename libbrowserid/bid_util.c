@@ -852,78 +852,6 @@ _BIDRootCert(
     return backedAssertion->rCertificates[0]->Payload;
 }
 
-BIDError
-_BIDPopulateIdentity(
-    BIDContext context,
-    BIDBackedAssertion backedAssertion,
-    BIDIdentity *pIdentity)
-{
-    BIDError err;
-    BIDIdentity identity = NULL;
-    json_t *assertion = backedAssertion->Assertion->Payload;
-    json_t *leafCert = _BIDLeafCert(context, backedAssertion);
-    json_t *principal;
-
-    *pIdentity = NULL;
-
-    identity = BIDCalloc(1, sizeof(*identity));
-    if (identity == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    identity->Attributes = json_object();
-    if (identity->Attributes == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    principal = json_object_get(leafCert, "principal");
-    if (principal == NULL || json_object_get(principal, "email") == NULL) {
-        err = BID_S_MISSING_PRINCIPAL;
-        goto cleanup;
-    }
-
-    if (json_object_set(identity->Attributes, "sub",  json_object_get(principal, "email")) < 0 ||
-        json_object_set(identity->Attributes, "aud",  json_object_get(assertion, "aud"))   < 0 ||
-        json_object_set(identity->Attributes, "iss",  json_object_get(leafCert,  "iss"))   < 0 ||
-        json_object_set(identity->Attributes, "saml", json_object_get(leafCert,  "saml"))  < 0 ||
-        json_object_set(identity->Attributes, "exp",  json_object_get(assertion, "exp"))   < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    identity->PrivateAttributes = json_object();
-    if (identity->PrivateAttributes == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        json_t *params = json_object_get(backedAssertion->Claims, "dh");
-
-        if (params != NULL) {
-            json_t *dh = json_object();
-
-            if (dh == NULL                                          ||
-                json_object_set(dh, "params", params) < 0           ||
-                json_object_set(identity->PrivateAttributes, "dh", dh) < 0) {
-                err = BID_S_NO_MEMORY;
-                goto cleanup;
-            }
-        }
-    }
-
-    err = BID_S_OK;
-    *pIdentity = identity;
-
-cleanup:
-    if (err != BID_S_OK)
-        BIDReleaseIdentity(context, identity);
-
-    return err;
-}
-
 /*
  * XXX all very temporary until we have proper GSS URNs.
  */
@@ -1233,46 +1161,6 @@ cleanup:
     if (err != BID_S_OK)
         BIDFree(szPackedAudience);
     BIDFree(szEncodedClaims);
-
-    return err;
-}
-
-BIDError
-BIDAcquireAssertionFromString(
-    BIDContext context,
-    const char *szAssertion,
-    uint32_t ulReqFlags,
-    BIDIdentity *pAssertedIdentity,
-    time_t *ptExpiryTime,
-    uint32_t *pulRetFlags)
-{
-    BIDError err;
-    BIDBackedAssertion backedAssertion = NULL;
-
-    if (pAssertedIdentity != NULL)
-        *pAssertedIdentity = NULL;
-    if (ptExpiryTime != NULL)
-        *ptExpiryTime = 0;
-    if (pulRetFlags != NULL)
-        *pulRetFlags = 0;
-
-    BID_CONTEXT_VALIDATE(context);
-
-    err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
-    BID_BAIL_ON_ERROR(err);
-
-    if (pAssertedIdentity != NULL) {
-        err = _BIDPopulateIdentity(context, backedAssertion, pAssertedIdentity);
-        BID_BAIL_ON_ERROR(err);
-    }
-
-    err = BID_S_OK;
-
-    if (ptExpiryTime != NULL)
-        _BIDGetJsonTimestampValue(context, backedAssertion->Assertion->Payload, "exp", ptExpiryTime);
-
-cleanup:
-    _BIDReleaseBackedAssertion(context, backedAssertion);
 
     return err;
 }

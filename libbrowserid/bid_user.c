@@ -162,6 +162,46 @@ cleanup:
 }
 
 BIDError
+BIDAcquireAssertionFromString(
+    BIDContext context,
+    const char *szAssertion,
+    uint32_t ulReqFlags,
+    BIDIdentity *pAssertedIdentity,
+    time_t *ptExpiryTime,
+    uint32_t *pulRetFlags)
+{
+    BIDError err;
+    BIDBackedAssertion backedAssertion = NULL;
+
+    if (pAssertedIdentity != NULL)
+        *pAssertedIdentity = NULL;
+    if (ptExpiryTime != NULL)
+        *ptExpiryTime = 0;
+    if (pulRetFlags != NULL)
+        *pulRetFlags = 0;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
+    BID_BAIL_ON_ERROR(err);
+
+    if (pAssertedIdentity != NULL) {
+        err = _BIDPopulateIdentity(context, backedAssertion, pAssertedIdentity);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    err = BID_S_OK;
+
+    if (ptExpiryTime != NULL)
+        _BIDGetJsonTimestampValue(context, backedAssertion->Assertion->Payload, "exp", ptExpiryTime);
+
+cleanup:
+    _BIDReleaseBackedAssertion(context, backedAssertion);
+
+    return err;
+}
+
+BIDError
 BIDFreeAssertion(
     BIDContext context,
     char *assertion)

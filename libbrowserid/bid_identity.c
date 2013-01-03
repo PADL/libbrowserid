@@ -468,3 +468,99 @@ BIDGetIdentityExpiryTime(
 
     return _BIDGetJsonTimestampValue(context, identity->Attributes, "exp", value);
 }
+
+BIDError
+_BIDAllocIdentity(
+    BIDContext context,
+    BIDIdentity *pIdentity)
+{
+    BIDError err;
+    BIDIdentity identity = BID_C_NO_IDENTITY;
+
+    *pIdentity = BID_C_NO_IDENTITY;
+
+    identity = BIDCalloc(1, sizeof(*identity));
+    if (identity == BID_C_NO_IDENTITY) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    identity->Attributes = json_object();
+    if (identity->Attributes == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    identity->PrivateAttributes = json_object();
+    if (identity->PrivateAttributes == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+    *pIdentity = identity;
+
+cleanup:
+    if (err != BID_S_OK)
+        BIDReleaseIdentity(context, identity);
+
+    return err;
+}
+
+BIDError
+_BIDPopulateIdentity(
+    BIDContext context,
+    BIDBackedAssertion backedAssertion,
+    BIDIdentity *pIdentity)
+{
+    BIDError err;
+    BIDIdentity identity = BID_C_NO_IDENTITY;
+    json_t *assertion = backedAssertion->Assertion->Payload;
+    json_t *leafCert = _BIDLeafCert(context, backedAssertion);
+    json_t *principal;
+
+    *pIdentity = BID_C_NO_IDENTITY;
+
+    err = _BIDAllocIdentity(context, &identity);
+    BID_BAIL_ON_ERROR(err);
+
+    principal = json_object_get(leafCert, "principal");
+    if (principal == NULL ||
+        json_object_get(principal, "email") == NULL) {
+        err = BID_S_MISSING_PRINCIPAL;
+        goto cleanup;
+    }
+
+    json_object_set(identity->Attributes, "sub",  json_object_get(principal, "email"));
+    json_object_set(identity->Attributes, "aud",  json_object_get(assertion, "aud"));
+    json_object_set(identity->Attributes, "iss",  json_object_get(leafCert,  "iss"));
+    json_object_set(identity->Attributes, "exp",  json_object_get(leafCert,  "exp"));
+    json_object_set(identity->Attributes, "saml", json_object_get(leafCert,  "saml"));
+
+    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
+        json_t *params = json_object_get(backedAssertion->Claims, "dh");
+
+        if (params != NULL) {
+            json_t *dh = json_object();
+
+            if (dh == NULL                                          ||
+                json_object_set(dh, "params", params) < 0           ||
+                json_object_set(identity->PrivateAttributes, "dh", dh) < 0) {
+                err = BID_S_NO_MEMORY;
+                goto cleanup;
+            }
+        }
+    }
+
+    /* Assertion expiry time, internal use only */
+    json_object_set(identity->PrivateAttributes, "a-exp", json_object_get(assertion, "exp"));
+
+    err = BID_S_OK;
+    *pIdentity = identity;
+
+cleanup:
+    if (err != BID_S_OK)
+        BIDReleaseIdentity(context, identity);
+
+    return err;
+}

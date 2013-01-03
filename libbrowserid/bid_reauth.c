@@ -267,15 +267,22 @@ _BIDMakeReauthIdentity(
 
     *pIdentity = NULL;
 
-    identity = BIDCalloc(1, sizeof(*identity));
-    if (identity == NULL) {
+    err = _BIDAllocIdentity(context, &identity);
+    BID_BAIL_ON_ERROR(err);
+
+    json_decref(identity->Attributes);
+    identity->Attributes = json_copy(cred);
+    if (identity->Attributes == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
-    identity->Attributes = json_copy(cred);
+    /* remove the secret stuff from the attribute cache */
     json_object_del(identity->Attributes, "ark");
-    json_object_del(identity->Attributes, "r-exp");
+    json_object_del(identity->Attributes, "a-exp");
+
+    /* copy over the assertion expiry time */
+    json_object_set(identity->PrivateAttributes, "a-exp", json_object_get(cred, "a-exp"));
 
     err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
                                             &identity->SessionKey, &identity->SessionKeyLength);
@@ -336,7 +343,7 @@ _BIDGetReauthAssertion(
 
     _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &tsNow);
 
-    err = _BIDValidateExpiry(context, tsNow, tkt, ptExpiryTime);
+    err = _BIDValidateExpiry(context, tsNow, tkt);
     BID_BAIL_ON_ERROR(err);
 
     backedAssertion.Assertion = ap;
@@ -348,6 +355,9 @@ _BIDGetReauthAssertion(
 
     err = _BIDMakeReauthIdentity(context, cred, ap, pAssertedIdentity);
     BID_BAIL_ON_ERROR(err);
+
+    /* By convention this is the assertion expiry time, not the ticket expiry */
+    *ptExpiryTime = tsNow + context->Skew;
 
 cleanup:
     BIDFree(szCacheKey);
@@ -369,7 +379,6 @@ _BIDVerifyReauthAssertion(
     BIDJWT ap = assertion->Assertion;
     const char *szTicket;
     json_t *cred = NULL;
-    json_t *rexp = NULL;
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pVerifierCred = NULL;
@@ -383,7 +392,7 @@ _BIDVerifyReauthAssertion(
     szTicket = json_string_value(json_object_get(ap->Payload, "tkt"));
 
     err = _BIDGetCacheObject(context, context->ReplayCache, szTicket, &cred);
-    if (err == BID_S_CACHE_KEY_NOT_FOUND)
+    if (err == BID_S_CACHE_NOT_FOUND || err == BID_S_CACHE_KEY_NOT_FOUND)
         err = BID_S_INVALID_ASSERTION;
     BID_BAIL_ON_ERROR(err);
 
@@ -394,10 +403,7 @@ _BIDVerifyReauthAssertion(
      * new object as _BIDValidateExpiry expects the expiry time to be in
      * the exp attribute.
      */
-    rexp = json_object();
-    json_object_set(rexp, "exp", json_object_get(cred, "r-exp"));
-
-    err = _BIDValidateExpiry(context, verificationTime, rexp, NULL);
+    err = _BIDValidateExpiry(context, verificationTime, cred);
     BID_BAIL_ON_ERROR(err);
 
     *pVerifierCred = json_incref(json_object_get(cred, "ark"));
@@ -409,7 +415,6 @@ _BIDVerifyReauthAssertion(
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
-    json_decref(rexp);
     json_decref(cred);
 
     return err;

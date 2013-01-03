@@ -18,8 +18,7 @@ BIDError
 _BIDValidateExpiry(
     BIDContext context,
     time_t verificationTime,
-    json_t *jwt,
-    time_t *pExpiryTime)
+    json_t *jwt)
 {
     BIDError err = BID_S_OK;
     time_t issueTime = 0, expiryTime = 0;
@@ -44,9 +43,6 @@ _BIDValidateExpiry(
     }
 
 cleanup:
-    if (pExpiryTime != NULL)
-        *pExpiryTime = expiryTime;
-
     return err;
 }
 
@@ -203,7 +199,6 @@ _BIDValidateCertChain(
     json_t *rootCert = _BIDRootCert(context, backedAssertion);
     const char *szCertIssuer;
     size_t i;
-    time_t expiryTime;
 
     if (backedAssertion->cCertificates == 0)
         return BID_S_MISSING_CERT;
@@ -224,10 +219,8 @@ _BIDValidateCertChain(
 
     for (i = 0; i < backedAssertion->cCertificates; i++) {
         BIDJWT cert = backedAssertion->rCertificates[i];
-        err = _BIDValidateExpiry(context, verificationTime, cert->Payload, &expiryTime);
+        err = _BIDValidateExpiry(context, verificationTime, cert->Payload);
         BID_BAIL_ON_ERROR(err);
-
-        /* XXX collate some attributes into identity object? */
 
         err = _BIDVerifySignature(context, cert, pKey);
         BID_BAIL_ON_ERROR(err);
@@ -309,7 +302,7 @@ _BIDVerifyLocal(
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDValidateExpiry(context, verificationTime, backedAssertion->Assertion->Payload, pExpiryTime);
+    err = _BIDValidateExpiry(context, verificationTime, backedAssertion->Assertion->Payload);
     BID_BAIL_ON_ERROR(err);
 
     /* Only allow one certificate for now */
@@ -336,6 +329,7 @@ _BIDVerifyLocal(
 
     err = BID_S_OK;
     *pVerifiedIdentity = verifiedIdentity;
+    _BIDGetJsonTimestampValue(context, verifiedIdentity->Attributes, "exp", pExpiryTime);
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);

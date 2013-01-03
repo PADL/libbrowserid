@@ -172,7 +172,6 @@ BIDReleaseContext(BIDContext context);
 #define BID_PARAM_AUTHORITY_CACHE       0x00000009
 #define BID_PARAM_DH_KEYEX_SIZE         0x0000000A
 #define BID_PARAM_TICKET_CACHE          0x0000000B
-#define BID_PARAM_TICKET_LIFETIME       0x0000000C
 
 BIDError
 BIDSetContextParam(BIDContext context, uint32_t ulParam, void *value);

@@ -12,6 +12,7 @@
 static BIDError
 _BIDRemoteVerifierResponseToIdentity(
     BIDContext context,
+    BIDBackedAssertion backedAssertion,
     json_t *response,
     BIDIdentity *pIdentity)
 {
@@ -25,27 +26,17 @@ _BIDRemoteVerifierResponseToIdentity(
         goto cleanup;
     }
 
-    identity = BIDCalloc(1, sizeof(*identity));
-    if (identity == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDPopulateIdentity(context, backedAssertion, &identity);
+    BID_BAIL_ON_ERROR(err);
 
-    identity->Attributes = json_object();
-    if (identity->Attributes == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    /* We use JWT reserved claim names in the identity attribute dictionary */
     json_object_set(identity->Attributes, "sub", json_object_get(response, "email"));
     json_object_set(identity->Attributes, "aud", json_object_get(response, "audience"));
-    json_object_set(identity->Attributes, "exp", json_object_get(response, "expires"));
     json_object_set(identity->Attributes, "iss", json_object_get(response, "issuer"));
 
-    *pIdentity = identity;
+    json_object_set(identity->PrivateAttributes, "a-exp", json_object_get(response, "expires"));
 
     err = BID_S_OK;
+    *pIdentity = identity;
 
 cleanup:
     if (err != BID_S_OK)
@@ -114,7 +105,7 @@ _BIDVerifyRemote(
     err = _BIDPostDocument(context, szVerifierUrl, szPostFields, &response);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDRemoteVerifierResponseToIdentity(context, response, pVerifiedIdentity);
+    err = _BIDRemoteVerifierResponseToIdentity(context, backedAssertion, response, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
 
     BIDGetIdentityExpiryTime(context, *pVerifiedIdentity, pExpiryTime);
