@@ -196,6 +196,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                              &ctx->bidIdentity,
                              &ctx->expiryTime,
                              &ulBidFlags);
+    major = gssBidMapError(minor, err);
     if (ulBidFlags & BID_VERIFY_FLAG_REAUTH) {
         /* recoverable errors */
         if (err == BID_S_INVALID_ASSERTION || err == BID_S_EXPIRED_ASSERTION) {
@@ -204,8 +205,8 @@ gssBidAcceptSecContext(OM_uint32 *minor,
             *minor = GSSBID_REAUTH_FAILED;
         } else
             ctx->flags |= CTX_FLAG_REAUTH;
-    } else
-        major = gssBidMapError(minor, err);
+    }
+
     if (major == GSS_S_COMPLETE)
         major = gssBidContextReady(minor, ctx, cred);
 
