@@ -264,7 +264,6 @@ _BIDMakeReauthIdentity(
 {
     BIDError err;
     BIDIdentity identity = BID_C_NO_IDENTITY;
-    json_t *rexp;
 
     *pIdentity = NULL;
 
@@ -274,24 +273,9 @@ _BIDMakeReauthIdentity(
         goto cleanup;
     }
 
-    rexp = json_object_get(cred, "r-exp");
-
     identity->Attributes = json_copy(cred);
-    json_object_del(identity->Attributes, "tkt");
     json_object_del(identity->Attributes, "ark");
-
-    /*
-     * The convention is that "exp" contains the expiry time of the assertion,
-     * which is most analogous to the lifetime of the authenticator, NOT the
-     * ticket lifetime.
-     *
-     * 
-     */
-
-    if (rexp != NULL) {
-        json_object_del(identity->Attributes, "r-exp");
-        json_object_set(identity->Attributes, "exp", rexp);
-    }
+    json_object_del(identity->Attributes, "r-exp");
 
     err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
                                             &identity->SessionKey, &identity->SessionKeyLength);
@@ -352,8 +336,7 @@ _BIDGetReauthAssertion(
 
     _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &tsNow);
 
-    /* Check the *ticket* hasn't expired yet */
-    err = _BIDValidateExpiry(context, tsNow, json_object_get(tkt, "exp"), ptExpiryTime);
+    err = _BIDValidateExpiry(context, tsNow, tkt, ptExpiryTime);
     BID_BAIL_ON_ERROR(err);
 
     backedAssertion.Assertion = ap;
@@ -386,6 +369,7 @@ _BIDVerifyReauthAssertion(
     BIDJWT ap = assertion->Assertion;
     const char *szTicket;
     json_t *cred = NULL;
+    json_t *rexp = NULL;
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pVerifierCred = NULL;
@@ -403,6 +387,19 @@ _BIDVerifyReauthAssertion(
         err = BID_S_INVALID_ASSERTION;
     BID_BAIL_ON_ERROR(err);
 
+    /*
+     * _BIDVerifyLocal will verify the authenticator expiry as it is in the
+     * claims and is the moral equivalent of the assertion expiry. However,
+     * we also need to verify the ticket is still valid. We need to create
+     * new object as _BIDValidateExpiry expects the expiry time to be in
+     * the exp attribute.
+     */
+    rexp = json_object();
+    json_object_set(rexp, "exp", json_object_get(cred, "r-exp"));
+
+    err = _BIDValidateExpiry(context, verificationTime, rexp, NULL);
+    BID_BAIL_ON_ERROR(err);
+
     *pVerifierCred = json_incref(json_object_get(cred, "ark"));
 
     err = _BIDVerifySignature(context, ap, *pVerifierCred);
@@ -412,6 +409,7 @@ _BIDVerifyReauthAssertion(
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
+    json_decref(rexp);
     json_decref(cred);
 
     return err;

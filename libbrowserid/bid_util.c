@@ -809,6 +809,7 @@ const char *_BIDErrorTable[] = {
     "Diffie-Helman unable to check generator",
     "No ticket cache",
     "Corrupted ticket cache",
+    "Expired ticket",
     "Unknown error code"
 };
 

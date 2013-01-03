@@ -142,7 +142,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
     gss_buffer_desc bufAudienceOrSpn = GSS_C_EMPTY_BUFFER;
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
-    uint32_t ulFlags = 0;
+    uint32_t ulBidFlags = 0;
 
     if (cred == GSS_C_NO_CREDENTIAL) {
         if (ctx->cred == GSS_C_NO_CREDENTIAL) {
@@ -192,12 +192,13 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                              pbChannelBindings,
                              cbChannelBindings,
                              time(NULL),
-                             0,
+                             (ctx->flags & CTX_FLAG_REAUTH_FALLBACK) ? BID_VERIFY_FLAG_NO_REAUTH: 0,
                              &ctx->bidIdentity,
                              &ctx->expiryTime,
-                             &ulFlags);
-    if (ulFlags & BID_VERIFY_FLAG_REAUTH) {
-        if (err == BID_S_INVALID_ASSERTION) {
+                             &ulBidFlags);
+    if (ulBidFlags & BID_VERIFY_FLAG_REAUTH) {
+        /* recoverable errors */
+        if (err == BID_S_INVALID_ASSERTION || err == BID_S_EXPIRED_ASSERTION) {
             ctx->flags |= CTX_FLAG_REAUTH_FALLBACK;
             major = GSS_S_CONTINUE_NEEDED;
             *minor = GSSBID_REAUTH_FAILED;

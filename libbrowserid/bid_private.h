@@ -401,7 +401,7 @@ _BIDAcquireDefaultTicketCache(
     BIDContext context);
 
 /*
- * bid_remote.c
+ * bid_rverify.c
  */
 BIDError
 _BIDVerifyRemote(

@@ -18,26 +18,34 @@ BIDError
 _BIDValidateExpiry(
     BIDContext context,
     time_t verificationTime,
-    json_t *expiry,
+    json_t *jwt,
     time_t *pExpiryTime)
 {
-    BIDError err;
-    time_t issueTime, expiryTime;
+    BIDError err = BID_S_OK;
+    time_t issueTime = 0, expiryTime = 0;
 
-    err = _BIDGetJsonTimestampValue(context, expiry, "iat", &issueTime);
-    if (err == BID_S_OK && issueTime > verificationTime)
-        return BID_S_ASSERTION_NOT_YET_VALID;
+    err = _BIDGetJsonTimestampValue(context, jwt, "iat", &issueTime);
+    if (err == BID_S_OK && issueTime - verificationTime > context->Skew) {
+        err = BID_S_ASSERTION_NOT_YET_VALID;
+        goto cleanup;
+    }
 
-    err = _BIDGetJsonTimestampValue(context, expiry, "exp", &expiryTime);
-    if (err != BID_S_OK)
-        expiryTime = verificationTime;
-
-    *pExpiryTime = expiryTime;
-
-    if (expiryTime - verificationTime > context->Skew)
-        err = BID_S_EXPIRED_ASSERTION;
-    else
+    err = _BIDGetJsonTimestampValue(context, jwt, "exp", &expiryTime);
+    if (err == BID_S_UNKNOWN_JSON_KEY && issueTime != 0) {
+        /* XXX use Skew as default lifetime as well as clock skew */
+        expiryTime = issueTime + context->Skew;
         err = BID_S_OK;
+    }
+    BID_BAIL_ON_ERROR(err);
+
+    if (verificationTime - expiryTime >= context->Skew) {
+        err = BID_S_EXPIRED_ASSERTION;
+        goto cleanup;
+    }
+
+cleanup:
+    if (pExpiryTime != NULL)
+        *pExpiryTime = expiryTime;
 
     return err;
 }
@@ -285,7 +293,8 @@ _BIDVerifyLocal(
     BID_ASSERT(backedAssertion->Claims != NULL);
 
     if (backedAssertion->cCertificates == 0) {
-        if ((context->ContextOptions & BID_CONTEXT_REAUTH) == 0) {
+        if ((context->ContextOptions & BID_CONTEXT_REAUTH) == 0 ||
+            (ulReqFlags & BID_VERIFY_FLAG_NO_REAUTH)) {
             err = BID_S_INVALID_ASSERTION;
             goto cleanup;
         }
@@ -300,10 +309,7 @@ _BIDVerifyLocal(
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDValidateExpiry(context, verificationTime,
-                             (verifiedIdentity != BID_C_NO_IDENTITY) ?
-                                verifiedIdentity->Attributes : backedAssertion->Assertion->Payload,
-                             pExpiryTime);
+    err = _BIDValidateExpiry(context, verificationTime, backedAssertion->Assertion->Payload, pExpiryTime);
     BID_BAIL_ON_ERROR(err);
 
     /* Only allow one certificate for now */

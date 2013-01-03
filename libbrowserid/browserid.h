@@ -85,6 +85,7 @@ typedef enum {
     BID_S_DH_UNABLE_TO_CHECK_GENERATOR,
     BID_S_NO_TICKET_CACHE,
     BID_S_BAD_TICKET_CACHE,
+    BID_S_EXPIRED_TICKET,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -219,8 +220,12 @@ BIDFreeAssertion(
  * Verifier.
  */
 
-#define BID_VERIFY_FLAG_REMOTE     0x00000001
-#define BID_VERIFY_FLAG_REAUTH     0x00000002
+/* Request (ulReqFlags) */
+#define BID_VERIFY_FLAG_NO_REAUTH  0x00000001
+
+/* Response (ulRetFlags) */
+#define BID_VERIFY_FLAG_REMOTE     0x80000001
+#define BID_VERIFY_FLAG_REAUTH     0x80000002
 
 BIDError
 BIDVerifyAssertion(
@@ -230,7 +235,7 @@ BIDVerifyAssertion(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t tVerificationTime,
-    uint32_t pulReqFlags,
+    uint32_t ulReqFlags,
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime,
     uint32_t *pulVerifyFlags);

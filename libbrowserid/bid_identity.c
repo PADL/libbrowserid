@@ -97,9 +97,8 @@ BIDVerifyAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
-    *pulRetFlags = ulRetFlags;
-
 cleanup:
+    *pulRetFlags = ulRetFlags;
     return err;
 }
 

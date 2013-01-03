@@ -414,7 +414,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
     char *szAssertion = NULL;
-    uint32_t ulRetFlags = 0;
+    uint32_t ulBidFlags = 0;
 
     *pResolvedCred = GSS_C_NO_CREDENTIAL;
 
@@ -450,7 +450,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                             BID_ACQUIRE_FLAG_NO_INTERACT,
                                             &ctx->bidIdentity,
                                             &resolvedCred->expiryTime,
-                                            &ulRetFlags);
+                                            &ulBidFlags);
     } else {
         if (channelBindings != GSS_C_NO_CHANNEL_BINDINGS) {
             pbChannelBindings = (const unsigned char *)channelBindings->application_data.value;
@@ -469,7 +469,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                   &szAssertion,
                                   &ctx->bidIdentity,
                                   &resolvedCred->expiryTime,
-                                  &ulRetFlags);
+                                  &ulBidFlags);
     }
 
     if (err != BID_S_OK) {
@@ -477,7 +477,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (ulRetFlags & BID_VERIFY_FLAG_REAUTH)
+    if (ulBidFlags & BID_VERIFY_FLAG_REAUTH)
         ctx->flags |= CTX_FLAG_REAUTH;
     else
         ctx->flags &= ~(CTX_FLAG_REAUTH);
