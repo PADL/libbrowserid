@@ -344,6 +344,7 @@ _BIDGetReauthAssertion(
 
     _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &tsNow);
 
+    /* Check the *ticket* hasn't expired yet */
     err = _BIDValidateExpiry(context, tsNow, json_object_get(tkt, "exp"), ptExpiryTime);
     BID_BAIL_ON_ERROR(err);
 
