@@ -21,10 +21,16 @@ _BIDValidateExpiry(
     json_t *jwt)
 {
     BIDError err = BID_S_OK;
-    time_t issueTime = 0, expiryTime = 0;
+    time_t issueTime = 0, notBefore = 0, expiryTime = 0;
 
     err = _BIDGetJsonTimestampValue(context, jwt, "iat", &issueTime);
     if (err == BID_S_OK && issueTime - verificationTime > context->Skew) {
+        err = BID_S_INVALID_ASSERTION;
+        goto cleanup;
+    }
+
+    err = _BIDGetJsonTimestampValue(context, jwt, "nbf", &notBefore);
+    if (err == BID_S_OK && notBefore - verificationTime > context->Skew) {
         err = BID_S_ASSERTION_NOT_YET_VALID;
         goto cleanup;
     }
@@ -37,7 +43,7 @@ _BIDValidateExpiry(
     }
     BID_BAIL_ON_ERROR(err);
 
-    if (verificationTime - expiryTime >= context->Skew) {
+    if (verificationTime - expiryTime > context->Skew) {
         err = BID_S_EXPIRED_ASSERTION;
         goto cleanup;
     }
