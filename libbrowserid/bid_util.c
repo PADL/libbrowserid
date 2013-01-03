@@ -884,10 +884,11 @@ _BIDPopulateIdentity(
         goto cleanup;
     }
 
-    if (json_object_set(identity->Attributes, "sub", json_object_get(principal, "email")) < 0 ||
-        json_object_set(identity->Attributes, "aud", json_object_get(assertion, "aud"))   < 0 ||
-        json_object_set(identity->Attributes, "iss", json_object_get(leafCert,  "iss"))   < 0 ||
-        json_object_set(identity->Attributes, "exp", json_object_get(assertion, "exp"))   < 0) {
+    if (json_object_set(identity->Attributes, "sub",  json_object_get(principal, "email")) < 0 ||
+        json_object_set(identity->Attributes, "aud",  json_object_get(assertion, "aud"))   < 0 ||
+        json_object_set(identity->Attributes, "iss",  json_object_get(leafCert,  "iss"))   < 0 ||
+        json_object_set(identity->Attributes, "saml", json_object_get(leafCert,  "saml"))  < 0 ||
+        json_object_set(identity->Attributes, "exp",  json_object_get(assertion, "exp"))   < 0) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
