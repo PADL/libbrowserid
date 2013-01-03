@@ -90,11 +90,12 @@ BIDVerifyAssertion(
             err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
             BID_BAIL_ON_ERROR(err);
         }
+    }
 
-        if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
-            err = _BIDUpdateReplayCache(context, *pVerifiedIdentity, szAssertion, verificationTime);
-            BID_BAIL_ON_ERROR(err);
-        }
+    if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
+        err = _BIDUpdateReplayCache(context, *pVerifiedIdentity, szAssertion,
+                                    verificationTime, ulRetFlags);
+        BID_BAIL_ON_ERROR(err);
     }
 
     *pulRetFlags = ulRetFlags;

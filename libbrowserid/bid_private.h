@@ -578,7 +578,8 @@ _BIDUpdateReplayCache(
     BIDContext context,
     BIDIdentity identity,
     const char *pAssertion,
-    time_t verificationTime);
+    time_t verificationTime,
+    uint32_t ulFlags);
 
 /*
  * bid_user.c

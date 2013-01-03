@@ -59,7 +59,8 @@ _BIDUpdateReplayCache(
     BIDContext context,
     BIDIdentity identity,
     const char *szAssertion,
-    time_t verificationTime)
+    time_t verificationTime,
+    uint32_t ulFlags)
 {
     BIDError err;
     json_t *rdata;
@@ -69,6 +70,7 @@ _BIDUpdateReplayCache(
     json_t *expiryTime;
     json_t *ark = NULL;
     json_t *tkt = NULL;
+    int bStoreReauthCreds;
 
     err = _BIDDigestAssertion(context, szAssertion, hash, &cbHash);
     BID_BAIL_ON_ERROR(err);
@@ -94,7 +96,10 @@ _BIDUpdateReplayCache(
     else
         json_object_set(rdata, "exp", expiryTime);
 
-    if (context->ContextOptions & BID_CONTEXT_REAUTH) {
+    bStoreReauthCreds = (context->ContextOptions & BID_CONTEXT_REAUTH) &&
+                        !(ulFlags & BID_VERIFY_FLAG_REAUTH);
+
+    if (bStoreReauthCreds) {
         err = _BIDDeriveAuthenticatorRootKey(context, identity, &ark);
         BID_BAIL_ON_ERROR(err);
 
@@ -105,17 +110,19 @@ _BIDUpdateReplayCache(
     err = _BIDSetCacheObject(context, context->ReplayCache, szHash, rdata);
     BID_BAIL_ON_ERROR(err);
 
-    BID_ASSERT(identity->PrivateAttributes != NULL);
+    if (bStoreReauthCreds) {
+        BID_ASSERT(identity->PrivateAttributes != NULL);
 
-    tkt = json_object();
-    if (tkt == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
+        tkt = json_object();
+        if (tkt == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+
+        json_object_set_new(tkt, "jti", json_string(szHash));
+        json_object_set(tkt, "exp", json_object_get(rdata, "r-exp"));
+        json_object_set(identity->PrivateAttributes, "tkt", tkt);
     }
-
-    json_object_set_new(tkt, "jti", json_string(szHash));
-    json_object_set(tkt, "exp", json_object_get(rdata, "r-exp"));
-    json_object_set(identity->PrivateAttributes, "tkt", tkt);
 
 cleanup:
     BIDFree(szHash);
