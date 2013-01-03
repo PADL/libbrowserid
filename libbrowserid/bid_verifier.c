@@ -85,11 +85,10 @@ BIDVerifyAssertion(
                               pVerifiedIdentity, pExpiryTime, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
 
-    if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH) == 0) {
-        if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-            err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
-            BID_BAIL_ON_ERROR(err);
-        }
+    if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH) == 0 &&
+        (context->ContextOptions & BID_CONTEXT_DH_KEYEX)) {
+        err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
+        BID_BAIL_ON_ERROR(err);
     }
 
     if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
