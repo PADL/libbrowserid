@@ -54,7 +54,7 @@ static BIDError
 _BIDMakeTicketCacheKey(
     BIDContext context,
     const char *szAudienceOrSpn,
-    const char *szEmail,
+    const char *szSubject,
     char **pszCacheKey)
 {
     BIDError err;
@@ -67,12 +67,12 @@ _BIDMakeTicketCacheKey(
     size_t cchEmail;
     char *p;
 
-    if (szAudienceOrSpn == NULL || szEmail == NULL) {
+    if (szAudienceOrSpn == NULL || szSubject == NULL) {
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
     }
 
-    cchEmail = strlen(szEmail);
+    cchEmail = strlen(szSubject);
     cchAudienceOrSpn = strlen(szAudienceOrSpn);
 
     p = szCacheKey = BIDMalloc(cchEmail + 1 + cchAudienceOrSpn + 1);
@@ -81,7 +81,7 @@ _BIDMakeTicketCacheKey(
         goto cleanup;
     }
 
-    memcpy(p, szEmail, cchEmail);
+    memcpy(p, szSubject, cchEmail);
     p += cchEmail;
     *p++ = ' ';
     memcpy(p, szAudienceOrSpn, cchAudienceOrSpn);
@@ -114,7 +114,7 @@ _BIDStoreTicketInCache(
     BIDError err;
     json_t *cred = NULL;
     BIDJWK ark = NULL;
-    const char *szEmail = NULL;
+    const char *szSubject = NULL;
     char *szCacheKey = NULL;
 
     BID_CONTEXT_VALIDATE(context);
@@ -142,10 +142,10 @@ _BIDStoreTicketInCache(
         goto cleanup;
     }
 
-    err = BIDGetIdentityEmail(context, identity, &szEmail);
+    err = BIDGetIdentitySubject(context, identity, &szSubject);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, szEmail, &szCacheKey);
+    err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, szSubject, &szCacheKey);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetCacheObject(context, context->TicketCache, szCacheKey, cred);
@@ -245,8 +245,6 @@ _BIDMakeAuthenticator(
 
     *pAuthenticator = ap;
 
-    json_dumpf(ap->Payload, stdout, 0);
-
 cleanup:
     if (err != BID_S_OK)
         _BIDReleaseJWT(context, ap);
@@ -276,15 +274,15 @@ _BIDMakeReauthIdentity(
         goto cleanup;
     }
 
-    rexp = json_object_get(cred, "r-expires");
+    rexp = json_object_get(cred, "r-exp");
 
     identity->Attributes = json_copy(cred);
     json_object_del(identity->Attributes, "tkt");
     json_object_del(identity->Attributes, "ark");
 
     if (rexp != NULL) {
-        json_object_del(identity->Attributes, "r-expires");
-        json_object_set(identity->Attributes, "expires", rexp);
+        json_object_del(identity->Attributes, "r-exp");
+        json_object_set(identity->Attributes, "exp", rexp);
     }
 
     err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
@@ -402,11 +400,6 @@ _BIDVerifyReauthAssertion(
 
     err = _BIDMakeReauthIdentity(context, cred, ap, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
-
-#if 0
-    json_dumpf(cred, stdout, JSON_INDENT(4));
-    json_dumpf(ap->Payload, stdout, JSON_INDENT(4));
-#endif
 
 cleanup:
     json_decref(cred);

@@ -102,6 +102,11 @@ makeResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
+#ifdef GSSBID_DEBUG
+    json_dumpf(response, stdout, JSON_INDENT(8));
+    printf("\n");
+#endif
+
     major = duplicateBuffer(minor, &bufJson, outputToken);
     if (GSS_ERROR(major))
         goto cleanup;

@@ -237,7 +237,7 @@ BIDGetIdentityAudience(
     const char **pValue);
 
 BIDError
-BIDGetIdentityEmail(
+BIDGetIdentitySubject(
     BIDContext context,
     BIDIdentity identity,
     const char **pValue);
@@ -259,7 +259,6 @@ BIDError
 BIDGetIdentityExpiryTime(
     BIDContext context,
     BIDIdentity identity,
-    const char *attribute,
     time_t *value);
 
 #ifdef JANSSON_H

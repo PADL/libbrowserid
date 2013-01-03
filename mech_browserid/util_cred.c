@@ -409,7 +409,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     gss_cred_id_t resolvedCred = GSS_C_NO_CREDENTIAL;
     BIDError err;
     gss_buffer_desc bufAudienceOrSpn = GSS_C_EMPTY_BUFFER;
-    gss_buffer_desc bufEmail = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc bufSubject = GSS_C_EMPTY_BUFFER;
     gss_name_t identityName = GSS_C_NO_NAME;
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
@@ -490,15 +490,15 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
 
     BID_ASSERT(resolvedCred->assertion.length != 0);
 
-    err = BIDGetIdentityEmail(ctx->bidContext, ctx->bidIdentity, (const char **)&bufEmail.value);
+    err = BIDGetIdentitySubject(ctx->bidContext, ctx->bidIdentity, (const char **)&bufSubject.value);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         goto cleanup;
     }
 
-    bufEmail.length = strlen((const char *)bufEmail.value);
+    bufSubject.length = strlen((const char *)bufSubject.value);
 
-    major = gssBidImportName(minor, &bufEmail, GSS_C_NT_USER_NAME, GSS_C_NULL_OID, &identityName);
+    major = gssBidImportName(minor, &bufSubject, GSS_C_NT_USER_NAME, GSS_C_NULL_OID, &identityName);
     if (GSS_ERROR(major))
         goto cleanup;
 

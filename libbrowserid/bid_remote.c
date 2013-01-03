@@ -31,7 +31,17 @@ _BIDRemoteVerifierResponseToIdentity(
         goto cleanup;
     }
 
-    identity->Attributes = json_incref(response);
+    identity->Attributes = json_object();
+    if (identity->Attributes == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    /* We use JWT reserved claim names in the identity attribute dictionary */
+    json_object_set(identity->Attributes, "sub", json_object_get(response, "email"));
+    json_object_set(identity->Attributes, "aud", json_object_get(response, "audience"));
+    json_object_set(identity->Attributes, "exp", json_object_get(response, "expires"));
+    json_object_set(identity->Attributes, "iss", json_object_get(response, "issuer"));
 
     *pIdentity = identity;
 
@@ -107,7 +117,7 @@ _BIDVerifyRemote(
     err = _BIDRemoteVerifierResponseToIdentity(context, response, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
 
-    _BIDGetJsonTimestampValue(context, response, "expires", pExpiryTime);
+    BIDGetIdentityExpiryTime(context, *pVerifiedIdentity, pExpiryTime);
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);

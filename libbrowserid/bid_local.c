@@ -58,7 +58,7 @@ _BIDValidateExpiry(
     BIDError err;
     time_t expiryTime;
 
-    err = _BIDGetJsonTimestampValue(context, expiry, NULL, &expiryTime);
+    err = _BIDGetJsonTimestampValue(context, expiry, "exp", &expiryTime);
     if (err != BID_S_OK)
         expiryTime = verificationTime + 300; /* default expires in 5 minutes */
 
@@ -100,9 +100,7 @@ _BIDValidateCertChain(
 
     for (i = 0; i < backedAssertion->cCertificates; i++) {
         BIDJWT cert = backedAssertion->rCertificates[i];
-        json_t *exp = json_object_get(cert->Payload, "exp");
-
-        err = _BIDValidateExpiry(context, verificationTime, exp, &expiryTime);
+        err = _BIDValidateExpiry(context, verificationTime, cert->Payload, &expiryTime);
         BID_BAIL_ON_ERROR(err);
 
         /* XXX collate some attributes into identity object? */
@@ -160,7 +158,6 @@ _BIDVerifyLocal(
     BIDBackedAssertion backedAssertion = NULL;
     BIDIdentity verifiedIdentity = BID_C_NO_IDENTITY;
     BIDJWK reauthCred = NULL;
-    json_t *expires;
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pExpiryTime = 0;
@@ -194,12 +191,10 @@ _BIDVerifyLocal(
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
-    if (verifiedIdentity != BID_C_NO_IDENTITY)
-        expires = json_object_get(verifiedIdentity->Attributes, "expires");
-    else
-        expires = json_object_get(backedAssertion->Assertion->Payload, "exp");
-
-    err = _BIDValidateExpiry(context, verificationTime, expires, pExpiryTime);
+    err = _BIDValidateExpiry(context, verificationTime,
+                             (verifiedIdentity != BID_C_NO_IDENTITY) ?
+                                verifiedIdentity->Attributes : backedAssertion->Assertion->Payload,
+                             pExpiryTime);
     BID_BAIL_ON_ERROR(err);
 
     /* Only allow one certificate for now */

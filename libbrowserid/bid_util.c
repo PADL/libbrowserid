@@ -701,7 +701,7 @@ _BIDGetJsonTimestampValue(
 
     *ts = 0;
 
-    j = (key != NULL) ? json_object_get(json, key) : json;
+    j = json_object_get(json, key);
     if (j == NULL)
         return BID_S_UNKNOWN_JSON_KEY;
 
@@ -881,10 +881,10 @@ _BIDPopulateIdentity(
         goto cleanup;
     }
 
-    if (json_object_set(identity->Attributes, "email",    json_object_get(principal, "email")) < 0 ||
-        json_object_set(identity->Attributes, "audience", json_object_get(assertion, "aud"))   < 0 ||
-        json_object_set(identity->Attributes, "issuer",   json_object_get(leafCert, "iss"))    < 0 ||
-        json_object_set(identity->Attributes, "expires",  json_object_get(assertion, "exp"))   < 0) {
+    if (json_object_set(identity->Attributes, "sub", json_object_get(principal, "email")) < 0 ||
+        json_object_set(identity->Attributes, "aud", json_object_get(assertion, "aud"))   < 0 ||
+        json_object_set(identity->Attributes, "iss", json_object_get(leafCert,  "iss"))   < 0 ||
+        json_object_set(identity->Attributes, "exp", json_object_get(assertion, "exp"))   < 0) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
@@ -1135,14 +1135,6 @@ _BIDUnpackAudience(
     err = BID_S_OK;
     *pClaims = claims;
 
-#if 0
-    printf("_BIDUnpackAudience: packed audience: %s\n", szPackedAudience);
-    printf("_BIDUnpackAudience: unpacked audience: %s\n", szAudience);
-    printf("_BIDUnpackAudience: unpacked claims: ");
-    json_dumpf(claims, stdout, JSON_INDENT(4));
-    printf("\n");
-#endif
-
 cleanup:
     BIDFree(szAudience);
     if (err != BID_S_OK)
@@ -1228,14 +1220,6 @@ _BIDPackAudience(
     memcpy(p, szEncodedClaims, cchEncodedClaims);
     p += cchEncodedClaims;
     *p = '\0';
-
-#if 0
-    printf("_BIDPackAudience: claims: ");
-    json_dumpf(claims, stdout, JSON_INDENT(4));
-    printf("_BIDPackAudience: unpacked audience: %s\n", szAudience);
-    printf("_BIDPackAudience: packed audience: %s\n", szPackedAudience);
-    printf("\n");
-#endif
 
     err = BID_S_OK;
     *pszPackedAudience = szPackedAudience;

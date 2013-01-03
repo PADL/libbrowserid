@@ -34,9 +34,9 @@ BIDPrintTicketCacheEntry(const char *k, json_t *j)
     szExpiry = gNow < expiryTime ? ctime(&expiryTime) : ">>> Expired <<<";
 
     printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
-           json_string_value(json_object_get(j, "email")),
-           k, /*json_string_value(json_object_get(j, "audience")),*/
-           json_string_value(json_object_get(j, "issuer")),
+           json_string_value(json_object_get(j, "sub")),
+           k, /*json_string_value(json_object_get(j, "aud")),*/
+           json_string_value(json_object_get(j, "iss")),
            szExpiry);
     printf("\n");
 
@@ -348,8 +348,8 @@ BIDVerifyAssertionFromString(int argc, char *argv[])
     szExpiryTime = expiryTime < gNow ? ctime(&expiryTime) : ">>> Expired <<<";
 
     printf("Verified assertion for %s issued by %s (expiry %s)\n",
-           json_string_value(json_object_get(identity->Attributes, "email")),
-           json_string_value(json_object_get(identity->Attributes, "issuer")),
+           json_string_value(json_object_get(identity->Attributes, "sub")),
+           json_string_value(json_object_get(identity->Attributes, "iss")),
            szExpiryTime);
 
 cleanup:

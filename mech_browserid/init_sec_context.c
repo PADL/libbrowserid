@@ -208,7 +208,11 @@ gssBidInitResponseToken(OM_uint32 *minor,
         }
     }
 
+#ifdef GSSBID_DEBUG
     json_dumpf(response, stdout, JSON_INDENT(8));
+    printf("\n");
+#endif
+
     _BIDGetJsonTimestampValue(ctx->bidContext, response, "exp", &ctx->expiryTime);
 
     major = gssBidContextReady(minor, ctx, cred); /* need key to verify */

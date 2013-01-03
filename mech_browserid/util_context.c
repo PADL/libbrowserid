@@ -265,18 +265,18 @@ gssBidContextReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
     OM_uint32 major, tmpMinor;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
     BIDError err;
-    const char *email;
+    const char *szSubject;
     unsigned char *pbSessionKey;
     size_t cbSessionKey;
 
     gssBidReleaseName(&tmpMinor, &ctx->initiatorName);
 
-    err = BIDGetIdentityEmail(ctx->bidContext, ctx->bidIdentity, &email);
+    err = BIDGetIdentitySubject(ctx->bidContext, ctx->bidIdentity, &szSubject);
     if (err != BID_S_OK)
         return gssBidMapError(minor, err);
 
-    nameBuf.value = (void *)email;
-    nameBuf.length = strlen(email);
+    nameBuf.value = (void *)szSubject;
+    nameBuf.length = strlen(szSubject);
 
     if (nameBuf.length == 0)
         ctx->gssFlags |= GSS_C_ANON_FLAG;

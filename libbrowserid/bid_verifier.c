@@ -176,16 +176,16 @@ BIDGetIdentityAudience(
     BIDIdentity identity,
     const char **pValue)
 {
-    return BIDGetIdentityAttribute(context, identity, "audience", pValue);
+    return BIDGetIdentityAttribute(context, identity, "aud", pValue);
 }
 
 BIDError
-BIDGetIdentityEmail(
+BIDGetIdentitySubject(
     BIDContext context,
     BIDIdentity identity,
     const char **pValue)
 {
-    return BIDGetIdentityAttribute(context, identity, "email", pValue);
+    return BIDGetIdentityAttribute(context, identity, "sub", pValue);
 }
 
 BIDError
@@ -194,7 +194,7 @@ BIDGetIdentityIssuer(
     BIDIdentity identity,
     const char **pValue)
 {
-    return BIDGetIdentityAttribute(context, identity, "issuer", pValue);
+    return BIDGetIdentityAttribute(context, identity, "iss", pValue);
 }
 
 BIDError
@@ -507,7 +507,6 @@ BIDError
 BIDGetIdentityExpiryTime(
     BIDContext context,
     BIDIdentity identity,
-    const char *attribute,
     time_t *value)
 {
 
@@ -516,5 +515,5 @@ BIDGetIdentityExpiryTime(
     if (identity == BID_C_NO_IDENTITY)
         return BID_S_INVALID_PARAMETER;
 
-    return _BIDGetJsonTimestampValue(context, identity->Attributes, "expires", value);
+    return _BIDGetJsonTimestampValue(context, identity->Attributes, "exp", value);
 }
