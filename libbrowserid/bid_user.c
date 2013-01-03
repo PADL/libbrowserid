@@ -193,7 +193,7 @@ BIDAcquireAssertionFromString(
     err = BID_S_OK;
 
     if (ptExpiryTime != NULL)
-        _BIDGetJsonTimestampValue(context, backedAssertion->Assertion->Payload, "exp", ptExpiryTime);
+        _BIDGetJsonTimestampValue(context, _BIDLeafCert(context, backedAssertion), "exp", ptExpiryTime);
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);

@@ -321,9 +321,12 @@ _BIDGetReauthAssertion(
     BID_CONTEXT_VALIDATE(context);
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_REAUTH);
 
-    *pAssertion = NULL;
-    *pAssertedIdentity = NULL;
-    *ptExpiryTime = 0;
+    if (pAssertion != NULL)
+        *pAssertion = NULL;
+    if (pAssertedIdentity != NULL)
+        *pAssertedIdentity = NULL;
+    if (ptExpiryTime != NULL)
+        *ptExpiryTime = 0;
 
     err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, NULL, &szCacheKey);
     BID_BAIL_ON_ERROR(err);
@@ -350,14 +353,18 @@ _BIDGetReauthAssertion(
     backedAssertion.cCertificates = 0;
     backedAssertion.Claims = NULL;
 
-    err = _BIDPackBackedAssertion(context, &backedAssertion, json_object_get(cred, "ark"), pAssertion);
-    BID_BAIL_ON_ERROR(err);
+    if (pAssertion != NULL) {
+        err = _BIDPackBackedAssertion(context, &backedAssertion, json_object_get(cred, "ark"), pAssertion);
+        BID_BAIL_ON_ERROR(err);
+    }
 
-    err = _BIDMakeReauthIdentity(context, cred, ap, pAssertedIdentity);
-    BID_BAIL_ON_ERROR(err);
+    if (pAssertedIdentity != NULL) {
+        err = _BIDMakeReauthIdentity(context, cred, ap, pAssertedIdentity);
+        BID_BAIL_ON_ERROR(err);
+    }
 
-    /* By convention this is the assertion expiry time, not the ticket expiry */
-    *ptExpiryTime = tsNow + context->Skew;
+    if (ptExpiryTime != NULL)
+        _BIDGetJsonTimestampValue(context, tkt, "exp", &tsNow);
 
 cleanup:
     BIDFree(szCacheKey);
