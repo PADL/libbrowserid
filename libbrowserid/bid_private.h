@@ -80,6 +80,9 @@ typedef json_t *BIDAuthority;
 typedef json_t *BIDJWK;
 typedef json_t *BIDJWKSet;
 
+struct BIDBackedAssertionDesc;
+typedef struct BIDBackedAssertionDesc *BIDBackedAssertion;
+
 BIDError
 _BIDAcquireDefaultAuthorityCache(
     BIDContext context);
@@ -242,6 +245,29 @@ struct BIDContextDesc {
 extern struct BIDCacheOps _BIDFileCache;
 
 /*
+ * bid_identity.c
+ */
+#define BID_VERIFIER_URL            "https://verifier.login.persona.org/verify"
+
+BIDError
+_BIDSetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t *y);
+
+BIDError
+_BIDGetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t **y);
+
+BIDError
+_BIDGetIdentityReauthTicket(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t **pValue);
+
+/*
  * bid_jwt.c
  */
 struct BIDJWTDesc {
@@ -291,46 +317,6 @@ _BIDParseJWT(
     BIDContext context,
     const char *szJwt,
     BIDJWT *pJwt);
-
-/*
- * bid_local.c
- */
-
-#define BID_MAX_CERTS               10
-
-typedef struct BIDBackedAssertionDesc {
-    BIDJWT Assertion;
-    size_t cCertificates;
-    BIDJWT rCertificates[BID_MAX_CERTS];
-    json_t *Claims;
-} *BIDBackedAssertion;
-
-struct BIDIdentityDesc {
-    json_t *Attributes;
-    json_t *PrivateAttributes;
-    unsigned char *SessionKey;
-    size_t SessionKeyLength;
-};
-
-BIDError
-_BIDVerifyLocal(
-    BIDContext context,
-    const char *szAssertion,
-    const char *szAudience,
-    const unsigned char *pbChannelBindings,
-    size_t cbChannelBindings,
-    time_t verificationTime,
-    uint32_t ulReqFlags,
-    BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime,
-    uint32_t *pulRetFlags);
-
-BIDError
-_BIDValidateExpiry(
-    BIDContext context,
-    time_t verificationTime,
-    json_t *assertion,
-    time_t *pExpiryTime);
 
 /*
  * bid_openssl.c
@@ -587,21 +573,10 @@ _BIDUpdateReplayCache(
  */
 
 /*
- * bid_verifier.c
+ * bid_verify.c
  */
-#define BID_VERIFIER_URL            "https://verifier.login.persona.org/verify"
 
-BIDError
-_BIDSetIdentityDHPublicValue(
-    BIDContext context,
-    BIDIdentity identity,
-    json_t *y);
-
-BIDError
-_BIDGetIdentityDHPublicValue(
-    BIDContext context,
-    BIDIdentity identity,
-    json_t **y);
+#define BID_MAX_CERTS               10
 
 BIDError
 _BIDValidateAudience(
@@ -611,11 +586,39 @@ _BIDValidateAudience(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings);
 
+struct BIDBackedAssertionDesc {
+    BIDJWT Assertion;
+    size_t cCertificates;
+    BIDJWT rCertificates[BID_MAX_CERTS];
+    json_t *Claims;
+};
+
+struct BIDIdentityDesc {
+    json_t *Attributes;
+    json_t *PrivateAttributes;
+    unsigned char *SessionKey;
+    size_t SessionKeyLength;
+};
+
 BIDError
-_BIDGetIdentityReauthTicket(
+_BIDVerifyLocal(
     BIDContext context,
-    BIDIdentity identity,
-    json_t **pValue);
+    const char *szAssertion,
+    const char *szAudience,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    time_t verificationTime,
+    uint32_t ulReqFlags,
+    BIDIdentity *pVerifiedIdentity,
+    time_t *pExpiryTime,
+    uint32_t *pulRetFlags);
+
+BIDError
+_BIDValidateExpiry(
+    BIDContext context,
+    time_t verificationTime,
+    json_t *assertion,
+    time_t *pExpiryTime);
 
 /*
  * bid_webkit.c

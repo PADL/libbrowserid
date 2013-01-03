@@ -280,6 +280,14 @@ _BIDMakeReauthIdentity(
     json_object_del(identity->Attributes, "tkt");
     json_object_del(identity->Attributes, "ark");
 
+    /*
+     * The convention is that "exp" contains the expiry time of the assertion,
+     * which is most analogous to the lifetime of the authenticator, NOT the
+     * ticket lifetime.
+     *
+     * 
+     */
+
     if (rexp != NULL) {
         json_object_del(identity->Attributes, "r-exp");
         json_object_set(identity->Attributes, "exp", rexp);

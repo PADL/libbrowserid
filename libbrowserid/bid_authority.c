@@ -75,6 +75,13 @@ _BIDGetAuthorityPublicKey(
     return BID_S_OK;
 }
 
+/*
+ * From https://github.com/mozilla/id-specs/blob/prod/browserid/index.md:
+ *
+ * If the expected issuer was designated by the certificate rather than
+ * discovered given the user's email address, then the issuer SHOULD be
+ * login.persona.org, otherwise reject the assertion.
+ */
 BIDError
 _BIDIssuerIsAuthoritative(
     BIDContext context,

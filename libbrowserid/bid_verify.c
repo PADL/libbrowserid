@@ -6,6 +6,134 @@
 
 #include "bid_private.h"
 
+/*
+ * From https://github.com/mozilla/id-specs/blob/prod/browserid/index.md:
+ *
+ * If the exp date of the assertion is earlier than the current time by more
+ * a certain interval, the assertion has expired and must be rejected. A
+ * Party MAY choose the length of that interval, though it is recommended
+ * it be less than 5 minutes.
+ */
+BIDError
+_BIDValidateExpiry(
+    BIDContext context,
+    time_t verificationTime,
+    json_t *expiry,
+    time_t *pExpiryTime)
+{
+    BIDError err;
+    time_t issueTime, expiryTime;
+
+    err = _BIDGetJsonTimestampValue(context, expiry, "iat", &issueTime);
+    if (err == BID_S_OK && issueTime > verificationTime)
+        return BID_S_ASSERTION_NOT_YET_VALID;
+
+    err = _BIDGetJsonTimestampValue(context, expiry, "exp", &expiryTime);
+    if (err != BID_S_OK)
+        expiryTime = verificationTime;
+
+    *pExpiryTime = expiryTime;
+
+    if (expiryTime - verificationTime > context->Skew)
+        err = BID_S_EXPIRED_ASSERTION;
+    else
+        err = BID_S_OK;
+
+    return err;
+}
+
+/*
+ * From https://github.com/mozilla/id-specs/blob/prod/browserid/index.md:
+ *
+ * If the audience field of the assertion does not match the Relying Party's
+ * origin (including scheme and optional non-standard port), reject the assertion.
+ * A domain that includes the standard port, of 80 for HTTP and 443 for HTTPS,
+ * SHOULD be treated as equivalent to a domain that matches the protocol but does
+ * not include the port. (XXX: Can we find an RFC that defines this equality
+ * test?)
+ */
+BIDError
+_BIDValidateAudience(
+    BIDContext context,
+    BIDBackedAssertion backedAssertion,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings)
+{
+    BIDError err;
+    unsigned char *pbAssertionCB = NULL;
+    size_t cbAssertionCB = 0;
+
+    if (backedAssertion->Claims == NULL)
+        return BID_S_MISSING_AUDIENCE;
+
+    if (szAudienceOrSpn != NULL) {
+        const char *szAssertionSpn = json_string_value(json_object_get(backedAssertion->Claims, "aud"));
+
+        if (szAssertionSpn == NULL) {
+            err = BID_S_MISSING_AUDIENCE;
+            goto cleanup;
+        } else if (strcmp(szAudienceOrSpn, szAssertionSpn) != 0) {
+            err = BID_S_BAD_AUDIENCE;
+            goto cleanup;
+        }
+    }
+
+    if (pbChannelBindings != NULL) {
+        err = _BIDGetJsonBinaryValue(context, backedAssertion->Claims, "cbt", &pbAssertionCB, &cbAssertionCB);
+        if (err == BID_S_UNKNOWN_JSON_KEY)
+            err = BID_S_MISSING_CHANNEL_BINDINGS;
+        BID_BAIL_ON_ERROR(err);
+
+        if (cbChannelBindings != cbAssertionCB ||
+            memcmp(pbChannelBindings, pbAssertionCB, cbAssertionCB) != 0) {
+            err = BID_S_CHANNEL_BINDINGS_MISMATCH;
+            goto cleanup;
+        }
+    }
+
+    err = BID_S_OK;
+
+cleanup:
+    BIDFree(pbAssertionCB);
+
+    return err;
+}
+
+/*
+ * From https://github.com/mozilla/id-specs/blob/prod/browserid/index.md:
+ *
+ * If the Identity Assertion's signature does not verify against the
+ * public-key within the last Identity Certificate, reject the assertion.
+ */
+static BIDError
+_BIDVerifyAssertionSignature(
+    BIDContext context,
+    BIDBackedAssertion backedAssertion,
+    BIDJWK reauthCred)
+{
+    BIDJWK verifyCred;
+
+    if (backedAssertion->cCertificates == 0) {
+        BID_ASSERT(reauthCred != NULL);
+
+        verifyCred = reauthCred;
+    } else {
+        verifyCred = backedAssertion->rCertificates[backedAssertion->cCertificates - 1]->Payload;
+    }
+
+    return _BIDVerifySignature(context, backedAssertion->Assertion, verifyCred);
+}
+
+/*
+ * From https://github.com/mozilla/id-specs/blob/prod/browserid/index.md:
+ *
+ * If the first certificate (or only certificate when
+ * there is only one) is not properly signed by the expected issuer's public key,
+ * reject the assertion. The expected issuer is either the domain of the certified
+ * email address in the last certificate, or the issuer listed in the first
+ * certificate if the email-address domain does not support BrowserID.
+ */
 static BIDError
 _BIDValidateCertIssuer(
     BIDContext context,
@@ -48,25 +176,13 @@ _BIDValidateCertIssuer(
     return err;
 }
 
-BIDError
-_BIDValidateExpiry(
-    BIDContext context,
-    time_t verificationTime,
-    json_t *expiry,
-    time_t *pExpiryTime)
-{
-    BIDError err;
-    time_t expiryTime;
-
-    err = _BIDGetJsonTimestampValue(context, expiry, "exp", &expiryTime);
-    if (err != BID_S_OK)
-        expiryTime = verificationTime + 300; /* default expires in 5 minutes */
-
-    *pExpiryTime = expiryTime + context->Skew;
-
-    return (*pExpiryTime < verificationTime) ? BID_S_EXPIRED_ASSERTION : BID_S_OK;
-}
-
+/*
+ * From https://github.com/mozilla/id-specs/blob/prod/browserid/index.md:
+ *
+ * If there is more than one Identity Certificate, then reject the assertion
+ * unless each certificate after the first one is properly signed by the prior
+ * certificate's public key.
+ */
 static BIDError
 _BIDValidateCertChain(
     BIDContext context,
@@ -113,29 +229,21 @@ _BIDValidateCertChain(
     }
 
 cleanup:
+    switch (err) {
+    case BID_S_ASSERTION_NOT_YET_VALID:
+        err = BID_S_CERT_NOT_YET_VALID;
+        break;
+    case BID_S_EXPIRED_ASSERTION:
+        err = BID_S_EXPIRED_CERT;
+        break;
+    default:
+        break;
+    }
+
     _BIDReleaseAuthority(context, authority);
     json_decref(rootKey);
 
     return err;
-}
-
-static BIDError
-_BIDVerifyAssertionSignature(
-    BIDContext context,
-    BIDBackedAssertion backedAssertion,
-    BIDJWK reauthCred)
-{
-    BIDJWK verifyCred;
-
-    if (backedAssertion->cCertificates == 0) {
-        BID_ASSERT(reauthCred != NULL);
-
-        verifyCred = reauthCred;
-    } else {
-        verifyCred = backedAssertion->rCertificates[backedAssertion->cCertificates - 1]->Payload;
-    }
-
-    return _BIDVerifySignature(context, backedAssertion->Assertion, verifyCred);
 }
 
 /*

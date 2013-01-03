@@ -10,16 +10,16 @@ libbrowserid_la_SOURCES =   \
     bid_cache.c             \
     bid_fcache.c            \
     bid_context.c           \
+    bid_identity.c          \
     bid_jwt.c               \
-    bid_local.c             \
     bid_openssl.c           \
     bid_reauth.c            \
     bid_rcache.c            \
-    bid_remote.c            \
+    bid_rverify.c           \
     bid_user.c              \
     bid_util.c              \
     bid_webkit.m            \
-    bid_verifier.c          \
+    bid_verify.c            \
     vers.c
 
 noinst_LTLIBRARIES = libbrowserid.la

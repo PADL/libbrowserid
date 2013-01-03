@@ -32,6 +32,7 @@ BIDAcquireContext(
     }
 
     context->ContextOptions = ulContextOptions;
+    context->Skew = 60 * 5; /* 5 minutes */
     context->MaxDelegations = 6;
     context->DhKeySize = 1024;
     context->TicketLifetime = 60 * 60 * 10; /* 10 hours */
