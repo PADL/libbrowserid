@@ -21,7 +21,7 @@ Sample usage is given below. Substitute <user>, <pass> and <host>
 appropriately (<host> is the name of the host running the server,
 not the RADIUS server).
 
-% gss-client -port 5555 -mech "{1 3 6 1 4 1 5322 24 1 1}"
+% gss-client -port 5555 -mech "{1 3 6 1 4 1 5322 24 1 18}"
   <host> host@<host> "Testing GSS BrowserID"
 % gss-server -port 5555 -export host@<host>
 
