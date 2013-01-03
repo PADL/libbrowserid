@@ -184,7 +184,8 @@ _BIDVerifyLocal(
 
         *pulRetFlags |= BID_VERIFY_FLAG_REAUTH;
 
-        err = _BIDVerifyReauthAssertion(context, backedAssertion, &verifiedIdentity, &reauthCred);
+        err = _BIDVerifyReauthAssertion(context, backedAssertion, verificationTime,
+                                        &verifiedIdentity, &reauthCred);
         BID_BAIL_ON_ERROR(err);
     }
 

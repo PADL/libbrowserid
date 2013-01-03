@@ -369,6 +369,7 @@ BIDError
 _BIDVerifyReauthAssertion(
     BIDContext context,
     BIDBackedAssertion assertion,
+    time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
     BIDJWK *pVerifierCred)
 {
