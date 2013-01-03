@@ -271,3 +271,41 @@ else
 fi
 ])dnl
 
+AC_DEFUN([AX_CHECK_OPENSSL],
+[AC_MSG_CHECKING(for OpenSSL)
+OPENSSL_DIR=
+found_openssl="no"
+AC_ARG_WITH(openssl,
+    AC_HELP_STRING([--with-openssl],
+       [Use OpenSSL (in specified installation directory)]),
+    [check_openssl_dir="$withval"],
+    [check_openssl_dir=])
+for dir in $check_openssl_dir $prefix /usr /usr/local ; do
+   openssldir="$dir"
+   if test -f "$dir/include/openssl/dsa.h"; then
+     found_openssl="yes";
+     OPENSSL_DIR="${openssldir}"
+     OPENSSL_CFLAGS="-I$openssldir/include";
+     break;
+   fi
+done
+AC_MSG_RESULT($found_openssl)
+if test x_$found_openssl != x_yes; then
+   AC_MSG_ERROR([
+----------------------------------------------------------------------
+  Cannot find OpenSSL libraries.
+
+  Please install libcrypto or specify installation directory with
+  --with-openssl=(dir).
+----------------------------------------------------------------------
+])
+else
+	printf "OpenSSL found in $openssldir\n";
+	OPENSSL_LIBS="-lcrypto";
+	OPENSSL_LDFLAGS="-L$openssldir/lib";
+	AC_SUBST(OPENSSL_CFLAGS)
+	AC_SUBST(OPENSSL_LDFLAGS)
+	AC_SUBST(OPENSSL_LIBS)
+fi
+])dnl
+
