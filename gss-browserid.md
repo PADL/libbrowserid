@@ -154,7 +154,9 @@ This contains a JSON object with a single key, "y", containing the base64 URL en
 
 #### exp
 
-This contains the time when the context expires. It MUST be validated by the initiator in GSS_Init_sec_context() but it SHOULD NOT be validated by message protection services such as GSS_Wrap().
+This contains the time when the context expires. It MUST not be longer than the user's certificate expiry time.
+
+For compatibility with existing applications, it SHOULD NOT be validated by message protection services such as GSS_Wrap().
 
 #### tkt
 
@@ -166,7 +168,7 @@ An opaque ticket identifier to be presented in a re-authenticator.
 
 ##### exp
 
-The expiry time of the ticket. A recommended value is 10 hours after the acceptor's assertion verification time.
+The expiry time of the ticket. A recommended value is the user's certificate expiry time. It MUST not be longer than this.
 
 ### Key derivation
 
@@ -208,7 +210,7 @@ The acceptor MAY surface attributes from the assertion and any certificates usin
 
 If a SAML assertion is present in the "saml" parameter of the leaf certificate, it may be surfaced using the URN prefix "urn:ietf:params:gss:federated-saml-attribute".
 
-Attributes from the assertion MUST be marked as unauthenticated, unless they were otherwise validated by the acceptor (for example, the expiry time).
+Attributes from the assertion MUST be marked as unauthenticated unless otherwise validated by the acceptor (e.g. the audience).
 
 Attributes from certificates SHOULD be marked as authenticated.
 
