@@ -552,6 +552,11 @@ _BIDPackAudience(
     json_t *claims,
     char **pszPackedAudience);
 
+int
+_BIDCanInteractP(
+    BIDContext context,
+    uint32_t ulReqFlags);
+
 /*
  * bid_rcache.c
  */
@@ -632,6 +637,8 @@ _BIDBrowserGetAssertion(
     BIDContext context,
     const char *szPackedAudience,
     const char *szSiteName,
+    const char *szIdentityName, /* optional */
+    uint32_t ulReqFlags,
     char **pAssertion);
 
 /*

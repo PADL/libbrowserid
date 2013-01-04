@@ -783,6 +783,7 @@ const char *_BIDErrorTable[] = {
     "Document not modified",
     "Process does not support UI interaction",
     "Failed to acquire assertion interactively",
+    "Interaction required to acquire assertion",
     "Invalid audience URN",
     "Invalid JSON web token",
     "No more items",
@@ -1175,4 +1176,16 @@ BIDFreeData(
 
     BIDFree(s);
     return BID_S_OK;
+}
+
+int
+_BIDCanInteractP(
+    BIDContext context,
+    uint32_t ulReqFlags)
+{
+    if (context->ContextOptions & BID_CONTEXT_INTERACTION_DISABLED ||
+        (ulReqFlags & BID_ACQUIRE_FLAG_NO_INTERACT))
+        return 0;
+    else
+        return 1;
 }

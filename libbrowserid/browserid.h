@@ -59,6 +59,7 @@ typedef enum {
     BID_S_DOCUMENT_NOT_MODIFIED,
     BID_S_INTERACT_UNAVAILABLE,
     BID_S_INTERACT_FAILURE,
+    BID_S_INTERACT_REQUIRED,
     BID_S_INVALID_AUDIENCE_URN,
     BID_S_INVALID_JSON_WEB_TOKEN,
     BID_S_NO_MORE_ITEMS,
@@ -102,55 +103,54 @@ typedef struct BIDContextDesc *BIDContext;
 /*
  * Context is used by user-agent.
  */
-#define BID_CONTEXT_USER_AGENT          0x00000001
+#define BID_CONTEXT_USER_AGENT              0x00000001
 
 /*
  * Context is used by relying party.
  */
-#define BID_CONTEXT_RP                  0x00000002
+#define BID_CONTEXT_RP                      0x00000002
 
 /*
  * Context uses remote verification service.
  */
-#define BID_CONTEXT_VERIFY_REMOTE       0x00000004
+#define BID_CONTEXT_VERIFY_REMOTE           0x00000004
 
 /*
  * Context uses persistent authority cache.
  */
-#define BID_CONTEXT_AUTHORITY_CACHE     0x00000008
+#define BID_CONTEXT_AUTHORITY_CACHE         0x00000008
 
 /*
- * Context is for GSS, required for channel binding support.
+ * Context is for GSS client.
  */
-#define BID_CONTEXT_GSS                 0x00000010
+#define BID_CONTEXT_GSS                     0x00000010
 
 /*
  * Use replay cache.
  */
-#define BID_CONTEXT_REPLAY_CACHE        0x00000020
+#define BID_CONTEXT_REPLAY_CACHE            0x00000020
 
 /*
- * Disable interaction with user.
+ * Disable interaction with user completely.
  */
-#define BID_USER_INTERACTION_DISABLED   0x00000040
+#define BID_CONTEXT_INTERACTION_DISABLED    0x00000040
 
 /*
  * Do not prompt user if the browser already has a key
  * for the user. Note that this is independent of reauth
- * credentials; this just forces navigator.id.request()
- * to click OK. Use with care.
+ * credentials.
  */
-#define BID_CONTEXT_CACHED_BROWSER_KEY  0x00000080
+#define BID_CONTEXT_BROWSER_SILENT          0x00000080
 
 /*
  * DH key exchange
  */
-#define BID_CONTEXT_DH_KEYEX            0x00000100
+#define BID_CONTEXT_DH_KEYEX                0x00000100
 
 /*
  * Fast reauthentication support (requires replay cache on RP).
  */
-#define BID_CONTEXT_REAUTH              0x00000200
+#define BID_CONTEXT_REAUTH                  0x00000200
 
 /*
  * Context management.
@@ -203,6 +203,7 @@ BIDAcquireAssertion(
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
+    const char *szIdentityName, /* optional */
     uint32_t ulFlags,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,

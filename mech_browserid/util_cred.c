@@ -461,17 +461,25 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
+        if (resolvedCred->name != GSS_C_NO_NAME) {
+            major = gssBidDisplayName(minor, resolvedCred->name, &bufSubject, NULL);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+
         err = BIDAcquireAssertion(ctx->bidContext,
                                   (const char *)bufAudienceOrSpn.value,
                                   pbChannelBindings,
                                   cbChannelBindings,
+                                  (const char *)bufSubject.value,
                                   (ctx->flags & CTX_FLAG_REAUTH) ? BID_ACQUIRE_FLAG_NO_CACHED : 0,
                                   &szAssertion,
                                   &ctx->bidIdentity,
                                   &resolvedCred->expiryTime,
                                   &ulBidFlags);
-    }
 
+        gss_release_buffer(&tmpMinor, &bufSubject);
+    }
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         goto cleanup;

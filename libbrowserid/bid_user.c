@@ -71,6 +71,7 @@ BIDAcquireAssertion(
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
+    const char *szIdentityName,
     uint32_t ulReqFlags,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
@@ -106,11 +107,13 @@ BIDAcquireAssertion(
         }
     }
 
-    if (context->ContextOptions & BID_USER_INTERACTION_DISABLED ||
+#if 0
+    if (!_BIDCanInteractP(context, ulReqFlags)) {
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_INTERACT)) {
         err = BID_S_INTERACT_UNAVAILABLE;
         goto cleanup;
     }
+#endif
 
     err = _BIDMakeClaims(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, &claims);
     BID_BAIL_ON_ERROR(err);
@@ -132,7 +135,8 @@ BIDAcquireAssertion(
     if (szSiteName != NULL)
         szSiteName++;
 
-    err = _BIDBrowserGetAssertion(context, szPackedAudience, szSiteName, &szAssertion);
+    err = _BIDBrowserGetAssertion(context, szPackedAudience, szSiteName,
+                                  szIdentityName, ulReqFlags, &szAssertion);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDAcquireAssertionFromString(context, szAssertion, ulReqFlags,
