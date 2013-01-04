@@ -139,7 +139,15 @@ BIDShouldPurgeReplayCacheEntryP(json_t *j)
 {
     time_t expiryTime;
 
-    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
+    /*
+     * If the cache entry is being used for re-authentication (it has a key)
+     * then purge only when the ticket expires. Otherwise, purge when the
+     * assertion expires.
+     */
+    if (json_object_get(j, "ark") != NULL)
+        _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
+    else
+        _BIDGetJsonTimestampValue(gContext, j, "a-exp", &expiryTime);
 
     return expiryTime == 0 || gNow >= expiryTime;
 }
