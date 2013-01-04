@@ -1,6 +1,6 @@
 LIBS=-L/usr/local/lib -ljansson -lcurl
 
-all: bid_sig bid_vfy bid_doc bid_acq bid_b32 bid_b64 bid_acq.so bid_acq_ldr bid_fct
+all: bid_sig bid_vfy bid_doc bid_acq bid_b64 bid_acq.so bid_acq_ldr bid_fct
 
 bid_sig: bid_sig.c ../libbrowserid.la
 	clang -I../.. -I.. -g -Wall -o bid_sig bid_sig.c -lcrypto -L../.libs -lbrowserid $(LIBS)
@@ -21,9 +21,6 @@ bid_acq_ldr: bid_acq_ldr.c
 	clang -I../.. -I.. -g -Wall -o bid_acq_ldr bid_acq_ldr.c
 #-Wl,-sectcreate,__TEXT,__info_plist,Info.plist
 #-lcrypto -L../.libs -lbrowserid $(LIBS)
-
-bid_b32: bid_b32.c ../libbrowserid.la
-	clang -I../.. -I.. -g -Wall -o bid_b32 bid_b32.c -lcrypto -L../.libs -lbrowserid $(LIBS)
 
 bid_b64: bid_b64.c ../libbrowserid.la
 	clang -I../.. -I.. -g -Wall -o bid_b64 bid_b64.c -lcrypto -L../.libs -lbrowserid $(LIBS)
