@@ -193,6 +193,7 @@ _BIDMakeAuthenticator(
     BIDJWT ap;
     json_t *n = NULL;
     json_t *iat = NULL;
+    json_t *exp = NULL;
     json_t *aud = NULL;
     json_t *cbt = NULL;
 
@@ -207,6 +208,12 @@ _BIDMakeAuthenticator(
 
     err = _BIDGetCurrentJsonTimestamp(context, &iat);
     BID_BAIL_ON_ERROR(err);
+
+    exp = json_integer(json_integer_value(iat) + context->Skew);
+    if (exp == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     err = _BIDGenerateNonce(context, &n);
     BID_BAIL_ON_ERROR(err);
@@ -235,7 +242,8 @@ _BIDMakeAuthenticator(
     }
 
     if (       json_object_set(ap->Payload, "iat", iat) < 0        ||
-               json_object_set(ap->Payload, "n", n) < 0            ||
+               json_object_set(ap->Payload, "exp", exp) < 0        ||
+               json_object_set(ap->Payload, "n", n)     < 0        ||
                json_object_set(ap->Payload, "tkt", tkt) < 0        ||
                json_object_set(ap->Payload, "aud", aud) < 0        ||
         (cbt ? json_object_set(ap->Payload, "cbt", cbt) : 0) < 0) {
@@ -243,11 +251,15 @@ _BIDMakeAuthenticator(
         goto cleanup;
     }
 
+    json_dumpf(ap->Payload, stdout, JSON_INDENT(8));
+
     *pAuthenticator = ap;
 
 cleanup:
     if (err != BID_S_OK)
         _BIDReleaseJWT(context, ap);
+    json_decref(iat);
+    json_decref(exp);
     json_decref(n);
     json_decref(aud);
     json_decref(cbt);
@@ -317,7 +329,7 @@ _BIDGetReauthAssertion(
     json_t *tkt = NULL;
     BIDJWT ap = NULL;
     struct BIDBackedAssertionDesc backedAssertion = { 0 };
-    time_t tsNow = 0;
+    time_t now = 0;
 
     BID_CONTEXT_VALIDATE(context);
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_REAUTH);
@@ -345,9 +357,9 @@ _BIDGetReauthAssertion(
                                 json_object_get(tkt, "jti"), &ap);
     BID_BAIL_ON_ERROR(err);
 
-    _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &tsNow);
+    _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &now);
 
-    err = _BIDValidateExpiry(context, tsNow, tkt);
+    err = _BIDValidateExpiry(context, now, tkt);
     BID_BAIL_ON_ERROR(err);
 
     backedAssertion.Assertion = ap;
@@ -365,7 +377,7 @@ _BIDGetReauthAssertion(
     }
 
     if (ptExpiryTime != NULL)
-        _BIDGetJsonTimestampValue(context, tkt, "exp", &tsNow);
+        _BIDGetJsonTimestampValue(context, tkt, "exp", ptExpiryTime);
 
 cleanup:
     BIDFree(szCacheKey);
