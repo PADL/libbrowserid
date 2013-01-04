@@ -54,7 +54,7 @@ makeResponseToken(OM_uint32 *minor,
     json_t *response = NULL;
     json_t *dh = NULL;
     json_t *ticket = NULL;
-    json_t *now = NULL;
+    json_t *iat = NULL;
     BIDError err;
 
     response = json_object();
@@ -91,8 +91,8 @@ makeResponseToken(OM_uint32 *minor,
     if (GSS_ERROR(protocolMajor))
         json_object_set_new(response, "gss-maj", json_integer(protocolMajor));
     if (protocolMinor != 0) {
-        _BIDGetCurrentJsonTimestamp(ctx->bidContext, &now);
-        json_object_set_new(response, "now", now); /* for skew compensation */
+        _BIDGetCurrentJsonTimestamp(ctx->bidContext, &iat);
+        json_object_set(response, "iat", iat); /* for skew compensation */
         json_object_set_new(response, "gss-min", json_integer(protocolMinor));
     }
 
@@ -121,7 +121,7 @@ makeResponseToken(OM_uint32 *minor,
 cleanup:
     json_decref(ticket);
     json_decref(dh);
-    json_decref(now);
+    json_decref(iat);
     json_decref(response);
     BIDFreeData(ctx->bidContext, bufJson.value);
 
