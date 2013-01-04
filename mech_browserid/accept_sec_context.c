@@ -54,6 +54,7 @@ makeResponseToken(OM_uint32 *minor,
     json_t *response = NULL;
     json_t *dh = NULL;
     json_t *ticket = NULL;
+    json_t *now = NULL;
     BIDError err;
 
     response = json_object();
@@ -62,6 +63,9 @@ makeResponseToken(OM_uint32 *minor,
         *minor = ENOMEM;
         goto cleanup;
     }
+
+    _BIDGetCurrentJsonTimestamp(ctx->bidContext, &now);
+    json_object_set_new(response, "now", now);
 
     if (protocolMajor == GSS_S_COMPLETE &&
         ctx->encryptionType != ENCTYPE_NULL &&
