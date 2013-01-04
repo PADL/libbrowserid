@@ -178,16 +178,16 @@
 - (WebView *)newWebView
 {
     NSRect frame = NSMakeRect(0, 0, 700, 375);
-    WebView *wv = [[[WebView alloc] initWithFrame:frame] autorelease];
+    WebView *aWebView = [[[WebView alloc] initWithFrame:frame] autorelease];
 
-    [wv setFrameLoadDelegate:self];
-    [wv setResourceLoadDelegate:self];
-    [wv setUIDelegate:self];
-    [wv setPolicyDelegate:self];
-    [wv setHostWindow:identityDialog];
-    [wv setShouldCloseWithWindow:YES];
+    [aWebView setFrameLoadDelegate:self];
+    [aWebView setResourceLoadDelegate:self];
+    [aWebView setUIDelegate:self];
+    [aWebView setPolicyDelegate:self];
+    [aWebView setHostWindow:identityDialog];
+    [aWebView setShouldCloseWithWindow:YES];
 
-    return wv;
+    return aWebView;
 }
 
 - (void)closeIdentityDialog
@@ -323,12 +323,12 @@
 #if 0
 - (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request
 {
-    WebView *wv = [self newWebView];
+    WebView *aWebView = [self newWebView];
 
     NSLog(@"createWebViewWithRequest %@", request);
-    [identityDialog setContentView:wv];
+    [identityDialog setContentView:aWebView];
 
-    return wv;
+    return aWebView;
 }
 #endif
 
