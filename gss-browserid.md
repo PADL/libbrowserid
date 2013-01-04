@@ -9,38 +9,55 @@ More information on BrowserID is available at the URL <https://developer.mozilla
 The GSS BrowserID mechanism imports the [BrowserID spec][BIDSPEC].
 
 [BIDSPEC]: https://github.com/mozilla/id-specs/blob/prod/browserid/index.md "BrowserID specification"
+[BIDOVER]: https://developer.mozilla.org/en-US/docs/Persona/Protocol_Overview
 [RFC2743]: http://www.ietf.org/rfc/rfc2743.txt
 [RFC3961]: http://www.ietf.org/rfc/rfc3961.txt
 [RFC4121]: http://www.ietf.org/rfc/rfc4121.txt
 [JWT]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-token
+[GSS-REST]: http://www.w3.org/2011/identity-ws/papers/idbrowser2011_submission_16.pdf
 
 Note that "initiator" is the client or user-agent and the "acceptor" is the server or relying party. For consistency, the GSS terms are used below.
 
 ## Protocol flow
 
+A brief summary of GSS-API follows, excerpted from [GSS-REST]:
+> The GSS-API protocol is quite simple: a client (known as an initiator) sends an initial security context token of a chosen GSS security mechanism to a peer (known as an acceptor), then the two will exchange, synchronously, as many security context tokens as necessary to complete authentication or fail. The specific number of context tokens exchanged varies by security mechanism.
+> Once authentication is complete, the initiator and the acceptor will share a security context that includes shared secret session key material, and they may then exchange per-message tokens encrypting and/or authenticating application messages.
+
+A summary of the BrowserID protocol can be found at [BIDOVER]. Essentially it involves:
+
+* A user's browser generates a short-term key pair
+* The key pair is signed by the user's identity provider (which has previously verified the user's e-mail address and authenticated them)
+* The IdP signs the public key and issues a certificate
+* When authenticating to a relying party, the browser generates an "identity assertion" (similar to a Kerberos authenticator), containing the RP domain and an expiration time (generally a few minutes after it was created). The user signs this, and presents both the assertion and the user certificate to the RP.
+* The RP verifies this using user's and IdP's public keys (and those of any intermediate certifying parties).
+
+Essentially the GSS mechanism described here bridges these two worlds.
+
+
 ### Initiator to acceptor
 
-1. The initiator composes an audience URL from the target service name.
-2. The initiator composes a set of claims including, if applicable, channel binding information and DH parameters for the security context.
-2. The initiator calls BrowserID.internal.get() with the audience URL and asserted claims, to request the browser generate an assertion. (Presently the claims are encoded inside the audience URL.) The browser interaction must be modal with respect to the user's interaction with the application.
+1. The initiator composes a set of claims including, if applicable, channel binding information and DH parameters for session key establishment.
+2. The initiator composes an audience URL from the target service name and, in the present implementation, the asserted claims.
+2. The initiator calls BrowserID.internal.get() to request the browser generate an assertion. The browser interaction must be modal with respect to the user's interaction with the application.
 3. Once an assertion is generated, the initiator sends it to the acceptor inside a context token of TOK_TYPE_INITIATOR_CONTEXT.
 4. The initiator returns GSS_C_CONTINUE_NEEDED to indicate an additional context token is expected from the acceptor.
 
 ### Acceptor to initiator
 
 1. The acceptor validates that the token is well formed and contains the correct mechanism OID and token type.
-2. The acceptor verifies the backed identity assertion per [BIDSPEC]. In the case of failure, an error token is generated.
-3. The acceptor unpacks the GSS claims object from the audience URL and verifies the service name and channel binding. In the case of failure, an error token is generated.
+2. The acceptor verifies the backed identity assertion per [BIDSPEC]: this includes validating the expiry times, audience, certificate chain, and the assertion signature. In the case of failure, an error token is generated and immediately returned.
+3. The acceptor unpacks the GSS claims object from the audience URL and verifies the service name component and channel binding. In the case of failure, an error token is generated.
 4. If required, the acceptor generates a DH public key using the parameters received from the client.
-5. The acceptor generates a response token containing the DH public key and expiry time. The response token is signed using the DH shared secret key.
+5. The acceptor generates a response token containing the DH public key and context expiry time. The response token is signed using the DH shared secret key.
 6. The context root key (CRK) is derived from the DH key and GSS_S_COMPLETE is returned, along with the initiator name from the verified assertion. Other assertion attributes may be made available via GSS_Get_name_attribute().
 
 ### Initiator context completion
 
 1. The initiator unpacks the acceptor response token JWT.
-2. The DH shared secret is computed from the acceptor's DH public key and is used to verify the JWT.
-3. The initiator validates the context expiry time received from the acceptor. Note that this will typically match the assertion lifetime and that message protection services may be used beyond this time.
-4. The context root key (CRK) is derived from the DH key and GSS_S_COMPLETE is returned to indicate the user is authenticated and the context is ready for use.
+2. The DH shared secret is computed from the acceptor's DH public key and is used to verify the response token.
+3. The initiator sets the context expiry time with that received in the response token. If the context has expired, GSS_S_CONTEXT_EXPIRED is returned and context establishment fails.
+4. The context root key (CRK) is derived from the DH key and GSS_S_COMPLETE is returned to indicate the user is authenticated and the context is ready for use. No output token is emitted.
 
 ### Fast re-authentication extensions
 
@@ -57,18 +74,19 @@ The initiator MAY cache such tickets, along with the ARK and expiry time, receiv
 
 #### Initiator to acceptor (re-authentication)
 
-1. The initiator looks in its ticket cache for an unexpired ticket for the target. If none is found, the normal authentication flow is performed.
-2. The initiator generates an authenticator containing the current time, a random nonce, the ticket identifier, and the target name (audience) and channel bindings requested by the application.
-3. The initiator signs the authenticator using its copy of the ARK, using the appropriate hash algorithm associated with the original context (currently HS256 is the only one specified).
+1. The initiator looks in its ticket cache for an unexpired ticket for the target (acceptor). If none is found, the normal authentication flow is performed.
+2. The initiator generates an authenticator containing: an expiry time a few minutes from the current time, a random nonce, the ticket identifier, and the target name (audience) and channel bindings requested by the application.
+3. The initiator signs the authenticator using its copy of the ARK, using the appropriate hash algorithm associated with the original context (only HS256 is presently specified).
 4. The authenticator is packed into a "backed" assertion with no certificates.
 5. The initiator generates an authenticator session key to be used in verifying the response and in deriving the context root key.
 6. The assertion is sent to the acceptor.
 
-
 #### Acceptor to initiator (re-authentication)
 
-1. The acceptor unpacks the authenticator assertion and looks for a ticket in its cache matching the requested ticket ID. If one is not found, the context establishment fails.
-2. The acceptor verifies the authenticator using its copy of the ARK and generates a session key.
+1. The acceptor unpacks the authenticator assertion and looks for a ticket in its cache matching the requested ticket ID.
+2. The acceptor validates that the ticket and authenticator have not expired.
+3. The acceptor verifies the authenticator using its copy of the ARK.
+4. The acceptor generates the ASK and derived the CRK from this.
 3. The acceptor generates a response and signs and returns it.
 
 If the ticket cannot be found, or the authentication fails, the acceptor MAY return an error code in its response, permitting the initiator to recover and fallback to generating a BrowserID assertion. It MAY also include its local timestamp so that the initiator can perform clock skew compensation.
@@ -105,7 +123,7 @@ Message protection (confidentiality/wrap) are encoded according to [RFC4121].
 
 **TBD**:
 
-* Do we want to do away with the token ID and wrap everything in JSON?
+* Do we want to do away with the token ID and wrap everything in JSON, or assume that initiator tokens are always backed assertions and acceptor responses always JWTs? The latter would be simple but is not particularly flexible for future evolution.
 * The GSS-API framing is only required on the initial context token, but historically many mechanisms use it on all tokens. Should this be revisited?
 
 ### Mechanism OIDs
@@ -145,11 +163,11 @@ Examples:
 
 ### BrowserID audience encoding
 
-Ideally, BrowserID would support adding arbitrary claims to self-signed assertions. In order to work around this, GSS-specific claims are presently encoded the in the audience URL. The encoding is as follows:
+Ideally, BrowserID would support adding arbitrary claims to self-signed assertions. As this is presently not possible, GSS-specific claims are currently encoded the in the audience URL. The encoding is as follows:
 
     spn = service-name ["/" service-host [ "/" service-specifics]]
     gss-encoded-claims = base64-encode(gss-claims)
-    audience = "urn:x-gss:" son "#" gss-encoded-claims
+    audience = "urn:x-gss:" spn "#" gss-encoded-claims
     
 The host name is stripped out from the service principal name; any other components are included in the GSS claims object. An example:
 
@@ -161,11 +179,51 @@ decodes to:
     
 The service principal name in this case is "host/www.browserid.org".
 
-(It would be preferable to just encode the service principal name in a URN with the "gss:" prefix.)
+### BrowserID invocation
+
+The GSS mechanism should call BrowserID.internal.get() with the composed audience URL and a callback that will return the assertion to the mechanism. As the GSS-API is synchronous, the mechanism implementation must block until the callback is invoked (strictly, this is an API and not a protocol issue).
+
+The siteName option SHOULD be set to the hostname component of the service principal name.
+
+The silent option MAY be used if the GSS credential is bound to a name.
+
+### Validation
+
+#### Expiry times
+
+The expiry and, if present, issued-at and not-before times of all elements in a backed assertion, MUST be validated. This applies equally to re-authentication assertions, public key assertions, and the entire certificate chain.
+
+The GSS context lifetime MUST NOT exceed the lifetime of the user's certificate.
+
+The lifetime of a re-authentication ticket MUST NOT exceed the lifetime of the user's certificate. The acceptor MUST validate the ticket expiry time when performing re-authentication.
+
+Message protections services such as GSS_Wrap() SHOULD be available beyond the GSS context lifetime for maximum application compatibility.
+
+**TODO** notes about clock skew recovery
+
+#### Audience
+
+If the credential passed to GSS_Accept_sec_context() is not for the identity GSS_C_NO_NAME, then it MUST match the unpacked audience (that is, the audience without the URN prefix and encoded claims dictionary).
+
+**TODO** notes about service principal name aliases
+
+#### Channel bindings
+
+If the acceptor passed in channel bindings to GSS_Accept_sec_context(), the assertion MUST contain a matching channel binding claim. (Only the application_data component is validated.) 
+
+#### Signatures
+
+Signature validation on assertions is the same as for the web usage of BrowserID, with the addition that re-authentication assertions may be signed with a symmetric key.
+
+#### Replay cache
+
+The accept SHOULD maintain a cache of received assertions in order to guard against replay attacks.
 
 ### GSS-specific assertion claims
 
-These claims are included in the assertion sent to the acceptor and are authenticated by the initiator's private key and certificate chain. In a future specification, these may be present in the assertion directly. Currently they are encoded in the gss-encoded-claims component of the audience URL hostname, as described above.
+These claims are included in the assertion sent to the acceptor and are authenticated by the initiator's private key and certificate chain.
+
+In a future specification, these may be present in the assertion directly. Currently they are encoded in the gss-encoded-claims component of the audience URL hostname, as described above.
 
 #### "cbt" (Channel Binding Token)
 
@@ -185,9 +243,11 @@ If a key is unavailable, then the signature is absent and the value of the "alg"
 
 The JWT may contain the following parameters:
 
-#### now
+#### iat
 
 The current acceptor time, in milliseconds since January 1, 1970. This allows the initiator to compensate for clock differences when generating assertions.
+
+**TBD** not defined yet how this is to be used
 
 #### dh
 
@@ -195,9 +255,7 @@ This contains a JSON object with a single key, "y", containing the base64 URL en
 
 #### exp
 
-This contains the time when the context expires. It MUST not be longer than the user's certificate expiry time.
-
-For compatibility with existing applications, it SHOULD NOT be validated by message protection services such as GSS_Wrap().
+This contains the time when the context expires.
 
 #### tkt
 
@@ -231,6 +289,8 @@ If GSSBID_REAUTH_FAILED is received, the initiator SHOULD attempt to send anothe
 
 This key is the shared secret resulting from the Diffie-Hellman exchange. It is presently used without derivation to sign the acceptor's response token, except in the case of re-authentication when the authenticator session key (ASK) is used instead.
 
+**TODO** what the security implications of using this key directly
+
 #### Context Root Key (CRK)
 
 The context root key is used for RFC 4121 message protection services, e.g. GSS_Wrap() and GSS_Get_MIC(). It is derived as follows:
@@ -251,13 +311,14 @@ The HMAC hash algorithm for all currently specified [RFC3961] encryption types i
 
 #### Authenticator Session Key (ASK)
 
-The authenticator session key (ASK) is used as the context root key for re-authenticated contexts. It is derived as follows:
+The authenticator session key (ASK) is used instead of the DHK for re-authenticated contexts. It is derived as follows:
 
-    iat = 64-bit big-endian timestamp from authenticator
-    n = 64-bit nonce from authenticator
-    ASK = HMAC(ARK, "browserid-reauth" || iat || n || 0x01)
+    ap = encoded JWT containing authenticator
+    ASK = HMAC(ARK, "browserid-reauth" || ap || 0x01)
 
 The HMAC hash algorithm for all currently specified [RFC3961] encryption types is SHA256.
+
+**TODO** would it be more conservative to only mix in the time and nonce from the authenticator rather than the entire encoded authenticator?
 
 ### Naming extensions
 
@@ -273,12 +334,14 @@ Attributes from certificates SHOULD be marked as authenticated.
 
 When using fast re-authentication, the initiator sends an assertion containing the following payload:
 
-    iat = milliseconds since January 1, 1970
+    iat = issue time
     n   = 64-bit base64 URL encoded random nonce
     tkt = opaque ticket identifier
     aud = string encoding of service principal name
     cbt = base64 URL encoding of channel binding application-specific data
 
-It MAY also send an expiry time in the "exp" parameter, otherwise it expires 5 minutes from the issue time, or the expiry time of the ticket, whichever is earlier. The ticket expiry time must be cached by the acceptor, along with the subject, issuer, audience, expiry time and ARK of the original assertion. The acceptor may share this cache with the replay cache, although this is an implementation detail.
+The re-authentication assertion has an implicit expiry of five minutes after the issue time.
+
+The ticket expiry time must be cached by the acceptor, along with the subject, issuer, audience, expiry time and ARK of the original assertion. The acceptor may share this cache with the replay cache, although this is an implementation detail.
 
 The fast re-authentication assertion is signed using the authenticator root key.
