@@ -161,6 +161,10 @@ Examples:
 * host/www.persona.org
 * ldap/ldap-1.browserid.org/persona.org
 
+The mechanism supports both GSS_C_NT_USER_NAME and GSS_C_NT_HOSTBASED_SERVICE. GSS_C_NT_USER_NAME is used directly, and GSS_C_NT_HOSTBASED_SERVICE is transformed by replacing the "@" replaced by a "/".
+
+A default domain may be appended when importing names of type GSS_C_NT_USER_NAME.
+
 ### BrowserID audience encoding
 
 Ideally, BrowserID would support adding arbitrary claims to self-signed assertions. As this is presently not possible, GSS-specific claims are currently encoded the in the audience URL. The encoding is as follows:
