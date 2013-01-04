@@ -317,8 +317,17 @@ _BIDParseJWT(
 /*
  * bid_openssl.c
  */
+
+/*
+ * To implement a new crypto provider, you need to replace the following
+ * dispatch table and functions.
+ */
 extern struct BIDJWTAlgorithmDesc _BIDJWTAlgorithms[];
 
+/*
+ * Hash the assertion in an implementation-defined manner that may be used
+ * as a key into the replay cache as well as a ticket identifier.
+ */
 BIDError
 _BIDDigestAssertion(
     BIDContext context,
@@ -326,17 +335,26 @@ _BIDDigestAssertion(
     unsigned char *digest,
     size_t *digestLength);
 
+/*
+ * Generate a Diffie-Hellman key with the specified parameters.
+ */
 BIDError
 _BIDGenerateDHKey(
     BIDContext context,
     json_t *dhParams,
     BIDJWK *pDhKey);
 
+/*
+ * Generate Diffie-Hellman parameters.
+ */
 BIDError
 _BIDGenerateDHParams(
     BIDContext context,
     json_t **pDhParams);
 
+/*
+ * Compute a Diffie-Hellman shared secret.
+ */
 BIDError
 _BIDComputeDHKey(
     BIDContext context,
@@ -345,11 +363,17 @@ _BIDComputeDHKey(
     unsigned char **ppbKey,
     size_t *pcbKey);
 
+/*
+ * Generate a random base64 URL encoded nonce of at least 64 bits.
+ */
 BIDError
 _BIDGenerateNonce(
     BIDContext context,
     json_t **pNonce);
 
+/*
+ * Derive a key using HMAC(K, "BrowserID" || pbSalt || 0x01)
+ */
 BIDError
 _BIDDeriveKey(
     BIDContext context,
