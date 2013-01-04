@@ -14,6 +14,7 @@
 
 static BIDContext gContext = NULL;
 static time_t gNow = 0;
+static int gVerbose = 0;
 
 static void
 BIDToolUsage(void);
@@ -23,14 +24,42 @@ static BIDError
 BIDPurgeCache(int argc, char *argv[], BIDCache cache, int (*shouldPurgeP)(json_t *));
 
 static BIDError
+BIDPrintVerboseTicketCacheEntry(const char *k, json_t *j)
+{
+    unsigned char *pbArk = NULL;
+    size_t cbArk = 0;
+    time_t issueTime, expiryTime;
+    json_t *tkt = json_object_get(j, "tkt");
+
+    _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
+    _BIDGetJsonBinaryValue(gContext, json_object_get(j, "ark"), "secret-key", &pbArk, &cbArk);
+
+    printf("Server: %s\n", k);
+    printf("Client: %s\n", json_string_value(json_object_get(j, "sub")));
+    printf("Issuer: %s\n", json_string_value(json_object_get(j, "iss")));
+    printf("Key length: %zd bits\n", cbArk * 8);
+    printf("Auth time: %s", ctime(&issueTime));
+    printf("End time:  %s", ctime(&expiryTime));
+    printf("\n");
+
+    if (pbArk != NULL) {
+        memset(pbArk, 0, cbArk);
+        BIDFree(pbArk);
+    }
+
+    return BID_S_OK;
+}
+
+static BIDError
 BIDPrintTicketCacheEntry(const char *k, json_t *j)
 {
     const char *szExpiry;
     time_t expiryTime;
     json_t *tkt = json_object_get(j, "tkt");
- 
+
     _BIDGetJsonTimestampValue(gContext, tkt, "exp", &expiryTime);
- 
+
     szExpiry = gNow < expiryTime ? ctime(&expiryTime) : ">>> Expired <<<";
 
     printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
@@ -38,6 +67,7 @@ BIDPrintTicketCacheEntry(const char *k, json_t *j)
            k, /*json_string_value(json_object_get(j, "aud")),*/
            json_string_value(json_object_get(j, "iss")),
            szExpiry);
+
     printf("\n");
 
     return BID_S_OK;
@@ -65,6 +95,7 @@ BIDListTicketCache(int argc, char *argv[])
 {
     BIDError err;
     const char *k = NULL;
+    const char *szCacheName = NULL;
     json_t *j = NULL;
     int i;
 
@@ -73,6 +104,12 @@ BIDListTicketCache(int argc, char *argv[])
 
     if (gContext->TicketCache == NULL)
         return BID_S_INVALID_PARAMETER;
+
+    err = _BIDGetCacheName(gContext, gContext->TicketCache, &szCacheName);
+    if (err != BID_S_OK)
+        return err;
+
+    printf("Ticket cache: %s\n\n", szCacheName);
 
     printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
            "Identity", "Audience", "Issuer", "Expires");
@@ -83,7 +120,7 @@ BIDListTicketCache(int argc, char *argv[])
     for (err = _BIDGetFirstCacheObject(gContext, gContext->TicketCache, &k, &j);
          err == BID_S_OK;
          err = _BIDGetNextCacheObject(gContext, gContext->TicketCache, &k, &j)) {
-        BIDPrintTicketCacheEntry(k, j);
+        gVerbose ? BIDPrintVerboseTicketCacheEntry(k, j) : BIDPrintTicketCacheEntry(k, j);
         json_decref(j);
         j = NULL;
     }
@@ -347,7 +384,7 @@ BIDVerifyAssertionFromString(int argc, char *argv[])
         BIDToolUsage();
 
     err = BIDVerifyAssertion(gContext, argv[0], argv[1], NULL, 0, 0,
-                             time(NULL), &identity, &expiryTime, &ulFlags);
+                             gNow, &identity, &expiryTime, &ulFlags);
     if (err != BID_S_OK) {
         BIDAbortError("Failed to verify assertion", err);
         goto cleanup;
@@ -456,6 +493,11 @@ int main(int argc, char *argv[])
         szCacheName = argv[1];
         argc -= 2;
         argv += 2;
+    }
+    if (argc > 1 && strcmp(argv[0], "-v") == 0) {
+        gVerbose = 1;
+        argc--;
+        argv++;
     }
 
     err = BID_S_INVALID_PARAMETER;
