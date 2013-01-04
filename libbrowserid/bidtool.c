@@ -191,9 +191,9 @@ BIDPurgeCache(int argc, char *argv[], BIDCache cache, int (*shouldPurgeP)(json_t
     if (cache == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    for (err = _BIDGetFirstCacheObject(gContext, gContext->ReplayCache, &k, &j);
+    for (err = _BIDGetFirstCacheObject(gContext, cache, &k, &j);
          err == BID_S_OK;
-         err = _BIDGetNextCacheObject(gContext, gContext->ReplayCache, &k, &j)) {
+         err = _BIDGetNextCacheObject(gContext, cache, &k, &j)) {
         if (shouldPurgeP(j))
             _BIDRemoveCacheObject(gContext, cache, k);
     }
