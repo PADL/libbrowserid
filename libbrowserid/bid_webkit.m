@@ -320,6 +320,18 @@
     }
 }
 
+#if 0
+- (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request
+{
+    WebView *wv = [self newWebView];
+
+    NSLog(@"createWebViewWithRequest %@", request);
+    [identityDialog setContentView:wv];
+
+    return wv;
+}
+#endif
+
 #pragma mark - public
 - init
 {
