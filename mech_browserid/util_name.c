@@ -169,7 +169,7 @@ importServiceName(OM_uint32 *minor,
     krb5_error_code code;
     krb5_context krbContext;
     krb5_principal krbPrinc;
-    char *service, *host, *realm = NULL;
+    char *service, *host;
 
     GSSBID_KRB_INIT(&krbContext);
 
@@ -183,12 +183,10 @@ importServiceName(OM_uint32 *minor,
         host++;
     }
 
-    realm = gssBidGetDefaultRealm(krbContext);
-
     code = krb5_build_principal(krbContext,
                                 &krbPrinc,
-                                realm != NULL ? strlen(realm) : 0,
-                                realm != NULL ? realm : "",
+                                0,
+                                "",
                                 service,
                                 host,
                                 NULL);
@@ -204,8 +202,6 @@ importServiceName(OM_uint32 *minor,
         *minor = GSSBID_BAD_SERVICE_NAME;
     }
 
-    if (realm != NULL)
-        krb5_free_default_realm(krbContext, realm);
     GSSBID_FREE(service);
 
     return major;
