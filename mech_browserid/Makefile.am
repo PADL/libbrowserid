@@ -25,7 +25,7 @@ OS_LIBS =
 mech_browserid_la_CFLAGS   = -Werror -Wall -Wunused-parameter
 mech_browserid_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
 endif
-mech_browserid_la_DEPENDENCIES = $(GSSBID_EXPORTS)
+mech_browserid_la_DEPENDENCIES = $(GSSBID_EXPORTS) $(top_builddir)/libbrowserid/libbrowserid.la
 
 mech_browserid_la_CPPFLAGS = -DBUILD_GSSBID_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\" -I$(top_srcdir)/libbrowserid
 mech_browserid_la_CFLAGS   += \
