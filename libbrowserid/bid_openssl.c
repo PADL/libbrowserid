@@ -1063,12 +1063,10 @@ _BIDDeriveAuthenticatorSessionKey(
 {
     BIDError err;
     HMAC_CTX h;
-    unsigned char *pbArk = NULL, *pbNonce = NULL;
-    size_t cbArk, cbNonce;
+    unsigned char *pbArk = NULL;
+    size_t cbArk;
     unsigned int mdLength;
     unsigned char T1 = 0x01;
-    uint64_t ts;
-    unsigned char pbTimestamp[8];
 
     *ppbSessionKey = NULL;
     *pcbSessionKey = 0;
@@ -1076,25 +1074,9 @@ _BIDDeriveAuthenticatorSessionKey(
     err = _BIDGetJsonBinaryValue(context, ark, "secret-key", &pbArk, &cbArk);
     BID_BAIL_ON_ERROR(err);
 
-    /* This is the time since Unix epoch in milliseconds, not seconds */
-    ts = json_integer_value(json_object_get(ap->Payload, "exp"));
-
-    pbTimestamp[0] = (unsigned char)((ts >> 56) & 0xff);
-    pbTimestamp[1] = (unsigned char)((ts >> 48) & 0xff);
-    pbTimestamp[2] = (unsigned char)((ts >> 40) & 0xff);
-    pbTimestamp[3] = (unsigned char)((ts >> 32) & 0xff);
-    pbTimestamp[4] = (unsigned char)((ts >> 24) & 0xff);
-    pbTimestamp[5] = (unsigned char)((ts >> 16) & 0xff);
-    pbTimestamp[6] = (unsigned char)((ts >>  8) & 0xff);
-    pbTimestamp[7] = (unsigned char)((ts      ) & 0xff);
-
-    err = _BIDGetJsonBinaryValue(context, ap->Payload, "n", &pbNonce, &cbNonce);
-    BID_BAIL_ON_ERROR(err);
-
     HMAC_Init(&h, pbArk, cbArk, EVP_sha256());
     HMAC_Update(&h, _BIDARKSalt, sizeof(_BIDARKSalt) - 1);
-    HMAC_Update(&h, pbTimestamp, sizeof(pbTimestamp));
-    HMAC_Update(&h, pbNonce, cbNonce);
+    HMAC_Update(&h, (unsigned char *)ap->EncData, ap->EncDataLength);
     HMAC_Update(&h, &T1, 1);
 
     *ppbSessionKey = BIDMalloc(SHA256_DIGEST_LENGTH);
@@ -1114,7 +1096,6 @@ cleanup:
         memset(pbArk, 0, cbArk);
         BIDFree(pbArk);
     }
-    BIDFree(pbNonce);
 
     return err;
 }
