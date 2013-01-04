@@ -29,18 +29,17 @@ BIDPrintVerboseTicketCacheEntry(const char *k, json_t *j)
     unsigned char *pbArk = NULL;
     size_t cbArk = 0;
     time_t issueTime, expiryTime;
-    json_t *tkt = json_object_get(j, "tkt");
 
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
     _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
     _BIDGetJsonBinaryValue(gContext, json_object_get(j, "ark"), "secret-key", &pbArk, &cbArk);
 
-    printf("Server: %s\n", k);
-    printf("Client: %s\n", json_string_value(json_object_get(j, "sub")));
-    printf("Issuer: %s\n", json_string_value(json_object_get(j, "iss")));
-    printf("Key length: %zd bits\n", cbArk * 8);
-    printf("Auth time: %s", ctime(&issueTime));
-    printf("End time:  %s", ctime(&expiryTime));
+    printf("Service:          %s\n", k);
+    printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
+    printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
+    printf("Key length:       %zd bits\n", cbArk * 8);
+    printf("Cert issue time:  %s", ctime(&issueTime));
+    printf("Ticket expiry:    %s", ctime(&expiryTime));
     printf("\n");
 
     if (pbArk != NULL) {
@@ -111,11 +110,13 @@ BIDListTicketCache(int argc, char *argv[])
 
     printf("Ticket cache: %s\n\n", szCacheName);
 
-    printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
-           "Identity", "Audience", "Issuer", "Expires");
-    for (i = 0; i < 80; i++)
-        printf("-");
-    printf("\n");
+    if (!gVerbose) {
+        printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
+               "Identity", "Audience", "Issuer", "Expires");
+        for (i = 0; i < 80; i++)
+            printf("-");
+        printf("\n");
+    };
 
     for (err = _BIDGetFirstCacheObject(gContext, gContext->TicketCache, &k, &j);
          err == BID_S_OK;
@@ -142,6 +143,47 @@ BIDDestroyTicketCache(int argc, char *argv[])
         return BID_S_INVALID_PARAMETER;
 
     return _BIDDestroyCache(gContext, gContext->TicketCache);
+}
+
+static BIDError
+BIDPrintVerboseReplayCacheEntry(const char *k, json_t *j)
+{
+    unsigned char *pbHash = NULL;
+    size_t cbHash = 0, i;
+    unsigned char *pbArk = NULL;
+    size_t cbArk = 0;
+    time_t issueTime, expiryTime, assertionExpiryTime;
+
+    _BIDBase64UrlDecode(k, &pbHash, &cbHash);
+    _BIDGetJsonBinaryValue(gContext, json_object_get(j, "ark"), "secret-key", &pbArk, &cbArk);
+    _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
+    _BIDGetJsonTimestampValue(gContext, j, "a-exp", &assertionExpiryTime);
+
+    printf("Ticket ID:        ");
+    for (i = 0; i < cbHash; i++)
+        printf("%02X", pbHash[i] & 0xff);
+    printf("\n");
+
+    if (pbArk != NULL) {
+        printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
+        printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
+        printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
+        printf("Key length:       %zd bits\n", cbArk * 8);
+    }
+
+    printf("Cert issue time:  %s", ctime(&issueTime));
+    printf("Assertion expiry: %s", ctime(&assertionExpiryTime));
+    printf("Ticket expiry:    %s", ctime(&expiryTime));
+    printf("\n");
+
+    if (pbArk != NULL) {
+        memset(pbArk, 0, cbArk);
+        BIDFree(pbArk);
+    }
+    BIDFree(pbHash);
+
+    return BID_S_OK;
 }
 
 static BIDError
@@ -194,6 +236,7 @@ BIDListReplayCache(int argc, char *argv[])
 {
     BIDError err;
     const char *k = NULL;
+    const char *szCacheName = NULL;
     json_t *j = NULL;
     int i;
 
@@ -203,15 +246,23 @@ BIDListReplayCache(int argc, char *argv[])
     if (gContext->ReplayCache == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    printf("%-24.24s  %s\n", "Timestamp", "Hash");
-    for (i = 0; i < 90; i++)
-        printf("-");
-    printf("\n");
+    err = _BIDGetCacheName(gContext, gContext->ReplayCache, &szCacheName);
+    if (err != BID_S_OK)
+        return err;
+
+    printf("Replay cache:     %s\n\n", szCacheName);
+
+    if (!gVerbose) {
+        printf("%-24.24s  %s\n", "Timestamp", "Ticket ID");
+        for (i = 0; i < 90; i++)
+            printf("-");
+        printf("\n");
+    }
 
     for (err = _BIDGetFirstCacheObject(gContext, gContext->ReplayCache, &k, &j);
          err == BID_S_OK;
          err = _BIDGetNextCacheObject(gContext, gContext->ReplayCache, &k, &j)) {
-        BIDPrintReplayCacheEntry(k, j);
+        gVerbose ? BIDPrintVerboseReplayCacheEntry(k, j) : BIDPrintReplayCacheEntry(k, j);
         json_decref(j);
         j = NULL;
     }
@@ -421,7 +472,7 @@ static struct {
     { "certpurge",    "", BIDPurgeAuthorityCache,         AUTHORITY_CACHE      },
     { "certdestroy",  "", BIDDestroyAuthorityCache,       AUTHORITY_CACHE      },
 
-    { "verify",       "[assertion] [audience]", BIDVerifyAssertionFromString, NO_CACHE },
+    { "verify",       "assertion audience", BIDVerifyAssertionFromString, NO_CACHE },
 
 };
 
@@ -452,10 +503,10 @@ BIDToolUsage(void)
         } else {
             fprintf(stderr, "               ");
         }
+        fprintf(stderr, "%-20.20s ", _BIDToolHandlers[i].Argument);
         if (_BIDToolHandlers[i].CacheUsage)
             fprintf(stderr, "[-cache name] ");
-        fprintf(stderr, "%.20s ", _BIDToolHandlers[i].Argument);
-        fprintf(stderr, "%s\n", _BIDToolHandlers[i].Usage);
+        fprintf(stderr, "[-verbose] %s\n", _BIDToolHandlers[i].Usage);
     }
     exit(BID_S_INVALID_PARAMETER);
 }
@@ -487,19 +538,6 @@ int main(int argc, char *argv[])
 
     gNow = time(NULL);
 
-    if (argc > 1 && strcmp(argv[0], "-cache") == 0) {
-        if (argc < 2)
-            BIDToolUsage();
-        szCacheName = argv[1];
-        argc -= 2;
-        argv += 2;
-    }
-    if (argc > 1 && strcmp(argv[0], "-v") == 0) {
-        gVerbose = 1;
-        argc--;
-        argv++;
-    }
-
     err = BID_S_INVALID_PARAMETER;
 
     for (i = 0; i < sizeof(_BIDToolHandlers) / sizeof(_BIDToolHandlers[0]); i++) {
@@ -518,22 +556,35 @@ int main(int argc, char *argv[])
                 ulCacheOpt = 0;
                 break;
             }
-            if (szCacheName != NULL && ulCacheOpt != 0) {
-                err = BIDSetContextParam(gContext, ulCacheOpt, szCacheName);
-                if (err != BID_S_OK)
-                    BIDAbortError("Failed to acquire cache", err);
-            }
-
+            err = BID_S_OK;
             argc--;
             argv++;
-
-            err = _BIDToolHandlers[i].Handler(argc, argv);
             break;
         }
     }
 
     if (err == BID_S_INVALID_PARAMETER)
         BIDToolUsage();
+
+    if (argc > 1 && strcmp(argv[0], "-cache") == 0) {
+        szCacheName = argv[1];
+        argc -= 2;
+        argv += 2;
+    }
+
+    if (argc > 0 && strcmp(argv[0], "-verbose") == 0) {
+        gVerbose = 1;
+        argc--;
+        argv++;
+    }
+
+    if (szCacheName != NULL && ulCacheOpt != 0) {
+        err = BIDSetContextParam(gContext, ulCacheOpt, szCacheName);
+        if (err != BID_S_OK)
+            BIDAbortError("Failed to acquire cache", err);
+    }
+
+    err = _BIDToolHandlers[i].Handler(argc, argv);
 
     BIDReleaseContext(gContext);
 
