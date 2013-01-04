@@ -236,6 +236,7 @@ extern struct BIDCacheOps _BIDFileCache;
 BIDError
 _BIDAllocIdentity(
     BIDContext context,
+    json_t *attributes,
     BIDIdentity *pIdentity);
 
 BIDError

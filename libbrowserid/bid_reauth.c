@@ -264,18 +264,18 @@ _BIDMakeReauthIdentity(
 {
     BIDError err;
     BIDIdentity identity = BID_C_NO_IDENTITY;
+    json_t *credCopy = NULL;
 
     *pIdentity = NULL;
 
-    err = _BIDAllocIdentity(context, &identity);
-    BID_BAIL_ON_ERROR(err);
-
-    json_decref(identity->Attributes);
-    identity->Attributes = json_copy(cred);
-    if (identity->Attributes == NULL) {
+    credCopy = json_copy(cred);
+    if (credCopy == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
+
+    err = _BIDAllocIdentity(context, credCopy, &identity);
+    BID_BAIL_ON_ERROR(err);
 
     /* remove the secret stuff from the attribute cache */
     json_object_del(identity->Attributes, "ark");
@@ -293,6 +293,7 @@ _BIDMakeReauthIdentity(
 cleanup:
     if (err != BID_S_OK)
         BIDReleaseIdentity(context, identity);
+    json_decref(credCopy);
 
     return err;
 }
