@@ -369,10 +369,9 @@
 - (BIDError)getAssertion
 {
     NSApplication *app = [NSApplication sharedApplication];
-    NSURL *baseURL = [NSURL URLWithString:audience];
     NSURL *personaURL = [NSURL URLWithString:@"https://login.persona.org/sign_in#NATIVE"];
 
-    if (baseURL == nil)
+    if ([self audience] == nil)
         return (bidError = BID_S_INVALID_AUDIENCE_URN);
 
     if ([self canInteract] == NO && [self silent] == NO)
