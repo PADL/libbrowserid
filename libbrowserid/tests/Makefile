@@ -1,4 +1,4 @@
-LIBS=-L/usr/local/lib -ljansson -lcurl -lkrb5
+LIBS=-L/usr/local/lib -ljansson -lcurl
 
 all: bid_sig bid_vfy bid_doc bid_acq bid_b32 bid_b64 bid_acq.so bid_acq_ldr bid_fct
 

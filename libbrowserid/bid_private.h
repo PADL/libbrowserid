@@ -68,12 +68,7 @@ extern "C" {
 
 #define BROKEN_URL_PARSER 1
 
-/* XXX better would be urn:x-gss-browserid: but it causes problems with WebKit/BrowserID */
-#ifdef BROKEN_URL_PARSER
-#define BID_GSS_AUDIENCE_PREFIX     "gss://"
-#else
-#define BID_GSS_AUDIENCE_PREFIX     "gss:"
-#endif
+#define BID_GSS_AUDIENCE_PREFIX     "urn:x-gss:"
 #define BID_GSS_AUDIENCE_PREFIX_LEN (sizeof(BID_GSS_AUDIENCE_PREFIX) - 1)
 
 typedef json_t *BIDAuthority;
@@ -539,12 +534,6 @@ json_t *
 _BIDRootCert(
     BIDContext context,
     BIDBackedAssertion backedAssertion);
-
-BIDError
-_BIDUnpackAudience(
-    BIDContext context,
-    const char *szPackedAudience,
-    json_t **pClaims);
 
 BIDError
 _BIDPackAudience(

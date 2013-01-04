@@ -12,7 +12,11 @@
 
 #include "bid_private.h"
 
-#include <gssapiP_bid.h> /* XXX */
+static BIDError
+_BIDUnpackAudience(
+    BIDContext context,
+    const char *szPackedAudience,
+    json_t **pClaims);
 
 BIDError
 _BIDDuplicateString(
@@ -854,143 +858,9 @@ _BIDRootCert(
 }
 
 /*
- * XXX all very temporary until we have proper GSS URNs.
- */
-
-static inline BIDError
-_BIDSetJsonPrincComponent(
-    BIDContext context,
-    krb5_context krbContext,
-    json_t *j,
-    const char *key,
-    krb5_principal krbPrinc,
-    int index,
-    int length)
-{
-    BIDError err;
-    krb5_principal_data p = *krbPrinc;
-    krb5_error_code code;
-    char *s = NULL;
-
-    KRB_PRINC_NAME(&p) += index;
-
-    if (length == -1)
-        KRB_PRINC_LENGTH(&p) -= index;
-    else
-        KRB_PRINC_LENGTH(&p) = length;
-
-    code = krb5_unparse_name_flags(krbContext, &p, KRB5_PRINCIPAL_UNPARSE_NO_REALM, &s);
-    if (code == 0) {
-        err = (json_object_set(j, key, json_string(s)) < 0) ? BID_S_NO_MEMORY : BID_S_OK;
-#ifdef HAVE_HEIMDAL_VERSION
-        krb5_xfree(ssi);
-#else
-        krb5_free_unparsed_name(krbContext, s);
-#endif
-    } else {
-        err = BID_S_INVALID_AUDIENCE_URN;
-    }
-
-    return err;
-}
-
-/*
- * This is temporary until we can elegantly encode a principal name into a URN.
+ * Return a claims dictionary that we have packed into a URL.
  */
 static BIDError
-_BIDPackSPN(
-    BIDContext context,
-    json_t *claims)
-{
-    BIDError err;
-    krb5_error_code code;
-    krb5_context krbContext = NULL;
-    krb5_principal spn = NULL;
-    const char *aud = json_string_value(json_object_get(claims, "aud"));
-
-    if (aud == NULL) {
-        err = BID_S_INVALID_AUDIENCE_URN;
-        goto cleanup;
-    }
-
-    code = krb5_init_context(&krbContext);
-    if (code != 0) {
-        err = BID_S_CRYPTO_ERROR; /* XXX */
-        goto cleanup;
-    }
-
-    code = krb5_parse_name_flags(krbContext, aud, KRB5_PRINCIPAL_PARSE_NO_REALM, &spn);
-    if (code != 0) {
-        err = BID_S_INVALID_AUDIENCE_URN;
-        goto cleanup;
-    }
-
-    if (KRB_PRINC_LENGTH(spn) > 1) {
-        err = _BIDSetJsonPrincComponent(context, krbContext, claims, "srv", spn, 0, 1);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDSetJsonPrincComponent(context, krbContext, claims, "aud", spn, 1, 1);
-        BID_BAIL_ON_ERROR(err);
-
-        if (KRB_PRINC_LENGTH(spn) > 2) {
-            err = _BIDSetJsonPrincComponent(context, krbContext, claims, "ssi", spn, 2, -1);
-            BID_BAIL_ON_ERROR(err);
-        }
-    }
-
-cleanup:
-    krb5_free_principal(krbContext, spn);
-    krb5_free_context(krbContext);
-
-    return err;
-}
-
-/*
- * Takes (audience, protocol claims) and returns a SPN.
- */
-static BIDError
-_BIDUnpackSPN(
-    BIDContext context,
-    const char *aud,
-    json_t *claims)
-{
-    krb5_error_code code = 0;
-    krb5_context krbContext = NULL;
-    krb5_principal spn = NULL;
-    const char *srv = json_string_value(json_object_get(claims, "srv"));
-    const char *ssi = json_string_value(json_object_get(claims, "ssi"));
-    char *szSpn = NULL;
-
-    if (aud == NULL)
-        return BID_S_INVALID_AUDIENCE_URN;
-
-    if (srv != NULL) {
-        code = krb5_init_context(&krbContext);
-        if (code != 0)
-            return BID_S_CRYPTO_ERROR; /* XXX */
-
-        code = krb5_build_principal(krbContext, &spn, 0, "", srv, aud, ssi, NULL);
-        if (code == 0)
-            code = krb5_unparse_name_flags(krbContext, spn, KRB5_PRINCIPAL_UNPARSE_NO_REALM, &szSpn);
-
-        json_object_del(claims, "srv");
-        json_object_del(claims, "ssi");
-
-        json_object_set_new(claims, "aud", json_string(szSpn));
-        krb5_free_principal(krbContext, spn);
-
-        krb5_free_context(krbContext);
-    } else
-        json_object_set_new(claims, "aud", json_string(aud));
-
-    return code == 0 ? BID_S_OK : BID_S_INVALID_AUDIENCE_URN;
-}
-
-/*
- * Return a claims dictionary that we have packed into a URL. For now, the
- * format is gss://[base32-encoded-dictionary].[audience-hostname].
- */
-BIDError
 _BIDUnpackAudience(
     BIDContext context,
     const char *szPackedAudience,
@@ -999,8 +869,6 @@ _BIDUnpackAudience(
     BIDError err;
     const char *p;
     char *szAudience = NULL;
-    char *szEncodedClaims = NULL;
-    size_t cchEncodedClaims;
     size_t cchAudience;
     json_t *claims = NULL;
 
@@ -1012,6 +880,8 @@ _BIDUnpackAudience(
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
     }
+
+    fprintf(stderr, "_BIDUnpackAudience: %s\n", szPackedAudience);
 
     claims = json_object();
     if (claims == NULL) {
@@ -1040,28 +910,21 @@ _BIDUnpackAudience(
 
     szPackedAudience += BID_GSS_AUDIENCE_PREFIX_LEN;
 
-    p = strchr(szPackedAudience, '.');
-    if (p == NULL) {
-        err = BID_S_INVALID_AUDIENCE_URN;
-        goto cleanup;
+    p = strrchr(szPackedAudience, '#');
+    if (p != NULL) {
+        err = _BIDDecodeJson(context, p + 1, BID_JSON_ENCODING_BASE32, &claims);
+        BID_BAIL_ON_ERROR(err);
+
+        cchAudience = (p - szPackedAudience);
+    } else {
+        claims = json_object();
+        if (claims == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+
+        cchAudience = strlen(szPackedAudience);
     }
-
-    cchEncodedClaims = (p - szPackedAudience);
-
-    szEncodedClaims = BIDMalloc(cchEncodedClaims + 1);
-    if (szEncodedClaims == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    memcpy(szEncodedClaims, szPackedAudience, cchEncodedClaims);
-    szEncodedClaims[cchEncodedClaims] = '\0';
-
-    err = _BIDDecodeJson(context, szEncodedClaims, BID_JSON_ENCODING_BASE32, &claims);
-    BID_BAIL_ON_ERROR(err);
-
-    p++; /* skip past dot */
-    cchAudience = strlen(p);
 
     szAudience = BIDMalloc(cchAudience + 1);
     if (szAudience == NULL) {
@@ -1069,18 +932,16 @@ _BIDUnpackAudience(
         goto cleanup;
     }
 
-    memcpy(szAudience, p, cchAudience);
+    memcpy(szAudience, szPackedAudience, cchAudience);
     szAudience[cchAudience] = '\0';
 
-    err = _BIDUnpackSPN(context, szAudience, claims);
-    BID_BAIL_ON_ERROR(err);
+    json_object_set_new(claims, "aud", json_string(szAudience));
 
     err = BID_S_OK;
     *pClaims = claims;
 
 cleanup:
     BIDFree(szAudience);
-    BIDFree(szEncodedClaims);
     if (err != BID_S_OK)
         json_decref(claims);
 
@@ -1131,18 +992,23 @@ _BIDPackAudience(
         goto cleanup;
     }
 
-    err = _BIDPackSPN(context, protocolClaims);
-    BID_BAIL_ON_ERROR(err);
-
     szAudience = json_string_value(json_object_get(protocolClaims, "aud"));
     BID_ASSERT(szAudience != NULL);
 
     cchAudience = strlen(szAudience);
 
-    err = _BIDEncodeJson(context, protocolClaims, BID_JSON_ENCODING_BASE32, &szEncodedClaims, &cchEncodedClaims);
-    BID_BAIL_ON_ERROR(err);
+    json_object_del(protocolClaims, "aud");
 
-    cchPackedAudience = BID_GSS_AUDIENCE_PREFIX_LEN + cchEncodedClaims + 1 + cchAudience;
+    if (json_object_size(protocolClaims) != 0) {
+        err = _BIDEncodeJson(context, protocolClaims, BID_JSON_ENCODING_BASE32, &szEncodedClaims, &cchEncodedClaims);
+        BID_BAIL_ON_ERROR(err);
+    } else {
+        cchEncodedClaims = 0;
+    }
+
+    cchPackedAudience = BID_GSS_AUDIENCE_PREFIX_LEN + cchAudience;
+    if (cchEncodedClaims != 0)
+        cchPackedAudience += 1 + cchEncodedClaims;
     szPackedAudience = BIDMalloc(cchPackedAudience + 1);
     if (szPackedAudience == NULL) {
         err = BID_S_NO_MEMORY;
@@ -1152,11 +1018,13 @@ _BIDPackAudience(
     p = szPackedAudience;
     memcpy(p, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN);
     p += BID_GSS_AUDIENCE_PREFIX_LEN;
-    memcpy(p, szEncodedClaims, cchEncodedClaims);
-    p += cchEncodedClaims;
-    *p++ = '.';
     memcpy(p, szAudience, cchAudience);
     p += cchAudience;
+    if (cchEncodedClaims != 0) {
+        *p++ = '#';
+        memcpy(p, szEncodedClaims, cchEncodedClaims);
+        p += cchEncodedClaims;
+    }
     *p = '\0';
 
     err = BID_S_OK;
