@@ -30,13 +30,19 @@ int main(int argc, const char *argv[])
     const char *s;
     BIDIdentity identity = NULL;
     const char *audience = NULL;
+    const char *szIdentity = NULL;
     time_t expires;
     json_t *j = NULL;
     uint32_t flags = 0;
-    uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT |
+    uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
                        BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
 
 #ifndef BUILD_AS_DSO
+    if (argc > 2 && !strcmp(argv[1], "-identity")) {
+        szIdentity = argv[2];
+        argc -= 2;
+        argv += 2;
+    }
     if (argc > 1 && !strcmp(argv[1], "-remote")) {
         options |= BID_CONTEXT_VERIFY_REMOTE;
         argc--;
@@ -44,11 +50,6 @@ int main(int argc, const char *argv[])
     }
     if (argc > 1 && !strcmp(argv[1], "-nogss")) {
         options &= ~(BID_CONTEXT_GSS);
-        argc--;
-        argv++;
-    }
-    if (argc > 1 && !strcmp(argv[1], "-cachedbrowserkey")) {
-        options |= BID_CONTEXT_CACHED_BROWSER_KEY;
         argc--;
         argv++;
     }
@@ -72,7 +73,7 @@ int main(int argc, const char *argv[])
     err = BIDAcquireContext(options, &context);
     BID_BAIL_ON_ERROR(err);
 
-    err = BIDAcquireAssertion(context, "host/www.browserid.org", NULL, 0, 0,
+    err = BIDAcquireAssertion(context, "host/www.browserid.org", NULL, 0, szIdentity, 0,
                               &assertion, NULL, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
