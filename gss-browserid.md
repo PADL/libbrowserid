@@ -104,7 +104,7 @@ This name may contain an e-mail address or a service principal name:
 Ideally, BrowserID would support adding arbitrary claims to self-signed assertions. In order to work around this, GSS-specific claims are presently encoded the in the audience URL. The encoding is as follows:
 
     gss-encoded-claims = base32-encode(gss-json-claims)
-    gss-browserid-url = "gss://" host "." gss-encoded-claims
+    gss-browserid-url = "gss://" gss-encoded-claims "." service-host
     
 The host name is stripped out from the service principal name; any other components are included in the GSS claims object.
 

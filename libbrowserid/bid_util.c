@@ -987,7 +987,8 @@ _BIDUnpackSPN(
 }
 
 /*
- * Return a claims dictionary that we have packed into a URL.
+ * Return a claims dictionary that we have packed into a URL. For now, the
+ * format is gss://[base32-encoded-dictionary].[audience-hostname].
  */
 BIDError
 _BIDUnpackAudience(
@@ -998,7 +999,9 @@ _BIDUnpackAudience(
     BIDError err;
     const char *p;
     char *szAudience = NULL;
-    size_t cchAudienceOrSpn;
+    char *szEncodedClaims = NULL;
+    size_t cchEncodedClaims;
+    size_t cchAudience;
     json_t *claims = NULL;
 
     *pClaims = NULL;
@@ -1027,9 +1030,9 @@ _BIDUnpackAudience(
         goto cleanup;
     }
 
-    cchAudienceOrSpn = strlen(szPackedAudience);
+    cchAudience = strlen(szPackedAudience);
 
-    if (cchAudienceOrSpn <= BID_GSS_AUDIENCE_PREFIX_LEN ||
+    if (cchAudience <= BID_GSS_AUDIENCE_PREFIX_LEN ||
         memcmp(szPackedAudience, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN) != 0) {
         err = BID_S_INVALID_AUDIENCE_URN;
         goto cleanup;
@@ -1037,30 +1040,37 @@ _BIDUnpackAudience(
 
     szPackedAudience += BID_GSS_AUDIENCE_PREFIX_LEN;
 
-#ifdef BROKEN_URL_PARSER
-    p = strrchr(szPackedAudience, '.');
-#else
-    p = strrchr(szPackedAudience, '#');
-#endif
-    if (p != NULL) {
-        if (p[1] != '\0') {
-            err = _BIDDecodeJson(context, p + 1, BID_JSON_ENCODING_BASE32, &claims);
-            BID_BAIL_ON_ERROR(err);
-        }
-
-        cchAudienceOrSpn = p - szPackedAudience;
-    } else {
-        cchAudienceOrSpn = strlen(szPackedAudience);
+    p = strchr(szPackedAudience, '.');
+    if (p == NULL) {
+        err = BID_S_INVALID_AUDIENCE_URN;
+        goto cleanup;
     }
 
-    szAudience = BIDMalloc(cchAudienceOrSpn + 1);
+    cchEncodedClaims = (p - szPackedAudience);
+
+    szEncodedClaims = BIDMalloc(cchEncodedClaims + 1);
+    if (szEncodedClaims == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    memcpy(szEncodedClaims, szPackedAudience, cchEncodedClaims);
+    szEncodedClaims[cchEncodedClaims] = '\0';
+
+    err = _BIDDecodeJson(context, szEncodedClaims, BID_JSON_ENCODING_BASE32, &claims);
+    BID_BAIL_ON_ERROR(err);
+
+    p++; /* skip past dot */
+    cchAudience = strlen(p);
+
+    szAudience = BIDMalloc(cchAudience + 1);
     if (szAudience == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
-    memcpy(szAudience, szPackedAudience, cchAudienceOrSpn);
-    szAudience[cchAudienceOrSpn] = '\0';
+    memcpy(szAudience, p, cchAudience);
+    szAudience[cchAudience] = '\0';
 
     err = _BIDUnpackSPN(context, szAudience, claims);
     BID_BAIL_ON_ERROR(err);
@@ -1070,6 +1080,7 @@ _BIDUnpackAudience(
 
 cleanup:
     BIDFree(szAudience);
+    BIDFree(szEncodedClaims);
     if (err != BID_S_OK)
         json_decref(claims);
 
@@ -1131,9 +1142,7 @@ _BIDPackAudience(
     err = _BIDEncodeJson(context, protocolClaims, BID_JSON_ENCODING_BASE32, &szEncodedClaims, &cchEncodedClaims);
     BID_BAIL_ON_ERROR(err);
 
-    cchPackedAudience = BID_GSS_AUDIENCE_PREFIX_LEN + cchAudience;
-    cchPackedAudience += 1 + cchEncodedClaims;
-
+    cchPackedAudience = BID_GSS_AUDIENCE_PREFIX_LEN + cchEncodedClaims + 1 + cchAudience;
     szPackedAudience = BIDMalloc(cchPackedAudience + 1);
     if (szPackedAudience == NULL) {
         err = BID_S_NO_MEMORY;
@@ -1143,15 +1152,11 @@ _BIDPackAudience(
     p = szPackedAudience;
     memcpy(p, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN);
     p += BID_GSS_AUDIENCE_PREFIX_LEN;
-    memcpy(p, szAudience, cchAudience);
-    p += cchAudience;
-#ifdef BROKEN_URL_PARSER
-    *p++ = '.';
-#else
-    *p++ = '#';
-#endif
     memcpy(p, szEncodedClaims, cchEncodedClaims);
     p += cchEncodedClaims;
+    *p++ = '.';
+    memcpy(p, szAudience, cchAudience);
+    p += cchAudience;
     *p = '\0';
 
     err = BID_S_OK;
