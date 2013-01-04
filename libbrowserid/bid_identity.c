@@ -534,6 +534,7 @@ _BIDPopulateIdentity(
     json_object_set(identity->Attributes, "sub",  json_object_get(principal, "email"));
     json_object_set(identity->Attributes, "aud",  json_object_get(assertion, "aud"));
     json_object_set(identity->Attributes, "iss",  json_object_get(leafCert,  "iss"));
+    json_object_set(identity->Attributes, "iat",  json_object_get(leafCert,  "iat"));
     json_object_set(identity->Attributes, "exp",  json_object_get(leafCert,  "exp"));
     json_object_set(identity->Attributes, "saml", json_object_get(leafCert,  "saml"));
 
