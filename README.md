@@ -59,4 +59,3 @@ Client:
 Server:
 
     % server -c -p 5556 -s host -h rand.mit.de.padl.com
-
