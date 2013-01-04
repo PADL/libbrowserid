@@ -242,7 +242,7 @@ _BIDMakeAuthenticator(
     }
 
     if (       json_object_set(ap->Payload, "iat", iat) < 0        ||
-               json_object_set(ap->Payload, "exp", exp) < 0        ||
+//               json_object_set(ap->Payload, "exp", exp) < 0        ||
                json_object_set(ap->Payload, "n", n)     < 0        ||
                json_object_set(ap->Payload, "tkt", tkt) < 0        ||
                json_object_set(ap->Payload, "aud", aud) < 0        ||
