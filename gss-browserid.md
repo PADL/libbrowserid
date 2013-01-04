@@ -171,7 +171,7 @@ Ideally, BrowserID would support adding arbitrary claims to self-signed assertio
     
 The host name is stripped out from the service principal name; any other components are included in the GSS claims object. An example:
 
-    urn:x-gss:host/browserid.org#eyJkaCI6eyJwIjoibHRJaVFCN21MMWVNbVdzbmtOZmxFdyIsImciOiJBZyIsInkiOiJhWmJ6V1VYRVRWeTEtdVpmX1hGNnB3In19
+    urn:x-gss:host/www.browserid.org#eyJkaCI6eyJwIjoibHRJaVFCN21MMWVNbVdzbmtOZmxFdyIsImciOiJBZyIsInkiOiJhWmJ6V1VYRVRWeTEtdVpmX1hGNnB3In19
     
 decodes to:
 
@@ -285,11 +285,15 @@ If GSSBID_REAUTH_FAILED is received, the initiator SHOULD attempt to send anothe
 
 ### Key derivation
 
+The key derivations import the following:
+
+    browserid-derive-key(K, salt) = HMAC(K, "BrowserID" || salt || 0x01)
+
+The HMAC hash algorithm for all currently specified key lengths is SHA256.
+
 #### Diffie-Hellman Key (DHK)
 
-This key is the shared secret resulting from the Diffie-Hellman exchange. It is presently used without derivation to sign the acceptor's response token, except in the case of re-authentication when the authenticator session key (ASK) is used instead.
-
-**TODO** what the security implications of using this key directly
+This key is the shared secret resulting from the Diffie-Hellman exchange. It must be at least as many bits as the key size of the negotiated [RFC3961] encryption type.
 
 #### Context Root Key (CRK)
 
@@ -301,22 +305,22 @@ The context root key is used for RFC 4121 message protection services, e.g. GSS_
     
 where n is a 32-bit integer in network byte order starting at 0 and incremented to each call to the [RFC3961]pseudo_random operation.
 
+In the re-authentication case, the ASK is used instead of the DHK.
+
+It is also used directly (as in, with HMAC rather than get_mic) to sign the acceptor's response token.
+
 #### Authenticator Root Key (ARK)
 
 The authenticator root key (ARK) is used to sign authenticators used for fast re-authentication. It is derived as follows:
 
-    ARK = HMAC(DHK, "browserid-reauth" || 0x00)
-
-The HMAC hash algorithm for all currently specified [RFC3961] encryption types is SHA256.
+    ARK = browserid-derive-key(DHK, "ARK")
 
 #### Authenticator Session Key (ASK)
 
 The authenticator session key (ASK) is used instead of the DHK for re-authenticated contexts. It is derived as follows:
 
-    ap = encoded JWT containing authenticator
-    ASK = HMAC(ARK, "browserid-reauth" || ap || 0x01)
-
-The HMAC hash algorithm for all currently specified [RFC3961] encryption types is SHA256.
+    ap = authenticator encoded as JWT
+    ASK = browserid-derive-key(ARK, ap)
 
 **TODO** would it be more conservative to only mix in the time and nonce from the authenticator rather than the entire encoded authenticator?
 

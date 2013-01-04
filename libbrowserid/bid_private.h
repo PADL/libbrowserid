@@ -346,23 +346,19 @@ _BIDComputeDHKey(
     size_t *pcbKey);
 
 BIDError
-_BIDDeriveAuthenticatorRootKey(
-    BIDContext context,
-    BIDIdentity identity,
-    BIDJWK *pArk);
-
-BIDError
-_BIDDeriveAuthenticatorSessionKey(
-    BIDContext context,
-    BIDJWK ark,
-    BIDJWT ap,
-    unsigned char **ppbSessionKey,
-    size_t *pcbSessionKey);
-
-BIDError
 _BIDGenerateNonce(
     BIDContext context,
     json_t **pNonce);
+
+BIDError
+_BIDDeriveKey(
+    BIDContext context,
+    const unsigned char *pbBaseKey,
+    size_t cbBaseKey,
+    const unsigned char *pbSalt,
+    size_t cbSalt,
+    unsigned char **ppbDerivedKey,
+    size_t *pcbDerivedKey);
 
 /*
  * bid_reauth.c
@@ -395,6 +391,20 @@ _BIDVerifyReauthAssertion(
 BIDError
 _BIDAcquireDefaultTicketCache(
     BIDContext context);
+
+BIDError
+_BIDDeriveAuthenticatorRootKey(
+    BIDContext context,
+    BIDIdentity identity,
+    BIDJWK *pArk);
+
+BIDError
+_BIDDeriveAuthenticatorSessionKey(
+    BIDContext context,
+    BIDJWK ark,
+    BIDJWT ap,
+    unsigned char **ppbSessionKey,
+    size_t *pcbSessionKey);
 
 /*
  * bid_rverify.c

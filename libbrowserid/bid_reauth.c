@@ -439,3 +439,88 @@ cleanup:
 
     return err;
 }
+
+BIDError
+_BIDDeriveAuthenticatorRootKey(
+    BIDContext context,
+    BIDIdentity identity,
+    BIDJWK *pArk)
+{
+    unsigned char *pbSubkey = NULL;
+    size_t cbSubkey;
+    BIDError err;
+    BIDJWK ark = NULL;
+    json_t *sk = NULL;
+    unsigned char salt[3] = "ARK";
+
+    *pArk = NULL;
+
+    err = BIDGetIdentitySessionKey(context, identity, NULL, NULL);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDDeriveKey(context, identity->SessionKey, identity->SessionKeyLength,
+                        salt, sizeof(salt), &pbSubkey, &cbSubkey);
+    BID_BAIL_ON_ERROR(err);
+
+    ark = json_object();
+    if (ark == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonBinaryValue(context, pbSubkey, cbSubkey, &sk);
+    BID_BAIL_ON_ERROR(err);
+
+    if (json_object_set(ark, "secret-key", sk) < 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    *pArk = ark;
+    err = BID_S_OK;
+
+cleanup:
+    if (pbSubkey != NULL) {
+        memset(pbSubkey, 0, cbSubkey);
+        BIDFree(pbSubkey);
+    }
+    json_decref(sk);
+    if (err != BID_S_OK)
+        json_decref(ark);
+
+    return err;
+}
+
+BIDError
+_BIDDeriveAuthenticatorSessionKey(
+    BIDContext context,
+    BIDJWK ark,
+    BIDJWT ap,
+    unsigned char **ppbSessionKey,
+    size_t *pcbSessionKey)
+{
+    BIDError err;
+    unsigned char *pbArk = NULL;
+    size_t cbArk;
+
+    *ppbSessionKey = NULL;
+    *pcbSessionKey = 0;
+
+    err = _BIDGetJsonBinaryValue(context, ark, "secret-key", &pbArk, &cbArk);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDDeriveKey(context, pbArk, cbArk,
+                        (unsigned char *)ap->EncData, ap->EncDataLength,
+                        ppbSessionKey, pcbSessionKey);
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+
+cleanup:
+    if (pbArk != NULL) {
+        memset(pbArk, 0, cbArk);
+        BIDFree(pbArk);
+    }
+
+    return err;
+}

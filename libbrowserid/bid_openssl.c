@@ -1001,101 +1001,38 @@ _BIDGenerateNonce(
     return _BIDJsonBinaryValue(context, nonce, sizeof(nonce), pNonce);
 }
 
-static const unsigned char _BIDARKSalt[] = "browserid-reauth";
+static const unsigned char _BIDSalt[9] = "BrowserID";
 
 BIDError
-_BIDDeriveAuthenticatorRootKey(
+_BIDDeriveKey(
     BIDContext context,
-    BIDIdentity identity,
-    BIDJWK *pArk)
+    const unsigned char *pbBaseKey,
+    size_t cbBaseKey,
+    const unsigned char *pbSalt,
+    size_t cbSalt,
+    unsigned char **ppbDerivedKey,
+    size_t *pcbDerivedKey)
 {
     HMAC_CTX h;
-    unsigned char digest[SHA256_DIGEST_LENGTH];
-    unsigned int mdLength = sizeof(digest);
-    BIDError err;
-    BIDJWK ark = NULL;
-    json_t *sk = NULL;
-    unsigned char T0 = 0x00;
-
-    *pArk = NULL;
-
-    err = BIDGetIdentitySessionKey(context, identity, NULL, NULL);
-    BID_BAIL_ON_ERROR(err);
-
-    HMAC_Init(&h, identity->SessionKey, identity->SessionKeyLength, EVP_sha256());
-    HMAC_Update(&h, _BIDARKSalt, sizeof(_BIDARKSalt) - 1);
-    HMAC_Update(&h, &T0, 1);
-    HMAC_Final(&h, digest, &mdLength);
-
-    ark = json_object();
-    if (ark == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    err = _BIDJsonBinaryValue(context, digest, mdLength, &sk);
-    BID_BAIL_ON_ERROR(err);
-
-    if (json_object_set(ark, "secret-key", sk) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    *pArk = ark;
-    err = BID_S_OK;
-
-cleanup:
-    if (err != BID_S_OK)
-        json_decref(ark);
-    json_decref(sk);
-    memset(digest, 0, sizeof(digest));
-
-    return err;
-}
-
-BIDError
-_BIDDeriveAuthenticatorSessionKey(
-    BIDContext context,
-    BIDJWK ark,
-    BIDJWT ap,
-    unsigned char **ppbSessionKey,
-    size_t *pcbSessionKey)
-{
-    BIDError err;
-    HMAC_CTX h;
-    unsigned char *pbArk = NULL;
-    size_t cbArk;
-    unsigned int mdLength;
     unsigned char T1 = 0x01;
+    unsigned int mdLength;
 
-    *ppbSessionKey = NULL;
-    *pcbSessionKey = 0;
+    *ppbDerivedKey = NULL;
+    *pcbDerivedKey = 0;
 
-    err = _BIDGetJsonBinaryValue(context, ark, "secret-key", &pbArk, &cbArk);
-    BID_BAIL_ON_ERROR(err);
+    *ppbDerivedKey = BIDMalloc(SHA256_DIGEST_LENGTH);
+    if (*ppbDerivedKey == NULL)
+        return BID_S_NO_MEMORY;
 
-    HMAC_Init(&h, pbArk, cbArk, EVP_sha256());
-    HMAC_Update(&h, _BIDARKSalt, sizeof(_BIDARKSalt) - 1);
-    HMAC_Update(&h, (unsigned char *)ap->EncData, ap->EncDataLength);
+    HMAC_Init(&h, pbBaseKey, cbBaseKey, EVP_sha256());
+    HMAC_Update(&h, _BIDSalt, sizeof(_BIDSalt));
+    if (pbSalt != NULL)
+        HMAC_Update(&h, pbSalt, cbSalt);
     HMAC_Update(&h, &T1, 1);
 
-    *ppbSessionKey = BIDMalloc(SHA256_DIGEST_LENGTH);
-    if (*ppbSessionKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
     mdLength = SHA256_DIGEST_LENGTH;
-    HMAC_Final(&h, *ppbSessionKey, &mdLength);
-    *pcbSessionKey = mdLength;
+    HMAC_Final(&h, *ppbDerivedKey, &mdLength);
+    *pcbDerivedKey = mdLength;
 
-    err = BID_S_OK;
-
-cleanup:
-    if (pbArk != NULL) {
-        memset(pbArk, 0, cbArk);
-        BIDFree(pbArk);
-    }
-
-    return err;
+    return BID_S_OK;
 }
