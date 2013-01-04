@@ -150,14 +150,14 @@ krbPrincipalToName(OM_uint32 *minor,
 }
 
 static char *
-gssBidGetDefaultRealm(krb5_context krbContext)
+gssBidGetDefaultDomain(krb5_context krbContext)
 {
-    char *defaultRealm = NULL;
+    char *defaultDomain = NULL;
 
     krb5_appdefault_string(krbContext, "browserid_gss",
-                           NULL, "default_realm", "", &defaultRealm);
+                           NULL, "default_domain", "", &defaultDomain);
 
-    return defaultRealm;
+    return defaultDomain;
 }
 
 static OM_uint32
@@ -207,10 +207,10 @@ importServiceName(OM_uint32 *minor,
     return major;
 }
 
-#define IMPORT_FLAG_DEFAULT_REALM           0x1
+#define IMPORT_FLAG_DEFAULT_DOMAIN           0x1
 
 /*
- * Import an BID name, possibly appending the default GSS BID realm,
+ * Import an BID name, possibly appending the default GSS BID domain,
  */
 static OM_uint32
 importBidNameFlags(OM_uint32 *minor,
@@ -236,24 +236,24 @@ importBidNameFlags(OM_uint32 *minor,
 
         /*
          * First, attempt to parse the name on the assumption that it includes
-         * a qualifying realm. This allows us to avoid accidentally appending
-         * the default Kerberos realm to an unqualified name. (A bug in MIT
-         * Kerberos prevents the default realm being set to an empty value.)
+         * a qualifying domain. This allows us to avoid accidentally appending
+         * the default Kerberos domain to an unqualified name. (A bug in MIT
+         * Kerberos prevents the default domain being set to an empty value.)
          */
         code = krb5_parse_name_flags(krbContext, nameString,
                                      KRB5_PRINCIPAL_PARSE_REQUIRE_REALM, &krbPrinc);
     }
 
     if (code == KRB5_PARSE_MALFORMED) {
-        char *defaultRealm = NULL;
+        char *defaultDomain = NULL;
         int parseFlags = 0;
 
-        /* Possibly append the default BID realm if required */
-        if (importFlags & IMPORT_FLAG_DEFAULT_REALM)
-            defaultRealm = gssBidGetDefaultRealm(krbContext);
+        /* Possibly append the default BID domain if required */
+        if (importFlags & IMPORT_FLAG_DEFAULT_DOMAIN)
+            defaultDomain = gssBidGetDefaultDomain(krbContext);
 
-        /* If no default realm, leave the realm empty in the parsed name */
-        if (defaultRealm == NULL || defaultRealm[0] == '\0')
+        /* If no default domain, leave the domain empty in the parsed name */
+        if (defaultDomain == NULL || defaultDomain[0] == '\0')
             parseFlags |= KRB5_PRINCIPAL_PARSE_NO_REALM;
 
         code = krb5_parse_name_flags(krbContext, nameString, parseFlags, &krbPrinc);
@@ -266,8 +266,8 @@ importBidNameFlags(OM_uint32 *minor,
         }
 #endif
 
-        if (defaultRealm != NULL)
-            krb5_free_default_realm(krbContext, defaultRealm);
+        if (defaultDomain != NULL)
+            krb5_free_default_realm(krbContext, defaultDomain);
     }
 
     if (nameBuffer != GSS_C_NO_BUFFER)
@@ -300,7 +300,7 @@ importUserName(OM_uint32 *minor,
                const gss_buffer_t nameBuffer,
                gss_name_t *pName)
 {
-    return importBidNameFlags(minor, nameBuffer, IMPORT_FLAG_DEFAULT_REALM, pName);
+    return importBidNameFlags(minor, nameBuffer, IMPORT_FLAG_DEFAULT_DOMAIN, pName);
 }
 
 static OM_uint32
