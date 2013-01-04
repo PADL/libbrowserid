@@ -191,7 +191,7 @@ The silent option MAY be used if the GSS credential is bound to a name.
 
 #### Expiry times
 
-The expiry and, if present, issued-at and not-before times of all elements in a backed assertion, MUST be validated. This applies equally to re-authentication assertions, public key assertions, and the entire certificate chain.
+The expiry and, if present, issued-at and not-before times of all elements in a backed assertion, MUST be validated. This applies equally to re-authentication assertions, public key assertions, and the entire certificate chain. If the expiry time is absent, the issued-at time MUST be present, and the JWT implicitly expires a configurable interval (typically five minutes) after the issued-at time.
 
 The GSS context lifetime MUST NOT exceed the lifetime of the user's certificate.
 
@@ -340,7 +340,7 @@ When using fast re-authentication, the initiator sends an assertion containing t
     aud = string encoding of service principal name
     cbt = base64 URL encoding of channel binding application-specific data
 
-The re-authentication assertion has an implicit expiry of five minutes after the issue time.
+The re-authentication assertion has an implicit expiry after the issue time (see notes above).
 
 The ticket expiry time must be cached by the acceptor, along with the subject, issuer, audience, expiry time and ARK of the original assertion. The acceptor may share this cache with the replay cache, although this is an implementation detail.
 
