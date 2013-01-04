@@ -73,7 +73,6 @@ BIDError
 _BIDEncodeJson(
     BIDContext context,
     json_t *jData,
-    uint32_t encoding,
     char **pEncodedJson,
     size_t *pEncodedJsonLen)
 {
@@ -87,10 +86,7 @@ _BIDEncodeJson(
     if (szJson == NULL)
         return BID_S_CANNOT_ENCODE_JSON;
 
-    if (encoding == BID_JSON_ENCODING_BASE32)
-        err = _BIDBase32UrlEncode((unsigned char *)szJson, strlen(szJson), pEncodedJson, &len);
-    else
-        err = _BIDBase64UrlEncode((unsigned char *)szJson, strlen(szJson), pEncodedJson, &len);
+    err = _BIDBase64UrlEncode((unsigned char *)szJson, strlen(szJson), pEncodedJson, &len);
     if (err != BID_S_OK) {
         BIDFree(szJson);
         return err;
@@ -107,7 +103,6 @@ BIDError
 _BIDDecodeJson(
     BIDContext context,
     const char *encodedJson,
-    uint32_t encoding,
     json_t **pjData)
 {
     BIDError err;
@@ -117,10 +112,7 @@ _BIDDecodeJson(
 
     *pjData = NULL;
 
-    if (encoding == BID_JSON_ENCODING_BASE32)
-        err = _BIDBase32UrlDecode(encodedJson, (unsigned char **)&szJson, &cbJson);
-    else
-        err = _BIDBase64UrlDecode(encodedJson, (unsigned char **)&szJson, &cbJson);
+    err = _BIDBase64UrlDecode(encodedJson, (unsigned char **)&szJson, &cbJson);
     if (err != BID_S_OK) {
         BIDFree(szJson);
         return err;
@@ -912,7 +904,7 @@ _BIDUnpackAudience(
 
     p = strrchr(szPackedAudience, '#');
     if (p != NULL) {
-        err = _BIDDecodeJson(context, p + 1, BID_JSON_ENCODING_BASE32, &claims);
+        err = _BIDDecodeJson(context, p + 1, &claims);
         BID_BAIL_ON_ERROR(err);
 
         cchAudience = (p - szPackedAudience);
@@ -1000,7 +992,7 @@ _BIDPackAudience(
     json_object_del(protocolClaims, "aud");
 
     if (json_object_size(protocolClaims) != 0) {
-        err = _BIDEncodeJson(context, protocolClaims, BID_JSON_ENCODING_BASE32, &szEncodedClaims, &cchEncodedClaims);
+        err = _BIDEncodeJson(context, protocolClaims, &szEncodedClaims, &cchEncodedClaims);
         BID_BAIL_ON_ERROR(err);
     } else {
         cchEncodedClaims = 0;

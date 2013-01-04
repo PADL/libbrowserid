@@ -106,15 +106,6 @@ _BIDIssuerIsAuthoritative(
     const char *szIssuer);
 
 /*
- * bid_base32.c
- */
-BIDError
-_BIDBase32UrlEncode(const unsigned char *data, size_t size, char **str, size_t *cchStr);
-
-BIDError
-_BIDBase32UrlDecode(const char *str, unsigned char **pData, size_t *cbData);
-
-/*
  * bid_base64.c
  */
 BIDError
@@ -474,13 +465,11 @@ _BIDDuplicateString(
 
 #define BID_JSON_ENCODING_UNKNOWN   0
 #define BID_JSON_ENCODING_BASE64    1
-#define BID_JSON_ENCODING_BASE32    2
 
 BIDError
 _BIDEncodeJson(
     BIDContext context,
     json_t *jData,
-    uint32_t encoding,
     char **pEncodedJson,
     size_t *pEncodedJsonLen);
 
@@ -488,7 +477,6 @@ BIDError
 _BIDDecodeJson(
     BIDContext context,
     const char *encodedJson,
-    uint32_t encoding,
     json_t **pjData);
 
 BIDError

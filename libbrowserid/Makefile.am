@@ -5,7 +5,6 @@ bin_PROGRAMS = bidtool
 libbrowserid_la_CPPFLAGS = -DBUILD_GSSBID_LIB -I$(top_srcdir) -I$(top_srcdir)/mech_browserid
 libbrowserid_la_SOURCES =   \
     bid_authority.c         \
-    bid_base32.c            \
     bid_base64.c            \
     bid_cache.c             \
     bid_fcache.c            \
