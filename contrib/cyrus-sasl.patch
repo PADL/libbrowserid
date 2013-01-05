@@ -1,0 +1,44 @@
+From 598b9ccfe535732990e20b403e1561e1072d38c4 Mon Sep 17 00:00:00 2001
+From: Luke Howard <lukeh@padl.com>
+Date: Sat, 5 Jan 2013 09:17:01 +1100
+Subject: [PATCH] support mechanisms that do not support mutual auth
+
+---
+ plugins/gs2.c |    7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/plugins/gs2.c b/plugins/gs2.c
+index 9e29fe1..5c3abce 100644
+--- a/plugins/gs2.c
++++ b/plugins/gs2.c
+@@ -766,7 +766,7 @@ static int gs2_client_mech_step(void *conn_context,
+             goto cleanup;
+     }
+ 
+-    req_flags = GSS_C_MUTUAL_FLAG | GSS_C_SEQUENCE_FLAG;
++    req_flags = GSS_C_SEQUENCE_FLAG;
+ 
+     maj_stat = gss_init_sec_context(&min_stat,
+                                     (params->gss_creds != GSS_C_NO_CREDENTIAL)
+@@ -1317,7 +1317,7 @@ gs2_get_mech_attrs(const sasl_utils_t *utils,
+ static int gs2_indicate_mechs(const sasl_utils_t *utils)
+ {
+     OM_uint32 major, minor;
+-    gss_OID_desc desired_oids[3];
++    gss_OID_desc desired_oids[2];
+     gss_OID_set_desc desired_attrs;
+     gss_OID_desc except_oids[3];
+     gss_OID_set_desc except_attrs;
+@@ -1326,8 +1326,7 @@ static int gs2_indicate_mechs(const sasl_utils_t *utils)
+         return SASL_OK;
+ 
+     desired_oids[0] = *GSS_C_MA_AUTH_INIT;
+-    desired_oids[1] = *GSS_C_MA_AUTH_TARG;
+-    desired_oids[2] = *GSS_C_MA_CBINDINGS;
++    desired_oids[1] = *GSS_C_MA_CBINDINGS;
+     desired_attrs.count = sizeof(desired_oids)/sizeof(desired_oids[0]);
+     desired_attrs.elements = desired_oids;
+ 
+-- 
+1.7.10.2 (Apple Git-33)
+

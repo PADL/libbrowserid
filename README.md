@@ -57,7 +57,7 @@ protection tests will fail.
 
 SASL samples can be found in the sample directory of the Cyrus SASL
 distribution. However, the GS2 mechanism presently needs a patch to support
-mechanisms without mutual authentication.
+mechanisms without mutual authentication (this can be found in contrib).
 
 Client:
 
