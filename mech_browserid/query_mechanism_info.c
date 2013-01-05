@@ -50,7 +50,7 @@ gssQueryMechanismInfo(OM_uint32 *minor,
 
     /* the enctype is encoded in the increasing part of the GUID */
     memcpy(auth_scheme,
-           "\x39\xd7\x7d\x00\xe5\x00\x11\xe0\xac\x64\xcd\x53\x46\x50\xac\xb9", 16);
+           "\x53\x55\x38\x00\x83\x60\x47\xF5\xBC\x62\x4B\xD8\x07\x69\x49\xF0", 16);
 
     auth_scheme[3] = (unsigned char)enctype;
 
