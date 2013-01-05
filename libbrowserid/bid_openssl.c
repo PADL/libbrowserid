@@ -1015,12 +1015,12 @@ _BIDDeriveKey(
 {
     HMAC_CTX h;
     unsigned char T1 = 0x01;
-    unsigned int mdLength;
+    unsigned int mdLength = SHA256_DIGEST_LENGTH;
 
     *ppbDerivedKey = NULL;
     *pcbDerivedKey = 0;
 
-    *ppbDerivedKey = BIDMalloc(SHA256_DIGEST_LENGTH);
+    *ppbDerivedKey = BIDMalloc(mdLength);
     if (*ppbDerivedKey == NULL)
         return BID_S_NO_MEMORY;
 
@@ -1030,7 +1030,6 @@ _BIDDeriveKey(
         HMAC_Update(&h, pbSalt, cbSalt);
     HMAC_Update(&h, &T1, 1);
 
-    mdLength = SHA256_DIGEST_LENGTH;
     HMAC_Final(&h, *ppbDerivedKey, &mdLength);
     *pcbDerivedKey = mdLength;
 
