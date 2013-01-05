@@ -322,7 +322,9 @@ BIDDestroyReplayCache(int argc, char *argv[])
 static int
 BIDShouldPurgeAuthorityP(json_t *j)
 {
-    time_t expiryTime = json_integer_value(json_object_get(j, "expires"));
+    time_t expiryTime;
+
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
 
     return expiryTime == 0 || gNow >= expiryTime;
 }
@@ -338,7 +340,7 @@ BIDPrintAuthorityCacheEntry(const char *k, json_t *j)
     time_t expiryTime;
     const char *szExpiry;
 
-    expiryTime = json_integer_value(json_object_get(j, "expires"));
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
 
     err = _BIDGetAuthorityPublicKey(gContext, j, &publicKey);
     if (err == BID_S_OK) {

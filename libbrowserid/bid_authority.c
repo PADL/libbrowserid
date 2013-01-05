@@ -35,8 +35,8 @@ _BIDAcquireAuthority(
     if (context->ContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
         err = _BIDGetCacheObject(context, context->AuthorityCache, szHostname, &authority);
         if (err == BID_S_OK) {
-            expiryTime = json_integer_value(json_object_get(authority, "expires"));
-            if (expiryTime != 0 && expiryTime < time(NULL))
+            err = _BIDValidateExpiry(context, time(NULL), authority);
+            if (err == BID_S_EXPIRED_ASSERTION)
                 err = BID_S_EXPIRED_CERT;
         }
     }
@@ -45,8 +45,8 @@ _BIDAcquireAuthority(
         err = _BIDRetrieveDocument(context, szHostname, BID_WELL_KNOWN_URL, 0, &authority, &expiryTime);
         BID_BAIL_ON_ERROR(err);
 
-        if (expiryTime != 0)
-            json_object_set_new(authority, "expires", json_integer(expiryTime));
+        err = _BIDSetJsonTimestampValue(context, authority, "exp", expiryTime);
+        BID_BAIL_ON_ERROR(err);
 
         if (context->ContextOptions & BID_CONTEXT_AUTHORITY_CACHE)
             _BIDSetCacheObject(context, context->AuthorityCache, szHostname, authority);
