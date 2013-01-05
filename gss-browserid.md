@@ -1,5 +1,8 @@
 # BrowserID GSS-API Mechanism
 
+Luke Howard, PADL Software <<lukeh@padl.com>>
+January 2013
+
 ## Introduction
 
 The BrowserID GSS mechanism is a GSS-API security mechanism that allows you to use BrowserID-generated assertions for signing in to non-web protocols, such as SMTP, IMAP, SSH, LDAP, CIFS, and NFS. Any protocol that supports GSS-API or SASL and does not require mutual authentication should work.
