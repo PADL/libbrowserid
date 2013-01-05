@@ -164,11 +164,15 @@ der_read_length(unsigned char **buf, ssize_t *bufsize)
 size_t
 tokenSize(const gss_OID_desc *mech, size_t body_size)
 {
-    GSSBID_ASSERT(mech != GSS_C_NO_OID);
+    body_size += 2; /* token type */
 
-    /* set body_size to sequence contents size */
-    body_size += 4 + (size_t) mech->length;         /* NEED overflow check */
-    return 1 + der_length_size(body_size) + body_size;
+    if (mech != GSS_C_NO_OID) {
+        /* set body_size to sequence contents size */
+        body_size += 2 + (size_t) mech->length;         /* NEED overflow check */
+        body_size += 1 + der_length_size(body_size);
+    }
+
+    return body_size;
 }
 
 /* fills in a buffer with the token header.  The buffer is assumed to
@@ -181,12 +185,14 @@ makeTokenHeader(
     unsigned char **buf,
     enum gss_bid_token_type tok_type)
 {
-    *(*buf)++ = 0x60;
-    der_write_length(buf, (tok_type == -1) ?2:4 + mech->length + body_size);
-    *(*buf)++ = 0x06;
-    *(*buf)++ = (unsigned char)mech->length;
-    memcpy(*buf, mech->elements, mech->length);
-    *buf += mech->length;
+    if (mech != GSS_C_NO_OID) {
+        *(*buf)++ = 0x60;
+        der_write_length(buf, (tok_type == -1) ? 2 : 4 + mech->length + body_size);
+        *(*buf)++ = 0x06;
+        *(*buf)++ = (unsigned char)mech->length;
+        memcpy(*buf, mech->elements, mech->length);
+        *buf += mech->length;
+    }
     GSSBID_ASSERT(tok_type != TOK_TYPE_NONE);
     *(*buf)++ = (unsigned char)((tok_type>>8) & 0xff);
     *(*buf)++ = (unsigned char)(tok_type & 0xff);
@@ -219,43 +225,42 @@ verifyTokenHeader(OM_uint32 *minor,
     if (ret_tok_type != NULL)
         *ret_tok_type = TOK_TYPE_NONE;
 
-    if ((toksize -= 1) < 0)
-        return GSS_S_DEFECTIVE_TOKEN;
+    if (mech != GSS_C_NO_OID) {
+        if ((toksize -= 1) < 0)
+            return GSS_S_DEFECTIVE_TOKEN;
 
-    if (*buf++ != 0x60)
-        return GSS_S_DEFECTIVE_TOKEN;
+        if (*buf++ != 0x60)
+            return GSS_S_DEFECTIVE_TOKEN;
 
-    seqsize = der_read_length(&buf, &toksize);
-    if (seqsize < 0)
-        return GSS_S_DEFECTIVE_TOKEN;
+        seqsize = der_read_length(&buf, &toksize);
+        if (seqsize < 0)
+            return GSS_S_DEFECTIVE_TOKEN;
 
-    if (seqsize != toksize)
-        return GSS_S_DEFECTIVE_TOKEN;
+        if (seqsize != toksize)
+            return GSS_S_DEFECTIVE_TOKEN;
 
-    if ((toksize -= 1) < 0)
-        return GSS_S_DEFECTIVE_TOKEN;
+        if ((toksize -= 1) < 0)
+            return GSS_S_DEFECTIVE_TOKEN;
 
-    if (*buf++ != 0x06)
-        return GSS_S_DEFECTIVE_TOKEN;
+        if (*buf++ != 0x06)
+            return GSS_S_DEFECTIVE_TOKEN;
 
-    if ((toksize -= 1) < 0)
-        return GSS_S_DEFECTIVE_TOKEN;
+        if ((toksize -= 1) < 0)
+            return GSS_S_DEFECTIVE_TOKEN;
 
-    toid.length = *buf++;
+        toid.length = *buf++;
 
-    if ((toksize -= toid.length) < 0)
-        return GSS_S_DEFECTIVE_TOKEN;
+        if ((toksize -= toid.length) < 0)
+            return GSS_S_DEFECTIVE_TOKEN;
 
-    toid.elements = buf;
-    buf += toid.length;
+        toid.elements = buf;
+        buf += toid.length;
 
-    if (mech->elements == NULL) {
+        GSSBID_ASSERT(mech->elements == NULL);
+
         *mech = toid;
         if (toid.length == 0)
             return GSS_S_BAD_MECH;
-    } else if (!oidEqual(&toid, mech)) {
-        *minor = GSSBID_WRONG_MECH;
-        return GSS_S_BAD_MECH;
     }
 
     if (ret_tok_type != NULL) {
@@ -272,4 +277,3 @@ verifyTokenHeader(OM_uint32 *minor,
     *minor = 0;
     return GSS_S_COMPLETE;
 }
-

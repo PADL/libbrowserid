@@ -177,10 +177,15 @@ gssBidMakeToken(OM_uint32 *minor,
                 gss_buffer_t outputToken)
 {
     unsigned char *p;
+    gss_OID mech = GSS_C_NO_OID;
 
-    GSSBID_ASSERT(ctx->mechanismUsed != GSS_C_NO_OID);
+    /*
+     * Only the initialContextToken contains the mechanism OID.
+     */
+    if (GSSBID_SM_STATE(ctx) == GSSBID_STATE_INITIAL)
+        mech = ctx->mechanismUsed;
 
-    outputToken->length = tokenSize(ctx->mechanismUsed, innerToken->length);
+    outputToken->length = tokenSize(mech, innerToken->length);
     outputToken->value = GSSBID_MALLOC(outputToken->length);
     if (outputToken->value == NULL) {
         *minor = ENOMEM;
@@ -188,7 +193,7 @@ gssBidMakeToken(OM_uint32 *minor,
     }
 
     p = (unsigned char *)outputToken->value;
-    makeTokenHeader(ctx->mechanismUsed, innerToken->length, &p, tokenType);
+    makeTokenHeader(mech, innerToken->length, &p, tokenType);
     memcpy(p, innerToken->value, innerToken->length);
 
     *minor = 0;
@@ -206,11 +211,9 @@ gssBidVerifyToken(OM_uint32 *minor,
     size_t bodySize;
     unsigned char *p = (unsigned char *)inputToken->value;
     gss_OID_desc oidBuf;
-    gss_OID oid;
+    gss_OID oid = GSS_C_NO_OID;
 
-    if (*mechanismUsed != GSS_C_NO_OID) {
-        oid = *mechanismUsed;
-    } else {
+    if (*mechanismUsed == GSS_C_NO_OID) {
         oidBuf.elements = NULL;
         oidBuf.length = 0;
         oid = &oidBuf;

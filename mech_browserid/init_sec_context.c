@@ -117,14 +117,17 @@ gssBidInitAssertionToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    major = initBegin(minor, ctx, target_name, mech_type,
-                      req_flags, time_req, input_chan_bindings);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    if (GSSBID_SM_STATE(ctx) == GSSBID_STATE_INITIAL) {
+        major = initBegin(minor, ctx, target_name, mech_type,
+                          req_flags, time_req, input_chan_bindings);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
     BID_ASSERT(ctx->cred->assertion.length != 0);
 
-    major = gssBidMakeToken(minor, ctx, &ctx->cred->assertion, TOK_TYPE_INITIATOR_CONTEXT, output_token);
+    major = gssBidMakeToken(minor, ctx, &ctx->cred->assertion,
+                            TOK_TYPE_INITIATOR_CONTEXT, output_token);
     if (GSS_ERROR(major))
         goto cleanup;
 

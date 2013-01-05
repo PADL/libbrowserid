@@ -272,7 +272,8 @@ gss_accept_sec_context(OM_uint32 *minor,
         mech = ctx->mechanismUsed;
     }
 
-    major = gssBidVerifyToken(minor, input_token, &actualTokenType, &innerInputToken, &mech);
+    major = gssBidVerifyToken(minor, input_token, &actualTokenType,
+                              &innerInputToken, &mech);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -308,7 +309,8 @@ gss_accept_sec_context(OM_uint32 *minor,
         goto cleanup;
 
     if (innerOutputToken.value != NULL) {
-        tmpMajor = gssBidMakeToken(&tmpMinor, ctx, &innerOutputToken, TOK_TYPE_ACCEPTOR_CONTEXT, output_token);
+        tmpMajor = gssBidMakeToken(&tmpMinor, ctx, &innerOutputToken,
+                                   TOK_TYPE_ACCEPTOR_CONTEXT, output_token);
         if (GSS_ERROR(tmpMajor)) {
             major = tmpMajor;
             goto cleanup;
