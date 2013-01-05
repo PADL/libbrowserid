@@ -332,6 +332,10 @@ The authenticator session key (ASK) is used instead of the DHK for re-authentica
 
 **TODO** would it be more conservative to only mix in the time and nonce from the authenticator rather than the entire encoded authenticator?
 
+#### GSS PRF
+
+This follows [RFC4402](http://www.ietf.org/rfc/rfc4402.txt).
+
 ### Naming extensions
 
 The acceptor MAY surface attributes from the assertion and any certificates using GSS_Get_name_attribute(). The URN prefix is "urn:ietf:params:gss:jwt". The acceptor MUST filter any sensitive attributes before returning them to the application.
