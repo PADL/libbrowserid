@@ -124,3 +124,21 @@ cleanup:
 
     return err;
 }
+
+BIDError
+BIDAcquireReplayCache(
+    BIDContext context,
+    const char *szCacheName,
+    BIDReplayCache *pCache)
+{
+    return _BIDAcquireCache(context, szCacheName, pCache);
+}
+
+BIDError
+BIDReleaseReplayCache(
+    BIDContext context,
+    BIDReplayCache cache)
+{
+    return _BIDReleaseCache(context, cache);
+}
+

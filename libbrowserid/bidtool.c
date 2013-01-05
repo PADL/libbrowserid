@@ -546,13 +546,13 @@ int main(int argc, char *argv[])
         if (strcmp(argv[0], _BIDToolHandlers[i].Argument) == 0) {
             switch (_BIDToolHandlers[i].CacheUsage) {
             case TICKET_CACHE:
-                ulCacheOpt = BID_PARAM_TICKET_CACHE;
+                ulCacheOpt = BID_PARAM_TICKET_CACHE_NAME;
                 break;
             case REPLAY_CACHE:
-                ulCacheOpt = BID_PARAM_REPLAY_CACHE;
+                ulCacheOpt = BID_PARAM_REPLAY_CACHE_NAME;
                 break;
             case AUTHORITY_CACHE:
-                ulCacheOpt = BID_PARAM_AUTHORITY_CACHE;
+                ulCacheOpt = BID_PARAM_AUTHORITY_CACHE_NAME;
                 break;
             default:
                 ulCacheOpt = 0;

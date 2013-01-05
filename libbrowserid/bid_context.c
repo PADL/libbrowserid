@@ -100,7 +100,7 @@ BIDReleaseContext(BIDContext context)
 BIDError
 BIDSetContextParam(
     BIDContext context,
-    uint32_t ulParam,
+    BIDContextParameter ulParam,
     void *value)
 {
     BIDError err = BID_S_OK;
@@ -123,17 +123,17 @@ BIDSetContextParam(
     case BID_PARAM_DH_KEYEX_SIZE:
         context->DhKeySize = *(uint32_t *)value;
         break;
-    case BID_PARAM_AUTHORITY_CACHE:
-    case BID_PARAM_REPLAY_CACHE:
-    case BID_PARAM_TICKET_CACHE: {
+    case BID_PARAM_AUTHORITY_CACHE_NAME:
+    case BID_PARAM_REPLAY_CACHE_NAME:
+    case BID_PARAM_TICKET_CACHE_NAME: {
         const char *szCacheName;
         BIDCache cache, *pCache = NULL;
 
-        if (ulParam == BID_PARAM_AUTHORITY_CACHE)
+        if (ulParam == BID_PARAM_AUTHORITY_CACHE_NAME)
             pCache = &context->AuthorityCache;
-        else if (ulParam == BID_PARAM_REPLAY_CACHE)
+        else if (ulParam == BID_PARAM_REPLAY_CACHE_NAME)
             pCache = &context->ReplayCache;
-        else if (ulParam == BID_PARAM_TICKET_CACHE)
+        else if (ulParam == BID_PARAM_TICKET_CACHE_NAME)
             pCache = &context->TicketCache;
 
         err = _BIDGetCacheName(context, *pCache, &szCacheName);
@@ -150,6 +150,21 @@ BIDSetContextParam(
         }
         break;
     }
+    case BID_PARAM_AUTHORITY_CACHE:
+    case BID_PARAM_REPLAY_CACHE:
+    case BID_PARAM_TICKET_CACHE: {
+        BIDCache *pCache = NULL;
+
+        if (ulParam == BID_PARAM_AUTHORITY_CACHE_NAME)
+            pCache = &context->AuthorityCache;
+        else if (ulParam == BID_PARAM_REPLAY_CACHE_NAME)
+            pCache = &context->ReplayCache;
+        else if (ulParam == BID_PARAM_TICKET_CACHE_NAME)
+            pCache = &context->TicketCache;
+
+        _BIDReleaseCache(context, *pCache);
+        *pCache = (BIDCache)value;
+    }
     default:
         err = BID_S_INVALID_PARAMETER;
         break;
@@ -161,7 +176,7 @@ BIDSetContextParam(
 BIDError
 BIDGetContextParam(
     BIDContext context,
-    uint32_t ulParam,
+    BIDContextParameter ulParam,
     void **pValue)
 {
     BIDError err = BID_S_OK;
@@ -194,14 +209,23 @@ BIDGetContextParam(
     case BID_PARAM_CONTEXT_OPTIONS:
         *((uint32_t *)pValue) = context->ContextOptions;
         break;
-    case BID_PARAM_REPLAY_CACHE:
+    case BID_PARAM_REPLAY_CACHE_NAME:
         err = _BIDGetCacheName(context, context->ReplayCache, (const char **)pValue);
         break;
-    case BID_PARAM_AUTHORITY_CACHE:
+    case BID_PARAM_AUTHORITY_CACHE_NAME:
         err = _BIDGetCacheName(context, context->AuthorityCache, (const char **)pValue);
         break;
-    case BID_PARAM_TICKET_CACHE:
+    case BID_PARAM_TICKET_CACHE_NAME:
         err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
+        break;
+    case BID_PARAM_REPLAY_CACHE:
+        *pValue = context->ReplayCache;
+        break;
+    case BID_PARAM_AUTHORITY_CACHE:
+        *pValue = context->AuthorityCache;
+        break;
+    case BID_PARAM_TICKET_CACHE:
+        *pValue = context->TicketCache;
         break;
     case BID_PARAM_DH_KEYEX_SIZE:
         *((uint32_t *)pValue) = context->DhKeySize;

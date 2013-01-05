@@ -531,3 +531,21 @@ cleanup:
 
     return err;
 }
+
+BIDError
+BIDAcquireTicketCache(
+    BIDContext context,
+    const char *szCacheName,
+    BIDTicketCache *pCache)
+{
+    return _BIDAcquireCache(context, szCacheName, pCache);
+}
+
+BIDError
+BIDReleaseTicketCache(
+    BIDContext context,
+    BIDTicketCache cache)
+{
+    return _BIDReleaseCache(context, cache);
+}
+

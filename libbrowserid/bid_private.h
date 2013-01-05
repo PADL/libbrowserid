@@ -117,9 +117,6 @@ _BIDBase64UrlDecode(const char *str, unsigned char **pData, size_t *cbData);
 /*
  * bid_cache.c
  */
-struct BIDCacheDesc;
-typedef struct BIDCacheDesc *BIDCache;
-
 struct BIDCacheOps {
     const char *Scheme;
 
@@ -217,9 +214,9 @@ struct BIDContextDesc {
     char *VerifierUrl;
     uint32_t MaxDelegations;
     uint32_t Skew;
-    BIDCache AuthorityCache;
-    BIDCache ReplayCache;
-    BIDCache TicketCache;
+    BIDAuthorityCache AuthorityCache;
+    BIDReplayCache ReplayCache;
+    BIDTicketCache TicketCache;
     uint32_t DhKeySize; 
     uint32_t TicketLifetime;
 };

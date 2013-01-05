@@ -161,26 +161,60 @@ BIDAcquireContext(uint32_t ulContextOptions, BIDContext *pContext);
 BIDError
 BIDReleaseContext(BIDContext context);
 
-#define BID_PARAM_AUDIENCES             0x00000001
-#define BID_PARAM_SECONDARY_AUTHORITIES 0x00000002
-#define BID_PARAM_VERIFIER_URL          0x00000003
-#define BID_PARAM_JSON_ERROR_INFO       0x00000004 /* debug only */
-#define BID_PARAM_MAX_DELEGATIONS       0x00000005
-#define BID_PARAM_SKEW                  0x00000006
-#define BID_PARAM_CONTEXT_OPTIONS       0x00000007
-#define BID_PARAM_REPLAY_CACHE          0x00000008
-#define BID_PARAM_AUTHORITY_CACHE       0x00000009
-#define BID_PARAM_DH_KEYEX_SIZE         0x0000000A
-#define BID_PARAM_TICKET_CACHE          0x0000000B
+typedef enum {
+    BID_PARAM_AUDIENCES = 1,
+    BID_PARAM_SECONDARY_AUTHORITIES,
+    BID_PARAM_VERIFIER_URL,
+    BID_PARAM_JSON_ERROR_INFO,
+    BID_PARAM_MAX_DELEGATIONS,
+    BID_PARAM_SKEW,
+    BID_PARAM_CONTEXT_OPTIONS,
+    BID_PARAM_DH_KEYEX_SIZE,
+    BID_PARAM_REPLAY_CACHE_NAME,
+    BID_PARAM_AUTHORITY_CACHE_NAME,
+    BID_PARAM_TICKET_CACHE_NAME,
+    BID_PARAM_REPLAY_CACHE,
+    BID_PARAM_AUTHORITY_CACHE,
+    BID_PARAM_TICKET_CACHE,
+} BIDContextParameter;
 
 BIDError
-BIDSetContextParam(BIDContext context, uint32_t ulParam, void *value);
+BIDSetContextParam(BIDContext context, BIDContextParameter ulParam, void *value);
 
 BIDError
-BIDGetContextParam(BIDContext context, uint32_t ulParam, void **pValue);
+BIDGetContextParam(BIDContext context, BIDContextParameter ulParam, void **pValue);
 
 struct BIDIdentityDesc;
 typedef struct BIDIdentityDesc *BIDIdentity;
+
+struct BIDCacheDesc;
+typedef struct BIDCacheDesc *BIDCache;
+
+typedef BIDCache BIDReplayCache;
+typedef BIDCache BIDAuthorityCache;
+typedef BIDCache BIDTicketCache;
+
+BIDError
+BIDAcquireTicketCache(
+    BIDContext context,
+    const char *szCacheName,
+    BIDTicketCache *pCache);
+
+BIDError
+BIDReleaseTicketCache(
+    BIDContext context,
+    BIDTicketCache cache);
+
+BIDError
+BIDAcquireReplayCache(
+    BIDContext context,
+    const char *szCacheName,
+    BIDReplayCache *pCache);
+
+BIDError
+BIDReleaseReplayCache(
+    BIDContext context,
+    BIDReplayCache cache);
 
 /*
  * User agent.
