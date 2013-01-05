@@ -426,6 +426,13 @@ _BIDVerifyReauthAssertion(
     err = _BIDValidateExpiry(context, verificationTime, cred);
     BID_BAIL_ON_ERROR(err);
 
+    /*
+     * Authenticators MUST expire Skew minutes after they are issued.
+     * Delete the expiry attribute, if present, to prevent the initiator
+     * sending an authenticator that expires too far into the future.
+     */
+    json_object_del(ap->Payload, "exp");
+
     *pVerifierCred = json_incref(json_object_get(cred, "ark"));
 
     err = _BIDVerifySignature(context, ap, *pVerifierCred);
