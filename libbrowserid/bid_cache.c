@@ -12,7 +12,8 @@ struct BIDCacheDesc {
 };
 
 static struct BIDCacheOps *_BIDCacheOps[] = {
-    &_BIDFileCache
+    &_BIDFileCache,
+    &_BIDMemoryCache
 };
 
 BIDError

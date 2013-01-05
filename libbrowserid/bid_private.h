@@ -315,6 +315,12 @@ _BIDParseJWT(
     BIDJWT *pJwt);
 
 /*
+ * bid_fcache.c
+ */
+
+extern struct BIDCacheOps _BIDMemoryCache;
+
+/*
  * bid_openssl.c
  */
 
