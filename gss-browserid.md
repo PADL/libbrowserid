@@ -95,7 +95,7 @@ If the ticket cannot be found, or the authentication fails, the acceptor MAY ret
 
 ### Context tokens
 
-All context establishment tokens are framed per section 1 of [RFC2743].
+The initial context token is framed per section 1 of [RFC2743].
 
     GSS-API DEFINITIONS ::=
             BEGIN
@@ -113,18 +113,19 @@ All context establishment tokens are framed per section 1 of [RFC2743].
                     }
             END
             
+Subsequent context tokens do not have this framing, i.e. they consist only of the innerToken.
+
 The innerToken always contains a two octet token ID followed by a [JSON Web Token][JWT]. This document defines the following token IDs:
 
     TOK_TYPE_INITIATOR_CONTEXT			0xB1 0xD1
     TOK_TYPE_ACCEPTOR_CONTEXT			0xB1 0xD2
     TOK_TYPE_DELETE_CONTEXT				0xB1 0xD3
     
-Message protection (confidentiality/wrap) are encoded according to [RFC4121].
+Message protection (confidentiality/wrap) are framed according to [RFC4121].
 
 **TBD**:
 
 * Do we want to do away with the token ID and wrap everything in JSON, or assume that initiator tokens are always backed assertions and acceptor responses always JWTs? The latter would be simple but is not particularly flexible for future evolution.
-* The GSS-API framing is only required on the initial context token, but historically many mechanisms use it on all tokens. Should this be revisited?
 
 ### Mechanism OIDs
 
