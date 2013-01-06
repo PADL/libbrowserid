@@ -46,8 +46,9 @@
 OM_uint32
 gssBidAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
-    OM_uint32 tmpMinor;
+    OM_uint32 major, tmpMinor;
     gss_cred_id_t cred;
+    BIDError err;
 
     *pCred = GSS_C_NO_CREDENTIAL;
 
@@ -61,6 +62,13 @@ gssBidAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         *minor = GSSBID_GET_LAST_ERROR();
         gssBidReleaseCred(&tmpMinor, &cred);
         return GSS_S_FAILURE;
+    }
+
+    err = BIDAcquireContext(0, &cred->bidContext);
+    if (err != BID_S_OK) {
+        major = gssBidMapError(minor, err);
+        gssBidReleaseCred(&tmpMinor, &cred);
+        return major;
     }
 
     *pCred = cred;
@@ -85,6 +93,8 @@ gssBidReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     gssBidReleaseName(&tmpMinor, &cred->name);
     gssBidReleaseName(&tmpMinor, &cred->target);
     gss_release_buffer(&tmpMinor, &cred->assertion);
+    BIDReleaseTicketCache(cred->bidContext, cred->bidTicketCache);
+    BIDReleaseContext(cred->bidContext);
 
     GSSBID_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
@@ -345,6 +355,39 @@ cleanup:
     return major;
 }
 
+OM_uint32
+gssBidSetCredTicketCacheName(OM_uint32 *minor,
+                             gss_cred_id_t cred,
+                             const gss_buffer_t cacheName)
+{
+    OM_uint32 major;
+    BIDError err;
+    BIDCache newCache = BID_C_NO_TICKET_CACHE;
+
+    if (cred->flags & CRED_FLAG_RESOLVED) {
+        major = GSS_S_FAILURE;
+        *minor = GSSBID_CRED_RESOLVED;
+        goto cleanup;
+    }
+
+    if (cacheName != GSS_C_NO_BUFFER) {
+        err = BIDAcquireTicketCache(cred->bidContext, (char *)cacheName->value, &newCache);
+        if (err != BID_S_OK) {
+            major = gssBidMapError(minor, err);
+            goto cleanup;
+        }
+    }
+
+    BIDReleaseTicketCache(cred->bidContext, cred->bidTicketCache);
+    cred->bidTicketCache = newCache;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    return major;
+}
+
 static OM_uint32
 gssBidDuplicateCred(OM_uint32 *minor,
                     const gss_cred_id_t src,
@@ -468,6 +511,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         }
 
         err = BIDAcquireAssertion(ctx->bidContext,
+                                  cred->bidTicketCache,
                                   (const char *)bufAudienceOrSpn.value,
                                   pbChannelBindings,
                                   cbChannelBindings,

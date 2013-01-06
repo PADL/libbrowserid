@@ -66,6 +66,11 @@ extern gss_OID GSS_BROWSERID_CRED_SET_CRED_ASSERTION;
 extern gss_OID GSS_BROWSERID_CRED_SET_CRED_FLAG;
 
 /*
+ * A string containing a path to the ticket cache name.
+ */
+extern gss_OID GSS_BROWSERID_CRED_SET_CRED_TICKET_CACHE;
+
+/*
  * Credentials flag indicating the local attributes
  * processing should be skipped.
  */

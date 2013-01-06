@@ -140,6 +140,8 @@ struct gss_cred_id_struct
     gss_buffer_desc assertion;
     gss_OID_set mechanisms;
     time_t expiryTime;
+    BIDContext bidContext;
+    BIDTicketCache bidTicketCache;
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001

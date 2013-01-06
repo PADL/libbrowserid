@@ -249,6 +249,11 @@ gssBidSetCredService(OM_uint32 *minor,
                      const gss_name_t target);
 
 OM_uint32
+gssBidSetCredTicketCacheName(OM_uint32 *minor,
+                             gss_cred_id_t cred,
+                             const gss_buffer_t cacheName);
+
+OM_uint32
 gssBidResolveInitiatorCred(OM_uint32 *minor,
                            const gss_cred_id_t cred,
                            gss_ctx_id_t ctx,
