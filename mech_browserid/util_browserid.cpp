@@ -166,12 +166,10 @@ BIDGSSJWTAttributeProvider::getAttribute(const gss_buffer_t attr,
         break;
     case JSON_STRING:
         szValue = (char *)jAttr.string();
-        bIsBinary = base64Valid(szValue);
-        if (bIsBinary) {
-            if (_BIDBase64UrlDecode(szValue, (unsigned char **)&valueBuf.value, &valueBuf.length) != BID_S_OK)
-                return false;
-            bFreeValue = true;
-        } else
+        if (base64Valid(szValue) &&
+            _BIDBase64UrlDecode(szValue, (unsigned char **)&valueBuf.value, &valueBuf.length) == BID_S_OK)
+            bFreeValue = bIsBinary = true;
+        else
             valueBuf.value = (void *)szValue;
         break;
     case JSON_INTEGER:
