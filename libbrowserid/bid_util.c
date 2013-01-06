@@ -843,10 +843,14 @@ _BIDMakeAudience(
     char *szPackedAudience = NULL, *p;
     size_t cchAudienceOrSpn;
 
-    if (szAudienceOrSpn == NULL)
-        return BID_S_INVALID_PARAMETER;
-
     if (context->ContextOptions & BID_CONTEXT_GSS) {
+        /*
+         * We need to support the GSS target name being NULL, so if we get no
+         * audience, just map it to the empty string for now.
+         */
+        if (szAudienceOrSpn == NULL)
+            szAudienceOrSpn = "";
+
         cchAudienceOrSpn = strlen(szAudienceOrSpn);
 
         szPackedAudience = BIDMalloc(BID_GSS_AUDIENCE_PREFIX_LEN + cchAudienceOrSpn + 1);
@@ -861,8 +865,12 @@ _BIDMakeAudience(
         *p = '\0';
 
         err = BID_S_OK;
-    } else
+    } else {
+        if (szAudienceOrSpn == NULL)
+            return BID_S_INVALID_PARAMETER;
+
         err = _BIDDuplicateString(context, szAudienceOrSpn, &szPackedAudience);
+    }
 
     if (err == BID_S_OK)
         *pszPackedAudience = szPackedAudience;
