@@ -9,7 +9,6 @@
 static BIDError
 _BIDMakeClaims(
     BIDContext context,
-    const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     json_t **pClaims)
@@ -21,20 +20,11 @@ _BIDMakeClaims(
 
     *pClaims = NULL;
 
-    if (szAudienceOrSpn == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
     claims = json_object();
     if (claims == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
-
-    err = _BIDJsonObjectSet(context, claims, "aud", json_string(szAudienceOrSpn),
-                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-    BID_BAIL_ON_ERROR(err);
 
     if (pbChannelBindings != NULL) {
         err = _BIDJsonBinaryValue(context, pbChannelBindings, cbChannelBindings, &cbt);
@@ -115,7 +105,10 @@ BIDAcquireAssertion(
     }
 #endif
 
-    err = _BIDMakeClaims(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings, &claims);
+    err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings, &claims);
     BID_BAIL_ON_ERROR(err);
 
     if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
@@ -129,10 +122,7 @@ BIDAcquireAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDPackAudience(context, claims, &szPackedAudience);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDBrowserGetAssertion(context, szPackedAudience, szAudienceOrSpn,
+    err = _BIDBrowserGetAssertion(context, szPackedAudience, szAudienceOrSpn, claims,
                                   szIdentityName, ulReqFlags, &szAssertion);
     BID_BAIL_ON_ERROR(err);
 

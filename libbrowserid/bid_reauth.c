@@ -93,7 +93,10 @@ _BIDMakeTicketCacheKey(
         goto cleanup;
     }
 
-    err = _BIDDuplicateString(context, szAudienceOrSpn, &szCacheKey);
+    if (context->ContextOptions & BID_CONTEXT_GSS)
+        err = _BIDMakeAudience(context, szAudienceOrSpn, &szCacheKey);
+    else
+        err = _BIDDuplicateString(context, szAudienceOrSpn, &szCacheKey);
     BID_BAIL_ON_ERROR(err);
 #endif
 

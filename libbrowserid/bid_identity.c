@@ -47,7 +47,7 @@ BIDVerifyAssertion(
     BIDContext context,
     BIDReplayCache replayCache,
     const char *szAssertion,
-    const char *szAudience,
+    const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime,
@@ -58,6 +58,7 @@ BIDVerifyAssertion(
 {
     BIDError err;
     uint32_t ulRetFlags = 0;
+    char *szPackedAudience = NULL;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -65,7 +66,7 @@ BIDVerifyAssertion(
     *pExpiryTime = 0;
     *pulRetFlags = 0;
 
-    if (szAssertion == NULL || szAudience == NULL)
+    if (szAssertion == NULL || szAudienceOrSpn == NULL)
         return BID_S_INVALID_PARAMETER;
 
     if ((context->ContextOptions & BID_CONTEXT_RP) == 0)
@@ -76,12 +77,15 @@ BIDVerifyAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
+    err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
+    BID_BAIL_ON_ERROR(err);
+
     if (context->ContextOptions & BID_CONTEXT_VERIFY_REMOTE)
-        err = _BIDVerifyRemote(context, replayCache, szAssertion, szAudience,
+        err = _BIDVerifyRemote(context, replayCache, szAssertion, szPackedAudience,
                                pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
                                pVerifiedIdentity, pExpiryTime, &ulRetFlags);
     else
-        err = _BIDVerifyLocal(context, replayCache, szAssertion, szAudience,
+        err = _BIDVerifyLocal(context, replayCache, szAssertion, szPackedAudience,
                               pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
                               pVerifiedIdentity, pExpiryTime, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
@@ -99,6 +103,8 @@ BIDVerifyAssertion(
     }
 
 cleanup:
+    BIDFree(szPackedAudience);
+
     *pulRetFlags = ulRetFlags;
     return err;
 }

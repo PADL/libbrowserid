@@ -11,6 +11,8 @@
 #include <AppKit/AppKit.h>
 #include <WebKit/WebKit.h>
 
+#include "bid_json.h"
+
 @interface BIDIdentityDialog : NSPanel
 + (BIDIdentityDialog *)identityDialog;
 @end
@@ -21,7 +23,7 @@
     return [[[self alloc] init] autorelease];
 }
 
-- init
+- (id)init
 {
     NSRect frame = NSMakeRect(0, 0, 700, 375);
     NSUInteger styleMask = NSTitledWindowMask | NSUtilityWindowMask;
@@ -55,6 +57,7 @@
 {
 @private
     NSString *audience;
+    NSDictionary *claims;
     NSString *servicePrincipalName;
     NSString *requiredEmail;
     NSString *siteName;
@@ -69,16 +72,25 @@
 /* accessors */
 - (void)setAudience:(NSString *)value;
 - (NSString *)audience;
+
+- (void)setClaims:(NSDictionary *)value;
+- (NSDictionary *)claims;
+
 - (void)setServicePrincipalName:(NSString *)value;
 - (NSString *)servicePrincipalName;
+
 - (void)setRequiredEmail:(NSString *)value;
 - (NSString *)requiredEmail;
+
 - (void)setAssertion:(NSString *)value;
+- (NSString *)assertion;
+
 - (BOOL)canInteract;
 - (void)setCanInteract:(BOOL)value;
+
 - (BOOL)silent;
 - (void)setSilent:(BOOL)value;
-- (NSString *)assertion;
+
 - (BIDError)bidError;
 
 /* helpers */
@@ -90,7 +102,7 @@
 
 /* public interface */
 - (BIDError)getAssertion;
-- (instancetype)initWithAudience:(NSString *)anAudience servicePrincipalName:(NSString *)aSPN;
+- (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims;
 @end
 
 @implementation BIDIdentityController
@@ -106,7 +118,20 @@
 {
     if (value != audience) {
         [audience release];
-        audience = [value copy];
+        audience = [value retain];
+    }
+}
+
+- (NSDictionary *)claims
+{
+    return [[claims retain] autorelease];
+}
+
+- (void)setClaims:(NSDictionary *)value
+{
+    if (value != claims) {
+        [claims release];
+        claims = [value retain];
     }
 }
 
@@ -121,7 +146,7 @@
         NSArray *princComponents;
 
         [servicePrincipalName release];
-        servicePrincipalName = [value copy];
+        servicePrincipalName = [value retain];
 
         princComponents = [servicePrincipalName componentsSeparatedByString:@"/"];
         if ([princComponents count] > 1)
@@ -140,7 +165,7 @@
 {
     if (value != requiredEmail) {
         [requiredEmail release];
-        requiredEmail = [value copy];
+        requiredEmail = [value retain];
     }
 }
 
@@ -173,7 +198,7 @@
 {
     if (value != assertion) {
         [assertion release];
-        assertion = [value copy];
+        assertion = [value retain];
     }
 }
 
@@ -243,6 +268,7 @@
 {
     if (strcmp(property, "siteName") == 0               ||
         strcmp(property, "servicePrincipalName") == 0   ||
+        strcmp(property, "claims") == 0                 ||
         strcmp(property, "silent") == 0                 ||
         strcmp(property, "canInteract") == 0            ||
         strcmp(property, "requiredEmail") == 0          ||
@@ -263,8 +289,18 @@
 - (void)acquireAssertion:(WebView *)sender
 {
     NSString *function = @"                                                                             \
+        var jwcrypto = require('./lib/jwcrypto');                                                       \
+        var assertionSign = jwcrypto.assertion.sign;                                                    \
         var controller = window.IdentityController;                                                     \
         var options = { siteName: controller.siteName, silent: controller.silent, requiredEmail: controller.requiredEmail };           \
+                                                                                                        \
+        jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {                   \
+            var gssPayload = eval('(' + controller.claims.stringRepresentation() + ')');                \
+            for (var k in payload) {                                                                    \
+                if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                              \
+            }                                                                                           \
+            assertionSign(gssPayload, assertionParams, secretKey, cb);                                  \
+        };                                                                                              \
                                                                                                         \
         BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };            \
                                                                                                         \
@@ -281,6 +317,7 @@
     ";
 
     [sender stringByEvaluatingJavaScriptFromString:function];
+
     if (!silent) {
         [identityDialog makeFirstResponder:sender];
         [identityDialog setContentView:sender];
@@ -345,7 +382,7 @@
 #endif
 
 #pragma mark - public
-- init
+- (id)init
 {
     audience = nil;
     assertion = nil;
@@ -355,12 +392,12 @@
     return [super init];
 }
 
-- initWithAudience:(NSString *)anAudience servicePrincipalName:(NSString *)aSPN
+- (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims
 {
     self = [self init];
 
     [self setAudience:anAudience];
-    [self setServicePrincipalName:aSPN];
+    [self setClaims:someClaims];
 
     return self;
 }
@@ -407,6 +444,7 @@ _BIDWebkitGetAssertion(
     BIDContext context,
     const char *szPackedAudience,
     const char *szAudienceOrSpn,
+    json_t *claims,
     const char *szIdentityName,
     uint32_t ulReqFlags,
     char **pAssertion)
@@ -435,7 +473,10 @@ _BIDWebkitGetAssertion(
         return BID_S_INTERACT_UNAVAILABLE;
 
     @autoreleasepool {
-        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithCString:szPackedAudience] servicePrincipalName:[NSString stringWithCString:szAudienceOrSpn]];
+        NSDictionary *claimsDict = [[BIDJsonDictionary alloc] initWithJsonObject:claims];
+
+        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithCString:szPackedAudience] claims:claimsDict];
+        [controller setServicePrincipalName:[NSString stringWithCString:szAudienceOrSpn]];
 
         if (szIdentityName != NULL) {
             [controller setRequiredEmail:[NSString stringWithCString:szIdentityName]];
@@ -460,12 +501,13 @@ _BIDBrowserGetAssertion(
     BIDContext context,
     const char *szPackedAudience,
     const char *szAudienceOrSpn,
+    json_t *claims,
     const char *szIdentityName,
     uint32_t ulReqFlags,
     char **pAssertion)
 {
 #ifdef __APPLE__
-    return _BIDWebkitGetAssertion(context, szPackedAudience, szAudienceOrSpn,
+    return _BIDWebkitGetAssertion(context, szPackedAudience, szAudienceOrSpn, claims,
                                   szIdentityName, ulReqFlags, pAssertion);
 #else
     return BID_S_INTERACT_UNAVAILABLE;

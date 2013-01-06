@@ -458,6 +458,12 @@ _BIDVerifyRemote(
  * bid_util.c
  */
 BIDError
+_BIDMakeAudience(
+    BIDContext context,
+    const char *szAudienceOrSpn,
+    char **pszPackedAudience);
+
+BIDError
 _BIDJsonBinaryValue(
     BIDContext context,
     const unsigned char *pbData,
@@ -579,12 +585,6 @@ _BIDRootCert(
     BIDContext context,
     BIDBackedAssertion backedAssertion);
 
-BIDError
-_BIDPackAudience(
-    BIDContext context,
-    json_t *claims,
-    char **pszPackedAudience);
-
 int
 _BIDCanInteractP(
     BIDContext context,
@@ -672,7 +672,8 @@ BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
     const char *szPackedAudience,
-    const char *szAudienceSpn,
+    const char *szAudienceOrSpn,
+    json_t *claims,
     const char *szIdentityName, /* optional */
     uint32_t ulReqFlags,
     char **pAssertion);

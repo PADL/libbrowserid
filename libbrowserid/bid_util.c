@@ -12,12 +12,6 @@
 
 #include "bid_private.h"
 
-static BIDError
-_BIDUnpackAudience(
-    BIDContext context,
-    const char *szPackedAudience,
-    json_t **pClaims);
-
 BIDError
 _BIDDuplicateString(
     BIDContext context BID_UNUSED,
@@ -197,14 +191,7 @@ _BIDUnpackBackedAssertion(
         goto cleanup;
     }
 
-    if (assertion->cCertificates != 0) {
-        /* no packing for reauth assertions */
-        err = _BIDUnpackAudience(context, aud, &assertion->Claims);
-        BID_BAIL_ON_ERROR(err);
-    } else {
-        /* claims directly stored in assertion for reauth */
-        assertion->Claims = json_incref(assertion->Assertion->Payload);
-    }
+    assertion->Claims = json_incref(assertion->Assertion->Payload);
 
     *pAssertion = assertion;
 
@@ -846,184 +833,41 @@ _BIDRootCert(
     return backedAssertion->rCertificates[0]->Payload;
 }
 
-/*
- * Return a claims dictionary that we have packed into a URL.
- */
-static BIDError
-_BIDUnpackAudience(
-    BIDContext context,
-    const char *szPackedAudience,
-    json_t **pClaims)
-{
-    BIDError err;
-    const char *p;
-    char *szAudience = NULL;
-    size_t cchAudience;
-    json_t *claims = NULL;
-
-    *pClaims = NULL;
-
-    BID_CONTEXT_VALIDATE(context);
-
-    if (szPackedAudience == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
-    claims = json_object();
-    if (claims == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    if ((context->ContextOptions & BID_CONTEXT_GSS) == 0) {
-        err = _BIDJsonObjectSet(context, claims, "aud", json_string(szPackedAudience),
-                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-        BID_BAIL_ON_ERROR(err);
-
-        err = BID_S_OK;
-        *pClaims = json_incref(claims);
-        goto cleanup;
-    }
-
-    cchAudience = strlen(szPackedAudience);
-
-    if (cchAudience <= BID_GSS_AUDIENCE_PREFIX_LEN ||
-        memcmp(szPackedAudience, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN) != 0) {
-        err = BID_S_INVALID_AUDIENCE_URN;
-        goto cleanup;
-    }
-
-    szPackedAudience += BID_GSS_AUDIENCE_PREFIX_LEN;
-
-    p = strrchr(szPackedAudience, '#');
-    if (p != NULL) {
-        err = _BIDDecodeJson(context, p + 1, &claims);
-        BID_BAIL_ON_ERROR(err);
-
-        cchAudience = (p - szPackedAudience);
-    } else {
-        claims = json_object();
-        if (claims == NULL) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
-
-        cchAudience = strlen(szPackedAudience);
-    }
-
-    szAudience = BIDMalloc(cchAudience + 1);
-    if (szAudience == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    memcpy(szAudience, szPackedAudience, cchAudience);
-    szAudience[cchAudience] = '\0';
-
-    err = _BIDJsonObjectSet(context, claims, "aud", json_string(szAudience),
-                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-    BID_BAIL_ON_ERROR(err);
-
-    err = BID_S_OK;
-    *pClaims = claims;
-
-cleanup:
-    BIDFree(szAudience);
-    if (err != BID_S_OK)
-        json_decref(claims);
-
-    return err;
-}
-
 BIDError
-_BIDPackAudience(
+_BIDMakeAudience(
     BIDContext context,
-    json_t *claims,
+    const char *szAudienceOrSpn,
     char **pszPackedAudience)
 {
     BIDError err;
-    json_t *protocolClaims = NULL;
-    const char *szAudience;
     char *szPackedAudience = NULL, *p;
-    size_t cchAudience, cchPackedAudience;
-    char *szEncodedClaims = NULL;
-    size_t cchEncodedClaims;
+    size_t cchAudienceOrSpn;
 
-    *pszPackedAudience = NULL;
+    if (szAudienceOrSpn == NULL)
+        return BID_S_INVALID_PARAMETER;
 
-    BID_CONTEXT_VALIDATE(context);
+    if (context->ContextOptions & BID_CONTEXT_GSS) {
+        cchAudienceOrSpn = strlen(szAudienceOrSpn);
 
-    if (claims == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
+        szPackedAudience = BIDMalloc(BID_GSS_AUDIENCE_PREFIX_LEN + cchAudienceOrSpn + 1);
+        if (szPackedAudience == NULL)
+            return BID_S_NO_MEMORY;
 
-    if (json_object_get(claims, "aud") == NULL) {
-        err = BID_S_MISSING_AUDIENCE;
-        goto cleanup;
-    }
-
-    if ((context->ContextOptions & BID_CONTEXT_GSS) == 0) {
-        szAudience = json_string_value(json_object_get(claims, "aud"));
-
-        err = _BIDDuplicateString(context, szAudience, pszPackedAudience);
-        BID_BAIL_ON_ERROR(err);
+        p = szPackedAudience;
+        memcpy(p, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN);
+        p += BID_GSS_AUDIENCE_PREFIX_LEN;
+        memcpy(p, szAudienceOrSpn, cchAudienceOrSpn);
+        p += cchAudienceOrSpn;
+        *p = '\0';
 
         err = BID_S_OK;
-        goto cleanup;
-    }
+    } else
+        err = _BIDDuplicateString(context, szAudienceOrSpn, &szPackedAudience);
 
-    protocolClaims = json_copy(claims);
-    if (protocolClaims == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    szAudience = json_string_value(json_object_get(protocolClaims, "aud"));
-    BID_ASSERT(szAudience != NULL);
-
-    cchAudience = strlen(szAudience);
-
-    err = _BIDJsonObjectDel(context, protocolClaims, "aud", 0);
-    BID_BAIL_ON_ERROR(err);
-
-    if (json_object_size(protocolClaims) != 0) {
-        err = _BIDEncodeJson(context, protocolClaims, &szEncodedClaims, &cchEncodedClaims);
-        BID_BAIL_ON_ERROR(err);
-    } else {
-        cchEncodedClaims = 0;
-    }
-
-    cchPackedAudience = BID_GSS_AUDIENCE_PREFIX_LEN + cchAudience;
-    if (cchEncodedClaims != 0)
-        cchPackedAudience += 1 + cchEncodedClaims;
-    szPackedAudience = BIDMalloc(cchPackedAudience + 1);
-    if (szPackedAudience == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    p = szPackedAudience;
-    memcpy(p, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN);
-    p += BID_GSS_AUDIENCE_PREFIX_LEN;
-    memcpy(p, szAudience, cchAudience);
-    p += cchAudience;
-    if (cchEncodedClaims != 0) {
-        *p++ = '#';
-        memcpy(p, szEncodedClaims, cchEncodedClaims);
-        p += cchEncodedClaims;
-    }
-    *p = '\0';
-
-    err = BID_S_OK;
-    *pszPackedAudience = szPackedAudience;
-
-cleanup:
-    json_decref(protocolClaims);
-    if (err != BID_S_OK)
+    if (err == BID_S_OK)
+        *pszPackedAudience = szPackedAudience;
+    else
         BIDFree(szPackedAudience);
-    BIDFree(szEncodedClaims);
 
     return err;
 }
