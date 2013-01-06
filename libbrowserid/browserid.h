@@ -233,7 +233,7 @@ BIDAcquireAssertionFromString(
 BIDError
 BIDAcquireAssertion(
     BIDContext context,
-    BIDTicketCache ticketCache,
+    BIDTicketCache ticketCache, /* optional, uses context cache if absent */
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
@@ -264,7 +264,7 @@ BIDFreeAssertion(
 BIDError
 BIDVerifyAssertion(
     BIDContext context,
-    BIDReplayCache replayReauthCache,
+    BIDReplayCache replayReauthCache, /* optional, uses context replay cache if absent */
     const char *szAssertion,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
