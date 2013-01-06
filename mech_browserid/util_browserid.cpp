@@ -140,11 +140,11 @@ BIDGSSJWTAttributeProvider::getAttribute(const gss_buffer_t attr,
                                          gss_buffer_t display_value,
                                          int *more) const
 {
-    JSONObject jAttr = m_attrs->get((const char *)attr->value);
+    JSONObject jAttr = m_attrs->get(attr);
     gss_buffer_desc valueBuf = GSS_C_EMPTY_BUFFER;
     char tmpBuf[128];
     int nValues, i = *more;
-    bool isBinary = false;
+    bool bFreeValue = false, bIsBinary = false;
     char *szValue = NULL;
 
     *more = 0;
@@ -161,15 +161,16 @@ BIDGSSJWTAttributeProvider::getAttribute(const gss_buffer_t attr,
     switch (jAttr.type()) {
     case JSON_OBJECT:
     case JSON_ARRAY:
-        /* TODO would be nice to support KVC paths for nested objects */
-        return false;
+        valueBuf.value = (char *)jAttr.dump();
+        bFreeValue = true;
         break;
     case JSON_STRING:
         szValue = (char *)jAttr.string();
-        isBinary = base64Valid(szValue);
-        if (isBinary) {
+        bIsBinary = base64Valid(szValue);
+        if (bIsBinary) {
             if (_BIDBase64UrlDecode(szValue, (unsigned char **)&valueBuf.value, &valueBuf.length) != BID_S_OK)
                 return false;
+            bFreeValue = true;
         } else
             valueBuf.value = (void *)szValue;
         break;
@@ -190,7 +191,8 @@ BIDGSSJWTAttributeProvider::getAttribute(const gss_buffer_t attr,
         break;
     }
 
-    valueBuf.length = strlen((char *)valueBuf.value);
+    if (valueBuf.value != NULL)
+        valueBuf.length = strlen((char *)valueBuf.value);
 
     if (authenticated != NULL)
         *authenticated = true;
@@ -198,9 +200,9 @@ BIDGSSJWTAttributeProvider::getAttribute(const gss_buffer_t attr,
         *complete = true;
     if (value != NULL)
         duplicateBuffer(valueBuf, value);
-    if (display_value != NULL && !isBinary)
+    if (display_value != NULL && !bIsBinary)
         duplicateBuffer(valueBuf, display_value);
-    if (isBinary)
+    if (bFreeValue)
         BIDFree(valueBuf.value);
     if (nValues > ++i)
         *more = i;

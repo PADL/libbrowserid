@@ -224,6 +224,14 @@ JSONObject::get(const char *key) const
 }
 
 JSONObject
+JSONObject::get(const gss_buffer_t key) const
+{
+    std::string s((const char *)key->value, key->length);
+
+    return get(s.c_str());
+}
+
+JSONObject
 JSONObject::get(size_t index) const
 {
     json_t *obj;

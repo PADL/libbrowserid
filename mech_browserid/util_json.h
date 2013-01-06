@@ -113,6 +113,7 @@ namespace BIDGSSUtility {
         void update(JSONObject &value);
         JSONIterator iterator(void) const { return JSONIterator(*this); }
         JSONObject get(const char *key) const;
+        JSONObject get(const gss_buffer_t key) const;
         JSONObject operator[](const char *key) const;
 
         JSONObject get(size_t index) const;
