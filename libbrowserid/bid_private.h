@@ -401,7 +401,7 @@ BIDError
 _BIDGetReauthAssertion(
     BIDContext context,
     BIDTicketCache ticketCache,
-    const char *szAudienceOrSpn,
+    const char *szPackedAudience,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     char **pAssertion,

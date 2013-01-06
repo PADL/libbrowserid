@@ -50,60 +50,6 @@ cleanup:
     return err;
 }
 
-static BIDError
-_BIDMakeTicketCacheKey(
-    BIDContext context,
-    const char *szAudienceOrSpn,
-    const char *szSubject BID_UNUSED,
-    char **pszCacheKey)
-{
-    BIDError err;
-    char *szCacheKey = NULL;
-
-    *pszCacheKey = NULL;
-
-#if 0
-    size_t cchAudienceOrSpn;
-    size_t cchEmail;
-    char *p;
-
-    if (szAudienceOrSpn == NULL || szSubject == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
-    cchEmail = strlen(szSubject);
-    cchAudienceOrSpn = strlen(szAudienceOrSpn);
-
-    p = szCacheKey = BIDMalloc(cchEmail + 1 + cchAudienceOrSpn + 1);
-    if (szCacheKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    memcpy(p, szSubject, cchEmail);
-    p += cchEmail;
-    *p++ = ' ';
-    memcpy(p, szAudienceOrSpn, cchAudienceOrSpn);
-    p += cchAudienceOrSpn;
-    *p++ = '\0';
-#else
-    if (szAudienceOrSpn == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
-    err = _BIDMakeAudience(context, szAudienceOrSpn, &szCacheKey);
-    BID_BAIL_ON_ERROR(err);
-#endif
-
-    err = BID_S_OK;
-    *pszCacheKey = szCacheKey;
-
-cleanup:
-    return err;
-}
-
 BIDError
 _BIDStoreTicketInCache(
     BIDContext context,
@@ -149,7 +95,7 @@ _BIDStoreTicketInCache(
     err = BIDGetIdentitySubject(context, identity, &szSubject);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, szSubject, &szCacheKey);
+    err = _BIDMakeAudience(context, szAudienceOrSpn, &szCacheKey);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetCacheObject(context, context->TicketCache, szCacheKey, cred);
@@ -333,7 +279,7 @@ BIDError
 _BIDGetReauthAssertion(
     BIDContext context,
     BIDTicketCache ticketCache,
-    const char *szAudienceOrSpn,
+    const char *szPackedAudience,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     char **pAssertion,
@@ -341,7 +287,6 @@ _BIDGetReauthAssertion(
     time_t *ptExpiryTime)
 {
     BIDError err;
-    char *szCacheKey = NULL;
     json_t *cred = NULL;
     json_t *tkt = NULL;
     BIDJWT ap = NULL;
@@ -361,10 +306,7 @@ _BIDGetReauthAssertion(
     if (ticketCache == BID_C_NO_TICKET_CACHE)
         ticketCache = context->TicketCache;
 
-    err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, NULL, &szCacheKey);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDGetCacheObject(context, ticketCache, szCacheKey, &cred);
+    err = _BIDGetCacheObject(context, ticketCache, szPackedAudience, &cred);
     BID_BAIL_ON_ERROR(err);
 
     tkt = json_object_get(cred, "tkt");
@@ -373,7 +315,7 @@ _BIDGetReauthAssertion(
         goto cleanup;
     }
 
-    err = _BIDMakeAuthenticator(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
+    err = _BIDMakeAuthenticator(context, szPackedAudience, pbChannelBindings, cbChannelBindings,
                                 json_object_get(tkt, "jti"), &ap);
     BID_BAIL_ON_ERROR(err);
 
@@ -400,7 +342,6 @@ _BIDGetReauthAssertion(
         _BIDGetJsonTimestampValue(context, tkt, "exp", ptExpiryTime);
 
 cleanup:
-    BIDFree(szCacheKey);
     json_decref(cred);
     _BIDReleaseJWT(context, ap);
 
