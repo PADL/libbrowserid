@@ -40,15 +40,17 @@ following mechanisms, updating the path as appropriate:
 
 ### gss-sample
 
-gss-sample can be found in src/appl/gss-sample in the MIT Kerberos distribution.
+gss-sample can be found in src/appl/gss-sample in the MIT Kerberos
+distribution.
 
-Client:
+    % gss-client -port 5555 -mech "{1 3 6 1 4 1 5322 24 1 17}" localhost host "Testing GSS BrowserID"
+    % gss-server -port 5555 -export host
 
-    % gss-client -port 5555 -mech "{1 3 6 1 4 1 5322 24 1 17}" <host> host@<host> "Testing GSS BrowserID"
+If you are testing between different machines, then you should do (replacing
+server as appropriate)
 
-Server:
-
-    % gss-server -port 5555 -export host@<host>
+    % gss-client -port 5555 -mech "{1 3 6 1 4 1 5322 24 1 17}" server host@server "Testing GSS BrowserID"
+    % gss-server -port 5555 -export host@server
 
 Note that if you test the browserid-none (no key) mechanism than the message
 protection tests will fail.
@@ -59,10 +61,5 @@ SASL samples can be found in the sample directory of the Cyrus SASL
 distribution. However, the GS2 mechanism presently needs a patch to support
 mechanisms without mutual authentication (this can be found in contrib).
 
-Client:
-
-    % client -C -p 5556 -s host -m BROWSERID-AES128 <host>
-    
-Server:
-
-    % server -c -p 5556 -s host -h rand.mit.de.padl.com
+    % client -C -p 5556 -s host -m BROWSERID-AES128 server
+    % server -c -p 5556 -s host -h server
