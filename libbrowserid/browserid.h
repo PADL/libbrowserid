@@ -264,6 +264,7 @@ BIDFreeAssertion(
 BIDError
 BIDVerifyAssertion(
     BIDContext context,
+    BIDReplayCache replayReauthCache,
     const char *szAssertion,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,

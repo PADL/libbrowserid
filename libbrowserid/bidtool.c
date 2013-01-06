@@ -436,7 +436,8 @@ BIDVerifyAssertionFromString(int argc, char *argv[])
     if (argc != 2)
         BIDToolUsage();
 
-    err = BIDVerifyAssertion(gContext, argv[0], argv[1], NULL, 0, 0,
+    err = BIDVerifyAssertion(gContext, BID_C_NO_REPLAY_CACHE,
+                             argv[0], argv[1], NULL, 0, 0,
                              gNow, &identity, &expiryTime, &ulFlags);
     if (err != BID_S_OK) {
         BIDAbortError("Failed to verify assertion", err);
@@ -474,7 +475,7 @@ static struct {
     { "certpurge",    "", BIDPurgeAuthorityCache,         AUTHORITY_CACHE      },
     { "certdestroy",  "", BIDDestroyAuthorityCache,       AUTHORITY_CACHE      },
 
-    { "verify",       "assertion audience", BIDVerifyAssertionFromString, NO_CACHE },
+    { "verify",       "assertion audience", BIDVerifyAssertionFromString, REPLAY_CACHE },
 
 };
 

@@ -411,6 +411,7 @@ _BIDGetReauthAssertion(
 BIDError
 _BIDVerifyReauthAssertion(
     BIDContext context,
+    BIDReplayCache replayCache,
     BIDBackedAssertion assertion,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
@@ -442,6 +443,7 @@ _BIDDeriveAuthenticatorSessionKey(
 BIDError
 _BIDVerifyRemote(
     BIDContext context,
+    BIDReplayCache replayCache,
     const char *szAssertion,
     const char *szAudience,
     const unsigned char *pbChannelBindings,
@@ -583,12 +585,14 @@ _BIDAcquireDefaultReplayCache(
 BIDError
 _BIDCheckReplayCache(
     BIDContext context,
+    BIDReplayCache replayCache,
     const char *szAssertion,
     time_t verificationTime);
 
 BIDError
 _BIDUpdateReplayCache(
     BIDContext context,
+    BIDReplayCache replayCache,
     BIDIdentity identity,
     const char *pAssertion,
     time_t verificationTime,
@@ -629,6 +633,7 @@ struct BIDIdentityDesc {
 BIDError
 _BIDVerifyLocal(
     BIDContext context,
+    BIDReplayCache replayCache,
     const char *szAssertion,
     const char *szAudience,
     const unsigned char *pbChannelBindings,

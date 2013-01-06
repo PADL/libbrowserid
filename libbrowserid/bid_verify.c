@@ -259,6 +259,7 @@ cleanup:
 BIDError
 _BIDVerifyLocal(
     BIDContext context,
+    BIDReplayCache replayCache,
     const char *szAssertion,
     const char *szAudience,
     const unsigned char *pbChannelBindings,
@@ -300,7 +301,8 @@ _BIDVerifyLocal(
 
         *pulRetFlags |= BID_VERIFY_FLAG_REAUTH;
 
-        err = _BIDVerifyReauthAssertion(context, backedAssertion, verificationTime,
+        err = _BIDVerifyReauthAssertion(context, replayCache,
+                                        backedAssertion, verificationTime,
                                         &verifiedIdentity, &reauthCred);
         BID_BAIL_ON_ERROR(err);
     }

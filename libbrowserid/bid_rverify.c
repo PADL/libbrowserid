@@ -48,6 +48,7 @@ cleanup:
 BIDError
 _BIDVerifyRemote(
     BIDContext context,
+    BIDReplayCache replayCache BID_UNUSED,
     const char *szAssertion,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,

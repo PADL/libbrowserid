@@ -45,6 +45,7 @@ cleanup:
 BIDError
 BIDVerifyAssertion(
     BIDContext context,
+    BIDReplayCache replayCache,
     const char *szAssertion,
     const char *szAudience,
     const unsigned char *pbChannelBindings,
@@ -71,16 +72,16 @@ BIDVerifyAssertion(
         return BID_S_INVALID_USAGE;
 
     if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
-        err = _BIDCheckReplayCache(context, szAssertion, verificationTime);
+        err = _BIDCheckReplayCache(context, replayCache, szAssertion, verificationTime);
         BID_BAIL_ON_ERROR(err);
     }
 
     if (context->ContextOptions & BID_CONTEXT_VERIFY_REMOTE)
-        err = _BIDVerifyRemote(context, szAssertion, szAudience,
+        err = _BIDVerifyRemote(context, replayCache, szAssertion, szAudience,
                                pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
                                pVerifiedIdentity, pExpiryTime, &ulRetFlags);
     else
-        err = _BIDVerifyLocal(context, szAssertion, szAudience,
+        err = _BIDVerifyLocal(context, replayCache, szAssertion, szAudience,
                               pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
                               pVerifiedIdentity, pExpiryTime, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
@@ -92,7 +93,7 @@ BIDVerifyAssertion(
     }
 
     if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
-        err = _BIDUpdateReplayCache(context, *pVerifiedIdentity, szAssertion,
+        err = _BIDUpdateReplayCache(context, replayCache, *pVerifiedIdentity, szAssertion,
                                     verificationTime, ulRetFlags);
         BID_BAIL_ON_ERROR(err);
     }

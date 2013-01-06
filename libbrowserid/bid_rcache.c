@@ -21,6 +21,7 @@ cleanup:
 BIDError
 _BIDCheckReplayCache(
     BIDContext context,
+    BIDReplayCache replayCache,
     const char *szAssertion,
     time_t verificationTime)
 {
@@ -37,7 +38,10 @@ _BIDCheckReplayCache(
     err = _BIDBase64UrlEncode(hash, cbHash, &szHash, &cchHash);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetCacheObject(context, context->ReplayCache, szHash, &rdata);
+    if (replayCache == BID_C_NO_REPLAY_CACHE)
+        replayCache = context->ReplayCache;
+
+    err = _BIDGetCacheObject(context, replayCache, szHash, &rdata);
     if (err == BID_S_OK) {
         _BIDGetJsonTimestampValue(context, rdata, "iat", &tsHash);
         _BIDGetJsonTimestampValue(context, rdata, "exp", &expHash);
@@ -57,6 +61,7 @@ cleanup:
 BIDError
 _BIDUpdateReplayCache(
     BIDContext context,
+    BIDReplayCache replayCache,
     BIDIdentity identity,
     const char *szAssertion,
     time_t verificationTime,
@@ -100,7 +105,10 @@ _BIDUpdateReplayCache(
         json_object_set(rdata, "exp", json_object_get(identity->Attributes, "exp"));
     }
 
-    err = _BIDSetCacheObject(context, context->ReplayCache, szHash, rdata);
+    if (replayCache == BID_C_NO_REPLAY_CACHE)
+        replayCache = context->ReplayCache;
+
+    err = _BIDSetCacheObject(context, replayCache, szHash, rdata);
     BID_BAIL_ON_ERROR(err);
 
     if (bStoreReauthCreds) {

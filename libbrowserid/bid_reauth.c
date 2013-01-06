@@ -394,6 +394,7 @@ cleanup:
 BIDError
 _BIDVerifyReauthAssertion(
     BIDContext context,
+    BIDReplayCache replayCache,
     BIDBackedAssertion assertion,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
@@ -415,7 +416,10 @@ _BIDVerifyReauthAssertion(
 
     szTicket = json_string_value(json_object_get(ap->Payload, "tkt"));
 
-    err = _BIDGetCacheObject(context, context->ReplayCache, szTicket, &cred);
+    if (replayCache == BID_C_NO_REPLAY_CACHE)
+        replayCache = context->ReplayCache;
+
+    err = _BIDGetCacheObject(context, replayCache, szTicket, &cred);
     if (err == BID_S_CACHE_NOT_FOUND || err == BID_S_CACHE_KEY_NOT_FOUND)
         err = BID_S_INVALID_ASSERTION;
     BID_BAIL_ON_ERROR(err);
