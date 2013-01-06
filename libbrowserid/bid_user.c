@@ -84,7 +84,6 @@ BIDAcquireAssertion(
     json_t *key = NULL;
     char *szAssertion = NULL;
     char *szPackedAudience = NULL;
-    const char *szSiteName = NULL;
     uint32_t ulRetFlags = 0;
 
     *pAssertion = NULL;
@@ -133,11 +132,7 @@ BIDAcquireAssertion(
     err = _BIDPackAudience(context, claims, &szPackedAudience);
     BID_BAIL_ON_ERROR(err);
 
-    szSiteName = strchr(szAudienceOrSpn, '/');
-    if (szSiteName != NULL)
-        szSiteName++;
-
-    err = _BIDBrowserGetAssertion(context, szPackedAudience, szSiteName,
+    err = _BIDBrowserGetAssertion(context, szPackedAudience, szAudienceOrSpn,
                                   szIdentityName, ulReqFlags, &szAssertion);
     BID_BAIL_ON_ERROR(err);
 

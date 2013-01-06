@@ -55,8 +55,9 @@
 {
 @private
     NSString *audience;
-    NSString *siteName;
+    NSString *servicePrincipalName;
     NSString *requiredEmail;
+    NSString *siteName;
     BOOL canInteract;
     BOOL silent;
     NSString *assertion;
@@ -68,8 +69,8 @@
 /* accessors */
 - (void)setAudience:(NSString *)value;
 - (NSString *)audience;
-- (void)setSiteName:(NSString *)value;
-- (NSString *)siteName;
+- (void)setServicePrincipalName:(NSString *)value;
+- (NSString *)servicePrincipalName;
 - (void)setRequiredEmail:(NSString *)value;
 - (NSString *)requiredEmail;
 - (void)setAssertion:(NSString *)value;
@@ -89,7 +90,7 @@
 
 /* public interface */
 - (BIDError)getAssertion;
-- (id)init;
+- (instancetype)initWithAudience:(NSString *)anAudience servicePrincipalName:(NSString *)aSPN;
 @end
 
 @implementation BIDIdentityController
@@ -109,16 +110,24 @@
     }
 }
 
-- (NSString *)siteName
+- (NSString *)servicePrincipalName
 {
-    return [[siteName retain] autorelease];
+    return [[servicePrincipalName retain] autorelease];
 }
 
-- (void)setSiteName:(NSString *)value
+- (void)setServicePrincipalName:(NSString *)value
 {
-    if (value != siteName) {
-        [siteName release];
-        siteName = [value copy];
+    if (value != servicePrincipalName) {
+        NSArray *princComponents;
+
+        [servicePrincipalName release];
+        servicePrincipalName = [value copy];
+
+        princComponents = [servicePrincipalName componentsSeparatedByString:@"/"];
+        if ([princComponents count] > 1)
+            siteName = [[princComponents objectAtIndex:1] retain];
+        else
+            siteName = [servicePrincipalName retain];
     }
 }
 
@@ -232,10 +241,11 @@
 
 + (BOOL)isKeyExcludedFromWebScript:(const char *)property
 {
-    if (strcmp(property, "siteName") == 0       ||
-        strcmp(property, "silent") == 0         ||
-        strcmp(property, "canInteract") == 0    ||
-        strcmp(property, "requiredEmail") == 0  ||
+    if (strcmp(property, "siteName") == 0               ||
+        strcmp(property, "servicePrincipalName") == 0   ||
+        strcmp(property, "silent") == 0                 ||
+        strcmp(property, "canInteract") == 0            ||
+        strcmp(property, "requiredEmail") == 0          ||
         strcmp(property, "audience") == 0)
         return NO;
 
@@ -255,6 +265,8 @@
     NSString *function = @"                                                                             \
         var controller = window.IdentityController;                                                     \
         var options = { siteName: controller.siteName, silent: controller.silent, requiredEmail: controller.requiredEmail };           \
+                                                                                                        \
+        BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };            \
                                                                                                         \
         BrowserID.internal.setPersistent(                                                               \
             controller.audience,                                                                        \
@@ -343,13 +355,12 @@
     return [super init];
 }
 
-- initWithAudience:(NSString *)anAudience
-          siteName:(NSString *)aSiteName
+- initWithAudience:(NSString *)anAudience servicePrincipalName:(NSString *)aSPN
 {
     self = [self init];
 
     [self setAudience:anAudience];
-    [self setSiteName:aSiteName];
+    [self setServicePrincipalName:aSPN];
 
     return self;
 }
@@ -359,8 +370,9 @@
     [super dealloc];
 
     [audience release];
-    [siteName release];
+    [servicePrincipalName release];
     [requiredEmail release];
+    [siteName release];
     [assertion release];
     [identityDialog release];
     [webView release];
@@ -393,8 +405,8 @@
 static BIDError
 _BIDWebkitGetAssertion(
     BIDContext context,
-    const char *szAudience,
-    const char *szSiteName,
+    const char *szPackedAudience,
+    const char *szAudienceOrSpn,
     const char *szIdentityName,
     uint32_t ulReqFlags,
     char **pAssertion)
@@ -423,7 +435,7 @@ _BIDWebkitGetAssertion(
         return BID_S_INTERACT_UNAVAILABLE;
 
     @autoreleasepool {
-        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithCString:szAudience] siteName:[NSString stringWithCString:szSiteName]];
+        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithCString:szPackedAudience] servicePrincipalName:[NSString stringWithCString:szAudienceOrSpn]];
 
         if (szIdentityName != NULL) {
             [controller setRequiredEmail:[NSString stringWithCString:szIdentityName]];
@@ -446,14 +458,15 @@ _BIDWebkitGetAssertion(
 BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
-    const char *szAudience,
-    const char *szSiteName,
+    const char *szPackedAudience,
+    const char *szAudienceOrSpn,
     const char *szIdentityName,
     uint32_t ulReqFlags,
     char **pAssertion)
 {
 #ifdef __APPLE__
-    return _BIDWebkitGetAssertion(context, szAudience, szSiteName, szIdentityName, ulReqFlags, pAssertion);
+    return _BIDWebkitGetAssertion(context, szPackedAudience, szAudienceOrSpn,
+                                  szIdentityName, ulReqFlags, pAssertion);
 #else
     return BID_S_INTERACT_UNAVAILABLE;
 #endif

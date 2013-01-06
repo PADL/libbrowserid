@@ -672,7 +672,7 @@ BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
     const char *szPackedAudience,
-    const char *szSiteName,
+    const char *szAudienceSpn,
     const char *szIdentityName, /* optional */
     uint32_t ulReqFlags,
     char **pAssertion);

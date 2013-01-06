@@ -74,12 +74,12 @@ int main(int argc, const char *argv[])
     BID_BAIL_ON_ERROR(err);
 
     err = BIDAcquireAssertion(context, BID_C_NO_TICKET_CACHE,
-                              "host/www.browserid.org", NULL, 0, szIdentity, 0,
+                              "ldap/browserid.persona.org", NULL, 0, szIdentity, 0,
                               &assertion, NULL, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE,
-                             assertion, audience ? audience : "host/www.browserid.org",
+                             assertion, audience ? audience : "ldap/browserid.persona.org",
                              NULL, 0, time(NULL), 0, &identity, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
