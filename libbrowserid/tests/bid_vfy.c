@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     err = BIDAcquireContext(options, &context);
     BID_BAIL_ON_ERROR(err);
 
-    err = BIDVerifyAssertion(context, argv[1], argv[2], NULL, 0,
+    err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE, argv[1], argv[2], NULL, 0,
                              time(NULL), 0, &id, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
