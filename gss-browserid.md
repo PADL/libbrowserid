@@ -41,7 +41,7 @@ Essentially the GSS mechanism described here bridges these two worlds.
 ### Initiator to acceptor
 
 1. The initiator composes a set of claims including, if applicable, channel binding information and DH parameters for session key establishment.
-2. The initiator composes an audience URL from the target service name and, in the present implementation, the asserted claims.
+2. The initiator composes an audience URL from the target service name.
 2. The initiator calls BrowserID.internal.get() to request the browser generate an assertion. The browser interaction must be modal with respect to the user's interaction with the application.
 3. Once an assertion is generated, the initiator sends it to the acceptor inside a context token of TOK_TYPE_INITIATOR_CONTEXT.
 4. The initiator returns GSS_C_CONTINUE_NEEDED to indicate an additional context token is expected from the acceptor.
@@ -50,7 +50,7 @@ Essentially the GSS mechanism described here bridges these two worlds.
 
 1. The acceptor validates that the token is well formed and contains the correct mechanism OID and token type.
 2. The acceptor verifies the backed identity assertion per [BIDSPEC]: this includes validating the expiry times, audience, certificate chain, and the assertion signature. In the case of failure, an error token is generated and immediately returned.
-3. The acceptor unpacks the GSS claims object from the audience URL and verifies the service name component and channel binding. In the case of failure, an error token is generated.
+3. The acceptor verifies the channel binding token and any other GSS-specific claims in the assertion. In the case of failure, an error token is generated.
 4. If required, the acceptor generates a DH public key using the parameters received from the client.
 5. The acceptor generates a response token containing the DH public key and context expiry time. The response token is signed using the DH shared secret key.
 6. The context root key (CRK) is derived from the DH key and GSS_S_COMPLETE is returned, along with the initiator name from the verified assertion. Other assertion attributes may be made available via GSS_Get_name_attribute().
@@ -171,7 +171,7 @@ A default domain may be appended when importing names of type GSS_C_NT_USER_NAME
 
 ### BrowserID audience encoding
 
-Ideally, BrowserID would support adding arbitrary claims to self-signed assertions. As this is presently not possible, GSS-specific claims are currently encoded the in the audience URL. The encoding is as follows:
+A GSS-API service name is encoded into a BrowserID audience URL with the following syntax:
 
     spn = service-name ["/" service-host [ "/" service-specifics]]
     gss-encoded-claims = base64-encode(gss-claims)
@@ -179,11 +179,7 @@ Ideally, BrowserID would support adding arbitrary claims to self-signed assertio
     
 For example:
 
-    urn:x-gss:host/www.browserid.org#eyJkaCI6eyJwIjoibHRJaVFCN21MMWVNbVdzbmtOZmxFdyIsImciOiJBZyIsInkiOiJhWmJ6V1VYRVRWeTEtdVpmX1hGNnB3In19
-    
-decodes to:
-
-    {"dh":{"p":"ltIiQB7mL1eMmWsnkNflEw","g":"Ag","y":"aZbzWUXETVy1-uZf_XF6pw"}}
+    urn:x-gss:host/www.browserid.org
     
 The service principal name in this case is "host/www.browserid.org".
 
@@ -229,9 +225,29 @@ The accept SHOULD maintain a cache of received assertions in order to guard agai
 
 ### GSS-specific assertion claims
 
-These claims are included in the assertion sent to the acceptor and are authenticated by the initiator's private key and certificate chain.
+These claims are included in the assertion sent to the acceptor and are authenticated by the initiator's private key and certificate chain. Here is an example assertion containing Diffie-Hellman parameters:
 
-In a future specification, these may be present in the assertion directly. Currently they are encoded in the gss-encoded-claims component of the audience URL hostname, as described above.
+    {
+        "exp": 1357513493687,
+        "dh": {
+                "p": "xCH1z_Vz5ZywtFfgiUhQgw",
+                "g": "Ag",
+                "y": "FzsKcE3WbImpvgjy9NxbpA"
+        },
+        "aud": "urn:x-gss:host/www.browserid.org"
+    }
+ 
+Because the current implementation of BrowserID.internal.get() does not allow an application-specific payload to be added to the assertion, it is necessary to override jwcrypto.assertion.sign(). For example, in our implementation, the claims from controller.claims are added:
+
+    var assertionSign = jwcrypto.assertion.sign;  // save original method implementation
+    
+    jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {
+        var gssPayload = eval('(' + controller.claims.stringRepresentation() + ')');
+        for (var k in payload) {
+            if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];
+        }
+        assertionSign(gssPayload, assertionParams, secretKey, cb);
+    };
 
 #### "cbt" (Channel Binding Token)
 
@@ -353,7 +369,7 @@ When using fast re-authentication, the initiator sends an assertion containing t
     iat = issue time
     n   = 64-bit base64 URL encoded random nonce
     tkt = opaque ticket identifier
-    aud = string encoding of service principal name
+    aud = audience containing service principal name
     cbt = base64 URL encoding of channel binding application-specific data
 
 The re-authentication assertion has an implicit expiry after the issue time (see notes above).
