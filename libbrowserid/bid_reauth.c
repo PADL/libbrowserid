@@ -135,12 +135,16 @@ _BIDStoreTicketInCache(
     BID_BAIL_ON_ERROR(err);
 
     cred = json_copy(identity->Attributes);
-    if (cred == NULL                             ||
-        json_object_set(cred, "tkt", ticket) < 0 ||
-        json_object_set(cred, "ark", ark) < 0) {
+    if (cred == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
+
+    err = _BIDJsonObjectSet(context, cred, "tkt", ticket, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, cred, "ark", ark, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
     err = BIDGetIdentitySubject(context, identity, &szSubject);
     BID_BAIL_ON_ERROR(err);
@@ -241,17 +245,24 @@ _BIDMakeAuthenticator(
         goto cleanup;
     }
 
-    if (       json_object_set(ap->Payload, "iat", iat) < 0        ||
-//               json_object_set(ap->Payload, "exp", exp) < 0        ||
-               json_object_set(ap->Payload, "n", n)     < 0        ||
-               json_object_set(ap->Payload, "tkt", tkt) < 0        ||
-               json_object_set(ap->Payload, "aud", aud) < 0        ||
-        (cbt ? json_object_set(ap->Payload, "cbt", cbt) : 0) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDJsonObjectSet(context, ap->Payload, "iat", iat, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
+    err = _BIDJsonObjectSet(context, ap->Payload, "n", n, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, ap->Payload, "tkt", tkt, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, ap->Payload, "aud", aud, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, ap->Payload, "cbt", cbt, 0);
+    BID_BAIL_ON_ERROR(err);
+
+#ifdef GSSBID_DEBUG
     json_dumpf(ap->Payload, stdout, JSON_INDENT(8));
+#endif
 
     *pAuthenticator = ap;
 
@@ -294,7 +305,9 @@ _BIDMakeReauthIdentity(
     json_object_del(identity->Attributes, "a-exp");
 
     /* copy over the assertion expiry time */
-    json_object_set(identity->PrivateAttributes, "a-exp", json_object_get(cred, "a-exp"));
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "a-exp",
+                            json_object_get(cred, "a-exp"), 0);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
                                             &identity->SessionKey, &identity->SessionKeyLength);
@@ -486,10 +499,8 @@ _BIDDeriveAuthenticatorRootKey(
     err = _BIDJsonBinaryValue(context, pbSubkey, cbSubkey, &sk);
     BID_BAIL_ON_ERROR(err);
 
-    if (json_object_set(ark, "secret-key", sk) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDJsonObjectSet(context, ark, "secret-key", sk, 0);
+    BID_BAIL_ON_ERROR(err);
 
     *pArk = ark;
     err = BID_S_OK;

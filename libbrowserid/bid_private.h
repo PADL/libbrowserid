@@ -504,8 +504,23 @@ _BIDDuplicateString(
     const char *szSrc,
     char **szDst);
 
-#define BID_JSON_ENCODING_UNKNOWN   0
-#define BID_JSON_ENCODING_BASE64    1
+#define BID_JSON_FLAG_REQUIRED      1
+#define BID_JSON_FLAG_CONSUME_REF   2
+
+BIDError
+_BIDJsonObjectSet(
+    BIDContext context BID_UNUSED,
+    json_t *dst,
+    const char *key,
+    json_t *src,
+    uint32_t ulFlags);
+
+BIDError
+_BIDJsonObjectDel(
+    BIDContext context BID_UNUSED,
+    json_t *dst,
+    const char *key,
+    uint32_t ulFlags);
 
 BIDError
 _BIDEncodeJson(

@@ -712,26 +712,23 @@ _BIDGetJsonTimestampValue(
 
 BIDError
 _BIDSetJsonTimestampValue(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     json_t *json,
     const char *key,
     time_t ts)
 {
     json_t *j;
+    BIDError err;
 
-#if 0
-    printf("_BIDSetJsonTimestampValue %s: %s", key, ctime(&ts));
-#endif
     ts *= 1000;
 
     j = json_integer(ts);
     if (j == NULL)
         return BID_S_NO_MEMORY;
 
-    if (json_object_set(json, key, j) < 0)
-        return BID_S_NO_MEMORY;
+    err = _BIDJsonObjectSet(context, json, key, j, BID_JSON_FLAG_CONSUME_REF);
 
-    return BID_S_OK;
+    return err;
 }
 
 const char *_BIDErrorTable[] = {
@@ -880,10 +877,9 @@ _BIDUnpackAudience(
     }
 
     if ((context->ContextOptions & BID_CONTEXT_GSS) == 0) {
-        if (json_object_set_new(claims, "aud", json_string(szPackedAudience)) < 0) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        err = _BIDJsonObjectSet(context, claims, "aud", json_string(szPackedAudience),
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+        BID_BAIL_ON_ERROR(err);
 
         err = BID_S_OK;
         *pClaims = json_incref(claims);
@@ -925,7 +921,9 @@ _BIDUnpackAudience(
     memcpy(szAudience, szPackedAudience, cchAudience);
     szAudience[cchAudience] = '\0';
 
-    json_object_set_new(claims, "aud", json_string(szAudience));
+    err = _BIDJsonObjectSet(context, claims, "aud", json_string(szAudience),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
     *pClaims = claims;
@@ -1051,4 +1049,49 @@ _BIDCanInteractP(
         return 0;
     else
         return 1;
+}
+
+BIDError
+_BIDJsonObjectSet(
+    BIDContext context BID_UNUSED,
+    json_t *dst,
+    const char *key,
+    json_t *src,
+    uint32_t ulFlags)
+{
+    BIDError err;
+
+    if (key == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    if (src == NULL) {
+        if (ulFlags & BID_JSON_FLAG_REQUIRED)
+            err = BID_S_UNKNOWN_JSON_KEY;
+        else
+            json_object_del(dst, key);
+    } else {
+        if (json_object_set(dst, key, src) < 0)
+            err = BID_S_NO_MEMORY;
+        else
+            err = BID_S_OK;
+    }
+
+    if (ulFlags & BID_JSON_FLAG_CONSUME_REF)
+        json_decref(src);
+
+    return err;
+}
+
+BIDError
+_BIDJsonObjectDel(
+    BIDContext context BID_UNUSED,
+    json_t *dst,
+    const char *key,
+    uint32_t ulFlags)
+{
+    if (json_object_del(dst, key) < 0 &&
+        (ulFlags & BID_JSON_FLAG_REQUIRED))
+        return BID_S_UNKNOWN_JSON_KEY;
+
+    return BID_S_OK;
 }

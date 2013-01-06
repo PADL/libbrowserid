@@ -29,11 +29,17 @@ _BIDRemoteVerifierResponseToIdentity(
     err = _BIDPopulateIdentity(context, backedAssertion, &identity);
     BID_BAIL_ON_ERROR(err);
 
-    json_object_set(identity->Attributes, "sub", json_object_get(response, "email"));
-    json_object_set(identity->Attributes, "aud", json_object_get(response, "audience"));
-    json_object_set(identity->Attributes, "iss", json_object_get(response, "issuer"));
+    err = _BIDJsonObjectSet(context, identity->Attributes, "sub", json_object_get(response, "email"), 0);
+    BID_BAIL_ON_ERROR(err);
 
-    json_object_set(identity->PrivateAttributes, "a-exp", json_object_get(response, "expires"));
+    err = _BIDJsonObjectSet(context, identity->Attributes, "aud", json_object_get(response, "audience"), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, identity->Attributes, "iss", json_object_get(response, "issuer"), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "a-exp", json_object_get(response, "expires"), 0);
+    BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
     *pIdentity = identity;

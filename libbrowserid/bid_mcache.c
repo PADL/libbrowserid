@@ -175,10 +175,11 @@ _BIDMemoryCacheSetOrRemoveObject(
         goto cleanup;
     }
 
-    if ((remove ? json_object_del(mc->Data, key) : json_object_set(mc->Data, key, val)) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    if (remove)
+        err = _BIDJsonObjectDel(context, mc->Data, key, 0);
+    else
+        err = _BIDJsonObjectSet(context, mc->Data, key, val, 0);
+    BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
 

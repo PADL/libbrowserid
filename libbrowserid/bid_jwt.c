@@ -293,10 +293,10 @@ _BIDMakeSignature(
         }
     }
 
-    if (json_object_set_new(jwt->Header, "alg", json_string(alg ? alg->szAlgID : "none")) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDJsonObjectSet(context, jwt->Header, "alg",
+                            json_string(alg ? alg->szAlgID : "none"),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDMakeSignatureData(context, jwt);
     BID_BAIL_ON_ERROR(err);
@@ -456,9 +456,9 @@ _BIDMakeJsonWebKey(
     if (*key == NULL)
         return BID_S_NO_MEMORY;
 
-    json_object_set(*key, "secret-key", sk);
+    err = _BIDJsonObjectSet(context, *key, "secret-key", sk, BID_JSON_FLAG_CONSUME_REF);
 
-    return BID_S_OK;
+    return err;
 }
 
 BIDError

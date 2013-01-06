@@ -369,22 +369,33 @@ _BIDFileCacheLoad(
 static BIDError
 _BIDFileCacheNew(
     struct BIDCacheOps *ops BID_UNUSED,
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     struct BIDFileCache *fc BID_UNUSED,
     json_t **pData)
 {
+    BIDError err;
     json_t *data = NULL;
 
     data = json_object();
-    if (data == NULL ||
-        json_object_set_new(data, "v", json_string("2013.01.01")) < 0 ||
-        json_object_set_new(data, "d", json_object()) < 0) {
-        return BID_S_NO_MEMORY;
+    if (data == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
     }
 
+    err = _BIDJsonObjectSet(context, data, "v", json_string("2013.01.01"), BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, data, "d", json_object(), BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
     *pData = data;
 
-    return BID_S_OK;
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(data);
+
+    return err;
 }
 
 static BIDError
@@ -645,10 +656,11 @@ _BIDFileCacheSetOrRemoveObject(
     d = json_object_get(data, "d");
     BID_ASSERT(d != NULL);
 
-    if ((remove ? json_object_del(d, key) : json_object_set(d, key, val)) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    if (remove)
+        err = _BIDJsonObjectDel(context, d, key, 0);
+    else
+        err = _BIDJsonObjectSet(context, d, key, val, 0);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDFileCacheWrite(ops, context, cache, data);
     BID_BAIL_ON_ERROR(err);

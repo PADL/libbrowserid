@@ -27,30 +27,29 @@ _BIDMakeClaims(
     }
 
     claims = json_object();
-    if (claims == NULL ||
-        json_object_set_new(claims, "aud", json_string(szAudienceOrSpn)) < 0) {
+    if (claims == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
+
+    err = _BIDJsonObjectSet(context, claims, "aud", json_string(szAudienceOrSpn),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
 
     if (pbChannelBindings != NULL) {
         err = _BIDJsonBinaryValue(context, pbChannelBindings, cbChannelBindings, &cbt);
         BID_BAIL_ON_ERROR(err);
 
-        if (json_object_set(claims, "cbt", cbt) < 0) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        err = _BIDJsonObjectSet(context, claims, "cbt", cbt, 0);
+        BID_BAIL_ON_ERROR(err);
     }
 
     if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
         err = _BIDGenerateDHParams(context, &dh);
         BID_BAIL_ON_ERROR(err);
 
-        if (json_object_set(claims, "dh", dh) < 0) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        err = _BIDJsonObjectSet(context, claims, "dh", dh, 0);
+        BID_BAIL_ON_ERROR(err);
     }
 
     err = BID_S_OK;
@@ -127,7 +126,8 @@ BIDAcquireAssertion(
         BID_BAIL_ON_ERROR(err);
 
         /* Copy public value to parameters so we can send them. */
-        json_object_set(dh, "y", json_object_get(key, "y"));
+        err = _BIDJsonObjectSet(context, dh, "y", json_object_get(key, "y"), BID_JSON_FLAG_REQUIRED);
+        BID_BAIL_ON_ERROR(err);
     }
 
     err = _BIDPackAudience(context, claims, &szPackedAudience);
@@ -149,7 +149,13 @@ BIDAcquireAssertion(
         BIDIdentity assertedIdentity = *pAssertedIdentity;
 
         assertedIdentity->PrivateAttributes = json_object();
-        json_object_set(assertedIdentity->PrivateAttributes, "dh", key);
+        if (assertedIdentity->PrivateAttributes == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+
+        err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "dh", key, 0);
+        BID_BAIL_ON_ERROR(err);
     }
 
     *pAssertion = szAssertion;

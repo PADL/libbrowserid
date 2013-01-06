@@ -24,6 +24,9 @@
 #define BID_CRYPTO_PRINT_ERRORS()
 #endif
 
+#define BID_JSON_ENCODING_UNKNOWN   0
+#define BID_JSON_ENCODING_BASE64    1
+
 static BIDError
 _BIDGetJsonBNValue(
     BIDContext context,
@@ -127,10 +130,8 @@ _BIDSetJsonBNValue(
     cbData = BN_bn2bin(bn, pbData);
 
     err = _BIDJsonBinaryValue(context, pbData, cbData, &j);
-    if (err == BID_S_OK) {
-        if (json_object_set(jwk, key, j) < 0)
-            err = BID_S_NO_MEMORY;
-    }
+    if (err == BID_S_OK)
+        err = _BIDJsonObjectSet(context, jwk, key, j, 0);
 
     if (bFreeData)
         BIDFree(pbData);
@@ -894,11 +895,13 @@ _BIDGenerateDHKey(
     }
 
     dhKey = json_object();
-    if (dhKey == NULL ||
-        json_object_set(dhKey, "params", dhParams) < 0) {
+    if (dhKey == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
+
+    err = _BIDJsonObjectSet(context, dhKey, "params", dhParams, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetJsonBNValue(context, dhKey, "x", dh->priv_key);
     BID_BAIL_ON_ERROR(err);

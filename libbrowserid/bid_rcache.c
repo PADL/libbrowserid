@@ -94,15 +94,19 @@ _BIDUpdateReplayCache(
     err = _BIDSetJsonTimestampValue(context, rdata, "iat", verificationTime);
     BID_BAIL_ON_ERROR(err);
 
-    json_object_set(rdata, "a-exp", json_object_get(identity->PrivateAttributes, "a-exp"));
+    err = _BIDJsonObjectSet(context, rdata, "a-exp",
+                            json_object_get(identity->PrivateAttributes, "a-exp"), 0);
+    BID_BAIL_ON_ERROR(err);
 
     if (bStoreReauthCreds) {
         err = _BIDDeriveAuthenticatorRootKey(context, identity, &ark);
         BID_BAIL_ON_ERROR(err);
 
-        json_object_set(rdata, "ark", ark);
+        err = _BIDJsonObjectSet(context, rdata, "ark", ark, 0);
+        BID_BAIL_ON_ERROR(err);
     } else {
-        json_object_set(rdata, "exp", json_object_get(identity->Attributes, "exp"));
+        err = _BIDJsonObjectSet(context, rdata, "exp", json_object_get(identity->Attributes, "exp"), BID_JSON_FLAG_REQUIRED);
+        BID_BAIL_ON_ERROR(err);
     }
 
     if (replayCache == BID_C_NO_REPLAY_CACHE)
@@ -120,9 +124,15 @@ _BIDUpdateReplayCache(
             goto cleanup;
         }
 
-        json_object_set_new(tkt, "jti", json_string(szHash));
-        json_object_set(tkt, "exp", json_object_get(rdata, "exp"));
-        json_object_set(identity->PrivateAttributes, "tkt", tkt);
+        err = _BIDJsonObjectSet(context, tkt, "jti", json_string(szHash),
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDJsonObjectSet(context, tkt, "exp", json_object_get(rdata, "exp"), 0);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "tkt", tkt, 0);
+        BID_BAIL_ON_ERROR(err);
     }
 
 cleanup:

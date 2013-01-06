@@ -30,11 +30,11 @@ _BIDVerifierDHKeyEx(
     err = _BIDGenerateDHKey(context, params, &key);
     BID_BAIL_ON_ERROR(err);
 
-    if (json_object_set(dh, "x", json_object_get(key, "x")) < 0 ||
-        json_object_set(dh, "y", json_object_get(key, "y")) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDJsonObjectSet(context, dh, "x", json_object_get(key, "x"), BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, dh, "y", json_object_get(key, "y"), BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
 cleanup:
     json_decref(key);
@@ -178,10 +178,8 @@ _BIDGetIdentityDHPublicValue(
         goto cleanup;
     }
 
-    if (json_object_set(*pY, "y", y) < 0) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDJsonObjectSet(context, *pY, "y", y, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
 
@@ -222,6 +220,7 @@ _BIDSetIdentityDHPublicValue(
     BIDIdentity identity,
     json_t *y)
 {
+    BIDError err;
     json_t *dh;
     json_t *params;
 
@@ -235,8 +234,9 @@ _BIDSetIdentityDHPublicValue(
     if (params == NULL)
         return BID_S_NO_KEY;
 
-    if (json_object_set(params, "y", y) < 0)
-        return BID_S_NO_MEMORY;
+    err = _BIDJsonObjectSet(context, params, "y", y, BID_JSON_FLAG_REQUIRED);
+    if (err != BID_S_OK)
+        return err;
 
     return BID_S_OK;
 }
@@ -541,8 +541,13 @@ _BIDPopulateIdentity(
     err = _BIDAllocIdentity(context, leafCert, &identity);
     BID_BAIL_ON_ERROR(err);
 
-    json_object_set(identity->Attributes, "sub",  json_object_get(principal, "email"));
-    json_object_set(identity->Attributes, "aud",  json_object_get(assertion, "aud"));
+    err = _BIDJsonObjectSet(context, identity->Attributes, "sub",
+                           json_object_get(principal, "email"), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, identity->Attributes, "aud",
+                            json_object_get(assertion, "aud"), 0);
+    BID_BAIL_ON_ERROR(err);
 
     if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
         json_t *params = json_object_get(backedAssertion->Claims, "dh");
@@ -550,17 +555,23 @@ _BIDPopulateIdentity(
         if (params != NULL) {
             json_t *dh = json_object();
 
-            if (dh == NULL                                          ||
-                json_object_set(dh, "params", params) < 0           ||
-                json_object_set(identity->PrivateAttributes, "dh", dh) < 0) {
+            if (dh == NULL) {
                 err = BID_S_NO_MEMORY;
                 goto cleanup;
             }
+
+            err = _BIDJsonObjectSet(context, dh, "params", params, 0);
+            BID_BAIL_ON_ERROR(err);
+
+            err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "dh", dh, 0);
+            BID_BAIL_ON_ERROR(err);
         }
     }
 
     /* Assertion expiry time, internal use only */
-    json_object_set(identity->PrivateAttributes, "a-exp", json_object_get(assertion, "exp"));
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "a-exp",
+                            json_object_get(assertion, "exp"), BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
     *pIdentity = identity;

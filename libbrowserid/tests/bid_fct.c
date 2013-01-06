@@ -31,8 +31,8 @@ int main(int argc, char *argv[])
     j = json_string("bar");
 
     k = json_object();
-    json_object_set_new(k, "baz", json_string("12345678"));
-    json_object_set_new(k, "bat", json_string("This is a test"));
+    _BIDJsonObjectSet(context, k, "baz", json_string("12345678"), BID_JSON_FLAG_CONSUME_REF);
+    _BIDJsonObjectSet(context, k, "bat", json_string("This is a test"), BID_JSON_FLAG_CONSUME_REF);
 
     err = _BIDAcquireCache(context, "test.json", &cache);
     BID_BAIL_ON_ERROR(err);

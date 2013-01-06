@@ -142,7 +142,7 @@ TestRsaSignVerify(BIDContext context)
     SetHexJsonStr(public, "n", RsaModulus, sizeof(RsaModulus));
     SetHexJsonStr(public, "e", RsaExponent, sizeof(RsaExponent));
     SetHexJsonStr(secret, "d", RsaPrivateExponent, sizeof(RsaPrivateExponent));
-    json_object_set_new(secret, "algorithm", json_string("RS"));
+    _BIDJsonObjectSet(context, secret, "algorithm", json_string("RS"), BID_JSON_FLAG_CONSUME_REF);
 
     plaintext = json_loads(SamplePlaintext, 0, &error);
     if (plaintext == NULL) {
