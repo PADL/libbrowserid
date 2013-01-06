@@ -204,7 +204,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
         major = gssBidDisplayName(minor, target_name, &bufAudienceOrSpn, NULL);
         if (major == GSS_S_COMPLETE) {
             _BIDStoreTicketInCache(ctx->bidContext, ctx->bidIdentity,
-                                  (const char *)bufAudienceOrSpn.value, tkt);
+                                   (const char *)bufAudienceOrSpn.value, tkt);
         }
     }
 
