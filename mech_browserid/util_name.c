@@ -169,7 +169,8 @@ importServiceName(OM_uint32 *minor,
     krb5_error_code code;
     krb5_context krbContext;
     krb5_principal krbPrinc;
-    char *service, *host;
+    char *service;
+    char *host, hostname[MAXHOSTNAMELEN];
 
     GSSBID_KRB_INIT(&krbContext);
 
@@ -181,6 +182,14 @@ importServiceName(OM_uint32 *minor,
     if (host != NULL) {
         *host = '\0';
         host++;
+    } else {
+        if (gethostname(hostname, sizeof(hostname)) < 0) {
+            GSSBID_FREE(service);
+            *minor = GSSBID_GET_LAST_ERROR();
+            return GSS_S_FAILURE;
+        }
+
+        host = hostname;
     }
 
     code = krb5_build_principal(krbContext,
