@@ -34,7 +34,7 @@ BIDPrintVerboseTicketCacheEntry(const char *k, json_t *j)
     _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
     _BIDGetJsonBinaryValue(gContext, json_object_get(j, "ark"), "secret-key", &pbArk, &cbArk);
 
-    printf("Service:          %s\n", k);
+    printf("Audience:         %s\n", k);
     printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
     printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
     printf("Key length:       %zd bits\n", cbArk * 8);
@@ -56,6 +56,11 @@ BIDPrintTicketCacheEntry(const char *k, json_t *j)
     const char *szExpiry;
     time_t expiryTime;
     json_t *tkt = json_object_get(j, "tkt");
+    const char *aud = json_string_value(json_object_get(j, "aud"));
+
+    if (aud != NULL &&
+        strncmp(aud, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN) == 0)
+        aud += BID_GSS_AUDIENCE_PREFIX_LEN;
 
     _BIDGetJsonTimestampValue(gContext, tkt, "exp", &expiryTime);
 
@@ -63,7 +68,7 @@ BIDPrintTicketCacheEntry(const char *k, json_t *j)
 
     printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
            json_string_value(json_object_get(j, "sub")),
-           k, /*json_string_value(json_object_get(j, "aud")),*/
+           aud,
            json_string_value(json_object_get(j, "iss")),
            szExpiry);
 
