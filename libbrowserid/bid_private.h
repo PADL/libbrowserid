@@ -400,6 +400,7 @@ _BIDStoreTicketInCache(
 BIDError
 _BIDGetReauthAssertion(
     BIDContext context,
+    BIDTicketCache ticketCache,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,

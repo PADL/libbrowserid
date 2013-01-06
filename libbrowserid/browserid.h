@@ -99,6 +99,8 @@ typedef struct BIDContextDesc *BIDContext;
 
 #define BID_C_NO_CONTEXT                ((BIDContext)0)
 #define BID_C_NO_IDENTITY               ((BIDIdentity)0)
+#define BID_C_NO_TICKET_CACHE           ((BIDTicketCache)0)
+#define BID_C_NO_REPLAY_CACHE           ((BIDReplayCache)0)
 
 /*
  * Context is used by user-agent.
@@ -173,9 +175,6 @@ typedef enum {
     BID_PARAM_REPLAY_CACHE_NAME,
     BID_PARAM_AUTHORITY_CACHE_NAME,
     BID_PARAM_TICKET_CACHE_NAME,
-    BID_PARAM_REPLAY_CACHE,
-    BID_PARAM_AUTHORITY_CACHE,
-    BID_PARAM_TICKET_CACHE,
 } BIDContextParameter;
 
 BIDError
@@ -234,6 +233,7 @@ BIDAcquireAssertionFromString(
 BIDError
 BIDAcquireAssertion(
     BIDContext context,
+    BIDTicketCache ticketCache,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,

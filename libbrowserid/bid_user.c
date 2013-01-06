@@ -68,6 +68,7 @@ cleanup:
 BIDError
 BIDAcquireAssertion(
     BIDContext context,
+    BIDTicketCache ticketCache,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
@@ -99,7 +100,8 @@ BIDAcquireAssertion(
 
     if ((context->ContextOptions & BID_CONTEXT_REAUTH) &&
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_CACHED) == 0) {
-        err = _BIDGetReauthAssertion(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
+        err = _BIDGetReauthAssertion(context, ticketCache,
+                                     szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
                                      pAssertion, pAssertedIdentity, ptExpiryTime);
         if (err == BID_S_OK) {
             ulRetFlags |= BID_VERIFY_FLAG_REAUTH;

@@ -316,6 +316,7 @@ cleanup:
 BIDError
 _BIDGetReauthAssertion(
     BIDContext context,
+    BIDTicketCache ticketCache,
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
@@ -341,10 +342,13 @@ _BIDGetReauthAssertion(
     if (ptExpiryTime != NULL)
         *ptExpiryTime = 0;
 
+    if (ticketCache == BID_C_NO_TICKET_CACHE)
+        ticketCache = context->TicketCache;
+
     err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, NULL, &szCacheKey);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetCacheObject(context, context->TicketCache, szCacheKey, &cred);
+    err = _BIDGetCacheObject(context, ticketCache, szCacheKey, &cred);
     BID_BAIL_ON_ERROR(err);
 
     tkt = json_object_get(cred, "tkt");
