@@ -1068,7 +1068,7 @@ _BIDJsonObjectSet(
         if (ulFlags & BID_JSON_FLAG_REQUIRED)
             err = BID_S_UNKNOWN_JSON_KEY;
         else
-            json_object_del(dst, key);
+            err = _BIDJsonObjectDel(context, dst, key, 0);
     } else {
         if (json_object_set(dst, key, src) < 0)
             err = BID_S_NO_MEMORY;
