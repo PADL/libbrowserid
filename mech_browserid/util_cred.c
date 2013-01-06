@@ -534,9 +534,11 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
             cbChannelBindings = channelBindings->application_data.length;
         }
 
-        major = gssBidDisplayName(minor, targetName, &bufAudienceOrSpn, NULL);
-        if (GSS_ERROR(major))
-            goto cleanup;
+        if (targetName != GSS_C_NO_NAME) {
+            major = gssBidDisplayName(minor, targetName, &bufAudienceOrSpn, NULL);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
 
         if (resolvedCred->name != GSS_C_NO_NAME) {
             major = gssBidDisplayName(minor, resolvedCred->name, &bufSubject, NULL);
@@ -546,7 +548,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
 
         err = BIDAcquireAssertion(ctx->bidContext,
                                   (cred == GSS_C_NO_CREDENTIAL) ? NULL : cred->bidTicketCache,
-                                  (const char *)bufAudienceOrSpn.value,
+                                  (targetName == GSS_C_NO_NAME) ? NULL : (const char *)bufAudienceOrSpn.value,
                                   pbChannelBindings,
                                   cbChannelBindings,
                                   (const char *)bufSubject.value,
