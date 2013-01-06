@@ -380,11 +380,12 @@ gssBidMapError(OM_uint32 *minor, BIDError err)
         break;
     }
 
-    if (GSS_ERROR(major) && *minor == 0)
-        *minor = BID_MAP_ERROR(err);
-
-    BIDErrorToString(err, &msg);
-    gssBidSaveStatusInfo(*minor, "BrowserID: %s", msg);
+    if (GSS_ERROR(major)) {
+        if (*minor == 0)
+            *minor = BID_MAP_ERROR(err);
+        BIDErrorToString(err, &msg);
+        gssBidSaveStatusInfo(*minor, "BrowserID: %s", msg);
+    }
 
     return major;
 }
