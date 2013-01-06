@@ -53,8 +53,8 @@ _BIDVerifyRemote(
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
-    time_t verificationTime,
-    uint32_t ulReqFlags,
+    time_t verificationTime BID_UNUSED,
+    uint32_t ulReqFlags BID_UNUSED,
     BIDIdentity *pVerifiedIdentity,
     time_t *pExpiryTime,
     uint32_t *pulRetFlags)

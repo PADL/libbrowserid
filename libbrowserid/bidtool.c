@@ -90,7 +90,7 @@ BIDPurgeTicketCache(int argc, char *argv[])
 }
 
 static BIDError
-BIDListTicketCache(int argc, char *argv[])
+BIDListTicketCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     BIDError err;
     const char *k = NULL;
@@ -134,7 +134,7 @@ BIDListTicketCache(int argc, char *argv[])
 }
 
 static BIDError
-BIDDestroyTicketCache(int argc, char *argv[])
+BIDDestroyTicketCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     if (argc)
         BIDToolUsage();
@@ -232,7 +232,7 @@ BIDShouldPurgeReplayCacheEntryP(json_t *j)
 }
 
 static BIDError
-BIDListReplayCache(int argc, char *argv[])
+BIDListReplayCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     BIDError err;
     const char *k = NULL;
@@ -275,7 +275,11 @@ BIDListReplayCache(int argc, char *argv[])
 }
 
 static BIDError
-BIDPurgeCache(int argc, char *argv[], BIDCache cache, int (*shouldPurgeP)(json_t *))
+BIDPurgeCache(
+    int argc BID_UNUSED,
+    char *argv[] BID_UNUSED,
+    BIDCache cache,
+    int (*shouldPurgeP)(json_t *))
 {
     BIDError err;
     const char *k = NULL;
@@ -308,7 +312,7 @@ BIDPurgeReplayCache(int argc, char *argv[])
 }
 
 static BIDError
-BIDDestroyReplayCache(int argc, char *argv[])
+BIDDestroyReplayCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     if (argc)
         BIDToolUsage();
@@ -373,7 +377,7 @@ BIDPrintAuthorityCacheEntry(const char *k, json_t *j)
 }
 
 static BIDError
-BIDListAuthorityCache(int argc, char *argv[])
+BIDListAuthorityCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     BIDError err;
     const char *k = NULL;
@@ -413,7 +417,7 @@ BIDPurgeAuthorityCache(int argc, char *argv[])
 }
 
 static BIDError
-BIDDestroyAuthorityCache(int argc, char *argv[])
+BIDDestroyAuthorityCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     if (argc)
         BIDToolUsage();

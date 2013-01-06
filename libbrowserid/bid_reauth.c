@@ -54,7 +54,7 @@ static BIDError
 _BIDMakeTicketCacheKey(
     BIDContext context,
     const char *szAudienceOrSpn,
-    const char *szSubject,
+    const char *szSubject BID_UNUSED,
     char **pszCacheKey)
 {
     BIDError err;

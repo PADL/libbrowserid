@@ -45,8 +45,8 @@ _BIDMemoryCacheAcquire(
 
 static BIDError
 _BIDMemoryCacheRelease(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache)
 {
     struct BIDMemoryCache *mc = (struct BIDMemoryCache *)cache;
@@ -63,17 +63,17 @@ _BIDMemoryCacheRelease(
 
 static BIDError
 _BIDMemoryCacheInitialize(
-    struct BIDCacheOps *ops,
-    BIDContext context,
-    void *cache)
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
+    void *cache BID_UNUSED)
 {
     return BID_S_OK;
 }
 
 static BIDError
 _BIDMemoryCacheDestroy(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache)
 {
     struct BIDMemoryCache *mc = (struct BIDMemoryCache *)cache;
@@ -94,8 +94,8 @@ _BIDMemoryCacheDestroy(
 
 static BIDError
 _BIDMemoryCacheGetName(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache,
     const char **name)
 {
@@ -111,8 +111,8 @@ _BIDMemoryCacheGetName(
 
 static BIDError
 _BIDMemoryCacheGetLastChangedTime(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache,
     time_t *pTime)
 {
@@ -130,8 +130,8 @@ _BIDMemoryCacheGetLastChangedTime(
 
 static BIDError
 _BIDMemoryCacheGetObject(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache,
     const char *key,
     json_t **val)
@@ -160,8 +160,8 @@ cleanup:
 
 static BIDError
 _BIDMemoryCacheSetOrRemoveObject(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache,
     const char *key,
     json_t *val,
@@ -209,8 +209,8 @@ _BIDMemoryCacheRemoveObject(
 
 static BIDError
 _BIDMemoryCacheFirstObject(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache,
     const char **key,
     json_t **val)
@@ -247,8 +247,8 @@ cleanup:
 
 static BIDError
 _BIDMemoryCacheNextObject(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache,
     const char **key,
     json_t **val)

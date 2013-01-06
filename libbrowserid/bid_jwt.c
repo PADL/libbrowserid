@@ -97,7 +97,7 @@ _BIDFindKeyInKeyset(
 
 BIDError
 _BIDValidateJWTHeader(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     json_t *header)
 {
     void *iter;
@@ -400,7 +400,7 @@ cleanup:
 
 BIDError
 _BIDReleaseJWTInternal(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     BIDJWT jwt,
     int freeit)
 {
@@ -427,7 +427,9 @@ _BIDReleaseJWT(
 }
 
 int
-_BIDIsLegacyJWK(BIDContext context, BIDJWK jwk)
+_BIDIsLegacyJWK(
+    BIDContext context BID_UNUSED,
+    BIDJWK jwk)
 {
     const char *version = json_string_value(json_object_get(jwk, "version"));
 

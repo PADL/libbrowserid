@@ -82,7 +82,7 @@ _BIDGetJsonBNValue(
     return err;
 }
 
-#ifdef GSSBID_DEBUG
+#if 0
 static void
 _BIDDebugJsonBNValue(
     BIDContext context,
@@ -172,7 +172,7 @@ _BIDEvpForAlgorithm(
 static BIDError
 _BIDMakeShaDigest(
     struct BIDJWTAlgorithmDesc *algorithm,
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     BIDJWT jwt,
     unsigned char *digest,
     size_t *digestLength)
@@ -242,7 +242,7 @@ cleanup:
 
 static BIDError
 _RSAKeySize(
-    struct BIDJWTAlgorithmDesc *algorithm,
+    struct BIDJWTAlgorithmDesc *algorithm BID_UNUSED,
     BIDContext context,
     BIDJWK jwk,
     size_t *pcbKey)
@@ -410,7 +410,7 @@ cleanup:
 
 static BIDError
 _DSAKeySize(
-    struct BIDJWTAlgorithmDesc *algorithm,
+    struct BIDJWTAlgorithmDesc *algorithm BID_UNUSED,
     BIDContext context,
     BIDJWK jwk,
     size_t *pcbKey)
@@ -646,7 +646,7 @@ _HMACSHAVerifySignature(
 
 BIDError
 _BIDDigestAssertion(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     const char *szAssertion,
     unsigned char *digest,
     size_t *digestLength)
@@ -1005,7 +1005,7 @@ static const unsigned char _BIDSalt[9] = "BrowserID";
 
 BIDError
 _BIDDeriveKey(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     const unsigned char *pbBaseKey,
     size_t cbBaseKey,
     const unsigned char *pbSalt,

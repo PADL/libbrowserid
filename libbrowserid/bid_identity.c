@@ -108,6 +108,8 @@ BIDReleaseIdentity(
     BIDContext context,
     BIDIdentity identity)
 {
+    BID_CONTEXT_VALIDATE(context);
+
     if (identity == BID_C_NO_IDENTITY)
         return BID_S_INVALID_PARAMETER;
 
@@ -160,6 +162,8 @@ _BIDGetIdentityDHPublicValue(
     json_t *y = NULL;
 
     *pY = NULL;
+
+    BID_CONTEXT_VALIDATE(context);
 
     if (identity->PrivateAttributes == NULL                                   ||
         (dh     = json_object_get(identity->PrivateAttributes, "dh")) == NULL ||
@@ -435,7 +439,7 @@ cleanup:
 BIDError
 BIDFreeIdentitySessionKey(
     BIDContext context,
-    BIDIdentity identity,
+    BIDIdentity identity BID_UNUSED,
     unsigned char *pbSessionKey,
     size_t cbSessionKey)
 {

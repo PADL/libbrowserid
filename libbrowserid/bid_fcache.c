@@ -58,7 +58,7 @@ struct BIDFileCache {
 
 static BIDError
 _BIDFileCacheAcquire(
-    struct BIDCacheOps *ops,
+    struct BIDCacheOps *ops BID_UNUSED,
     BIDContext context,
     void **cache,
     const char *name)
@@ -83,8 +83,8 @@ _BIDFileCacheAcquire(
 
 static BIDError
 _BIDFileCacheRelease(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache)
 {
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
@@ -101,9 +101,9 @@ _BIDFileCacheRelease(
 
 static BIDError
 _BIDFileCacheLock(
-    struct BIDCacheOps *ops,
-    BIDContext context,
-    void *cache,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
+    void *cache BID_UNUSED,
     int fd,
     int exclusive)
 {
@@ -142,9 +142,9 @@ _BIDFileCacheLock(
 
 static BIDError
 _BIDFileCacheUnlock(
-    struct BIDCacheOps *ops,
-    BIDContext context,
-    void *cache,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
+    void *cache BID_UNUSED,
     int fd)
 {
     int ret;
@@ -311,9 +311,9 @@ cleanup:
 
 static BIDError
 _BIDFileCacheStore(
-    struct BIDCacheOps *ops,
-    BIDContext context,
-    struct BIDFileCache *fc,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
+    struct BIDFileCache *fc BID_UNUSED,
     int fd,
     json_t *data)
 {
@@ -338,9 +338,9 @@ _BIDFileCacheStore(
 
 static BIDError
 _BIDFileCacheLoad(
-    struct BIDCacheOps *ops,
+    struct BIDCacheOps *ops BID_UNUSED,
     BIDContext context,
-    struct BIDFileCache *fc,
+    struct BIDFileCache *fc BID_UNUSED,
     int fd,
     json_t **pData)
 {
@@ -368,9 +368,9 @@ _BIDFileCacheLoad(
 
 static BIDError
 _BIDFileCacheNew(
-    struct BIDCacheOps *ops,
-    BIDContext context,
-    struct BIDFileCache *fc,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
+    struct BIDFileCache *fc BID_UNUSED,
     json_t **pData)
 {
     json_t *data = NULL;
@@ -526,8 +526,8 @@ _BIDFileCacheDestroy(
 
 static BIDError
 _BIDFileCacheGetName(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache,
     const char **name)
 {
@@ -746,8 +746,8 @@ cleanup:
 
 static BIDError
 _BIDFileCacheNextObject(
-    struct BIDCacheOps *ops,
-    BIDContext context,
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context BID_UNUSED,
     void *cache,
     const char **key,
     json_t **val)

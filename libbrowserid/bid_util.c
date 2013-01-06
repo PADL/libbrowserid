@@ -20,7 +20,7 @@ _BIDUnpackAudience(
 
 BIDError
 _BIDDuplicateString(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     const char *szSrc,
     char **szDst)
 {
@@ -41,7 +41,7 @@ _BIDDuplicateString(
 
 BIDError
 _BIDJsonBinaryValue(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     const unsigned char *pbData,
     size_t cbData,
     json_t **pJson)
@@ -71,7 +71,7 @@ _BIDJsonBinaryValue(
 
 BIDError
 _BIDEncodeJson(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     json_t *jData,
     char **pEncodedJson,
     size_t *pEncodedJsonLen)
@@ -313,7 +313,7 @@ CURLcodeToBIDError(CURLcode cc)
 
 static BIDError
 _BIDSetCurlCompositeUrl(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     CURL *curlHandle,
     const char *szHostname,
     const char *szRelativeUrl)
@@ -399,7 +399,7 @@ _BIDCurlHeaderCB(void *ptr, size_t size, size_t nmemb, void *stream)
 
 static BIDError
 _BIDInitCurlHandle(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     struct BIDCurlHeaderDesc *headers,
     struct BIDCurlBufferDesc *buffer,
     CURL **pCurlHandle)
@@ -515,7 +515,7 @@ cleanup:
 
 static BIDError
 _BIDSetCurlIfModifiedSince(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     CURL *curlHandle,
     time_t tIfModifiedSince)
 {
@@ -654,7 +654,7 @@ _BIDGetJsonStringValue(
 
 BIDError
 _BIDGetJsonBinaryValue(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     json_t *json,
     const char *key,
     unsigned char **pbData,
@@ -670,7 +670,7 @@ _BIDGetJsonBinaryValue(
 
 BIDError
 _BIDGetCurrentJsonTimestamp(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     json_t **pTs)
 {
     struct timeval tv;
@@ -688,7 +688,7 @@ _BIDGetCurrentJsonTimestamp(
 
 BIDError
 _BIDGetJsonTimestampValue(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     json_t *json,
     const char *key,
     time_t *ts)
@@ -712,7 +712,7 @@ _BIDGetJsonTimestampValue(
 
 BIDError
 _BIDSetJsonTimestampValue(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     json_t *json,
     const char *key,
     time_t ts)
@@ -829,7 +829,7 @@ BIDErrorToString(
 
 json_t *
 _BIDLeafCert(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     BIDBackedAssertion backedAssertion)
 {
     if (backedAssertion->cCertificates == 0)
@@ -840,7 +840,7 @@ _BIDLeafCert(
 
 json_t *
 _BIDRootCert(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     BIDBackedAssertion backedAssertion)
 {
     if (backedAssertion->cCertificates == 0)
@@ -1033,7 +1033,7 @@ cleanup:
 
 BIDError
 BIDFreeData(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     char *s)
 {
     if (s == NULL)

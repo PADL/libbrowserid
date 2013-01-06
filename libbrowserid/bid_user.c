@@ -171,7 +171,7 @@ BIDError
 BIDAcquireAssertionFromString(
     BIDContext context,
     const char *szAssertion,
-    uint32_t ulReqFlags,
+    uint32_t ulReqFlags BID_UNUSED,
     BIDIdentity *pAssertedIdentity,
     time_t *ptExpiryTime,
     uint32_t *pulRetFlags)
