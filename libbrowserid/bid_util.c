@@ -985,7 +985,8 @@ _BIDPackAudience(
 
     cchAudience = strlen(szAudience);
 
-    json_object_del(protocolClaims, "aud");
+    err = _BIDJsonObjectDel(context, protocolClaims, "aud", 0);
+    BID_BAIL_ON_ERROR(err);
 
     if (json_object_size(protocolClaims) != 0) {
         err = _BIDEncodeJson(context, protocolClaims, &szEncodedClaims, &cchEncodedClaims);

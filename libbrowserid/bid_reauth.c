@@ -301,8 +301,11 @@ _BIDMakeReauthIdentity(
     BID_BAIL_ON_ERROR(err);
 
     /* remove the secret stuff from the attribute cache */
-    json_object_del(identity->Attributes, "ark");
-    json_object_del(identity->Attributes, "a-exp");
+    err = _BIDJsonObjectDel(context, identity->Attributes, "ark", 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectDel(context, identity->Attributes, "a-exp", 0);
+    BID_BAIL_ON_ERROR(err);
 
     /* copy over the assertion expiry time */
     err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "a-exp",
@@ -452,7 +455,8 @@ _BIDVerifyReauthAssertion(
      * Delete the expiry attribute, if present, to prevent the initiator
      * sending an authenticator that expires too far into the future.
      */
-    json_object_del(ap->Payload, "exp");
+    err = _BIDJsonObjectDel(context, ap->Payload, "exp", 0);
+    BID_BAIL_ON_ERROR(err);
 
     *pVerifierCred = json_incref(json_object_get(cred, "ark"));
 
