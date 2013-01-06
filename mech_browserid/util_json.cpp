@@ -98,7 +98,7 @@ JSONObject::dump(size_t flags) const
 {
     char *s = json_dumps(m_obj, flags);
 
-    if (s == NULL)
+    if (s == NULL && !isNull())
         throw std::bad_alloc();
 
     return s;
@@ -109,7 +109,7 @@ JSONObject::dump(FILE *fp, size_t flags) const
 {
     int r = json_dumpf(m_obj, fp, flags);
 
-    if (r != 0)
+    if (r != 0 && !isNull())
         throw std::bad_alloc();
 }
 
