@@ -873,8 +873,6 @@ _BIDUnpackAudience(
         goto cleanup;
     }
 
-    fprintf(stderr, "_BIDUnpackAudience: %s\n", szPackedAudience);
-
     claims = json_object();
     if (claims == NULL) {
         err = BID_S_NO_MEMORY;
