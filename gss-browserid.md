@@ -177,7 +177,7 @@ Ideally, BrowserID would support adding arbitrary claims to self-signed assertio
     gss-encoded-claims = base64-encode(gss-claims)
     audience = "urn:x-gss:" spn "#" gss-encoded-claims
     
-The host name is stripped out from the service principal name; any other components are included in the GSS claims object. An example:
+For example:
 
     urn:x-gss:host/www.browserid.org#eyJkaCI6eyJwIjoibHRJaVFCN21MMWVNbVdzbmtOZmxFdyIsImciOiJBZyIsInkiOiJhWmJ6V1VYRVRWeTEtdVpmX1hGNnB3In19
     
@@ -201,9 +201,9 @@ The silent option MAY be used if the GSS credential is bound to a name.
 
 The expiry and, if present, issued-at and not-before times of all elements in a backed assertion, MUST be validated. This applies equally to re-authentication assertions, public key assertions, and the entire certificate chain. If the expiry time is absent, the issued-at time MUST be present, and the JWT implicitly expires a configurable interval (typically five minutes) after the issued-at time.
 
-The GSS context lifetime MUST NOT exceed the lifetime of the user's certificate.
+The GSS context lifetime SHOULD NOT exceed the lifetime of the user's certificate.
 
-The lifetime of a re-authentication ticket MUST NOT exceed the lifetime of the user's certificate. The acceptor MUST validate the ticket expiry time when performing re-authentication.
+The lifetime of a re-authentication ticket SHOULD NOT exceed the lifetime of the user's certificate. The acceptor MUST validate the ticket expiry time when performing re-authentication.
 
 Message protections services such as GSS_Wrap() SHOULD be available beyond the GSS context lifetime for maximum application compatibility.
 
