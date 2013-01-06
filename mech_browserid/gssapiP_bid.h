@@ -142,6 +142,7 @@ struct gss_cred_id_struct
     time_t expiryTime;
     BIDContext bidContext;
     BIDTicketCache bidTicketCache;
+    BIDReplayCache bidReplayCache;
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001

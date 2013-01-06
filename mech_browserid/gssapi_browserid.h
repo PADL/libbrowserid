@@ -71,6 +71,11 @@ extern gss_OID GSS_BROWSERID_CRED_SET_CRED_FLAG;
 extern gss_OID GSS_BROWSERID_CRED_SET_CRED_TICKET_CACHE;
 
 /*
+ * A string containing a path to the replay cache name.
+ */
+extern gss_OID GSS_BROWSERID_CRED_SET_CRED_REPLAY_CACHE;
+
+/*
  * Credentials flag indicating the local attributes
  * processing should be skipped.
  */

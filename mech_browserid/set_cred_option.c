@@ -86,6 +86,15 @@ setCredTicketCache(OM_uint32 *minor,
     return gssBidSetCredTicketCacheName(minor, cred, buffer);
 }
 
+static OM_uint32
+setCredReplayCache(OM_uint32 *minor,
+                   gss_cred_id_t cred,
+                   const gss_OID oid GSSBID_UNUSED,
+                   const gss_buffer_t buffer)
+{
+    return gssBidSetCredReplayCacheName(minor, cred, buffer);
+}
+
 static struct {
     gss_OID_desc oid;
     OM_uint32 (*setOption)(OM_uint32 *, gss_cred_id_t cred,
@@ -106,11 +115,17 @@ static struct {
         { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x18\x03\x03\x03" },
         setCredTicketCache,
     },
+    /* 1.3.6.1.4.1.5322.24.3.3.4 */
+    {
+        { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x18\x03\x03\x03" },
+        setCredReplayCache,
+    },
 };
 
 gss_OID GSS_BROWSERID_CRED_SET_CRED_FLAG            = &setCredOps[0].oid;
 gss_OID GSS_BROWSERID_CRED_SET_CRED_ASSERTION       = &setCredOps[1].oid;
 gss_OID GSS_BROWSERID_CRED_SET_CRED_TICKET_CACHE    = &setCredOps[2].oid;
+gss_OID GSS_BROWSERID_CRED_SET_CRED_REPLAY_CACHE    = &setCredOps[3].oid;
 
 OM_uint32 GSSAPI_CALLCONV
 gssspi_set_cred_option(OM_uint32 *minor,

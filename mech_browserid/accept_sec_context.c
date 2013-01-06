@@ -160,6 +160,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
     }
 
     err = BIDVerifyAssertion(ctx->bidContext,
+                             cred->bidReplayCache,
                              szAssertion,
                              (char *)bufAudienceOrSpn.value,
                              pbChannelBindings,

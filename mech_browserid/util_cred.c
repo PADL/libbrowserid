@@ -94,6 +94,7 @@ gssBidReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     gssBidReleaseName(&tmpMinor, &cred->target);
     gss_release_buffer(&tmpMinor, &cred->assertion);
     BIDReleaseTicketCache(cred->bidContext, cred->bidTicketCache);
+    BIDReleaseReplayCache(cred->bidContext, cred->bidReplayCache);
     BIDReleaseContext(cred->bidContext);
 
     GSSBID_MUTEX_DESTROY(&cred->mutex);
@@ -380,6 +381,39 @@ gssBidSetCredTicketCacheName(OM_uint32 *minor,
 
     BIDReleaseTicketCache(cred->bidContext, cred->bidTicketCache);
     cred->bidTicketCache = newCache;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    return major;
+}
+
+OM_uint32
+gssBidSetCredReplayCacheName(OM_uint32 *minor,
+                             gss_cred_id_t cred,
+                             const gss_buffer_t cacheName)
+{
+    OM_uint32 major;
+    BIDError err;
+    BIDCache newCache = BID_C_NO_REPLAY_CACHE;
+
+    if (cred->flags & CRED_FLAG_RESOLVED) {
+        major = GSS_S_FAILURE;
+        *minor = GSSBID_CRED_RESOLVED;
+        goto cleanup;
+    }
+
+    if (cacheName != GSS_C_NO_BUFFER) {
+        err = BIDAcquireReplayCache(cred->bidContext, (char *)cacheName->value, &newCache);
+        if (err != BID_S_OK) {
+            major = gssBidMapError(minor, err);
+            goto cleanup;
+        }
+    }
+
+    BIDReleaseReplayCache(cred->bidContext, cred->bidReplayCache);
+    cred->bidReplayCache = newCache;
 
     major = GSS_S_COMPLETE;
     *minor = 0;
