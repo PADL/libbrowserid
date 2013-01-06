@@ -404,6 +404,7 @@ _BIDGetReauthAssertion(
     const char *szPackedAudience,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
+    const char *szIdentityName, /* optional */
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
     time_t *ptExpiryTime);

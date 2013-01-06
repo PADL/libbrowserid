@@ -92,7 +92,7 @@ BIDAcquireAssertion(
     if ((context->ContextOptions & BID_CONTEXT_REAUTH) &&
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_CACHED) == 0) {
         err = _BIDGetReauthAssertion(context, ticketCache, szPackedAudience,
-                                     pbChannelBindings, cbChannelBindings,
+                                     pbChannelBindings, cbChannelBindings, szIdentityName,
                                      pAssertion, pAssertedIdentity, ptExpiryTime);
         if (err == BID_S_OK) {
             ulRetFlags |= BID_VERIFY_FLAG_REAUTH;

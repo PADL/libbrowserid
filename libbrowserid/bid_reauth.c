@@ -272,6 +272,58 @@ cleanup:
     return err;
 }
 
+static BIDError
+_BIDFindTicketInCache(
+    BIDContext context,
+    BIDTicketCache ticketCache,
+    const char *szPackedAudience,
+    const char *szIdentityName,
+    json_t **pCred)
+{
+    BIDError err;
+    json_t *cred = NULL;
+
+    if (szIdentityName != NULL) {
+        const char *cacheKey;
+        json_t *cacheVal = NULL;
+
+        for (err = _BIDGetFirstCacheObject(context, ticketCache, &cacheKey, &cacheVal);
+             err == BID_S_OK;
+             err = _BIDGetNextCacheObject(context, ticketCache, &cacheKey, &cacheVal)) {
+            const char *szCacheAudience = json_string_value(json_object_get(cacheVal, "aud"));
+            const char *szCacheIdentity = json_string_value(json_object_get(cacheVal, "sub"));
+
+            if (szCacheAudience == NULL || szCacheIdentity == NULL)
+                continue;
+
+            if (strcmp(szCacheAudience, szPackedAudience) == 0 &&
+                strcmp(szCacheIdentity, szIdentityName) == 0) {
+                cred = cacheVal;
+                break;
+            }
+
+            json_decref(cacheVal);
+            cacheVal = NULL;
+        }
+
+        if (err == BID_S_NO_MORE_ITEMS)
+            err = BID_S_CACHE_KEY_NOT_FOUND;
+    } else
+        err = _BIDGetCacheObject(context, ticketCache, szPackedAudience, &cred);
+    BID_BAIL_ON_ERROR(err);
+
+    BID_ASSERT(err == BID_S_OK || cred == NULL);
+
+    err = BID_S_OK;
+    *pCred = cred;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(cred);
+
+    return err;
+}
+
 /*
  * Try to make a reauthentication assertion.
  */
@@ -282,6 +334,7 @@ _BIDGetReauthAssertion(
     const char *szPackedAudience,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
+    const char *szIdentityName,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
     time_t *ptExpiryTime)
@@ -306,7 +359,7 @@ _BIDGetReauthAssertion(
     if (ticketCache == BID_C_NO_TICKET_CACHE)
         ticketCache = context->TicketCache;
 
-    err = _BIDGetCacheObject(context, ticketCache, szPackedAudience, &cred);
+    err = _BIDFindTicketInCache(context, ticketCache, szPackedAudience, szIdentityName, &cred);
     BID_BAIL_ON_ERROR(err);
 
     tkt = json_object_get(cred, "tkt");
