@@ -237,17 +237,7 @@ These claims are included in the assertion sent to the acceptor and are authenti
         "aud": "urn:x-gss:host/www.browserid.org"
     }
  
-Because the current implementation of BrowserID.internal.get() does not allow an application-specific payload to be added to the assertion, it is necessary to override jwcrypto.assertion.sign(). For example, in our implementation, the claims from controller.claims are added:
-
-    var assertionSign = jwcrypto.assertion.sign;  // save original method implementation
-    
-    jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {
-        var gssPayload = eval('(' + controller.claims.stringRepresentation() + ')');
-        for (var k in payload) {
-            if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];
-        }
-        assertionSign(gssPayload, assertionParams, secretKey, cb);
-    };
+Because the current implementation of BrowserID.internal.get() does not allow an application-specific payload to be added to the assertion, it is necessary to override jwcrypto.assertion.sign(). There is an issue request [here](https://github.com/mozilla/browserid/issues/2910) to track this.  
 
 #### "cbt" (Channel Binding Token)
 
