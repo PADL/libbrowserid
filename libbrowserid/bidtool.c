@@ -72,8 +72,6 @@ BIDPrintTicketCacheEntry(const char *k, json_t *j)
            json_string_value(json_object_get(j, "iss")),
            szExpiry);
 
-    printf("\n");
-
     return BID_S_OK;
 }
 
