@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     _BIDJsonObjectSet(context, k, "baz", json_string("12345678"), BID_JSON_FLAG_CONSUME_REF);
     _BIDJsonObjectSet(context, k, "bat", json_string("This is a test"), BID_JSON_FLAG_CONSUME_REF);
 
-    err = _BIDAcquireCache(context, "test.json", &cache);
+    err = _BIDAcquireCache(context, "test.json", 0, &cache);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDInitializeCache(context, cache);
