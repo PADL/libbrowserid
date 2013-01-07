@@ -48,8 +48,9 @@ distribution.
 If you are testing between different machines, then you should do (replacing
 server as appropriate)
 
-    % gss-client -port 5555 -mech "{1 3 6 1 4 1 5322 24 1 17}" server host@server "Testing GSS BrowserID"
-    % gss-server -port 5555 -export host@server
+    % gss-client -port 5555 -mech "{1 3 6 1 4 1 5322 24 1 17}" \
+      server.browserid.org host@server.browserid.org "Testing GSS BrowserID"
+    % gss-server -port 5555 -export host@server.browserid.org
 
 Note that if you test the browserid-none (no key) mechanism than the message
 protection tests will fail.
@@ -60,5 +61,22 @@ SASL samples can be found in the sample directory of the Cyrus SASL
 distribution. However, the GS2 mechanism presently needs a patch to support
 mechanisms without mutual authentication (this can be found in contrib).
 
-    % client -C -p 5556 -s host -m BROWSERID-AES128 server
-    % server -c -p 5556 -s host -h server
+    % client -C -p 5556 -s host -m BROWSERID-AES128 server.browserid.org
+    % server -c -p 5556 -s host -h server.browserid.org
+
+### OpenSSH
+
+Mechanism-agnostic versions of OpenSSH such as those shipped with Moonshot
+should work with BrowserID. Unfortunately due to the way OpenSSH works, you
+will be prompted twice for credentials. You must have a local account that
+matches the BrowserID subject name and be sure to pass that to ssh, as there is
+a direct equivalence test.
+
+    % ssh -l lukeh@padl.com -oGSSAPIAuthentication=yes -oGSSAPIKeyExchange=no \
+      -oPubkeyAuthentication=no -oPasswordAuthentication=no server.browserid.org
+    % sshd -f /etc/sshd_config -o PubkeyAuthentication=no -o PasswordAuthentication=no
+
+Note that if the server name has aliases (i.e. you can't guarantee which name
+the client will choose, you'll also need to set the
+GSSAPIStrictAcceptorCheck=no option.
+

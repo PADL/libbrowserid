@@ -150,9 +150,11 @@ gssBidAcceptSecContext(OM_uint32 *minor,
             goto cleanup;
     }
 
-    major = gssBidDisplayName(minor, cred->name, &bufAudienceOrSpn, NULL);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    if (cred->name != GSS_C_NO_NAME) {
+        major = gssBidDisplayName(minor, cred->name, &bufAudienceOrSpn, NULL);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
     if (input_chan_bindings != GSS_C_NO_CHANNEL_BINDINGS) {
         pbChannelBindings = (const unsigned char *)input_chan_bindings->application_data.value;

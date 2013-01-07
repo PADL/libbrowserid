@@ -66,7 +66,7 @@ BIDVerifyAssertion(
     *pExpiryTime = 0;
     *pulRetFlags = 0;
 
-    if (szAssertion == NULL || szAudienceOrSpn == NULL)
+    if (szAssertion == NULL)
         return BID_S_INVALID_PARAMETER;
 
     if ((context->ContextOptions & BID_CONTEXT_RP) == 0)
@@ -77,8 +77,11 @@ BIDVerifyAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
-    BID_BAIL_ON_ERROR(err);
+    /* If the caller does not pass in an audience, it means it does not care. */
+    if (szPackedAudience != NULL) {
+        err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
+        BID_BAIL_ON_ERROR(err);
+    }
 
     if (context->ContextOptions & BID_CONTEXT_VERIFY_REMOTE)
         err = _BIDVerifyRemote(context, replayCache, szAssertion, szPackedAudience,
