@@ -43,12 +43,16 @@ gssspi_authorize_localname(OM_uint32 *minor,
                            gss_const_OID local_nametype GSSBID_UNUSED)
 {
     /*
-     * The MIT mechglue will fallback to comparing names in the absence
-     * of a mechanism implementation of gss_userok. To avoid this and
-     * force the mechglue to use attribute-based authorization, always
-     * return access denied here.
+     * Returning GSS_S_UNAVAILABLE will force the mechanism glue, at
+     * least in the MIT implementation, to compare for equivalence.
+     *
+     * Moonshot returns GSS_S_UNAUTHORIZED here to force the glue to
+     * only use attribute-based authorization, but it is less likely
+     * that BrowserID certificates will contain useful POSIX account
+     * information, we're going to allow the direct equivalence fallback
+     * test here by returning GSS_S_UNAVAILABLE.
      */
 
     *minor = 0;
-    return GSS_S_UNAUTHORIZED;
+    return GSS_S_UNAVAILABLE;
 }
