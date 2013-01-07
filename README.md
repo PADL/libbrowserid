@@ -30,6 +30,10 @@ Build similar to the following:
     ./autogen.sh
     OBJC=clang CC=clang CXX=clang++ ./configure
 
+You can enable additional debugging with the GSSBID\_DEBUG compile time flag.
+This is presently mandatory on OS X to use the client with command-line
+utilities (set OBJCFLAGS=-DGSSBID\_DEBUG before running configure).
+
 Edit /usr/local/etc/gss/mech (replace path as appropriate) and add the
 following mechanisms, updating the path as appropriate:
 
