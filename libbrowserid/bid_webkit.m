@@ -4,13 +4,10 @@
  * Use is subject to license.
  */
 
-#include "bid_private.h"
-
-#ifdef __APPLE__
-
 #include <AppKit/AppKit.h>
 #include <WebKit/WebKit.h>
 
+#include "bid_private.h"
 #include "bid_json.h"
 
 @interface BIDIdentityDialog : NSPanel
@@ -442,7 +439,7 @@
 @end
 
 static BIDError
-_BIDWebkitGetAssertion(
+_BIDBrowserGetAssertion(
     BIDContext context,
     const char *szPackedAudience,
     const char *szAudienceOrSpn,
@@ -495,23 +492,4 @@ _BIDWebkitGetAssertion(
     }
 
     return err;
-}
-#endif /* __APPLE__ */
-
-BIDError
-_BIDBrowserGetAssertion(
-    BIDContext context,
-    const char *szPackedAudience,
-    const char *szAudienceOrSpn,
-    json_t *claims,
-    const char *szIdentityName,
-    uint32_t ulReqFlags,
-    char **pAssertion)
-{
-#ifdef __APPLE__
-    return _BIDWebkitGetAssertion(context, szPackedAudience, szAudienceOrSpn, claims,
-                                  szIdentityName, ulReqFlags, pAssertion);
-#else
-    return BID_S_INTERACT_UNAVAILABLE;
-#endif
 }
