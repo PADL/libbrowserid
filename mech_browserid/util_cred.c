@@ -518,7 +518,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
             goto cleanup;
     }
 
-    GSSBID_ASSERT((resolvedCred->assertion.length != 0) == (resolvedCred->flags & CRED_FLAG_RESOLVED) != 0);
+    GSSBID_ASSERT((resolvedCred->assertion.length != 0) == ((resolvedCred->flags & CRED_FLAG_RESOLVED) != 0));
 
     /* XXX API is not a good fit here, but we will rework later */
     if (resolvedCred->flags & CRED_FLAG_RESOLVED) {

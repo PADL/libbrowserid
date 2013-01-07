@@ -61,13 +61,14 @@ AX_CHECK_CURL
 AX_CHECK_JANSSON
 AX_CHECK_OPENSSL
 AX_CHECK_OPENSAML
-AM_CONDITIONAL(OPENSAML, test "x_$check_opensaml_dir" != "x_no")
+AM_CONDITIONAL(OPENSAML, test "x$found_opensaml" = "xyes")
 
 AX_CHECK_SHIBRESOLVER
-AM_CONDITIONAL(SHIBRESOLVER, test "x_$check_shibresolver_dir" != "x_no")
-if test x_$found_shibresolver = x_yes; then
+AM_CONDITIONAL(SHIBRESOLVER, test "x$found_shibresolver" = "xyes")
+if test x$found_shibresolver = xyes; then
   AX_CHECK_SHIBSP
 fi
+AM_CONDITIONAL(SHIBSP, test "x$found_shibsp" = "xyes")
 
 AC_CONFIG_FILES([Makefile libbrowserid/Makefile mech_browserid/Makefile
 			  mech_browserid.spec])

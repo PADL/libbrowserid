@@ -14,7 +14,6 @@ libbrowserid_la_SOURCES =   \
     bid_context.c           \
     bid_identity.c          \
     bid_jwt.c               \
-    bid_json.m              \
     bid_mcache.c            \
     bid_openssl.c           \
     bid_reauth.c            \
@@ -22,9 +21,14 @@ libbrowserid_la_SOURCES =   \
     bid_rverify.c           \
     bid_user.c              \
     bid_util.c              \
-    bid_webkit.m            \
     bid_verify.c            \
     vers.c
+
+if TARGET_MACOSX
+libbrowserid_la_SOURCES += bid_json.m bid_webkit.m
+else
+libbrowserid_la_SOURCES += bid_stubs.c
+endif
 
 noinst_LTLIBRARIES = libbrowserid.la
 
