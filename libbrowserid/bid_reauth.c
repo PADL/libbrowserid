@@ -43,7 +43,7 @@ _BIDAcquireDefaultTicketCache(BIDContext context)
     snprintf(szFileName, sizeof(szFileName), "/tmp/.browserid.tickets.%d.json", geteuid());
 #endif
 
-    err = _BIDAcquireCache(context, szFileName, &context->TicketCache);
+    err = BIDAcquireTicketCache(context, szFileName, &context->TicketCache);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
@@ -554,7 +554,7 @@ BIDAcquireTicketCache(
     const char *szCacheName,
     BIDTicketCache *pCache)
 {
-    return _BIDAcquireCache(context, szCacheName, pCache);
+    return _BIDAcquireCache(context, szCacheName, 0, pCache);
 }
 
 BIDError

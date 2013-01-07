@@ -61,7 +61,8 @@ _BIDFileCacheAcquire(
     struct BIDCacheOps *ops BID_UNUSED,
     BIDContext context,
     void **cache,
-    const char *name)
+    const char *name,
+    uint32_t ulFlags BID_UNUSED)
 {
     BIDError err;
     struct BIDFileCache *fc;

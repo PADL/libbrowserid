@@ -11,7 +11,7 @@ _BIDAcquireDefaultReplayCache(BIDContext context)
 {
     BIDError err;
 
-    err = _BIDAcquireCache(context, ".browserid.replay.json", &context->ReplayCache);
+    err = BIDAcquireReplayCache(context, ".browserid.replay.json", &context->ReplayCache);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
@@ -149,7 +149,7 @@ BIDAcquireReplayCache(
     const char *szCacheName,
     BIDReplayCache *pCache)
 {
-    return _BIDAcquireCache(context, szCacheName, pCache);
+    return _BIDAcquireCache(context, szCacheName, 0, pCache);
 }
 
 BIDError

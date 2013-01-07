@@ -120,7 +120,7 @@ _BIDBase64UrlDecode(const char *str, unsigned char **pData, size_t *cbData);
 struct BIDCacheOps {
     const char *Scheme;
 
-    BIDError (*Acquire)(struct BIDCacheOps *, BIDContext, void **, const char *);
+    BIDError (*Acquire)(struct BIDCacheOps *, BIDContext, void **, const char *, uint32_t flags);
     BIDError (*Release)(struct BIDCacheOps *, BIDContext, void *);
 
     BIDError (*Initialize)(struct BIDCacheOps *, BIDContext, void *);
@@ -141,6 +141,7 @@ BIDError
 _BIDAcquireCache(
     BIDContext context,
     const char *szCacheName,
+    uint32_t ulFlags,
     BIDCache *pCache);
 
 BIDError
@@ -668,6 +669,8 @@ _BIDValidateExpiry(
 /*
  * bid_webkit.c
  */
+#define BID_SIGN_IN_URL              "https://login.persona.org/sign_in#NATIVE"
+
 BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,

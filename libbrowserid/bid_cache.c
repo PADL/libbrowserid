@@ -20,6 +20,7 @@ BIDError
 _BIDAcquireCache(
     BIDContext context,
     const char *szCacheName,
+    uint32_t ulFlags,
     BIDCache *pCache)
 {
     BIDError err;
@@ -59,7 +60,7 @@ _BIDAcquireCache(
     cache->Ops = ops;
     cache->Data = NULL;
 
-    err = cache->Ops->Acquire(cache->Ops, context, &cache->Data, szCacheName);
+    err = cache->Ops->Acquire(cache->Ops, context, &cache->Data, szCacheName, ulFlags);
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;

@@ -143,7 +143,7 @@ BIDSetContextParam(
         if (strcmp(szCacheName, (const char *)value) == 0)
             break;
 
-        err = _BIDAcquireCache(context, (const char *)value, &cache);
+        err = _BIDAcquireCache(context, (const char *)value, 0, &cache);
         if (err == BID_S_OK) {
             _BIDReleaseCache(context, *pCache);
             *pCache = cache;
