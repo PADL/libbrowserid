@@ -556,7 +556,7 @@ _BIDPopulateIdentity(
     BID_BAIL_ON_ERROR(err);
 
     if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        json_t *params = json_object_get(backedAssertion->Claims, "dh");
+        json_t *params = json_object_get(backedAssertion->Assertion->Payload, "dh");
 
         if (params != NULL) {
             json_t *dh = json_object();

@@ -191,8 +191,6 @@ _BIDUnpackBackedAssertion(
         goto cleanup;
     }
 
-    assertion->Claims = json_incref(assertion->Assertion->Payload);
-
     *pAssertion = assertion;
 
 cleanup:
@@ -286,7 +284,6 @@ _BIDReleaseBackedAssertion(
     for (i = 0; i < assertion->cCertificates; i++)
         _BIDReleaseJWT(context, assertion->rCertificates[i]);
 
-    json_decref(assertion->Claims);
     BIDFree(assertion);
 
     return BID_S_OK;

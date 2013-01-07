@@ -379,7 +379,6 @@ _BIDGetReauthAssertion(
 
     backedAssertion.Assertion = ap;
     backedAssertion.cCertificates = 0;
-    backedAssertion.Claims = NULL;
 
     if (pAssertion != NULL) {
         err = _BIDPackBackedAssertion(context, &backedAssertion, json_object_get(cred, "ark"), pAssertion);

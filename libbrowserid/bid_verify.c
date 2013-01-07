@@ -73,12 +73,13 @@ _BIDValidateAudience(
     BIDError err;
     unsigned char *pbAssertionCB = NULL;
     size_t cbAssertionCB = 0;
+    json_t *claims = backedAssertion->Assertion->Payload;
 
-    if (backedAssertion->Claims == NULL)
+    if (claims == NULL)
         return BID_S_MISSING_AUDIENCE;
 
     if (szAudienceOrSpn != NULL) {
-        const char *szAssertionSpn = json_string_value(json_object_get(backedAssertion->Claims, "aud"));
+        const char *szAssertionSpn = json_string_value(json_object_get(claims, "aud"));
 
         if (szAssertionSpn == NULL) {
             err = BID_S_MISSING_AUDIENCE;
@@ -90,7 +91,7 @@ _BIDValidateAudience(
     }
 
     if (pbChannelBindings != NULL) {
-        err = _BIDGetJsonBinaryValue(context, backedAssertion->Claims, "cbt", &pbAssertionCB, &cbAssertionCB);
+        err = _BIDGetJsonBinaryValue(context, claims, "cbt", &pbAssertionCB, &cbAssertionCB);
         if (err == BID_S_UNKNOWN_JSON_KEY)
             err = BID_S_MISSING_CHANNEL_BINDINGS;
         BID_BAIL_ON_ERROR(err);
@@ -290,7 +291,6 @@ _BIDVerifyLocal(
 
     BID_ASSERT(backedAssertion->Assertion != NULL);
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
-    BID_ASSERT(backedAssertion->Claims != NULL);
 
     if (backedAssertion->cCertificates == 0) {
         if ((context->ContextOptions & BID_CONTEXT_REAUTH) == 0 ||

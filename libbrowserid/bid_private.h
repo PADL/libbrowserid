@@ -636,7 +636,6 @@ struct BIDBackedAssertionDesc {
     BIDJWT Assertion;
     size_t cCertificates;
     BIDJWT rCertificates[BID_MAX_CERTS];
-    json_t *Claims;
 };
 
 struct BIDIdentityDesc {
