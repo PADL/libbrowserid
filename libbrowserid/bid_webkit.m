@@ -438,7 +438,7 @@
 
 @end
 
-static BIDError
+BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
     const char *szPackedAudience,
