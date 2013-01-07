@@ -56,7 +56,7 @@ _BIDVerifyRemote(
     BIDContext context,
     BIDReplayCache replayCache BID_UNUSED,
     const char *szAssertion,
-    const char *szAudienceOrSpn,
+    const char *szPackedAudience,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime BID_UNUSED,
@@ -69,7 +69,6 @@ _BIDVerifyRemote(
     BIDBackedAssertion backedAssertion = NULL;
     const char *szVerifierUrl;
     char *szPostFields = NULL;
-    const char *szPackedAudience = NULL;
     json_t *claims = NULL;
     json_t *response = NULL;
     size_t cchAssertion, cchPackedAudience;
@@ -85,16 +84,18 @@ _BIDVerifyRemote(
     err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDValidateAudience(context, backedAssertion, szAudienceOrSpn, pbChannelBindings, cbChannelBindings);
+    err = _BIDValidateAudience(context, backedAssertion, szPackedAudience, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
     BID_ASSERT(backedAssertion->Assertion != NULL);
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
 
-    szPackedAudience = json_string_value(json_object_get(backedAssertion->Assertion->Payload, "aud"));
     if (szPackedAudience == NULL) {
-        err = BID_S_MISSING_AUDIENCE;
-        goto cleanup;
+        szPackedAudience = json_string_value(json_object_get(backedAssertion->Assertion->Payload, "aud"));
+        if (szPackedAudience == NULL) {
+            err = BID_S_MISSING_AUDIENCE;
+            goto cleanup;
+        }
     }
 
     cchAssertion = strlen(szAssertion);
