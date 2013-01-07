@@ -295,7 +295,7 @@
         var options = { siteName: controller.siteName, silent: controller.silent, requiredEmail: controller.requiredEmail };           \
                                                                                                         \
         jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {                   \
-            var gssPayload = eval('(' + controller.claims.stringRepresentation() + ')');                \
+            var gssPayload = JSON.parse(controller.claims.stringRepresentation());                      \
             for (var k in payload) {                                                                    \
                 if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                              \
             }                                                                                           \
