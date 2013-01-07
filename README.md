@@ -34,8 +34,7 @@ Edit /usr/local/etc/gss/mech (replace path as appropriate) and add the
 following mechanisms, updating the path as appropriate:
 
     browserid-aes128    1.3.6.1.4.1.5322.24.1.17 /usr/local/lib/gss/mech_browserid.so
-    browserid-aes256    1.3.6.1.4.1.5322.24.1.18 /usr/local/lib/gss/mech_browserid.so
-    
+
 ## Testing
 
 ### gss-sample
