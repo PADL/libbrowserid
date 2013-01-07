@@ -61,8 +61,12 @@ SASL samples can be found in the sample directory of the Cyrus SASL
 distribution. However, the GS2 mechanism presently needs a patch to support
 mechanisms without mutual authentication (this can be found in contrib).
 
+    % export SASL_PATH=/usr/local/lib/sasl2
     % client -C -p 5556 -s host -m BROWSERID-AES128 server.browserid.org
     % server -c -p 5556 -s host -h server.browserid.org
+
+Be sure to set the SASL\_PATH environment variable correctly to point to where
+you installed the libgs2.so plugin.
 
 ### OpenSSH
 
@@ -74,7 +78,7 @@ a direct equivalence test.
 
     % ssh -l lukeh@padl.com -oGSSAPIAuthentication=yes -oGSSAPIKeyExchange=no \
       -oPubkeyAuthentication=no -oPasswordAuthentication=no server.browserid.org
-    % sshd -f /etc/sshd_config -o PubkeyAuthentication=no -o PasswordAuthentication=no
+    % sshd -f /etc/sshd\_config -o PubkeyAuthentication=no -o PasswordAuthentication=no
 
 Note that if the server name has aliases (i.e. you can't guarantee which name
 the client will choose, you'll also need to set the
