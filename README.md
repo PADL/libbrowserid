@@ -15,6 +15,15 @@ The BrowserID GSS mechanism is split into two parts: libbrowserid, which is a
 assertions; and mech\_browserid, which is the actual GSS mechanism (based on
 the Moonshot code).
 
+Information on the BrowserID GSS protocol can be found in the document
+gss-browserid.md, however essentially the protocol is the same as for web-based
+BrowserID, with a couple of exceptions. First, the assertion is emitted as a
+GSS context token, to be sent within the application protocol (rather than
+being posted to a web server). Secondly, the assertion includes extra
+properties which provide channel binding support and a shared session key.
+There is also a fast re-authentication mode avoids having to acquire a new
+assertion for a service to which one has already authenticated.
+
 ## Building
 
 The following packages are required:
