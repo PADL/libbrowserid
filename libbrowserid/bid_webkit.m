@@ -289,7 +289,8 @@
         var jwcrypto = require('./lib/jwcrypto');                                                       \
         var assertionSign = jwcrypto.assertion.sign;                                                    \
         var controller = window.IdentityController;                                                     \
-        var options = { siteName: controller.siteName, silent: controller.silent, requiredEmail: controller.requiredEmail };           \
+        var options = { siteName: controller.siteName, silent: controller.silent,                       \
+                        requiredEmail: controller.requiredEmail };                                      \
                                                                                                         \
         jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {                   \
             var gssPayload = JSON.parse(controller.claims.stringRepresentation());                      \
@@ -299,7 +300,9 @@
             assertionSign(gssPayload, assertionParams, secretKey, cb);                                  \
         };                                                                                              \
                                                                                                         \
-        BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };            \
+        if (controller.servicePrincipalName) {                                                          \
+            BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };        \
+        }                                                                                               \
                                                                                                         \
         BrowserID.internal.setPersistent(                                                               \
             controller.audience,                                                                        \
@@ -384,8 +387,12 @@
 - (id)init
 {
     audience = nil;
+    servicePrincipalName = nil;
+    requiredEmail = nil;
+    siteName = nil;
     assertion = nil;
     identityDialog = nil;
+    webView = nil;
     bidError = BID_S_INTERACT_FAILURE;
 
     return [super init];
@@ -475,8 +482,8 @@ _BIDBrowserGetAssertion(
         NSDictionary *claimsDict = [[BIDJsonDictionary alloc] initWithJsonObject:claims];
 
         controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithCString:szPackedAudience] claims:claimsDict];
-        [controller setServicePrincipalName:[NSString stringWithCString:szAudienceOrSpn]];
-
+        if (context->ContextOptions & BID_CONTEXT_GSS)
+            [controller setServicePrincipalName:[NSString stringWithCString:szAudienceOrSpn]];
         if (szIdentityName != NULL) {
             [controller setRequiredEmail:[NSString stringWithCString:szIdentityName]];
             [controller setSilent:!!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT)];
