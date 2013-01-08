@@ -11,6 +11,12 @@
 
 #include <WebKit/WebKit.h>
 
+/*
+ * This is fairly useless right now as dictionaries can't cross the
+ * Objective-C to JavaScript bridge (and as a result we just send the
+ * JSON string encoding). However, it's good to do things the right
+ * way, and this may be useful in a future iteration.
+ */
 @interface BIDJsonDictionaryEnumerator : NSEnumerator <BIDJsonInit>
 {
 @private
