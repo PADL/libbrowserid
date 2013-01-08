@@ -135,7 +135,9 @@ Verbose mode:
     Thu Jan  3 16:08:43 2013  843BCC577F65EF0AA5E830885C0B67FE215493B397E2EA1BE987A58A2486098B
     …
     
-Note: currently replay caches are stored in the current directory. This may be a security vulnerability if you run the same service from different directories.
+Note: currently replay caches are stored in the current directory. This may be
+a security vulnerability if you run the same service from different
+directories.
     
 ### Authority 
 
