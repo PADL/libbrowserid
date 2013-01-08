@@ -148,7 +148,8 @@ _BIDVerifyAssertionSignature(
 static BIDError
 _BIDValidateCertIssuer(
     BIDContext context,
-    BIDBackedAssertion backedAssertion)
+    BIDBackedAssertion backedAssertion,
+    time_t verificationTime)
 {
     BIDError err;
     json_t *assertion;
@@ -182,7 +183,8 @@ _BIDValidateCertIssuer(
     if (szCertIssuer == NULL)
         return BID_S_MISSING_ISSUER;
 
-    err = _BIDIssuerIsAuthoritative(context, szEmailIssuer, szCertIssuer);
+    err = _BIDIssuerIsAuthoritative(context, szEmailIssuer, szCertIssuer,
+                                    verificationTime);
 
     return err;
 }
@@ -216,7 +218,7 @@ _BIDValidateCertChain(
         goto cleanup;
     }
 
-    err = _BIDAcquireAuthority(context, szCertIssuer, &authority);
+    err = _BIDAcquireAuthority(context, szCertIssuer, verificationTime, &authority);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDGetAuthorityPublicKey(context, authority, &rootKey);
@@ -320,7 +322,7 @@ _BIDVerifyLocal(
     }
 
     if (backedAssertion->cCertificates > 0) {
-        err = _BIDValidateCertIssuer(context, backedAssertion);
+        err = _BIDValidateCertIssuer(context, backedAssertion, verificationTime);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDValidateCertChain(context, backedAssertion, verificationTime);

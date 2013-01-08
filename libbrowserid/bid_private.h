@@ -86,6 +86,7 @@ BIDError
 _BIDAcquireAuthority(
     BIDContext context,
     const char *hostname,
+    time_t verificationTime,
     BIDAuthority *pAuthority);
 
 BIDError
@@ -103,7 +104,8 @@ BIDError
 _BIDIssuerIsAuthoritative(
     BIDContext context,
     const char *szHostname,
-    const char *szIssuer);
+    const char *szIssuer,
+    time_t verificationTime);
 
 /*
  * bid_base64.c
