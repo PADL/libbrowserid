@@ -92,7 +92,7 @@ _BIDIssuerIsAuthoritative(
 {
     BIDError err;
     size_t i;
-    int ok = 0;
+    int bIsAuthoritative = 0;
     BIDAuthority authority = NULL;
     const char **secondaryAuthorities;
 
@@ -105,21 +105,21 @@ _BIDIssuerIsAuthoritative(
 
     /* XXX case-sensitive? */
     if (strcasecmp(szHostname, szIssuer) == 0)
-        ok = 1;
+        bIsAuthoritative = 1;
 
-    if (!ok) {
+    if (!bIsAuthoritative) {
         err = BIDGetContextParam(context, BID_PARAM_SECONDARY_AUTHORITIES, (void **)&secondaryAuthorities);
         BID_BAIL_ON_ERROR(err);
 
         for (i = 0; secondaryAuthorities[i] != NULL; i++) {
             if (strcasecmp(szIssuer, secondaryAuthorities[i]) == 0) {
-                ok = 1;
+                bIsAuthoritative = 1;
                 break;
             }
         }
     }
 
-    if (!ok) {
+    if (!bIsAuthoritative) {
         uint32_t maxDelegs;
         const char *szAuthority;
 
@@ -129,11 +129,11 @@ _BIDIssuerIsAuthoritative(
         err = _BIDAcquireAuthority(context, szHostname, verificationTime, &authority);
         BID_BAIL_ON_ERROR(err);
 
-        for (i = 0, ok = -1; i < maxDelegs; i++) {
+        for (i = 0, bIsAuthoritative = -1; i < maxDelegs; i++) {
             szAuthority = json_string_value(json_object_get(authority, "authority"));
             if (szAuthority != NULL) {
                 if (strcasecmp(szIssuer, szAuthority) == 0) {
-                    ok = 1;
+                    bIsAuthoritative = 1;
                 } else {
                     BIDAuthority tmp;
 
@@ -144,16 +144,16 @@ _BIDIssuerIsAuthoritative(
                     authority = tmp;
                 }
             } else {
-                ok = 0;
+                bIsAuthoritative = 0;
             }
 
-            if (ok != -1) {
+            if (bIsAuthoritative != -1) {
                 break;
             }
         }
     }
 
-    err = (ok == 1) ? BID_S_OK : BID_S_UNTRUSTED_ISSUER;
+    err = (bIsAuthoritative == 1) ? BID_S_OK : BID_S_UNTRUSTED_ISSUER;
 
 cleanup:
     json_decref(authority);
