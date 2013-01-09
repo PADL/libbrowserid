@@ -44,7 +44,7 @@ Optional:
 Build similar to the following:
 
     ./autogen.sh
-    OBJC=clang CC=clang CXX=clang++ ./configure
+    build/clang-heimdal-build.sh
 
 You can enable additional debugging with the GSSBID\_DEBUG compile time flag.
 This is presently mandatory on OS X to use the client with command-line

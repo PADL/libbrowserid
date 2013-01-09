@@ -21,7 +21,6 @@
 /libbrowserid_err.[ch]
 /mech_browserid.spec
 
-*build.sh
 .DS_Store
 diffs
 
