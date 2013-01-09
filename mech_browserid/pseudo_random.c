@@ -74,6 +74,9 @@ gssBidPseudoRandom(OM_uint32 *minor,
     unsigned char *p;
     krb5_context krbContext;
     ssize_t desired_output_len = prf_out->length;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto = NULL;
+#endif
 
     *minor = 0;
 
@@ -88,9 +91,11 @@ gssBidPseudoRandom(OM_uint32 *minor,
         goto cleanup;
     }
 
-    code = krb5_c_prf_length(krbContext,
-                             ctx->encryptionType,
-                             &prflen);
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_prf_length(krbContext, ctx->encryptionType, &prflen);
+#else
+    code = krb5_c_prf_length(krbContext, ctx->encryptionType, &prflen);
+#endif
     if (code != 0)
         goto cleanup;
 
@@ -101,8 +106,11 @@ gssBidPseudoRandom(OM_uint32 *minor,
         goto cleanup;
     }
 
-#ifndef HAVE_HEIMDAL_VERSION
-    /* Same API, but different allocation rules, unfortunately. */
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_init(krbContext, &ctx->rfc3961Key, 0, &krbCrypto);
+    if (code != 0)
+        goto cleanup;
+#else
     t.length = prflen;
     t.data = GSSBID_MALLOC(t.length);
     if (t.data == NULL) {
@@ -117,7 +125,11 @@ gssBidPseudoRandom(OM_uint32 *minor,
     while (desired_output_len > 0) {
         store_uint32_be(i, ns.data);
 
+#ifdef HAVE_HEIMDAL_VERSION
+        code = krb5_crypto_prf(krbContext, krbCrypto, &ns, &t);
+#else
         code = krb5_c_prf(krbContext, &ctx->rfc3961Key, &ns, &t);
+#endif
         if (code != 0)
             goto cleanup;
 
@@ -136,6 +148,7 @@ cleanup:
         GSSBID_FREE(ns.data);
     }
 #ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto_destroy(krbContext, krbCrypto);
     krb5_data_free(&t);
 #else
     if (t.data != NULL) {

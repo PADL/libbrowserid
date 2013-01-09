@@ -273,10 +273,11 @@ importBidNameFlags(OM_uint32 *minor,
             if (KRB_PRINC_REALM(krbPrinc) == NULL)
                 code = ENOMEM;
         }
-#endif
-
+        krb5_xfree(defaultDomain);
+#else
         if (defaultDomain != NULL)
             krb5_free_default_realm(krbContext, defaultDomain);
+#endif
     }
 
     if (nameBuffer != GSS_C_NO_BUFFER)

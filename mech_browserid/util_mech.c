@@ -188,7 +188,11 @@ gssBidIndicateMechs(OM_uint32 *minor,
 
     GSSBID_KRB_INIT(&krbContext);
 
+#ifdef HAVE_HEIMDAL_VERSION
+    *minor = krb5_get_default_in_tkt_etypes(krbContext, KRB5_PDU_NONE, &etypes);
+#else
     *minor = krb5_get_permitted_enctypes(krbContext, &etypes);
+#endif
     if (*minor != 0) {
         return GSS_S_FAILURE;
     }
