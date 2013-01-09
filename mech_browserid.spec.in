@@ -1,49 +1,42 @@
 Name:		padl-gss-browserid
-Version:	@VERSION@
-Release:	4%{?dist}
+Version:	0.1
+Release:	1%{?dist}
 Summary:	BrowserID GSS-API Mechanism
-
 Group:		Security Tools
 License:	BSD
 URL:		http://www.browserid.org/
 Source0:	gss_browserid-%{version}.tar.gz
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root
 
-BuildRequires:	 %{krb5-devel} >= 1.9.1
+BuildRequires:%{krb5-devel} >= 1.9.1
+BuildRequires: curl-devel
 BuildRequires: jansson-devel
-BuildRequires: libradsec-devel
 BuildRequires: shibboleth-devel >= 2.5
 BuildRequires: libshibresolver-devel
 
-
-
 %description
-GSS-API mechanism for the BrowserID security protocol.
+GSS-API mechanism for the BrowserID authentication protocol.
 
 %prep
 %setup -q -n gss_browserid-%{version}
 
-
 %build
-	export LDFLAGS='-L/usr/%{_lib}/freeradius -Wl,--rpath=/usr/%{_lib}/freeradius'
+CPPFLAGS=-DGSSBID_DEBUG
 %configure --with-krb5=%{_prefix}
 make %{?_smp_mflags}
-
 
 %install
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 
-
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-
 %files
 %defattr(-,root,root,-)
-%doc gss_browserid/README
-%doc gss_browserid/LICENSE
-%doc gss_browserid/AUTHORS
+%doc mech_browserid/README
+%doc mech_browserid/LICENSE
+%doc mech_browserid/AUTHORS
 %{_libdir}/gss/gss_browserid.so
 %exclude %{_libdir}/gss/gss_browserid.la
 %{_includedir}/gssapi/*.h
