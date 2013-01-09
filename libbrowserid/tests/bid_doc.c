@@ -25,13 +25,13 @@ int main(int argc, char *argv[])
     err = BIDAcquireContext(BID_CONTEXT_RP | BID_CONTEXT_VERIFY_REMOTE, &context);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDAcquireAuthority(context, "login.persona.org", &authority);
+    err = _BIDAcquireAuthority(context, "login.persona.org", time(NULL), &authority);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDGetAuthorityPublicKey(context, authority, &pkey);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDIssuerIsAuthoritative(context, "padl.com", "login.persona.org");
+    err = _BIDIssuerIsAuthoritative(context, "padl.com", "login.persona.org", time(NULL));
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
