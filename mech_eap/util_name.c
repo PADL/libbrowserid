@@ -270,10 +270,11 @@ importEapNameFlags(OM_uint32 *minor,
             if (KRB_PRINC_REALM(krbPrinc) == NULL)
                 code = ENOMEM;
         }
-#endif
-
+        krb5_xfree(defaultRealm);
+#else
         if (defaultRealm != NULL)
             krb5_free_default_realm(krbContext, defaultRealm);
+#endif
     }
 
     if (nameBuffer != GSS_C_NO_BUFFER)
