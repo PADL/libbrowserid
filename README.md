@@ -142,7 +142,6 @@ Verbose mode:
     Sat Jan  5 15:03:04 2013  0E6817660A9DBAAAD0BB57009005B11AD123B49D29B925BBCFDFDE37CC23B42C
     Thu Jan  3 18:12:33 2013  28A07D0E43887E0CBAEBE371F10F1921AF188ECA131386A660B50AA1F4EF2890
     Thu Jan  3 16:08:43 2013  843BCC577F65EF0AA5E830885C0B67FE215493B397E2EA1BE987A58A2486098B
-    …
     
 Note: currently replay caches are stored in the current directory. This may be
 a security vulnerability if you run the same service from different
