@@ -94,6 +94,7 @@
 - (void)closeIdentityDialog;
 - (void)abortWithError:(NSError *)error;
 - (void)identityCallback:(NSString *)assertion withParameters:(id)parameters;
+- (void)interposeAssertionSign:(WebView *)sender;
 - (void)acquireAssertion:(WebView *)webView;
 - (WebView *)newWebView;
 
@@ -283,14 +284,12 @@
     return YES;
 }
 
-- (void)acquireAssertion:(WebView *)sender
+- (void)interposeAssertionSign:(WebView *)sender
 {
     NSString *function = @"                                                                             \
+        var controller = window.IdentityController;                                                     \
         var jwcrypto = require('./lib/jwcrypto');                                                       \
         var assertionSign = jwcrypto.assertion.sign;                                                    \
-        var controller = window.IdentityController;                                                     \
-        var options = { siteName: controller.siteName, silent: controller.silent,                       \
-                        requiredEmail: controller.requiredEmail };                                      \
                                                                                                         \
         jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {                   \
             var gssPayload = JSON.parse(controller.claims.stringRepresentation());                      \
@@ -299,6 +298,17 @@
             }                                                                                           \
             assertionSign(gssPayload, assertionParams, secretKey, cb);                                  \
         };                                                                                              \
+    ";
+
+    [sender stringByEvaluatingJavaScriptFromString:function];
+}
+
+- (void)acquireAssertion:(WebView *)sender
+{
+    NSString *function = @"                                                                             \
+        var controller = window.IdentityController;                                                     \
+        var options = { siteName: controller.siteName, silent: controller.silent,                       \
+                        requiredEmail: controller.requiredEmail };                                      \
                                                                                                         \
         if (controller.servicePrincipalName) {                                                          \
             BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };        \
@@ -328,8 +338,10 @@
 
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
 {
-    if ([sender isEqual:webView] && frame == [sender mainFrame])
+    if ([sender isEqual:webView] && frame == [sender mainFrame]) {
+        [self interposeAssertionSign:sender];
         [self acquireAssertion:sender];
+    }
 }
 
 - (void)webView:(WebView *)sender windowScriptObjectAvailable:(WebScriptObject *)windowScriptObject
