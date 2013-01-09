@@ -469,25 +469,6 @@ krbEnctypeToString(krb5_context krbContext,
                    const char *prefix,
                    gss_buffer_t string);
 
-krb5_error_code
-krbMakeAuthDataKdcIssued(krb5_context context,
-                         const krb5_keyblock *key,
-                         krb5_const_principal issuer,
-#ifdef HAVE_HEIMDAL_VERSION
-                         const AuthorizationData *authdata,
-                         AuthorizationData *adKdcIssued
-#else
-                         krb5_authdata *const *authdata,
-                         krb5_authdata ***adKdcIssued
-#endif
-                         );
-
-krb5_error_code
-krbMakeCred(krb5_context context,
-            krb5_auth_context authcontext,
-            krb5_creds *creds,
-            krb5_data *data);
-
 /* util_lucid.c */
 OM_uint32
 gssBidExportLucidSecContext(OM_uint32 *minor,
