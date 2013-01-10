@@ -369,9 +369,12 @@ The prime length should be an equivalent number of bits to the negotiated
 ### Response JWT
 
 The response JSON web token is sent from the acceptor to the initiator. In the
-case of a key successfully being negotiated, it is signed with the shared DH
-key. The HMAC-SHA256 (HS256) algorithm MUST be supported by implementors of
-this specification.
+case of a key successfully being negotiated, it is signed with the Context Root
+Key (CRK).  The HMAC-SHA256 (HS256) algorithm MUST be supported by implementors
+of this specification.
+
+**TBD** it is safe to use the CRK directly or should we use a RFC3961 derived
+key?
 
 If a key is unavailable, then the signature is absent and the value of the
 "alg" header claim is "none". No signature verification is required in this
