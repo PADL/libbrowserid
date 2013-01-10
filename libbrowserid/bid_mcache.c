@@ -124,7 +124,7 @@ _BIDMemoryCacheGetLastChangedTime(
     if (mc == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    *pTime= time(NULL); /* XXX */
+    *pTime = time(NULL); /* XXX */
 
     return BID_S_OK;
 }
