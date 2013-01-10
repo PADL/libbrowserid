@@ -97,10 +97,10 @@ BIDErrorToString(
 
 typedef struct BIDContextDesc *BIDContext;
 
-#define BID_C_NO_CONTEXT                ((BIDContext)0)
-#define BID_C_NO_IDENTITY               ((BIDIdentity)0)
-#define BID_C_NO_TICKET_CACHE           ((BIDTicketCache)0)
-#define BID_C_NO_REPLAY_CACHE           ((BIDReplayCache)0)
+#define BID_C_NO_CONTEXT                    ((BIDContext)0)
+#define BID_C_NO_IDENTITY                   ((BIDIdentity)0)
+#define BID_C_NO_TICKET_CACHE               ((BIDTicketCache)0)
+#define BID_C_NO_REPLAY_CACHE               ((BIDReplayCache)0)
 
 /*
  * Context is used by user-agent.
@@ -218,8 +218,8 @@ BIDReleaseReplayCache(
 /*
  * User agent.
  */
-#define BID_ACQUIRE_FLAG_NO_INTERACT    0x00000001
-#define BID_ACQUIRE_FLAG_NO_CACHED      0x00000002
+#define BID_ACQUIRE_FLAG_NO_INTERACT        0x00000001
+#define BID_ACQUIRE_FLAG_NO_CACHED          0x00000002
 
 BIDError
 BIDAcquireAssertionFromString(
@@ -255,11 +255,11 @@ BIDFreeAssertion(
  */
 
 /* Request (ulReqFlags) */
-#define BID_VERIFY_FLAG_NO_REAUTH  0x00000001
+#define BID_VERIFY_FLAG_NO_REAUTH           0x00000001
 
 /* Response (ulRetFlags) */
-#define BID_VERIFY_FLAG_REMOTE     0x80000001
-#define BID_VERIFY_FLAG_REAUTH     0x80000002
+#define BID_VERIFY_FLAG_REMOTE              0x80000001
+#define BID_VERIFY_FLAG_REAUTH              0x80000002
 
 BIDError
 BIDVerifyAssertion(
