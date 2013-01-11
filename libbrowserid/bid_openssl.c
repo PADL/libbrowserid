@@ -1486,14 +1486,14 @@ _BIDValidateX509CertChain(
         goto cleanup;
     }
 
-    X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-
 #if 0
+    X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+#endif
+
     if (!X509_verify_cert(storeCtx)) {
         err = BID_S_UNTRUSTED_X509_CERT;
         goto cleanup;
     }
-#endif
 
 cleanup:
     if (chain != NULL)
