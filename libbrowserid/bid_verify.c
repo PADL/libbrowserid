@@ -342,8 +342,10 @@ _BIDVerifyLocal(
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDValidateSubject(context, verifiedIdentity, szSubjectName, ulReqFlags);
-    BID_BAIL_ON_ERROR(err);
+    if (*pulRetFlags & BID_VERIFY_FLAG_VALIDATED_CERTS) {
+        err = _BIDValidateSubject(context, verifiedIdentity, szSubjectName, ulReqFlags);
+        BID_BAIL_ON_ERROR(err);
+    }
 
     err = BID_S_OK;
     if (pVerifiedIdentity != NULL)

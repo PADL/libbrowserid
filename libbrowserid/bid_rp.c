@@ -119,11 +119,7 @@ BIDVerifyRPResponseToken(
         BID_BAIL_ON_ERROR(err);
     }
 
-    /*
-     * Verifying the audience name is only necessary if we are not doing reauth.
-     */
-    err = _BIDVerifyLocal(context, NULL, backedAssertion, NULL,
-                          (ulReqFlags & BID_RP_RESPONSE_INITIAL) ? szAudienceName : NULL,
+    err = _BIDVerifyLocal(context, NULL, backedAssertion, NULL, szAudienceName,
                           NULL, 0, time(NULL), BID_VERIFY_FLAG_INTERNAL, verifyCred,
                           NULL, pulRetFlags);
     BID_BAIL_ON_ERROR(err);
