@@ -119,6 +119,8 @@ _BIDBase64UrlDecode(const char *str, unsigned char **pData, size_t *cbData);
 /*
  * bid_cache.c
  */
+#define BID_CACHE_FLAG_UNVERSIONED              0x00000001
+
 struct BIDCacheOps {
     const char *Scheme;
 
@@ -222,7 +224,22 @@ struct BIDContextDesc {
     BIDTicketCache TicketCache;
     uint32_t DhKeySize; 
     uint32_t TicketLifetime;
+    BIDCache RPCertConfig;
 };
+
+/*
+ * bid_crypto.c
+ */
+BIDError
+_BIDDeriveSessionSubkey(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *szSalt,
+    BIDJWK *pDerivedKey);
+
+int
+_BIDIsLegacyJWK(BIDContext context, BIDJWK jwt);
+
 
 /*
  * bid_fcache.c
@@ -243,6 +260,7 @@ BIDError
 _BIDPopulateIdentity(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
+    uint32_t ulFlags,
     BIDIdentity *pIdentity);
 
 BIDError
@@ -262,6 +280,13 @@ _BIDGetIdentityReauthTicket(
     BIDContext context,
     BIDIdentity identity,
     json_t **pValue);
+
+BIDError
+_BIDValidateSubject(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *szSubjectName,
+    uint32_t ulFlags);
 
 /*
  * bid_jwt.c
@@ -286,14 +311,12 @@ typedef struct BIDJWTAlgorithmDesc {
     BIDError (*KeySize)(struct BIDJWTAlgorithmDesc *desc, BIDContext, BIDJWK, size_t *);
 } *BIDJWTAlgorithm;
 
-int
-_BIDIsLegacyJWK(BIDContext context, BIDJWK jwt);
-
 BIDError
 _BIDMakeSignature(
     BIDContext context,
     BIDJWT jwt,
     BIDJWKSet keyset,
+    json_t *x509CertChain,
     char **pszJwt,
     size_t *pcchJwt);
 
@@ -302,6 +325,12 @@ _BIDVerifySignature(
     BIDContext context,
     BIDJWT jwt,
     BIDJWKSet keyset);
+
+BIDError
+_BIDReleaseJWTInternal(
+    BIDContext context BID_UNUSED,
+    BIDJWT jwt,
+    int freeit);
 
 BIDError
 _BIDReleaseJWT(
@@ -390,15 +419,44 @@ _BIDDeriveKey(
     unsigned char **ppbDerivedKey,
     size_t *pcbDerivedKey);
 
+BIDError
+_BIDLoadX509PrivateKey(
+    BIDContext context BID_UNUSED,
+    const char *path,
+    BIDJWK *pPrivateKey);
+
+BIDError
+_BIDLoadX509Certificate(
+    BIDContext context BID_UNUSED,
+    const char *path,
+    json_t **pCert);
+
+BIDError
+_BIDPopulateX509Identity(
+    BIDContext context,
+    BIDBackedAssertion backedAssertion,
+    BIDIdentity identity,
+    uint32_t ulReqFlags);
+
+BIDError
+_BIDValidateX509CertChain(
+    BIDContext context,
+    const char *caCertificatePath,
+    const char *caCertificateDir,
+    json_t *certChain);
+
 /*
  * bid_reauth.c
  */
+#define BID_TICKET_FLAG_MUTUAL_AUTH             0x1
+
 BIDError
 _BIDStoreTicketInCache(
     BIDContext context,
     BIDIdentity identity,
     const char *szAudienceOrSpn,
-    json_t *ticket);
+    json_t *ticket,
+    uint32_t ulFlags);
 
 BIDError
 _BIDGetReauthAssertion(
@@ -419,7 +477,8 @@ _BIDVerifyReauthAssertion(
     BIDBackedAssertion assertion,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
-    BIDJWK *pVerifierCred);
+    BIDJWK *pVerifierCred,
+    uint32_t *pulRetFlags);
 
 BIDError
 _BIDAcquireDefaultTicketCache(
@@ -448,14 +507,14 @@ BIDError
 _BIDVerifyRemote(
     BIDContext context,
     BIDReplayCache replayCache,
-    const char *szAssertion,
+    BIDBackedAssertion pBackedAssertion,
     const char *szAudience,
+    const char *szSubjectName,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime,
     uint32_t ulReqFlags,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime,
     uint32_t *pulRetFlags);
 
 /*
@@ -550,6 +609,7 @@ _BIDPackBackedAssertion(
     BIDContext context,
     BIDBackedAssertion assertion,
     BIDJWKSet keyset,
+    json_t *certChain,
     char **pEncodedJson);
 
 BIDError
@@ -636,6 +696,8 @@ _BIDValidateAudience(
     size_t cbChannelBindings);
 
 struct BIDBackedAssertionDesc {
+    char *EncData;
+    size_t EncDataLength;
     BIDJWT Assertion;
     size_t cCertificates;
     BIDJWT rCertificates[BID_MAX_CERTS];
@@ -652,14 +714,15 @@ BIDError
 _BIDVerifyLocal(
     BIDContext context,
     BIDReplayCache replayCache,
-    const char *szAssertion,
+    BIDBackedAssertion backedAssertion,
     const char *szAudience,
+    const char *szSubjectName,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime,
     uint32_t ulReqFlags,
+    BIDJWK optionalVerifyCred,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime,
     uint32_t *pulRetFlags);
 
 BIDError
@@ -682,6 +745,20 @@ _BIDBrowserGetAssertion(
     const char *szIdentityName, /* optional */
     uint32_t ulReqFlags,
     char **pAssertion);
+
+/*
+ * bid_x509.c
+ */
+BIDError
+_BIDGetRPPrivateKey(
+    BIDContext context,
+    BIDJWK *pKey,
+    json_t **pCertChain);
+
+BIDError
+_BIDValidateX509(
+    BIDContext context,
+    json_t *certChain);
 
 /*
  * vers.c

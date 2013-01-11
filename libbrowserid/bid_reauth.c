@@ -55,7 +55,8 @@ _BIDStoreTicketInCache(
     BIDContext context,
     BIDIdentity identity,
     const char *szAudienceOrSpn,
-    json_t *ticket)
+    json_t *ticket,
+    uint32_t ulTicketFlags)
 {
     BIDError err;
     json_t *cred = NULL;
@@ -77,7 +78,7 @@ _BIDStoreTicketInCache(
         goto cleanup;
     }
 
-    err = _BIDDeriveAuthenticatorRootKey(context, identity, &ark);
+    err = _BIDDeriveSessionSubkey(context, identity, "ARK", &ark);
     BID_BAIL_ON_ERROR(err);
 
     cred = json_copy(identity->Attributes);
@@ -90,6 +91,11 @@ _BIDStoreTicketInCache(
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, cred, "ark", ark, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, cred, "flags",
+                            json_integer(ulTicketFlags),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDGetIdentitySubject(context, identity, &szSubject);
@@ -123,7 +129,7 @@ BIDStoreTicketInCache(
     if (ticket == NULL)
         return BID_S_INVALID_JSON;
 
-    err = _BIDStoreTicketInCache(context, identity, szAudienceOrSpn, ticket);
+    err = _BIDStoreTicketInCache(context, identity, szAudienceOrSpn, ticket, 0);
 
     json_decref(ticket);
 
@@ -251,6 +257,9 @@ _BIDMakeReauthIdentity(
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectDel(context, identity->Attributes, "a-exp", 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectDel(context, identity->Attributes, "flags", 0);
     BID_BAIL_ON_ERROR(err);
 
     /* copy over the assertion expiry time */
@@ -381,7 +390,7 @@ _BIDGetReauthAssertion(
     backedAssertion.cCertificates = 0;
 
     if (pAssertion != NULL) {
-        err = _BIDPackBackedAssertion(context, &backedAssertion, json_object_get(cred, "ark"), pAssertion);
+        err = _BIDPackBackedAssertion(context, &backedAssertion, json_object_get(cred, "ark"), NULL, pAssertion);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -407,12 +416,14 @@ _BIDVerifyReauthAssertion(
     BIDBackedAssertion assertion,
     time_t verificationTime,
     BIDIdentity *pVerifiedIdentity,
-    BIDJWK *pVerifierCred)
+    BIDJWK *pVerifierCred,
+    uint32_t *pulRetFlags)
 {
     BIDError err;
     BIDJWT ap = assertion->Assertion;
     const char *szTicket;
     json_t *cred = NULL;
+    uint32_t ulTicketFlags = 0;
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pVerifierCred = NULL;
@@ -424,14 +435,22 @@ _BIDVerifyReauthAssertion(
     BID_ASSERT(assertion->cCertificates == 0);
 
     szTicket = json_string_value(json_object_get(ap->Payload, "tkt"));
+    if (szTicket == NULL) {
+        err = BID_S_NOT_REAUTH_ASSERTION;
+        goto cleanup;
+    }
 
     if (replayCache == BID_C_NO_REPLAY_CACHE)
         replayCache = context->ReplayCache;
+
+    *pulRetFlags |= BID_VERIFY_FLAG_REAUTH;
 
     err = _BIDGetCacheObject(context, replayCache, szTicket, &cred);
     if (err == BID_S_CACHE_NOT_FOUND || err == BID_S_CACHE_KEY_NOT_FOUND)
         err = BID_S_INVALID_ASSERTION;
     BID_BAIL_ON_ERROR(err);
+
+    ulTicketFlags = json_integer_value(json_object_get(cred, "flags"));
 
     /*
      * _BIDVerifyLocal will verify the authenticator expiry as it is in the
@@ -451,6 +470,9 @@ _BIDVerifyReauthAssertion(
     err = _BIDJsonObjectDel(context, ap->Payload, "exp", 0);
     BID_BAIL_ON_ERROR(err);
 
+    if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
+        *pulRetFlags |= BID_VERIFY_FLAG_VALIDATED_CERTS; /* XXX */
+
     *pVerifierCred = json_incref(json_object_get(cred, "ark"));
 
     err = _BIDVerifySignature(context, ap, *pVerifierCred);
@@ -461,55 +483,6 @@ _BIDVerifyReauthAssertion(
 
 cleanup:
     json_decref(cred);
-
-    return err;
-}
-
-BIDError
-_BIDDeriveAuthenticatorRootKey(
-    BIDContext context,
-    BIDIdentity identity,
-    BIDJWK *pArk)
-{
-    unsigned char *pbSubkey = NULL;
-    size_t cbSubkey;
-    BIDError err;
-    BIDJWK ark = NULL;
-    json_t *sk = NULL;
-    unsigned char salt[3] = "ARK";
-
-    *pArk = NULL;
-
-    err = BIDGetIdentitySessionKey(context, identity, NULL, NULL);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDDeriveKey(context, identity->SessionKey, identity->SessionKeyLength,
-                        salt, sizeof(salt), &pbSubkey, &cbSubkey);
-    BID_BAIL_ON_ERROR(err);
-
-    ark = json_object();
-    if (ark == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    err = _BIDJsonBinaryValue(context, pbSubkey, cbSubkey, &sk);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDJsonObjectSet(context, ark, "secret-key", sk, 0);
-    BID_BAIL_ON_ERROR(err);
-
-    *pArk = ark;
-    err = BID_S_OK;
-
-cleanup:
-    if (pbSubkey != NULL) {
-        memset(pbSubkey, 0, cbSubkey);
-        BIDFree(pbSubkey);
-    }
-    json_decref(sk);
-    if (err != BID_S_OK)
-        json_decref(ark);
 
     return err;
 }

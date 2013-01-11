@@ -72,6 +72,7 @@ BIDAcquireAssertion(
     BIDBackedAssertion backedAssertion = NULL;
     json_t *claims = NULL;
     json_t *key = NULL;
+    json_t *n = NULL;
     char *szAssertion = NULL;
     char *szPackedAudience = NULL;
     uint32_t ulRetFlags = 0;
@@ -122,6 +123,14 @@ BIDAcquireAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
+    if (ulReqFlags & BID_ACQUIRE_FLAG_NONCE) {
+        err = _BIDGenerateNonce(context, &n);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDJsonObjectSet(context, claims, "n", n, BID_JSON_FLAG_REQUIRED);
+        BID_BAIL_ON_ERROR(err);
+    }
+
     err = _BIDBrowserGetAssertion(context, szPackedAudience, szAudienceOrSpn, claims,
                                   szIdentityName, ulReqFlags, &szAssertion);
     BID_BAIL_ON_ERROR(err);
@@ -130,17 +139,18 @@ BIDAcquireAssertion(
                                         pAssertedIdentity, ptExpiryTime, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
 
-    if (pAssertedIdentity != NULL && (context->ContextOptions & BID_CONTEXT_DH_KEYEX)) {
+    if (pAssertedIdentity != NULL) {
         BIDIdentity assertedIdentity = *pAssertedIdentity;
 
-        assertedIdentity->PrivateAttributes = json_object();
-        if (assertedIdentity->PrivateAttributes == NULL) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
+        if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
+            err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "dh", key, 0);
+            BID_BAIL_ON_ERROR(err);
         }
 
-        err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "dh", key, 0);
-        BID_BAIL_ON_ERROR(err);
+        if (ulReqFlags & BID_ACQUIRE_FLAG_NONCE) {
+            err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "n", n, 0);
+            BID_BAIL_ON_ERROR(err);
+        }
     }
 
     *pAssertion = szAssertion;
@@ -152,6 +162,7 @@ cleanup:
         BIDFree(szAssertion);
     json_decref(claims);
     json_decref(key);
+    json_decref(n);
     _BIDReleaseBackedAssertion(context, backedAssertion);
     BIDFree(szPackedAudience);
 
@@ -183,7 +194,7 @@ BIDAcquireAssertionFromString(
     BID_BAIL_ON_ERROR(err);
 
     if (pAssertedIdentity != NULL) {
-        err = _BIDPopulateIdentity(context, backedAssertion, pAssertedIdentity);
+        err = _BIDPopulateIdentity(context, backedAssertion, 0, pAssertedIdentity);
         BID_BAIL_ON_ERROR(err);
     }
 

@@ -115,7 +115,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
                        gss_name_t target_name,
                        gss_OID mech_type GSSBID_UNUSED,
-                       OM_uint32 req_flags GSSBID_UNUSED,
+                       OM_uint32 req_flags,
                        OM_uint32 time_req GSSBID_UNUSED,
                        gss_channel_bindings_t input_chan_bindings GSSBID_UNUSED,
                        gss_buffer_t input_token,
@@ -127,12 +127,12 @@ gssBidInitResponseToken(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     json_t *response = NULL;
     json_t *tkt = NULL;
-    char *szJson = NULL;
+    char *szAssertion = NULL;
     BIDError err;
     gss_buffer_desc bufInnerToken = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc bufAudienceOrSpn = GSS_C_EMPTY_BUFFER;
     enum gss_bid_token_type actualTokenType;
-    BIDJWT jwt = NULL;
+    uint32_t ulReqFlags, ulRetFlags = 0;
 
     if (input_token == GSS_C_NO_BUFFER || input_token->length == 0) {
         major = GSS_S_DEFECTIVE_TOKEN;
@@ -151,32 +151,42 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    major = bufferToString(minor, &bufInnerToken, &szJson);
+    major = bufferToString(minor, &bufInnerToken, &szAssertion);
     if (GSS_ERROR(major))
         goto cleanup;
 
-    err = BIDParseJsonWebToken(ctx->bidContext, szJson, &jwt, &response);
-    if (err != BID_S_OK) {
-        major = gssBidMapError(minor, err);
-        goto cleanup;
+    if (target_name != GSS_C_NO_NAME) {
+        major = gssBidDisplayName(minor, target_name, &bufAudienceOrSpn, NULL);
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
 
-    /* XXX allow signed error check? */
+    ulReqFlags = 0;
+    if (ctx->encryptionType != ENCTYPE_NULL)
+        ulReqFlags |= BID_RP_RESPONSE_HAVE_SESSION_KEY;
+    if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {
+        ulReqFlags |= BID_RP_RESPONSE_INITIAL;
+        if (req_flags & GSS_C_MUTUAL_FLAG)
+            ulReqFlags |= BID_RP_RESPONSE_VERIFY_NONCE;
+    }
+
+    err = BIDVerifyRPResponseToken(ctx->bidContext,
+                                   ctx->bidIdentity,
+                                   szAssertion,
+                                   (const char *)bufAudienceOrSpn.value,
+                                   ulReqFlags,
+                                   &response,
+                                   &ulRetFlags);
+
     major = json_integer_value(json_object_get(response, "gss-maj"));
     *minor = json_integer_value(json_object_get(response, "gss-min"));
     if (GSS_ERROR(major) || *minor != 0)
         goto cleanup;
-
-    if (ctx->encryptionType != ENCTYPE_NULL &&
-        (ctx->flags & CTX_FLAG_REAUTH) == 0) {
-        json_t *dh = json_object_get(response, "dh");
-
-        err = _BIDSetIdentityDHPublicValue(ctx->bidContext, ctx->bidIdentity,
-                                           json_object_get(dh, "y"));
-        if (err != BID_S_OK) {
-            major = gssBidMapError(minor, err);
-            goto cleanup;
-        }
+    if (err == BID_S_MISSING_SIGNATURE && ctx->encryptionType == ENCTYPE_NULL)
+        err = BID_S_OK; /* couldn't have signed */
+    if (err != BID_S_OK) {
+        major = gssBidMapError(minor, err);
+        goto cleanup;
     }
 
 #ifdef GSSBID_DEBUG
@@ -190,22 +200,19 @@ gssBidInitResponseToken(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    err = BIDVerifyJsonWebToken(ctx->bidContext,
-                                jwt,
-                                KRB_KEY_DATA(&ctx->rfc3961Key),
-                                KRB_KEY_LENGTH(&ctx->rfc3961Key));
-    if (err != BID_S_OK) {
-        major = gssBidMapError(minor, err);
-        goto cleanup;
-    }
+    if (ulRetFlags & BID_VERIFY_FLAG_VALIDATED_CERTS)
+        ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
 
     tkt = json_object_get(response, "tkt");
-    if (tkt != NULL) {
-        major = gssBidDisplayName(minor, target_name, &bufAudienceOrSpn, NULL);
-        if (major == GSS_S_COMPLETE) {
-            _BIDStoreTicketInCache(ctx->bidContext, ctx->bidIdentity,
-                                   (const char *)bufAudienceOrSpn.value, tkt);
-        }
+    if (tkt != NULL && target_name != GSS_C_NO_NAME) {
+        uint32_t ulTicketFlags = 0;
+
+        if (ctx->gssFlags & GSS_C_MUTUAL_FLAG)
+            ulTicketFlags |= BID_TICKET_FLAG_MUTUAL_AUTH;
+
+        _BIDStoreTicketInCache(ctx->bidContext, ctx->bidIdentity,
+                               (const char *)bufAudienceOrSpn.value, tkt,
+                               ulTicketFlags);
     }
 
     output_token->length = 0;
@@ -214,9 +221,8 @@ gssBidInitResponseToken(OM_uint32 *minor,
     GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
 
 cleanup:
-    GSSBID_FREE(szJson);
+    GSSBID_FREE(szAssertion);
     json_decref(response);
-    BIDReleaseJsonWebToken(ctx->bidContext, jwt);
     gss_release_buffer(&tmpMinor, &bufAudienceOrSpn);
 
     return major;
@@ -244,7 +250,7 @@ gssBidInitSecContext(OM_uint32 *minor,
 
     if (ctx->cred == GSS_C_NO_CREDENTIAL) {
         major = gssBidResolveInitiatorCred(minor, cred, ctx,
-                                           target_name,
+                                           target_name, req_flags,
                                            input_chan_bindings,
                                            &ctx->cred);
         if (GSS_ERROR(major))
@@ -285,7 +291,8 @@ gssBidInitSecContext(OM_uint32 *minor,
                 gssBidReleaseCred(&tmpMinor, &ctx->cred);
 
                 major = gssBidResolveInitiatorCred(&tmpMinor, cred, ctx,
-                                                   target_name, input_chan_bindings,
+                                                   target_name, req_flags,
+                                                   input_chan_bindings,
                                                    &ctx->cred);
                 if (GSS_ERROR(major)) {
                     *minor = tmpMinor;

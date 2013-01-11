@@ -63,7 +63,7 @@ gssBidQueryMetaData(OM_uint32 *minor,
 
     if (ctx->cred == GSS_C_NO_CREDENTIAL) {
         if (isInitiator) {
-            major = gssBidResolveInitiatorCred(minor, cred, ctx, name,
+            major = gssBidResolveInitiatorCred(minor, cred, ctx, name, 0,
                                                GSS_C_NO_CHANNEL_BINDINGS, /* XXX */
                                                &ctx->cred);
         } else {

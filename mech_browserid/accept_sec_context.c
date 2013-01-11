@@ -20,10 +20,9 @@ makeResponseToken(OM_uint32 *minor,
     OM_uint32 major;
     gss_buffer_desc bufJson = GSS_C_EMPTY_BUFFER;
     json_t *response = NULL;
-    json_t *dh = NULL;
-    json_t *ticket = NULL;
     json_t *iat = NULL;
     BIDError err;
+    uint32_t ulReqFlags, ulRetFlags = 0;
 
     response = json_object();
     if (response == NULL) {
@@ -32,30 +31,8 @@ makeResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (protocolMajor == GSS_S_COMPLETE &&
-        ctx->encryptionType != ENCTYPE_NULL &&
-        (ctx->flags & CTX_FLAG_REAUTH) == 0) {
-        BID_ASSERT(ctx->bidIdentity != BID_C_NO_IDENTITY);
-
-        err = _BIDGetIdentityDHPublicValue(ctx->bidContext, ctx->bidIdentity, &dh);
-        if (err != BID_S_OK) {
-            major =  gssBidMapError(minor, err);
-            goto cleanup;
-        }
-
-        if (json_object_set(response, "dh", dh) != 0) {
-            major = GSS_S_FAILURE;
-            *minor = ENOMEM;
-            goto cleanup;
-        }
-
-        if (_BIDGetIdentityReauthTicket(ctx->bidContext, ctx->bidIdentity, &ticket) == BID_S_OK)
-            json_object_set(response, "tkt", ticket);
-    }
-
     if (ctx->expiryTime != 0)
         _BIDSetJsonTimestampValue(ctx->bidContext, response, "exp", ctx->expiryTime);
-
     if (GSS_ERROR(protocolMajor))
         json_object_set_new(response, "gss-maj", json_integer(protocolMajor));
     if (protocolMinor != 0) {
@@ -64,11 +41,19 @@ makeResponseToken(OM_uint32 *minor,
         json_object_set_new(response, "gss-min", json_integer(protocolMinor));
     }
 
-    /* XXX using CRK directly */
-    err = BIDMakeJsonWebToken(ctx->bidContext, response,
-                              KRB_KEY_DATA(&ctx->rfc3961Key),
-                              KRB_KEY_LENGTH(&ctx->rfc3961Key),
-                              (char **)&bufJson.value, &bufJson.length);
+    ulReqFlags = 0;
+    if (ctx->encryptionType != ENCTYPE_NULL && ctx->bidIdentity != BID_C_NO_IDENTITY)
+        ulReqFlags |= BID_RP_RESPONSE_HAVE_SESSION_KEY;
+    if ((ctx->flags & CTX_FLAG_REAUTH) == 0)
+        ulReqFlags |= BID_RP_RESPONSE_INITIAL;
+
+    err = BIDMakeRPResponseToken(ctx->bidContext,
+                                 ctx->bidIdentity,
+                                 response,
+                                 ulReqFlags,
+                                 (char **)&bufJson.value,
+                                 &bufJson.length,
+                                 &ulRetFlags);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         goto cleanup;
@@ -87,8 +72,6 @@ makeResponseToken(OM_uint32 *minor,
     *minor = 0;
 
 cleanup:
-    json_decref(ticket);
-    json_decref(dh);
     json_decref(iat);
     json_decref(response);
     BIDFreeData(ctx->bidContext, bufJson.value);
@@ -168,7 +151,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                              pbChannelBindings,
                              cbChannelBindings,
                              time(NULL),
-                             GSSBID_SM_STATE(ctx) == GSSBID_STATE_RETRY_INITIAL ? BID_VERIFY_FLAG_NO_REAUTH : 0,
+                             GSSBID_SM_STATE(ctx) == GSSBID_STATE_RETRY_INITIAL ? 0 : BID_VERIFY_FLAG_REAUTH,
                              &ctx->bidIdentity,
                              &ctx->expiryTime,
                              &ulBidFlags);

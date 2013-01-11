@@ -90,6 +90,7 @@ BIDReleaseContext(BIDContext context)
     _BIDReleaseCache(context, context->AuthorityCache);
     _BIDReleaseCache(context, context->ReplayCache);
     _BIDReleaseCache(context, context->TicketCache);
+    _BIDReleaseCache(context, context->RPCertConfig);
 
     memset(context, 0, sizeof(*context));
     BIDFree(context);
@@ -125,9 +126,11 @@ BIDSetContextParam(
         break;
     case BID_PARAM_AUTHORITY_CACHE_NAME:
     case BID_PARAM_REPLAY_CACHE_NAME:
-    case BID_PARAM_TICKET_CACHE_NAME: {
+    case BID_PARAM_TICKET_CACHE_NAME:
+    case BID_PARAM_RP_CERT_CONFIG_NAME: {
         const char *szCacheName;
         BIDCache cache, *pCache = NULL;
+        uint32_t ulFlags = 0;
 
         if (ulParam == BID_PARAM_AUTHORITY_CACHE_NAME)
             pCache = &context->AuthorityCache;
@@ -135,15 +138,21 @@ BIDSetContextParam(
             pCache = &context->ReplayCache;
         else if (ulParam == BID_PARAM_TICKET_CACHE_NAME)
             pCache = &context->TicketCache;
+        else if (ulParam == BID_PARAM_RP_CERT_CONFIG_NAME) {
+            pCache = &context->RPCertConfig;
+            ulFlags |= BID_CACHE_FLAG_UNVERSIONED;
+        }
 
-        err = _BIDGetCacheName(context, *pCache, &szCacheName);
-        if (err != BID_S_OK)
-            return err;
+        if (*pCache != NULL) {
+            err = _BIDGetCacheName(context, *pCache, &szCacheName);
+            if (err != BID_S_OK)
+                return err;
 
-        if (strcmp(szCacheName, (const char *)value) == 0)
-            break;
+            if (strcmp(szCacheName, (const char *)value) == 0)
+                break;
+        }
 
-        err = _BIDAcquireCache(context, (const char *)value, 0, &cache);
+        err = _BIDAcquireCache(context, (const char *)value, ulFlags, &cache);
         if (err == BID_S_OK) {
             _BIDReleaseCache(context, *pCache);
             *pCache = cache;
@@ -218,6 +227,9 @@ BIDGetContextParam(
         err = _BIDGetCacheName(context, context->AuthorityCache, (const char **)pValue);
         break;
     case BID_PARAM_TICKET_CACHE_NAME:
+        err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
+        break;
+    case BID_PARAM_RP_CERT_CONFIG_NAME:
         err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
         break;
 #if 0

@@ -99,7 +99,7 @@ _BIDUpdateReplayCache(
     BID_BAIL_ON_ERROR(err);
 
     if (bStoreReauthCreds) {
-        err = _BIDDeriveAuthenticatorRootKey(context, identity, &ark);
+        err = _BIDDeriveSessionSubkey(context, identity, "ARK", &ark);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDJsonObjectSet(context, rdata, "ark", ark, 0);

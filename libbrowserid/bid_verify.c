@@ -121,18 +121,8 @@ static BIDError
 _BIDVerifyAssertionSignature(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
-    BIDJWK reauthCred)
+    BIDJWK verifyCred)
 {
-    BIDJWK verifyCred;
-
-    if (backedAssertion->cCertificates == 0) {
-        BID_ASSERT(reauthCred != NULL);
-
-        verifyCred = reauthCred;
-    } else {
-        verifyCred = backedAssertion->rCertificates[backedAssertion->cCertificates - 1]->Payload;
-    }
-
     return _BIDVerifySignature(context, backedAssertion->Assertion, verifyCred);
 }
 
@@ -263,50 +253,60 @@ BIDError
 _BIDVerifyLocal(
     BIDContext context,
     BIDReplayCache replayCache,
-    const char *szAssertion,
+    BIDBackedAssertion backedAssertion,
     const char *szAudience,
+    const char *szSubjectName,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime,
     uint32_t ulReqFlags,
+    BIDJWK verifyCred,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime,
     uint32_t *pulRetFlags)
 {
     BIDError err;
-    BIDBackedAssertion backedAssertion = NULL;
     BIDIdentity verifiedIdentity = BID_C_NO_IDENTITY;
-    BIDJWK reauthCred = NULL;
+    json_t *x509Certificate = NULL;
 
-    *pVerifiedIdentity = BID_C_NO_IDENTITY;
-    *pExpiryTime = 0;
+    if (pVerifiedIdentity != NULL)
+        *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pulRetFlags = 0;
 
     BID_CONTEXT_VALIDATE(context);
 
-    /*
-     * Split backed identity assertion out into
-     * <cert-1>~...<cert-n>~<identityAssertion>
-     */
-    err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
-    BID_BAIL_ON_ERROR(err);
-
     BID_ASSERT(backedAssertion->Assertion != NULL);
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
 
+    if ((ulReqFlags & BID_VERIFY_FLAG_REAUTH) &&
+        (context->ContextOptions & BID_CONTEXT_REAUTH) == 0)
+        ulReqFlags &= ~(BID_VERIFY_FLAG_REAUTH);
+    if (ulReqFlags & BID_VERIFY_FLAG_INTERNAL)
+        *pulRetFlags |= BID_VERIFY_FLAG_INTERNAL;
+
+    json_incref(verifyCred);
+
     if (backedAssertion->cCertificates == 0) {
-        if ((context->ContextOptions & BID_CONTEXT_REAUTH) == 0 ||
-            (ulReqFlags & BID_VERIFY_FLAG_NO_REAUTH)) {
+        x509Certificate = json_object_get(backedAssertion->Assertion->Header, "x5c");
+
+        if (x509Certificate != NULL) {
+            /* Maybe it's an X.509 signed assertion */
+            err = _BIDValidateX509(context, x509Certificate);
+            BID_BAIL_ON_ERROR(err);
+
+            verifyCred = json_incref(backedAssertion->Assertion->Header);
+            *pulRetFlags |= BID_VERIFY_FLAG_X509 | BID_VERIFY_FLAG_VALIDATED_CERTS;
+        } else if (ulReqFlags & BID_VERIFY_FLAG_REAUTH) {
+            BID_ASSERT(verifyCred == NULL);
+            BID_ASSERT((ulReqFlags & BID_VERIFY_FLAG_INTERNAL) == 0);
+
+            err = _BIDVerifyReauthAssertion(context, replayCache,
+                                            backedAssertion, verificationTime,
+                                            &verifiedIdentity, &verifyCred, pulRetFlags);
+            BID_BAIL_ON_ERROR(err);
+        } else if ((ulReqFlags & BID_VERIFY_FLAG_INTERNAL) == 0) {
             err = BID_S_INVALID_ASSERTION;
             goto cleanup;
         }
-
-        *pulRetFlags |= BID_VERIFY_FLAG_REAUTH;
-
-        err = _BIDVerifyReauthAssertion(context, replayCache,
-                                        backedAssertion, verificationTime,
-                                        &verifiedIdentity, &reauthCred);
-        BID_BAIL_ON_ERROR(err);
     }
 
     err = _BIDValidateAudience(context, backedAssertion, szAudience, pbChannelBindings, cbChannelBindings);
@@ -327,25 +327,32 @@ _BIDVerifyLocal(
 
         err = _BIDValidateCertChain(context, backedAssertion, verificationTime);
         BID_BAIL_ON_ERROR(err);
+
+        verifyCred = backedAssertion->rCertificates[backedAssertion->cCertificates - 1]->Payload;
+        *pulRetFlags |= BID_VERIFY_FLAG_VALIDATED_CERTS;
     }
 
-    err = _BIDVerifyAssertionSignature(context, backedAssertion, reauthCred);
+    BID_ASSERT(verifyCred != NULL);
+
+    err = _BIDVerifyAssertionSignature(context, backedAssertion, verifyCred);
     BID_BAIL_ON_ERROR(err);
 
     if (verifiedIdentity == BID_C_NO_IDENTITY) {
-        err = _BIDPopulateIdentity(context, backedAssertion, &verifiedIdentity);
+        err = _BIDPopulateIdentity(context, backedAssertion, *pulRetFlags, &verifiedIdentity);
         BID_BAIL_ON_ERROR(err);
     }
 
+    err = _BIDValidateSubject(context, verifiedIdentity, szSubjectName, ulReqFlags);
+    BID_BAIL_ON_ERROR(err);
+
     err = BID_S_OK;
-    *pVerifiedIdentity = verifiedIdentity;
-    _BIDGetJsonTimestampValue(context, verifiedIdentity->Attributes, "exp", pExpiryTime);
+    if (pVerifiedIdentity != NULL)
+        *pVerifiedIdentity = verifiedIdentity;
 
 cleanup:
-    _BIDReleaseBackedAssertion(context, backedAssertion);
-    if (err != BID_S_OK)
+    if (err != BID_S_OK || pVerifiedIdentity == NULL)
         BIDReleaseIdentity(context, verifiedIdentity);
-    json_decref(reauthCred);
+    json_decref(verifyCred);
     
     return err;
 }

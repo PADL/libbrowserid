@@ -52,6 +52,7 @@
 
 struct BIDFileCache {
     char *Name;
+    uint32_t Flags;
     json_t *Data;
     void *Iterator;
 };
@@ -62,7 +63,7 @@ _BIDFileCacheAcquire(
     BIDContext context,
     void **cache,
     const char *name,
-    uint32_t ulFlags BID_UNUSED)
+    uint32_t ulFlags)
 {
     BIDError err;
     struct BIDFileCache *fc;
@@ -76,6 +77,8 @@ _BIDFileCacheAcquire(
         BIDFree(fc);
         return err;
     }
+
+    fc->Flags = ulFlags;
 
     *cache = fc;
 
@@ -371,11 +374,15 @@ static BIDError
 _BIDFileCacheNew(
     struct BIDCacheOps *ops BID_UNUSED,
     BIDContext context,
-    struct BIDFileCache *fc BID_UNUSED,
-    json_t **pData)
+    struct BIDFileCache *fc,
+    json_t **pData,
+    json_t **pUserData)
 {
     BIDError err;
     json_t *data = NULL;
+
+    *pData = NULL;
+    *pUserData = NULL;
 
     data = json_object();
     if (data == NULL) {
@@ -383,11 +390,17 @@ _BIDFileCacheNew(
         goto cleanup;
     }
 
-    err = _BIDJsonObjectSet(context, data, "v", json_string("2013.01.01"), BID_JSON_FLAG_CONSUME_REF);
-    BID_BAIL_ON_ERROR(err);
+    if ((fc->Flags & BID_CACHE_FLAG_UNVERSIONED) == 0) {
+        err = _BIDJsonObjectSet(context, data, "v", json_string("2013.01.01"), BID_JSON_FLAG_CONSUME_REF);
+        BID_BAIL_ON_ERROR(err);
 
-    err = _BIDJsonObjectSet(context, data, "d", json_object(), BID_JSON_FLAG_CONSUME_REF);
-    BID_BAIL_ON_ERROR(err);
+        err = _BIDJsonObjectSet(context, data, "d", json_object(), BID_JSON_FLAG_CONSUME_REF);
+        BID_BAIL_ON_ERROR(err);
+
+        *pUserData = json_incref(json_object_get(data, "d"));
+    } else {
+        *pUserData = json_incref(data);
+    }
 
     err = BID_S_OK;
     *pData = data;
@@ -408,13 +421,14 @@ _BIDFileCacheInitialize(
     BIDError err, err2;
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
     json_t *data = NULL;
+    json_t *d = NULL;
     int fd = -1;
     int flags = O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC;
 
     if (fc == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    err = _BIDFileCacheNew(ops, context, fc, &data);
+    err = _BIDFileCacheNew(ops, context, fc, &data, &d);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDFileCacheOpen(ops, context, fc, flags, 0600, &fd);
@@ -427,6 +441,7 @@ cleanup:
     err2 = _BIDFileCacheClose(ops, context, fc, fd);
 
     json_decref(data);
+    json_decref(d);
 
     return (err == BID_S_OK) ? err2 : err;
 }
@@ -437,26 +452,37 @@ _BIDFileCacheRead(
     BIDContext context,
     void *cache,
     int fd,
-    json_t **pData)
+    json_t **pData,
+    json_t **pUserData)
 {
     BIDError err;
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
     const char *version;
 
     *pData = NULL;
+    *pUserData = NULL;
 
     err = _BIDFileCacheLoad(ops, context, fc, fd, pData);
     BID_BAIL_ON_ERROR(err);
 
-    version = json_string_value(json_object_get(*pData, "v"));
-    if (version == NULL || strcmp(version, "2013.01.01") != 0) {
-        err = BID_S_CACHE_INVALID_VERSION;
-        goto cleanup;
-    }
+    if ((fc->Flags & BID_CACHE_FLAG_UNVERSIONED) == 0) {
+        json_t *d;
 
-    if (!json_is_object(json_object_get(*pData, "d"))) {
-        err = BID_S_CACHE_READ_ERROR;
-        goto cleanup;
+        version = json_string_value(json_object_get(*pData, "v"));
+        if (version == NULL || strcmp(version, "2013.01.01") != 0) {
+            err = BID_S_CACHE_INVALID_VERSION;
+            goto cleanup;
+        }
+
+        d = json_object_get(*pData, "d");
+        if (!json_is_object(d)) {
+            err = BID_S_CACHE_READ_ERROR;
+            goto cleanup;
+        }
+
+        *pUserData = json_incref(d);
+    } else {
+        *pUserData = json_incref(*pData);
     }
 
     err = BID_S_OK;
@@ -596,7 +622,7 @@ _BIDFileCacheGetObject(
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
     BIDError err;
     json_t *data = NULL;
-    json_t *d;
+    json_t *d = NULL;
     int fd = -1;
 
     *val = NULL;
@@ -609,10 +635,8 @@ _BIDFileCacheGetObject(
     err = _BIDFileCacheOpen(ops, context, fc, O_RDONLY | O_CLOEXEC, 0600, &fd);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDFileCacheRead(ops, context, cache, fd, &data);
+    err = _BIDFileCacheRead(ops, context, cache, fd, &data, &d);
     BID_BAIL_ON_ERROR(err);
-
-    d = json_object_get(data, "d");
 
     *val = json_incref(json_object_get(d, key));
 
@@ -624,6 +648,7 @@ _BIDFileCacheGetObject(
 cleanup:
     _BIDFileCacheClose(ops, context, fc, fd);
     json_decref(data);
+    json_decref(d);
 
     return err;
 }
@@ -639,7 +664,7 @@ _BIDFileCacheSetOrRemoveObject(
 {
     struct BIDFileCache *fc = (struct BIDFileCache *)cache;
     BIDError err;
-    json_t *data = NULL, *d;
+    json_t *data = NULL, *d = NULL;
     int fd = -1;
 
     if (fc == NULL || (val == NULL && !remove)) {
@@ -649,13 +674,10 @@ _BIDFileCacheSetOrRemoveObject(
 
     err = _BIDFileCacheOpen(ops, context, fc, O_RDWR | O_CREAT | O_CLOEXEC, 0600, &fd);
     if (err == BID_S_OK)
-        err = _BIDFileCacheRead(ops, context, cache, fd, &data);
+        err = _BIDFileCacheRead(ops, context, cache, fd, &data, &d);
     if (err == BID_S_CACHE_NOT_FOUND || err == BID_S_CACHE_READ_ERROR)
-        err = _BIDFileCacheNew(ops, context, fc, &data);
+        err = _BIDFileCacheNew(ops, context, fc, &data, &d);
     BID_BAIL_ON_ERROR(err);
-
-    d = json_object_get(data, "d");
-    BID_ASSERT(d != NULL);
 
     if (remove)
         err = _BIDJsonObjectDel(context, d, key, 0);
@@ -671,6 +693,7 @@ _BIDFileCacheSetOrRemoveObject(
 cleanup:
     _BIDFileCacheClose(ops, context, fc, fd);
     json_decref(data);
+    json_decref(d);
 
     return err;
 }
@@ -720,15 +743,13 @@ _BIDFileCacheFirstObject(
     err = _BIDFileCacheOpen(ops, context, fc, O_RDWR | O_CLOEXEC, 0600, &fd);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDFileCacheRead(ops, context, cache, fd, &data);
+    err = _BIDFileCacheRead(ops, context, cache, fd, &data, &d);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDFileCacheClose(ops, context, fc, fd);
     BID_BAIL_ON_ERROR(err);
 
     fd = -1;
-
-    d = json_object_get(data, "d");
 
     fc->Iterator = json_object_iter(d);
     if (fc->Iterator == NULL) {
@@ -753,6 +774,7 @@ cleanup:
         _BIDFileCacheClose(ops, context, fc, fd);
 
     json_decref(data);
+    json_decref(d);
 
     return err;
 }

@@ -124,7 +124,8 @@ _BIDValidateJWTHeader(
             if (strcmp(typ, "JWT") != 0 &&
                 strcmp(typ, "urn:ietf:params:oauth:token-type:jwt") != 0)
                 return BID_S_INVALID_JSON_WEB_TOKEN;
-        } else if (strcmp(key, "alg") == 0)
+        } else if (strcmp(key, "alg") == 0 ||
+                   strcmp(key, "x5c") == 0)
             continue;
         else
             return BID_S_INVALID_JSON_WEB_TOKEN;
@@ -257,6 +258,7 @@ _BIDMakeSignature(
     BIDContext context,
     BIDJWT jwt,
     BIDJWKSet keyset,
+    json_t *certChain,
     char **pszJwt,
     size_t *pcchJwt)
 {
@@ -297,6 +299,11 @@ _BIDMakeSignature(
                             json_string(alg ? alg->szAlgID : "none"),
                             BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
+
+    if (certChain != NULL) {
+        err = _BIDJsonObjectSet(context, jwt->Header, "x5c", certChain, BID_JSON_FLAG_REQUIRED);
+        BID_BAIL_ON_ERROR(err);
+    }
 
     err = _BIDMakeSignatureData(context, jwt);
     BID_BAIL_ON_ERROR(err);
@@ -359,6 +366,11 @@ _BIDVerifySignature(
 
     if (jwt == NULL) {
         err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    if (jwt->SignatureLength == 0) {
+        err = BID_S_MISSING_SIGNATURE;
         goto cleanup;
     }
 
@@ -426,129 +438,3 @@ _BIDReleaseJWT(
     return _BIDReleaseJWTInternal(context, jwt, 1);
 }
 
-int
-_BIDIsLegacyJWK(
-    BIDContext context BID_UNUSED,
-    BIDJWK jwk)
-{
-    const char *version = json_string_value(json_object_get(jwk, "version"));
-
-    return (version == NULL || strcmp(version, "2012.08.15") != 0);
-}
-
-static BIDError
-_BIDMakeJsonWebKey(
-    BIDContext context,
-    const unsigned char *pbKey,
-    size_t cbKey,
-    BIDJWK *key)
-{
-    BIDError err;
-    json_t *sk = NULL;
-
-    *key = NULL;
-
-    err = _BIDJsonBinaryValue(context, pbKey, cbKey, &sk);
-    if (err != BID_S_OK)
-        return err;
-
-    *key = json_object();
-    if (*key == NULL)
-        return BID_S_NO_MEMORY;
-
-    err = _BIDJsonObjectSet(context, *key, "secret-key", sk, BID_JSON_FLAG_CONSUME_REF);
-
-    return err;
-}
-
-BIDError
-BIDMakeJsonWebToken(
-    BIDContext context,
-    json_t *Payload,
-    const unsigned char *pbKey,
-    size_t cbKey,
-    char **pbJwt,
-    size_t *pchJwt)
-{
-    BIDError err;
-    struct BIDJWTDesc jwt;
-    BIDJWK key = NULL;
-
-    *pbJwt = NULL;
-    *pchJwt = 0;
-
-    jwt.EncData = NULL;
-    jwt.EncDataLength = 0;
-    jwt.Header = NULL;
-    jwt.Payload = json_incref(Payload);
-    jwt.Signature = NULL;
-    jwt.SignatureLength = 0;
-
-    if (pbKey != NULL) {
-        err = _BIDMakeJsonWebKey(context, pbKey, cbKey, &key);
-        BID_BAIL_ON_ERROR(err);
-    }
-
-    err = _BIDMakeSignature(context, &jwt, key, pbJwt, pchJwt);
-    BID_BAIL_ON_ERROR(err);
-
-cleanup:
-    json_decref(key);
-    _BIDReleaseJWTInternal(context, &jwt, 0);
-
-    return err;
-}
-
-BIDError
-BIDParseJsonWebToken(
-    BIDContext context,
-    const char *szJwt,
-    BIDJWT *pJwt,
-    json_t **pPayload)
-{
-    BIDError err;
-
-    *pJwt = NULL;
-    *pPayload = NULL;
-
-    err = _BIDParseJWT(context, szJwt, pJwt);
-    if (err == BID_S_OK) {
-        *pPayload = json_incref((*pJwt)->Payload);
-        if (*pPayload == NULL)
-            err = BID_S_INVALID_JSON_WEB_TOKEN;
-    }
-
-    return err;
-}
-
-BIDError
-BIDVerifyJsonWebToken(
-    BIDContext context,
-    BIDJWT jwt,
-    const unsigned char *pbKey,
-    size_t cbKey)
-{
-    BIDError err;
-    BIDJWK key = NULL;
-
-    if (pbKey != NULL) {
-        err = _BIDMakeJsonWebKey(context, pbKey, cbKey, &key);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDVerifySignature(context, jwt, key);
-        BID_BAIL_ON_ERROR(err);
-    }
-
-cleanup:
-    json_decref(key);
-
-    return err;
-}
-
-BIDError
-BIDReleaseJsonWebToken(
-    BIDContext context,
-    BIDJWT jwt)
-{
-    return _BIDReleaseJWT(context, jwt);
-}

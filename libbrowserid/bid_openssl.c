@@ -14,6 +14,8 @@
 #include <openssl/rand.h>
 #include <openssl/dh.h>
 #include <openssl/hmac.h>
+#include <openssl/pem.h>
+#include <openssl/x509v3.h>
 #include <openssl/err.h>
 
 #include <ctype.h>
@@ -204,7 +206,76 @@ _BIDMakeShaDigest(
 }
 
 static BIDError
-_BIDMakeRsaKey(
+_BIDCertDataToX509(
+    BIDContext context BID_UNUSED,
+    json_t *x5c,
+    int index,
+    X509 **pX509)
+{
+    BIDError err;
+    const char *szCert;
+    unsigned char *pbData = NULL;
+    const unsigned char *p;
+    size_t cbData = 0;
+
+    if (x5c == NULL) {
+        err = BID_S_MISSING_CERT;
+        goto cleanup;
+    }
+
+    szCert = json_string_value(json_array_get(x5c, index));
+    if (szCert == NULL) {
+        err = BID_S_MISSING_CERT;
+        goto cleanup;
+    }
+
+    err = _BIDBase64UrlDecode(szCert, &pbData, &cbData);
+    BID_BAIL_ON_ERROR(err);
+
+    p = pbData;
+
+    *pX509 = d2i_X509(NULL, &p, cbData);
+    if (*pX509 == NULL) {
+        err = BID_S_MISSING_CERT;
+        goto cleanup;
+    }
+
+cleanup:
+    BIDFree(pbData);
+
+    return err;
+}
+
+static BIDError
+_BIDCertDataToX509RsaKey(
+    BIDContext context,
+    json_t *x5c,
+    RSA **pRsa)
+{
+    BIDError err;
+    X509 *x509;
+    EVP_PKEY *pkey;
+
+    err = _BIDCertDataToX509(context, x5c, 0, &x509);
+    if (err != BID_S_OK)
+        return err;
+
+    pkey = X509_get_pubkey(x509);
+    if (pkey == NULL || EVP_PKEY_type(pkey->type) != EVP_PKEY_RSA) {
+        X509_free(x509);
+        return BID_S_NO_KEY;
+    }
+
+    RSA_up_ref(pkey->pkey.rsa);
+    *pRsa = pkey->pkey.rsa;
+
+    X509_free(x509);
+
+    return BID_S_OK;
+}
+
+static BIDError
+_BIDMakeJwtRsaKey(
     BIDContext context,
     BIDJWK jwk,
     int public,
@@ -237,6 +308,27 @@ _BIDMakeRsaKey(
 cleanup:
     if (err != BID_S_OK)
         RSA_free(rsa);
+
+    return err;
+}
+
+static BIDError
+_BIDMakeRsaKey(
+    BIDContext context,
+    BIDJWK jwk,
+    int public,
+    RSA **pRsa)
+{
+    BIDError err;
+    json_t *x5c;
+
+    *pRsa = NULL;
+
+    x5c = json_object_get(jwk, "x5c");
+    if (public && x5c != NULL)
+        err = _BIDCertDataToX509RsaKey(context, x5c, pRsa);
+    else
+        err = _BIDMakeJwtRsaKey(context, jwk, public, pRsa);
 
     return err;
 }
@@ -372,7 +464,35 @@ cleanup:
 }
 
 static BIDError
-_BIDMakeDsaKey(BIDContext context, BIDJWK jwk, int public, DSA **pDsa)
+_BIDCertDataToX509DsaKey(
+    BIDContext context,
+    json_t *x5c,
+    DSA **pDsa)
+{
+    BIDError err;
+    X509 *x509;
+    EVP_PKEY *pkey;
+
+    err = _BIDCertDataToX509(context, x5c, 0, &x509);
+    if (err != BID_S_OK)
+        return err;
+
+    pkey = X509_get_pubkey(x509);
+    if (pkey == NULL || EVP_PKEY_type(pkey->type) != EVP_PKEY_RSA) {
+        X509_free(x509);
+        return BID_S_NO_KEY;
+    }
+
+    DSA_up_ref(pkey->pkey.dsa);
+    *pDsa = pkey->pkey.dsa;
+
+    X509_free(x509);
+
+    return BID_S_OK;
+}
+
+static BIDError
+_BIDMakeJwtDsaKey(BIDContext context, BIDJWK jwk, int public, DSA **pDsa)
 {
     BIDError err;
     DSA *dsa = NULL;
@@ -405,6 +525,27 @@ _BIDMakeDsaKey(BIDContext context, BIDJWK jwk, int public, DSA **pDsa)
 cleanup:
     if (err != BID_S_OK)
         DSA_free(dsa);
+
+    return err;
+}
+
+static BIDError
+_BIDMakeDsaKey(
+    BIDContext context,
+    BIDJWK jwk,
+    int public,
+    DSA **pDsa)
+{
+    BIDError err;
+    json_t *x5c;
+
+    *pDsa = NULL;
+
+    x5c = json_object_get(jwk, "x5c");
+    if (public && x5c != NULL)
+        err = _BIDCertDataToX509DsaKey(context, x5c, pDsa);
+    else
+        err = _BIDMakeJwtDsaKey(context, jwk, public, pDsa);
 
     return err;
 }
@@ -1038,3 +1179,330 @@ _BIDDeriveKey(
 
     return BID_S_OK;
 }
+
+BIDError
+_BIDLoadX509PrivateKey(
+    BIDContext context BID_UNUSED,
+    const char *path,
+    BIDJWK *pPrivateKey)
+{
+    BIDError err;
+    BIDJWK privateKey = NULL;
+    FILE *fp = NULL;
+    EVP_PKEY *pemKey = NULL;
+
+    *pPrivateKey = NULL;
+
+    fp = fopen(path, "r");
+    if (fp == NULL) {
+        err = BID_S_KEY_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
+    pemKey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+    if (pemKey == NULL) {
+        BID_CRYPTO_PRINT_ERRORS();
+        err = BID_S_KEY_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
+    privateKey = json_object();
+    if (privateKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, privateKey, "version", json_string("2012.08.15"), BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    if (pemKey->pkey.ptr == NULL) {
+        err = BID_S_INVALID_KEY;
+        goto cleanup;
+    }
+
+    switch (pemKey->type) {
+    case EVP_PKEY_RSA:
+        err = _BIDJsonObjectSet(context, privateKey, "algorithm", json_string("RS"), BID_JSON_FLAG_CONSUME_REF);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDSetJsonBNValue(context, privateKey, "n", pemKey->pkey.rsa->n);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDSetJsonBNValue(context, privateKey, "e", pemKey->pkey.rsa->e);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDSetJsonBNValue(context, privateKey, "d", pemKey->pkey.rsa->d);
+        BID_BAIL_ON_ERROR(err);
+
+        break;
+    case EVP_PKEY_DSA:
+        err = _BIDJsonObjectSet(context, privateKey, "algorithm", json_string("DS"), BID_JSON_FLAG_CONSUME_REF);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDSetJsonBNValue(context, privateKey, "p", pemKey->pkey.dsa->p);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDSetJsonBNValue(context, privateKey, "q", pemKey->pkey.dsa->q);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDSetJsonBNValue(context, privateKey, "g", pemKey->pkey.dsa->g);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDSetJsonBNValue(context, privateKey, "x", pemKey->pkey.dsa->priv_key);
+        BID_BAIL_ON_ERROR(err);
+
+        break;
+    default:
+        err = BID_S_INVALID_KEY;
+        goto cleanup;
+    }
+
+    *pPrivateKey = privateKey;
+
+cleanup:
+    if (fp != NULL)
+        fclose(fp);
+    if (pemKey != NULL)
+        EVP_PKEY_free(pemKey);
+    if (err != BID_S_OK)
+        json_decref(privateKey);
+
+    return err;
+}
+
+BIDError
+_BIDLoadX509Certificate(
+    BIDContext context BID_UNUSED,
+    const char *path,
+    json_t **pCert)
+{
+    BIDError err;
+    json_t *cert = NULL;
+    FILE *fp = NULL;
+    X509 *pemCert = NULL;
+    unsigned char *pbData = NULL, *p;
+    size_t cbData = 0;
+
+    *pCert = NULL;
+
+    fp = fopen(path, "r");
+    if (fp == NULL) {
+        err = BID_S_CERT_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
+    pemCert = PEM_ASN1_read((void *(*) ()) d2i_X509, PEM_STRING_X509, fp, NULL, NULL, NULL);
+    if (pemCert == NULL) {
+        BID_CRYPTO_PRINT_ERRORS();
+        err = BID_S_CERT_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
+    cbData = i2d_X509(pemCert, NULL);
+
+    p = pbData = BIDMalloc(cbData);
+    if (pbData == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (i2d_X509(pemCert, &p) < 0) {
+        BID_CRYPTO_PRINT_ERRORS();
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    /* XXX should be base64 (not URL) encoded */
+    err = _BIDJsonBinaryValue(context, pbData, cbData, &cert);
+    BID_BAIL_ON_ERROR(err);
+
+    *pCert = cert;
+
+cleanup:
+    if (fp != NULL)
+        fclose(fp);
+    if (pemCert != NULL)
+        X509_free(pemCert);
+    if (err != BID_S_OK)
+        json_decref(cert);
+    BIDFree(pbData);
+
+    return err;
+}
+
+static BIDError
+_BIDSetJsonX509Name(
+    BIDContext context,
+    json_t *j,
+    const char *key,
+    X509_NAME *name,
+    int cnOnly)
+{
+    char *szValue = NULL;
+    BIDError err;
+
+    if (cnOnly) {
+        int i;
+        X509_NAME_ENTRY *cn;
+        ASN1_STRING *cnValue;
+
+        i = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
+        if (i < 0)
+            return BID_S_MISSING_PRINCIPAL;
+
+        cn = X509_NAME_get_entry(name, i);
+        if (cn == NULL)
+            return BID_S_MISSING_PRINCIPAL;
+
+        cnValue = X509_NAME_ENTRY_get_data(cn);
+        ASN1_STRING_to_UTF8((unsigned char **)&szValue, cnValue);
+    } else {
+        /* XXX this is a deprecated API */
+        szValue = X509_NAME_oneline(name, NULL, -1);
+        if (szValue == NULL)
+            return BID_S_NO_MEMORY;
+    }
+
+    err = _BIDJsonObjectSet(context, j, key, json_string(szValue),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+
+    OPENSSL_free(szValue);
+
+    return err;
+}
+
+BIDError
+_BIDPopulateX509Identity(
+    BIDContext context,
+    BIDBackedAssertion backedAssertion,
+    BIDIdentity identity,
+    uint32_t ulReqFlags)
+{
+    BIDError err;
+    json_t *certChain = json_object_get(backedAssertion->Assertion->Header, "x5c");
+    json_t *principal = json_object();
+    X509 *x509 = NULL;
+    STACK_OF(GENERAL_NAME) *gens;
+    int i;
+
+    err = _BIDCertDataToX509(context, certChain, 0, &x509);
+    BID_BAIL_ON_ERROR(err);
+
+    gens = X509_get_ext_d2i(x509, NID_subject_alt_name, NULL, NULL);
+    if (gens != NULL) {
+        for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
+            GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
+            const char *key = NULL;
+
+            switch (gen->type) {
+            case GEN_EMAIL:
+                key = "email";
+                break;
+            case GEN_DNS:
+                key = "hostname";
+                break;
+            case GEN_URI:
+                key = "uri";
+                break;
+            default:
+                break;
+            }
+
+            if (key != NULL) {
+                err = _BIDJsonObjectSet(context, principal, key,
+                                        json_string((char *)gen->d.ia5->data),
+                                        BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+                BID_BAIL_ON_ERROR(err);
+            }
+        }
+    }
+
+    err = _BIDJsonObjectSet(context, identity->Attributes, "principal", principal, 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonX509Name(context, identity->Attributes, "sub", X509_get_subject_name(x509),
+                              !!(ulReqFlags & BID_VERIFY_FLAG_INTERNAL));
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonX509Name(context, identity->Attributes, "iss", X509_get_issuer_name(x509), 0);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    json_decref(principal);
+
+    return err;
+}
+
+BIDError
+_BIDValidateX509CertChain(
+    BIDContext context,
+    const char *caCertificateFile,
+    const char *caCertificateDir,
+    json_t *certChain)
+{
+    BIDError err;
+    X509_STORE *store = NULL;
+    X509_STORE_CTX *storeCtx = NULL;
+    X509 *leafCert = NULL;
+    STACK_OF(X509) *chain = NULL;
+    size_t i;
+
+    if (json_array_size(certChain) == 0) {
+        err = BID_S_MISSING_CERT;
+        goto cleanup;
+    }
+
+    err = _BIDCertDataToX509(context, certChain, 0, &leafCert);
+    BID_BAIL_ON_ERROR(err);
+
+    chain = sk_X509_new_null();
+    if (chain == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 1; i < json_array_size(certChain); i++) {
+        X509 *cert;
+
+        err = _BIDCertDataToX509(context, certChain, i, &cert);
+        BID_BAIL_ON_ERROR(err);
+
+        sk_X509_push(chain, cert);
+    }
+
+    store = X509_STORE_new();
+    storeCtx = X509_STORE_CTX_new();
+    if (store == NULL || storeCtx == NULL) {
+        BID_CRYPTO_PRINT_ERRORS();
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    if (X509_STORE_load_locations(store, caCertificateFile, caCertificateDir) != 1 ||
+        X509_STORE_set_default_paths(store) != 1 ||
+        X509_STORE_CTX_init(storeCtx, store, leafCert, chain) != 1) {
+        BID_CRYPTO_PRINT_ERRORS();
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+
+#if 0
+    if (!X509_verify_cert(storeCtx)) {
+        err = BID_S_UNTRUSTED_X509_CERT;
+        goto cleanup;
+    }
+#endif
+
+cleanup:
+    if (chain != NULL)
+        sk_X509_free(chain);
+    if (storeCtx != NULL)
+        X509_STORE_CTX_free(storeCtx);
+    if (store != NULL)
+        X509_STORE_free(store);
+
+    return err;
+}
+

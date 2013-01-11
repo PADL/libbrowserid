@@ -112,6 +112,17 @@ gssBidAllocContext(OM_uint32 *minor,
     }
 
     /*
+     * If we are doing mutual authentication, this is whether we store the
+     * server certificate and private key.
+     */
+    err = BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CERT_CONFIG_NAME,
+                             SYSCONFDIR "/gss/browserid.json");
+    if (err != BID_S_OK) {
+        major = gssBidMapError(minor, err);
+        goto cleanup;
+    }
+
+    /*
      * Integrity, confidentiality, sequencing and replay detection are
      * always available.  Regardless of what flags are requested in
      * GSS_Init_sec_context, implementations MUST set the flag corresponding

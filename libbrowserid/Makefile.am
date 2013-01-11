@@ -10,6 +10,7 @@ libbrowserid_la_SOURCES =   \
     bid_authority.c         \
     bid_base64.c            \
     bid_cache.c             \
+    bid_crypto.c            \
     bid_fcache.c            \
     bid_context.c           \
     bid_identity.c          \
@@ -17,11 +18,13 @@ libbrowserid_la_SOURCES =   \
     bid_mcache.c            \
     bid_openssl.c           \
     bid_reauth.c            \
+    bid_rp.c                \
     bid_rcache.c            \
     bid_rverify.c           \
     bid_user.c              \
     bid_util.c              \
     bid_verify.c            \
+    bid_x509.c              \
     vers.c
 
 if TARGET_MACOSX

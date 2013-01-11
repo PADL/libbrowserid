@@ -87,6 +87,13 @@ typedef enum {
     BID_S_NO_TICKET_CACHE,
     BID_S_BAD_TICKET_CACHE,
     BID_S_EXPIRED_TICKET,
+    BID_S_CERT_FILE_UNREADABLE,
+    BID_S_KEY_FILE_UNREADABLE,
+    BID_S_UNTRUSTED_X509_CERT,
+    BID_S_NOT_REAUTH_ASSERTION,
+    BID_S_BAD_SUBJECT,
+    BID_S_MISMATCHED_RP_RESPONSE,
+    BID_S_MISSING_SIGNATURE,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -175,6 +182,7 @@ typedef enum {
     BID_PARAM_REPLAY_CACHE_NAME,
     BID_PARAM_AUTHORITY_CACHE_NAME,
     BID_PARAM_TICKET_CACHE_NAME,
+    BID_PARAM_RP_CERT_CONFIG_NAME,
 } BIDContextParameter;
 
 BIDError
@@ -220,6 +228,7 @@ BIDReleaseReplayCache(
  */
 #define BID_ACQUIRE_FLAG_NO_INTERACT        0x00000001
 #define BID_ACQUIRE_FLAG_NO_CACHED          0x00000002
+#define BID_ACQUIRE_FLAG_NONCE              0x00000004
 
 BIDError
 BIDAcquireAssertionFromString(
@@ -255,11 +264,13 @@ BIDFreeAssertion(
  */
 
 /* Request (ulReqFlags) */
-#define BID_VERIFY_FLAG_NO_REAUTH           0x00000001
+#define BID_VERIFY_FLAG_REAUTH                  0x00000001
+#define BID_VERIFY_FLAG_INTERNAL                0x00000002
 
 /* Response (ulRetFlags) */
-#define BID_VERIFY_FLAG_REMOTE              0x80000001
-#define BID_VERIFY_FLAG_REAUTH              0x80000002
+#define BID_VERIFY_FLAG_REMOTE                  0x00000004
+#define BID_VERIFY_FLAG_VALIDATED_CERTS         0x00000008
+#define BID_VERIFY_FLAG_X509                    0x00000010
 
 BIDError
 BIDVerifyAssertion(
@@ -366,40 +377,36 @@ struct BIDJWTDesc;
 typedef struct BIDJWTDesc *BIDJWT;
 
 #ifdef JANSSON_H
+#define BID_RP_RESPONSE_HAVE_SESSION_KEY        0x00000001 /* have a session key */
+#define BID_RP_RESPONSE_INITIAL                 0x00000002 /* not reauth-based auth */
+#define BID_RP_RESPONSE_VERIFY_NONCE            0x00000004
+
 BIDError
-BIDMakeJsonWebToken(
+BIDMakeRPResponseToken(
     BIDContext context,
+    BIDIdentity identity,
     json_t *Payload,
-    const unsigned char *pbKey,
-    size_t cbKey,
-    char **pszJwt,
-    size_t *pchJwt);
+    uint32_t ulReqFlags,
+    char **pszResponseToken,
+    size_t *pchResponseToken,
+    uint32_t *pulRetFlags);
 
 BIDError
-BIDParseJsonWebToken(
+BIDVerifyRPResponseToken(
     BIDContext context,
-    const char *szJwt,
-    BIDJWT *pJwt,
-    json_t **pPayload);
-
-BIDError
-BIDVerifyJsonWebToken(
-    BIDContext context,
-    BIDJWT jwt,
-    const unsigned char *pbKey,
-    size_t cbKey);
+    BIDIdentity identity,
+    const char *szAssertion,
+    const char *szAudienceName,
+    uint32_t ulReqFlags,
+    json_t **pPayload,
+    uint32_t *pulRetFlags);
+#endif
 
 BIDError
 BIDFreeData(
     BIDContext context,
     char *s);
 
-BIDError
-BIDReleaseJsonWebToken(
-    BIDContext context,
-    BIDJWT jwt);
-
-#endif
 
 #ifdef __cplusplus
 }

@@ -8,7 +8,7 @@ January 2013
 The BrowserID GSS mechanism is a GSS-API security mechanism that allows you to
 use BrowserID-generated assertions for signing in to non-web protocols, such as
 SMTP, IMAP, SSH, LDAP, CIFS, and NFS. Any protocol that supports GSS-API or
-SASL and does not require mutual authentication should work.
+SASL should work.
 
 More information on BrowserID is available at the URL
 <https://developer.mozilla.org/en-US/docs/persona>.
@@ -21,6 +21,7 @@ The GSS BrowserID mechanism imports the [BrowserID spec][BIDSPEC].
 [RFC3961]: http://www.ietf.org/rfc/rfc3961.txt
 [RFC4121]: http://www.ietf.org/rfc/rfc4121.txt
 [JWT]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-token
+[JWS]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-signature
 [GSS-REST]: http://www.w3.org/2011/identity-ws/papers/idbrowser2011_submission_16.pdf
 
 Note that "initiator" is the client or user-agent and the "acceptor" is the
@@ -49,11 +50,12 @@ A summary of the BrowserID protocol can be found at [BIDOVER]. Essentially it in
   "identity assertion" (similar to a Kerberos authenticator), containing
   the RP domain and an expiration time (generally a few minutes after it
   was created). The user signs this, and presents both the assertion and
-  the user certificate to the RP.
-* The RP verifies this using user's and IdP's public keys (and those of any intermediate certifying parties).
+  the user certificate to the RP (the combination of an assertion and zero
+  or more certificates is termed a "backed assertion")
+* The RP verifies this using user's and IdP's public keys (and those of any
+  intermediate certifying parties).
 
 Essentially the GSS mechanism described here bridges these two worlds.
-
 
 ### Initiator to acceptor
 
@@ -74,7 +76,8 @@ context token is expected from the acceptor.
 
 ### Acceptor to initiator
 
-1. The acceptor validates that the token is well formed and contains the correct mechanism OID and token type.
+1. The acceptor validates that the token is well formed and contains the
+correct mechanism OID and token type.
 
 2. The acceptor verifies the backed identity assertion per [BIDSPEC]: this
 includes validating the expiry times, audience, certificate chain, and the
@@ -85,11 +88,13 @@ immediately returned.
 claims in the assertion. In the case of failure, an error token is generated.
 
 4. If required, the acceptor generates a DH public key using the parameters
-received from the client.
+received from the client, and from it derives a RP Response Key (RRK).
 
-5. The acceptor generates a response token containing the DH public key and
-context expiry time. The response token is signed using the DH shared secret
-key.
+5. The acceptor generates a response assertion containing the DH public key and
+context expiry time. The response assertion is signed using the RP Response Key
+(RRK) unless mutual authentication is desired, in which case it may be signed
+in the acceptor's private key (see below). (For extensibility, the response
+token is a backed assertion with zero certificates.)
 
 6. The context root key (CRK) is derived from the DH key and GSS\_S\_COMPLETE
 is returned, along with the initiator name from the verified assertion. Other
@@ -97,18 +102,58 @@ assertion attributes may be made available via GSS\_Get\_name\_attribute().
 
 ### Initiator context completion
 
-1. The initiator unpacks the acceptor response token JWT.
+1. The initiator unpacks the acceptor response assertion.
 
-2. The DH shared secret is computed from the acceptor's DH public key and is
-used to verify the response token.
+2. The DH shared secret is computed from the acceptor's DH public key.
+
+3. The RP Response Key (RRK) is used to verify the acceptor's response
+assertion unless mutual authentication is desired, in which case the
+acceptor's public key may be used (see below).
 
 3. The initiator sets the context expiry time with that received in the
-response token. If the context has expired, GSS\_S\_CONTEXT\_EXPIRED is
+response assertion. If the context has expired, GSS\_S\_CONTEXT\_EXPIRED is
 returned and context establishment fails.
 
-4. The context root key (CRK) is derived from the DH key and GSS\_S\_COMPLETE
-is returned to indicate the user is authenticated and the context is ready for
-use. No output token is emitted.
+4. The context root key (CRK) is derived from the DH shared secret and
+GSS\_S\_COMPLETE is returned to indicate the user is authenticated and the
+context is ready for use. No output token is emitted.
+
+### Mutual authentication extensions
+
+Mutual authentication allows the acceptor to be authenticated to the initiator.
+The initiator may return GSS\_C\_MUTUAL\_FLAG flag to the caller. The protocol
+is modified as follows to support this:
+
+#### Initiator to acceptor (mutual authentication)
+
+If the initiator requested GSS\_C\_MUTUAL\_FLAG, a nonce is included in the
+assertion to bind the initiator and acceptor tokens.
+
+#### Acceptor to initiator (mutual authentication)
+
+If the acceptor has a private key available and received a nonce in the
+initiator assertion, it signs the response using a private key rather
+than the RP Response Key (RRK). The response includes the nonce from the
+initiator's assertion.
+
+Note: while the response is a backed assertion, in order to take advantage of
+existing keying infrastructures it is suggested that the X.509-encoded
+certificate chain be included as a value for the "x5c" attribute in the
+assertion (see [JSON Web Signature][JWS] section 4.1.6).
+
+#### Initiator context completion (mutual authentication)
+
+The initiator verifies the nonce and the assertion signature, and validates
+the certificate chain (which may be an X.509 certificate chain, in which case
+trust anchors SHOULD be configurable both system-wide and specifically for the
+BrowserID mechanism).
+
+If X.509 certificates are used, then either the audience URI must be present in
+the URI subjectAltName, or the host component must be present as a value for
+the DNS subjectAltName or as the least significant Common Name RDN.
+
+**NOTE**: only validating the host name does not mutually authenticate the
+service type or instance
 
 ### Fast re-authentication extensions
 
@@ -119,7 +164,8 @@ beyond the user's certificate expiry time.
 
 #### Ticket generation
 
-If the acceptor supports re-authentication, the following steps are added to the "acceptor to initiator" flow described above.
+If the acceptor supports re-authentication, the following steps are added to
+the "acceptor to initiator" flow described above.
 
 1. A unique ticket identifier is generated. The acceptor must be able to use
 this to retrieve the authenticator root key, ticket expiry time, and any other
@@ -161,7 +207,7 @@ its cache matching the requested ticket ID.
 
 3. The acceptor verifies the authenticator using its copy of the ARK.
 
-4. The acceptor generates the ASK and derived the CRK from this.
+4. The acceptor generates the ASK and derived the RRK and CRK from this.
 
 3. The acceptor generates a response and signs and returns it.
 
@@ -169,6 +215,12 @@ If the ticket cannot be found, or the authentication fails, the acceptor MAY
 return an error code in its response, permitting the initiator to recover and
 fallback to generating a BrowserID assertion. It MAY also include its local
 timestamp so that the initiator can perform clock skew compensation.
+
+#### Interaction with mutual authentication
+
+The mutual authentication state of a re-authenticated context is transitive. It
+MUST NOT return GSS\_C\_MUTUAL\_FLAG for a re-authenticated context unless the
+original context was mutually authenticated.
 
 ## Protocol elements
 
@@ -206,9 +258,7 @@ Message protection (confidentiality/wrap) are framed according to [RFC4121].
 **TBD**:
 
 * Do we want to do away with the token ID and wrap everything in JSON, or
-  assume that initiator tokens are always backed assertions and acceptor
-  responses always JWTs? The latter would be simple but is not particularly
-  flexible for future evolution.
+  assume that tokens are always backed assertions?
 
 ### Mechanism OIDs
 
@@ -366,21 +416,34 @@ value. All are base64 URL encoded.
 The prime length should be an equivalent number of bits to the negotiated
 [RFC4121] encryption type.
 
-### Response JWT
+#### "n" (Mutual authentication nonce)
 
-The response JSON web token is sent from the acceptor to the initiator. In the
-case of a key successfully being negotiated, it is signed with the Context Root
-Key (CRK).  The HMAC-SHA256 (HS256) algorithm MUST be supported by implementors
-of this specification.
+This is a random quantity of at least 64 bits, base 64 URL encoded, which
+is used to bind the initiator and acceptor assertions, in the case where
+mutual authentication is desired.
 
-**TBD** it is safe to use the CRK directly or should we use a RFC3961 derived
-key?
+### Response assertion
+
+The response assertion is sent from the acceptor to the initiator. It is
+formatted as a backed assertion, however in the current specification it
+consists of a single assertion with zero certificates; that is, it is
+"unbacked". It is encoded as a backed assertion in order to provide future
+support for mutual authentication using native JSON certificates.
+
+In the case of a key successfully being negotiated, it is signed with the RP
+Response Key (RRK). Alternatively, it may be signed with the acceptor's
+private RSA or DSA key. In this case, an X.509 certificate of is included in
+the "x5c" attribute of the JWT header.
+
+The HMAC-SHA256 (HS256) algorithm MUST be supported by implementors of this
+specification.
 
 If a key is unavailable, then the signature is absent and the value of the
 "alg" header claim is "none". No signature verification is required in this
-case.
+case, however the initiator MUST NOT return GSS\_C\_COMPLETE unless the
+associated RFC3961 encryption type for the mechanism OID is ENCTYPE_NULL.
 
-The JWT may contain the following parameters:
+The response assertion payload may contain the following parameters:
 
 #### iat
 
@@ -397,6 +460,11 @@ encoding of the acceptor's DH public value.
 #### exp
 
 This contains the time when the context expires.
+
+#### n
+
+The nonce as received from the initiator. This MUST NOT be present unless a
+nonce was received from the initiator.
 
 #### tkt
 
@@ -460,7 +528,7 @@ to each call to the [RFC3961]pseudo\_random operation.
 In the re-authentication case, the ASK is used instead of the DHK.
 
 It is also used directly (as in, with HMAC rather than get\_mic) to sign the
-acceptor's response token.
+acceptor's response assertion.
 
 #### Authenticator Root Key (ARK)
 
@@ -479,6 +547,16 @@ re-authenticated contexts. It is derived as follows:
 
 **TODO** would it be more conservative to only mix in the time and nonce from
 the authenticator rather than the entire encoded authenticator?
+
+#### RP Response Key (RRK)
+
+The response from the acceptor is signed using this key for fresh assertions:
+
+    RRK = browserid-derive-key(DHK, "RPResponseToken")
+
+and for re-authentication assertions:
+
+    RRK = browserid-derive-key(ASK, "RPResponseToken")
 
 #### GSS PRF
 

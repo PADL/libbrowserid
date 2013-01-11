@@ -134,17 +134,13 @@ _BIDUnpackBackedAssertion(
     BIDBackedAssertion *pAssertion)
 {
     BIDError err;
-    char *tmp = NULL, *p;
+    char *p;
     BIDBackedAssertion assertion = NULL;
-    const char *aud = NULL;
 
     if (encodedJson == NULL) {
         err = BID_S_INVALID_ASSERTION;
         goto cleanup;
     }
-
-    err = _BIDDuplicateString(context, encodedJson, &tmp);
-    BID_BAIL_ON_ERROR(err);
 
     assertion = BIDCalloc(1, sizeof(*assertion));
     if (assertion == NULL) {
@@ -152,7 +148,12 @@ _BIDUnpackBackedAssertion(
         goto cleanup;
     }
 
-    for (p = tmp; p != NULL; ) {
+    err = _BIDDuplicateString(context, encodedJson, &assertion->EncData);
+    BID_BAIL_ON_ERROR(err);
+
+    assertion->EncDataLength = strlen(assertion->EncData);
+
+    for (p = assertion->EncData; p != NULL; ) {
         char *q = strchr(p, '~');
         BIDJWT *pDst;
 
@@ -163,7 +164,6 @@ _BIDUnpackBackedAssertion(
             }
 
             *q = '\0';
-            q++;
             pDst = &assertion->rCertificates[assertion->cCertificates];
         } else {
             pDst = &assertion->Assertion;
@@ -175,7 +175,12 @@ _BIDUnpackBackedAssertion(
         if (*pDst != assertion->Assertion)
             assertion->cCertificates++;
 
-        p = q;
+        if (q == NULL) {
+            p = NULL;
+        } else {
+            *q = '~';
+            p = q + 1;
+        }
     }
 
     if (assertion->Assertion == NULL) {
@@ -185,18 +190,11 @@ _BIDUnpackBackedAssertion(
 
     BID_ASSERT(assertion->Assertion->Payload != NULL);
 
-    aud = json_string_value(json_object_get(assertion->Assertion->Payload, "aud"));
-    if (aud == NULL) {
-        err = BID_S_MISSING_AUDIENCE;
-        goto cleanup;
-    }
-
     *pAssertion = assertion;
 
 cleanup:
     if (err != BID_S_OK)
         _BIDReleaseBackedAssertion(context, assertion);
-    BIDFree(tmp);
 
     return err;
 }
@@ -206,6 +204,7 @@ _BIDPackBackedAssertion(
     BIDContext context,
     BIDBackedAssertion assertion,
     BIDJWKSet keyset,
+    json_t *certChain,
     char **pEncodedJson)
 {
     BIDError err;
@@ -220,19 +219,15 @@ _BIDPackBackedAssertion(
     *pEncodedJson = NULL;
 
     BID_ASSERT(assertion != NULL);
+    BID_ASSERT(assertion->Assertion != NULL);
 
-    if (keyset == NULL) {
-        err = BID_S_NO_KEY;
-        goto cleanup;
-    }
-
-    err = _BIDMakeSignature(context, assertion->Assertion, keyset, &szEncodedAssertion, &cchEncodedAssertion);
+    err = _BIDMakeSignature(context, assertion->Assertion, keyset, certChain, &szEncodedAssertion, &cchEncodedAssertion);
     BID_BAIL_ON_ERROR(err);
 
     cchEncodedAssertion += 1; /* ~ */
 
     for (i = 0; i < assertion->cCertificates; i++) {
-        err = _BIDMakeSignature(context, assertion->rCertificates[i], keyset, &szEncodedCerts[i], &cchEncodedCerts[i]);
+        err = _BIDMakeSignature(context, assertion->rCertificates[i], keyset, NULL, &szEncodedCerts[i], &cchEncodedCerts[i]);
         BID_BAIL_ON_ERROR(err);
 
         cchEncodedCerts[i] += 1; /* ~ */
@@ -280,6 +275,7 @@ _BIDReleaseBackedAssertion(
     if (assertion == NULL)
         return BID_S_INVALID_PARAMETER;
 
+    BIDFree(assertion->EncData);
     _BIDReleaseJWT(context, assertion->Assertion);
     for (i = 0; i < assertion->cCertificates; i++)
         _BIDReleaseJWT(context, assertion->rCertificates[i]);
@@ -788,6 +784,13 @@ const char *_BIDErrorTable[] = {
     "No ticket cache",
     "Corrupted ticket cache",
     "Expired ticket",
+    "Certificate file unreadable",
+    "Private key file unreadable",
+    "Untrusted X.509 relying party certificate",
+    "Assertion is not re-authentication assertion",
+    "Bad subject name",
+    "Response from relying party does not match request",
+    "JSON web token is missing signature",
     "Unknown error code"
 };
 
@@ -945,3 +948,4 @@ _BIDJsonObjectDel(
 
     return BID_S_OK;
 }
+

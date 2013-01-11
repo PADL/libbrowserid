@@ -479,6 +479,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                            const gss_cred_id_t cred,
                            gss_ctx_id_t ctx,
                            const gss_name_t targetName,
+                           OM_uint32 req_flags,
                            const gss_channel_bindings_t channelBindings,
                            gss_cred_id_t *pResolvedCred)
 {
@@ -529,6 +530,8 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                             &resolvedCred->expiryTime,
                                             &ulBidFlags);
     } else {
+        uint32_t ulAcquireFlags;
+
         if (channelBindings != GSS_C_NO_CHANNEL_BINDINGS) {
             pbChannelBindings = (const unsigned char *)channelBindings->application_data.value;
             cbChannelBindings = channelBindings->application_data.length;
@@ -546,13 +549,19 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                 goto cleanup;
         }
 
+        ulAcquireFlags = 0;
+        if (ctx->flags & CTX_FLAG_REAUTH)
+            ulAcquireFlags |= BID_ACQUIRE_FLAG_NO_CACHED;
+        if (req_flags & GSS_C_MUTUAL_FLAG)
+            ulAcquireFlags |= BID_ACQUIRE_FLAG_NONCE;
+
         err = BIDAcquireAssertion(ctx->bidContext,
                                   (cred == GSS_C_NO_CREDENTIAL) ? NULL : cred->bidTicketCache,
                                   (targetName == GSS_C_NO_NAME) ? NULL : (const char *)bufAudienceOrSpn.value,
                                   pbChannelBindings,
                                   cbChannelBindings,
                                   (const char *)bufSubject.value,
-                                  (ctx->flags & CTX_FLAG_REAUTH) ? BID_ACQUIRE_FLAG_NO_CACHED : 0,
+                                  ulAcquireFlags,
                                   &szAssertion,
                                   &ctx->bidIdentity,
                                   &resolvedCred->expiryTime,

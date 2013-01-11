@@ -153,7 +153,7 @@ TestRsaSignVerify(BIDContext context)
     jwt = BIDCalloc(1, sizeof(*jwt));
     jwt->Payload = json_incref(plaintext);
 
-    err = _BIDMakeSignature(context, jwt, secret, &encodedData, &encodedDataLen);
+    err = _BIDMakeSignature(context, jwt, secret, NULL, &encodedData, &encodedDataLen);
     BID_BAIL_ON_ERROR(err);
 
     printf("Signed JWT:\n%s\n", encodedData);
@@ -214,7 +214,7 @@ TestDsaSignVerify(BIDContext context, const char *PublicKey, const char *SecretK
     jwt = BIDCalloc(1, sizeof(*jwt));
     jwt->Payload = json_incref(plaintext);
 
-    err = _BIDMakeSignature(context, jwt, secret, &encodedData, &encodedDataLen);
+    err = _BIDMakeSignature(context, jwt, secret, NULL, &encodedData, &encodedDataLen);
     BID_BAIL_ON_ERROR(err);
 
     printf("Signed JWT:\n%s\n", encodedData);

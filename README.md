@@ -55,6 +55,18 @@ following mechanisms, updating the path as appropriate:
 
     browserid-aes128    1.3.6.1.4.1.5322.24.1.17 /usr/local/lib/gss/mech_browserid.so
 
+## Mutual authentication
+
+There is experimental support for mutual authentication. Create the file
+/usr/local/etc/gss/browserid.json (replace path as appropriate) and with
+the following keys:
+
+    {
+        "private-key": "/usr/local/etc/gss/serverkey.pem",
+        "certificate": "/usr/local/etc/gss/certs/servercert.pem",
+        "ca-certificate": "/usr/local/etc/gss/certs/cacert.pem"
+    }
+
 ## Testing
 
 ### gss-sample

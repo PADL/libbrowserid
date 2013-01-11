@@ -26,7 +26,7 @@ _BIDRemoteVerifierResponseToIdentity(
         goto cleanup;
     }
 
-    err = _BIDPopulateIdentity(context, backedAssertion, &identity);
+    err = _BIDPopulateIdentity(context, backedAssertion, 0, &identity);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, identity->Attributes, "sub", json_object_get(response, "email"), 0);
@@ -55,18 +55,17 @@ BIDError
 _BIDVerifyRemote(
     BIDContext context,
     BIDReplayCache replayCache BID_UNUSED,
-    const char *szAssertion,
+    BIDBackedAssertion backedAssertion,
     const char *szPackedAudience,
+    const char *szSubjectName,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     time_t verificationTime BID_UNUSED,
-    uint32_t ulReqFlags BID_UNUSED,
+    uint32_t ulReqFlags,
     BIDIdentity *pVerifiedIdentity,
-    time_t *pExpiryTime,
     uint32_t *pulRetFlags)
 {
     BIDError err;
-    BIDBackedAssertion backedAssertion = NULL;
     const char *szVerifierUrl;
     char *szPostFields = NULL;
     json_t *claims = NULL;
@@ -79,9 +78,6 @@ _BIDVerifyRemote(
     BID_CONTEXT_VALIDATE(context);
 
     err = BIDGetContextParam(context, BID_PARAM_VERIFIER_URL, (void **)&szVerifierUrl);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDValidateAudience(context, backedAssertion, szPackedAudience, pbChannelBindings, cbChannelBindings);
@@ -98,7 +94,7 @@ _BIDVerifyRemote(
         }
     }
 
-    cchAssertion = strlen(szAssertion);
+    cchAssertion = backedAssertion->EncDataLength;
     cchPackedAudience = strlen(szPackedAudience);
 
     szPostFields = BIDMalloc(sizeof("assertion=&audience=") + cchAssertion + cchPackedAudience);
@@ -108,7 +104,7 @@ _BIDVerifyRemote(
     }
 
     snprintf(szPostFields, sizeof("assertion=&audience=") + cchAssertion + cchPackedAudience,
-             "assertion=%s&audience=%s", szAssertion, szPackedAudience);
+             "assertion=%s&audience=%s", backedAssertion->EncData, szPackedAudience);
 
     err = _BIDPostDocument(context, szVerifierUrl, szPostFields, &response);
     BID_BAIL_ON_ERROR(err);
@@ -116,10 +112,12 @@ _BIDVerifyRemote(
     err = _BIDRemoteVerifierResponseToIdentity(context, backedAssertion, response, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
 
-    BIDGetIdentityExpiryTime(context, *pVerifiedIdentity, pExpiryTime);
+    err = _BIDValidateSubject(context, *pVerifiedIdentity, szSubjectName, ulReqFlags);
+    BID_BAIL_ON_ERROR(err);
+
+    *pulRetFlags |= BID_VERIFY_FLAG_VALIDATED_CERTS;
 
 cleanup:
-    _BIDReleaseBackedAssertion(context, backedAssertion);
     BIDFree(szPostFields);
     json_decref(claims);
     json_decref(response);

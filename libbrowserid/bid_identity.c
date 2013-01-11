@@ -57,6 +57,7 @@ BIDVerifyAssertion(
     uint32_t *pulRetFlags)
 {
     BIDError err;
+    BIDBackedAssertion backedAssertion = NULL;
     uint32_t ulRetFlags = 0;
     char *szPackedAudience = NULL;
 
@@ -77,6 +78,13 @@ BIDVerifyAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
+    /*
+     * Split backed identity assertion out into
+     * <cert-1>~...<cert-n>~<identityAssertion>
+     */
+    err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
+    BID_BAIL_ON_ERROR(err);
+
     /* If the caller does not pass in an audience, it means it does not care. */
     if (szPackedAudience != NULL) {
         err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
@@ -84,13 +92,13 @@ BIDVerifyAssertion(
     }
 
     if (context->ContextOptions & BID_CONTEXT_VERIFY_REMOTE)
-        err = _BIDVerifyRemote(context, replayCache, szAssertion, szPackedAudience,
+        err = _BIDVerifyRemote(context, replayCache, backedAssertion, szPackedAudience, NULL,
                                pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
-                               pVerifiedIdentity, pExpiryTime, &ulRetFlags);
+                               pVerifiedIdentity, &ulRetFlags);
     else
-        err = _BIDVerifyLocal(context, replayCache, szAssertion, szPackedAudience,
+        err = _BIDVerifyLocal(context, replayCache, backedAssertion, szPackedAudience, NULL,
                               pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
-                              pVerifiedIdentity, pExpiryTime, &ulRetFlags);
+                              NULL, pVerifiedIdentity, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
 
     if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH) == 0 &&
@@ -105,7 +113,10 @@ BIDVerifyAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
+    _BIDGetJsonTimestampValue(context, (*pVerifiedIdentity)->Attributes, "exp", pExpiryTime);
+
 cleanup:
+    _BIDReleaseBackedAssertion(context, backedAssertion);
     BIDFree(szPackedAudience);
 
     *pulRetFlags = ulRetFlags;
@@ -530,6 +541,7 @@ BIDError
 _BIDPopulateIdentity(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
+    uint32_t ulFlags,
     BIDIdentity *pIdentity)
 {
     BIDError err;
@@ -540,6 +552,21 @@ _BIDPopulateIdentity(
 
     *pIdentity = BID_C_NO_IDENTITY;
 
+    err = _BIDAllocIdentity(context, leafCert, &identity);
+    BID_BAIL_ON_ERROR(err);
+
+    if (ulFlags & BID_VERIFY_FLAG_X509) {
+        err = _BIDPopulateX509Identity(context, backedAssertion, identity, ulFlags);
+        BID_BAIL_ON_ERROR(err);
+
+        leafCert = identity->Attributes;
+    }
+
+    if (ulFlags & BID_VERIFY_FLAG_INTERNAL) {
+        err = BID_S_OK;
+        goto cleanup;
+    }
+
     principal = json_object_get(leafCert, "principal");
     if (principal == NULL ||
         json_object_get(principal, "email") == NULL) {
@@ -547,11 +574,8 @@ _BIDPopulateIdentity(
         goto cleanup;
     }
 
-    err = _BIDAllocIdentity(context, leafCert, &identity);
-    BID_BAIL_ON_ERROR(err);
-
     err = _BIDJsonObjectSet(context, identity->Attributes, "sub",
-                           json_object_get(principal, "email"), 0);
+                            json_object_get(principal, "email"), 0);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, identity->Attributes, "aud",
@@ -582,12 +606,107 @@ _BIDPopulateIdentity(
                             json_object_get(assertion, "exp"), BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
+    /* Save optional nonce, internal use only */
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "n",
+                            json_object_get(assertion, "n"), 0);
+    BID_BAIL_ON_ERROR(err);
+
     err = BID_S_OK;
-    *pIdentity = identity;
 
 cleanup:
-    if (err != BID_S_OK)
+    if (err == BID_S_OK)
+        *pIdentity = identity;
+    else
         BIDReleaseIdentity(context, identity);
+
+    return err;
+}
+
+BIDError
+_BIDValidateSubject(
+    BIDContext context BID_UNUSED,
+    BIDIdentity identity,
+    const char *szSubjectName,
+    uint32_t ulReqFlags)
+{
+    BIDError err;
+    char *szPackedAudience = NULL;
+    const char *p = NULL;
+    json_t *assertedPrincipal = NULL;
+    json_t *assertedPrincipalValue = NULL;
+    json_t *assertedSubject = NULL;
+    int bMatchedSubject = 0;
+
+    BID_ASSERT(identity != BID_C_NO_IDENTITY);
+
+    if (szSubjectName == NULL) {
+        err = BID_S_OK;
+        bMatchedSubject++;
+        goto cleanup;
+    }
+
+    assertedPrincipal = json_object_get(identity->Attributes, "principal");
+    if (assertedPrincipal == NULL) {
+        err = BID_S_MISSING_PRINCIPAL;
+        goto cleanup;
+    }
+
+    /*
+     * BID_VERIFY_FLAG_INTERNAL denotes that we are verifying a server
+     * (acceptor) rather than client certificate.
+     */
+    if (ulReqFlags & BID_VERIFY_FLAG_INTERNAL) {
+        json_t *assertedURI;
+
+        if (context->ContextOptions & BID_CONTEXT_GSS) {
+            p = strchr(szSubjectName, '/');
+            if (p == NULL) {
+                err = BID_S_BAD_AUDIENCE;
+                goto cleanup;
+            }
+
+            p++; /* XXX does not deal with >2 component service names */
+        } else {
+            if (strncmp(szSubjectName, "http://", 7) == 0)
+                p = &szSubjectName[7];
+            else if (strncmp(szSubjectName, "https://", 8) == 0)
+                p = &szSubjectName[8];
+            else {
+                err = BID_S_BAD_AUDIENCE;
+                goto cleanup;
+            }
+        }
+
+        err = _BIDMakeAudience(context, szSubjectName, &szPackedAudience);
+        BID_BAIL_ON_ERROR(err);
+
+        assertedURI = json_object_get(assertedPrincipal, "uri");
+        if (json_is_string(assertedURI) &&
+            strcmp(json_string_value(assertedURI), szPackedAudience) == 0)
+            bMatchedSubject++;
+
+        assertedPrincipalValue = json_object_get(assertedPrincipal, "hostname");
+    } else {
+        assertedPrincipalValue = json_object_get(assertedPrincipal, "email");
+        p = szSubjectName;
+    }
+
+    BID_ASSERT(p != NULL);
+
+    if (json_is_string(assertedPrincipalValue) &&
+        strcmp(json_string_value(assertedPrincipalValue), p) == 0)
+        bMatchedSubject++;
+
+    assertedSubject = json_object_get(identity->Attributes, "sub");
+    if (json_is_string(assertedSubject) &&
+        strcmp(json_string_value(assertedSubject), p) == 0)
+        bMatchedSubject++;
+
+cleanup:
+    if (err == BID_S_OK && bMatchedSubject == 0)
+        err = BID_S_BAD_SUBJECT;
+
+    BIDFree(szPackedAudience);
 
     return err;
 }
