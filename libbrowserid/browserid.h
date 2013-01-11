@@ -265,7 +265,7 @@ BIDFreeAssertion(
 
 /* Request (ulReqFlags) */
 #define BID_VERIFY_FLAG_REAUTH                  0x00000001
-#define BID_VERIFY_FLAG_INTERNAL                0x00000002
+#define BID_VERIFY_FLAG_RP                      0x00000002
 
 /* Response (ulRetFlags) */
 #define BID_VERIFY_FLAG_REMOTE                  0x00000004

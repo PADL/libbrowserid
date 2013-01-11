@@ -1431,7 +1431,7 @@ _BIDPopulateX509Identity(
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetJsonX509Name(context, identity->Attributes, "sub", X509_get_subject_name(x509),
-                              !!(ulReqFlags & BID_VERIFY_FLAG_INTERNAL));
+                              !!(ulReqFlags & BID_VERIFY_FLAG_RP));
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetJsonX509Name(context, identity->Attributes, "iss", X509_get_issuer_name(x509), 0);

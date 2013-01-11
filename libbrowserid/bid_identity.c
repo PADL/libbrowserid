@@ -562,7 +562,7 @@ _BIDPopulateIdentity(
         leafCert = identity->Attributes;
     }
 
-    if (ulFlags & BID_VERIFY_FLAG_INTERNAL) {
+    if (ulFlags & BID_VERIFY_FLAG_RP) {
         err = BID_S_OK;
         goto cleanup;
     }
@@ -652,10 +652,10 @@ _BIDValidateSubject(
     }
 
     /*
-     * BID_VERIFY_FLAG_INTERNAL denotes that we are verifying a server
+     * BID_VERIFY_FLAG_RP denotes that we are verifying a server
      * (acceptor) rather than client certificate.
      */
-    if (ulReqFlags & BID_VERIFY_FLAG_INTERNAL) {
+    if (ulReqFlags & BID_VERIFY_FLAG_RP) {
         json_t *assertedURI;
 
         if (context->ContextOptions & BID_CONTEXT_GSS) {

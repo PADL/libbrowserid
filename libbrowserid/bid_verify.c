@@ -280,8 +280,8 @@ _BIDVerifyLocal(
     if ((ulReqFlags & BID_VERIFY_FLAG_REAUTH) &&
         (context->ContextOptions & BID_CONTEXT_REAUTH) == 0)
         ulReqFlags &= ~(BID_VERIFY_FLAG_REAUTH);
-    if (ulReqFlags & BID_VERIFY_FLAG_INTERNAL)
-        *pulRetFlags |= BID_VERIFY_FLAG_INTERNAL;
+    if (ulReqFlags & BID_VERIFY_FLAG_RP)
+        *pulRetFlags |= BID_VERIFY_FLAG_RP;
 
     json_incref(verifyCred);
 
@@ -297,13 +297,13 @@ _BIDVerifyLocal(
             *pulRetFlags |= BID_VERIFY_FLAG_X509 | BID_VERIFY_FLAG_VALIDATED_CERTS;
         } else if (ulReqFlags & BID_VERIFY_FLAG_REAUTH) {
             BID_ASSERT(verifyCred == NULL);
-            BID_ASSERT((ulReqFlags & BID_VERIFY_FLAG_INTERNAL) == 0);
+            BID_ASSERT((ulReqFlags & BID_VERIFY_FLAG_RP) == 0);
 
             err = _BIDVerifyReauthAssertion(context, replayCache,
                                             backedAssertion, verificationTime,
                                             &verifiedIdentity, &verifyCred, pulRetFlags);
             BID_BAIL_ON_ERROR(err);
-        } else if ((ulReqFlags & BID_VERIFY_FLAG_INTERNAL) == 0) {
+        } else if ((ulReqFlags & BID_VERIFY_FLAG_RP) == 0) {
             err = BID_S_INVALID_ASSERTION;
             goto cleanup;
         }

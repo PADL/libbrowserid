@@ -120,7 +120,7 @@ BIDVerifyRPResponseToken(
     }
 
     err = _BIDVerifyLocal(context, NULL, backedAssertion, NULL, szAudienceName,
-                          NULL, 0, time(NULL), BID_VERIFY_FLAG_INTERNAL, verifyCred,
+                          NULL, 0, time(NULL), BID_VERIFY_FLAG_RP, verifyCred,
                           NULL, pulRetFlags);
     BID_BAIL_ON_ERROR(err);
 
