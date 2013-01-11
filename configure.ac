@@ -60,9 +60,9 @@ AX_CHECK_KRB5
 AX_CHECK_CURL
 AX_CHECK_JANSSON
 AX_CHECK_OPENSSL
+AM_CONDITIONAL(OPENSSL, test "x$found_openssl" = "xyes")
 AX_CHECK_OPENSAML
 AM_CONDITIONAL(OPENSAML, test "x$found_opensaml" = "xyes")
-
 AX_CHECK_SHIBRESOLVER
 AM_CONDITIONAL(SHIBRESOLVER, test "x$found_shibresolver" = "xyes")
 if test x$found_shibresolver = xyes; then

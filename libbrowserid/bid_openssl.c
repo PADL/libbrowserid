@@ -29,6 +29,16 @@
 #define BID_JSON_ENCODING_UNKNOWN   0
 #define BID_JSON_ENCODING_BASE64    1
 
+static void
+_BIDOpenSSLInit(void) __attribute__((__constructor__));
+
+static void
+_BIDOpenSSLInit(void)
+{
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
+}
+
 static BIDError
 _BIDGetJsonBNValue(
     BIDContext context,
@@ -1491,6 +1501,7 @@ _BIDValidateX509CertChain(
 #endif
 
     if (!X509_verify_cert(storeCtx)) {
+        BID_CRYPTO_PRINT_ERRORS();
         err = BID_S_UNTRUSTED_X509_CERT;
         goto cleanup;
     }
