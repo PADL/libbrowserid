@@ -55,7 +55,9 @@ A summary of the BrowserID protocol can be found at [BIDOVER]. Essentially it in
 * The RP verifies this using user's and IdP's public keys (and those of any
   intermediate certifying parties).
 
-Essentially the GSS mechanism described here bridges these two worlds.
+Essentially the GSS mechanism described here bridges these two worlds,
+whilst also providing for key confirmation and, optionally, mutual
+authentication of the acceptor and a ticket-based re-authentication scheme.
 
 ### Initiator to acceptor
 
@@ -94,7 +96,7 @@ received from the client, and from it derives a RP Response Key (RRK).
 context expiry time. The response assertion is signed using the RP Response Key
 (RRK) unless mutual authentication is desired, in which case it may be signed
 in the acceptor's private key (see below). (For extensibility, the response
-token is a backed assertion with zero certificates.)
+token is formatted as a backed assertion.)
 
 6. The context root key (CRK) is derived from the DH key and GSS\_S\_COMPLETE
 is returned, along with the initiator name from the verified assertion. Other
@@ -152,8 +154,12 @@ If X.509 certificates are used, then either the audience URI must be present in
 the URI subjectAltName, or the host component must be present as a value for
 the DNS subjectAltName or as the least significant Common Name RDN.
 
+If JSON certificates are used, then either the audience URI must match the
+"uri" key of the "principal" object in the certificate, or the host component
+must match the "hostname" key.
+
 **NOTE**: only validating the host name does not mutually authenticate the
-service type or instance
+service type or instance. Is this an acceptable tradeoff?
 
 ### Fast re-authentication extensions
 
@@ -218,9 +224,12 @@ timestamp so that the initiator can perform clock skew compensation.
 
 #### Interaction with mutual authentication
 
-The mutual authentication state of a re-authenticated context is transitive. It
-MUST NOT return GSS\_C\_MUTUAL\_FLAG for a re-authenticated context unless the
-original context was mutually authenticated.
+The mutual authentication state of a re-authenticated context is transitive.
+The initiator MUST NOT return GSS\_C\_MUTUAL\_FLAG for a re-authenticated
+context unless the original context was mutually authenticated.
+
+As such, the initiator's ticket cache must store the mutual authentication
+state of the original context.
 
 ## Protocol elements
 
@@ -250,9 +259,9 @@ of the innerToken.
 The innerToken always contains a two octet token ID followed by a BrowserID
 backed assertion. This document defines the following token IDs:
 
-    TOK_TYPE_INITIATOR_CONTEXT			0xB1 0xD1
-    TOK_TYPE_ACCEPTOR_CONTEXT			0xB1 0xD2
-    TOK_TYPE_DELETE_CONTEXT				0xB1 0xD3
+    TOK_TYPE_INITIATOR_CONTEXT                  0xB1 0xD1
+    TOK_TYPE_ACCEPTOR_CONTEXT                   0xB1 0xD2
+    TOK_TYPE_DELETE_CONTEXT                     0xB1 0xD3
     
 Message protection (confidentiality/wrap) are framed according to [RFC4121].
 
@@ -267,11 +276,27 @@ GSS BrowserID is a family of mechanisms, where the last element in the OID arc
 indicates the [RFC4121] encryption type supported for message protection
 services. The OID prefix is 1.3.6.1.4.1.5322.24.1.
 
-For example, the OID 1.3.6.1.4.1.5322.24.1.17 defines the browserid-aes128 mechanism.
+For example, the OID 1.3.6.1.4.1.5322.24.1.17 defines the browserid-aes128
+mechanism.
+
+1.3.6.1.4.1.5322.24.1.0 defines the browserid-none mechanism, that is, a
+mechanism that supports authentication without message protection services. The
+use of the mechanism is discourage.
+
+### SASL mechanism names
+
+The SASL mechanism name is the concatenation of the string "BROWSERID-" with a
+string denoting the [RFC4121] encryption type. The following SASL mechanisms
+are defined in this document:
+
+    1.3.6.1.4.1.5322.24.1.0                     BROWSERID-NONE
+    1.3.6.1.4.1.5322.24.1.17                    BROWSERID-AES128    
+    1.3.6.1.4.1.5322.24.1.18                    BROWSERID-AES256
 
 ### Name type OIDs
 
-The name type GSS\_BROWSERID\_NT\_EMAIL\_OR\_SPN is defined with the OID 1.3.6.1.4.1.5322.24.2.1.
+The name type GSS\_BROWSERID\_NT\_EMAIL\_OR\_SPN is defined with the OID
+1.3.6.1.4.1.5322.24.2.1.
 
 This name may contain an e-mail address or a service principal name:
 
@@ -377,8 +402,9 @@ with a symmetric key.
 
 #### Replay cache
 
-The accept SHOULD maintain a cache of received assertions in order to guard
-against replay attacks.
+The acceptor SHOULD maintain a cache of received assertions in order to guard
+against replay attacks. GSS\_C\_REPLAY\_FLAG MUST NOT be returned if the
+implementation does not support replay detection.
 
 ### GSS-specific assertion claims
 
@@ -429,7 +455,9 @@ The response assertion is sent from the acceptor to the initiator. It is
 formatted as a backed assertion, however in the current specification it
 consists of a single assertion with zero certificates; that is, it is
 "unbacked". It is encoded as a backed assertion in order to provide future
-support for mutual authentication using native JSON certificates.
+support for mutual authentication using native JSON certificates. Such support
+is not defined by this specification; implementations SHOULD reject backed
+response assertions.
 
 In the case of a key successfully being negotiated, it is signed with the RP
 Response Key (RRK). Alternatively, it may be signed with the acceptor's
@@ -464,7 +492,7 @@ This contains the time when the context expires.
 
 #### n
 
-The nonce as received from the initiator. This MUST NOT be present unless a
+The nonce as received from the initiator. This SHOULD NOT be present unless a
 nonce was received from the initiator.
 
 #### tkt
@@ -512,21 +540,30 @@ The HMAC hash algorithm for all currently specified key lengths is SHA256.
 
 This key is the shared secret resulting from the Diffie-Hellman exchange. It
 must be at least as many bits as the key size of the negotiated [RFC3961]
-encryption type.
+encryption type. It is never used directly, that is, without derivation.
+
+#### Context Master Key (CMK)
+
+This is the Diffie-Hellman Key (DHK) for all initially authenticated contexts
+and the Authenticator Session Key (ASK) for re-authenticated contexts.
+
+#### RP Response Key (RRK)
+
+The response from the acceptor is signed using this key for fresh assertions:
+
+    RRK = browserid-derive-key(CMK, "RRK")
 
 #### Context Root Key (CRK)
 
 The context root key is used for RFC 4121 message protection services, e.g.
 GSS\_Wrap() and GSS\_Get\_MIC(). It is derived as follows:
 
-    Tn = pseudo-random(DHK, n || "rfc4121-gss-browserid")
+    Tn = pseudo-random(CMK, n || "rfc4121-gss-browserid")
     CRK = random-to-key(truncate(L, T0 || T1 || .. || Tn))
     L = random-to-key input size
     
 where n is a 32-bit integer in network byte order starting at 0 and incremented
 to each call to the [RFC3961]pseudo\_random operation.
-
-In the re-authentication case, the ASK is used instead of the DHK.
 
 It is also used directly (as in, with HMAC rather than get\_mic) to sign the
 acceptor's response assertion.
@@ -548,16 +585,6 @@ re-authenticated contexts. It is derived as follows:
 
 **TODO** would it be more conservative to only mix in the time and nonce from
 the authenticator rather than the entire encoded authenticator?
-
-#### RP Response Key (RRK)
-
-The response from the acceptor is signed using this key for fresh assertions:
-
-    RRK = browserid-derive-key(DHK, "RRK")
-
-and for re-authentication assertions:
-
-    RRK = browserid-derive-key(ASK, "RRK")
 
 #### GSS PRF
 
