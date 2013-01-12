@@ -1381,6 +1381,45 @@ _BIDSetJsonX509Name(
     return err;
 }
 
+static BIDError
+_BIDSetJsonX509Time(
+    BIDContext context,
+    json_t *j,
+    const char *key,
+    ASN1_TIME *ts)
+{
+    struct tm tm = { 0 };
+    const char *szTs = (const char *)ts->data;
+    size_t cchTs = strlen(szTs), n;
+    char zone;
+
+    if (cchTs != 13 && cchTs != 15)
+        return BID_S_INVALID_PARAMETER;
+
+    if (cchTs == 13)
+        n = sscanf(szTs, "%02d%02d%02d%02d%02d%02d%c",
+                   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+                   &tm.tm_hour, &tm.tm_min, &tm.tm_sec,
+                   &zone);
+    else
+        n = sscanf(szTs, "%04d%02d%02d%02d%02d%02d%c",
+                   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+                   &tm.tm_hour, &tm.tm_min, &tm.tm_sec,
+                   &zone);
+
+    if (n != 7 || zone != 'Z')
+        return BID_S_INVALID_PARAMETER;
+
+    if (cchTs == 15)
+        tm.tm_year -= 1900;
+    else if (tm.tm_year < 90)
+        tm.tm_year += 100;
+
+    tm.tm_mon--;
+
+    return _BIDSetJsonTimestampValue(context, j, key, timegm(&tm));
+}
+
 BIDError
 _BIDPopulateX509Identity(
     BIDContext context,
@@ -1435,6 +1474,12 @@ _BIDPopulateX509Identity(
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetJsonX509Name(context, identity->Attributes, "iss", X509_get_issuer_name(x509), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonX509Time(context, identity->Attributes, "nbf", X509_get_notBefore(x509));
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonX509Time(context, identity->Attributes, "exp", X509_get_notAfter(x509));
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
