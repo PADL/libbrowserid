@@ -247,7 +247,23 @@ cleanup:
 }
 
 /*
- * Local verifier
+ * Local verifier. This code path is used in the following cases:
+ *
+ * (1) Verifying an assertion from the initiator
+ *     (a) Using certificate from backed assertion
+ *     (b) Using symmetric ticket key (ARK)
+ *     (c) Using embedded X.509 certificate (not tested)
+ *
+ * (2) Verifying the RP response token from the acceptor
+ *     (a) Using session subkey (RRK)
+ *     (b) Using acceptor X.509 certificate
+ *     (c) Using JSON certificate from backed assertion (not tested)
+ *
+ * When making changes to this function, be careful that all the
+ * paths above still work.
+ *
+ * In case (1)(b), BID_VERIFY_FLAG_REAUTH will be set on input.
+ * In case (2), BID_VERIFY_FLAG_RP will always be set on input.
  */
 BIDError
 _BIDVerifyLocal(
@@ -356,6 +372,6 @@ cleanup:
     if (err != BID_S_OK || pVerifiedIdentity == NULL)
         BIDReleaseIdentity(context, verifiedIdentity);
     json_decref(verifyCred);
-    
+
     return err;
 }
