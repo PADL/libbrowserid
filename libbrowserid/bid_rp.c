@@ -35,7 +35,6 @@ BIDMakeRPResponseToken(
         goto cleanup;
     }
 
-    /* XXX this test is an abstraction violation, rename flags */
     if ((ulReqFlags & BID_RP_FLAG_INITIAL) &&           /* not reauth */
         (ulReqFlags & BID_RP_FLAG_HAVE_SESSION_KEY)) {  /* have session key */
         json_t *dh = NULL;
