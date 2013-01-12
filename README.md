@@ -32,7 +32,9 @@ The following packages are required:
 * OpenSSL <http://www.openssl.org/>
 * Kerberos 5 <http://web.mit.edu/kerberos/> or <http://www.h5l.org/>
 * Curl <http://curl.haxx.se/>
-* Currently, a recent Mac OS X system, as the embedded browser only supports WebKit
+* Currently, a recent Mac OS X system, as the embedded browser only supports
+  WebKit. Support for other platforms will be added in the future. Note that
+  it will build without WebKit, however it will only operate as an acceptor.
 
 Optional:
 
@@ -66,6 +68,9 @@ the following keys:
         "certificate": "/usr/local/etc/gss/certs/servercert.pem",
         "ca-certificate": "/usr/local/etc/gss/certs/cacert.pem"
     }
+
+You can use OpenSSL to create these files as you would when setting a server up
+for TLS. The subjectAltName or the CN must match the acceptor host name.
 
 ## Testing
 
@@ -118,7 +123,8 @@ GSSAPIStrictAcceptorCheck=no option.
 
 ## bidtool
 
-The BrowserID tool, bidtool, is provided for managing ticket, replay and authority caches.
+The BrowserID tool, bidtool, is provided for managing ticket, replay and
+authority caches.
 
 ### Ticket
 
