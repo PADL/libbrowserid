@@ -226,9 +226,15 @@ BIDReleaseReplayCache(
 /*
  * User agent.
  */
+
+/* Input flags (ulReqFlags) */
 #define BID_ACQUIRE_FLAG_NO_INTERACT        0x00000001
 #define BID_ACQUIRE_FLAG_NO_CACHED          0x00000002
 #define BID_ACQUIRE_FLAG_NONCE              0x00000004
+
+/* Output flags (ulRetFlags) */
+#define BID_ACQUIRE_FLAG_REAUTH             0x00010000
+#define BID_ACQUIRE_FLAG_REAUTH_MUTUAL      0x00020000
 
 BIDError
 BIDAcquireAssertionFromString(
@@ -263,14 +269,14 @@ BIDFreeAssertion(
  * Verifier.
  */
 
-/* Request (ulReqFlags) */
+/* Input flags (ulReqFlags) */
 #define BID_VERIFY_FLAG_REAUTH                  0x00000001
 #define BID_VERIFY_FLAG_RP                      0x00000002
 
-/* Response (ulRetFlags) */
-#define BID_VERIFY_FLAG_REMOTE                  0x00000004
-#define BID_VERIFY_FLAG_VALIDATED_CERTS         0x00000008
-#define BID_VERIFY_FLAG_X509                    0x00000010
+/* Output flags (ulRetFlags) */
+#define BID_VERIFY_FLAG_REMOTE                  0x00010000
+#define BID_VERIFY_FLAG_VALIDATED_CERTS         0x00020000
+#define BID_VERIFY_FLAG_X509                    0x00040000
 
 BIDError
 BIDVerifyAssertion(
@@ -376,11 +382,16 @@ BIDStoreTicketInCache(
 struct BIDJWTDesc;
 typedef struct BIDJWTDesc *BIDJWT;
 
-#ifdef JANSSON_H
-#define BID_RP_RESPONSE_HAVE_SESSION_KEY        0x00000001 /* have a session key */
-#define BID_RP_RESPONSE_INITIAL                 0x00000002 /* not reauth-based auth */
-#define BID_RP_RESPONSE_VERIFY_NONCE            0x00000004
+/* Input flags (ulReqFlags) */
+#define BID_RP_FLAG_HAVE_SESSION_KEY            0x00000001 /* have a session key */
+#define BID_RP_FLAG_INITIAL                     0x00000002 /* not reauth-based auth */
+#define BID_RP_FLAG_VERIFY_NONCE                0x00000004
 
+/* Output flags (ulRetFlags) */
+#define BID_RP_FLAG_VALIDATED_CERTS             0x00020000
+#define BID_RP_FLAG_X509                        0x00040000
+
+#ifdef JANSSON_H
 BIDError
 BIDMakeRPResponseToken(
     BIDContext context,

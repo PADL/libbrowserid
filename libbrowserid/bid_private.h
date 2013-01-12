@@ -474,7 +474,8 @@ _BIDGetReauthAssertion(
     const char *szIdentityName, /* optional */
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
-    time_t *ptExpiryTime);
+    time_t *ptExpiryTime,
+    uint32_t *pulTicketFlags);
 
 BIDError
 _BIDVerifyReauthAssertion(

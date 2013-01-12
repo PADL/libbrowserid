@@ -76,6 +76,7 @@ BIDAcquireAssertion(
     char *szAssertion = NULL;
     char *szPackedAudience = NULL;
     uint32_t ulRetFlags = 0;
+    uint32_t ulTicketFlags = 0;
 
     *pAssertion = NULL;
     if (pAssertedIdentity != NULL)
@@ -94,9 +95,12 @@ BIDAcquireAssertion(
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_CACHED) == 0) {
         err = _BIDGetReauthAssertion(context, ticketCache, szPackedAudience,
                                      pbChannelBindings, cbChannelBindings, szIdentityName,
-                                     pAssertion, pAssertedIdentity, ptExpiryTime);
+                                     pAssertion, pAssertedIdentity, ptExpiryTime,
+                                     &ulTicketFlags);
         if (err == BID_S_OK) {
-            ulRetFlags |= BID_VERIFY_FLAG_REAUTH;
+            ulRetFlags |= BID_ACQUIRE_FLAG_REAUTH;
+            if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
+                ulRetFlags |= BID_ACQUIRE_FLAG_REAUTH_MUTUAL;
             goto cleanup;
         }
     }

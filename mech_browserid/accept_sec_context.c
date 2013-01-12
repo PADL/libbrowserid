@@ -43,9 +43,9 @@ makeResponseToken(OM_uint32 *minor,
 
     ulReqFlags = 0;
     if (ctx->encryptionType != ENCTYPE_NULL && ctx->bidIdentity != BID_C_NO_IDENTITY)
-        ulReqFlags |= BID_RP_RESPONSE_HAVE_SESSION_KEY;
+        ulReqFlags |= BID_RP_FLAG_HAVE_SESSION_KEY;
     if ((ctx->flags & CTX_FLAG_REAUTH) == 0)
-        ulReqFlags |= BID_RP_RESPONSE_INITIAL;
+        ulReqFlags |= BID_RP_FLAG_INITIAL;
 
     err = BIDMakeRPResponseToken(ctx->bidContext,
                                  ctx->bidIdentity,
@@ -58,6 +58,9 @@ makeResponseToken(OM_uint32 *minor,
         major = gssBidMapError(minor, err);
         goto cleanup;
     }
+
+    if (ulRetFlags & BID_RP_FLAG_X509)
+        ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
 
 #ifdef GSSBID_DEBUG
     json_dumpf(response, stdout, JSON_INDENT(8));

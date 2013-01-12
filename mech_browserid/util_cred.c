@@ -492,7 +492,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
     char *szAssertion = NULL;
-    uint32_t ulBidFlags = 0;
+    uint32_t ulRetFlags = 0;
 
     *pResolvedCred = GSS_C_NO_CREDENTIAL;
 
@@ -528,9 +528,9 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                             BID_ACQUIRE_FLAG_NO_INTERACT,
                                             &ctx->bidIdentity,
                                             &resolvedCred->expiryTime,
-                                            &ulBidFlags);
+                                            &ulRetFlags);
     } else {
-        uint32_t ulAcquireFlags;
+        uint32_t ulReqFlags;
 
         if (channelBindings != GSS_C_NO_CHANNEL_BINDINGS) {
             pbChannelBindings = (const unsigned char *)channelBindings->application_data.value;
@@ -549,11 +549,11 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                 goto cleanup;
         }
 
-        ulAcquireFlags = 0;
+        ulReqFlags = 0;
         if (ctx->flags & CTX_FLAG_REAUTH)
-            ulAcquireFlags |= BID_ACQUIRE_FLAG_NO_CACHED;
+            ulReqFlags |= BID_ACQUIRE_FLAG_NO_CACHED;
         if (req_flags & GSS_C_MUTUAL_FLAG)
-            ulAcquireFlags |= BID_ACQUIRE_FLAG_NONCE;
+            ulReqFlags |= BID_ACQUIRE_FLAG_NONCE;
 
         err = BIDAcquireAssertion(ctx->bidContext,
                                   (cred == GSS_C_NO_CREDENTIAL) ? NULL : cred->bidTicketCache,
@@ -561,11 +561,11 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                   pbChannelBindings,
                                   cbChannelBindings,
                                   (const char *)bufSubject.value,
-                                  ulAcquireFlags,
+                                  ulReqFlags,
                                   &szAssertion,
                                   &ctx->bidIdentity,
                                   &resolvedCred->expiryTime,
-                                  &ulBidFlags);
+                                  &ulRetFlags);
 
         gss_release_buffer(&tmpMinor, &bufSubject);
     }
@@ -574,10 +574,14 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (ulBidFlags & BID_VERIFY_FLAG_REAUTH)
+    if (ulRetFlags & BID_ACQUIRE_FLAG_REAUTH)
         ctx->flags |= CTX_FLAG_REAUTH;
     else
         ctx->flags &= ~(CTX_FLAG_REAUTH);
+    if (ulRetFlags & BID_ACQUIRE_FLAG_REAUTH_MUTUAL)
+        ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
+    else
+        ctx->gssFlags &= ~(GSS_C_MUTUAL_FLAG);
 
     if (szAssertion != NULL) {
         major = makeStringBuffer(minor, szAssertion, &resolvedCred->assertion);

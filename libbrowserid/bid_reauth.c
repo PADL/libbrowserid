@@ -380,7 +380,8 @@ _BIDGetReauthAssertion(
     const char *szIdentityName,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
-    time_t *ptExpiryTime)
+    time_t *ptExpiryTime,
+    uint32_t *pulTicketFlags)
 {
     BIDError err;
     json_t *cred = NULL;
@@ -398,6 +399,8 @@ _BIDGetReauthAssertion(
         *pAssertedIdentity = NULL;
     if (ptExpiryTime != NULL)
         *ptExpiryTime = 0;
+    if (pulTicketFlags != NULL)
+        *pulTicketFlags = 0;
 
     if (ticketCache == BID_C_NO_TICKET_CACHE)
         ticketCache = context->TicketCache;
@@ -435,6 +438,9 @@ _BIDGetReauthAssertion(
 
     if (ptExpiryTime != NULL)
         _BIDGetJsonTimestampValue(context, tkt, "exp", ptExpiryTime);
+
+    if (pulTicketFlags != NULL)
+        *pulTicketFlags = json_integer_value(json_object_get(cred, "flags"));
 
 cleanup:
     json_decref(cred);

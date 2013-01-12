@@ -163,11 +163,11 @@ gssBidInitResponseToken(OM_uint32 *minor,
 
     ulReqFlags = 0;
     if (ctx->encryptionType != ENCTYPE_NULL)
-        ulReqFlags |= BID_RP_RESPONSE_HAVE_SESSION_KEY;
+        ulReqFlags |= BID_RP_FLAG_HAVE_SESSION_KEY;
     if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {
-        ulReqFlags |= BID_RP_RESPONSE_INITIAL;
+        ulReqFlags |= BID_RP_FLAG_INITIAL;
         if (req_flags & GSS_C_MUTUAL_FLAG)
-            ulReqFlags |= BID_RP_RESPONSE_VERIFY_NONCE;
+            ulReqFlags |= BID_RP_FLAG_VERIFY_NONCE;
     }
 
     err = BIDVerifyRPResponseToken(ctx->bidContext,
@@ -200,7 +200,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    if (ulRetFlags & BID_VERIFY_FLAG_VALIDATED_CERTS)
+    if (ulRetFlags & BID_RP_FLAG_VALIDATED_CERTS)
         ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
 
     tkt = json_object_get(response, "tkt");

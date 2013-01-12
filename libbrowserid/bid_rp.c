@@ -36,8 +36,8 @@ BIDMakeRPResponseToken(
     }
 
     /* XXX this test is an abstraction violation, rename flags */
-    if ((ulReqFlags & BID_RP_RESPONSE_INITIAL) &&           /* not reauth */
-        (ulReqFlags & BID_RP_RESPONSE_HAVE_SESSION_KEY)) {  /* have session key */
+    if ((ulReqFlags & BID_RP_FLAG_INITIAL) &&           /* not reauth */
+        (ulReqFlags & BID_RP_FLAG_HAVE_SESSION_KEY)) {  /* have session key */
         json_t *dh = NULL;
         json_t *ticket = NULL;
 
@@ -56,10 +56,14 @@ BIDMakeRPResponseToken(
         }
     }
 
-    if (ulReqFlags & BID_RP_RESPONSE_INITIAL)
+    err = BID_S_NO_KEY;
+    if (ulReqFlags & BID_RP_FLAG_INITIAL) {
         err = _BIDGetRPPrivateKey(context, &key, &certChain);
+        if (err == BID_S_OK)
+            *pulRetFlags |= BID_RP_FLAG_X509;
+    }
     if (err != BID_S_OK &&
-        (ulReqFlags & BID_RP_RESPONSE_HAVE_SESSION_KEY)) {
+        (ulReqFlags & BID_RP_FLAG_HAVE_SESSION_KEY)) {
         err = _BIDDeriveSessionSubkey(context, identity, "RRK", &key);
         BID_BAIL_ON_ERROR(err);
     }
@@ -102,6 +106,7 @@ BIDVerifyRPResponseToken(
     BIDJWK verifyCred = NULL;
     BIDBackedAssertion backedAssertion = NULL;
     json_t *dh;
+    uint32_t ulVerifyFlags = 0;
 
     *pulRetFlags = 0;
 
@@ -114,23 +119,28 @@ BIDVerifyRPResponseToken(
         BID_BAIL_ON_ERROR(err);
     }
 
-    if (ulReqFlags & BID_RP_RESPONSE_HAVE_SESSION_KEY) {
+    if (ulReqFlags & BID_RP_FLAG_HAVE_SESSION_KEY) {
         err = _BIDDeriveSessionSubkey(context, identity, "RRK", &verifyCred);
         BID_BAIL_ON_ERROR(err);
     }
 
     err = _BIDVerifyLocal(context, NULL, backedAssertion, NULL, szAudienceName,
                           NULL, 0, time(NULL), BID_VERIFY_FLAG_RP, verifyCred,
-                          NULL, pulRetFlags);
+                          NULL, &ulVerifyFlags);
     BID_BAIL_ON_ERROR(err);
 
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
 
-    if (*pulRetFlags & BID_VERIFY_FLAG_VALIDATED_CERTS) {
+    if (ulVerifyFlags & BID_VERIFY_FLAG_VALIDATED_CERTS)
+        *pulRetFlags |= BID_RP_FLAG_VALIDATED_CERTS;
+    if (ulVerifyFlags & BID_VERIFY_FLAG_X509)
+        *pulRetFlags |= BID_RP_FLAG_X509;
+
+    if (*pulRetFlags & BID_RP_FLAG_VALIDATED_CERTS) {
         /*
          * Re-authentication responses must signed with the RRK, not a certificate.
          */
-        if ((ulReqFlags & BID_RP_RESPONSE_INITIAL) == 0) {
+        if ((ulReqFlags & BID_RP_FLAG_INITIAL) == 0) {
             err = BID_S_MISMATCHED_RP_RESPONSE;
             goto cleanup;
         }
@@ -138,7 +148,7 @@ BIDVerifyRPResponseToken(
         /*
          * Where the server was authenticated, the nonce must match.
          */
-        if (ulReqFlags & BID_RP_RESPONSE_VERIFY_NONCE) {
+        if (ulReqFlags & BID_RP_FLAG_VERIFY_NONCE) {
             json_t *storedNonce   = json_object_get(identity->PrivateAttributes, "n");
             json_t *assertedNonce = json_object_get(backedAssertion->Assertion->Payload, "n");
 
