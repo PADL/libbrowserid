@@ -588,7 +588,8 @@ int main(int argc, char *argv[])
         argv += 2;
     }
 
-    if (argc > 0 && strcmp(argv[0], "-verbose") == 0) {
+    if (argc > 0 &&
+        (strcmp(argv[0], "-verbose") == 0 || strcmp(argv[0], "-v") == 0)) {
         gVerbose = 1;
         argc--;
         argv++;
