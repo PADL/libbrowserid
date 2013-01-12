@@ -60,7 +60,7 @@ BIDMakeRPResponseToken(
         err = _BIDGetRPPrivateKey(context, &key, &certChain);
     if (err != BID_S_OK &&
         (ulReqFlags & BID_RP_RESPONSE_HAVE_SESSION_KEY)) {
-        err = _BIDDeriveSessionSubkey(context, identity, "RPResponseToken", &key);
+        err = _BIDDeriveSessionSubkey(context, identity, "RRK", &key);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -115,7 +115,7 @@ BIDVerifyRPResponseToken(
     }
 
     if (ulReqFlags & BID_RP_RESPONSE_HAVE_SESSION_KEY) {
-        err = _BIDDeriveSessionSubkey(context, identity, "RPResponseToken", &verifyCred);
+        err = _BIDDeriveSessionSubkey(context, identity, "RRK", &verifyCred);
         BID_BAIL_ON_ERROR(err);
     }
 

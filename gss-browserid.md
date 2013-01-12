@@ -183,9 +183,9 @@ received from the acceptor in order to re-authenticate to it at a future time.
 target (acceptor). If none is found, the normal authentication flow is
 performed.
 
-2. The initiator generates an authenticator containing: an expiry time a few
-minutes from the current time, a random nonce, the ticket identifier, and the
-target name (audience) and channel bindings requested by the application.
+2. The initiator generates an authenticator containing: the current time,
+a random nonce, the ticket identifier, and the target name (audience) and
+channel bindings requested by the application.
 
 3. The initiator signs the authenticator using its copy of the ARK, using the
 appropriate hash algorithm associated with the original context (only HS256 is
@@ -552,11 +552,11 @@ the authenticator rather than the entire encoded authenticator?
 
 The response from the acceptor is signed using this key for fresh assertions:
 
-    RRK = browserid-derive-key(DHK, "RPResponseToken")
+    RRK = browserid-derive-key(DHK, "RRK")
 
 and for re-authentication assertions:
 
-    RRK = browserid-derive-key(ASK, "RPResponseToken")
+    RRK = browserid-derive-key(ASK, "RRK")
 
 #### GSS PRF
 
