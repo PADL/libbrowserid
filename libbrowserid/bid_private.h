@@ -490,14 +490,6 @@ _BIDDeriveAuthenticatorRootKey(
     BIDIdentity identity,
     BIDJWK *pArk);
 
-BIDError
-_BIDDeriveAuthenticatorSessionKey(
-    BIDContext context,
-    BIDJWK ark,
-    BIDJWT ap,
-    unsigned char **ppbSessionKey,
-    size_t *pcbSessionKey);
-
 /*
  * bid_rverify.c
  */

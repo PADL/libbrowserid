@@ -15,6 +15,40 @@
  * Fast reauthentication support
  */
 
+static BIDError
+_BIDDeriveAuthenticatorSessionKey(
+    BIDContext context,
+    BIDJWK ark,
+    BIDJWT ap,
+    unsigned char **ppbSessionKey,
+    size_t *pcbSessionKey)
+{
+    BIDError err;
+    unsigned char *pbArk = NULL;
+    size_t cbArk;
+
+    *ppbSessionKey = NULL;
+    *pcbSessionKey = 0;
+
+    err = _BIDGetJsonBinaryValue(context, ark, "secret-key", &pbArk, &cbArk);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDDeriveKey(context, pbArk, cbArk,
+                        (unsigned char *)ap->EncData, ap->EncDataLength,
+                        ppbSessionKey, pcbSessionKey);
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+
+cleanup:
+    if (pbArk != NULL) {
+        memset(pbArk, 0, cbArk);
+        BIDFree(pbArk);
+    }
+
+    return err;
+}
+
 BIDError
 _BIDAcquireDefaultTicketCache(BIDContext context)
 {
@@ -483,40 +517,6 @@ _BIDVerifyReauthAssertion(
 
 cleanup:
     json_decref(cred);
-
-    return err;
-}
-
-BIDError
-_BIDDeriveAuthenticatorSessionKey(
-    BIDContext context,
-    BIDJWK ark,
-    BIDJWT ap,
-    unsigned char **ppbSessionKey,
-    size_t *pcbSessionKey)
-{
-    BIDError err;
-    unsigned char *pbArk = NULL;
-    size_t cbArk;
-
-    *ppbSessionKey = NULL;
-    *pcbSessionKey = 0;
-
-    err = _BIDGetJsonBinaryValue(context, ark, "secret-key", &pbArk, &cbArk);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDDeriveKey(context, pbArk, cbArk,
-                        (unsigned char *)ap->EncData, ap->EncDataLength,
-                        ppbSessionKey, pcbSessionKey);
-    BID_BAIL_ON_ERROR(err);
-
-    err = BID_S_OK;
-
-cleanup:
-    if (pbArk != NULL) {
-        memset(pbArk, 0, cbArk);
-        BIDFree(pbArk);
-    }
 
     return err;
 }
