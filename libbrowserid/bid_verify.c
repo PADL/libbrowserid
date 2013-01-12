@@ -276,6 +276,7 @@ _BIDVerifyLocal(
 
     BID_ASSERT(backedAssertion->Assertion != NULL);
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
+    BID_ASSERT((ulReqFlags & BID_VERIFY_FLAG_RP) || szSubjectName == NULL);
 
     if ((ulReqFlags & BID_VERIFY_FLAG_REAUTH) &&
         (context->ContextOptions & BID_CONTEXT_REAUTH) == 0)
