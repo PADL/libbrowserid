@@ -511,7 +511,7 @@ _BIDVerifyReauthAssertion(
     BID_BAIL_ON_ERROR(err);
 
     if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
-        *pulRetFlags |= BID_VERIFY_FLAG_VALIDATED_CERTS; /* XXX */
+        *pulRetFlags |= BID_VERIFY_FLAG_REAUTH_MUTUAL;
 
     *pVerifierCred = json_incref(json_object_get(cred, "ark"));
 

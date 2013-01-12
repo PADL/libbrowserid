@@ -454,7 +454,7 @@ _BIDValidateX509CertChain(
 /*
  * bid_reauth.c
  */
-#define BID_TICKET_FLAG_MUTUAL_AUTH             0x1
+#define BID_TICKET_FLAG_MUTUAL_AUTH             0x2
 
 BIDError
 _BIDStoreTicketInCache(

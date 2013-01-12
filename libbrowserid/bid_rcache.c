@@ -99,11 +99,23 @@ _BIDUpdateReplayCache(
     BID_BAIL_ON_ERROR(err);
 
     if (bStoreReauthCreds) {
+        uint32_t ulTicketFlags;
+
         err = _BIDDeriveSessionSubkey(context, identity, "ARK", &ark);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDJsonObjectSet(context, rdata, "ark", ark, 0);
         BID_BAIL_ON_ERROR(err);
+
+        ulTicketFlags = 0;
+        if (ulFlags & BID_VERIFY_FLAG_VALIDATED_CERTS)
+            ulTicketFlags |= BID_TICKET_FLAG_MUTUAL_AUTH;
+
+        if (ulTicketFlags) {
+            err = _BIDJsonObjectSet(context, rdata, "flags", json_integer(ulTicketFlags),
+                                    BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+            BID_BAIL_ON_ERROR(err);
+        }
     } else {
         err = _BIDJsonObjectSet(context, rdata, "exp",
                                 json_object_get(identity->Attributes, "exp"), BID_JSON_FLAG_REQUIRED);

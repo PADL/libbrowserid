@@ -23,6 +23,17 @@ BIDAbortError(const char *szMessage, BIDError err);
 static BIDError
 BIDPurgeCache(int argc, char *argv[], BIDCache cache, int (*shouldPurgeP)(json_t *));
 
+static void
+BIDPrintTicketFlags(uint32_t ulTicketFlags)
+{
+    printf("Ticket flags:     ");
+    if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
+        printf("MUTUAL");
+    if (ulTicketFlags == 0)
+        printf("NONE");
+    printf("\n");
+}
+
 static BIDError
 BIDPrintVerboseTicketCacheEntry(const char *k, json_t *j)
 {
@@ -41,12 +52,8 @@ BIDPrintVerboseTicketCacheEntry(const char *k, json_t *j)
     printf("Key length:       %zd bits\n", cbArk * 8);
     printf("Cert issue time:  %s", ctime(&issueTime));
     printf("Ticket expiry:    %s", ctime(&expiryTime));
-    printf("Ticket flags:     ");
-    if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
-        printf("MUTUAL");
-    if (ulTicketFlags == 0)
-        printf("NONE");
-    printf("\n\n");
+    BIDPrintTicketFlags(ulTicketFlags);
+    printf("\n");
 
     if (pbArk != NULL) {
         memset(pbArk, 0, cbArk);
@@ -162,6 +169,7 @@ BIDPrintVerboseReplayCacheEntry(const char *k, json_t *j)
     unsigned char *pbArk = NULL;
     size_t cbArk = 0;
     time_t issueTime, expiryTime, assertionExpiryTime;
+    uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
 
     _BIDBase64UrlDecode(k, &pbHash, &cbHash);
     _BIDGetJsonBinaryValue(gContext, json_object_get(j, "ark"), "secret-key", &pbArk, &cbArk);
@@ -184,6 +192,7 @@ BIDPrintVerboseReplayCacheEntry(const char *k, json_t *j)
     printf("Cert issue time:  %s", ctime(&issueTime));
     printf("Assertion expiry: %s", ctime(&assertionExpiryTime));
     printf("Ticket expiry:    %s", ctime(&expiryTime));
+    BIDPrintTicketFlags(ulTicketFlags);
     printf("\n");
 
     if (pbArk != NULL) {

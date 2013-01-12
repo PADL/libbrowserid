@@ -277,6 +277,7 @@ BIDFreeAssertion(
 #define BID_VERIFY_FLAG_REMOTE                  0x00010000
 #define BID_VERIFY_FLAG_VALIDATED_CERTS         0x00020000
 #define BID_VERIFY_FLAG_X509                    0x00040000
+#define BID_VERIFY_FLAG_REAUTH_MUTUAL           0x00080000
 
 BIDError
 BIDVerifyAssertion(

@@ -168,8 +168,11 @@ gssBidAcceptSecContext(OM_uint32 *minor,
             ctx->flags |= CTX_FLAG_REAUTH;
     }
 
-    if (major == GSS_S_COMPLETE)
+    if (major == GSS_S_COMPLETE) {
+        if (ulBidFlags & BID_VERIFY_FLAG_REAUTH_MUTUAL)
+            ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
         major = gssBidContextReady(minor, ctx, cred);
+    }
 
     tmpMajor = makeResponseToken(minor, ctx, major, *minor, output_token);
     if (GSS_ERROR(tmpMajor))
