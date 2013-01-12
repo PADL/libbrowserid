@@ -105,7 +105,8 @@ _BIDUpdateReplayCache(
         err = _BIDJsonObjectSet(context, rdata, "ark", ark, 0);
         BID_BAIL_ON_ERROR(err);
     } else {
-        err = _BIDJsonObjectSet(context, rdata, "exp", json_object_get(identity->Attributes, "exp"), BID_JSON_FLAG_REQUIRED);
+        err = _BIDJsonObjectSet(context, rdata, "exp",
+                                json_object_get(identity->Attributes, "exp"), BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);
     }
 
