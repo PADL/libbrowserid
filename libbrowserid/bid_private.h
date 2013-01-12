@@ -230,6 +230,17 @@ struct BIDContextDesc {
 /*
  * bid_crypto.c
  */
+typedef struct BIDJWTAlgorithmDesc {
+    const char *szAlgID;
+    const char *szKeyAlgID;
+    size_t cbKey;
+    const unsigned char *pbOid;
+    size_t cbOid;
+    BIDError (*MakeSignature)(struct BIDJWTAlgorithmDesc *, BIDContext, BIDJWT, BIDJWK);
+    BIDError (*VerifySignature)(struct BIDJWTAlgorithmDesc *, BIDContext, BIDJWT, BIDJWK, int *);
+    BIDError (*KeySize)(struct BIDJWTAlgorithmDesc *desc, BIDContext, BIDJWK, size_t *);
+} *BIDJWTAlgorithm;
+
 BIDError
 _BIDDeriveSessionSubkey(
     BIDContext context,
@@ -240,6 +251,12 @@ _BIDDeriveSessionSubkey(
 int
 _BIDIsLegacyJWK(BIDContext context, BIDJWK jwt);
 
+BIDError
+_BIDFindKeyInKeyset(
+    BIDContext context,
+    BIDJWTAlgorithm algorithm,
+    BIDJWKSet keyset,
+    BIDJWK *pKey);
 
 /*
  * bid_fcache.c
@@ -299,17 +316,6 @@ struct BIDJWTDesc {
     unsigned char *Signature;
     size_t SignatureLength;
 };
-
-typedef struct BIDJWTAlgorithmDesc {
-    const char *szAlgID;
-    const char *szKeyAlgID;
-    size_t cbKey;
-    const unsigned char *pbOid;
-    size_t cbOid;
-    BIDError (*MakeSignature)(struct BIDJWTAlgorithmDesc *, BIDContext, BIDJWT, BIDJWK);
-    BIDError (*VerifySignature)(struct BIDJWTAlgorithmDesc *, BIDContext, BIDJWT, BIDJWK, int *);
-    BIDError (*KeySize)(struct BIDJWTAlgorithmDesc *desc, BIDContext, BIDJWK, size_t *);
-} *BIDJWTAlgorithm;
 
 BIDError
 _BIDMakeSignature(
