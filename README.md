@@ -142,6 +142,7 @@ Verbose mode:
     Key length:       256 bits
     Cert issue time:  Mon Jan  7 19:29:31 2013
     Ticket expiry:    Mon Jan  7 20:29:31 2013
+    Ticket flags:     MUTUAL
 
 ### Replay
 

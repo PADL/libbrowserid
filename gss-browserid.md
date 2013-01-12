@@ -244,10 +244,11 @@ The initial context token is framed per section 1 of [RFC2743].
                     }
             END
             
-Subsequent context tokens do not have this framing, i.e. they consist only of the innerToken.
+Subsequent context tokens do not have this framing, i.e. they consist only
+of the innerToken.
 
-The innerToken always contains a two octet token ID followed by a [JSON Web
-Token][JWT]. This document defines the following token IDs:
+The innerToken always contains a two octet token ID followed by a BrowserID
+backed assertion. This document defines the following token IDs:
 
     TOK_TYPE_INITIATOR_CONTEXT			0xB1 0xD1
     TOK_TYPE_ACCEPTOR_CONTEXT			0xB1 0xD2
