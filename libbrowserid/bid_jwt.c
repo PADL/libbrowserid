@@ -42,7 +42,8 @@ _BIDValidateJWTHeader(
                 strcmp(typ, "urn:ietf:params:oauth:token-type:jwt") != 0)
                 return BID_S_INVALID_JSON_WEB_TOKEN;
         } else if (strcmp(key, "alg") == 0 ||
-                   strcmp(key, "x5c") == 0)
+                   strcmp(key, "x5c") == 0 ||
+                   strncmp(key, "x5t", 3) == 0)
             continue;
         else
             return BID_S_INVALID_JSON_WEB_TOKEN;

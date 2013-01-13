@@ -387,6 +387,7 @@ typedef struct BIDJWTDesc *BIDJWT;
 #define BID_RP_FLAG_HAVE_SESSION_KEY            0x00000001 /* have a session key */
 #define BID_RP_FLAG_INITIAL                     0x00000002 /* not reauth-based auth */
 #define BID_RP_FLAG_VERIFY_NONCE                0x00000004
+#define BID_RP_FLAG_X509_THUMBPRINT             0x00000008 /* send thumbprint not cert */
 
 /* Output flags (ulRetFlags) */
 #define BID_RP_FLAG_VALIDATED_CERTS             0x00020000

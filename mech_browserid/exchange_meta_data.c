@@ -40,13 +40,42 @@ OM_uint32 GSSAPI_CALLCONV
 gssBidExchangeMetaData(OM_uint32 *minor,
                        gss_const_OID mech GSSBID_UNUSED,
                        gss_cred_id_t cred GSSBID_UNUSED,
-                       gss_ctx_id_t *ctx GSSBID_UNUSED,
-                       const gss_name_t name GSSBID_UNUSED,
+                       gss_ctx_id_t *context_handle,
+                       const gss_name_t name,
                        OM_uint32 req_flags GSSBID_UNUSED,
-                       gss_const_buffer_t meta_data GSSBID_UNUSED)
+                       gss_const_buffer_t meta_data)
 {
+    OM_uint32 major;
+    int isInitiator = (name != GSS_C_NO_NAME);
+
+    if (isInitiator && meta_data->length) {
+        gss_buffer_desc metaDataToken = GSS_C_EMPTY_BUFFER;
+        gss_ctx_id_t ctx = *context_handle;
+        enum gss_bid_token_type actualTokenType;
+
+        GSSBID_ASSERT(ctx != GSS_C_NO_CONTEXT);
+
+        major = gssBidVerifyToken(minor, (gss_buffer_t)meta_data, &actualTokenType,
+                                  &metaDataToken, &ctx->mechanismUsed);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        if (actualTokenType != TOK_TYPE_ACCEPTOR_META_DATA) {
+            major = GSS_S_DEFECTIVE_TOKEN;
+            *minor = GSSBID_WRONG_TOK_ID;
+            goto cleanup;
+        }
+
+        major = gssBidProcessRPCerts(minor, ctx, &metaDataToken);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    major = GSS_S_COMPLETE;
     *minor = 0;
-    return GSS_S_COMPLETE;
+
+cleanup:
+    return major;
 }
 
 OM_uint32 GSSAPI_CALLCONV

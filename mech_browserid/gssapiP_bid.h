@@ -147,6 +147,7 @@ struct gss_cred_id_struct
 
 #define CTX_FLAG_INITIATOR                  0x00000001
 #define CTX_FLAG_REAUTH                     0x00000002
+#define CTX_FLAG_CAN_MUTUAL_AUTH            0x00000004
 
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
@@ -174,6 +175,11 @@ struct gss_ctx_id_struct
     gss_cred_id_t cred;
     BIDContext bidContext;
     BIDIdentity bidIdentity;
+    struct {
+        gss_buffer_desc serverSubject;
+        gss_buffer_desc serverHash;
+        gss_buffer_desc serverCert;
+    } initiatorCtx;
 };
 
 #define TOK_FLAG_SENDER_IS_ACCEPTOR         0x01

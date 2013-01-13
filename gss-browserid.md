@@ -23,6 +23,7 @@ The GSS BrowserID mechanism imports the [BrowserID spec][BIDSPEC].
 [JWT]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-token
 [JWS]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-signature
 [GSS-REST]: http://www.w3.org/2011/identity-ws/papers/idbrowser2011_submission_16.pdf
+[NEGOEX]: http://tools.ietf.org/html/draft-zhu-negoex-04
 
 Note that "initiator" is the client or user-agent and the "acceptor" is the
 server or relying party. For consistency, the GSS terms are used below.
@@ -161,6 +162,11 @@ must match the "hostname" key.
 **NOTE**: only validating the host name does not mutually authenticate the
 service type or instance. Is this an acceptable tradeoff?
 
+#### Acceptor (RP) certificate advertisement
+
+The acceptor may include its certificate (and optionally any additional certs),
+formatted as a backed assertion with an empty payload, in its NegoEx metadata.
+
 ### Fast re-authentication extensions
 
 Fast re-authentication allows a context to be established without acquiring a
@@ -262,6 +268,8 @@ backed assertion. This document defines the following token IDs:
     TOK_TYPE_INITIATOR_CONTEXT                  0xB1 0xD1
     TOK_TYPE_ACCEPTOR_CONTEXT                   0xB1 0xD2
     TOK_TYPE_DELETE_CONTEXT                     0xB1 0xD3
+    TOK_TYPE_INITIATOR_META_DATA                0xB1 0xD4
+    TOK_TYPE_ACCEPTOR_META_DATA                 0xB1 0xD5
     
 Message protection (confidentiality/wrap) are framed according to [RFC4121].
 
@@ -626,3 +634,35 @@ may share this cache with the replay cache, although this is an implementation
 detail.
 
 The fast re-authentication assertion is signed using the authenticator root key.
+
+### NegoEx
+
+GSS BrowserID supports NegoEx for advertising RP certificates used in mutual
+authentication.
+
+If the acceptor supports mutual authentication, it MAY include its certificate
+and any additional certificates inside a backed assertion with an empty payload
+as output for GSS\_Query\_meta\_data(). The "assertion" is prepended with the
+two byte token identifier TOK\_TYPE\_ACCEPTOR\_META\_DATA.
+
+Upon receiving this, the initiator SHOULD display the certificate information
+or fingerprint to the user and allow them to confirm it before committing to
+authenticate.
+
+The NegoEx signing key is the output of GSS\_Pseudo\_random() with an input of
+GSS\_C\_PRF\_KEY\_FULL and "gss-browserid-negoex-initiator" or
+"gss-browserid-negoex-acceptor", depending on the party generating the
+signature.
+
+The NegoEx authentication scheme is the binary encoding of the following
+hexadecimal string:
+
+    535538008647F5BC624BD8076949F0
+
+where the third byte (zero above) is set to the [RFC3961] encryption type for
+the selected mechanism.
+
+There is currently no initiator-sent metadata defined and acceptors should
+ignore any sent. The metadata is advisory and the initiator is free to ignore
+it.
+
