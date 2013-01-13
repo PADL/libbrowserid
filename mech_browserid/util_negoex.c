@@ -106,6 +106,8 @@ gssBidProcessRPCerts(OM_uint32 *minor,
         }
     }
 
+    ctx->flags |= CTX_FLAG_CAN_MUTUAL_AUTH;
+
     major = GSS_S_COMPLETE;
     *minor = 0;
 

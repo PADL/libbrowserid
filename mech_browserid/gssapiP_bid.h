@@ -147,6 +147,7 @@ struct gss_cred_id_struct
 
 #define CTX_FLAG_INITIATOR                  0x00000001
 #define CTX_FLAG_REAUTH                     0x00000002
+#define CTX_FLAG_CAN_MUTUAL_AUTH            0x00000004
 
 #define CTX_IS_INITIATOR(ctx)               (((ctx)->flags & CTX_FLAG_INITIATOR) != 0)
 
