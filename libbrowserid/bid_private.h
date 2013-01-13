@@ -113,6 +113,13 @@ _BIDIssuerIsAuthoritative(
 BIDError
 _BIDBase64UrlEncode(const unsigned char *data, size_t size, char **str, size_t *cchStr);
 
+#define BID_ENCODING_UNKNOWN       0
+#define BID_ENCODING_BASE64_URL    1
+#define BID_ENCODING_BASE64        2
+
+BIDError
+_BIDBase64Encode(const unsigned char *data, size_t size, uint32_t encoding, char **str, size_t *cchStr);
+
 BIDError
 _BIDBase64UrlDecode(const char *str, unsigned char **pData, size_t *cbData);
 
