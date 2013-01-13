@@ -26,9 +26,6 @@
 #define BID_CRYPTO_PRINT_ERRORS()
 #endif
 
-#define BID_JSON_ENCODING_UNKNOWN   0
-#define BID_JSON_ENCODING_BASE64    1
-
 static void
 _BIDOpenSSLInit(void) __attribute__((__constructor__));
 
@@ -66,7 +63,7 @@ _BIDGetJsonBNValue(
 
     err = BID_S_INVALID_KEY;
 
-    if ((encoding == BID_JSON_ENCODING_BASE64) ||
+    if ((encoding == BID_ENCODING_BASE64_URL) ||
         !_BIDIsLegacyJWK(context, jwk)) {
         unsigned char buf[512];
         unsigned char *pBuf = buf;
@@ -301,14 +298,14 @@ _BIDMakeJwtRsaKey(
         goto cleanup;
     }
 
-    err = _BIDGetJsonBNValue(context, jwk, "n", BID_JSON_ENCODING_UNKNOWN, &rsa->n);
+    err = _BIDGetJsonBNValue(context, jwk, "n", BID_ENCODING_UNKNOWN, &rsa->n);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBNValue(context, jwk, "e", BID_JSON_ENCODING_UNKNOWN, &rsa->e);
+    err = _BIDGetJsonBNValue(context, jwk, "e", BID_ENCODING_UNKNOWN, &rsa->e);
     BID_BAIL_ON_ERROR(err);
 
     if (!public) {
-        err = _BIDGetJsonBNValue(context, jwk, "d", BID_JSON_ENCODING_UNKNOWN, &rsa->d);
+        err = _BIDGetJsonBNValue(context, jwk, "d", BID_ENCODING_UNKNOWN, &rsa->d);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -514,19 +511,19 @@ _BIDMakeJwtDsaKey(BIDContext context, BIDJWK jwk, int public, DSA **pDsa)
         goto cleanup;
     }
 
-    err = _BIDGetJsonBNValue(context, jwk, "p", BID_JSON_ENCODING_UNKNOWN, &dsa->p);
+    err = _BIDGetJsonBNValue(context, jwk, "p", BID_ENCODING_UNKNOWN, &dsa->p);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBNValue(context, jwk, "q", BID_JSON_ENCODING_UNKNOWN, &dsa->q);
+    err = _BIDGetJsonBNValue(context, jwk, "q", BID_ENCODING_UNKNOWN, &dsa->q);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBNValue(context, jwk, "g", BID_JSON_ENCODING_UNKNOWN, &dsa->g);
+    err = _BIDGetJsonBNValue(context, jwk, "g", BID_ENCODING_UNKNOWN, &dsa->g);
     BID_BAIL_ON_ERROR(err);
 
     if (public)
-        err = _BIDGetJsonBNValue(context, jwk, "y", BID_JSON_ENCODING_UNKNOWN, &dsa->pub_key);
+        err = _BIDGetJsonBNValue(context, jwk, "y", BID_ENCODING_UNKNOWN, &dsa->pub_key);
     else
-        err = _BIDGetJsonBNValue(context, jwk, "x", BID_JSON_ENCODING_UNKNOWN, &dsa->priv_key);
+        err = _BIDGetJsonBNValue(context, jwk, "x", BID_ENCODING_UNKNOWN, &dsa->priv_key);
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
@@ -571,7 +568,7 @@ _DSAKeySize(
     BIGNUM *p;
     size_t cbKey;
 
-    err = _BIDGetJsonBNValue(context, jwk, "p", BID_JSON_ENCODING_UNKNOWN, &p);
+    err = _BIDGetJsonBNValue(context, jwk, "p", BID_ENCODING_UNKNOWN, &p);
     if (err != BID_S_OK)
         return err;
 
@@ -931,17 +928,17 @@ _BIDMakeDHKey(
         goto cleanup;
     }
 
-    err = _BIDGetJsonBNValue(context, dhParams, "p", BID_JSON_ENCODING_BASE64, &dh->p);
+    err = _BIDGetJsonBNValue(context, dhParams, "p", BID_ENCODING_BASE64_URL, &dh->p);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBNValue(context, dhParams, "g", BID_JSON_ENCODING_BASE64, &dh->g);
+    err = _BIDGetJsonBNValue(context, dhParams, "g", BID_ENCODING_BASE64_URL, &dh->g);
     BID_BAIL_ON_ERROR(err);
 
     if (dhSecret != NULL) {
-        err = _BIDGetJsonBNValue(context, dhSecret, "y", BID_JSON_ENCODING_BASE64, &dh->pub_key);
+        err = _BIDGetJsonBNValue(context, dhSecret, "y", BID_ENCODING_BASE64_URL, &dh->pub_key);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDGetJsonBNValue(context, dhSecret, "x", BID_JSON_ENCODING_BASE64, &dh->priv_key);
+        err = _BIDGetJsonBNValue(context, dhSecret, "x", BID_ENCODING_BASE64_URL, &dh->priv_key);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -1101,7 +1098,7 @@ _BIDComputeDHKey(
         goto cleanup;
     }
 
-    err = _BIDGetJsonBNValue(context, pubValue, "y", BID_JSON_ENCODING_BASE64, &pub);
+    err = _BIDGetJsonBNValue(context, pubValue, "y", BID_ENCODING_BASE64_URL, &pub);
     BID_BAIL_ON_ERROR(err);
 
     dh = DH_new();
@@ -1292,6 +1289,7 @@ _BIDLoadX509Certificate(
     X509 *pemCert = NULL;
     unsigned char *pbData = NULL, *p;
     size_t cbData = 0;
+    char *szData = NULL;
 
     *pCert = NULL;
 
@@ -1322,9 +1320,14 @@ _BIDLoadX509Certificate(
         goto cleanup;
     }
 
-    /* XXX should be base64 (not URL) encoded */
-    err = _BIDJsonBinaryValue(context, pbData, cbData, &cert);
+    err = _BIDBase64Encode(pbData, cbData, BID_ENCODING_BASE64, &szData, &cbData);
     BID_BAIL_ON_ERROR(err);
+
+    cert = json_string(szData);
+    if (cert == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     *pCert = cert;
 
@@ -1336,6 +1339,7 @@ cleanup:
     if (err != BID_S_OK)
         json_decref(cert);
     BIDFree(pbData);
+    BIDFree(szData);
 
     return err;
 }

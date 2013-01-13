@@ -38,9 +38,10 @@
 
 #include "bid_private.h"
 
-/* Note: this is Base64 URL encoding */
-static const char base64_chars[] =
+static const char base64url_chars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+static const char base64_chars[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 #define BASE64_EXPAND(n)        (n * 4 / 3 + 4)
 
@@ -56,21 +57,43 @@ pos(char c)
         c = '-';
     else if (c == '/')
         c = '_';
-    for (p = base64_chars; *p != '\0'; p++) {
+    for (p = base64url_chars; *p != '\0'; p++) {
 	if (*p == c)
-	    return p - base64_chars;
+	    return p - base64url_chars;
     }
 
     return DECODE_ERROR;
 }
 
 BIDError
-_BIDBase64UrlEncode(const unsigned char *data, size_t size, char **str, size_t *pcchStr)
+_BIDBase64UrlEncode(
+    const unsigned char *data,
+    size_t size,
+    char **str,
+    size_t *pcchStr)
+{
+    return _BIDBase64Encode(data, size, BID_ENCODING_BASE64_URL, str, pcchStr);
+}
+
+BIDError
+_BIDBase64Encode(
+    const unsigned char *data,
+    size_t size,
+    uint32_t encoding,
+    char **str,
+    size_t *pcchStr)
 {
     char *s, *p;
+    const char *chars;
     size_t i;
     int c;
     const unsigned char *q;
+    int urlEncode = 0;
+
+    if (encoding == BID_ENCODING_BASE64_URL)
+        urlEncode = 1;
+    else if (encoding != BID_ENCODING_BASE64)
+        return BID_S_INVALID_PARAMETER;
 
     if (size > UINT_MAX/4) {
 	*str = NULL;
@@ -83,6 +106,7 @@ _BIDBase64UrlEncode(const unsigned char *data, size_t size, char **str, size_t *
 	return BID_S_NO_MEMORY;
     }
     q = data;
+    chars = urlEncode ? base64url_chars : base64_chars;
 
     for (i = 0; i < size;) {
 	c = q[i++];
@@ -94,14 +118,14 @@ _BIDBase64UrlEncode(const unsigned char *data, size_t size, char **str, size_t *
 	if (i < size)
 	    c += q[i];
 	i++;
-	p[0] = base64_chars[(c & 0x00fc0000) >> 18];
-	p[1] = base64_chars[(c & 0x0003f000) >> 12];
-	p[2] = base64_chars[(c & 0x00000fc0) >> 6];
-	p[3] = base64_chars[(c & 0x0000003f) >> 0];
+	p[0] = chars[(c & 0x00fc0000) >> 18];
+	p[1] = chars[(c & 0x0003f000) >> 12];
+	p[2] = chars[(c & 0x00000fc0) >> 6];
+	p[3] = chars[(c & 0x0000003f) >> 0];
 	if (i > size + 1)
-	    p[2] = '\0';
+	    p[2] = urlEncode ? '\0' : '=';
 	else if (i > size)
-	    p[3] = '\0';
+	    p[3] = urlEncode ? '\0' : '=';
 	p += 4;
     }
     *p = '\0';
