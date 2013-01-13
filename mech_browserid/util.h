@@ -186,6 +186,8 @@ enum gss_bid_token_type {
     TOK_TYPE_INITIATOR_CONTEXT       = 0xB1D1,  /* initiator-sent context token */
     TOK_TYPE_ACCEPTOR_CONTEXT        = 0xB1D2,  /* acceptor-sent context token */
     TOK_TYPE_DELETE_CONTEXT          = 0xB1D3,  /* RFC 2743 delete context */
+    TOK_TYPE_INITIATOR_META_DATA     = 0xB1D4,
+    TOK_TYPE_ACCEPTOR_META_DATA      = 0xB1D5
 };
 
 #define GSSBID_WIRE_FLAGS_MASK          ( GSS_C_MUTUAL_FLAG             | \
@@ -581,6 +583,17 @@ gssBidCompareName(OM_uint32 *minor,
                   gss_name_t name2,
                   OM_uint32 flags,
                   int *name_equal);
+
+/* util_negoex.c */
+OM_uint32
+gssBidIndicateRPCerts(OM_uint32 *minor,
+                      gss_ctx_id_t ctx,
+                      gss_buffer_t outputToken);
+
+OM_uint32
+gssBidProcessRPCerts(OM_uint32 *minor,
+                     gss_ctx_id_t ctx,
+                     gss_buffer_t inputToken);
 
 /* util_oid.c */
 OM_uint32

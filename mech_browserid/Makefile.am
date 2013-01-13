@@ -98,6 +98,7 @@ mech_browserid_la_SOURCES =    			\
 	util_lucid.c				\
 	util_mech.c				\
 	util_name.c				\
+	util_negoex.c				\
 	util_oid.c				\
 	util_ordering.c				\
 	util_tld.c				\

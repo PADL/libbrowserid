@@ -45,9 +45,10 @@ gssBidQueryMetaData(OM_uint32 *minor,
                     OM_uint32 req_flags GSSBID_UNUSED,
                     gss_buffer_t meta_data)
 {
-    OM_uint32 major = GSS_S_COMPLETE;
+    OM_uint32 major = GSS_S_COMPLETE, tmpMinor;
     int isInitiator = (name != GSS_C_NO_NAME);
     gss_ctx_id_t ctx = *context_handle;
+    gss_buffer_desc metaDataToken = GSS_C_EMPTY_BUFFER;
 
     meta_data->length = 0;
     meta_data->value = NULL;
@@ -55,7 +56,7 @@ gssBidQueryMetaData(OM_uint32 *minor,
     if (ctx == GSS_C_NO_CONTEXT) {
         major = gssBidAllocContext(minor, isInitiator, mech, &ctx);
         if (GSS_ERROR(major))
-            return major;
+            goto cleanup;
 
         if (isInitiator)
             ctx->flags |= CTX_FLAG_INITIATOR;
@@ -76,10 +77,32 @@ gssBidQueryMetaData(OM_uint32 *minor,
                                       NULL,
                                       NULL);
         }
+        if (GSS_ERROR(major))
+            goto cleanup;
     }
 
-    if (*context_handle == GSS_C_NO_CONTEXT)
-        *context_handle = ctx;
+    if (!isInitiator) {
+        major = gssBidIndicateRPCerts(minor, ctx, &metaDataToken);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        if (metaDataToken.length) {
+            major = gssBidMakeToken(minor, ctx, &metaDataToken,
+                                    TOK_TYPE_ACCEPTOR_META_DATA, meta_data);
+            if (GSS_ERROR(major))
+                goto cleanup;
+        }
+    }
+
+cleanup:
+    gss_release_buffer(&tmpMinor, &metaDataToken);
+
+    if (*context_handle == GSS_C_NO_CONTEXT) {
+        if (GSS_ERROR(major))
+            gssBidReleaseContext(&tmpMinor, &ctx);
+        else
+            *context_handle = ctx;
+    }
 
     return major;
 }

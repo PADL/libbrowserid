@@ -172,6 +172,10 @@ gssBidReleaseContext(OM_uint32 *minor,
     sequenceFree(&tmpMinor, &ctx->seqState);
     gssBidReleaseCred(&tmpMinor, &ctx->cred);
 
+    gss_release_buffer(&tmpMinor, &ctx->initiatorCtx.serverSubject);
+    gss_release_buffer(&tmpMinor, &ctx->initiatorCtx.serverHash);
+    gss_release_buffer(&tmpMinor, &ctx->initiatorCtx.serverCert);
+
     GSSBID_MUTEX_DESTROY(&ctx->mutex);
 
     memset(ctx, 0, sizeof(*ctx));
