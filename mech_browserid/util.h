@@ -175,7 +175,9 @@ gssBidVerify(krb5_context context,
              int *valid);
 
 /* util_context.c */
-#define BROWSERID_EXPORT_CONTEXT_V1           1
+#define BROWSERID_EXPORT_CONTEXT_V1        1
+
+#define GSSBID_CONFIG_FILE                 SYSCONFDIR "/gss/browserid.json"
 
 enum gss_bid_token_type {
     TOK_TYPE_NONE                    = 0x0000,  /* no token */

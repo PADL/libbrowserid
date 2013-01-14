@@ -116,7 +116,7 @@ gssBidAllocContext(OM_uint32 *minor,
      * server certificate and private key.
      */
     err = BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CERT_CONFIG_NAME,
-                             SYSCONFDIR "/gss/browserid.json");
+                             GSSBID_CONFIG_FILE);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         goto cleanup;
