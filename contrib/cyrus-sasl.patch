@@ -1,14 +1,5 @@
-From 0554fc0f1edc170541ec6c179395fb4e1ba356d1 Mon Sep 17 00:00:00 2001
-From: Luke Howard <lukeh@padl.com>
-Date: Sat, 5 Jan 2013 15:07:24 +1100
-Subject: [PATCH] disable mutual flag requirement
-
----
- plugins/gs2.c |   20 +++++++-------------
- 1 file changed, 7 insertions(+), 13 deletions(-)
-
 diff --git a/plugins/gs2.c b/plugins/gs2.c
-index 9e29fe1..01a75b6 100644
+index 9e29fe1..6e102ad 100644
 --- a/plugins/gs2.c
 +++ b/plugins/gs2.c
 @@ -440,11 +440,6 @@ gs2_server_mech_step(void *conn_context,
@@ -50,21 +41,38 @@ index 9e29fe1..01a75b6 100644
                                      GSS_C_INDEFINITE,
                                      &text->gss_cbindings,
                                      serverinlen ? &input_token : GSS_C_NO_BUFFER,
-@@ -814,10 +807,12 @@ static int gs2_client_mech_step(void *conn_context,
+@@ -814,7 +807,8 @@ static int gs2_client_mech_step(void *conn_context,
      if (GSS_ERROR(maj_stat))
          goto cleanup;
  
 -    if ((ret_flags & req_flags) != req_flags) {
-+#if 0
-+    if ((ret_flags & GSS_C_MUTUAL_FLAG) == 0) {
++    if (params->cbindingdisp != SASL_CB_DISP_NONE &&
++        (ret_flags & GSS_C_MUTUAL_FLAG) == 0) {
          maj_stat = SASL_BADAUTH;
          goto cleanup;
      }
-+#endif
+@@ -1285,7 +1279,7 @@ gs2_get_mech_attrs(const sasl_utils_t *utils,
+     }
  
-     maj_stat = gss_display_name(&min_stat,
-                                 text->client_name,
-@@ -1317,7 +1312,7 @@ gs2_get_mech_attrs(const sasl_utils_t *utils,
+     *security_flags = SASL_SEC_NOPLAINTEXT | SASL_SEC_NOACTIVE;
+-    *features = SASL_FEAT_WANT_CLIENT_FIRST | SASL_FEAT_CHANNEL_BINDING;
++    *features = SASL_FEAT_WANT_CLIENT_FIRST;
+     if (prompts != NULL)
+         *prompts = gs2_required_prompts;
+ 
+@@ -1299,8 +1293,10 @@ gs2_get_mech_attrs(const sasl_utils_t *utils,
+         *security_flags |= SASL_SEC_NOANONYMOUS;
+     if (MA_PRESENT(GSS_C_MA_DELEG_CRED))
+         *security_flags |= SASL_SEC_PASS_CREDENTIALS;
+-    if (MA_PRESENT(GSS_C_MA_AUTH_TARG))
++    if (MA_PRESENT(GSS_C_MA_AUTH_TARG)) {
++        *features |= SASL_FEAT_CHANNEL_BINDING;
+         *security_flags |= SASL_SEC_MUTUAL_AUTH;
++    }
+     if (MA_PRESENT(GSS_C_MA_AUTH_INIT_INIT) && prompts != NULL)
+         *prompts = NULL;
+     if (MA_PRESENT(GSS_C_MA_ITOK_FRAMED))
+@@ -1317,7 +1313,7 @@ gs2_get_mech_attrs(const sasl_utils_t *utils,
  static int gs2_indicate_mechs(const sasl_utils_t *utils)
  {
      OM_uint32 major, minor;
@@ -73,7 +81,7 @@ index 9e29fe1..01a75b6 100644
      gss_OID_set_desc desired_attrs;
      gss_OID_desc except_oids[3];
      gss_OID_set_desc except_attrs;
-@@ -1326,8 +1321,7 @@ static int gs2_indicate_mechs(const sasl_utils_t *utils)
+@@ -1326,8 +1322,7 @@ static int gs2_indicate_mechs(const sasl_utils_t *utils)
          return SASL_OK;
  
      desired_oids[0] = *GSS_C_MA_AUTH_INIT;
@@ -83,6 +91,18 @@ index 9e29fe1..01a75b6 100644
      desired_attrs.count = sizeof(desired_oids)/sizeof(desired_oids[0]);
      desired_attrs.elements = desired_oids;
  
--- 
-1.7.10.2 (Apple Git-33)
-
+diff --git a/plugins/gssapi.c b/plugins/gssapi.c
+index 7366cff..675d2d4 100644
+--- a/plugins/gssapi.c
++++ b/plugins/gssapi.c
+@@ -50,8 +50,9 @@
+ #else
+ #include <gssapi/gssapi.h>
+ #endif
+-
++#ifdef HAVE_GSSAPI_GSSAPI_EXT_H
+ #include <gssapi/gssapi_ext.h>
++#endif
+ #ifdef WIN32
+ #  include <winsock2.h>
+ 
