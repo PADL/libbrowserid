@@ -11,6 +11,7 @@ libbrowserid_la_SOURCES =   \
     bid_base64.c            \
     bid_cache.c             \
     bid_crypto.c            \
+    bid_curlhttp.c          \
     bid_error.c             \
     bid_fcache.c            \
     bid_context.c           \
