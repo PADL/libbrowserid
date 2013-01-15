@@ -166,8 +166,10 @@ _BIDGetCacheObject(
     json_t **pValue)
 {
     BIDError err;
+    json_t *value = NULL;
 
-    *pValue = NULL;
+    if (pValue != NULL)
+        *pValue = NULL;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -180,7 +182,11 @@ _BIDGetCacheObject(
     if (cache->Ops->GetObject == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
-    err = cache->Ops->GetObject(cache->Ops, context, cache->Data, key, pValue);
+    err = cache->Ops->GetObject(cache->Ops, context, cache->Data, key, &value);
+    if (err == BID_S_OK && pValue != NULL)
+        *pValue = value;
+    else
+        json_decref(value);
 
     return err;
 }

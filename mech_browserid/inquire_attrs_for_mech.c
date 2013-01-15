@@ -52,6 +52,9 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
                            gss_OID_set *known_mech_attrs)
 {
     OM_uint32 major, tmpMinor;
+    BIDContext bidContext = BID_C_NO_CONTEXT;
+    BIDCache bidConfig = NULL;
+    BIDError err;
 
     if (mech_attrs != NULL)
         *mech_attrs = GSS_C_NO_OID_SET;
@@ -87,6 +90,21 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
         MA_SUPPORTED(GSS_C_MA_CBINDINGS);
         MA_SUPPORTED(GSS_C_MA_CTX_TRANS);
 #endif
+    }
+
+    /*
+     * This is a bit of a hack to see if we are configured for mutual
+     * authentication. Don't advertise it if we can't do it.
+     */
+    err = BIDAcquireContext(BID_CONTEXT_GSS, &bidContext);
+    if (err == BID_S_OK)
+        err = _BIDAcquireCache(bidContext, GSSBID_CONFIG_FILE,
+                               BID_CACHE_FLAG_UNVERSIONED, &bidConfig);
+    if (err == BID_S_OK)
+        err = _BIDGetCacheObject(bidContext, bidConfig, "private-key", NULL);
+    if (err == BID_S_OK) {
+        fprintf(stdout, "mutual ok\n");
+        MA_SUPPORTED(GSS_C_MA_AUTH_TARG_INIT);
     }
 
     if (known_mech_attrs != NULL) {
@@ -133,6 +151,8 @@ cleanup:
         gss_release_oid_set(&tmpMinor, mech_attrs);
         gss_release_oid_set(&tmpMinor, known_mech_attrs);
     }
+    _BIDReleaseCache(bidContext, bidConfig);
+    BIDReleaseContext(bidContext);
 
     return major;
 }
