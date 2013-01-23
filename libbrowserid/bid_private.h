@@ -27,8 +27,6 @@
 #endif
 
 #include <jansson.h>
-#include <curl/curl.h>
-#include <curl/easy.h>
 
 #include "browserid.h"
 
@@ -459,6 +457,14 @@ _BIDValidateX509CertChain(
     json_t *certChain);
 
 /*
+ * bid_ppal.c
+ */
+BIDError
+_BIDGetCurrentJsonTimestamp(
+    BIDContext context,
+    json_t **pTs);
+
+/*
  * bid_reauth.c
  */
 #define BID_TICKET_FLAG_MUTUAL_AUTH             0x2
@@ -567,11 +573,6 @@ _BIDSetJsonTimestampValue(
     json_t *json,
     const char *key,
     time_t ts);
-
-BIDError
-_BIDGetCurrentJsonTimestamp(
-    BIDContext context,
-    json_t **pTs);
 
 BIDError
 _BIDDuplicateString(
@@ -751,6 +752,35 @@ _BIDBrowserGetAssertion(
     const char *szIdentityName, /* optional */
     uint32_t ulReqFlags,
     char **pAssertion);
+
+#ifdef WIN32
+/*
+ * bid_wpal.c
+ */
+BIDError
+_BIDTimeToSecondsSince1970(
+    BIDContext context BID_UNUSED,
+    PFILETIME pft,
+    time_t *pt);
+
+BIDError
+_BIDSecondsSince1970ToTime(
+    BIDContext context BID_UNUSED,
+    time_t t,
+    PFILETIME pft);
+
+BIDError
+_BIDUcs2ToUtf8(
+    BIDContext context BID_UNUSED,
+    PCWSTR ucs2String,
+    char **pUtf8String);
+
+BIDError
+_BIDUtf8ToUcs2(
+    BIDContext context BID_UNUSED,
+    const char *utf8String,
+    PWSTR *pUcs2String);
+#endif /* WIN32 */
 
 /*
  * bid_x509.c

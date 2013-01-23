@@ -6,6 +6,9 @@
 
 #include "bid_private.h"
 
+#include <curl/curl.h>
+#include <curl/easy.h>
+
 static BIDError
 CURLcodeToBIDError(CURLcode cc)
 {

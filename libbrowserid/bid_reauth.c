@@ -53,6 +53,9 @@ BIDError
 _BIDAcquireDefaultTicketCache(BIDContext context)
 {
     BIDError err;
+#ifdef WIN32
+    err = BID_S_NOT_IMPLEMENTED;
+#else
     char szFileName[PATH_MAX];
 
 #ifdef __APPLE__
@@ -81,6 +84,8 @@ _BIDAcquireDefaultTicketCache(BIDContext context)
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
+#endif /* WIN32 */
+
     return err;
 }
 

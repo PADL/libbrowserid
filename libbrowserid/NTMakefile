@@ -1,0 +1,40 @@
+#
+# libbrowserid
+#
+
+RELDIR=libbrowserid
+
+!include ../windows/NTMakefile.w32 
+
+cdefines = $(cdefines) -DBUILD_GSSBID_LIB -DSYSCONFDIR=\"c:/windows/system32/drivers/etc/\"
+
+libbrowserid_OBJS =					\
+	$(OBJ)\bid_authority.obj			\
+	$(OBJ)\bid_base64.obj				\
+	$(OBJ)\bid_cache.obj				\
+	$(OBJ)\bid_context.obj				\
+	$(OBJ)\bid_crypto.obj				\
+	$(OBJ)\bid_cryptoapi.obj			\
+	$(OBJ)\bid_winhttp.obj				\
+	$(OBJ)\bid_error.obj				\
+	$(OBJ)\bid_identity.obj				\
+	$(OBJ)\bid_jwt.obj				\
+	$(OBJ)\bid_mcache.obj				\
+	$(OBJ)\bid_rcache.obj				\
+	$(OBJ)\bid_reauth.obj				\
+	$(OBJ)\bid_rp.obj				\
+	$(OBJ)\bid_rverify.obj				\
+	$(OBJ)\bid_stubs.obj				\
+	$(OBJ)\bid_user.obj				\
+	$(OBJ)\bid_util.obj				\
+	$(OBJ)\bid_verify.obj				\
+	$(OBJ)\bid_wpal.obj				\
+	$(OBJ)\bid_x509.obj				
+
+$(LIBBROWSERID): $(libbrowserid_OBJS)
+	$(LIBCON)
+
+all:: $(BUILT_SOURCES) $(LIBBROWSERID)
+
+clean::
+

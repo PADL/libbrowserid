@@ -7,7 +7,9 @@
 #ifndef _BROWSERID_H_
 #define _BROWSERID_H_ 1
 
+#ifndef WIN32
 #include <inttypes.h>
+#endif
 #include <time.h>
 
 #ifdef __cplusplus
