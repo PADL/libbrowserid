@@ -14,7 +14,7 @@ _BIDDeriveSessionSubkey(
     BIDJWK *pDerivedKey)
 {
     unsigned char *pbSubkey = NULL;
-    size_t cbSubkey;
+    size_t cbSubkey = 0;
     BIDError err;
     BIDJWK derivedKey = NULL;
     json_t *sk = NULL;

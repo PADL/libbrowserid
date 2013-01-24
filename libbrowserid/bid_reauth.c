@@ -180,7 +180,7 @@ _BIDMakeAuthenticator(
     BIDJWT *pAuthenticator)
 {
     BIDError err;
-    BIDJWT ap;
+    BIDJWT ap = NULL;
     json_t *n = NULL;
     json_t *iat = NULL;
     json_t *exp = NULL;

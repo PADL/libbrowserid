@@ -26,7 +26,7 @@ _BIDCheckReplayCache(
     time_t verificationTime)
 {
     BIDError err;
-    json_t *rdata;
+    json_t *rdata = NULL;
     unsigned char hash[32];
     char *szHash = NULL;
     size_t cbHash = sizeof(hash), cchHash;
@@ -68,7 +68,7 @@ _BIDUpdateReplayCache(
     uint32_t ulFlags)
 {
     BIDError err;
-    json_t *rdata;
+    json_t *rdata = NULL;
     unsigned char hash[32];
     char *szHash = NULL;
     size_t cbHash = sizeof(hash), cchHash;
