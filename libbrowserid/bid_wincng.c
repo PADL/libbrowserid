@@ -43,9 +43,41 @@ _BIDFreeBuffer(BCryptBuffer *blob)
 }
 
 static BIDError
+_BIDParseHexNumber(
+    BIDContext context,
+    const char *szValue,
+    size_t cchValue,
+    BCryptBuffer *blob)
+{
+    size_t i;
+
+    if (cchValue % 2)
+        return BID_S_INVALID_JSON;
+
+    blob->pvBuffer = BIDMalloc(cchValue / 2);
+    if (blob->pvBuffer == NULL)
+        return BID_S_NO_MEMORY;
+
+    for (i = 0; i < cchValue / 2; i++) {
+        int b;
+
+        if (sscanf(&szValue[i * 2], "%02x", &b) != 1) {
+            BIDFree(blob->pvBuffer);
+            blob->pvBuffer = NULL;
+            return BID_S_INVALID_JSON;
+        }
+        ((PUCHAR)blob->pvBuffer)[i] = b & 0xff;
+    }
+    blob->cbBuffer = cchValue / 2;
+    return BID_S_OK;
+}
+
+
+static BIDError
 _BIDParseBigNumber(
     BIDContext context,
     const char *szValue,
+    size_t cchValue,
     BCryptBuffer *blob)
 {
     return BID_S_NOT_IMPLEMENTED;
@@ -95,25 +127,10 @@ _BIDGetJsonBufferValue(
                 cchDecimal++;
         }
 
-        if (cchDecimal == len || (len % 2)) {
-            err = _BIDParseBigNumber(context, szValue, blob);
-        } else {
-            blob->pvBuffer = BIDMalloc(len / 2);
-            if (blob->pvBuffer == NULL)
-                return BID_S_NO_MEMORY;
-
-            for (i = 0; i < len / 2; i++) {
-                int b;
-
-                if (sscanf(&szValue[i * 2], "%02x", &b) != 1) {
-                    BIDFree(blob->pvBuffer);
-                    blob->pvBuffer = NULL;
-                    return BID_S_INVALID_JSON;
-                }
-                ((PUCHAR)blob->pvBuffer)[i] = b & 0xff;
-            }
-            blob->cbBuffer = len / 2;
-        }
+        if (cchDecimal == len || (len % 2))
+            err = _BIDParseBigNumber(context, szValue, len, blob);
+        else
+            err = _BIDParseHexNumber(context, szValue, len, blob);
     }
 
     return err;
