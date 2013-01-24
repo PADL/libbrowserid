@@ -12,7 +12,9 @@ struct BIDCacheDesc {
 };
 
 static struct BIDCacheOps *_BIDCacheOps[] = {
+#ifndef WIN32
     &_BIDFileCache,
+#endif
     &_BIDMemoryCache
 };
 

@@ -499,3 +499,22 @@ _BIDJsonObjectDel(
     return BID_S_OK;
 }
 
+BIDError
+_BIDJsonObjectSetBinaryValue(
+    BIDContext context,
+    json_t *dst,
+    const char *key,
+    const unsigned char *pbData,
+    size_t cbData)
+{
+    BIDError err;
+    json_t *value;
+
+    err = _BIDJsonBinaryValue(context, pbData, cbData, &value);
+    if (err != BID_S_OK)
+        return err;
+
+    err = _BIDJsonObjectSet(context, dst, key, value, BID_JSON_FLAG_CONSUME_REF);
+
+    return err;
+}

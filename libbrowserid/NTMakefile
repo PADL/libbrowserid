@@ -14,8 +14,6 @@ libbrowserid_OBJS =					\
 	$(OBJ)\bid_cache.obj				\
 	$(OBJ)\bid_context.obj				\
 	$(OBJ)\bid_crypto.obj				\
-	$(OBJ)\bid_cryptoapi.obj			\
-	$(OBJ)\bid_winhttp.obj				\
 	$(OBJ)\bid_error.obj				\
 	$(OBJ)\bid_identity.obj				\
 	$(OBJ)\bid_jwt.obj				\
@@ -28,6 +26,8 @@ libbrowserid_OBJS =					\
 	$(OBJ)\bid_user.obj				\
 	$(OBJ)\bid_util.obj				\
 	$(OBJ)\bid_verify.obj				\
+	$(OBJ)\bid_wincng.obj				\
+	$(OBJ)\bid_winhttp.obj				\
 	$(OBJ)\bid_wpal.obj				\
 	$(OBJ)\bid_x509.obj				
 

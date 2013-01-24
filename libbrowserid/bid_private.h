@@ -592,6 +592,14 @@ _BIDJsonObjectSet(
     uint32_t ulFlags);
 
 BIDError
+_BIDJsonObjectSetBinaryValue(
+    BIDContext context,
+    json_t *dst,
+    const char *key,
+    const unsigned char *pbData,
+    size_t cbData);
+
+BIDError
 _BIDJsonObjectDel(
     BIDContext context BID_UNUSED,
     json_t *dst,
