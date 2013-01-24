@@ -41,6 +41,10 @@ Optional:
 * OpenSAML <https://wiki.shibboleth.net/confluence/display/OpenSAML/Home>
 * Shibboleth <http://shibboleth.net/>
 
+Note: there are the beginnings of a Windows port, but this code is not yet
+tested or working, nor is the build environment in this branch. Please get in
+touch if you are interested in working on this.
+
 ## Installation
 
 Build similar to the following:
