@@ -43,6 +43,15 @@ _BIDFreeBuffer(BCryptBuffer *blob)
 }
 
 static BIDError
+_BIDParseBigNumber(
+    BIDContext context,
+    const char *szValue,
+    BCryptBuffer *blob)
+{
+    return BID_S_NOT_IMPLEMENTED;
+}
+
+static BIDError
 _BIDGetJsonBufferValue(
     BIDContext context,
     BIDJWK jwk,
@@ -87,7 +96,7 @@ _BIDGetJsonBufferValue(
         }
 
         if (cchDecimal == len || (len % 2)) {
-            return BID_S_NOT_IMPLEMENTED;
+            err = _BIDParseBigNumber(context, szValue, blob);
         } else {
             blob->pvBuffer = BIDMalloc(len / 2);
             if (blob->pvBuffer == NULL)
