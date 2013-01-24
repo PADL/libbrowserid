@@ -18,11 +18,11 @@ libbrowserid_OBJS =					\
 	$(OBJ)\bid_identity.obj				\
 	$(OBJ)\bid_jwt.obj				\
 	$(OBJ)\bid_mcache.obj				\
+	$(OBJ)\bid_mshtml.obj				\
 	$(OBJ)\bid_rcache.obj				\
 	$(OBJ)\bid_reauth.obj				\
 	$(OBJ)\bid_rp.obj				\
 	$(OBJ)\bid_rverify.obj				\
-	$(OBJ)\bid_stubs.obj				\
 	$(OBJ)\bid_user.obj				\
 	$(OBJ)\bid_util.obj				\
 	$(OBJ)\bid_verify.obj				\

@@ -174,6 +174,11 @@ BIDSetContextParam(
         _BIDReleaseCache(context, *pCache);
         *pCache = (BIDCache)value;
     }
+#ifdef WIN32
+    case BID_PARAM_PARENT_HWND:
+        context->ParentWindow = (HWND)value;
+        break;
+#endif
     default:
         err = BID_S_INVALID_PARAMETER;
         break;
@@ -198,7 +203,7 @@ BIDGetContextParam(
     case BID_PARAM_SECONDARY_AUTHORITIES:
         *pValue = context->SecondaryAuthorities;
         if (*pValue == NULL)
-            *pValue = _BIDSecondaryAuthorities;
+            *pValue = (void *)_BIDSecondaryAuthorities;
         break;
     case BID_PARAM_VERIFIER_URL:
         if (context->VerifierUrl != NULL)
@@ -242,6 +247,11 @@ BIDGetContextParam(
     case BID_PARAM_DH_KEYEX_SIZE:
         *((uint32_t *)pValue) = context->DhKeySize;
         break;
+#ifdef WIN32
+    case BID_PARAM_PARENT_HWND:
+        *((HWND *)pValue) = context->ParentWindow;
+        break;
+#endif
     default:
         err = BID_S_INVALID_PARAMETER;
         break;
