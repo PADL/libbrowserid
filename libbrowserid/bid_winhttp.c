@@ -146,7 +146,7 @@ _BIDMakeHttpRequest(
     if (!WinHttpSendRequest(hRequest,
                             WINHTTP_NO_ADDITIONAL_HEADERS,
                             0,
-                            szRequestData,
+                            (PCHAR)szRequestData,
                             cchRequestData,
                             cchRequestData,
                             0)) {
