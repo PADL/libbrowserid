@@ -1124,9 +1124,9 @@ _BIDComputeDHKey(
         goto cleanup;
     }
 
-#define BCRYPT_COMPAT 1
+/*#define BCRYPT_COMPAT 1 */
 
-#ifdef BCRYPT_COMPAT
+#if BCRYPT_COMPAT
     {
         /* For testing with Windows BCrypt, XXX change spec? */
         EVP_MD_CTX mdCtx;
