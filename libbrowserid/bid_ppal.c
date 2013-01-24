@@ -6,6 +6,8 @@
 
 #include "bid_private.h"
 
+#include <sys/time.h>
+
 BIDError
 _BIDGetCurrentJsonTimestamp(
     BIDContext context BID_UNUSED,
@@ -23,5 +25,3 @@ _BIDGetCurrentJsonTimestamp(
 
     return (*pTs == NULL) ? BID_S_NO_MEMORY : BID_S_OK;
 }
-
-
