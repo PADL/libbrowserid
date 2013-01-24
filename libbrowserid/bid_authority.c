@@ -76,6 +76,18 @@ _BIDGetAuthorityPublicKey(
     return BID_S_OK;
 }
 
+static int
+_BIDAuthorityEqual(
+    const char *a1,
+    const char *a2)
+{
+#ifdef WIN32
+    return (_strcmpi(a1, a2) == 0);
+#else
+    return (strcasecmp(a1, a2) == 0);
+#endif
+}
+
 /*
  * From https://github.com/mozilla/id-specs/blob/prod/browserid/index.md:
  *
@@ -104,7 +116,7 @@ _BIDIssuerIsAuthoritative(
     }
 
     /* XXX case-sensitive? */
-    if (strcasecmp(szHostname, szIssuer) == 0)
+    if (_BIDAuthorityEqual(szHostname, szIssuer))
         bIsAuthoritative = 1;
 
     if (!bIsAuthoritative) {
@@ -112,7 +124,7 @@ _BIDIssuerIsAuthoritative(
         BID_BAIL_ON_ERROR(err);
 
         for (i = 0; secondaryAuthorities[i] != NULL; i++) {
-            if (strcasecmp(szIssuer, secondaryAuthorities[i]) == 0) {
+            if (_BIDAuthorityEqual(szIssuer, secondaryAuthorities[i])) {
                 bIsAuthoritative = 1;
                 break;
             }
@@ -132,7 +144,7 @@ _BIDIssuerIsAuthoritative(
         for (i = 0, bIsAuthoritative = -1; i < maxDelegs; i++) {
             szAuthority = json_string_value(json_object_get(authority, "authority"));
             if (szAuthority != NULL) {
-                if (strcasecmp(szIssuer, szAuthority) == 0) {
+                if (_BIDAuthorityEqual(szIssuer, szAuthority)) {
                     bIsAuthoritative = 1;
                 } else {
                     BIDAuthority tmp;
