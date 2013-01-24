@@ -702,6 +702,8 @@ _BIDValidateSubject(
         strcmp(json_string_value(assertedSubject), p) == 0)
         bMatchedSubject++;
 
+    err = BID_S_OK;
+
 cleanup:
     if (err == BID_S_OK && bMatchedSubject == 0)
         err = BID_S_BAD_SUBJECT;
