@@ -1124,6 +1124,28 @@ _BIDComputeDHKey(
         goto cleanup;
     }
 
+#if 0
+    {
+        /* For testing with Windows BCrypt, XXX change spec? */
+        EVP_MD_CTX mdCtx;
+        unsigned char digest[SHA256_DIGEST_LENGTH];
+        unsigned int mdLength = sizeof(digest);
+
+        EVP_DigestInit(&mdCtx, EVP_sha256());
+        EVP_DigestUpdate(&mdCtx, cbKey, pbKey);
+        EVP_DigestFinal(&mdCtx, digest, &mdLength);
+
+        memset(pbKey, 0, cbKey);
+        memcpy(pbKey, digest, (cbKey < mdLength) ? cbKey : mdLength);
+    }
+#endif
+
+    *digestLength = mdLength;
+
+    return BID_S_OK;
+}
+#endif
+
     err = BID_S_OK;
     *ppbKey = pbKey;
     *pcbKey = cbKey;

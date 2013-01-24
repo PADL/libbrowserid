@@ -87,7 +87,7 @@ _BIDGetJsonBufferValue(
         }
 
         if (cchDecimal == len || (len % 2)) {
-            return BID_S_NOT_IMPLEMENTED; /* XXX */
+            return BID_S_NOT_IMPLEMENTED;
         } else {
             blob->pvBuffer = BIDMalloc(len / 2);
             if (blob->pvBuffer == NULL)
@@ -1291,9 +1291,11 @@ _BIDComputeDHKey(
     BCRYPT_KEY_HANDLE hPrivateKey = NULL;
     BCRYPT_KEY_HANDLE hPublicKey = NULL;
     BCRYPT_SECRET_HANDLE hSecret = NULL;
-    unsigned char *pbKey = NULL;
-    ssize_t cbKey = 0;
+    PUCHAR pbKey = NULL;
+    DWORD cbKey = 0;
     BCryptBuffer pub = { 0 };
+    BCryptBuffer paramBuffers[1];
+    BCryptBufferDesc params;
 
     *ppbKey = NULL;
     *pcbKey = 0;
@@ -1324,19 +1326,36 @@ _BIDComputeDHKey(
     nts = BCryptSecretAgreement(hPrivateKey, hPublicKey, &hSecret, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-#if 0
+    /*
+     * XXX there's no defined interface to get the DH secret directly.
+     * for now, we will just SHA256 it but this will not be interoperable
+     * with the OpenSSL implementation and/or the spec.
+     */
+    paramBuffers[0].cbBuffer   = wcslen(BCRYPT_SHA256_ALGORITHM) * sizeof(WCHAR);
+    paramBuffers[0].BufferType = KDF_HASH_ALGORITHM;
+    paramBuffers[0].pvBuffer   = BCRYPT_SHA256_ALGORITHM;
+
+    params.ulVersion = BCRYPTBUFFER_VERSION;
+    params.cBuffers  = ARRAYSIZE(paramBuffers);
+    params.pBuffers  = paramBuffers;
+
+    nts = BCryptDeriveKey(hSecret, BCRYPT_KDF_HASH, &params,
+                          NULL, 0, &cbKey, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
     pbKey = BIDMalloc(cbKey);
     if (pbKey == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
+    nts = BCryptDeriveKey(hSecret, BCRYPT_KDF_HASH, &params,
+                          pbKey, cbKey, &cbKey, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
     err = BID_S_OK;
     *ppbKey = pbKey;
     *pcbKey = cbKey;
-#else
-    err = BID_S_NOT_IMPLEMENTED;
-#endif
 
 cleanup:
     if (err != BID_S_OK) {
@@ -1452,6 +1471,9 @@ cleanup:
     return err;
 }
 
+/*
+ * X.509/mutual authentication SPIs below, not yet implemented
+ */
 BIDError
 _BIDLoadX509PrivateKey(
     BIDContext context BID_UNUSED,
