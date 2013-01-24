@@ -13,6 +13,12 @@
  * Windows Cryptography Next Generation (CNG) provider for BrowserID.
  */
 
+/*
+ * TODO bignums
+ * TODO export key without derivation
+ * TODO X.509 support
+ */
+
 static BIDError
 _BIDNtStatusToBIDError(NTSTATUS nts)
 {
@@ -934,8 +940,8 @@ _BIDMakeDHKey(
     BCryptBuffer y = { 0 };
     BCRYPT_DH_KEY_BLOB *dhKeyBlob = NULL;
     DWORD cbDhKeyBlob = 0;
-    PUCHAR pbDhObject;
-    BOOLEAN bIsPrivateKey;
+    PUCHAR pbDhKeyBlob;
+    BOOLEAN bIsPrivateKey = FALSE;
 
     *phKey = NULL;
 
@@ -954,12 +960,12 @@ _BIDMakeDHKey(
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDGetJsonBufferValue(context, dhKey, "x", BID_ENCODING_UNKNOWN, &x);
-    if (err == BID_S_UNKNOWN_JSON_KEY || err == BID_S_INVALID_KEY) {
-        bIsPrivateKey = FALSE;
-        err = BID_S_OK;
-    } else if (err == BID_S_OK)
+    if (err == BID_S_OK)
         bIsPrivateKey = TRUE;
-    BID_BAIL_ON_ERROR(err);
+    else if (err == BID_S_UNKNOWN_JSON_KEY || err == BID_S_INVALID_KEY)
+        bIsPrivateKey = FALSE;
+    else
+        goto cleanup;
 
     if (p.cbBuffer != g.cbBuffer) {
         err = BID_S_INVALID_KEY;
@@ -982,21 +988,24 @@ _BIDMakeDHKey(
     }
     ZeroMemory(dhKeyBlob, cbDhKeyBlob);
 
-    dhKeyBlob->dwMagic = bIsPrivateKey ? BCRYPT_DH_PRIVATE_MAGIC : BCRYPT_DH_PUBLIC_MAGIC;
+    dhKeyBlob->dwMagic = bIsPrivateKey
+                       ? BCRYPT_DH_PRIVATE_MAGIC : BCRYPT_DH_PUBLIC_MAGIC;
     dhKeyBlob->cbKey   = p.cbBuffer;
 
-    CopyMemory(pbDhObject, p.pvBuffer, p.cbBuffer);
-    pbDhObject += p.cbBuffer;
+    pbDhKeyBlob = (PUCHAR)(dhKeyBlob + 1);
 
-    CopyMemory(pbDhObject, g.pvBuffer, g.cbBuffer);
-    pbDhObject += g.cbBuffer;
+    CopyMemory(pbDhKeyBlob, p.pvBuffer, p.cbBuffer);
+    pbDhKeyBlob += p.cbBuffer;
 
-    CopyMemory(pbDhObject, y.pvBuffer, y.cbBuffer);
-    pbDhObject += y.cbBuffer;
+    CopyMemory(pbDhKeyBlob, g.pvBuffer, g.cbBuffer);
+    pbDhKeyBlob += g.cbBuffer;
+
+    CopyMemory(pbDhKeyBlob, y.pvBuffer, y.cbBuffer);
+    pbDhKeyBlob += y.cbBuffer;
    
     if (bIsPrivateKey) {
-        CopyMemory(pbDhObject, x.pvBuffer, x.cbBuffer);
-        pbDhObject += x.cbBuffer;
+        CopyMemory(pbDhKeyBlob, x.pvBuffer, x.cbBuffer);
+        pbDhKeyBlob += x.cbBuffer;
     } 
 
     nts = BCryptImportKeyPair(hAlgorithm,
@@ -1030,7 +1039,7 @@ _BIDGenerateDHParams(
     NTSTATUS nts;
     BCRYPT_ALG_HANDLE hAlgorithm = NULL;
     BCRYPT_KEY_HANDLE hTmpKey = NULL;
-    BCRYPT_DH_PARAMETER_HEADER *dhParamsHeader;
+    BCRYPT_DH_PARAMETER_HEADER *dhParamsHeader = NULL;
     DWORD cbDhParamsHeader = 0;
     json_t *dhParams = NULL;
     json_t *p = NULL;
@@ -1443,95 +1452,13 @@ cleanup:
     return err;
 }
 
-#if 0
 BIDError
 _BIDLoadX509PrivateKey(
     BIDContext context BID_UNUSED,
     const char *path,
     BIDJWK *pPrivateKey)
 {
-    BIDError err;
-    BIDJWK privateKey = NULL;
-    FILE *fp = NULL;
-    EVP_PKEY *pemKey = NULL;
-
-    *pPrivateKey = NULL;
-
-    fp = fopen(path, "r");
-    if (fp == NULL) {
-        err = BID_S_KEY_FILE_UNREADABLE;
-        goto cleanup;
-    }
-
-    pemKey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
-    if (pemKey == NULL) {
-        BID_CRYPTO_PRINT_ERRORS();
-        err = BID_S_KEY_FILE_UNREADABLE;
-        goto cleanup;
-    }
-
-    privateKey = json_object();
-    if (privateKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    err = _BIDJsonObjectSet(context, privateKey, "version", json_string("2012.08.15"), BID_JSON_FLAG_CONSUME_REF);
-    BID_BAIL_ON_ERROR(err);
-
-    if (pemKey->pkey.ptr == NULL) {
-        err = BID_S_INVALID_KEY;
-        goto cleanup;
-    }
-
-    switch (pemKey->type) {
-    case EVP_PKEY_RSA:
-        err = _BIDJsonObjectSet(context, privateKey, "algorithm", json_string("RS"), BID_JSON_FLAG_CONSUME_REF);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDSetJsonBNValue(context, privateKey, "n", pemKey->pkey.rsa->n);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDSetJsonBNValue(context, privateKey, "e", pemKey->pkey.rsa->e);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDSetJsonBNValue(context, privateKey, "d", pemKey->pkey.rsa->d);
-        BID_BAIL_ON_ERROR(err);
-
-        break;
-    case EVP_PKEY_DSA:
-        err = _BIDJsonObjectSet(context, privateKey, "algorithm", json_string("DS"), BID_JSON_FLAG_CONSUME_REF);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDSetJsonBNValue(context, privateKey, "p", pemKey->pkey.dsa->p);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDSetJsonBNValue(context, privateKey, "q", pemKey->pkey.dsa->q);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDSetJsonBNValue(context, privateKey, "g", pemKey->pkey.dsa->g);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDSetJsonBNValue(context, privateKey, "x", pemKey->pkey.dsa->priv_key);
-        BID_BAIL_ON_ERROR(err);
-
-        break;
-    default:
-        err = BID_S_INVALID_KEY;
-        goto cleanup;
-    }
-
-    *pPrivateKey = privateKey;
-
-cleanup:
-    if (fp != NULL)
-        fclose(fp);
-    if (pemKey != NULL)
-        EVP_PKEY_free(pemKey);
-    if (err != BID_S_OK)
-        json_decref(privateKey);
-
-    return err;
+    return BID_S_NOT_IMPLEMENTED;
 }
 
 BIDError
@@ -1540,145 +1467,7 @@ _BIDLoadX509Certificate(
     const char *path,
     json_t **pCert)
 {
-    BIDError err;
-    json_t *cert = NULL;
-    FILE *fp = NULL;
-    X509 *pemCert = NULL;
-    unsigned char *pbData = NULL, *p;
-    size_t cbData = 0;
-    char *szData = NULL;
-
-    *pCert = NULL;
-
-    fp = fopen(path, "r");
-    if (fp == NULL) {
-        err = BID_S_CERT_FILE_UNREADABLE;
-        goto cleanup;
-    }
-
-    pemCert = PEM_ASN1_read((void *(*) ()) d2i_X509, PEM_STRING_X509, fp, NULL, NULL, NULL);
-    if (pemCert == NULL) {
-        BID_CRYPTO_PRINT_ERRORS();
-        err = BID_S_CERT_FILE_UNREADABLE;
-        goto cleanup;
-    }
-
-    cbData = i2d_X509(pemCert, NULL);
-
-    p = pbData = BIDMalloc(cbData);
-    if (pbData == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    if (i2d_X509(pemCert, &p) < 0) {
-        BID_CRYPTO_PRINT_ERRORS();
-        err = BID_S_CRYPTO_ERROR;
-        goto cleanup;
-    }
-
-    err = _BIDBase64Encode(pbData, cbData, BID_ENCODING_BASE64, &szData, &cbData);
-    BID_BAIL_ON_ERROR(err);
-
-    cert = json_string(szData);
-    if (cert == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    *pCert = cert;
-
-cleanup:
-    if (fp != NULL)
-        fclose(fp);
-    if (pemCert != NULL)
-        X509_free(pemCert);
-    if (err != BID_S_OK)
-        json_decref(cert);
-    BIDFree(pbData);
-    BIDFree(szData);
-
-    return err;
-}
-
-static BIDError
-_BIDSetJsonX509Name(
-    BIDContext context,
-    json_t *j,
-    const char *key,
-    X509_NAME *name,
-    int cnOnly)
-{
-    char *szValue = NULL;
-    BIDError err;
-
-    if (cnOnly) {
-        int i;
-        X509_NAME_ENTRY *cn;
-        ASN1_STRING *cnValue;
-
-        i = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
-        if (i < 0)
-            return BID_S_MISSING_PRINCIPAL;
-
-        cn = X509_NAME_get_entry(name, i);
-        if (cn == NULL)
-            return BID_S_MISSING_PRINCIPAL;
-
-        cnValue = X509_NAME_ENTRY_get_data(cn);
-        ASN1_STRING_to_UTF8((unsigned char **)&szValue, cnValue);
-    } else {
-        /* XXX this is a deprecated API */
-        szValue = X509_NAME_oneline(name, NULL, -1);
-        if (szValue == NULL)
-            return BID_S_NO_MEMORY;
-    }
-
-    err = _BIDJsonObjectSet(context, j, key, json_string(szValue),
-                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-
-    OPENSSL_free(szValue);
-
-    return err;
-}
-
-static BIDError
-_BIDSetJsonX509Time(
-    BIDContext context,
-    json_t *j,
-    const char *key,
-    ASN1_TIME *ts)
-{
-    struct tm tm = { 0 };
-    const char *szTs = (const char *)ts->data;
-    size_t cchTs = strlen(szTs), n;
-    char zone;
-
-    if (cchTs != 13 && cchTs != 15)
-        return BID_S_INVALID_PARAMETER;
-
-    if (cchTs == 13)
-        n = sscanf(szTs, "%02d%02d%02d%02d%02d%02d%c",
-                   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-                   &tm.tm_hour, &tm.tm_min, &tm.tm_sec,
-                   &zone);
-    else
-        n = sscanf(szTs, "%04d%02d%02d%02d%02d%02d%c",
-                   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-                   &tm.tm_hour, &tm.tm_min, &tm.tm_sec,
-                   &zone);
-
-    if (n != 7 || zone != 'Z')
-        return BID_S_INVALID_PARAMETER;
-
-    if (cchTs == 15)
-        tm.tm_year -= 1900;
-    else if (tm.tm_year < 90)
-        tm.tm_year += 100;
-
-    tm.tm_mon--;
-
-    return _BIDSetJsonTimestampValue(context, j, key, timegm(&tm));
+    return BID_S_NOT_IMPLEMENTED;
 }
 
 BIDError
@@ -1688,65 +1477,7 @@ _BIDPopulateX509Identity(
     BIDIdentity identity,
     uint32_t ulReqFlags)
 {
-    BIDError err;
-    json_t *certChain = json_object_get(backedAssertion->Assertion->Header, "x5c");
-    json_t *principal = json_object();
-    X509 *x509 = NULL;
-    STACK_OF(GENERAL_NAME) *gens;
-    int i;
-
-    err = _BIDCertDataToX509(context, certChain, 0, &x509);
-    BID_BAIL_ON_ERROR(err);
-
-    gens = X509_get_ext_d2i(x509, NID_subject_alt_name, NULL, NULL);
-    if (gens != NULL) {
-        for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
-            GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
-            const char *key = NULL;
-
-            switch (gen->type) {
-            case GEN_EMAIL:
-                key = "email";
-                break;
-            case GEN_DNS:
-                key = "hostname";
-                break;
-            case GEN_URI:
-                key = "uri";
-                break;
-            default:
-                break;
-            }
-
-            if (key != NULL) {
-                err = _BIDJsonObjectSet(context, principal, key,
-                                        json_string((char *)gen->d.ia5->data),
-                                        BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-                BID_BAIL_ON_ERROR(err);
-            }
-        }
-    }
-
-    err = _BIDJsonObjectSet(context, identity->Attributes, "principal", principal, 0);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDSetJsonX509Name(context, identity->Attributes, "sub", X509_get_subject_name(x509),
-                              !!(ulReqFlags & BID_VERIFY_FLAG_RP));
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDSetJsonX509Name(context, identity->Attributes, "iss", X509_get_issuer_name(x509), 0);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDSetJsonX509Time(context, identity->Attributes, "nbf", X509_get_notBefore(x509));
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDSetJsonX509Time(context, identity->Attributes, "exp", X509_get_notAfter(x509));
-    BID_BAIL_ON_ERROR(err);
-
-cleanup:
-    json_decref(principal);
-
-    return err;
+    return BID_S_NOT_IMPLEMENTED;
 }
 
 BIDError
@@ -1756,71 +1487,6 @@ _BIDValidateX509CertChain(
     const char *caCertificateDir,
     json_t *certChain)
 {
-    BIDError err;
-    X509_STORE *store = NULL;
-    X509_STORE_CTX *storeCtx = NULL;
-    X509 *leafCert = NULL;
-    STACK_OF(X509) *chain = NULL;
-    size_t i;
-
-    if (json_array_size(certChain) == 0) {
-        err = BID_S_MISSING_CERT;
-        goto cleanup;
-    }
-
-    err = _BIDCertDataToX509(context, certChain, 0, &leafCert);
-    BID_BAIL_ON_ERROR(err);
-
-    chain = sk_X509_new_null();
-    if (chain == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    for (i = 1; i < json_array_size(certChain); i++) {
-        X509 *cert;
-
-        err = _BIDCertDataToX509(context, certChain, i, &cert);
-        BID_BAIL_ON_ERROR(err);
-
-        sk_X509_push(chain, cert);
-    }
-
-    store = X509_STORE_new();
-    storeCtx = X509_STORE_CTX_new();
-    if (store == NULL || storeCtx == NULL) {
-        BID_CRYPTO_PRINT_ERRORS();
-        err = BID_S_CRYPTO_ERROR;
-        goto cleanup;
-    }
-
-    if (X509_STORE_load_locations(store, caCertificateFile, caCertificateDir) != 1 ||
-        X509_STORE_set_default_paths(store) != 1 ||
-        X509_STORE_CTX_init(storeCtx, store, leafCert, chain) != 1) {
-        BID_CRYPTO_PRINT_ERRORS();
-        err = BID_S_CRYPTO_ERROR;
-        goto cleanup;
-    }
-
-#if 0
-    X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-#endif
-
-    if (!X509_verify_cert(storeCtx)) {
-        BID_CRYPTO_PRINT_ERRORS();
-        err = BID_S_UNTRUSTED_X509_CERT;
-        goto cleanup;
-    }
-
-cleanup:
-    if (chain != NULL)
-        sk_X509_free(chain);
-    if (storeCtx != NULL)
-        X509_STORE_CTX_free(storeCtx);
-    if (store != NULL)
-        X509_STORE_free(store);
-
-    return err;
+    return BID_S_NOT_IMPLEMENTED;
 }
 
-#endif
