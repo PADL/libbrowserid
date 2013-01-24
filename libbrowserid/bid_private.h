@@ -8,7 +8,9 @@
 #define _BID_PRIVATE_H_ 1
 
 #include "config.h"
-
+#ifdef WIN32
+#include "bid_wpal.h"
+#endif
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
