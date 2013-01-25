@@ -12,8 +12,6 @@
 #include "browserid.h"
 #include "bid_private.h"
 
-#include <AppKit/AppKit.h>
-
 /*
  * Test acquiring an assertion and verifying it.
  */
@@ -70,6 +68,10 @@ int main(int argc, const char *argv[])
     }
 #endif /* !BUILD_AS_DSO */
 
+#ifdef WIN32
+    options &= ~(BID_CONTEXT_GSS);
+#endif
+
     err = BIDAcquireContext(options, &context);
     BID_BAIL_ON_ERROR(err);
 
@@ -79,6 +81,7 @@ int main(int argc, const char *argv[])
                               &assertion, NULL, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
+#ifndef WIN32
     err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE,
                              assertion, audience ? audience : "host/www.persona.org",
                              NULL, 0, time(NULL), 0, &identity, &expires, &flags);
@@ -89,6 +92,7 @@ int main(int argc, const char *argv[])
 
     json_dumpf(j, stdout, 0);
     printf("\n");
+#endif
 
 cleanup:
     BIDReleaseIdentity(context, identity);
