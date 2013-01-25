@@ -63,6 +63,7 @@
     NSString *assertion;
     BIDIdentityDialog *identityDialog;
     WebView *webView;
+    NSWindow *parentWindow;
     BIDError bidError;
 }
 
@@ -87,6 +88,9 @@
 
 - (BOOL)silent;
 - (void)setSilent:(BOOL)value;
+
+- (NSWindow *)parentWindow;
+- (void)setParentWindow:(NSWindow *)value;
 
 - (BIDError)bidError;
 
@@ -203,6 +207,19 @@
 - (BIDError)bidError
 {
     return bidError;
+}
+
+- (NSWindow *)parentWindow
+{
+    return parentWindow;
+}
+
+- (void)setParentWindow:(NSWindow *)value
+{
+    if (value != parentWindow) {
+        [parentWindow release];
+        parentWindow = [value retain];
+    }
 }
 
 #pragma mark - helpers
@@ -405,6 +422,7 @@
     assertion = nil;
     identityDialog = nil;
     webView = nil;
+    parentWindow = nil;
     bidError = BID_S_INTERACT_FAILURE;
 
     return [super init];
@@ -446,6 +464,8 @@
 
     identityDialog = [[BIDIdentityDialog identityDialog] retain];
     [identityDialog setDelegate:self];
+    if (parentWindow != nil)
+        [identityDialog setParentWindow:parentWindow];
 
     webView = [[self newWebView] retain];
     [[webView mainFrame] loadRequest:[NSURLRequest requestWithURL:personaURL]];
@@ -500,6 +520,8 @@ _BIDBrowserGetAssertion(
             [controller setRequiredEmail:[NSString stringWithCString:szIdentityName]];
             [controller setSilent:!!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT)];
         }
+        if (context->ParentWindow != NULL)
+            [controller setParentWindow:context->ParentWindow];
         [controller setCanInteract:_BIDCanInteractP(context, ulReqFlags)];
         [controller performSelectorOnMainThread:@selector(getAssertion) withObject:nil waitUntilDone:TRUE];
 

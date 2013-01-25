@@ -230,9 +230,7 @@ struct BIDContextDesc {
     uint32_t DhKeySize; 
     uint32_t TicketLifetime;
     BIDCache RPCertConfig;
-#ifdef WIN32
-    HWND ParentWindow; /* to parent browser dialog */
-#endif
+    void *ParentWindow;
 };
 
 /*
