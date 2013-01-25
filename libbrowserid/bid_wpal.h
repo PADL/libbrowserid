@@ -7,8 +7,6 @@
 #ifndef _BID_WPAL_H_
 #define _BID_WPAL_H_ 1
 
-#include <config.h>
-
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -17,7 +15,15 @@
 #endif
 #include <windows.h>
 #include <wincred.h>
+#include <BaseTsd.h>
 
-typedef SSIZE_T ssize_t;
+typedef signed char int8_t;
+typedef short int16_t;
+typedef int int32_t;
+typedef long long int64_t;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+typedef unsigned long long uint64_t;
 
 #endif /* _BID_WPAL_H_ */

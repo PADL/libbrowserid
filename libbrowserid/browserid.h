@@ -7,7 +7,9 @@
 #ifndef _BROWSERID_H_
 #define _BROWSERID_H_ 1
 
-#ifndef WIN32
+#ifdef WIN32
+#include <bid_wpal.h>
+#else
 #include <inttypes.h>
 #endif
 #include <time.h>
