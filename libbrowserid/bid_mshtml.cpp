@@ -14,6 +14,38 @@
  * Internet Explorer implementation of the browser shim.
  */
 
+static const char *_BIDHTMLOnLoadScript = "                                                         \
+    var controller = window.dialogArguments;                                                        \
+    var jwcrypto = require('./lib/jwcrypto');                                                       \
+    var assertionSign = jwcrypto.assertion.sign;                                                    \
+                                                                                                    \
+    jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {                   \
+        var gssPayload = JSON.parse(controller.claims);                                             \
+        for (var k in payload) {                                                                    \
+            if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                              \
+        }                                                                                           \
+        assertionSign(gssPayload, assertionParams, secretKey, cb);                                  \
+    };                                                                                              \
+                                                                                                    \
+    var options = { siteName: controller.siteName, silent: controller.silent,                       \
+                    requiredEmail: controller.requiredEmail };                                      \
+                                                                                                    \
+    if (controller.servicePrincipalName) {                                                          \
+        BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };        \
+    }                                                                                               \
+                                                                                                    \
+    BrowserID.internal.setPersistent(                                                               \
+        controller.audience,                                                                        \
+        function() {                                                                                \
+            BrowserID.internal.get(                                                                 \
+                controller.audience,                                                                \
+                function(assertion, params) {                                                       \
+                    controller.identityCallback_withParameters_(assertion, params);                 \
+                },                                                                                  \
+                options);                                                                           \
+    });                                                                                             \
+";
+
 static BIDError
 _BIDSpnToSiteName(
     BIDContext context,
@@ -92,8 +124,10 @@ _BIDHTMLEventSetAttributeBStr(
 
 cleanup:
     BIDFree(wszValue);
+#if 0
     SysFreeString(bstrAttribute);
     SysFreeString(V_BSTR(&cv));
+#endif
 
     return err;
 }
@@ -125,7 +159,22 @@ _BIDHTMLEventSetAttributeBool(
     err = SUCCEEDED(hr) ? BID_S_OK : BID_S_NO_MEMORY;
 
 cleanup:
+#if 0
     SysFreeString(bstrAttribute);
+#endif
+
+    return err;
+}
+
+static BIDError
+_BIDHTMLEventSetOnLoad(
+    BIDContext context,
+    IHTMLEventObj2 *pEvObj2)
+{
+    BIDError err;
+
+    err = _BIDHTMLEventSetAttributeBStr(context, pEvObj2,
+                                        L"onload", _BIDHTMLOnLoadScript);
 
     return err;
 }
@@ -144,6 +193,9 @@ _BIDPackBrowserArgs(
     BIDError err;
     char *szSiteName = NULL;
     char *szJsonClaims = NULL;
+
+    err = _BIDHTMLEventSetOnLoad(context, pEvObj2);
+    BID_BAIL_ON_ERROR(err);
 
     if (claims != NULL) {
         szJsonClaims = json_dumps(claims, JSON_COMPACT);
@@ -186,7 +238,15 @@ cleanup:
 }
 
 static WCHAR _BIDHTMLDialogOptions[] =
-    L"dialogHeight:700;dialogWidth:375;center:yes;resizable:no;scroll:no;status:no;unadorned:yes";
+    L"dialogHeight:375px;dialogWidth:700px;center:yes;resizable:no;scroll:no;status:no;unadorned:no";
+
+#define BID_BAIL_ON_HERROR(status)       do {       \
+        if (FAILED((status))) {                     \
+            err = BID_S_INTERACT_FAILURE;           \
+            goto cleanup;                           \
+        }                                           \
+    } while (0)
+
 
 static BIDError
 _BIDHTMLWindowGetAssertion(
@@ -202,36 +262,37 @@ _BIDHTMLWindowGetAssertion(
 {
     BIDError err;
     HRESULT hr;
+    IHTMLDocument *pDocument = NULL;
+    IHTMLDocument4 *pDocument4 = NULL;
     IHTMLEventObj *pEventObj = NULL;
     IHTMLEventObj2 *pEvObj2 = NULL;
-    VARIANT varArgIn = { 0 };
-    VARIANT varArgOut = { 0 };
+    VARIANT varArgNull;
+    VARIANT varArgIn;
+    VARIANT varArgOut;
     IMoniker *pURLMoniker = NULL;
     BSTR bstrURL = NULL;
-    HWND hwndParent = NULL;
     DWORD dwFlags;
 
+    VariantInit(&varArgNull);
     VariantInit(&varArgIn);
     VariantInit(&varArgOut);
 
-    err = BIDGetContextParam(context, BID_PARAM_PARENT_WINDOW,
-                             (PVOID *)&hwndParent);
-    BID_BAIL_ON_ERROR(err);
-
-    hr = CoCreateInstance(CLSID_CEventObj,
+    hr = CoCreateInstance(CLSID_HTMLDocument,
                           NULL,
-                          CLSCTX_ALL,
-                          IID_PPV_ARGS(&pEventObj));
-    if (FAILED(hr)) {
-        err = BID_S_INTERACT_FAILURE;
-        goto cleanup;
-    }
+                          CLSCTX_INPROC_SERVER,
+                          IID_PPV_ARGS(&pDocument));
+    BID_BAIL_ON_HERROR(hr);
+
+    hr = pDocument->QueryInterface(IID_IHTMLDocument4, (void **)&pDocument4);
+    BID_BAIL_ON_HERROR(hr);
+
+    V_VT(&varArgNull) = VT_NULL;
+
+    hr = pDocument4->createEventObject(&varArgNull, &pEventObj);
+    BID_BAIL_ON_HERROR(hr);
 
     hr = pEventObj->QueryInterface(IID_IHTMLEventObj2, (void **)&pEvObj2);
-    if (FAILED(hr)) {
-        err = BID_S_INTERACT_FAILURE;
-        goto cleanup;
-    }
+    BID_BAIL_ON_HERROR(hr);
 
     err = _BIDPackBrowserArgs(context, pEvObj2,
                               szPackedAudience, szAudienceOrSpn,
@@ -253,7 +314,7 @@ _BIDHTMLWindowGetAssertion(
 
     V_UNKNOWN(&varArgIn) = pEvObj2;
 
-    hr = (*pfnShowHTMLDialogEx)(hwndParent,
+    hr = (*pfnShowHTMLDialogEx)((HWND)context->ParentWindow,
                                 pURLMoniker,
                                 dwFlags,
                                 &varArgIn,
@@ -262,12 +323,16 @@ _BIDHTMLWindowGetAssertion(
     err = SUCCEEDED(hr) ? BID_S_OK : BID_S_INTERACT_FAILURE;
 
 cleanup:
-    if (pURLMoniker != NULL)
-        pURLMoniker->Release();
+    if (pDocument != NULL)
+        pDocument->Release();
+    if (pDocument4 != NULL)
+        pDocument4->Release();
     if (pEventObj != NULL)
         pEventObj->Release();
     if (pEvObj2 != NULL)
         pEvObj2->Release();
+    if (pURLMoniker != NULL)
+        pURLMoniker->Release();
     SysFreeString(bstrURL);
     VariantClear(&varArgIn);
     VariantClear(&varArgOut);
@@ -286,6 +351,7 @@ _BIDBrowserGetAssertion(
     char **pAssertion)
 {
     BIDError err;
+    HRESULT hr;
     HINSTANCE hinstMSHTML = NULL;
     SHOWHTMLDIALOGEXFN *pfnShowHTMLDialogEx = NULL;
 
@@ -301,6 +367,9 @@ _BIDBrowserGetAssertion(
         err = BID_S_INTERACT_UNAVAILABLE;
         goto cleanup;
     }
+
+    hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+    BID_BAIL_ON_HERROR(hr);
 
     err = _BIDHTMLWindowGetAssertion(context,
                                      pfnShowHTMLDialogEx,
