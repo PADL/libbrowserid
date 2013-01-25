@@ -15,12 +15,12 @@
  */
 
 static const char *_BIDHTMLOnLoadScript = "                                                         \
-    var controller = window.dialogArguments;                                                        \
+    var controller = JSON.parse(window.dialogArguments);                                            \
     var jwcrypto = require('./lib/jwcrypto');                                                       \
     var assertionSign = jwcrypto.assertion.sign;                                                    \
                                                                                                     \
     jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {                   \
-        var gssPayload = JSON.parse(controller.claims);                                             \
+        var gssPayload = controller.claims;                                                         \
         for (var k in payload) {                                                                    \
             if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                              \
         }                                                                                           \
@@ -40,7 +40,8 @@ static const char *_BIDHTMLOnLoadScript = "                                     
             BrowserID.internal.get(                                                                 \
                 controller.audience,                                                                \
                 function(assertion, params) {                                                       \
-                    controller.identityCallback_withParameters_(assertion, params);                 \
+                    window.returnValue = assertion;                                                 \
+                    window.close();                                                                 \
                 },                                                                                  \
                 options);                                                                           \
     });                                                                                             \
@@ -88,93 +89,38 @@ _BIDSpnToSiteName(
 }
 
 static BIDError
-_BIDHTMLEventSetAttributeBStr(
+_BIDJsonToVariant(
     BIDContext context,
-    IHTMLEventObj2 *pEvObj2,
-    LPCWSTR wszAttribute,
-    const char *szValue)
+    json_t *jsonObject,
+    VARIANT *pVar)
 {
     BIDError err;
-    LPWSTR wszValue = NULL;
-    BSTR bstrAttribute = NULL;
-    VARIANT cv;
-    HRESULT hr;
+    char *szJson = NULL;
+    PWSTR wszJson = NULL;
 
-    VariantInit(&cv);
+    szJson = json_dumps(jsonObject, JSON_COMPACT);
+    if (szJson == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
-    err = _BIDUtf8ToUcs2(context, szValue, &wszValue);
+    err = _BIDUtf8ToUcs2(context, szJson, &wszJson);
     BID_BAIL_ON_ERROR(err);
 
-    V_VT(&cv)   = VT_BSTR;
-    V_BSTR(&cv) = SysAllocString(wszValue);
+    VariantInit(pVar);
 
-    if (V_BSTR(&cv) == NULL) {
+    pVar->vt = VT_BSTR;
+    pVar->bstrVal = SysAllocString(wszJson);
+    if (pVar->bstrVal == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
-    bstrAttribute = SysAllocString(wszAttribute);
-    if (bstrAttribute == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    hr = pEvObj2->setAttribute(bstrAttribute, cv, 0);
-    err = SUCCEEDED(hr) ? BID_S_OK : BID_S_NO_MEMORY;
+    err = BID_S_OK;
 
 cleanup:
-    BIDFree(wszValue);
-#if 0
-    SysFreeString(bstrAttribute);
-    SysFreeString(V_BSTR(&cv));
-#endif
-
-    return err;
-}
-
-static BIDError
-_BIDHTMLEventSetAttributeBool(
-    BIDContext context,
-    IHTMLEventObj2 *pEvObj2,
-    LPCWSTR wszAttribute,
-    BOOLEAN bValue)
-{
-    BIDError err;
-    BSTR bstrAttribute = NULL;
-    VARIANT cv;
-    HRESULT hr;
-
-    VariantInit(&cv);
-
-    V_VT(&cv)   = VT_BOOL;
-    V_BOOL(&cv) = bValue;
-
-    bstrAttribute = SysAllocString(wszAttribute);
-    if (bstrAttribute == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    hr = pEvObj2->setAttribute(bstrAttribute, cv, 0);
-    err = SUCCEEDED(hr) ? BID_S_OK : BID_S_NO_MEMORY;
-
-cleanup:
-#if 0
-    SysFreeString(bstrAttribute);
-#endif
-
-    return err;
-}
-
-static BIDError
-_BIDHTMLEventSetOnLoad(
-    BIDContext context,
-    IHTMLEventObj2 *pEvObj2)
-{
-    BIDError err;
-
-    err = _BIDHTMLEventSetAttributeBStr(context, pEvObj2,
-                                        L"onload", _BIDHTMLOnLoadScript);
+    BIDFree(szJson);
+    BIDFree(wszJson);
 
     return err;
 }
@@ -182,57 +128,65 @@ _BIDHTMLEventSetOnLoad(
 static BIDError
 _BIDPackBrowserArgs(
     BIDContext context,
-    IHTMLEventObj2 *pEvObj2,
     const char *szPackedAudience,
     const char *szAudienceOrSpn,
     json_t *claims,
     const char *szIdentityName,
     uint32_t ulReqFlags,
-    BOOLEAN bSilent)
+    BOOLEAN bSilent,
+    VARIANT *pVar)
 {
     BIDError err;
+    json_t *args = NULL;
     char *szSiteName = NULL;
-    char *szJsonClaims = NULL;
 
-    err = _BIDHTMLEventSetOnLoad(context, pEvObj2);
-    BID_BAIL_ON_ERROR(err);
-
-    if (claims != NULL) {
-        szJsonClaims = json_dumps(claims, JSON_COMPACT);
-        if (szJsonClaims == NULL) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
-
-        err = _BIDHTMLEventSetAttributeBStr(context, pEvObj2, L"claims", szJsonClaims);
-        BID_BAIL_ON_ERROR(err);
+    args = json_object();
+    if (args == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
     }
 
-    err = _BIDHTMLEventSetAttributeBStr(context, pEvObj2, L"audience", szPackedAudience);
+    err = _BIDJsonObjectSet(context, args, "claims", claims, 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, args, "audience",
+                            json_string(szPackedAudience),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
 
     if (context->ContextOptions & BID_CONTEXT_GSS) {
-        err = _BIDHTMLEventSetAttributeBStr(context, pEvObj2, L"servicePrincipalName", szAudienceOrSpn);
+        err = _BIDJsonObjectSet(context, args, "servicePrincipalName",
+                                json_string(szAudienceOrSpn),
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDSpnToSiteName(context, szAudienceOrSpn, &szSiteName);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDHTMLEventSetAttributeBStr(context, pEvObj2, L"siteName", szSiteName);
+        err = _BIDJsonObjectSet(context, args, "siteName",
+                                json_string(szSiteName),
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
     }
 
     if (szIdentityName != NULL) {
-        err = _BIDHTMLEventSetAttributeBStr(context, pEvObj2, L"requiredEmail", szIdentityName);
+        err = _BIDJsonObjectSet(context, args, "requiredEmail",
+                                json_string(szIdentityName),
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDHTMLEventSetAttributeBool(context, pEvObj2, L"silent", bSilent);
+        err = _BIDJsonObjectSet(context, args, "silent",
+                                bSilent ? json_true() : json_false(),
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
     }
 
+    err = _BIDJsonToVariant(context, args, pVar);
+    BID_BAIL_ON_ERROR(err);
+
 cleanup:
+    json_decref(args);
     BIDFree(szSiteName);
-    BIDFree(szJsonClaims);
 
     return err;
 }
@@ -262,41 +216,18 @@ _BIDHTMLWindowGetAssertion(
 {
     BIDError err;
     HRESULT hr;
-    IHTMLDocument *pDocument = NULL;
-    IHTMLDocument4 *pDocument4 = NULL;
-    IHTMLEventObj *pEventObj = NULL;
-    IHTMLEventObj2 *pEvObj2 = NULL;
-    VARIANT varArgNull;
     VARIANT varArgIn;
     VARIANT varArgOut;
     IMoniker *pURLMoniker = NULL;
     BSTR bstrURL = NULL;
     DWORD dwFlags;
 
-    VariantInit(&varArgNull);
     VariantInit(&varArgIn);
     VariantInit(&varArgOut);
 
-    hr = CoCreateInstance(CLSID_HTMLDocument,
-                          NULL,
-                          CLSCTX_INPROC_SERVER,
-                          IID_PPV_ARGS(&pDocument));
-    BID_BAIL_ON_HERROR(hr);
-
-    hr = pDocument->QueryInterface(IID_IHTMLDocument4, (void **)&pDocument4);
-    BID_BAIL_ON_HERROR(hr);
-
-    V_VT(&varArgNull) = VT_NULL;
-
-    hr = pDocument4->createEventObject(&varArgNull, &pEventObj);
-    BID_BAIL_ON_HERROR(hr);
-
-    hr = pEventObj->QueryInterface(IID_IHTMLEventObj2, (void **)&pEvObj2);
-    BID_BAIL_ON_HERROR(hr);
-
-    err = _BIDPackBrowserArgs(context, pEvObj2,
-                              szPackedAudience, szAudienceOrSpn,
-                              claims, szIdentityName, ulReqFlags, bSilent);
+    err = _BIDPackBrowserArgs(context, szPackedAudience, szAudienceOrSpn,
+                              claims, szIdentityName, ulReqFlags, bSilent,
+                              &varArgIn);
     BID_BAIL_ON_ERROR(err);
 
     bstrURL = SysAllocString(L"https://login.persona.org/sign_in#NATIVE");
@@ -307,12 +238,10 @@ _BIDHTMLWindowGetAssertion(
         goto cleanup;
     }
 
-    dwFlags = HTMLDLG_MODAL | HTMLDLG_VERIFY;
+    dwFlags = HTMLDLG_MODAL | HTMLDLG_VERIFY | HTMLDLG_ALLOW_UNKNOWN_THREAD;
 
     if (bSilent)
         dwFlags |= HTMLDLG_NOUI;
-
-    V_UNKNOWN(&varArgIn) = pEvObj2;
 
     hr = (*pfnShowHTMLDialogEx)((HWND)context->ParentWindow,
                                 pURLMoniker,
@@ -323,14 +252,6 @@ _BIDHTMLWindowGetAssertion(
     err = SUCCEEDED(hr) ? BID_S_OK : BID_S_INTERACT_FAILURE;
 
 cleanup:
-    if (pDocument != NULL)
-        pDocument->Release();
-    if (pDocument4 != NULL)
-        pDocument4->Release();
-    if (pEventObj != NULL)
-        pEventObj->Release();
-    if (pEvObj2 != NULL)
-        pEvObj2->Release();
     if (pURLMoniker != NULL)
         pURLMoniker->Release();
     SysFreeString(bstrURL);
