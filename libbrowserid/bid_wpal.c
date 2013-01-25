@@ -6,6 +6,20 @@
 
 #include "bid_private.h"
 
+#pragma section(".CRT$XCU", read)
+
+static void __cdecl
+_BIDLibraryInit(void);
+
+__declspec(allocate(".CRT$XCU"))
+void (__cdecl *__BIDLibraryInit)(void) = _BIDLibraryInit;
+
+static void __cdecl
+_BIDLibraryInit(void)
+{
+    json_set_alloc_funcs(BIDMalloc, BIDFree);
+}
+
 BIDError
 _BIDSecondsSince1970ToTime(
     BIDContext context BID_UNUSED,

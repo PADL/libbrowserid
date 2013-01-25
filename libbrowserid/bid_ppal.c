@@ -8,6 +8,15 @@
 
 #include <sys/time.h>
 
+static void
+_BIDLibraryInit(void) __attribute__((__constructor__));
+
+static void
+_BIDLibraryInit(void)
+{
+    json_set_alloc_funcs(BIDMalloc, BIDFree);
+}
+
 BIDError
 _BIDGetCurrentJsonTimestamp(
     BIDContext context BID_UNUSED,
