@@ -9,72 +9,50 @@
 #include <MsHtml.h>
 #include <MsHtmlc.h>
 #include <MsHtmHst.h>
-#include <ExDisp.h>
 #include <Shlwapi.h>
 #include <DHtmldid.h>
-#include <ExDispid.h>
 #include <MsHtmdid.h>
+
+#define DISPID_BIDIDENTITYCONTROLLER_CALLBACK       0x40000001
+#define DISPID_BIDIDENTITYCONTROLLER_SILENT         0x40000002
 
 /*
  * Internet Explorer implementation of the browser shim.
  */
 
-#if 0
 static WCHAR _BIDHTMLInterposeAssertionSignScript[] = L"                                            \
-    var controller = JSON.parse(window.dialogArguments);                                            \
+    var args = JSON.parse(window.dialogArguments);                                                  \
     var jwcrypto = require('./lib/jwcrypto');                                                       \
     var assertionSign = jwcrypto.assertion.sign;                                                    \
                                                                                                     \
     jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {                   \
-        var gssPayload = controller.claims;                                                         \
+        var gssPayload = args.claims;                                                               \
         for (var k in payload) {                                                                    \
             if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                              \
         }                                                                                           \
         assertionSign(gssPayload, assertionParams, secretKey, cb);                                  \
     };                                                                                              \
 ";
-#else
-static WCHAR _BIDHTMLInterposeAssertionSignScript[] = L"                                            \
-    var controller = JSON.parse(window.dialogArguments);                                            \
-";
-#endif
 
-#if 0
 static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                                                  \
-    var options = { siteName: controller.siteName, silent: controller.silent,                       \
-                    requiredEmail: controller.requiredEmail };                                      \
+    var options = { siteName: args.siteName, silent: window.controller.silent,                      \
+                    requiredEmail: args.requiredEmail };                                            \
                                                                                                     \
-    if (controller.servicePrincipalName) {                                                          \
-        BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };        \
+    if (args.servicePrincipalName) {                                                                \
+        BrowserID.User.getHostname = function() { return args.servicePrincipalName; };              \
     }                                                                                               \
                                                                                                     \
     BrowserID.internal.setPersistent(                                                               \
-        controller.audience,                                                                        \
+        args.audience,                                                                              \
         function() {                                                                                \
             BrowserID.internal.get(                                                                 \
-                controller.audience,                                                                \
+                args.audience,                                                                      \
                 function(assertion, params) {                                                       \
-                    alert(assertion);                                                 \
-                    window.returnValue = assertion;                                                 \
-                    window.close();                                                                 \
+                   window.controller.identityCallback(assertion, params);                           \
                 },                                                                                  \
                 options);                                                                           \
     });                                                                                             \
 ";
-#else
-static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                                                  \
-    var options = { siteName: controller.siteName, silent: controller.silent,                       \
-                    requiredEmail: controller.requiredEmail };                                      \
-                                                                                                    \
-    BrowserID.internal.get(                                                                         \
-        controller.audience,                                                                        \
-        function(assertion, params) {                                                               \
-            alert(assertion);                                                 \
-        },                                                                                          \
-            options);                                                                               \
-";
-
-#endif
 
 static WCHAR _BIDHTMLDialogOptions[] =
     L"dialogHeight:375px;dialogWidth:700px;center:yes;resizable:no;scroll:no;status:no;unadorned:no";
@@ -111,7 +89,7 @@ public:
                       WORD wFlags,
                       DISPPARAMS *pDispParams,
                       VARIANT *pVarResult,
-                      EXCEPINFO *pExecepInfo,
+                      EXCEPINFO *pExcepInfo,
                       UINT *puArgErr);
 
     BIDError Initialize(BIDContext context,
@@ -138,12 +116,18 @@ private:
 
     HRESULT _InterposeAssertionSign(void);
     HRESULT _AcquireAssertion(void);
-    HRESULT _IdentityCallback(VARIANT *vt);
+    HRESULT _IdentityCallback(DISPPARAMS *pDispParams);
+    HRESULT _GetArguments(VARIANT *vArgs);
 
     HRESULT _ShowDialog(void);
     HRESULT _RunModal(void);
     HRESULT _GetBrowserWindow(void);
     HRESULT _FindConnectionPoint(IConnectionPoint **ppConnectionPoint);
+    HRESULT _PublishController(void);
+    HRESULT _CloseIdentityDialog(void);
+    HRESULT _SetAssertion(BSTR bstrAssertion);
+    void _SetSilent(BOOLEAN bValue);
+    BOOLEAN _GetSilent(void);
 
     BIDError _MapError(HRESULT hr);
 
@@ -151,7 +135,7 @@ private:
     LONG _cRef;
 
     BIDContext _context;
-    BIDError _beAcquire;
+    BIDError _bidError;
     uint32_t _ulReqFlags;
 
     HINSTANCE _hinstMSHTML;
@@ -159,6 +143,7 @@ private:
 
     json_t *_args;
     char *_szAssertion;
+    BOOLEAN _bSilent;
 
     IMoniker *_pURLMoniker;
     IHTMLWindow2 *_pHTMLWindow2;
@@ -172,7 +157,7 @@ CBIDIdentityController::CBIDIdentityController()
     _cRef = 1;
 
     _context = NULL;
-    _beAcquire = BID_S_INTERACT_REQUIRED;
+    _bidError = BID_S_INTERACT_REQUIRED;
     _ulReqFlags = 0;
 
     _hinstMSHTML = NULL;
@@ -180,6 +165,7 @@ CBIDIdentityController::CBIDIdentityController()
 
     _args = NULL;
     _szAssertion = NULL;
+    _bSilent = FALSE;
 
     _pURLMoniker = NULL;
     _pHTMLWindow2 = NULL;
@@ -263,8 +249,21 @@ CBIDIdentityController::GetIDsOfNames(
     LCID lcid,
     DISPID FAR *rgDispId)
 {
-    OutputDebugString("CBIDIdentityController::GetIDsOfNames\r\n");
-    return S_OK;
+    unsigned int i;
+    BOOLEAN bUnknown = FALSE;
+
+    for (i = 0; i < cNames; i++) {
+        if (wcscmp(rgszNames[i], L"identityCallback") == 0) {
+            rgDispId[i] = DISPID_BIDIDENTITYCONTROLLER_CALLBACK;
+        } else if (wcscmp(rgszNames[i], L"silent") == 0) {
+            rgDispId[i] = DISPID_BIDIDENTITYCONTROLLER_SILENT;
+        } else {
+            rgDispId[i] = DISPID_UNKNOWN;
+            bUnknown = TRUE;
+        }
+    }
+
+    return bUnknown ? DISP_E_UNKNOWNNAME : S_OK;
 }
 
 BIDError
@@ -321,15 +320,54 @@ CBIDIdentityController::Invoke(
     WORD wFlags,
     DISPPARAMS *pDispParams,
     VARIANT *pVarResult,
-    EXCEPINFO *pExecepInfo,
+    EXCEPINFO *pExcepInfo,
     UINT *puArgErr)
 {
     IConnectionPoint *pConnectionPoint = NULL;
     HRESULT hr = S_OK;
 
+    if (pDispParams == NULL) {
+        hr = E_INVALIDARG;
+        goto cleanup;
+    }
+
     switch (dispIdMember) {
+    case DISPID_BIDIDENTITYCONTROLLER_CALLBACK:
+        OutputDebugString("CBIDIdentityController::Invoke CALLBACK\r\n");
+
+        if ((wFlags & DISPATCH_METHOD) == 0) {
+            hr = DISP_E_MEMBERNOTFOUND;
+            goto cleanup;
+        }
+
+        hr = _IdentityCallback(pDispParams);
+        BID_BAIL_ON_HERROR(hr);
+
+        break;
+
+    case DISPID_BIDIDENTITYCONTROLLER_SILENT:
+        OutputDebugString("CBIDIdentityController::Invoke SILENT\r\n");
+
+        if ((wFlags & DISPATCH_PROPERTYGET) == 0) {
+            hr = DISP_E_MEMBERNOTFOUND;
+            goto cleanup;
+        }
+
+        V_VT(pVarResult)    = VT_BOOL;
+        V_BOOL(pVarResult)  = _GetSilent();
+
+        break;
+
+    case DISPID_HTMLWINDOWEVENTS2_ONERROR:
+        OutputDebugString("CBIDIdentityController::Invoke ONERROR\r\n");
+
+        break;
+
     case DISPID_HTMLWINDOWEVENTS2_ONLOAD:
         OutputDebugString("CBIDIdentityController::Invoke ONLOAD\r\n");
+
+        hr = _PublishController();
+        BID_BAIL_ON_HERROR(hr);
 
         hr = _InterposeAssertionSign();
         BID_BAIL_ON_HERROR(hr);
@@ -347,16 +385,12 @@ CBIDIdentityController::Invoke(
         pConnectionPoint->Unadvise(_dwCookie);
         pConnectionPoint->Release();
 
-        if (_beAcquire == BID_S_INTERACT_REQUIRED)
-            _beAcquire = BID_S_INTERACT_FAILURE;
+        if (_bidError == BID_S_INTERACT_REQUIRED)
+            _bidError = BID_S_INTERACT_FAILURE;
 
        break;
-    default: {
-        char szMsg[256];
-
-        snprintf(szMsg, sizeof(szMsg), "CBIDIdentityController::Invoke unknown DISPID %08x(%u)\r\n", dispIdMember, dispIdMember);
-        OutputDebugString(szMsg);
-        }
+    default:
+        hr = DISP_E_MEMBERNOTFOUND;
         break;
     }
 
@@ -431,6 +465,12 @@ cleanup:
 }
 
 HRESULT
+CBIDIdentityController::_GetArguments(VARIANT *varArgs)
+{
+    return _JsonToVariant(_args, varArgs);
+}
+
+HRESULT
 CBIDIdentityController::_PackDialogArgs(
     const char *szPackedAudience,
     const char *szAudienceOrSpn,
@@ -441,7 +481,6 @@ CBIDIdentityController::_PackDialogArgs(
     HRESULT hr;
     BIDError err;
     char *szSiteName = NULL;
-    BOOLEAN bSilent = FALSE;
 
     _ulReqFlags = ulReqFlags;
 
@@ -483,13 +522,15 @@ CBIDIdentityController::_PackDialogArgs(
                                 BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
 
-        bSilent = !!(_context->ContextOptions & BID_CONTEXT_BROWSER_SILENT);
+        _bSilent = !!(_context->ContextOptions & BID_CONTEXT_BROWSER_SILENT);
     }
 
+#if 0
     err = _BIDJsonObjectSet(_context, _args, "silent",
                             bSilent ? json_true() : json_false(),
                             BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
+#endif
 
 cleanup:
     BIDFree(szSiteName);
@@ -515,7 +556,7 @@ CBIDIdentityController::Initialize(
     BID_BAIL_ON_HERROR(hr);
 
     hr = _PackDialogArgs(szPackedAudience, szAudienceOrSpn,
-                          claims, szIdentityName, ulReqFlags);
+                         claims, szIdentityName, ulReqFlags);
     BID_BAIL_ON_HERROR(hr);
 
     bstrURL = SysAllocString(L"https://login.persona.org/sign_in#NATIVE");
@@ -546,13 +587,13 @@ CBIDIdentityController::_ShowDialog(void)
     VariantInit(&varArgIn);
     VariantInit(&varArgOut);
 
-    hr = _JsonToVariant(_args, &varArgIn);
+    hr = _GetArguments(&varArgIn);
     BID_BAIL_ON_HERROR(hr);
 
     dwFlags = HTMLDLG_MODELESS | HTMLDLG_VERIFY |
               HTMLDLG_ALLOW_UNKNOWN_THREAD;
 
-    if (json_is_true(json_object_get(_args, "silent")))
+    if (_GetSilent())
         dwFlags |= HTMLDLG_NOUI;
 
     hr = (*_pfnShowHTMLDialogEx)((HWND)_context->ParentWindow,
@@ -670,9 +711,89 @@ cleanup:
 }
 
 HRESULT
-CBIDIdentityController::_IdentityCallback(VARIANT *vt)
+CBIDIdentityController::_CloseIdentityDialog(void)
 {
-    return E_NOTIMPL;
+    HRESULT hr = E_INVALIDARG;
+
+    if (_pHTMLWindow2 != NULL)
+        hr = _pHTMLWindow2->close();
+
+    return hr;
+}
+
+BOOLEAN
+CBIDIdentityController::_GetSilent(void)
+{
+    return _bSilent;
+}
+
+void
+CBIDIdentityController::_SetSilent(BOOLEAN bValue)
+{
+    _bSilent = bValue;
+}
+
+HRESULT
+CBIDIdentityController::_SetAssertion(BSTR bstrAssertion)
+{
+    char *szAssertion;
+
+    if (_BIDUcs2ToUtf8(_context, bstrAssertion, &szAssertion) != BID_S_OK) {
+        return E_OUTOFMEMORY;
+    }
+
+    if (_szAssertion != NULL)
+        BIDFree(_szAssertion);
+    _szAssertion = szAssertion;
+
+    return S_OK;
+}
+
+HRESULT
+CBIDIdentityController::_IdentityCallback(DISPPARAMS *pDispParams)
+{
+    HRESULT hr;
+    VARIANT *vAssertion;
+    BSTR bstrAssertion;
+
+    if (pDispParams->cArgs < 2 || pDispParams->cNamedArgs != 0) {
+        hr = DISP_E_BADPARAMCOUNT;
+        goto cleanup;
+    }
+
+    vAssertion = &pDispParams->rgvarg[1];
+    if (V_VT(vAssertion) != VT_BSTR) {
+        hr = DISP_E_BADVARTYPE;
+        goto cleanup;
+    }
+
+    bstrAssertion = V_BSTR(vAssertion);
+
+    if (SysStringLen(bstrAssertion) != 0)
+        _bidError = BID_S_OK;
+    else if (_GetSilent())
+        _bidError = BID_S_INTERACT_REQUIRED;
+    else
+        _bidError = BID_S_INTERACT_FAILURE;
+
+    if (_bidError == BID_S_INTERACT_REQUIRED &&
+        _BIDCanInteractP(_context, _ulReqFlags)) {
+        _SetSilent(FALSE);
+
+        hr = _AcquireAssertion();
+        BID_BAIL_ON_ERROR(hr);
+    } else {
+        hr = _SetAssertion(bstrAssertion);
+        BID_BAIL_ON_ERROR(hr);
+
+        hr = _CloseIdentityDialog();
+        BID_BAIL_ON_ERROR(hr);
+    }
+
+    hr = S_OK;
+
+cleanup:
+    return hr;
 }
 
 HRESULT
@@ -684,11 +805,52 @@ CBIDIdentityController::_RunModal(void)
         TranslateMessage(&msg);
         DispatchMessage(&msg);
 
-        if (_beAcquire != BID_S_INTERACT_REQUIRED)
+        if (_bidError != BID_S_INTERACT_REQUIRED)
             break;
     }
 
     return S_OK;
+}
+
+HRESULT
+CBIDIdentityController::_PublishController(void)
+{
+    HRESULT hr;
+    IDispatchEx *pDispatchEx = NULL;
+    DISPID dispId;
+    DISPPARAMS params;
+    VARIANT varThis;
+    BSTR bstrController = NULL;
+
+    hr = _pHTMLWindow2->QueryInterface(IID_PPV_ARGS(&pDispatchEx));
+    BID_BAIL_ON_HERROR(hr);
+
+    bstrController = SysAllocString(L"controller");
+
+    hr = pDispatchEx->GetDispID(bstrController, fdexNameEnsure, &dispId);
+    BID_BAIL_ON_HERROR(hr);
+
+    VariantInit(&varThis);
+    V_VT(&varThis)       = VT_DISPATCH;
+    V_DISPATCH(&varThis) = (IDispatch *)this;
+
+    ZeroMemory(&params, sizeof(params));
+    params.cArgs = 1;
+    params.cNamedArgs = 0;
+    params.rgvarg = &varThis;
+    params.rgdispidNamedArgs = NULL;
+
+    hr = pDispatchEx->Invoke(dispId, IID_NULL, LOCALE_SYSTEM_DEFAULT,
+                             DISPATCH_PROPERTYPUT, &params,
+                             NULL, NULL, NULL);
+    BID_BAIL_ON_HERROR(hr);
+
+cleanup:
+    if (pDispatchEx != NULL)
+        pDispatchEx->Release();
+    SysFreeString(bstrController);
+
+    return hr;
 }
 
 BIDError
@@ -704,8 +866,15 @@ CBIDIdentityController::GetAssertion(char **pAssertion)
     hr = _RunModal();
     BID_BAIL_ON_HERROR(hr);
 
+    if (_bidError == BID_S_OK) {
+        *pAssertion = _szAssertion;
+        _szAssertion = NULL;
+    }
+
+    return _bidError;
+
 cleanup:
-    return SUCCEEDED(hr) ? _MapError(hr) : _beAcquire;
+    return _MapError(hr);
 }
 
 HRESULT
