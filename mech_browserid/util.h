@@ -534,6 +534,9 @@ gssBidValidateMechs(OM_uint32 *minor,
 gss_buffer_t
 gssBidOidToSaslName(const gss_OID oid);
 
+OM_uint32
+gssBidInitiatorInit(OM_uint32 *minor);
+
 gss_OID
 gssBidSaslNameToOid(const gss_buffer_t name);
 
