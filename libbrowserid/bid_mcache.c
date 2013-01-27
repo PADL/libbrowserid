@@ -269,9 +269,6 @@ _BIDMemoryCacheFirstObject(
     err = BID_S_OK;
 
 cleanup:
-    if (mc != NULL)
-        BIDMemoryCacheUnlock(mc);
-
     return err;
 }
 
@@ -294,8 +291,6 @@ _BIDMemoryCacheNextObject(
         goto cleanup;
     }
 
-    BIDMemoryCacheLock(mc);
-
     if (mc->Data == NULL) {
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
@@ -311,15 +306,13 @@ _BIDMemoryCacheNextObject(
     *val = json_incref(json_object_iter_value(mc->Iterator));
     if (*key == NULL || *val == NULL) {
         err = BID_S_NO_MORE_ITEMS;
+        BIDMemoryCacheUnlock(mc);
         goto cleanup;
     }
 
     err = BID_S_OK;
 
 cleanup:
-    if (mc != NULL)
-        BIDMemoryCacheUnlock(mc);
-
     return err;
 }
 
