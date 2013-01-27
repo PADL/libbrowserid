@@ -488,6 +488,16 @@ _BIDValidateX509CertChain(
 /*
  * bid_ppal.c
  */
+#ifndef WIN32
+#include <pthread.h>
+
+#define BID_MUTEX                    pthread_mutex_t
+#define BID_MUTEX_INIT(m)            pthread_mutex_init((m), NULL)
+#define BID_MUTEX_DESTROY(m)         pthread_mutex_destroy((m))
+#define BID_MUTEX_LOCK(m)            pthread_mutex_lock((m))
+#define BID_MUTEX_UNLOCK(m)          pthread_mutex_unlock((m))
+#endif /* !WIN32 */
+
 BIDError
 _BIDGetCurrentJsonTimestamp(
     BIDContext context,
@@ -789,10 +799,18 @@ _BIDBrowserGetAssertion(
     uint32_t ulReqFlags,
     char **pAssertion);
 
-#ifdef WIN32
 /*
  * bid_wpal.c
  */
+#ifdef WIN32
+#include <winbase.h>
+
+#define BID_MUTEX                    CRITICAL_SECTION
+#define BID_MUTEX_INIT(m)            (InitializeCriticalSection((m)), 0)
+#define BID_MUTEX_DESTROY(m)         DeleteCriticalSection((m))
+#define BID_MUTEX_LOCK(m)            EnterCriticalSection((m))
+#define BID_MUTEX_UNLOCK(m)          LeaveCriticalSection((m))
+
 BIDError
 _BIDTimeToSecondsSince1970(
     BIDContext context BID_UNUSED,
