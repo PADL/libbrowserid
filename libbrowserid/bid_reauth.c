@@ -20,30 +20,33 @@ _BIDDeriveAuthenticatorSessionKey(
     BIDContext context,
     BIDJWK ark,
     BIDJWT ap,
-    unsigned char **ppbSessionKey,
-    size_t *pcbSessionKey)
+    BIDSecretHandle *pSecretHandle)
 {
     BIDError err;
-    unsigned char *pbArk = NULL;
-    size_t cbArk;
+    BIDSecretHandle secretHandle = NULL;
+    unsigned char *pbASK = NULL;
+    size_t cbASK;
 
-    *ppbSessionKey = NULL;
-    *pcbSessionKey = 0;
+    *pSecretHandle = NULL;
 
-    err = _BIDGetJsonBinaryValue(context, ark, "secret-key", &pbArk, &cbArk);
+    err = _BIDImportSecretKey(context, ark, &secretHandle);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDDeriveKey(context, pbArk, cbArk,
+    err = _BIDDeriveKey(context, secretHandle,
                         (unsigned char *)ap->EncData, ap->EncDataLength,
-                        ppbSessionKey, pcbSessionKey);
+                        &pbASK, &cbASK);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDImportSecretKeyData(context, pbASK, cbASK, pSecretHandle);
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
 
 cleanup:
-    if (pbArk != NULL) {
-        memset(pbArk, 0, cbArk);
-        BIDFree(pbArk);
+    _BIDDestroySecret(context, secretHandle);
+    if (pbASK != NULL) {
+        memset(pbASK, 0, cbASK);
+        BIDFree(pbASK);
     }
 
     return err;
@@ -307,7 +310,7 @@ _BIDMakeReauthIdentity(
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
-                                            &identity->SessionKey, &identity->SessionKeyLength);
+                                            &identity->SecretHandle);
     BID_BAIL_ON_ERROR(err);
 
     *pIdentity = identity;

@@ -86,6 +86,7 @@ const char *_BIDErrorTable[] = {
     "Bad subject name",
     "Response from relying party does not match request",
     "JSON web token is missing signature",
+    "Invalid secret handle",
     "Unknown error code"
 };
 

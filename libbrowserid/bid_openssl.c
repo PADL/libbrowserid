@@ -26,6 +26,22 @@
 #define BID_CRYPTO_PRINT_ERRORS()
 #endif
 
+/*
+ * Secret key agreement handle.
+ */
+struct BIDSecretHandleDesc {
+    unsigned char *pbSecret;
+    size_t cbSecret;
+};
+ 
+static BIDError
+_BIDAllocSecret(
+    BIDContext context,
+    unsigned char *pbSecret,
+    size_t cbSecret,
+    int freeit,
+    BIDSecretHandle *pSecretHandle);
+
 static void
 _BIDOpenSSLInit(void) __attribute__((__constructor__));
 
@@ -1074,8 +1090,7 @@ _BIDComputeDHKey(
     BIDContext context,
     BIDJWK dhKey,
     json_t *pubValue,
-    unsigned char **ppbKey,
-    size_t *pcbKey)
+    BIDSecretHandle *pSecretHandle)
 {
     BIDError err;
     json_t *dhParams;
@@ -1084,8 +1099,7 @@ _BIDComputeDHKey(
     BIGNUM *pub = NULL;
     DH *dh = NULL;
 
-    *ppbKey = NULL;
-    *pcbKey = 0;
+    *pSecretHandle = NULL;
 
     if (dhKey == NULL || pubValue == NULL) {
         err = BID_S_INVALID_PARAMETER;
@@ -1124,27 +1138,8 @@ _BIDComputeDHKey(
         goto cleanup;
     }
 
-/*#define BCRYPT_COMPAT 1 */
-
-#if BCRYPT_COMPAT
-    {
-        /* For testing with Windows BCrypt, XXX change spec? */
-        EVP_MD_CTX mdCtx;
-        unsigned char digest[SHA256_DIGEST_LENGTH];
-        unsigned int mdLength = sizeof(digest);
-
-        EVP_DigestInit(&mdCtx, EVP_sha256());
-        EVP_DigestUpdate(&mdCtx, pbKey, cbKey);
-        EVP_DigestFinal(&mdCtx, digest, &mdLength);
-
-        memset(pbKey, 0, cbKey);
-        memcpy(pbKey, digest, (cbKey < mdLength) ? cbKey : mdLength);
-    }
-#endif
-
-    err = BID_S_OK;
-    *ppbKey = pbKey;
-    *pcbKey = cbKey;
+    err = _BIDAllocSecret(context, pbKey, cbKey, 1, pSecretHandle);
+    BID_BAIL_ON_ERROR(err);
 
 cleanup:
     if (err != BID_S_OK)
@@ -1172,11 +1167,15 @@ _BIDGenerateNonce(
 
 static const unsigned char _BIDSalt[9] = "BrowserID";
 
+/*
+ * Although this key derivation mechanism is a little unusual, it's designed
+ * to be compatible with the Windows Cryptography Next Generation derivation
+ * function, which does HMAC-Hash(Key, Prepend | Key | Append).
+ */
 BIDError
 _BIDDeriveKey(
     BIDContext context BID_UNUSED,
-    const unsigned char *pbBaseKey,
-    size_t cbBaseKey,
+    BIDSecretHandle secretHandle,
     const unsigned char *pbSalt,
     size_t cbSalt,
     unsigned char **ppbDerivedKey,
@@ -1189,12 +1188,19 @@ _BIDDeriveKey(
     *ppbDerivedKey = NULL;
     *pcbDerivedKey = 0;
 
+    if (secretHandle == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    if (secretHandle->pbSecret == NULL)
+        return BID_S_INVALID_SECRET;
+
     *ppbDerivedKey = BIDMalloc(mdLength);
     if (*ppbDerivedKey == NULL)
         return BID_S_NO_MEMORY;
 
-    HMAC_Init(&h, pbBaseKey, cbBaseKey, EVP_sha256());
+    HMAC_Init(&h, secretHandle->pbSecret, secretHandle->cbSecret, EVP_sha256());
     HMAC_Update(&h, _BIDSalt, sizeof(_BIDSalt));
+    HMAC_Update(&h, secretHandle->pbSecret, secretHandle->cbSecret);
     if (pbSalt != NULL)
         HMAC_Update(&h, pbSalt, cbSalt);
     HMAC_Update(&h, &T1, 1);
@@ -1584,3 +1590,66 @@ cleanup:
     return err;
 }
 
+BIDError
+_BIDDestroySecret(
+    BIDContext context BID_UNUSED,
+    BIDSecretHandle secretHandle)
+{
+    if (secretHandle == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    if (secretHandle->pbSecret != NULL) {
+        memset(secretHandle->pbSecret, 0, secretHandle->cbSecret);
+        BIDFree(secretHandle->pbSecret);
+    }
+
+    memset(secretHandle, 0, sizeof(*secretHandle));
+    BIDFree(secretHandle);
+
+    return BID_S_OK;
+}
+
+static BIDError
+_BIDAllocSecret(
+    BIDContext context BID_UNUSED,
+    unsigned char *pbSecret,
+    size_t cbSecret,
+    int freeit,
+    BIDSecretHandle *pSecretHandle)
+{
+    BIDSecretHandle secretHandle;
+
+    *pSecretHandle = NULL;
+
+    secretHandle = BIDMalloc(sizeof(*secretHandle));
+    if (secretHandle == NULL)
+        return BID_S_NO_MEMORY;
+
+    if (freeit) {
+        secretHandle->pbSecret = pbSecret;
+    } else {
+        secretHandle->pbSecret = BIDMalloc(cbSecret);
+        if (secretHandle->pbSecret == NULL) {
+            BIDFree(secretHandle);
+            return BID_S_NO_MEMORY;
+        }
+
+        memcpy(secretHandle->pbSecret, pbSecret, cbSecret);
+    }
+
+    secretHandle->cbSecret = cbSecret;
+
+    *pSecretHandle = secretHandle;
+
+    return BID_S_OK;
+}
+
+BIDError
+_BIDImportSecretKeyData(
+    BIDContext context,
+    unsigned char *pbSecret,
+    size_t cbSecret,
+    BIDSecretHandle *pSecretHandle)
+{
+    return _BIDAllocSecret(context, pbSecret, cbSecret, 0, pSecretHandle);
+}

@@ -96,6 +96,7 @@ typedef enum {
     BID_S_BAD_SUBJECT,
     BID_S_MISMATCHED_RP_RESPONSE,
     BID_S_MISSING_SIGNATURE,
+    BID_S_INVALID_SECRET,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -355,14 +356,16 @@ BIDSetIdentityDHPublicValue(
     size_t cbY);
 
 BIDError
-BIDGetIdentitySessionKey(
+BIDIdentityDeriveKey(
     BIDContext context,
     BIDIdentity identity,
+    const unsigned char *pbSalt,
+    size_t cbSalt,
     unsigned char **ppbSessionKey,
     size_t *pcbSessionKey);
 
 BIDError
-BIDFreeIdentitySessionKey(
+BIDFreeIdentityDerivedKey(
     BIDContext context,
     BIDIdentity identity,
     unsigned char *pbSessionKey,

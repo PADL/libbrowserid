@@ -538,17 +538,21 @@ another initial context token containing a fresh assertion.
 
 ### Key derivation
 
-The key derivations import the following:
+The key derivation algorithms import the following:
 
-    browserid-derive-key(K, salt) = HMAC(K, "BrowserID" || salt || 0x01)
+    browserid-derive-key(K, salt) = HMAC(K, "BrowserID" || K || salt || 0x01)
 
 The HMAC hash algorithm for all currently specified key lengths is SHA256.
+
+Note that the key K is included in the HMAC input in order to be compatible
+with Windows CNG BCryptDeriveKey.
 
 #### Diffie-Hellman Key (DHK)
 
 This key is the shared secret resulting from the Diffie-Hellman exchange. It
 must be at least as many bits as the key size of the negotiated [RFC3961]
-encryption type. It is never used directly, that is, without derivation.
+encryption type. It is never used without derivation and thus may be used with
+implementations that do not expose the DH value directly.
 
 #### Context Master Key (CMK)
 
@@ -566,12 +570,15 @@ The response from the acceptor is signed using this key for fresh assertions:
 The context root key is used for RFC 4121 message protection services, e.g.
 GSS\_Wrap() and GSS\_Get\_MIC(). It is derived as follows:
 
-    Tn = pseudo-random(CMK, n || "rfc4121-gss-browserid")
+    protocol-key = browserid-derive-key(CMK, "CRK")
+    Tn = pseudo-random(protocol-key, n || "rfc4121-gss-browserid")
     CRK = random-to-key(truncate(L, T0 || T1 || .. || Tn))
     L = random-to-key input size
     
 where n is a 32-bit integer in network byte order starting at 0 and incremented
-to each call to the [RFC3961]pseudo\_random operation.
+to each call to the [RFC3961] pseudo\_random operation.
+
+**TODO**: can we eliminate this double derivation?
 
 It is also used directly (as in, with HMAC rather than get\_mic) to sign the
 acceptor's response assertion.

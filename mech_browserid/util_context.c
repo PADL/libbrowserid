@@ -312,15 +312,16 @@ gssBidContextReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
         return major;
 
     if (ctx->encryptionType != ENCTYPE_NULL) {
-        err = BIDGetIdentitySessionKey(ctx->bidContext, ctx->bidIdentity,
-                                       &pbSessionKey, &cbSessionKey);
+        err = BIDIdentityDeriveKey(ctx->bidContext, ctx->bidIdentity,
+                                   (unsigned char *)"CRK", 3,
+                                   &pbSessionKey, &cbSessionKey);
         if (err != BID_S_OK)
             return gssBidMapError(minor, err);
 
         major = gssBidDeriveRfc3961Key(minor, pbSessionKey, cbSessionKey,
                                        ctx->encryptionType, &ctx->rfc3961Key);
 
-        BIDFreeIdentitySessionKey(ctx->bidContext, ctx->bidIdentity,
+        BIDFreeIdentityDerivedKey(ctx->bidContext, ctx->bidIdentity,
                                   pbSessionKey, cbSessionKey);
 
         if (GSS_ERROR(major))

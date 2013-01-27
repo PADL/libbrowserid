@@ -64,8 +64,6 @@ extern "C" {
 #define BID_WELL_KNOWN_URL          "/.well-known/browserid"
 #define BID_WELL_KNOWN_URL_LEN      (sizeof(BID_WELL_KNOWN_URL) - 1)
 
-#define BROKEN_URL_PARSER 1
-
 #define BID_GSS_AUDIENCE_PREFIX     "urn:x-gss:"
 #define BID_GSS_AUDIENCE_PREFIX_LEN (sizeof(BID_GSS_AUDIENCE_PREFIX) - 1)
 
@@ -75,6 +73,9 @@ typedef json_t *BIDJWKSet;
 
 struct BIDBackedAssertionDesc;
 typedef struct BIDBackedAssertionDesc *BIDBackedAssertion;
+
+struct BIDSecretHandleDesc;
+typedef struct BIDSecretHandleDesc *BIDSecretHandle;
 
 BIDError
 _BIDAcquireDefaultAuthorityCache(
@@ -248,11 +249,22 @@ typedef struct BIDJWTAlgorithmDesc {
 } *BIDJWTAlgorithm;
 
 BIDError
+_BIDIdentityComputeKey(
+    BIDContext context,
+    BIDIdentity identity);
+
+BIDError
 _BIDDeriveSessionSubkey(
     BIDContext context,
     BIDIdentity identity,
     const char *szSalt,
     BIDJWK *pDerivedKey);
+
+BIDError
+_BIDImportSecretKey(
+    BIDContext context, 
+    BIDJWK jwk,
+    BIDSecretHandle *pSecretHandle);
 
 int
 _BIDIsLegacyJWK(BIDContext context, BIDJWK jwt);
@@ -263,6 +275,23 @@ _BIDFindKeyInKeyset(
     BIDJWTAlgorithm algorithm,
     BIDJWKSet keyset,
     BIDJWK *pKey);
+
+BIDError
+_BIDVerifierDHKeyEx(
+    BIDContext context,
+    BIDIdentity identity);
+
+BIDError
+_BIDSetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t *y);
+
+BIDError
+_BIDGetIdentityDHPublicValue(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t **y);
 
 /*
  * bid_fcache.c
@@ -285,18 +314,6 @@ _BIDPopulateIdentity(
     BIDBackedAssertion backedAssertion,
     uint32_t ulFlags,
     BIDIdentity *pIdentity);
-
-BIDError
-_BIDSetIdentityDHPublicValue(
-    BIDContext context,
-    BIDIdentity identity,
-    json_t *y);
-
-BIDError
-_BIDGetIdentityDHPublicValue(
-    BIDContext context,
-    BIDIdentity identity,
-    json_t **y);
 
 BIDError
 _BIDGetIdentityReauthTicket(
@@ -364,6 +381,17 @@ extern struct BIDCacheOps _BIDMemoryCache;
 /*
  * bid_openssl.c
  */
+BIDError
+_BIDDestroySecret(
+    BIDContext context,
+    BIDSecretHandle secretHandle);
+
+BIDError
+_BIDImportSecretKeyData(
+    BIDContext context, 
+    unsigned char *pbSecret,
+    size_t cbSecret,
+    BIDSecretHandle *pSecretHandle);
 
 /*
  * To implement a new crypto provider, you need to replace the following
@@ -407,8 +435,7 @@ _BIDComputeDHKey(
     BIDContext context,
     BIDJWK dhKey,
     json_t *pubValue,
-    unsigned char **ppbKey,
-    size_t *pcbKey);
+    BIDSecretHandle *pSecretHandle);
 
 /*
  * Generate a random base64 URL encoded nonce of at least 64 bits.
@@ -424,8 +451,7 @@ _BIDGenerateNonce(
 BIDError
 _BIDDeriveKey(
     BIDContext context,
-    const unsigned char *pbBaseKey,
-    size_t cbBaseKey,
+    BIDSecretHandle secretHandle,
     const unsigned char *pbSalt,
     size_t cbSalt,
     unsigned char **ppbDerivedKey,
@@ -722,8 +748,7 @@ struct BIDBackedAssertionDesc {
 struct BIDIdentityDesc {
     json_t *Attributes;
     json_t *PrivateAttributes;
-    unsigned char *SessionKey;
-    size_t SessionKeyLength;
+    BIDSecretHandle SecretHandle;
 };
 
 BIDError
