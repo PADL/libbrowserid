@@ -7,10 +7,21 @@
 #include "bid_private.h"
 
 struct BIDMemoryCache {
+    BID_MUTEX Mutex;
     char *Name;
     json_t *Data;
     void *Iterator;
 };
+
+/*
+ * Concurrency makes the following assumptions:
+ *
+ * - libjansson is compiled with atomic refcounting ops
+ * - returned values are immutable
+ * - iteration APIs are not used
+ */
+#define BIDMemoryCacheLock(mc)      BID_MUTEX_LOCK(&(mc)->Mutex)
+#define BIDMemoryCacheUnlock(mc)    BID_MUTEX_UNLOCK(&(mc)->Mutex)
 
 static BIDError
 _BIDMemoryCacheAcquire(
@@ -39,6 +50,8 @@ _BIDMemoryCacheAcquire(
         return err;
     }
 
+    BID_MUTEX_INIT(&mc->Mutex);
+
     *cache = mc;
 
     return BID_S_OK;
@@ -57,6 +70,7 @@ _BIDMemoryCacheRelease(
 
     BIDFree(mc->Name);
     json_decref(mc->Data);
+    BID_MUTEX_DESTROY(&mc->Mutex);
     BIDFree(mc);
 
     return BID_S_OK;
@@ -87,8 +101,12 @@ _BIDMemoryCacheDestroy(
     if (j == NULL)
         return BID_S_NO_MEMORY;
 
+    BIDMemoryCacheLock(mc);
+
     json_decref(mc->Data);
     mc->Data = j;
+
+    BIDMemoryCacheUnlock(mc);
 
     return BID_S_OK;
 }
@@ -147,7 +165,9 @@ _BIDMemoryCacheGetObject(
         goto cleanup;
     }
 
+    BIDMemoryCacheLock(mc);
     *val = json_incref(json_object_get(mc->Data, key));
+    BIDMemoryCacheUnlock(mc);
 
     if (*val == NULL)
         err = BID_S_CACHE_KEY_NOT_FOUND;
@@ -176,10 +196,13 @@ _BIDMemoryCacheSetOrRemoveObject(
         goto cleanup;
     }
 
+    BIDMemoryCacheLock(mc);
     if (remove)
         err = _BIDJsonObjectDel(context, mc->Data, key, 0);
     else
         err = _BIDJsonObjectSet(context, mc->Data, key, val, 0);
+    BIDMemoryCacheUnlock(mc);
+
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
@@ -228,6 +251,8 @@ _BIDMemoryCacheFirstObject(
         goto cleanup;
     }
 
+    BIDMemoryCacheLock(mc);
+
     mc->Iterator = json_object_iter(mc->Data);
     if (mc->Iterator == NULL) {
         err = BID_S_CACHE_KEY_NOT_FOUND;
@@ -244,6 +269,9 @@ _BIDMemoryCacheFirstObject(
     err = BID_S_OK;
 
 cleanup:
+    if (mc != NULL)
+        BIDMemoryCacheUnlock(mc);
+
     return err;
 }
 
@@ -261,7 +289,14 @@ _BIDMemoryCacheNextObject(
     *key = NULL;
     *val = NULL;
 
-    if (mc == NULL || mc->Data == NULL) {
+    if (mc == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    BIDMemoryCacheLock(mc);
+
+    if (mc->Data == NULL) {
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
     }
@@ -282,6 +317,9 @@ _BIDMemoryCacheNextObject(
     err = BID_S_OK;
 
 cleanup:
+    if (mc != NULL)
+        BIDMemoryCacheUnlock(mc);
+
     return err;
 }
 
