@@ -263,6 +263,7 @@ gssBidInitSecContext(OM_uint32 *minor,
     GSSBID_ASSERT(ctx->cred->flags & CRED_FLAG_RESOLVED);
     GSSBID_ASSERT(ctx->cred->flags & CRED_FLAG_INITIATE);
 
+    major = GSS_S_FAILURE;
     *minor = GSSBID_REAUTH_FAILED;
 
     while (*minor == GSSBID_REAUTH_FAILED) {
