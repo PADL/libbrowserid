@@ -15,9 +15,31 @@
 
 /*
  * TODO bignums
- * TODO export key without derivation
  * TODO X.509 support
  */
+
+/*
+ * Secret key agreement handle.
+ */
+struct BIDSecretHandleDesc {
+    enum {
+        SECRET_TYPE_KEY_AGREEMENT,
+        SECRET_TYPE_IMPORTED
+    } SecretType;
+    union {
+        BCRYPT_SECRET_HANDLE KeyAgreement;
+        struct {
+            unsigned char *pbSecret;
+            size_t cbSecret;
+        } Imported;
+    } SecretData;
+};
+
+static BIDError
+_BIDAllocSecret(
+    BIDContext context BID_UNUSED,
+    BIDSecretHandle keyInput,
+    BIDSecretHandle *pSecretHandle);
 
 static BIDError
 _BIDNtStatusToBIDError(NTSTATUS nts)
@@ -1307,8 +1329,7 @@ _BIDComputeDHKey(
     BIDContext context,
     BIDJWK dhKey,
     json_t *pubValue,
-    unsigned char **ppbKey,
-    size_t *pcbKey)
+    BIDSecretHandle *pSecretHandle)
 {
     BIDError err;
     NTSTATUS nts;
@@ -1320,11 +1341,9 @@ _BIDComputeDHKey(
     PUCHAR pbKey = NULL;
     DWORD cbKey = 0;
     BCryptBuffer pub = { 0 };
-    BCryptBuffer paramBuffers[1];
-    BCryptBufferDesc params;
+    struct BIDSecretHandleDesc keyInput = { 0 };
 
-    *ppbKey = NULL;
-    *pcbKey = 0;
+    *pSecretHandle = NULL;
 
     if (dhKey == NULL || pubValue == NULL) {
         err = BID_S_INVALID_PARAMETER;
@@ -1352,36 +1371,13 @@ _BIDComputeDHKey(
     nts = BCryptSecretAgreement(hPrivateKey, hPublicKey, &hSecret, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    /*
-     * XXX there's no defined interface to get the DH secret directly.
-     * for now, we will just SHA256 it but this will not be interoperable
-     * with the OpenSSL implementation and/or the spec.
-     */
-    paramBuffers[0].cbBuffer   = wcslen(BCRYPT_SHA256_ALGORITHM) * sizeof(WCHAR);
-    paramBuffers[0].BufferType = KDF_HASH_ALGORITHM;
-    paramBuffers[0].pvBuffer   = BCRYPT_SHA256_ALGORITHM;
+    keyInput.SecretType = SECRET_TYPE_KEY_AGREEMENT;
+    keyInput.SecretData.KeyAgreement = hSecret;
 
-    params.ulVersion = BCRYPTBUFFER_VERSION;
-    params.cBuffers  = ARRAYSIZE(paramBuffers);
-    params.pBuffers  = paramBuffers;
+    err = _BIDAllocSecret(context, &keyInput, pSecretHandle);
+    BID_BAIL_ON_ERROR(err);
 
-    nts = BCryptDeriveKey(hSecret, BCRYPT_KDF_HASH, &params,
-                          NULL, 0, &cbKey, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    pbKey = BIDMalloc(cbKey);
-    if (pbKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    nts = BCryptDeriveKey(hSecret, BCRYPT_KDF_HASH, &params,
-                          pbKey, cbKey, &cbKey, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    err = BID_S_OK;
-    *ppbKey = pbKey;
-    *pcbKey = cbKey;
+    hSecret = NULL;
 
 cleanup:
     if (err != BID_S_OK) {
@@ -1430,69 +1426,230 @@ cleanup:
     return err;
 }
 
-static const UCHAR _BIDSalt[9] = "BrowserID";
+static UCHAR _BIDSalt[9] = "BrowserID";
 
-BIDError
-_BIDDeriveKey(
+static BIDError
+_BIDDeriveKeyKeyAgreement(
     BIDContext context BID_UNUSED,
-    const unsigned char *pbBaseKey,
-    size_t cbBaseKey,
+    BIDSecretHandle secretHandle,
     const unsigned char *pbSalt,
     size_t cbSalt,
     unsigned char **ppbDerivedKey,
     size_t *pcbDerivedKey)
 {
     BIDError err;
-    BIDJWK jwk = NULL;
-    struct BIDJWTDesc jwt = { 0 };
+    NTSTATUS nts;
+    BCryptBufferDesc params;
+    BCryptBuffer paramBuffers[4];
+    UCHAR szEmptySalt[1] = { 0 };
+    ULONG cbDerivedKey = 0;
     PUCHAR pbDerivedKey = NULL;
-    size_t cbDerivedKey = 0;
+    UCHAR T1 = 0x01;
 
     *ppbDerivedKey = NULL;
     *pcbDerivedKey = 0;
 
-    jwk = json_object();
-    if (jwk == NULL) {
+    if (secretHandle->SecretData.KeyAgreement == NULL) {
+        err = BID_S_INVALID_SECRET;
+        goto cleanup;
+    }
+
+    paramBuffers[0].cbBuffer   = wcslen(BCRYPT_SHA256_ALGORITHM) * sizeof(WCHAR);
+    paramBuffers[0].BufferType = KDF_HASH_ALGORITHM;
+    paramBuffers[0].pvBuffer   = BCRYPT_SHA256_ALGORITHM;
+
+    paramBuffers[1].cbBuffer   = sizeof(_BIDSalt);
+    paramBuffers[1].BufferType = KDF_SECRET_PREPEND;
+    paramBuffers[1].pvBuffer   = _BIDSalt;
+
+    paramBuffers[2].cbBuffer   = cbSalt;
+    paramBuffers[2].BufferType = KDF_SECRET_APPEND;
+    paramBuffers[2].pvBuffer   = pbSalt ? (PUCHAR)pbSalt : szEmptySalt;
+
+    paramBuffers[3].cbBuffer   = 1;
+    paramBuffers[3].BufferType = KDF_SECRET_APPEND;
+    paramBuffers[3].pvBuffer   = &T1;
+
+    params.ulVersion = BCRYPTBUFFER_VERSION;
+    params.cBuffers  = ARRAYSIZE(paramBuffers);
+    params.pBuffers  = paramBuffers;
+
+    nts = BCryptDeriveKey(secretHandle->SecretData.KeyAgreement,
+                          BCRYPT_KDF_HMAC,
+                          &params,
+                          NULL,
+                          0,
+                          &cbDerivedKey,
+                          KDF_USE_SECRET_AS_HMAC_KEY_FLAG);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    pbDerivedKey = BIDMalloc(cbDerivedKey);
+    if (pbDerivedKey == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
-    err = _BIDJsonObjectSetBinaryValue(context,
-                                       jwk,
-                                       "secret-key",
-                                       pbBaseKey,
-                                       cbBaseKey);
-    BID_BAIL_ON_ERROR(err);
-
-    jwt.EncData = BIDMalloc(sizeof(_BIDSalt) + cbSalt + 1);
-    if (jwt.EncData == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    } 
-
-    CopyMemory(jwt.EncData, _BIDSalt, sizeof(_BIDSalt));
-    if (pbSalt != NULL)
-        CopyMemory(&jwt.EncData[sizeof(_BIDSalt)], pbSalt, cbSalt);
-    jwt.EncData[sizeof(_BIDSalt) + cbSalt] = 1; /* T1 */
-
-    cbDerivedKey = 32; /* XXX */
-    pbDerivedKey = BIDMalloc(cbDerivedKey);
-
-    err = _BIDMakeShaDigest(&_BIDJWTAlgorithms[0], context, &jwt, jwk,
-                            pbDerivedKey, &cbDerivedKey);
-    BID_BAIL_ON_ERROR(err);
+    nts = BCryptDeriveKey(secretHandle->SecretData.KeyAgreement,
+                          BCRYPT_KDF_HMAC,
+                          &params,
+                          pbDerivedKey,
+                          cbDerivedKey,
+                          &cbDerivedKey,
+                          KDF_USE_SECRET_AS_HMAC_KEY_FLAG);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
     *ppbDerivedKey = pbDerivedKey;
     *pcbDerivedKey = cbDerivedKey;
 
 cleanup:
-    if (err != BID_S_OK) {
+    if (err != BID_S_OK && pbDerivedKey != NULL) {
         SecureZeroMemory(pbDerivedKey, cbDerivedKey);
         BIDFree(pbDerivedKey);
     }
 
-    BIDFree(jwt.EncData);
-    json_decref(jwk);
+    return err;
+}
+
+static BIDError
+_BIDDeriveKeyImported(
+    BIDContext context BID_UNUSED,
+    BIDSecretHandle secretHandle,
+    const unsigned char *pbSalt,
+    size_t cbSalt,
+    unsigned char **ppbDerivedKey,
+    size_t *pcbDerivedKey)
+{
+    BIDError err;
+    NTSTATUS nts;
+    BCRYPT_ALG_HANDLE hAlg = NULL;
+    BCRYPT_HASH_HANDLE hHash = NULL;
+    PUCHAR pbHashObject = NULL;
+    DWORD cbHashObject;
+    PUCHAR pbDerivedKey = NULL;
+    ULONG cbDerivedKey = 0;
+    DWORD cbData;
+    UCHAR T1 = 0x01;
+
+    *ppbDerivedKey = NULL;
+    *pcbDerivedKey = 0;
+
+    if (secretHandle->SecretData.Imported.pbSecret == NULL) {
+        err = BID_S_INVALID_SECRET;
+        goto cleanup;
+    }
+
+    nts = BCryptOpenAlgorithmProvider(&hAlg,
+                                      BCRYPT_SHA256_ALGORITHM,
+                                      NULL,
+                                      BCRYPT_ALG_HANDLE_HMAC_FLAG);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    nts = BCryptGetProperty(hAlg,
+                            BCRYPT_OBJECT_LENGTH,
+                            (PUCHAR)&cbHashObject,
+                            sizeof(DWORD),
+                            &cbData,
+                            0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    pbHashObject = BIDMalloc(cbHashObject);
+    if (pbHashObject == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    nts = BCryptGetProperty(hAlg,
+                            BCRYPT_HASH_LENGTH,
+                            (PUCHAR)&cbDerivedKey,
+                            sizeof(DWORD),
+                            &cbData,
+                            0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    pbDerivedKey = BIDMalloc(cbDerivedKey);
+    if (pbDerivedKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    nts = BCryptCreateHash(hAlg, &hHash, pbHashObject, cbHashObject,
+                           secretHandle->SecretData.Imported.pbSecret,
+                           secretHandle->SecretData.Imported.cbSecret,
+                           0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    nts = BCryptHashData(hHash,
+                         _BIDSalt,
+                         sizeof(_BIDSalt),
+                         0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    nts = BCryptHashData(hHash,
+                         secretHandle->SecretData.Imported.pbSecret,
+                         secretHandle->SecretData.Imported.cbSecret,
+                         0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    if (pbSalt != NULL) {
+        nts = BCryptHashData(hHash, (PUCHAR)pbSalt, cbSalt, 0);
+        BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+    }
+
+    nts = BCryptHashData(hHash, &T1, 1, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    nts = BCryptFinishHash(hHash, pbDerivedKey, cbDerivedKey, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    err = BID_S_OK;
+
+    *ppbDerivedKey = pbDerivedKey;
+    *pcbDerivedKey = cbDerivedKey;
+
+cleanup:
+    if (err != BID_S_OK && pbDerivedKey != NULL) {
+        SecureZeroMemory(pbDerivedKey, cbDerivedKey);
+        BIDFree(pbDerivedKey);
+    }
+    if (hHash != NULL)
+        BCryptDestroyHash(hHash);
+    BIDFree(pbHashObject);
+
+    return err;
+}
+
+BIDError
+_BIDDeriveKey(
+    BIDContext context,
+    BIDSecretHandle secretHandle,
+    const unsigned char *pbSalt,
+    size_t cbSalt,
+    unsigned char **ppbDerivedKey,
+    size_t *pcbDerivedKey)
+{
+    BIDError err;
+
+    *ppbDerivedKey = NULL;
+    *pcbDerivedKey = 0;
+
+    if (secretHandle == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    switch (secretHandle->SecretType) {
+    case SECRET_TYPE_KEY_AGREEMENT:
+        err = _BIDDeriveKeyKeyAgreement(context, secretHandle,
+                                        pbSalt, cbSalt,
+                                        ppbDerivedKey, pcbDerivedKey);
+        break;
+    case SECRET_TYPE_IMPORTED:
+        err = _BIDDeriveKeyImported(context, secretHandle,
+                                    pbSalt, cbSalt,
+                                    ppbDerivedKey, pcbDerivedKey);
+        break;
+    default:
+        err = BID_S_INVALID_SECRET;
+        break;
+    }
 
     return err;
 }
@@ -1538,3 +1695,90 @@ _BIDValidateX509CertChain(
     return BID_S_NOT_IMPLEMENTED;
 }
 
+static BIDError
+_BIDAllocSecret(
+    BIDContext context BID_UNUSED,
+    BIDSecretHandle keyInput,
+    BIDSecretHandle *pSecretHandle)
+{
+    BIDSecretHandle secretHandle;
+
+    *pSecretHandle = NULL;
+
+    secretHandle = BIDCalloc(1, sizeof(*secretHandle));
+    if (secretHandle == NULL)
+        return BID_S_NO_MEMORY;
+
+    switch (keyInput->SecretType) {
+    case SECRET_TYPE_KEY_AGREEMENT:
+        secretHandle->SecretData.KeyAgreement =
+            keyInput->SecretData.KeyAgreement;
+        keyInput->SecretData.KeyAgreement = NULL;
+        /* no way to duplicate this */
+        break;
+    case SECRET_TYPE_IMPORTED:
+        secretHandle->SecretData.Imported.pbSecret =
+            BIDMalloc(keyInput->SecretData.Imported.cbSecret);
+        if (secretHandle->SecretData.Imported.pbSecret == NULL) {
+            BIDFree(secretHandle);
+            return BID_S_NO_MEMORY;
+        }
+
+        CopyMemory(secretHandle->SecretData.Imported.pbSecret,
+                   keyInput->SecretData.Imported.pbSecret,
+                   keyInput->SecretData.Imported.cbSecret);
+        secretHandle->SecretData.Imported.cbSecret =
+            keyInput->SecretData.Imported.cbSecret;
+    }
+
+    *pSecretHandle = secretHandle;
+
+    return BID_S_OK;
+}
+
+BIDError
+_BIDDestroySecret(
+    BIDContext context BID_UNUSED,
+    BIDSecretHandle secretHandle)
+{
+    BIDError err;
+    NTSTATUS nts;
+
+    if (secretHandle == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    switch (secretHandle->SecretType) {
+    case SECRET_TYPE_KEY_AGREEMENT:
+        nts = BCryptDestroySecret(secretHandle->SecretData.KeyAgreement);
+        err = _BIDNtStatusToBIDError(nts);
+        break;
+    case SECRET_TYPE_IMPORTED:
+        if (secretHandle->SecretData.Imported.pbSecret != NULL) {
+            SecureZeroMemory(secretHandle->SecretData.Imported.pbSecret,
+                             secretHandle->SecretData.Imported.cbSecret);
+            BIDFree(secretHandle->SecretData.Imported.pbSecret);
+        }
+        break;
+    }
+
+    SecureZeroMemory(secretHandle, sizeof(*secretHandle));
+    BIDFree(secretHandle);
+
+    return BID_S_OK;
+}
+
+BIDError
+_BIDImportSecretKeyData(
+    BIDContext context,
+    unsigned char *pbSecret,
+    size_t cbSecret,
+    BIDSecretHandle *pSecretHandle)
+{
+    struct BIDSecretHandleDesc keyInput;
+
+    keyInput.SecretType = SECRET_TYPE_IMPORTED;
+    keyInput.SecretData.Imported.pbSecret = pbSecret;
+    keyInput.SecretData.Imported.cbSecret = cbSecret;
+
+    return _BIDAllocSecret(context, &keyInput, pSecretHandle);
+}
