@@ -25,7 +25,7 @@ _BIDDeriveAuthenticatorSessionKey(
     BIDError err;
     BIDSecretHandle secretHandle = NULL;
     unsigned char *pbASK = NULL;
-    size_t cbASK;
+    size_t cbASK = 0;
 
     *pSecretHandle = NULL;
 
