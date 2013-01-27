@@ -522,15 +522,8 @@ CBIDIdentityController::_PackDialogArgs(
                                 BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
 
-        _bSilent = !!(_context->ContextOptions & BID_CONTEXT_BROWSER_SILENT);
+        _SetSilent(!!(_context->ContextOptions & BID_CONTEXT_BROWSER_SILENT));
     }
-
-#if 0
-    err = _BIDJsonObjectSet(_context, _args, "silent",
-                            bSilent ? json_true() : json_false(),
-                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-    BID_BAIL_ON_ERROR(err);
-#endif
 
 cleanup:
     BIDFree(szSiteName);
