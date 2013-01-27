@@ -81,6 +81,8 @@ int main(int argc, const char *argv[])
                               &assertion, NULL, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
+    printf("Assertion is %s\n", assertion);
+
 #ifndef WIN32
     err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE,
                              assertion, audience ? audience : "host/www.persona.org",
