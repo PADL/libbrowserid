@@ -36,13 +36,6 @@
 
 #include "gssapiP_bid.h"
 
-#ifdef WIN32
-# include <shlobj.h>     /* may need to use ShFolder.h instead */
-# include <stdio.h>
-#else
-# include <pwd.h>
-#endif
-
 OM_uint32
 gssBidAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
