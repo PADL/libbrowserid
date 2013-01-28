@@ -163,7 +163,10 @@ gssBidReleaseContext(OM_uint32 *minor,
 
     gssBidKerberosInit(&tmpMinor, &krbContext);
 
-    BIDReleaseContext(ctx->bidContext);
+    if (ctx->bidContext != BID_C_NO_CONTEXT) {
+        BIDReleaseIdentity(ctx->bidContext, ctx->bidIdentity);
+        BIDReleaseContext(ctx->bidContext);
+    }
 
     krb5_free_keyblock_contents(krbContext, &ctx->rfc3961Key);
     gssBidReleaseName(&tmpMinor, &ctx->initiatorName);
