@@ -568,21 +568,10 @@ The response from the acceptor is signed using this key for fresh assertions:
 #### Context Root Key (CRK)
 
 The context root key is used for RFC 4121 message protection services, e.g.
-GSS\_Wrap() and GSS\_Get\_MIC(). It is derived as follows:
+GSS\_Wrap() and GSS\_Get\_MIC().
 
-    protocol-key = browserid-derive-key(CMK, "CRK")
-    Tn = pseudo-random(protocol-key, n || "rfc4121-gss-browserid")
-    CRK = random-to-key(truncate(L, T0 || T1 || .. || Tn))
-    L = random-to-key input size
+    CRK = random-to-key(browserid-derive-key(CMK, "CRK"))
     
-where n is a 32-bit integer in network byte order starting at 0 and incremented
-to each call to the [RFC3961] pseudo\_random operation.
-
-**TODO**: can we eliminate this double derivation?
-
-It is also used directly (as in, with HMAC rather than get\_mic) to sign the
-acceptor's response assertion.
-
 #### Authenticator Root Key (ARK)
 
 The authenticator root key (ARK) is used to sign authenticators used for fast
