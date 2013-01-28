@@ -324,7 +324,9 @@ gssBidMapError(OM_uint32 *minor, BIDError err)
         break;
     case BID_S_INTERACT_UNAVAILABLE:
     case BID_S_INTERACT_FAILURE:
+    case BID_S_INTERACT_REQUIRED:
         major = GSS_S_CRED_UNAVAIL;
+        *minor = GSSBID_NO_DEFAULT_CRED;
         break;
     case BID_S_INVALID_JSON:
     case BID_S_INVALID_BASE64:
