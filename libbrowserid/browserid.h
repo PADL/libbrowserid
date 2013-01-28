@@ -167,6 +167,11 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_CONTEXT_REAUTH                  0x00000200
 
 /*
+ * Use ticket cache
+ */
+#define BID_CONTEXT_TICKET_CACHE            0x00000400
+
+/*
  * Context management.
  */
 BIDError

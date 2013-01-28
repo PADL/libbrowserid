@@ -56,8 +56,13 @@ BIDAcquireContext(
         BID_BAIL_ON_ERROR(err);
     }
 
-    if ((ulContextOptions & BID_CONTEXT_REAUTH) &&
-        (ulContextOptions & BID_CONTEXT_USER_AGENT)) {
+    if (ulContextOptions & BID_CONTEXT_TICKET_CACHE) {
+        if ((ulContextOptions & BID_CONTEXT_REAUTH) == 0 ||
+            (ulContextOptions & BID_CONTEXT_USER_AGENT) == 0) {
+            err = BID_S_INVALID_PARAMETER;
+            goto cleanup;
+        }
+
         err = _BIDAcquireDefaultTicketCache(context);
         BID_BAIL_ON_ERROR(err);
     }
@@ -171,7 +176,6 @@ BIDSetContextParam(
         else if (ulParam == BID_PARAM_TICKET_CACHE_NAME)
             pCache = &context->TicketCache;
 
-        _BIDReleaseCache(context, *pCache);
         *pCache = (BIDCache)value;
     }
     case BID_PARAM_PARENT_WINDOW:

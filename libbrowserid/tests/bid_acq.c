@@ -33,7 +33,7 @@ int main(int argc, const char *argv[])
     json_t *j = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
-                       BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
+                       BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE | BID_CONTEXT_TICKET_CACHE;
 
 #ifndef BUILD_AS_DSO
     if (argc > 2 && !strcmp(argv[1], "-identity")) {
@@ -53,6 +53,11 @@ int main(int argc, const char *argv[])
     }
     if (argc > 1 && !strcmp(argv[1], "-noauthoritycache")) {
         options &= ~(BID_CONTEXT_AUTHORITY_CACHE);
+        argc--;
+        argv++;
+    }
+    if (argc > 1 && !strcmp(argv[1], "-noticketcache")) {
+        options &= ~(BID_CONTEXT_TICKET_CACHE);
         argc--;
         argv++;
     }
