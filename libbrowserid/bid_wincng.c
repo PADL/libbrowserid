@@ -9,12 +9,15 @@
 #include <bcrypt.h>
 #include <ncrypt.h>
 
+#ifdef BID_DECIMAL_BIGNUM
+#include <bn/cryptlib.h>
+#endif
+
 /*
  * Windows Cryptography Next Generation (CNG) provider for BrowserID.
  */
 
 /*
- * TODO bignums
  * TODO X.509 support
  */
 
@@ -94,15 +97,37 @@ _BIDParseHexNumber(
     return BID_S_OK;
 }
 
-
+/*
+ * XXX once everything is base64-encoded we can get rid of this
+ * bignum library entirely
+ */
 static BIDError
-_BIDParseBigNumber(
+_BIDParseDecimalNumber(
     BIDContext context,
     const char *szValue,
     size_t cchValue,
     BCryptBuffer *blob)
 {
+#ifdef BID_DECIMAL_BIGNUM
+    BIGNUM *bn;
+
+    if (!BN_dec2bn(&bn, szValue))
+        return BID_S_INVALID_KEY;
+
+    blob->pvBuffer = BIDMalloc(BN_num_bytes(bn));
+    if (blob->pvBuffer == NULL) {
+        BN_free(bn);
+        return BID_S_NO_MEMORY;
+    }
+
+    blob->cbBuffer = BN_bn2bin(bn, blob->pvBuffer);
+
+    BN_free(bn);
+
+    return BID_S_OK;
+#else
     return BID_S_NOT_IMPLEMENTED;
+#endif
 }
 
 static BIDError
@@ -150,7 +175,7 @@ _BIDGetJsonBufferValue(
         }
 
         if (cchDecimal == len || (len % 2))
-            err = _BIDParseBigNumber(context, szValue, len, blob);
+            err = _BIDParseDecimalNumber(context, szValue, len, blob);
         else
             err = BID_S_INVALID_JSON;
 
@@ -192,18 +217,22 @@ _BIDMapHashAlgorithmID(
 static BIDError
 _BIDMapCryptAlgorithmID(
     struct BIDJWTAlgorithmDesc *algorithm,
-    LPCWSTR *pAlgID)
+    LPCWSTR *pAlgID,
+    DWORD *pdwSignFlags)
 {
     LPCWSTR algID = NULL;
 
     *pAlgID = NULL;
+    *pdwSignFlags = 0;
 
-    if (strncmp(algorithm->szAlgID, "DS", 2) == 0)
+    if (strncmp(algorithm->szAlgID, "DS", 2) == 0) {
         algID = BCRYPT_DSA_ALGORITHM;
-    else if (strncmp(algorithm->szAlgID, "RS", 2) == 0)
+    } else if (strncmp(algorithm->szAlgID, "RS", 2) == 0) {
         algID = BCRYPT_RSA_ALGORITHM;
-    else
+        *pdwSignFlags = BCRYPT_PAD_PKCS1;
+    } else {
         return BID_S_UNKNOWN_ALGORITHM;
+    }
 
     *pAlgID = algID;
     return BID_S_OK;
@@ -287,11 +316,12 @@ _BIDMakeShaDigest(
 
     nts = BCryptFinishHash(hHash,
                            digest,
-                           *digestLength,
+                           cbHash,
                            0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
     err = BID_S_OK;
+    *digestLength = cbHash;
 
 cleanup:
     if (hAlg != NULL)
@@ -400,7 +430,7 @@ _BIDMakeJwtRsaKey(
     BIDContext context,
     BCRYPT_ALG_HANDLE hAlgorithm,
     BIDJWK jwk,
-    int public,
+    BOOLEAN bPublic,
     BCRYPT_KEY_HANDLE *phKey)
 {
     BIDError err;
@@ -414,7 +444,7 @@ _BIDMakeJwtRsaKey(
 
     *phKey = NULL;
 
-    if (public) {
+    if (bPublic) {
         err = _BIDGetJsonBufferValue(context, jwk, "e", BID_ENCODING_UNKNOWN, &e);
         BID_BAIL_ON_ERROR(err);
     } else {
@@ -426,7 +456,7 @@ _BIDMakeJwtRsaKey(
     BID_BAIL_ON_ERROR(err);
 
     cbRsaKey = sizeof(*rsaKey);
-    cbRsaKey += public ? e.cbBuffer : d.cbBuffer;
+    cbRsaKey += bPublic ? e.cbBuffer : d.cbBuffer;
     cbRsaKey += n.cbBuffer;
 
     rsaKey = BIDMalloc(cbRsaKey);
@@ -436,17 +466,17 @@ _BIDMakeJwtRsaKey(
     }
     ZeroMemory(rsaKey, cbRsaKey);
 
-    rsaKey->Magic       = public
+    rsaKey->Magic       = bPublic
                         ? BCRYPT_RSAPUBLIC_MAGIC : BCRYPT_RSAPRIVATE_MAGIC;
     rsaKey->BitLength   = n.cbBuffer * 8;
-    rsaKey->cbPublicExp = public ? e.cbBuffer : d.cbBuffer;
+    rsaKey->cbPublicExp = bPublic ? e.cbBuffer : d.cbBuffer;
     rsaKey->cbModulus   = n.cbBuffer;
     rsaKey->cbPrime1    = 0;
     rsaKey->cbPrime2    = 0;
 
     p = (PUCHAR)(rsaKey + 1);
 
-    if (public) {
+    if (bPublic) {
         CopyMemory(p, e.pvBuffer, e.cbBuffer);
         p += e.cbBuffer;
     } else {
@@ -458,11 +488,11 @@ _BIDMakeJwtRsaKey(
 
     nts = BCryptImportKeyPair(hAlgorithm,
                               NULL, /* hImportKey */
-                              public ? BCRYPT_RSAPUBLIC_BLOB : BCRYPT_RSAPRIVATE_BLOB,
+                              bPublic ? BCRYPT_RSAPUBLIC_BLOB : BCRYPT_RSAPRIVATE_BLOB,
                               phKey,
                               (PUCHAR)rsaKey,
                               cbRsaKey,
-                              0);   /* dwFlags */
+                              BCRYPT_NO_KEY_VALIDATION);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
 cleanup:
@@ -477,12 +507,23 @@ cleanup:
     return err;
 }
 
+static void
+_BIDOutputDebugJson(json_t *j)
+{
+    char *szJson = json_dumps(j, JSON_INDENT(8));
+
+    OutputDebugString(szJson);
+    OutputDebugString("\r\n");
+
+    BIDFree(szJson);
+}
+
 static BIDError
 _BIDMakeJwtDsaKey(
     BIDContext context,
     BCRYPT_ALG_HANDLE hAlgorithm,
     BIDJWK jwk,
-    int public,
+    BOOLEAN bPublic,
     BCRYPT_KEY_HANDLE *phKey)
 {
     BIDError err;
@@ -498,55 +539,62 @@ _BIDMakeJwtDsaKey(
 
     *phKey = NULL;
 
-    /* modulus */
-    err = _BIDGetJsonBufferValue(context, jwk, "p", BID_ENCODING_UNKNOWN, &p);
+    _BIDOutputDebugJson(jwk);
+
+    /* prime factor */
+    err = _BIDGetJsonBufferValue(context, jwk, "q", BID_ENCODING_UNKNOWN, &q);
     BID_BAIL_ON_ERROR(err);
 
-    /* inline */
-    err = _BIDGetJsonBufferValue(context, jwk, "q", BID_ENCODING_UNKNOWN, &q);
+    /* modulus */
+    err = _BIDGetJsonBufferValue(context, jwk, "p", BID_ENCODING_UNKNOWN, &p);
     BID_BAIL_ON_ERROR(err);
 
     /* generator */
     err = _BIDGetJsonBufferValue(context, jwk, "g", BID_ENCODING_UNKNOWN, &g);
     BID_BAIL_ON_ERROR(err);
 
-    /* public key */
-    err = _BIDGetJsonBufferValue(context, jwk, "y", BID_ENCODING_UNKNOWN, &y);
-    BID_BAIL_ON_ERROR(err);
-
-    if (!public) {
+    if (bPublic) {
+        /* public key */
+        err = _BIDGetJsonBufferValue(context, jwk, "y", BID_ENCODING_UNKNOWN, &y);
+        BID_BAIL_ON_ERROR(err);
+    } else {
         /* private exponent */
         err = _BIDGetJsonBufferValue(context, jwk, "x", BID_ENCODING_UNKNOWN, &x);
         BID_BAIL_ON_ERROR(err);
     }
 
-    if (q.cbBuffer > 20) {
+    if (q.cbBuffer != 20) {
         err = BID_S_BUFFER_TOO_LONG;
         goto cleanup;
     }
 
-    /* XXX we may need to zero pad these */
-    if (p.cbBuffer != g.cbBuffer || p.cbBuffer != y.cbBuffer ||
-        (!public && x.cbBuffer != 20)) {
+    if (p.cbBuffer != g.cbBuffer) {
+        err = BID_S_INVALID_KEY;
+        goto cleanup;
+    }
+
+    if ((bPublic ? y.cbBuffer : x.cbBuffer) != (bPublic ? p.cbBuffer : 20)) {
         err = BID_S_INVALID_KEY;
         goto cleanup;
     }
 
     cbDsaKey = sizeof(*dsaKey);
-    cbDsaKey += q.cbBuffer + p.cbBuffer + g.cbBuffer + y.cbBuffer;
-    if (!public)
-        cbDsaKey += x.cbBuffer;
+    cbDsaKey += p.cbBuffer + g.cbBuffer;
+    if (bPublic)
+        cbDsaKey += y.cbBuffer;
+    else
+        cbDsaKey += p.cbBuffer + x.cbBuffer;
 
-    dsaKey = BIDMalloc(cbDsaKey);
+    dsaKey = BIDCalloc(1, cbDsaKey);
     if (dsaKey == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
-    ZeroMemory(dsaKey, cbDsaKey);
 
-    dsaKey->dwMagic     = public
+    dsaKey->dwMagic     = bPublic
                         ? BCRYPT_DSA_PUBLIC_MAGIC : BCRYPT_DSA_PRIVATE_MAGIC;
-    dsaKey->cbKey       = y.cbBuffer;
+    dsaKey->cbKey       = p.cbBuffer;
+    dsaKey->Count[2]    = 0x10; /* 4096 BE */
 
     CopyMemory(dsaKey->q, q.pvBuffer, q.cbBuffer);
     pbDsaKeyData = (PUCHAR)(dsaKey + 1);
@@ -557,21 +605,23 @@ _BIDMakeJwtDsaKey(
     CopyMemory(pbDsaKeyData, g.pvBuffer, g.cbBuffer);
     pbDsaKeyData += g.cbBuffer;
 
-    CopyMemory(pbDsaKeyData, y.pvBuffer, y.cbBuffer);
-    pbDsaKeyData += y.cbBuffer;
+    if (bPublic) {
+        CopyMemory(pbDsaKeyData, y.pvBuffer, y.cbBuffer);
+        pbDsaKeyData += y.cbBuffer;
+    } else {
+        pbDsaKeyData += dsaKey->cbKey; /* skip over public key */
 
-    if (!public) {
         CopyMemory(pbDsaKeyData, x.pvBuffer, x.cbBuffer);
         pbDsaKeyData += x.cbBuffer;
     }
 
     nts = BCryptImportKeyPair(hAlgorithm,
                               NULL, /* hImportKey */
-                              public ? BCRYPT_DSA_PUBLIC_BLOB : BCRYPT_DSA_PRIVATE_BLOB,
+                              bPublic ? BCRYPT_DSA_PUBLIC_BLOB : BCRYPT_DSA_PRIVATE_BLOB,
                               phKey,
                               (PUCHAR)dsaKey,
                               cbDsaKey,
-                              0);   /* dwFlags */
+                              BCRYPT_NO_KEY_VALIDATION);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
 cleanup:
@@ -594,7 +644,7 @@ _CNGMakeKey(
     BIDContext context,
     BCRYPT_ALG_HANDLE hAlgorithm,
     BIDJWK jwk,
-    int public,
+    BOOLEAN bPublic,
     BCRYPT_KEY_HANDLE *phKey)
 {
     BIDError err;
@@ -603,12 +653,12 @@ _CNGMakeKey(
     *phKey = NULL;
 
     x5c = json_object_get(jwk, "x5c");
-    if (public && x5c != NULL)
+    if (bPublic && x5c != NULL)
         err = _BIDCertDataToKey(algorithm, context, hAlgorithm, x5c, 0, phKey);
     else if (strncmp(algorithm->szAlgID, "RS", 2) == 0)
-        err = _BIDMakeJwtRsaKey(context, hAlgorithm, jwk, public, phKey);
+        err = _BIDMakeJwtRsaKey(context, hAlgorithm, jwk, bPublic, phKey);
     else if (strncmp(algorithm->szAlgID, "DS", 2) == 0)
-        err = _BIDMakeJwtDsaKey(context, hAlgorithm, jwk, public, phKey);
+        err = _BIDMakeJwtDsaKey(context, hAlgorithm, jwk, bPublic, phKey);
     else
         err = BID_S_UNKNOWN_ALGORITHM;
 
@@ -626,22 +676,28 @@ _CNGKeySize(
     NTSTATUS nts;
     LPCWSTR wszAlgID;
     BCRYPT_ALG_HANDLE hAlgorithm = NULL;
-    BCRYPT_KEY_HANDLE hRsaKey = NULL;
+    BCRYPT_KEY_HANDLE hKey = NULL;
     DWORD cbKey = 0, cbResult;
+    DWORD dwFlags = 0;
+    BOOLEAN bPublic;
+    BOOLEAN bDsaKey = (strncmp(algorithm->szAlgID, "DS", 2) == 0);
 
     *pcbKey = 0;
 
-    err = _BIDMapCryptAlgorithmID(algorithm, &wszAlgID);
+    err = _BIDMapCryptAlgorithmID(algorithm, &wszAlgID, &dwFlags);
     BID_BAIL_ON_ERROR(err);
 
     nts = BCryptOpenAlgorithmProvider(&hAlgorithm, wszAlgID,
                                       NULL, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    err = _CNGMakeKey(algorithm, context, hAlgorithm, jwk, 0, &hRsaKey);
+    /* XXX this is all a bit ugly, is there a better way? */
+    bPublic = (json_object_get(jwk, bDsaKey ? "y" : "e") != NULL);
+
+    err = _CNGMakeKey(algorithm, context, hAlgorithm, jwk, bPublic, &hKey);
     BID_BAIL_ON_ERROR(err);
 
-    err = BCryptGetProperty(hRsaKey, BCRYPT_KEY_STRENGTH, (PUCHAR)&cbKey,
+    nts = BCryptGetProperty(hKey, BCRYPT_KEY_STRENGTH, (PUCHAR)&cbKey,
                             sizeof(cbKey), &cbResult, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
@@ -651,7 +707,7 @@ _CNGKeySize(
      * FIPS 186-3[3] specifies L and N length pairs of
      * (1024,160), (2048,224), (2048,256), and (3072,256).
      */
-    if (strncmp(algorithm->szAlgID, "DS", 2) == 0) {
+    if (bDsaKey) {
         if (cbKey < 160)
             cbKey = 160;
         else if (cbKey < 224)
@@ -663,8 +719,8 @@ _CNGKeySize(
     *pcbKey = cbKey;
 
 cleanup:
-    if (hRsaKey != NULL)
-        BCryptDestroyKey(hRsaKey);
+    if (hKey != NULL)
+        BCryptDestroyKey(hKey);
     if (hAlgorithm != NULL)
         BCryptCloseAlgorithmProvider(hAlgorithm, 0);
 
@@ -682,20 +738,21 @@ _CNGMakeSignature(
     NTSTATUS nts;
     LPCWSTR wszAlgID;
     BCRYPT_ALG_HANDLE hAlgorithm = NULL;
-    BCRYPT_KEY_HANDLE hRsaKey = NULL;
+    BCRYPT_KEY_HANDLE hKey = NULL;
+    DWORD dwFlags = 0;
     BCRYPT_PKCS1_PADDING_INFO paddingInfo = { 0 };
     DWORD cbOutput = 0;
     UCHAR pbDigest[64]; /* longest known hash is SHA-512 */
     size_t cbDigest = 0;
 
-    err = _BIDMapCryptAlgorithmID(algorithm, &wszAlgID);
+    err = _BIDMapCryptAlgorithmID(algorithm, &wszAlgID, &dwFlags);
     BID_BAIL_ON_ERROR(err);
 
     nts = BCryptOpenAlgorithmProvider(&hAlgorithm, wszAlgID,
                                       NULL, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    err = _CNGMakeKey(algorithm, context, hAlgorithm, jwk, 0, &hRsaKey);
+    err = _CNGMakeKey(algorithm, context, hAlgorithm, jwk, FALSE, &hKey);
     BID_BAIL_ON_ERROR(err);
 
     cbDigest = sizeof(pbDigest);
@@ -705,17 +762,19 @@ _CNGMakeSignature(
 
     BID_ASSERT(jwt->EncData != NULL);
 
-    err = _BIDMapHashAlgorithmID(algorithm, &paddingInfo.pszAlgId);
-    BID_BAIL_ON_ERROR(err);
+    if (dwFlags & BCRYPT_PAD_PKCS1) {
+        err = _BIDMapHashAlgorithmID(algorithm, &paddingInfo.pszAlgId);
+        BID_BAIL_ON_ERROR(err);
+    }
 
-    nts = BCryptSignHash(hRsaKey,
-                         &paddingInfo,
+    nts = BCryptSignHash(hKey,
+                         (dwFlags & BCRYPT_PAD_PKCS1) ? &paddingInfo : NULL,
                          pbDigest,
                          cbDigest,
                          NULL,
                          0,
                          &cbOutput,
-                         BCRYPT_PAD_PKCS1);
+                         dwFlags);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
     jwt->Signature = BIDMalloc(cbOutput);
@@ -726,14 +785,14 @@ _CNGMakeSignature(
 
     jwt->SignatureLength = cbOutput;
 
-    nts = BCryptSignHash(hRsaKey,
-                        &paddingInfo,
-                        pbDigest,
-                        cbDigest,
-                        jwt->Signature,
-                        jwt->SignatureLength,
-                        &cbOutput,
-                        BCRYPT_PAD_PKCS1);
+    nts = BCryptSignHash(hKey,
+                         (dwFlags & BCRYPT_PAD_PKCS1) ? &paddingInfo : NULL,
+                         pbDigest,
+                         cbDigest,
+                         jwt->Signature,
+                         jwt->SignatureLength,
+                         &cbOutput,
+                         dwFlags);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
     jwt->SignatureLength = cbOutput;
@@ -741,11 +800,10 @@ _CNGMakeSignature(
     err = BID_S_OK;
 
 cleanup:
-    if (hRsaKey != NULL)
-        BCryptDestroyKey(hRsaKey);
+    if (hKey != NULL)
+        BCryptDestroyKey(hKey);
     if (hAlgorithm != NULL)
         BCryptCloseAlgorithmProvider(hAlgorithm, 0);
-    BIDFree(pbDigest);
 
     return err;
 }
@@ -761,22 +819,23 @@ _CNGVerifySignature(
     BIDError err;
     NTSTATUS nts;
     LPCWSTR wszAlgID;
+    DWORD dwFlags = 0;
     BCRYPT_ALG_HANDLE hAlgorithm = NULL;
-    BCRYPT_KEY_HANDLE hRsaKey = NULL;
+    BCRYPT_KEY_HANDLE hKey = NULL;
     BCRYPT_PKCS1_PADDING_INFO paddingInfo = { 0 };
     UCHAR pbDigest[64]; /* longest known hash is SHA-512 */
     size_t cbDigest = 0;
 
     *valid = 0;
 
-    err = _BIDMapCryptAlgorithmID(algorithm, &wszAlgID);
+    err = _BIDMapCryptAlgorithmID(algorithm, &wszAlgID, &dwFlags);
     BID_BAIL_ON_ERROR(err);
 
     nts = BCryptOpenAlgorithmProvider(&hAlgorithm, wszAlgID,
                                       NULL, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    err = _CNGMakeKey(algorithm, context, hAlgorithm, jwk, 0, &hRsaKey);
+    err = _CNGMakeKey(algorithm, context, hAlgorithm, jwk, TRUE, &hKey);
     BID_BAIL_ON_ERROR(err);
 
     cbDigest = sizeof(pbDigest);
@@ -786,16 +845,18 @@ _CNGVerifySignature(
 
     BID_ASSERT(jwt->EncData != NULL);
 
-    err = _BIDMapHashAlgorithmID(algorithm, &paddingInfo.pszAlgId);
-    BID_BAIL_ON_ERROR(err);
+    if (dwFlags & BCRYPT_PAD_PKCS1) {
+        err = _BIDMapHashAlgorithmID(algorithm, &paddingInfo.pszAlgId);
+        BID_BAIL_ON_ERROR(err);
+    }
 
-    nts = BCryptVerifySignature(hRsaKey,
-                                &paddingInfo,
+    nts = BCryptVerifySignature(hKey,
+                                (dwFlags & BCRYPT_PAD_PKCS1) ? &paddingInfo : NULL,
                                 pbDigest,
                                 cbDigest,
                                 jwt->Signature,
                                 jwt->SignatureLength,
-                                BCRYPT_PAD_PKCS1);
+                                dwFlags);
     if (nts == STATUS_SUCCESS)
         *valid = 1;
     else if (nts == STATUS_INVALID_SIGNATURE)
@@ -803,11 +864,10 @@ _CNGVerifySignature(
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
 cleanup:
-    if (hRsaKey != NULL)
-        BCryptDestroyKey(hRsaKey);
+    if (hKey != NULL)
+        BCryptDestroyKey(hKey);
     if (hAlgorithm != NULL)
         BCryptCloseAlgorithmProvider(hAlgorithm, 0);
-    BIDFree(pbDigest);
 
     return err;
 }
@@ -1032,12 +1092,11 @@ _BIDMakeDHKey(
     cbDhKeyBlob = sizeof(*dhKey);
     cbDhKeyBlob += p.cbBuffer + g.cbBuffer + y.cbBuffer + x.cbBuffer;
 
-    dhKeyBlob = BIDMalloc(cbDhKeyBlob);
+    dhKeyBlob = BIDCalloc(1, cbDhKeyBlob);
     if (dhKey == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
-    ZeroMemory(dhKeyBlob, cbDhKeyBlob);
 
     dhKeyBlob->dwMagic = bIsPrivateKey
                        ? BCRYPT_DH_PRIVATE_MAGIC : BCRYPT_DH_PUBLIC_MAGIC;
@@ -1216,12 +1275,11 @@ _BIDMakeDHParams(
     }
 
     cbDhParamsHeader = sizeof(*pDhParamsHeader) + p.cbBuffer + g.cbBuffer;
-    pDhParamsHeader = BIDMalloc(cbDhParamsHeader);
+    pDhParamsHeader = BIDCalloc(1, cbDhParamsHeader);
     if (pDhParamsHeader == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
-    ZeroMemory(pDhParamsHeader, cbDhParamsHeader);
 
     pDhParamsHeader->cbLength    = cbDhParamsHeader;
     pDhParamsHeader->dwMagic     = BCRYPT_DH_PARAMETERS_MAGIC;

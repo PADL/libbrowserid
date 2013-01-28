@@ -4,9 +4,11 @@
 
 RELDIR=libbrowserid
 
+SUBDIRS = bn
+
 !include ../windows/NTMakefile.w32 
 
-cdefines = $(cdefines) -DBUILD_LIBBROWSERID -DSYSCONFDIR=\"c:/windows/system32/drivers/etc/\"
+cdefines = $(cdefines) -DBUILD_LIBBROWSERID -DSYSCONFDIR=\"c:/windows/system32/drivers/etc/\" -DBID_DECIMAL_BIGNUM
 
 libbrowserid_OBJS =					\
 	$(OBJ)\bid_authority.obj			\
