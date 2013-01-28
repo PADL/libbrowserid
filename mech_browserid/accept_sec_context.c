@@ -251,7 +251,6 @@ gss_accept_sec_context(OM_uint32 *minor,
         *context_handle = ctx;
 
         GSSBID_MUTEX_LOCK(&ctx->mutex);
-        ctx->mechanismUsed = mech;
     }
 
     major = gssBidAcceptSecContext(minor,
