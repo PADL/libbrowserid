@@ -152,6 +152,9 @@ _BIDGetJsonBufferValue(
         if (cchDecimal == len || (len % 2))
             err = _BIDParseBigNumber(context, szValue, len, blob);
         else
+            err = BID_S_INVALID_JSON;
+
+        if (err != BID_S_OK)
             err = _BIDParseHexNumber(context, szValue, len, blob);
     }
 
@@ -556,11 +559,11 @@ _BIDMakeJwtDsaKey(
 
     CopyMemory(pbDsaKeyData, y.pvBuffer, y.cbBuffer);
     pbDsaKeyData += y.cbBuffer;
-   
+
     if (!public) {
         CopyMemory(pbDsaKeyData, x.pvBuffer, x.cbBuffer);
         pbDsaKeyData += x.cbBuffer;
-    } 
+    }
 
     nts = BCryptImportKeyPair(hAlgorithm,
                               NULL, /* hImportKey */
@@ -743,7 +746,7 @@ cleanup:
     if (hAlgorithm != NULL)
         BCryptCloseAlgorithmProvider(hAlgorithm, 0);
     BIDFree(pbDigest);
- 
+
     return err;
 }
 
@@ -805,7 +808,7 @@ cleanup:
     if (hAlgorithm != NULL)
         BCryptCloseAlgorithmProvider(hAlgorithm, 0);
     BIDFree(pbDigest);
- 
+
     return err;
 }
 
@@ -998,16 +1001,16 @@ _BIDMakeDHKey(
         goto cleanup;
     }
 
-    err = _BIDGetJsonBufferValue(context, dhParams, "p", BID_ENCODING_UNKNOWN, &p);
+    err = _BIDGetJsonBufferValue(context, dhParams, "p", BID_ENCODING_BASE64_URL, &p);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhParams, "g", BID_ENCODING_UNKNOWN, &g);
+    err = _BIDGetJsonBufferValue(context, dhParams, "g", BID_ENCODING_BASE64_URL, &g);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhKey, "y", BID_ENCODING_UNKNOWN, &y);
+    err = _BIDGetJsonBufferValue(context, dhKey, "y", BID_ENCODING_BASE64_URL, &y);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhKey, "x", BID_ENCODING_UNKNOWN, &x);
+    err = _BIDGetJsonBufferValue(context, dhKey, "x", BID_ENCODING_BASE64_URL, &x);
     if (err == BID_S_OK)
         bIsPrivateKey = TRUE;
     else if (err == BID_S_UNKNOWN_JSON_KEY || err == BID_S_INVALID_KEY)
@@ -1050,11 +1053,11 @@ _BIDMakeDHKey(
 
     CopyMemory(pbDhKeyBlob, y.pvBuffer, y.cbBuffer);
     pbDhKeyBlob += y.cbBuffer;
-   
+
     if (bIsPrivateKey) {
         CopyMemory(pbDhKeyBlob, x.pvBuffer, x.cbBuffer);
         pbDhKeyBlob += x.cbBuffer;
-    } 
+    }
 
     nts = BCryptImportKeyPair(hAlgorithm,
                               NULL, /* hImportKey */
@@ -1078,22 +1081,62 @@ cleanup:
     return err;
 }
 
+static BIDError
+_BIDCryptGetKeyParam(
+    BIDContext context,
+    HCRYPTKEY hKey,
+    DWORD dwParam,
+    json_t *json,
+    const char *szJsonKey)
+{
+    BIDError err;
+    PUCHAR pbData = NULL;
+    DWORD cbData = 0, i;
+
+    if (!CryptGetKeyParam(hKey, dwParam, NULL, &cbData, 0))
+        return BID_S_CRYPTO_ERROR;
+
+    pbData = BIDMalloc(cbData);
+    if (pbData == NULL)
+        return BID_S_NO_MEMORY;
+
+    if (!CryptGetKeyParam(hKey, dwParam, pbData, &cbData, 0)) {
+        BIDFree(pbData);
+        return BID_S_CRYPTO_ERROR;
+    }
+
+    /*
+     * Pretty sure we need to swap the endianness here, as OpenSSL and
+     * CNG are big-endian, whereas CryptoAPI is little-endian.
+     */
+    for (i = 0; i < cbData / 2; i++) {
+        UCHAR tmp = pbData[i];
+        pbData[i] = pbData[cbData - 1 - i];
+        pbData[cbData - 1 - i] = tmp;
+    }
+
+    err = _BIDJsonObjectSetBinaryValue(context, json, szJsonKey,
+                                       pbData, cbData);
+
+    BIDFree(pbData);
+
+    return err;
+}
+
 BIDError
 _BIDGenerateDHParams(
     BIDContext context,
     json_t **pDhParams)
 {
     BIDError err;
-    NTSTATUS nts;
-    BCRYPT_ALG_HANDLE hAlgorithm = NULL;
-    BCRYPT_KEY_HANDLE hTmpKey = NULL;
-    BCRYPT_DH_PARAMETER_HEADER *dhParamsHeader = NULL;
-    DWORD cbDhParamsHeader = 0;
     json_t *dhParams = NULL;
-    json_t *p = NULL;
-    json_t *g = NULL;
+    HCRYPTPROV hProv = (HCRYPTPROV)0;
+    HCRYPTKEY hKey = (HCRYPTKEY)0;
+    DWORD dwFlags;
 
     *pDhParams = NULL;
+
+    BID_ASSERT(context->DhKeySize != 0);
 
     dhParams = json_object();
     if (dhParams == NULL) {
@@ -1101,48 +1144,35 @@ _BIDGenerateDHParams(
         goto cleanup;
     }
 
-    BID_ASSERT(context->DhKeySize != 0);
+    /*
+     * Can't find a way to generate ephereral DH parameters using
+     * BCrypt (parameters must be set before a key can be generated),
+     * so fall back to the old WinCrypt. XXX
+     */
 
-    nts = BCryptOpenAlgorithmProvider(&hAlgorithm,
-                                      BCRYPT_DH_ALGORITHM,
-                                      NULL,
-                                      0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    /* XXX is there a way to generate the parameters without a keypair? */
-    nts = BCryptGenerateKeyPair(hAlgorithm, &hTmpKey, context->DhKeySize, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    nts = BCryptFinalizeKeyPair(hTmpKey, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    nts = BCryptGetProperty(hTmpKey, BCRYPT_DH_PARAMETERS,
-                            NULL, 0, &cbDhParamsHeader, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    dhParamsHeader = BIDMalloc(cbDhParamsHeader);
-    if (dhParamsHeader == NULL) {
-        err = BID_S_NO_MEMORY;
+    if (!CryptAcquireContext(&hProv, NULL, MS_ENH_DSS_DH_PROV, PROV_DSS_DH,
+                             CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
+        err = BID_S_CRYPTO_ERROR;
         goto cleanup;
     }
 
-    nts = BCryptGetProperty(hTmpKey, BCRYPT_DH_PARAMETERS,
-                            (PUCHAR)dhParamsHeader, cbDhParamsHeader,
-                            &cbDhParamsHeader, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+    /*
+     * We're just going to generate a key, throw away the private part
+     * and keep the parameters. According to the documentation, the key
+     * size in bits, is set in the upper 16 bits of the parameter.
+     */
+    dwFlags = CRYPT_EXPORTABLE;
+    dwFlags |= context->DhKeySize << 16;
 
-    err = _BIDJsonObjectSetBinaryValue(context,
-                                       dhParams,
-                                       "p",
-                                       (PUCHAR)(dhParamsHeader + 1),
-                                       dhParamsHeader->cbKeyLength);
+    if (!CryptGenKey(hProv, CALG_DH_EPHEM, dwFlags, &hKey)) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    err = _BIDCryptGetKeyParam(context, hKey, KP_P, dhParams, "p");
     BID_BAIL_ON_ERROR(err);
-                     
-    err = _BIDJsonObjectSetBinaryValue(context,
-                                       dhParams,
-                                       "g",
-                                       (PUCHAR)(dhParamsHeader + 1) + dhParamsHeader->cbKeyLength,
-                                       dhParamsHeader->cbKeyLength);
+
+    err = _BIDCryptGetKeyParam(context, hKey, KP_G, dhParams, "g");
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
@@ -1151,13 +1181,10 @@ _BIDGenerateDHParams(
 cleanup:
     if (err != BID_S_OK)
         json_decref(dhParams);
-    if (hAlgorithm != NULL)
-        BCryptCloseAlgorithmProvider(hAlgorithm, 0);
-    if (hTmpKey != NULL)
-        BCryptDestroyKey(hTmpKey);
-    BIDFree(dhParamsHeader);
-    json_decref(p);
-    json_decref(g);
+    if (hKey)
+        CryptDestroyKey(hKey);
+    if (hProv)
+        CryptReleaseContext(hProv, 0);
 
     return err;
 }
@@ -1177,10 +1204,10 @@ _BIDMakeDHParams(
 
     *ppDhParamsHeader = NULL;
 
-    err = _BIDGetJsonBufferValue(context, dhParams, "p", BID_ENCODING_UNKNOWN, &p);
+    err = _BIDGetJsonBufferValue(context, dhParams, "p", BID_ENCODING_BASE64_URL, &p);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhParams, "g", BID_ENCODING_UNKNOWN, &g);
+    err = _BIDGetJsonBufferValue(context, dhParams, "g", BID_ENCODING_BASE64_URL, &g);
     BID_BAIL_ON_ERROR(err);
 
     if (p.cbBuffer != g.cbBuffer) {
@@ -1201,7 +1228,7 @@ _BIDMakeDHParams(
     pDhParamsHeader->cbKeyLength = p.cbBuffer;
 
     pbDhParamsHeader = (PUCHAR)(pDhParamsHeader + 1);
-    
+
     CopyMemory(pbDhParamsHeader, p.pvBuffer, p.cbBuffer);
     pbDhParamsHeader += p.cbBuffer;
 
@@ -1292,14 +1319,14 @@ _BIDGenerateDHKey(
     /* Layout is DH_KEY_BLOB || p || g || y || x */
     /*                          0    1    2    3 */
     err = _BIDJsonObjectSetBinaryValue(context,
-                                       dhParams,
+                                       dhKey,
                                        "y",
                                        &pbDhKeyBlob[2 * dhKeyBlob->cbKey],
                                        dhKeyBlob->cbKey);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSetBinaryValue(context,
-                                       dhParams,
+                                       dhKey,
                                        "x",
                                        &pbDhKeyBlob[3 * dhKeyBlob->cbKey],
                                        dhKeyBlob->cbKey);
