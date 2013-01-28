@@ -132,13 +132,7 @@ gssBidRfc3961KeySize(OM_uint32 *minor,
 }
 
 /*
- * Derive a key K for RFC 4121 use by using the following
- * derivation function (based on RFC 4402);
- *
- * KMSK = random-to-key(MSK)
- * Tn = pseudo-random(KMSK, n || "rfc4121-gss-browserid")
- * L = output key size
- * K = truncate(L, T1 || T2 || .. || Tn)
+ * Derive a key K for RFC 4121 use.
  *
  * The output must be freed by krb5_free_keyblock_contents(),
  * not GSSBID_FREE().
@@ -156,12 +150,9 @@ gssBidDeriveRfc3961Key(OM_uint32 *minor,
 #else
     krb5_data data;
 #endif
-    krb5_data ns, t, derivedKeyData;
     krb5_keyblock kd;
     krb5_error_code code;
-    size_t randomLength, keyLength, prfLength;
-    unsigned char constant[4 + sizeof("rfc4121-gss-browserid") - 1], *p;
-    ssize_t i, remain;
+    size_t randomLength, keyLength;
 
     GSSBID_KRB_INIT(&krbContext);
     GSSBID_ASSERT(encryptionType != ENCTYPE_NULL);
@@ -169,10 +160,6 @@ gssBidDeriveRfc3961Key(OM_uint32 *minor,
     KRB_KEY_INIT(pKey);
     KRB_KEY_INIT(&kd);
     KRB_KEY_TYPE(&kd) = encryptionType;
-
-    KRB_DATA_INIT(&ns);
-    KRB_DATA_INIT(&t);
-    KRB_DATA_INIT(&derivedKeyData);
 
 #ifdef HAVE_HEIMDAL_VERSION
     code = krb5_enctype_keybits(krbContext, encryptionType, &randomLength);
@@ -212,72 +199,6 @@ gssBidDeriveRfc3961Key(OM_uint32 *minor,
     if (code != 0)
         goto cleanup;
 
-    memset(&constant[0], 0, 4);
-    memcpy(&constant[4], "rfc4121-gss-browserid", sizeof("rfc4121-gss-browserid") - 1);
-
-    ns.length = sizeof(constant);
-    ns.data = (char *)constant;
-
-    /* Plug derivation constant and key into PRF */
-#ifdef HAVE_HEIMDAL_VERSION
-    code = krb5_crypto_prf_length(krbContext, encryptionType, &prfLength);
-#else
-    code = krb5_c_prf_length(krbContext, encryptionType, &prfLength);
-#endif
-    if (code != 0)
-        goto cleanup;
-
-#ifdef HAVE_HEIMDAL_VERSION
-    code = krb5_crypto_init(krbContext, &kd, 0, &krbCrypto);
-    if (code != 0)
-        goto cleanup;
-#else
-    t.length = prfLength;
-    t.data = GSSBID_MALLOC(t.length);
-    if (t.data == NULL) {
-        code = ENOMEM;
-        goto cleanup;
-    }
-#endif
-
-    derivedKeyData.length = randomLength;
-    derivedKeyData.data = GSSBID_MALLOC(derivedKeyData.length);
-    if (derivedKeyData.data == NULL) {
-        code = ENOMEM;
-        goto cleanup;
-    }
-
-    for (i = 0, p = (unsigned char *)derivedKeyData.data, remain = randomLength;
-         remain > 0;
-         p += t.length, remain -= t.length, i++)
-    {
-        store_uint32_be(i, ns.data);
-
-#ifdef HAVE_HEIMDAL_VERSION
-        code = krb5_crypto_prf(krbContext, krbCrypto, &ns, &t);
-#else
-        code = krb5_c_prf(krbContext, &kd, &ns, &t);
-#endif
-        if (code != 0)
-            goto cleanup;
-
-        memcpy(p, t.data, MIN(t.length, remain));
-     }
-
-    /* Finally, convert PRF output into a new key which we will return */
-#ifdef HAVE_HEIMDAL_VERSION
-    krb5_free_keyblock_contents(krbContext, &kd);
-    KRB_KEY_INIT(&kd);
-
-    code = krb5_random_to_key(krbContext, encryptionType,
-                              derivedKeyData.data, derivedKeyData.length, &kd);
-#else
-    code = krb5_c_random_to_key(krbContext, encryptionType,
-                                &derivedKeyData, &kd);
-#endif
-    if (code != 0)
-        goto cleanup;
-
     *pKey = kd;
 
 cleanup:
@@ -285,17 +206,7 @@ cleanup:
         krb5_free_keyblock_contents(krbContext, &kd);
 #ifdef HAVE_HEIMDAL_VERSION
     krb5_crypto_destroy(krbContext, krbCrypto);
-    krb5_data_free(&t);
-#else
-    if (t.data != NULL) {
-        memset(t.data, 0, t.length);
-        GSSBID_FREE(t.data);
-    }
 #endif
-    if (derivedKeyData.data != NULL) {
-        memset(derivedKeyData.data, 0, derivedKeyData.length);
-        GSSBID_FREE(derivedKeyData.data);
-    }
 
     *minor = code;
 
