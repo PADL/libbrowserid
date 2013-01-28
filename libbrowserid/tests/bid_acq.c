@@ -83,6 +83,11 @@ int main(int argc, const char *argv[])
 
     printf("Assertion is %s\n", assertion);
 
+#ifdef WIN32
+    OutputDebugString(assertion);
+    OutputDebugString("\r\n");
+#endif
+
 #ifndef WIN32
     err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE,
                              assertion, audience ? audience : "host/www.persona.org",
@@ -97,8 +102,10 @@ int main(int argc, const char *argv[])
 #endif
 
 cleanup:
-    BIDReleaseIdentity(context, identity);
-    BIDReleaseContext(context);
+    if (context != BID_C_NO_CONTEXT) {
+        BIDReleaseIdentity(context, identity);
+        BIDReleaseContext(context);
+    }
     BIDFree(assertion);
     json_decref(j);
 
