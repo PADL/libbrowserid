@@ -53,8 +53,8 @@ gss_context_time(OM_uint32 *minor,
     GSSBID_MUTEX_LOCK(&ctx->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
-        *minor = GSSBID_CONTEXT_INCOMPLETE;
         major = GSS_S_NO_CONTEXT;
+        *minor = GSSBID_CONTEXT_INCOMPLETE;
         goto cleanup;
     }
 

@@ -270,15 +270,8 @@ gssBidDisplayStatus(OM_uint32 *minor,
                     OM_uint32 status_value,
                     gss_buffer_t status_string);
 
-#define IS_WIRE_ERROR(err)              ((err) > GSSBID_RESERVED && \
-                                         (err) <= GSSBID_RADIUS_PROT_FAILURE)
-
-#ifdef GSSBID_ENABLE_ACCEPTOR
-#define IS_RADIUS_ERROR(err)            ((err) >= ERROR_TABLE_BASE_rse && \
-                                         (err) <= ERROR_TABLE_BASE_rse + RSE_MAX)
-#else
-#define IS_RADIUS_ERROR(err)            (0)
-#endif
+#define IS_BROWSERID_ERROR(err)         ((err) >= ERROR_TABLE_BASE_lbid && \
+                                         (err) <= ERROR_TABLE_BASE_lbid + BID_S_UNKNOWN_ERROR_CODE)
 
 /* exchange_meta_data.c */
 OM_uint32 GSSAPI_CALLCONV
