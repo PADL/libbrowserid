@@ -68,13 +68,16 @@ _BIDGrowHttpBuffer(
     sizeRequired = buffer->Offset + size + 1; /* NUL */
 
     if (sizeRequired > buffer->Size) {
-        DWORD newSize = buffer->Size;
+        DWORD newSize = buffer->Size == 0 ? BUFSIZ : buffer->Size;
         PCHAR tmpBuffer;
 
         while (newSize < sizeRequired)
             newSize *= 2;
 
-        tmpBuffer = LocalReAlloc(buffer->Data, newSize, 0);
+        if (buffer->Size == 0)
+            tmpBuffer = LocalAlloc(LMEM_FIXED, newSize);
+        else
+            tmpBuffer = LocalReAlloc(buffer->Data, newSize, LMEM_FIXED);
         if (tmpBuffer == NULL)
             return BID_S_NO_MEMORY;
 
@@ -204,6 +207,13 @@ _BIDMakeHttpRequest(
         err = BID_S_HTTP_ERROR;
         break;
     }
+
+    if (buffer.Offset == buffer.Size) {
+        err = _BIDGrowHttpBuffer(&buffer, 1);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    buffer.Data[buffer.Offset] = '\0';
 
     *pJsonDoc = json_loads(buffer.Data, 0, &context->JsonError);
     if (*pJsonDoc == NULL) {
