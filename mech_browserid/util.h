@@ -674,7 +674,7 @@ enum gss_bid_state {
 
 #define GSSBID_STATE_NEXT(s)    ((s) << 1)
 
-#define GSSBID_SM_STATE(ctx)                ((ctx)->state)
+#define GSSBID_SM_STATE(ctx)                ((ctx) == GSS_C_NO_CONTEXT ? 0 : (ctx)->state)
 
 #define GSSBID_SM_TRANSITION(ctx, newstate)    do { (ctx)->state = (newstate); } while (0)
 #define GSSBID_SM_TRANSITION_NEXT(ctx)      GSSBID_SM_TRANSITION((ctx), GSSBID_STATE_NEXT(GSSBID_SM_STATE((ctx))))
