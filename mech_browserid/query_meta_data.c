@@ -42,7 +42,7 @@ gssBidQueryMetaData(OM_uint32 *minor,
                     gss_cred_id_t cred,
                     gss_ctx_id_t *context_handle,
                     const gss_name_t name,
-                    OM_uint32 req_flags GSSBID_UNUSED,
+                    OM_uint32 req_flags,
                     gss_buffer_t meta_data)
 {
     OM_uint32 major = GSS_S_COMPLETE, tmpMinor;
@@ -62,26 +62,44 @@ gssBidQueryMetaData(OM_uint32 *minor,
             ctx->flags |= CTX_FLAG_INITIATOR;
     }
 
-    if (ctx->cred == GSS_C_NO_CREDENTIAL) {
-        if (isInitiator) {
-            major = gssBidResolveInitiatorCred(minor, cred, ctx, name, 0,
-                                               GSS_C_NO_CHANNEL_BINDINGS, /* XXX */
+    /*
+     * If the credential can be resolved and contains certificate anchors,
+     * then we can eliminate the server probe (this is done in util_negoex.c).
+     *
+     * If the credential cannot be resolved, we should still attempt the
+     * probe as long as we have a username.
+     */
+    if (CTX_IS_INITIATOR(ctx)) {
+        if (ctx->cred == GSS_C_NO_CREDENTIAL) {
+            major = gssBidResolveInitiatorCred(minor, cred, ctx, name,
+                                               req_flags,
+                                               GSS_C_NO_CHANNEL_BINDINGS,
                                                &ctx->cred);
-        } else {
-            major = gssBidAcquireCred(minor,
-                                      GSS_C_NO_NAME,
-                                      GSS_C_INDEFINITE,
-                                      GSS_C_NO_OID_SET,
-                                      GSS_C_ACCEPT,
-                                      &ctx->cred,
-                                      NULL,
-                                      NULL);
+            if (GSS_ERROR(major) &&
+                *minor != GSSBID_NO_DEFAULT_CRED)
+                goto cleanup;
         }
+
+        if (ctx->cred == GSS_C_NO_CREDENTIAL &&
+            (cred == GSS_C_NO_CREDENTIAL || cred->name == NULL)) {
+            major = GSS_S_CRED_UNAVAIL;
+            *minor = GSSBID_NO_DEFAULT_CRED;
+            goto cleanup;
+        }
+    } else if (ctx->cred == GSS_C_NO_CREDENTIAL) {
+        major = gssBidAcquireCred(minor,
+                                  GSS_C_NO_NAME,
+                                  GSS_C_INDEFINITE,
+                                  GSS_C_NO_OID_SET,
+                                  GSS_C_ACCEPT,
+                                  &ctx->cred,
+                                  NULL,
+                                  NULL);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
-    if (!isInitiator) {
+    if (!CTX_IS_INITIATOR(ctx)) {
         major = gssBidIndicateRPCerts(minor, ctx, &metaDataToken);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -107,6 +125,7 @@ cleanup:
     return major;
 }
 
+#ifndef GSSBID_SSP
 OM_uint32 GSSAPI_CALLCONV
 gss_query_meta_data(OM_uint32 *minor,
                     gss_const_OID mech,
@@ -138,3 +157,4 @@ gss_query_meta_data(OM_uint32 *minor,
 
     return major;
 }
+#endif
