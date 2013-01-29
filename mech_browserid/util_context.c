@@ -103,7 +103,8 @@ gssBidAllocContext(OM_uint32 *minor,
     }
 
     if (mech != GSS_C_NO_OID) {
-        cbKey *= 8; /* from bytes to bits */
+        cbKey <<= 6; /* 128 bit => 1024 bit DH */
+
         err = BIDSetContextParam(ctx->bidContext, BID_PARAM_DH_KEYEX_SIZE, &cbKey);
         if (err != BID_S_OK) {
             major = gssBidMapError(minor, err);
