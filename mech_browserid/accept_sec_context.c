@@ -229,7 +229,13 @@ gss_accept_sec_context(OM_uint32 *minor,
 
     if (ctx != GSS_C_NO_CONTEXT) {
         GSSBID_MUTEX_LOCK(&ctx->mutex);
-        mech = ctx->mechanismUsed;
+
+        /*
+         * Even if there was a NegoEx exchange, there should still be a
+         * token header on the very first token.
+         */
+        if (GSSBID_SM_STATE(ctx) != GSSBID_STATE_INITIAL)
+            mech = ctx->mechanismUsed;
     }
 
     major = gssBidVerifyToken(minor, input_token, &actualTokenType,
