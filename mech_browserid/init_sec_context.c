@@ -327,6 +327,9 @@ gssBidInitSecContext(OM_uint32 *minor,
                 GSSBID_MUTEX_UNLOCK(&ctx->cred->mutex);
                 gssBidReleaseCred(&tmpMinor, &ctx->cred);
 
+                BIDReleaseIdentity(ctx->bidContext, ctx->bidIdentity);
+                ctx->bidIdentity = BID_C_NO_IDENTITY;
+
                 major = gssBidResolveInitiatorCred(&tmpMinor, cred, ctx,
                                                    target_name, req_flags,
                                                    input_chan_bindings);
