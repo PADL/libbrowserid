@@ -213,7 +213,7 @@ _BIDPackBackedAssertion(
     char *szEncodedCerts[BID_MAX_CERTS] = { NULL };
     size_t cchEncodedCerts[BID_MAX_CERTS] = { 0 };
     size_t i;
-    size_t totalLen;
+    size_t cchBackedAssertion;
     char *p;
 
     *pEncodedJson = NULL;
@@ -221,23 +221,22 @@ _BIDPackBackedAssertion(
     BID_ASSERT(assertion != NULL);
     BID_ASSERT(assertion->Assertion != NULL);
 
-    err = _BIDMakeSignature(context, assertion->Assertion, keyset, certChain, &szEncodedAssertion, &cchEncodedAssertion);
+    err = _BIDMakeSignature(context, assertion->Assertion, keyset, certChain,
+                            &szEncodedAssertion, &cchEncodedAssertion);
     BID_BAIL_ON_ERROR(err);
 
-    cchEncodedAssertion += 1; /* ~ */
-
     for (i = 0; i < assertion->cCertificates; i++) {
-        err = _BIDMakeSignature(context, assertion->rCertificates[i], keyset, NULL, &szEncodedCerts[i], &cchEncodedCerts[i]);
+        err = _BIDMakeSignature(context, assertion->rCertificates[i], keyset,
+                                NULL, &szEncodedCerts[i], &cchEncodedCerts[i]);
         BID_BAIL_ON_ERROR(err);
-
-        cchEncodedCerts[i] += 1; /* ~ */
     }
 
-    totalLen = cchEncodedAssertion;
-    for (i = 0; i < assertion->cCertificates && cchEncodedCerts[i] != 0; i++)
-        totalLen += cchEncodedCerts[i];
+    cchBackedAssertion = 1 /* leading ~ */ + cchEncodedAssertion;
+    for (i = 0; i < assertion->cCertificates && cchEncodedCerts[i] != 0; i++) {
+        cchBackedAssertion += 1 /* leading ~ */ + cchEncodedCerts[i];
+    }
 
-    *pEncodedJson = BIDMalloc(totalLen + 1);
+    *pEncodedJson = BIDMalloc(cchBackedAssertion + 1);
     if (*pEncodedJson == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -250,8 +249,11 @@ _BIDPackBackedAssertion(
     for (i = 0; i < assertion->cCertificates && cchEncodedCerts[i] != 0; i++) {
         *p++ = '~';
         memcpy(p, szEncodedCerts[i], cchEncodedCerts[i]);
+        p += cchEncodedCerts[i];
     }
     *p = '\0';
+
+    BID_ASSERT(p - *pEncodedJson == cchBackedAssertion);
 
     err = BID_S_OK;
 
@@ -259,8 +261,10 @@ cleanup:
     BIDFree(szEncodedAssertion);
     for (i = 0; i < assertion->cCertificates; i++)
         BIDFree(szEncodedCerts[i]);
-    if (err != BID_S_OK)
+    if (err != BID_S_OK) {
         BIDFree(*pEncodedJson);
+        *pEncodedJson = NULL;
+    }
 
     return err;
 }
