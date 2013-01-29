@@ -449,7 +449,9 @@ relying party: "g" contains the generator, "p" the prime, and "y" the public
 value. All are base64 URL encoded.
 
 The prime length should be an equivalent number of bits to the negotiated
-[RFC4121] encryption type.
+[RFC4121] encryption type: that is, at least 1024 bits for a 128 bit AES key.
+
+**TODO** is this strong enough?
 
 #### "n" (Mutual authentication nonce)
 
