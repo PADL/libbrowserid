@@ -92,7 +92,7 @@ _BIDUtf8ToUcs2(
     cchUtf8String = strlen(utf8String);
     cchUcs2String = MultiByteToWideChar(CP_UTF8, 0, utf8String,
                                         cchUtf8String, NULL, 0);
-    if (cchUcs2String == 0)
+    if (cchUcs2String == 0 && cchUtf8String != 0)
         return BID_S_INVALID_PARAMETER;
 
     *pUcs2String = BIDMalloc((cchUcs2String + 1) * sizeof(WCHAR));
@@ -123,7 +123,7 @@ _BIDUcs2ToUtf8(
     cchUcs2String = wcslen(ucs2String);
     cchUtf8String = WideCharToMultiByte(CP_UTF8, 0, ucs2String, cchUcs2String,
                                         NULL, 0, NULL, NULL);
-    if (cchUtf8String == 0)
+    if (cchUtf8String == 0 && cchUcs2String != 0)
         return BID_S_INVALID_PARAMETER;
 
     *pUtf8String = BIDMalloc(cchUtf8String + 1);
