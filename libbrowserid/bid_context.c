@@ -169,12 +169,14 @@ BIDSetContextParam(
     case BID_PARAM_TICKET_CACHE: {
         BIDCache *pCache = NULL;
 
-        if (ulParam == BID_PARAM_AUTHORITY_CACHE_NAME)
+        if (ulParam == BID_PARAM_AUTHORITY_CACHE)
             pCache = &context->AuthorityCache;
-        else if (ulParam == BID_PARAM_REPLAY_CACHE_NAME)
+        else if (ulParam == BID_PARAM_REPLAY_CACHE)
             pCache = &context->ReplayCache;
-        else if (ulParam == BID_PARAM_TICKET_CACHE_NAME)
+        else if (ulParam == BID_PARAM_TICKET_CACHE)
             pCache = &context->TicketCache;
+
+        BID_ASSERT(pCache != NULL);
 
         *pCache = (BIDCache)value;
     }
