@@ -86,9 +86,11 @@ gssBidReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     gssBidReleaseName(&tmpMinor, &cred->name);
     gssBidReleaseName(&tmpMinor, &cred->target);
     gss_release_buffer(&tmpMinor, &cred->assertion);
-    BIDReleaseTicketCache(cred->bidContext, cred->bidTicketCache);
-    BIDReleaseReplayCache(cred->bidContext, cred->bidReplayCache);
-    BIDReleaseContext(cred->bidContext);
+    if (cred->bidContext != BID_C_NO_CONTEXT) {
+        BIDReleaseTicketCache(cred->bidContext, cred->bidTicketCache);
+        BIDReleaseReplayCache(cred->bidContext, cred->bidReplayCache);
+        BIDReleaseContext(cred->bidContext);
+    }
 
     GSSBID_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
@@ -473,8 +475,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
                            const gss_name_t targetName,
                            OM_uint32 req_flags,
-                           const gss_channel_bindings_t channelBindings,
-                           gss_cred_id_t *pResolvedCred)
+                           const gss_channel_bindings_t channelBindings)
 {
     OM_uint32 major, tmpMinor;
     gss_cred_id_t resolvedCred = GSS_C_NO_CREDENTIAL;
@@ -487,7 +488,13 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     char *szAssertion = NULL;
     uint32_t ulRetFlags = 0;
 
-    *pResolvedCred = GSS_C_NO_CREDENTIAL;
+    if (ctx->cred != GSS_C_NO_CREDENTIAL) {
+        GSSBID_ASSERT(resolvedCred->flags & CRED_FLAG_RESOLVED);
+        GSSBID_ASSERT(resolvedCred->assertion.length != 0);
+
+        major = GSS_S_COMPLETE;
+        goto cleanup;
+    }
 
     if (cred == GSS_C_NO_CREDENTIAL) {
         major = gssBidAcquireCred(minor,
@@ -512,9 +519,6 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
             goto cleanup;
     }
 
-    GSSBID_ASSERT((resolvedCred->assertion.length != 0) == ((resolvedCred->flags & CRED_FLAG_RESOLVED) != 0));
-
-    /* XXX API is not a good fit here, but we will rework later */
     if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
         err = BIDAcquireAssertionFromString(ctx->bidContext,
                                             (const char *)resolvedCred->assertion.value,
@@ -615,7 +619,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
 
     resolvedCred->flags |= CRED_FLAG_RESOLVED;
 
-    *pResolvedCred = resolvedCred;
+    ctx->cred = resolvedCred;
     resolvedCred = GSS_C_NO_CREDENTIAL;
 
     major = GSS_S_COMPLETE;

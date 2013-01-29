@@ -301,8 +301,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                            gss_ctx_id_t ctx,
                            const gss_name_t target,
                            OM_uint32 req_flags,
-                           const gss_channel_bindings_t channelBindings,
-                           gss_cred_id_t *resolvedCred);
+                           const gss_channel_bindings_t channelBindings);
 
 int gssBidCredAvailable(gss_cred_id_t cred, gss_OID mech);
 

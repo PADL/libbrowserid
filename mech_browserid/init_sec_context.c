@@ -288,8 +288,7 @@ gssBidInitSecContext(OM_uint32 *minor,
     if (ctx->cred == GSS_C_NO_CREDENTIAL) {
         major = gssBidResolveInitiatorCred(minor, cred, ctx,
                                            target_name, req_flags,
-                                           input_chan_bindings,
-                                           &ctx->cred);
+                                           input_chan_bindings);
         if (GSS_ERROR(major))
             goto cleanup;
 
@@ -330,8 +329,7 @@ gssBidInitSecContext(OM_uint32 *minor,
 
                 major = gssBidResolveInitiatorCred(&tmpMinor, cred, ctx,
                                                    target_name, req_flags,
-                                                   input_chan_bindings,
-                                                   &ctx->cred);
+                                                   input_chan_bindings);
                 if (GSS_ERROR(major)) {
                     *minor = tmpMinor;
                     goto cleanup;

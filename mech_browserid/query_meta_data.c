@@ -73,8 +73,7 @@ gssBidQueryMetaData(OM_uint32 *minor,
         if (ctx->cred == GSS_C_NO_CREDENTIAL) {
             major = gssBidResolveInitiatorCred(minor, cred, ctx, name,
                                                req_flags,
-                                               GSS_C_NO_CHANNEL_BINDINGS,
-                                               &ctx->cred);
+                                               GSS_C_NO_CHANNEL_BINDINGS);
             if (GSS_ERROR(major) &&
                 *minor != GSSBID_NO_DEFAULT_CRED)
                 goto cleanup;
