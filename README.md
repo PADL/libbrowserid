@@ -13,7 +13,11 @@ More information on BrowserID is available at the URL
 The BrowserID GSS mechanism is split into two parts: libbrowserid, which is a
 (more or less) general-purpose library for generating and verifying BrowserID
 assertions; and mech\_browserid, which is the actual GSS mechanism (based on
-the Moonshot code).
+the Moonshot code). (The libbrowserid API is not yet stable enough to make it
+into a shared library; this will be possible when the GSS mechanism only uses
+its public interfaces. However, if you are interested in using it in a non-GSS
+application, the code in libbrowserid/tests/bid\_acq.c is a good place to
+start.)
 
 Information on the BrowserID GSS protocol can be found in the document
 gss-browserid.md, however essentially the protocol is the same as for web-based
