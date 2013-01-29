@@ -285,6 +285,9 @@ struct BIDContextDesc {
 /*
  * bid_crypto.c
  */
+struct BIDJWTDesc;
+typedef struct BIDJWTDesc *BIDJWT;
+
 typedef struct BIDJWTAlgorithmDesc {
     const char *szAlgID;
     const char *szKeyAlgID;

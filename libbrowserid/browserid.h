@@ -429,9 +429,6 @@ BIDStoreTicketInCache(
     const char *szAudienceOrSpn,
     const char *szTicket);
 
-struct BIDJWTDesc;
-typedef struct BIDJWTDesc *BIDJWT;
-
 /* Input flags (ulReqFlags) */
 #define BID_RP_FLAG_HAVE_SESSION_KEY            0x00000001 /* have a session key */
 #define BID_RP_FLAG_INITIAL                     0x00000002 /* not reauth-based auth */
