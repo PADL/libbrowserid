@@ -52,11 +52,13 @@ gssBidExchangeMetaData(OM_uint32 *minor,
         gss_buffer_desc metaDataToken = GSS_C_EMPTY_BUFFER;
         gss_ctx_id_t ctx = *context_handle;
         enum gss_bid_token_type actualTokenType;
+        gss_OID oidBuf;
 
         GSSBID_ASSERT(ctx != GSS_C_NO_CONTEXT);
 
+        /* No OID headers on metadata */
         major = gssBidVerifyToken(minor, (gss_buffer_t)meta_data, &actualTokenType,
-                                  &metaDataToken, &ctx->mechanismUsed);
+                                  &metaDataToken, &oidBuf);
         if (GSS_ERROR(major))
             goto cleanup;
 
