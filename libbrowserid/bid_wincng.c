@@ -1570,7 +1570,7 @@ _BIDDeriveKeyKeyAgreement(
         goto cleanup;
     }
 
-    paramBuffers[0].cbBuffer   = wcslen(BCRYPT_SHA256_ALGORITHM) * sizeof(WCHAR);
+    paramBuffers[0].cbBuffer   = sizeof(BCRYPT_SHA256_ALGORITHM);
     paramBuffers[0].BufferType = KDF_HASH_ALGORITHM;
     paramBuffers[0].pvBuffer   = BCRYPT_SHA256_ALGORITHM;
 
