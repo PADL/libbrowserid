@@ -200,8 +200,12 @@ gssBidInitResponseToken(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    if (ulRetFlags & BID_RP_FLAG_VALIDATED_CERTS)
-        ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
+    if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {
+        if (ulRetFlags & BID_RP_FLAG_VALIDATED_CERTS)
+            ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
+        else
+            ctx->gssFlags &= ~(GSS_C_MUTUAL_FLAG);
+    }
 
     tkt = json_object_get(response, "tkt");
     if (tkt != NULL && target_name != GSS_C_NO_NAME) {
