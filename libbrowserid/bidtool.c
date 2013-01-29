@@ -553,7 +553,8 @@ int main(int argc, char *argv[])
                 BID_CONTEXT_GSS             |
                 BID_CONTEXT_REPLAY_CACHE    |
                 BID_CONTEXT_REAUTH          |
-                BID_CONTEXT_AUTHORITY_CACHE;
+                BID_CONTEXT_AUTHORITY_CACHE |
+                BID_CONTEXT_TICKET_CACHE;
 
     err = BIDAcquireContext(ulOptions, &gContext);
     if (err != BID_S_OK)
