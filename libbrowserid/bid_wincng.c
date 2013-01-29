@@ -1825,6 +1825,8 @@ _BIDAllocSecret(
     if (secretHandle == NULL)
         return BID_S_NO_MEMORY;
 
+    secretHandle->SecretType = keyInput->SecretType;
+
     switch (keyInput->SecretType) {
     case SECRET_TYPE_KEY_AGREEMENT:
         secretHandle->SecretData.KeyAgreement =
