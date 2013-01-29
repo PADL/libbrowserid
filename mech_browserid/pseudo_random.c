@@ -91,6 +91,11 @@ gssBidPseudoRandom(OM_uint32 *minor,
         goto cleanup;
     }
 
+    if (ctx->encryptionType == ENCTYPE_NULL) {
+        code = GSSBID_KEY_UNAVAILABLE;
+        goto cleanup;
+    }
+
 #ifdef HAVE_HEIMDAL_VERSION
     code = krb5_crypto_prf_length(krbContext, ctx->encryptionType, &prflen);
 #else
@@ -148,7 +153,8 @@ cleanup:
         GSSBID_FREE(ns.data);
     }
 #ifdef HAVE_HEIMDAL_VERSION
-    krb5_crypto_destroy(krbContext, krbCrypto);
+    if (krbCrypto != NULL)
+        krb5_crypto_destroy(krbContext, krbCrypto);
     krb5_data_free(&t);
 #else
     if (t.data != NULL) {
