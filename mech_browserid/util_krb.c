@@ -145,9 +145,7 @@ gssBidDeriveRfc3961Key(OM_uint32 *minor,
                        krb5_keyblock *pKey)
 {
     krb5_context krbContext;
-#ifdef HAVE_HEIMDAL_VERSION
-    krb5_crypto krbCrypto = NULL;
-#else
+#ifndef HAVE_HEIMDAL_VERSION
     krb5_data data;
 #endif
     krb5_keyblock kd;
@@ -204,9 +202,6 @@ gssBidDeriveRfc3961Key(OM_uint32 *minor,
 cleanup:
     if (code != 0)
         krb5_free_keyblock_contents(krbContext, &kd);
-#ifdef HAVE_HEIMDAL_VERSION
-    krb5_crypto_destroy(krbContext, krbCrypto);
-#endif
 
     *minor = code;
 
