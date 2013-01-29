@@ -366,6 +366,9 @@ CBIDIdentityController::Invoke(
     case DISPID_HTMLWINDOWEVENTS2_ONLOAD:
         OutputDebugString("CBIDIdentityController::Invoke ONLOAD\r\n");
 
+        hr = _GetBrowserWindow();
+        BID_BAIL_ON_HERROR(hr);
+
         hr = _PublishController();
         BID_BAIL_ON_HERROR(hr);
 
@@ -630,6 +633,7 @@ CBIDIdentityController::_GetBrowserWindow(void)
 {
     HRESULT hr;
     IOleWindow *pOleWindow = NULL;
+    HWND hwnd;
 
     BID_ASSERT(_pHTMLWindow2 != NULL);
 
@@ -639,8 +643,13 @@ CBIDIdentityController::_GetBrowserWindow(void)
     hr = _pHTMLDocument2->QueryInterface(IID_PPV_ARGS(&pOleWindow));
     BID_BAIL_ON_HERROR(hr);
 
-    hr = pOleWindow->GetWindow(&_hBrowserWindow);
+    hr = pOleWindow->GetWindow(&hwnd);
     BID_BAIL_ON_HERROR(hr);
+
+    do {
+        _hBrowserWindow = hwnd;
+        hwnd = GetParent(hwnd);
+    } while (hwnd != (HWND)_context->ParentWindow);
 
 cleanup:
     if (pOleWindow != NULL)
@@ -794,7 +803,7 @@ CBIDIdentityController::_RunModal(void)
 {
     MSG msg;
 
-    while (GetMessage(&msg, _hBrowserWindow, 0, 0) > 0) {
+    while (GetMessage(&msg, NULL, 0, 0) > 0) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
 
