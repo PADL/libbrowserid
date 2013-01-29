@@ -135,7 +135,8 @@ _BIDGetJsonBufferValue(
     BIDContext context,
     BIDJWK jwk,
     const char *key,
-    uint32_t encoding,
+    ULONG encoding,
+    ULONG cbPadding,
     BCryptBuffer *blob)
 {
     BIDError err;
@@ -181,6 +182,19 @@ _BIDGetJsonBufferValue(
 
         if (err != BID_S_OK)
             err = _BIDParseHexNumber(context, szValue, len, blob);
+    }
+
+    if (cbPadding) {
+        if (blob->cbBuffer > cbPadding)
+            err = BID_S_BUFFER_TOO_LONG;
+        else {
+            DWORD cbOffset = cbPadding - blob->cbBuffer;
+
+            /* Add leading zeros to pad to block size */
+            MoveMemory((PUCHAR)blob->pvBuffer + cbOffset,
+                       blob->pvBuffer, blob->cbBuffer);
+            ZeroMemory(blob->pvBuffer, cbOffset);
+        }
     }
 
     return err;
@@ -427,6 +441,7 @@ cleanup:
 
 static BIDError
 _BIDMakeJwtRsaKey(
+    struct BIDJWTAlgorithmDesc *algorithm,
     BIDContext context,
     BCRYPT_ALG_HANDLE hAlgorithm,
     BIDJWK jwk,
@@ -441,18 +456,22 @@ _BIDMakeJwtRsaKey(
     BCRYPT_RSAKEY_BLOB *rsaKey = NULL;
     DWORD cbRsaKey = 0;
     PUCHAR p;
+    DWORD cbPadding = 0;
 
     *phKey = NULL;
 
     if (bPublic) {
-        err = _BIDGetJsonBufferValue(context, jwk, "e", BID_ENCODING_UNKNOWN, &e);
+        err = _BIDGetJsonBufferValue(context, jwk, "e", BID_ENCODING_UNKNOWN,
+                                     cbPadding, &e);
         BID_BAIL_ON_ERROR(err);
     } else {
-        err = _BIDGetJsonBufferValue(context, jwk, "d", BID_ENCODING_UNKNOWN, &d);
+        err = _BIDGetJsonBufferValue(context, jwk, "d", BID_ENCODING_UNKNOWN,
+                                     cbPadding, &d);
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDGetJsonBufferValue(context, jwk, "n", BID_ENCODING_UNKNOWN, &n);
+    err = _BIDGetJsonBufferValue(context, jwk, "n", BID_ENCODING_UNKNOWN,
+                                 cbPadding, &n);
     BID_BAIL_ON_ERROR(err);
 
     cbRsaKey = sizeof(*rsaKey);
@@ -520,6 +539,7 @@ _BIDOutputDebugJson(json_t *j)
 
 static BIDError
 _BIDMakeJwtDsaKey(
+    struct BIDJWTAlgorithmDesc *algorithm,
     BIDContext context,
     BCRYPT_ALG_HANDLE hAlgorithm,
     BIDJWK jwk,
@@ -536,36 +556,41 @@ _BIDMakeJwtDsaKey(
     BCRYPT_DSA_KEY_BLOB *dsaKey = NULL;
     DWORD cbDsaKey = 0;
     PUCHAR pbDsaKeyData;
+    DWORD cbPadding = algorithm->cbKey / 8;
+    DWORD cbKey = strtoul(&algorithm->szAlgID[2], NULL, 10);
 
     *phKey = NULL;
 
-    _BIDOutputDebugJson(jwk);
+    if (cbPadding != 20) {
+        err = BID_S_BUFFER_TOO_LONG; /* limitations in API */
+        goto cleanup;
+    }
 
     /* prime factor */
-    err = _BIDGetJsonBufferValue(context, jwk, "q", BID_ENCODING_UNKNOWN, &q);
+    err = _BIDGetJsonBufferValue(context, jwk, "q", BID_ENCODING_UNKNOWN,
+                                 cbPadding, &q);
     BID_BAIL_ON_ERROR(err);
 
     /* modulus */
-    err = _BIDGetJsonBufferValue(context, jwk, "p", BID_ENCODING_UNKNOWN, &p);
+    err = _BIDGetJsonBufferValue(context, jwk, "p", BID_ENCODING_UNKNOWN,
+                                 cbKey, &p);
     BID_BAIL_ON_ERROR(err);
 
     /* generator */
-    err = _BIDGetJsonBufferValue(context, jwk, "g", BID_ENCODING_UNKNOWN, &g);
+    err = _BIDGetJsonBufferValue(context, jwk, "g", BID_ENCODING_UNKNOWN,
+                                 cbKey, &g);
     BID_BAIL_ON_ERROR(err);
 
     if (bPublic) {
         /* public key */
-        err = _BIDGetJsonBufferValue(context, jwk, "y", BID_ENCODING_UNKNOWN, &y);
+        err = _BIDGetJsonBufferValue(context, jwk, "y", BID_ENCODING_UNKNOWN,
+                                     cbKey, &y);
         BID_BAIL_ON_ERROR(err);
     } else {
         /* private exponent */
-        err = _BIDGetJsonBufferValue(context, jwk, "x", BID_ENCODING_UNKNOWN, &x);
+        err = _BIDGetJsonBufferValue(context, jwk, "x", BID_ENCODING_UNKNOWN,
+                                     cbPadding, &x);
         BID_BAIL_ON_ERROR(err);
-    }
-
-    if (q.cbBuffer != 20) {
-        err = BID_S_BUFFER_TOO_LONG;
-        goto cleanup;
     }
 
     if (p.cbBuffer != g.cbBuffer) {
@@ -573,7 +598,7 @@ _BIDMakeJwtDsaKey(
         goto cleanup;
     }
 
-    if ((bPublic ? y.cbBuffer : x.cbBuffer) != (bPublic ? p.cbBuffer : 20)) {
+    if ((bPublic ? y.cbBuffer : x.cbBuffer) != (bPublic ? p.cbBuffer : cbPadding)) {
         err = BID_S_INVALID_KEY;
         goto cleanup;
     }
@@ -593,7 +618,7 @@ _BIDMakeJwtDsaKey(
 
     dsaKey->dwMagic     = bPublic
                         ? BCRYPT_DSA_PUBLIC_MAGIC : BCRYPT_DSA_PRIVATE_MAGIC;
-    dsaKey->cbKey       = p.cbBuffer;
+    dsaKey->cbKey       = cbKey;
     dsaKey->Count[2]    = 0x10; /* 4096 BE */
 
     CopyMemory(dsaKey->q, q.pvBuffer, q.cbBuffer);
@@ -656,9 +681,9 @@ _CNGMakeKey(
     if (bPublic && x5c != NULL)
         err = _BIDCertDataToKey(algorithm, context, hAlgorithm, x5c, 0, phKey);
     else if (strncmp(algorithm->szAlgID, "RS", 2) == 0)
-        err = _BIDMakeJwtRsaKey(context, hAlgorithm, jwk, bPublic, phKey);
+        err = _BIDMakeJwtRsaKey(algorithm, context, hAlgorithm, jwk, bPublic, phKey);
     else if (strncmp(algorithm->szAlgID, "DS", 2) == 0)
-        err = _BIDMakeJwtDsaKey(context, hAlgorithm, jwk, bPublic, phKey);
+        err = _BIDMakeJwtDsaKey(algorithm, context, hAlgorithm, jwk, bPublic, phKey);
     else
         err = BID_S_UNKNOWN_ALGORITHM;
 
@@ -1041,6 +1066,7 @@ _BIDMakeDHKey(
     BCRYPT_ALG_HANDLE hAlgorithm,
     json_t *dhParams,
     json_t *dhKey,
+    BOOLEAN bPublic,
     BCRYPT_KEY_HANDLE *phKey)
 {
     BIDError err;
@@ -1052,7 +1078,7 @@ _BIDMakeDHKey(
     BCRYPT_DH_KEY_BLOB *dhKeyBlob = NULL;
     DWORD cbDhKeyBlob = 0;
     PUCHAR pbDhKeyBlob;
-    BOOLEAN bIsPrivateKey = FALSE;
+    DWORD cbPad = context->DhKeySize / 8;
 
     *phKey = NULL;
 
@@ -1061,22 +1087,23 @@ _BIDMakeDHKey(
         goto cleanup;
     }
 
-    err = _BIDGetJsonBufferValue(context, dhParams, "p", BID_ENCODING_BASE64_URL, &p);
+    err = _BIDGetJsonBufferValue(context, dhParams, "p",
+                                 BID_ENCODING_BASE64_URL, cbPad, &p);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhParams, "g", BID_ENCODING_BASE64_URL, &g);
+    err = _BIDGetJsonBufferValue(context, dhParams, "g",
+                                 BID_ENCODING_BASE64_URL, cbPad, &g);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhKey, "y", BID_ENCODING_BASE64_URL, &y);
+    err = _BIDGetJsonBufferValue(context, dhKey, "y",
+                                 BID_ENCODING_BASE64_URL, cbPad, &y);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhKey, "x", BID_ENCODING_BASE64_URL, &x);
-    if (err == BID_S_OK)
-        bIsPrivateKey = TRUE;
-    else if (err == BID_S_UNKNOWN_JSON_KEY || err == BID_S_INVALID_KEY)
-        bIsPrivateKey = FALSE;
-    else
-        goto cleanup;
+    if (!bPublic) {
+        err = _BIDGetJsonBufferValue(context, dhKey, "x",
+                                     BID_ENCODING_BASE64_URL, cbPad, &x);
+        BID_BAIL_ON_ERROR(err);
+    }
 
     if (p.cbBuffer != g.cbBuffer) {
         err = BID_S_INVALID_KEY;
@@ -1098,9 +1125,8 @@ _BIDMakeDHKey(
         goto cleanup;
     }
 
-    dhKeyBlob->dwMagic = bIsPrivateKey
-                       ? BCRYPT_DH_PRIVATE_MAGIC : BCRYPT_DH_PUBLIC_MAGIC;
-    dhKeyBlob->cbKey   = p.cbBuffer;
+    dhKeyBlob->dwMagic = bPublic ? BCRYPT_DH_PUBLIC_MAGIC : BCRYPT_DH_PRIVATE_MAGIC;
+    dhKeyBlob->cbKey   = cbPad;
 
     pbDhKeyBlob = (PUCHAR)(dhKeyBlob + 1);
 
@@ -1113,18 +1139,18 @@ _BIDMakeDHKey(
     CopyMemory(pbDhKeyBlob, y.pvBuffer, y.cbBuffer);
     pbDhKeyBlob += y.cbBuffer;
 
-    if (bIsPrivateKey) {
+    if (!bPublic) {
         CopyMemory(pbDhKeyBlob, x.pvBuffer, x.cbBuffer);
         pbDhKeyBlob += x.cbBuffer;
     }
 
     nts = BCryptImportKeyPair(hAlgorithm,
                               NULL, /* hImportKey */
-                              bIsPrivateKey ? BCRYPT_DH_PRIVATE_BLOB : BCRYPT_DH_PUBLIC_BLOB,
+                              bPublic ? BCRYPT_DH_PUBLIC_BLOB : BCRYPT_DH_PRIVATE_BLOB,
                               phKey,
                               (PUCHAR)dhKeyBlob,
                               cbDhKeyBlob,
-                              0);   /* dwFlags */
+                              BCRYPT_NO_KEY_VALIDATION);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
 cleanup:
@@ -1234,6 +1260,8 @@ _BIDGenerateDHParams(
     err = _BIDCryptGetKeyParam(context, hKey, KP_G, dhParams, "g");
     BID_BAIL_ON_ERROR(err);
 
+    _BIDOutputDebugJson(dhParams);
+
     err = BID_S_OK;
     *pDhParams = dhParams;
 
@@ -1260,13 +1288,14 @@ _BIDMakeDHParams(
     PUCHAR pbDhParamsHeader;
     BCryptBuffer p = { 0 };
     BCryptBuffer g = { 0 };
+    DWORD cbPad = context->DhKeySize / 8;
 
     *ppDhParamsHeader = NULL;
 
-    err = _BIDGetJsonBufferValue(context, dhParams, "p", BID_ENCODING_BASE64_URL, &p);
+    err = _BIDGetJsonBufferValue(context, dhParams, "p", BID_ENCODING_BASE64_URL, cbPad, &p);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhParams, "g", BID_ENCODING_BASE64_URL, &g);
+    err = _BIDGetJsonBufferValue(context, dhParams, "g", BID_ENCODING_BASE64_URL, cbPad, &g);
     BID_BAIL_ON_ERROR(err);
 
     if (p.cbBuffer != g.cbBuffer) {
@@ -1447,10 +1476,12 @@ _BIDComputeDHKey(
                                       0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    err = _BIDMakeDHKey(context, hAlgorithm, dhParams, dhKey, &hPrivateKey);
+    err = _BIDMakeDHKey(context, hAlgorithm, dhParams, dhKey,
+                        FALSE /* bPublic */, &hPrivateKey);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDMakeDHKey(context, hAlgorithm, dhParams, pubValue, &hPublicKey);
+    err = _BIDMakeDHKey(context, hAlgorithm, dhParams, pubValue,
+                        TRUE /* bPublic */, &hPublicKey);
     BID_BAIL_ON_ERROR(err);
 
     nts = BCryptSecretAgreement(hPrivateKey, hPublicKey, &hSecret, 0);
