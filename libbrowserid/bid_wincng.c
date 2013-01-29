@@ -510,7 +510,7 @@ _BIDMakeJwtRsaKey(
                               bPublic ? BCRYPT_RSAPUBLIC_BLOB : BCRYPT_RSAPRIVATE_BLOB,
                               phKey,
                               (PUCHAR)rsaKey,
-                              cbRsaKey,
+                              p - (PUCHAR)rsaKey,
                               BCRYPT_NO_KEY_VALIDATION);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
@@ -645,7 +645,7 @@ _BIDMakeJwtDsaKey(
                               bPublic ? BCRYPT_DSA_PUBLIC_BLOB : BCRYPT_DSA_PRIVATE_BLOB,
                               phKey,
                               (PUCHAR)dsaKey,
-                              cbDsaKey,
+                              pbDsaKeyData - (PUCHAR)dsaKey,
                               BCRYPT_NO_KEY_VALIDATION);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
@@ -1149,7 +1149,7 @@ _BIDMakeDHKey(
                               bPublic ? BCRYPT_DH_PUBLIC_BLOB : BCRYPT_DH_PRIVATE_BLOB,
                               phKey,
                               (PUCHAR)dhKeyBlob,
-                              cbDhKeyBlob,
+                              pbDhKeyBlob - (PUCHAR)dhKeyBlob,
                               BCRYPT_NO_KEY_VALIDATION);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
