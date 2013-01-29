@@ -109,6 +109,7 @@ static BIDError
 BIDListTicketCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     BIDError err;
+    void *cookie = NULL;
     const char *k = NULL;
     const char *szCacheName = NULL;
     json_t *j = NULL;
@@ -134,9 +135,9 @@ BIDListTicketCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
         printf("\n");
     };
 
-    for (err = _BIDGetFirstCacheObject(gContext, gContext->TicketCache, &k, &j);
+    for (err = _BIDGetFirstCacheObject(gContext, gContext->TicketCache, &cookie, &k, &j);
          err == BID_S_OK;
-         err = _BIDGetNextCacheObject(gContext, gContext->TicketCache, &k, &j)) {
+         err = _BIDGetNextCacheObject(gContext, gContext->TicketCache, &cookie, &k, &j)) {
         gVerbose ? BIDPrintVerboseTicketCacheEntry(k, j) : BIDPrintTicketCacheEntry(k, j);
         json_decref(j);
         j = NULL;
@@ -253,6 +254,7 @@ static BIDError
 BIDListReplayCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     BIDError err;
+    void *cookie = NULL;
     const char *k = NULL;
     const char *szCacheName = NULL;
     json_t *j = NULL;
@@ -277,9 +279,9 @@ BIDListReplayCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
         printf("\n");
     }
 
-    for (err = _BIDGetFirstCacheObject(gContext, gContext->ReplayCache, &k, &j);
+    for (err = _BIDGetFirstCacheObject(gContext, gContext->ReplayCache, &cookie, &k, &j);
          err == BID_S_OK;
-         err = _BIDGetNextCacheObject(gContext, gContext->ReplayCache, &k, &j)) {
+         err = _BIDGetNextCacheObject(gContext, gContext->ReplayCache, &cookie, &k, &j)) {
         gVerbose ? BIDPrintVerboseReplayCacheEntry(k, j) : BIDPrintReplayCacheEntry(k, j);
         json_decref(j);
         j = NULL;
@@ -300,6 +302,7 @@ BIDPurgeCache(
     int (*shouldPurgeP)(json_t *))
 {
     BIDError err;
+    void *cookie = NULL;
     const char *k = NULL;
     json_t *j = NULL;
 
@@ -309,9 +312,9 @@ BIDPurgeCache(
     if (cache == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    for (err = _BIDGetFirstCacheObject(gContext, cache, &k, &j);
+    for (err = _BIDGetFirstCacheObject(gContext, cache, &cookie, &k, &j);
          err == BID_S_OK;
-         err = _BIDGetNextCacheObject(gContext, cache, &k, &j)) {
+         err = _BIDGetNextCacheObject(gContext, cache, &cookie, &k, &j)) {
         if (shouldPurgeP(j))
             _BIDRemoveCacheObject(gContext, cache, k);
     }
@@ -398,6 +401,7 @@ static BIDError
 BIDListAuthorityCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
     BIDError err;
+    void *cookie = NULL;
     const char *k = NULL;
     json_t *j = NULL;
     int i;
@@ -413,9 +417,9 @@ BIDListAuthorityCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
         printf("-");
     printf("\n");
 
-    for (err = _BIDGetFirstCacheObject(gContext, gContext->AuthorityCache, &k, &j);
+    for (err = _BIDGetFirstCacheObject(gContext, gContext->AuthorityCache, &cookie, &k, &j);
          err == BID_S_OK;
-         err = _BIDGetNextCacheObject(gContext, gContext->AuthorityCache, &k, &j)) {
+         err = _BIDGetNextCacheObject(gContext, gContext->AuthorityCache, &cookie, &k, &j)) {
         BIDPrintAuthorityCacheEntry(k, j);
         json_decref(j);
         j = NULL;

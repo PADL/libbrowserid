@@ -335,12 +335,13 @@ _BIDFindTicketInCache(
     json_t *cred = NULL;
 
     if (szIdentityName != NULL) {
+        void *cacheCookie;
         const char *cacheKey;
         json_t *cacheVal = NULL;
 
-        for (err = _BIDGetFirstCacheObject(context, ticketCache, &cacheKey, &cacheVal);
+        for (err = _BIDGetFirstCacheObject(context, ticketCache, &cacheCookie, &cacheKey, &cacheVal);
              err == BID_S_OK;
-             err = _BIDGetNextCacheObject(context, ticketCache, &cacheKey, &cacheVal)) {
+             err = _BIDGetNextCacheObject(context, ticketCache, &cacheCookie, &cacheKey, &cacheVal)) {
             const char *szCacheAudience = json_string_value(json_object_get(cacheVal, "aud"));
             const char *szCacheIdentity = json_string_value(json_object_get(cacheVal, "sub"));
 

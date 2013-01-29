@@ -269,11 +269,13 @@ BIDError
 _BIDGetFirstCacheObject(
     BIDContext context,
     BIDCache cache,
+    void **pCookie,
     const char **pKey,
     json_t **pValue)
 {
     BIDError err;
 
+    *pCookie = NULL;
     *pKey = NULL;
     *pValue = NULL;
 
@@ -285,7 +287,7 @@ _BIDGetFirstCacheObject(
     if (cache->Ops->FirstObject == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
-    err = cache->Ops->FirstObject(cache->Ops, context, cache->Data, pKey, pValue);
+    err = cache->Ops->FirstObject(cache->Ops, context, cache->Data, pCookie, pKey, pValue);
 
     return err;
 }
@@ -294,6 +296,7 @@ BIDError
 _BIDGetNextCacheObject(
     BIDContext context,
     BIDCache cache,
+    void **pCookie,
     const char **pKey,
     json_t **pValue)
 {
@@ -304,13 +307,90 @@ _BIDGetNextCacheObject(
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (cache == NULL)
+    if (cache == NULL || *pCookie == NULL)
         return BID_S_INVALID_PARAMETER;
 
     if (cache->Ops->NextObject == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
-    err = cache->Ops->NextObject(cache->Ops, context, cache->Data, pKey, pValue);
+    err = cache->Ops->NextObject(cache->Ops, context, cache->Data, pCookie, pKey, pValue);
 
     return err;
+}
+
+/*
+ * Helpers
+ */
+struct BIDCacheIteratorDesc {
+    json_t *Data;
+    void *Iterator;
+};
+
+static void
+_BIDCacheIteratorRelease(struct BIDCacheIteratorDesc *iter)
+{
+    if (iter != NULL) {
+        json_decref(iter->Data);
+        BIDFree(iter);
+    }
+}
+
+BIDError
+_BIDCacheIteratorAlloc(
+    json_t *json,
+    void **pCookie)
+{
+    struct BIDCacheIteratorDesc *iter;
+
+    BID_ASSERT(pCookie != NULL);
+
+    if (json == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    iter = BIDCalloc(1, sizeof(*iter));
+    if (iter == NULL)
+        return BID_S_NO_MEMORY;
+
+    iter->Data = json_incref(json);
+    if (iter->Data == NULL) {
+        _BIDCacheIteratorRelease(iter);
+        return BID_S_NO_MEMORY;
+    }
+
+    iter->Iterator = json_object_iter(iter->Data);
+    if (iter->Iterator == NULL) {
+        _BIDCacheIteratorRelease(iter);
+        return BID_S_CACHE_KEY_NOT_FOUND;
+    }
+
+    *pCookie = iter;
+    return BID_S_OK;
+}
+
+BIDError
+_BIDCacheIteratorNext(
+    void **cookie,
+    const char **pKey,
+    json_t **pValue)
+{
+    struct BIDCacheIteratorDesc *iter = *cookie;
+
+    if (iter->Iterator == NULL) {
+        _BIDCacheIteratorRelease(iter);
+        *cookie = NULL;
+        return BID_S_NO_MORE_ITEMS;
+    }
+
+    *pKey = json_object_iter_key(iter->Iterator);
+    *pValue = json_incref(json_object_iter_value(iter->Iterator));
+
+    if (*pKey == NULL || *pValue == NULL) {
+        _BIDCacheIteratorRelease(iter);
+        *cookie = NULL;
+        return BID_S_NO_MORE_ITEMS;
+    }
+ 
+    iter->Iterator = json_object_iter_next(iter->Data, iter->Iterator);
+
+    return BID_S_OK;
 }

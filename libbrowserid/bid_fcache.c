@@ -53,8 +53,6 @@
 struct BIDFileCache {
     char *Name;
     uint32_t Flags;
-    json_t *Data;
-    void *Iterator;
 };
 
 static BIDError
@@ -97,7 +95,6 @@ _BIDFileCacheRelease(
         return BID_S_INVALID_PARAMETER;
 
     BIDFree(fc->Name);
-    json_decref(fc->Data);
     BIDFree(fc);
 
     return BID_S_OK;
@@ -724,6 +721,7 @@ _BIDFileCacheFirstObject(
     struct BIDCacheOps *ops,
     BIDContext context,
     void *cache,
+    void **cookie,
     const char **key,
     json_t **val)
 {
@@ -734,6 +732,8 @@ _BIDFileCacheFirstObject(
 
     *key = NULL;
     *val = NULL;
+
+    BID_ASSERT(cookie != NULL);
 
     if (fc == NULL) {
         err = BID_S_INVALID_PARAMETER;
@@ -751,21 +751,11 @@ _BIDFileCacheFirstObject(
 
     fd = -1;
 
-    fc->Iterator = json_object_iter(d);
-    if (fc->Iterator == NULL) {
-        err = BID_S_CACHE_KEY_NOT_FOUND;
-        goto cleanup;
-    }
+    err = _BIDCacheIteratorAlloc(d, cookie);
+    BID_BAIL_ON_ERROR(err);
 
-    *key = json_object_iter_key(fc->Iterator);
-    *val = json_incref(json_object_iter_value(fc->Iterator));
-    if (*key == NULL || *val == NULL) {
-        err = BID_S_NO_MORE_ITEMS;
-        goto cleanup;
-    }
-
-    json_decref(fc->Data);
-    fc->Data = json_incref(d);
+    err = _BIDCacheIteratorNext(cookie, key, val);
+    BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
 
@@ -783,42 +773,22 @@ static BIDError
 _BIDFileCacheNextObject(
     struct BIDCacheOps *ops BID_UNUSED,
     BIDContext context BID_UNUSED,
-    void *cache,
+    void *cache BID_UNUSED,
+    void **cookie,
     const char **key,
     json_t **val)
 {
-    struct BIDFileCache *fc = (struct BIDFileCache *)cache;
     BIDError err;
 
     *key = NULL;
     *val = NULL;
 
-    if (fc == NULL || fc->Data == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
+    BID_ASSERT(cookie != NULL && *cookie != NULL);
 
-    fc->Iterator = json_object_iter_next(fc->Data, fc->Iterator);
-    if (fc->Iterator == NULL) {
-        err = BID_S_NO_MORE_ITEMS;
-        goto cleanup;
-    }
-
-    *key = json_object_iter_key(fc->Iterator);
-    *val = json_incref(json_object_iter_value(fc->Iterator));
-    if (*key == NULL || *val == NULL) {
-        err = BID_S_NO_MORE_ITEMS;
-        goto cleanup;
-    }
-
-    err = BID_S_OK;
+    err = _BIDCacheIteratorNext(cookie, key, val);
+    BID_BAIL_ON_ERROR(err);
 
 cleanup:
-    if (err != BID_S_OK) {
-        json_decref(fc->Data);
-        fc->Data = NULL;
-    }
-
     return err;
 }
 

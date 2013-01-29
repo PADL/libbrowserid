@@ -145,8 +145,8 @@ struct BIDCacheOps {
     BIDError (*SetObject)(struct BIDCacheOps *, BIDContext, void *, const char *key, json_t *val);
     BIDError (*RemoveObject)(struct BIDCacheOps *, BIDContext, void *, const char *key);
 
-    BIDError (*FirstObject)(struct BIDCacheOps *, BIDContext, void *, const char **, json_t **val);
-    BIDError (*NextObject)(struct BIDCacheOps *, BIDContext, void *, const char **, json_t **val);
+    BIDError (*FirstObject)(struct BIDCacheOps *, BIDContext, void *, void **, const char **, json_t **val);
+    BIDError (*NextObject)(struct BIDCacheOps *, BIDContext, void *, void **, const char **, json_t **val);
 };
 
 BIDError
@@ -207,6 +207,7 @@ BIDError
 _BIDGetFirstCacheObject(
     BIDContext context,
     BIDCache cache,
+    void **cookie,
     const char **pKey,
     json_t **pValue);
 
@@ -214,6 +215,18 @@ BIDError
 _BIDGetNextCacheObject(
     BIDContext context,
     BIDCache cache,
+    void **cookie,
+    const char **pKey,
+    json_t **pValue);
+
+BIDError
+_BIDCacheIteratorAlloc(
+    json_t *json,
+    void **pCookie);
+
+BIDError
+_BIDCacheIteratorNext(
+    void **cookie,
     const char **pKey,
     json_t **pValue);
 

@@ -10,7 +10,6 @@ struct BIDMemoryCache {
     BID_MUTEX Mutex;
     char *Name;
     json_t *Data;
-    void *Iterator;
 };
 
 /*
@@ -237,12 +236,14 @@ _BIDMemoryCacheFirstObject(
     struct BIDCacheOps *ops BID_UNUSED,
     BIDContext context BID_UNUSED,
     void *cache,
+    void **cookie,
     const char **key,
     json_t **val)
 {
     struct BIDMemoryCache *mc = (struct BIDMemoryCache *)cache;
     BIDError err;
 
+    *cookie = NULL;
     *key = NULL;
     *val = NULL;
 
@@ -252,21 +253,13 @@ _BIDMemoryCacheFirstObject(
     }
 
     BIDMemoryCacheLock(mc);
+    err = _BIDCacheIteratorAlloc(json_copy(mc->Data), cookie);
+    BIDMemoryCacheUnlock(mc);
 
-    mc->Iterator = json_object_iter(mc->Data);
-    if (mc->Iterator == NULL) {
-        err = BID_S_CACHE_KEY_NOT_FOUND;
-        goto cleanup;
-    }
+    BID_BAIL_ON_ERROR(err);
 
-    *key = json_object_iter_key(mc->Iterator);
-    *val = json_incref(json_object_iter_value(mc->Iterator));
-    if (*key == NULL || *val == NULL) {
-        err = BID_S_NO_MORE_ITEMS;
-        goto cleanup;
-    }
-
-    err = BID_S_OK;
+    err = _BIDCacheIteratorNext(cookie, key, val);
+    BID_BAIL_ON_ERROR(err);
 
 cleanup:
     return err;
@@ -276,41 +269,18 @@ static BIDError
 _BIDMemoryCacheNextObject(
     struct BIDCacheOps *ops BID_UNUSED,
     BIDContext context BID_UNUSED,
-    void *cache,
+    void *cache BID_UNUSED,
+    void **cookie,
     const char **key,
     json_t **val)
 {
-    struct BIDMemoryCache *mc = (struct BIDMemoryCache *)cache;
     BIDError err;
 
     *key = NULL;
     *val = NULL;
 
-    if (mc == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
-    if (mc->Data == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
-    mc->Iterator = json_object_iter_next(mc->Data, mc->Iterator);
-    if (mc->Iterator == NULL) {
-        err = BID_S_NO_MORE_ITEMS;
-        goto cleanup;
-    }
-
-    *key = json_object_iter_key(mc->Iterator);
-    *val = json_incref(json_object_iter_value(mc->Iterator));
-    if (*key == NULL || *val == NULL) {
-        err = BID_S_NO_MORE_ITEMS;
-        BIDMemoryCacheUnlock(mc);
-        goto cleanup;
-    }
-
-    err = BID_S_OK;
+    err = _BIDCacheIteratorNext(cookie, key, val);
+    BID_BAIL_ON_ERROR(err);
 
 cleanup:
     return err;
