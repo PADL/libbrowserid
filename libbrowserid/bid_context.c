@@ -106,15 +106,18 @@ BIDAcquireContext(
         BID_ASSERT(context->TicketCache != NULL);
     }
 
-#if 0
-    if ((ulContextOptions & BID_CONTEXT_DH_KEYEX) &&
+    if ((ulContextOptions & BID_CONTEXT_DH_SAFE_PRIMES) &&
         (ulContextOptions & BID_CONTEXT_USER_AGENT)) {
+        if ((ulContextOptions & BID_CONTEXT_DH_KEYEX) == 0) {
+            err = BID_S_INVALID_PARAMETER;
+            goto cleanup;
+        }
+
         err = _BIDAcquireDefaultDHParamsCache(context);
         BID_BAIL_ON_ERROR(err);
 
         BID_ASSERT(context->DHParamsCache != NULL);
     }
-#endif
 
     err = BID_S_OK;
     *pContext = context;
