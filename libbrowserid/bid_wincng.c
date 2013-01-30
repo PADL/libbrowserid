@@ -217,7 +217,7 @@ _BIDGetJsonBufferValue(
             err = _BIDParseHexNumber(context, szValue, len, blob);
     }
 
-    if (cbPadding) {
+    if (err == BID_S_OK && cbPadding) {
         if (blob->cbBuffer > cbPadding)
             err = BID_S_BUFFER_TOO_LONG;
         else {
