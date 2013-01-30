@@ -68,7 +68,7 @@ _BIDMakeClaims(
     }
 
     if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        err = _BIDGenerateDHParams(context, &dh);
+        err = _BIDGetDHParams(context, &dh);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDJsonObjectSet(context, claims, "dh", dh, 0);

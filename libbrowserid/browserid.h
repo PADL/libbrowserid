@@ -225,10 +225,12 @@ typedef enum {
     BID_PARAM_REPLAY_CACHE_NAME,
     BID_PARAM_AUTHORITY_CACHE_NAME,
     BID_PARAM_TICKET_CACHE_NAME,
+    BID_PARAM_DH_PARAMS_CACHE_NAME,
     BID_PARAM_RP_CERT_CONFIG_NAME,
     BID_PARAM_REPLAY_CACHE,
     BID_PARAM_AUTHORITY_CACHE,
     BID_PARAM_TICKET_CACHE,
+    BID_PARAM_DH_PARAMS_CACHE,
     BID_PARAM_PARENT_WINDOW,
 } BIDContextParameter;
 
@@ -247,6 +249,7 @@ typedef struct BIDCacheDesc *BIDCache;
 typedef BIDCache BIDReplayCache;
 typedef BIDCache BIDAuthorityCache;
 typedef BIDCache BIDTicketCache;
+typedef BIDCache BIDDHParamsCache;
 
 BIDError
 BIDAcquireTicketCache(

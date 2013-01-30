@@ -67,7 +67,7 @@ BIDAcquireContext(
     context->ContextOptions = ulContextOptions;
     context->Skew = 60 * 5; /* 5 minutes */
     context->MaxDelegations = 6;
-    context->DhKeySize = 1024;
+    context->DHKeySize = 1024;
 
     if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
         if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
@@ -106,6 +106,16 @@ BIDAcquireContext(
         BID_ASSERT(context->TicketCache != NULL);
     }
 
+#if 0
+    if ((ulContextOptions & BID_CONTEXT_DH_KEYEX) &&
+        (ulContextOptions & BID_CONTEXT_USER_AGENT)) {
+        err = _BIDAcquireDefaultDHParamsCache(context);
+        BID_BAIL_ON_ERROR(err);
+
+        BID_ASSERT(context->DHParamsCache != NULL);
+    }
+#endif
+
     err = BID_S_OK;
     *pContext = context;
 
@@ -134,6 +144,7 @@ BIDReleaseContext(BIDContext context)
     _BIDReleaseCache(context, context->AuthorityCache);
     _BIDReleaseCache(context, context->ReplayCache);
     _BIDReleaseCache(context, context->TicketCache);
+    _BIDReleaseCache(context, context->DHParamsCache);
     _BIDReleaseCache(context, context->RPCertConfig);
 
     memset(context, 0, sizeof(*context));
@@ -166,11 +177,12 @@ BIDSetContextParam(
         context->Skew = *(uint32_t *)value;
         break;
     case BID_PARAM_DH_KEYEX_SIZE:
-        context->DhKeySize = *(uint32_t *)value;
+        context->DHKeySize = *(uint32_t *)value;
         break;
     case BID_PARAM_AUTHORITY_CACHE_NAME:
     case BID_PARAM_REPLAY_CACHE_NAME:
     case BID_PARAM_TICKET_CACHE_NAME:
+    case BID_PARAM_DH_PARAMS_CACHE_NAME:
     case BID_PARAM_RP_CERT_CONFIG_NAME: {
         const char *szCacheName;
         BIDCache cache, *pCache = NULL;
@@ -182,6 +194,8 @@ BIDSetContextParam(
             pCache = &context->ReplayCache;
         else if (ulParam == BID_PARAM_TICKET_CACHE_NAME)
             pCache = &context->TicketCache;
+        else if (ulParam == BID_PARAM_DH_PARAMS_CACHE_NAME)
+            pCache = &context->DHParamsCache;
         else if (ulParam == BID_PARAM_RP_CERT_CONFIG_NAME) {
             pCache = &context->RPCertConfig;
             ulFlags |= BID_CACHE_FLAG_UNVERSIONED;
@@ -205,7 +219,8 @@ BIDSetContextParam(
     }
     case BID_PARAM_AUTHORITY_CACHE:
     case BID_PARAM_REPLAY_CACHE:
-    case BID_PARAM_TICKET_CACHE: {
+    case BID_PARAM_TICKET_CACHE:
+    case BID_PARAM_DH_PARAMS_CACHE: {
         BIDCache *pCache = NULL;
 
         if (ulParam == BID_PARAM_AUTHORITY_CACHE)
@@ -214,6 +229,8 @@ BIDSetContextParam(
             pCache = &context->ReplayCache;
         else if (ulParam == BID_PARAM_TICKET_CACHE)
             pCache = &context->TicketCache;
+        else if (ulParam == BID_PARAM_DH_PARAMS_CACHE)
+            pCache = &context->DHParamsCache;
 
         BID_ASSERT(pCache != NULL);
 
@@ -275,8 +292,11 @@ BIDGetContextParam(
     case BID_PARAM_TICKET_CACHE_NAME:
         err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
         break;
+    case BID_PARAM_DH_PARAMS_CACHE_NAME:
+        err = _BIDGetCacheName(context, context->DHParamsCache, (const char **)pValue);
+        break;
     case BID_PARAM_RP_CERT_CONFIG_NAME:
-        err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
+        err = _BIDGetCacheName(context, context->RPCertConfig, (const char **)pValue);
         break;
     case BID_PARAM_REPLAY_CACHE:
         *pValue = context->ReplayCache;
@@ -287,8 +307,11 @@ BIDGetContextParam(
     case BID_PARAM_TICKET_CACHE:
         *pValue = context->TicketCache;
         break;
+    case BID_PARAM_DH_PARAMS_CACHE:
+        *pValue = context->DHParamsCache;
+        break;
     case BID_PARAM_DH_KEYEX_SIZE:
-        *((uint32_t *)pValue) = context->DhKeySize;
+        *((uint32_t *)pValue) = context->DHKeySize;
         break;
     case BID_PARAM_PARENT_WINDOW:
         *((void **)pValue) = context->ParentWindow;

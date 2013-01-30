@@ -1111,7 +1111,7 @@ _BIDMakeDHKey(
     BCRYPT_DH_KEY_BLOB *dhKeyBlob = NULL;
     DWORD cbDhKeyBlob = 0;
     PUCHAR pbDhKeyBlob;
-    DWORD cbPad = context->DhKeySize / 8;
+    DWORD cbPad = context->DHKeySize / 8;
 
     *phKey = NULL;
 
@@ -1254,7 +1254,7 @@ _BIDGenerateDHParams(
 
     *pDhParams = NULL;
 
-    BID_ASSERT(context->DhKeySize != 0);
+    BID_ASSERT(context->DHKeySize != 0);
 
     dhParams = json_object();
     if (dhParams == NULL) {
@@ -1280,7 +1280,7 @@ _BIDGenerateDHParams(
      * size in bits, is set in the upper 16 bits of the parameter.
      */
     dwFlags = CRYPT_EXPORTABLE;
-    dwFlags |= context->DhKeySize << 16;
+    dwFlags |= context->DHKeySize << 16;
 
     if (!CryptGenKey(hProv, CALG_DH_EPHEM, dwFlags, &hKey)) {
         err = BID_S_CRYPTO_ERROR;
@@ -1321,7 +1321,7 @@ _BIDMakeDHParams(
     PUCHAR pbDhParamsHeader;
     BCryptBuffer p = { 0 };
     BCryptBuffer g = { 0 };
-    DWORD cbPad = context->DhKeySize / 8;
+    DWORD cbPad = context->DHKeySize / 8;
 
     *ppDhParamsHeader = NULL;
 
@@ -1392,7 +1392,7 @@ _BIDGenerateDHKey(
                                       0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    nts = BCryptGenerateKeyPair(hAlgorithm, &hKey, context->DhKeySize, 0);
+    nts = BCryptGenerateKeyPair(hAlgorithm, &hKey, context->DHKeySize, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
     err = _BIDMakeDHParams(context, dhParams, &dhParamsHeader);

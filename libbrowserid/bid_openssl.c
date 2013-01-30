@@ -1019,9 +1019,9 @@ _BIDGenerateDHParams(
         goto cleanup;
     }
 
-    BID_ASSERT(context->DhKeySize != 0);
+    BID_ASSERT(context->DHKeySize != 0);
 
-    if (!DH_generate_parameters_ex(dh, context->DhKeySize, DH_GENERATOR_2, NULL)) {
+    if (!DH_generate_parameters_ex(dh, context->DHKeySize, DH_GENERATOR_2, NULL)) {
         err = BID_S_DH_PARAM_GENERATION_FAILURE;
         goto cleanup;
     }
