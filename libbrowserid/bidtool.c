@@ -230,9 +230,9 @@ BIDPrintVerboseReplayCacheEntry(
         printf("Key length:       %zd bits\n", cbArk * 8);
     }
 
-    printf("Cert issue time:  %s", ctime(&issueTime));
+    printf("Issue time:       %s", ctime(&issueTime));
     printf("Assertion expiry: %s", ctime(&assertionExpiryTime));
-    printf("Ticket expiry:    %s", ctime(&expiryTime));
+    printf("Expiry time:      %s", ctime(&expiryTime));
     BIDPrintTicketFlags(ulTicketFlags);
     printf("\n");
 
