@@ -263,6 +263,26 @@ _BIDCacheIteratorNext(
     const char **pKey,
     json_t **pValue);
 
+BIDError
+_BIDPurgeCache(
+    BIDContext context,
+    BIDCache cache,
+    int (*selector)(BIDContext, BIDCache, const char *, json_t *, void *),
+    void *data);
+
+BIDError
+_BIDPerformCacheObjects(
+    BIDContext context,
+    BIDCache cache,
+    BIDError (*selector)(BIDContext, BIDCache, const char *, json_t *, void *data),
+    void *data);
+
+BIDError
+_BIDAcquireCacheForUser(
+    BIDContext context,
+    const char *szTemplate,
+    BIDCache *pCache);
+
 /*
  * bid_context.c
  */

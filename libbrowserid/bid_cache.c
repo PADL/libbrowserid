@@ -39,6 +39,11 @@
 
 #include "bid_private.h"
 
+#ifdef __APPLE__
+#include <pwd.h>
+#include <sys/stat.h>
+#endif
+
 struct BIDCacheDesc {
     struct BIDCacheOps *Ops;
     void *Data;
@@ -426,4 +431,122 @@ _BIDCacheIteratorNext(
     iter->Iterator = json_object_iter_next(iter->Data, iter->Iterator);
 
     return BID_S_OK;
+}
+
+BIDError
+_BIDPerformCacheObjects(
+    BIDContext context,
+    BIDCache cache,
+    BIDError (*selector)(BIDContext, BIDCache, const char *, json_t *, void *data),
+    void *data)
+{
+    BIDError err, err2 = BID_S_OK;
+    void *cookie = NULL;
+    const char *k = NULL;
+    json_t *j = NULL;
+
+    if (cache == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    for (err = _BIDGetFirstCacheObject(context, cache, &cookie, &k, &j);
+         err == BID_S_OK;
+         err = _BIDGetNextCacheObject(context, cache, &cookie, &k, &j)) {
+        if (err2 == BID_S_OK)
+            err2 = selector(context, cache, k, j, data);
+        /* can't break as we need to release cookie XXX */
+        json_decref(j);
+    }
+
+    if (err == BID_S_NO_MORE_ITEMS)
+        err = err2;
+
+    return err;
+}
+
+struct BIDPurgeCacheArgsDesc {
+    int (*Selector)(BIDContext, BIDCache, const char *, json_t *, void *);
+    void *Data;
+};
+
+static BIDError
+_BIDRemoveCacheObjectIfSelectorTrue(
+    BIDContext context,
+    BIDCache cache,
+    const char *szKey,
+    json_t *jsonValue,
+    void *data)
+{
+    struct BIDPurgeCacheArgsDesc *args = data;
+
+    if (args->Selector(context, cache, szKey, jsonValue, args->Data))
+        _BIDRemoveCacheObject(context, cache, szKey);
+
+    return BID_S_OK;
+}
+
+BIDError
+_BIDPurgeCache(
+    BIDContext context,
+    BIDCache cache,
+    int (*selector)(BIDContext, BIDCache, const char *, json_t *, void *),
+    void *data)
+{
+    struct BIDPurgeCacheArgsDesc args;
+
+    args.Selector = selector;
+    args.Data = data;
+
+    return _BIDPerformCacheObjects(context, cache, _BIDRemoveCacheObjectIfSelectorTrue, &args);
+}
+
+BIDError
+_BIDAcquireCacheForUser(
+    BIDContext context,
+    const char *szTemplate,
+    BIDCache *pCache)
+{
+    BIDError err;
+#ifdef WIN32
+    err = BID_S_NOT_IMPLEMENTED;
+#else
+    char szFileName[PATH_MAX];
+
+    *pCache = NULL;
+
+#ifdef __APPLE__
+    struct passwd *pw, pwd;
+    char pwbuf[BUFSIZ];
+    struct stat sb;
+    const char *szPrefix;
+
+    if (getpwuid_r(geteuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) < 0 ||
+        pw == NULL ||
+        pw->pw_dir == NULL) {
+        err = BID_S_CACHE_OPEN_ERROR;
+        goto cleanup;
+    }
+
+    szPrefix = (pw->pw_uid == 0) ? "" : pw->pw_dir;
+
+    snprintf(szFileName, sizeof(szFileName),
+             "%s/Library/Caches/com.padl.gss.BrowserID", szPrefix);
+
+    if (stat(szFileName, &sb) < 0)
+        mkdir(szFileName, 0700);
+
+    snprintf(szFileName, sizeof(szFileName),
+             "file:%s/Library/Caches/com.padl.gss.BrowserID/%s.json",
+             szPrefix, szTemplate);
+#else
+    snprintf(szFileName, sizeof(szFileName),
+             "file:/tmp/.%s.%d.json", geteuid());
+#endif
+
+    err = _BIDAcquireCache(context, szFileName, 0, pCache);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+#endif /* WIN32 */
+
+    return err;
 }

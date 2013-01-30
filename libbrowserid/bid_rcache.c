@@ -47,44 +47,7 @@
 BIDError
 _BIDAcquireDefaultReplayCache(BIDContext context)
 {
-    BIDError err;
-#ifdef WIN32
-    err = BID_S_NOT_IMPLEMENTED;
-#else
-    char szFileName[PATH_MAX];
-
-#ifdef __APPLE__
-    struct passwd *pw, pwd;
-    char pwbuf[BUFSIZ];
-    struct stat sb;
-    const char *prefix;
-
-    if (getpwuid_r(geteuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) < 0 ||
-        pw == NULL ||
-        pw->pw_dir == NULL) {
-        err = BID_S_CACHE_OPEN_ERROR;
-        goto cleanup;
-    }
-
-    prefix = (pw->pw_uid == 0) ? "" : pw->pw_dir;
-
-    snprintf(szFileName, sizeof(szFileName), "%s/Library/Caches/com.padl.gss.BrowserID", prefix);
-;
-    if (stat(szFileName, &sb) < 0)
-        mkdir(szFileName, 0700);
-
-    snprintf(szFileName, sizeof(szFileName), "%s/Library/Caches/com.padl.gss.BrowserID/browserid.replay.json", prefix);
-#else
-    snprintf(szFileName, sizeof(szFileName), "/tmp/.browserid.replay.%d.json", geteuid());
-#endif
-
-    err = BIDAcquireReplayCache(context, szFileName, &context->ReplayCache);
-    BID_BAIL_ON_ERROR(err);
-
-cleanup:
-#endif /* WIN32 */
-
-    return err;
+    return _BIDAcquireCacheForUser(context, "browserid.replay", &context->ReplayCache);
 }
 
 BIDError
