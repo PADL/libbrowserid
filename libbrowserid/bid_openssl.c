@@ -1002,7 +1002,7 @@ cleanup:
 }
 
 static BIDError
-_BIDGenerateDHParamsDH(
+_BIDGenerateSafeDhParams(
     BIDContext context,
     DH **pDH)
 {
@@ -1047,7 +1047,7 @@ cleanup:
 }
 
 static BIDError
-_BIDGenerateDHParamsDSA(
+_BIDGenerateDsaParams(
     BIDContext context,
     DH **pDH)
 {
@@ -1087,10 +1087,11 @@ _BIDGenerateDHParams(
 
     BID_ASSERT(context->DHKeySize != 0);
 
+    /* XXX remove this code, _BIDGenerateDsaParams should be sufficient */
     if (context->ContextOptions & BID_CONTEXT_DH_SAFE_PRIMES)
-        err = _BIDGenerateDHParamsDH(context, &dh);
+        err = _BIDGenerateSafeDhParams(context, &dh);
     else
-        err = _BIDGenerateDHParamsDSA(context, &dh);
+        err = _BIDGenerateDsaParams(context, &dh);
     BID_BAIL_ON_ERROR(err);
 
     dhParams = json_object();
