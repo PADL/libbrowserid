@@ -101,10 +101,6 @@ int main(int argc, const char *argv[])
     }
 #endif /* !BUILD_AS_DSO */
 
-#ifdef WIN32
-    options &= ~(BID_CONTEXT_BROWSER_SILENT);
-#endif
-
     err = BIDAcquireContext(options, &context);
     BID_BAIL_ON_ERROR(err);
 
