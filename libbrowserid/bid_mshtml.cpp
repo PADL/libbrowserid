@@ -776,9 +776,10 @@ CBIDIdentityController::_SetSilent(BOOLEAN bValue)
 HRESULT
 CBIDIdentityController::_SetAssertion(BSTR bstrAssertion)
 {
-    char *szAssertion;
+    char *szAssertion = NULL;
 
-    if (_BIDUcs2ToUtf8(_context, bstrAssertion, &szAssertion) != BID_S_OK) {
+    if (bstrAssertion != NULL &&
+       _BIDUcs2ToUtf8(_context, bstrAssertion, &szAssertion) != BID_S_OK) {
         return E_OUTOFMEMORY;
     }
 
