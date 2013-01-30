@@ -130,9 +130,7 @@ gssBidAllocContext(OM_uint32 *minor,
      * to these services in the output of GSS_Init_sec_context and
      * GSS_Accept_sec_context.
     */
-    ctx->gssFlags = GSS_C_TRANS_FLAG;
-    if (contextParams & BID_CONTEXT_REPLAY_CACHE)
-        ctx->gssFlags |= GSS_C_REPLAY_FLAG;
+    ctx->gssFlags = GSS_C_TRANS_FLAG | GSS_C_REPLAY_FLAG;
     if (ctx->encryptionType != ENCTYPE_NULL) {
         ctx->gssFlags |= GSS_C_INTEG_FLAG    |   /* integrity */
                          GSS_C_CONF_FLAG     |   /* confidentiality */
