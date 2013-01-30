@@ -78,7 +78,7 @@ _BIDAcquireDefaultReplayCache(BIDContext context)
     snprintf(szFileName, sizeof(szFileName), "/tmp/.browserid.replay.%d.json", geteuid());
 #endif
 
-    err = BIDAcquireTicketCache(context, szFileName, &context->TicketCache);
+    err = BIDAcquireReplayCache(context, szFileName, &context->ReplayCache);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
