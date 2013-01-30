@@ -103,8 +103,6 @@ BrowserIDInterpose(
 {
     NSString *realMechName = [self BrowserID_mechanismName];
 
-    NSLog(@"BrowserID_mechanismName %@ self %@", realMechName, self);
-
 #if 0
     if ([realMechName isEqual:kBrowserIDSASLMechanism])
         return kGSSAPISASLMechanism;
@@ -141,8 +139,6 @@ BrowserIDInterpose(
             [rewrittenMechs replaceObjectAtIndex:index withObject:kBrowserIDSASLMechanism];
         }
 
-        NSLog(@"BrowserID_authenticationMechanisms: %@", rewrittenMechs);
-
         return rewrittenMechs;
     }
 
@@ -156,6 +152,5 @@ BrowserIDInterpose(
 @implementation BrowserIDHelper
 + (void)load
 {
-    NSLog(@"BrowserIDHelper load");
 }
 @end
