@@ -739,7 +739,7 @@ CBIDIdentityController::_AcquireAssertion(void)
     BID_BAIL_ON_HERROR(hr);
 
     if (!_GetSilent()) {
-        EnableWindow(_hBrowserWindow);
+        EnableWindow(_hBrowserWindow, TRUE);
         ShowWindow(_hBrowserWindow, SW_SHOW);
     }
 
