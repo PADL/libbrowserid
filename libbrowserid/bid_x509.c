@@ -88,8 +88,10 @@ _BIDGetRPPrivateKey(
     const char *rPaths[1] = { 0 };
     size_t cPaths = 0;
 
-    *pKey = NULL;
-    *pCertChain = NULL;
+    if (pKey != NULL)
+        *pKey = NULL;
+    if (pCertChain != NULL)
+        *pCertChain = NULL;
 
     if (context->RPCertConfig == NULL) {
         err = BID_S_NO_KEY;
@@ -107,19 +109,29 @@ _BIDGetRPPrivateKey(
         goto cleanup;
     }
 
-    err = _BIDLoadX509PrivateKey(context, json_string_value(privateKeyPath), pKey);
-    BID_BAIL_ON_ERROR(err);
+    if (pKey != NULL) {
+        err = _BIDLoadX509PrivateKey(context, json_string_value(privateKeyPath), pKey);
+        BID_BAIL_ON_ERROR(err);
+    }
 
     rPaths[cPaths++] = json_string_value(certificatePath);
 
-    err = _BIDLoadX509CertificateChain(context, rPaths, cPaths, pCertChain);
-    BID_BAIL_ON_ERROR(err);
+    if (pCertChain != NULL) {
+        err = _BIDLoadX509CertificateChain(context, rPaths, cPaths, pCertChain);
+        BID_BAIL_ON_ERROR(err);
+    }
 
 cleanup:
     json_decref(privateKeyPath);
     json_decref(certificatePath);
 
     return err;
+}
+
+int
+_BIDCanMutualAuthP(BIDContext context)
+{
+    return (_BIDGetRPPrivateKey(context, NULL, NULL) == BID_S_OK);
 }
 
 BIDError

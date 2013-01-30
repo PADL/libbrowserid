@@ -894,6 +894,9 @@ _BIDGetRPPrivateKey(
     BIDJWK *pKey,
     json_t **pCertChain);
 
+int
+_BIDCanMutualAuthP(BIDContext context);
+
 BIDError
 _BIDValidateX509(
     BIDContext context,

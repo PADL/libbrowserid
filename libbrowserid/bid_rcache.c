@@ -141,7 +141,7 @@ _BIDUpdateReplayCache(
         BID_BAIL_ON_ERROR(err);
 
         ulTicketFlags = 0;
-        if (ulFlags & BID_VERIFY_FLAG_VALIDATED_CERTS)
+        if (_BIDCanMutualAuthP(context))
             ulTicketFlags |= BID_TICKET_FLAG_MUTUAL_AUTH;
 
         if (ulTicketFlags) {
