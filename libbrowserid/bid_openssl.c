@@ -954,7 +954,7 @@ _BIDJWTAlgorithms[] = {
     },
 };
 
-BIDError
+static BIDError
 _BIDMakeDHKey(
     BIDContext context,
     json_t *dhParams,
@@ -1001,25 +1001,22 @@ cleanup:
     return err;
 }
 
-BIDError
-_BIDGenerateDHParams(
+static BIDError
+_BIDGenerateDHParamsDH(
     BIDContext context,
-    json_t **pDhParams)
+    DH **pDH)
 {
     BIDError err;
-    json_t *dhParams = NULL;
     DH *dh = NULL;
     int codes = 0;
 
-    *pDhParams = NULL;
+    *pDH = NULL;
 
     dh = DH_new();
     if (dh == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
-
-    BID_ASSERT(context->DHKeySize != 0);
 
     if (!DH_generate_parameters_ex(dh, context->DHKeySize, DH_GENERATOR_2, NULL)) {
         err = BID_S_DH_PARAM_GENERATION_FAILURE;
@@ -1031,16 +1028,69 @@ _BIDGenerateDHParams(
         goto cleanup;
     }
 
-    if (codes & DH_CHECK_P_NOT_PRIME)
-        err = BID_S_DH_CHECK_P_NOT_PRIME;
-    else if (codes & DH_CHECK_P_NOT_SAFE_PRIME)
-        err = BID_S_DH_CHECK_P_NOT_SAFE_PRIME;
-    else if (codes & DH_UNABLE_TO_CHECK_GENERATOR)
-        err = BID_S_DH_UNABLE_TO_CHECK_GENERATOR;
-    else if (codes & DH_NOT_SUITABLE_GENERATOR)
-        err = BID_S_DH_NOT_SUITABLE_GENERATOR;
+    if ((codes & DH_CHECK_P_NOT_PRIME)          ||
+        (codes & DH_CHECK_P_NOT_SAFE_PRIME)     ||
+        (codes & DH_UNABLE_TO_CHECK_GENERATOR)  ||
+        (codes & DH_NOT_SUITABLE_GENERATOR)) {
+        err = BID_S_DH_PARAM_GENERATION_FAILURE;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+    *pDH = dh;
+
+cleanup:
+    if (err != BID_S_OK)
+        DH_free(dh);
+
+    return err;
+}
+
+static BIDError
+_BIDGenerateDHParamsDSA(
+    BIDContext context,
+    DH **pDH)
+{
+    BIDError err;
+    DSA *dsa = NULL;
+
+    *pDH = NULL;
+
+    dsa = DSA_new();
+    if (dsa == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (!DSA_generate_parameters_ex(dsa, context->DHKeySize, NULL, 0, NULL, NULL, NULL)) {
+        err = BID_S_DH_PARAM_GENERATION_FAILURE;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+    *pDH = DSA_dup_DH(dsa);
+
+cleanup:
+    DSA_free(dsa);
+
+    return err;
+}
+
+BIDError
+_BIDGenerateDHParams(
+    BIDContext context,
+    json_t **pDhParams)
+{
+    BIDError err;
+    json_t *dhParams = NULL;
+    DH *dh = NULL;
+
+    BID_ASSERT(context->DHKeySize != 0);
+
+    if (context->ContextOptions & BID_CONTEXT_DH_SAFE_PRIMES)
+        err = _BIDGenerateDHParamsDH(context, &dh);
     else
-        err = BID_S_OK;
+        err = _BIDGenerateDHParamsDSA(context, &dh);
     BID_BAIL_ON_ERROR(err);
 
     dhParams = json_object();
@@ -1059,9 +1109,8 @@ _BIDGenerateDHParams(
     *pDhParams = dhParams;
 
 cleanup:
-    if (err != BID_S_OK) {
+    if (err != BID_S_OK)
         json_decref(dhParams);
-    }
     DH_free(dh);
 
     return err;

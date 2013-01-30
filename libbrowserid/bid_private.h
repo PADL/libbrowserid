@@ -94,6 +94,12 @@ extern "C" {
     } while (0)
 
 /*
+ * Generate safe DH primes. Should never be necessary as we
+ * always generate a new key.
+ */
+#define BID_CONTEXT_DH_SAFE_PRIMES          0x00010000
+
+/*
  * bid_authority.c
  */
 #define BID_WELL_KNOWN_URL          "/.well-known/browserid"
