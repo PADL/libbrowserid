@@ -507,7 +507,7 @@ _BIDAcquireCacheForUser(
 {
     BIDError err;
 #ifdef WIN32
-    err = BID_S_NOT_IMPLEMENTED;
+    err = _BIDAcquireCache(context, "memory:", 0, pCache);
 #else
     char szFileName[PATH_MAX];
 
