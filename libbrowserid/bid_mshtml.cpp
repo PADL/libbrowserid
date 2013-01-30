@@ -738,6 +738,9 @@ CBIDIdentityController::_AcquireAssertion(void)
     hr = _pHTMLWindow2->execScript(bstrScript, L"JavaScript", &varArgOut);
     BID_BAIL_ON_HERROR(hr);
 
+    if (_GetSilent())
+        ShowWindow(_hBrowserWindow, SW_SHOW);
+
 cleanup:
     VariantClear(&varArgOut);
     SysFreeString(bstrScript);
@@ -891,9 +894,12 @@ cleanup:
 BIDError
 CBIDIdentityController::GetAssertion(char **pAssertion)
 {
-    HRESULT hr;
+    HRESULT hr = S_OK;
 
     *pAssertion = NULL;
+
+    if (_context->ParentWindow)
+        EnableWindow((HWND)_context->ParentWindow, FALSE);
 
     hr = _ShowDialog();
     BID_BAIL_ON_HERROR(hr);
@@ -906,10 +912,11 @@ CBIDIdentityController::GetAssertion(char **pAssertion)
         _szAssertion = NULL;
     }
 
-    return _bidError;
-
 cleanup:
-    return _MapError(hr);
+    if (_context->ParentWindow)
+        EnableWindow((HWND)_context->ParentWindow, TRUE);
+
+    return FAILED(hr) ? _MapError(hr) : _bidError;
 }
 
 HRESULT
