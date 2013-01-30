@@ -42,13 +42,7 @@
 BIDError
 _BIDAcquireDefaultAuthorityCache(BIDContext context)
 {
-    BIDError err;
-
-    err = _BIDAcquireCache(context, ".browserid.authority.json", 0, &context->AuthorityCache);
-    BID_BAIL_ON_ERROR(err);
-
-cleanup:
-    return err;
+    return _BIDAcquireCacheForUser(context, "browserid.authority", &context->AuthorityCache);
 }
 
 BIDError
