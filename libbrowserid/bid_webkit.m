@@ -381,6 +381,7 @@
     if (!silent) {
         [identityDialog makeFirstResponder:sender];
         [identityDialog setContentView:sender];
+        [identityDialog setIsVisible:YES];
         [identityDialog makeKeyAndOrderFront:nil];
         [identityDialog center];
     }
@@ -496,6 +497,7 @@
         return (bidError = BID_S_INTERACT_REQUIRED);
 
     identityDialog = [[BIDIdentityDialog identityDialog] retain];
+    [identityDialog setIsVisible:![self silent]];
     [identityDialog setDelegate:self];
     if (parentWindow != nil)
         [identityDialog setParentWindow:parentWindow];
