@@ -98,6 +98,7 @@ _BIDAcquireDefaultTicketCache(BIDContext context)
     struct passwd *pw, pwd;
     char pwbuf[BUFSIZ];
     struct stat sb;
+    const char *prefix;
 
     if (getpwuid_r(geteuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) < 0 ||
         pw == NULL ||
@@ -106,12 +107,14 @@ _BIDAcquireDefaultTicketCache(BIDContext context)
         goto cleanup;
     }
 
-    snprintf(szFileName, sizeof(szFileName), "%s/Library/Caches/com.padl.gss.BrowserID", pw->pw_dir);
+    prefix = (pw->pw_uid == 0) ? "" : pw->pw_dir;
 
+    snprintf(szFileName, sizeof(szFileName), "%s/Library/Caches/com.padl.gss.BrowserID", prefix);
+;
     if (stat(szFileName, &sb) < 0)
         mkdir(szFileName, 0700);
 
-    snprintf(szFileName, sizeof(szFileName), "%s/Library/Caches/com.padl.gss.BrowserID/browserid.tickets.json", pw->pw_dir);
+    snprintf(szFileName, sizeof(szFileName), "%s/Library/Caches/com.padl.gss.BrowserID/browserid.tickets.json", prefix);
 #else
     snprintf(szFileName, sizeof(szFileName), "/tmp/.browserid.tickets.%d.json", geteuid());
 #endif
