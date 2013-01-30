@@ -1,1 +1,2 @@
 - replay/reauth cache grows unbounded
+- cache purging API needs to lock cache
