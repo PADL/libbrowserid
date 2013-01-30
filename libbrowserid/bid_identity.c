@@ -70,6 +70,9 @@ BIDVerifyAssertion(
     if ((context->ContextOptions & BID_CONTEXT_RP) == 0)
         return BID_S_INVALID_USAGE;
 
+    if (replayCache == BID_C_NO_REPLAY_CACHE)
+        replayCache = context->ReplayCache;
+
     if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
         err = _BIDCheckReplayCache(context, replayCache, szAssertion, verificationTime);
         BID_BAIL_ON_ERROR(err);

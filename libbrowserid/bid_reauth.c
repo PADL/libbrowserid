@@ -148,7 +148,7 @@ _BIDStoreTicketInCache(
         goto cleanup;
     }
 
-    if (context->TicketCache == NULL) {
+    if (context->TicketCache == BID_C_NO_TICKET_CACHE) {
         err = BID_S_NO_TICKET_CACHE;
         goto cleanup;
     }
