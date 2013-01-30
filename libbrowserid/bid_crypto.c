@@ -410,7 +410,7 @@ _BIDGetDHParams(
     }
 
     err = _BIDGenerateDHParams(context, pDhParams);
-    if (err == BID_S_OK)
+    if (err == BID_S_OK && context->DHParamsCache != NULL)
         _BIDSetCacheObject(context, context->DHParamsCache, "params", *pDhParams);
 
     return err;
