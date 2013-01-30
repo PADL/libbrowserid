@@ -738,7 +738,7 @@ CBIDIdentityController::_AcquireAssertion(void)
     hr = _pHTMLWindow2->execScript(bstrScript, L"JavaScript", &varArgOut);
     BID_BAIL_ON_HERROR(hr);
 
-    if (_GetSilent()) {
+    if (!_GetSilent()) {
         EnableWindow(_hBrowserWindow);
         ShowWindow(_hBrowserWindow, SW_SHOW);
     }
