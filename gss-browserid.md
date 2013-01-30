@@ -626,10 +626,13 @@ the following payload:
 The re-authentication assertion has an implicit expiry after the issue time
 (see notes above).
 
-The ticket expiry time must be cached by the acceptor, along with the subject,
-issuer, audience, expiry time and ARK of the original assertion. The acceptor
-may share this cache with the replay cache, although this is an implementation
-detail.
+The ticket expiry time must be securely available to the acceptor, along with
+the subject, issuer, audience, expiry time and ARK of the original assertion.
+One implementation choice may be to use the opaque ticket identifier as a key
+into a dictionary containing this information (our implementation does this,
+overloading the replay cache). Another would be to encrypt this information in
+a long-term secret only known to the acceptor and encode that in the opaque
+ticket identifier.
 
 The fast re-authentication assertion is signed using the authenticator root key.
 
