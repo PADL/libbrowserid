@@ -794,7 +794,7 @@ CBIDIdentityController::_IdentityCallback(DISPPARAMS *pDispParams)
 {
     HRESULT hr;
     VARIANT *vAssertion;
-    BSTR bstrAssertion;
+    BSTR bstrAssertion = NULL;
 
     if (pDispParams->cArgs < 2 || pDispParams->cNamedArgs != 0) {
         hr = DISP_E_BADPARAMCOUNT;
@@ -802,12 +802,18 @@ CBIDIdentityController::_IdentityCallback(DISPPARAMS *pDispParams)
     }
 
     vAssertion = &pDispParams->rgvarg[1];
-    if (V_VT(vAssertion) != VT_BSTR) {
+    switch (V_VT(vAssertion)) {
+    case VT_BSTR:
+        bstrAssertion = V_BSTR(vAssertion);
+        break;
+    case VT_NULL:
+        bstrAssertion = NULL;
+        break;
+    default:
         hr = DISP_E_BADVARTYPE;
         goto cleanup;
+        break;
     }
-
-    bstrAssertion = V_BSTR(vAssertion);
 
     if (SysStringLen(bstrAssertion) != 0)
         _bidError = BID_S_OK;
