@@ -816,6 +816,12 @@ _BIDUpdateReplayCache(
     time_t verificationTime,
     uint32_t ulFlags);
 
+BIDError
+_BIDPurgeReplayCache(
+    BIDContext context,
+    BIDCache cache,
+    time_t currentTime);
+
 /*
  * bid_user.c
  */

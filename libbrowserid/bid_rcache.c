@@ -205,3 +205,35 @@ BIDReleaseReplayCache(
     return _BIDReleaseCache(context, cache);
 }
 
+static int
+_BIDShouldPurgeReplayCacheEntryP(
+    BIDContext context,
+    BIDCache cache BID_UNUSED,
+    const char *szKey BID_UNUSED,
+    json_t *j,
+    void *data)
+{
+    time_t now = *((time_t *)data);
+    time_t expiryTime;
+
+    /*
+     * If the cache entry is being used for re-authentication (it has a key)
+     * then purge only when the ticket expires. Otherwise, purge when the
+     * assertion expires.
+     */
+    if (json_object_get(j, "ark") != NULL)
+        _BIDGetJsonTimestampValue(context, j, "exp", &expiryTime);
+    else
+        _BIDGetJsonTimestampValue(context, j, "a-exp", &expiryTime);
+
+    return (expiryTime == 0 || now >= expiryTime);
+}
+
+BIDError
+_BIDPurgeReplayCache(
+    BIDContext context,
+    BIDCache cache,
+    time_t currentTime)
+{
+    return _BIDPurgeCache(context, cache, _BIDShouldPurgeReplayCacheEntryP, &currentTime);
+}

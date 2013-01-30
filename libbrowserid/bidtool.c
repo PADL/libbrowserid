@@ -277,29 +277,6 @@ cleanup:
     return err;
 }
 
-static int
-BIDShouldPurgeReplayCacheEntryP(
-    BIDContext context BID_UNUSED,
-    BIDCache cache BID_UNUSED,
-    const char *szKey BID_UNUSED,
-    json_t *j,
-    void *data BID_UNUSED)
-{
-    time_t expiryTime;
-
-    /*
-     * If the cache entry is being used for re-authentication (it has a key)
-     * then purge only when the ticket expires. Otherwise, purge when the
-     * assertion expires.
-     */
-    if (json_object_get(j, "ark") != NULL)
-        _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
-    else
-        _BIDGetJsonTimestampValue(gContext, j, "a-exp", &expiryTime);
-
-    return expiryTime == 0 || gNow >= expiryTime;
-}
-
 static BIDError
 BIDListReplayCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 {
@@ -339,7 +316,7 @@ BIDPurgeReplayCache(int argc, char *argv[])
     if (argc)
         BIDToolUsage();
 
-    return _BIDPurgeCache(gContext, gContext->ReplayCache, BIDShouldPurgeReplayCacheEntryP, NULL);
+    return _BIDPurgeReplayCache(gContext, gContext->ReplayCache, gNow);
 }
 
 static BIDError
