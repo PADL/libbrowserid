@@ -434,7 +434,8 @@ BIDListAuthorityCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
         printf("-");
     printf("\n");
 
-    err = _BIDPerformCacheObjects(gContext, gContext->TicketCache, BIDPrintAuthorityCacheEntry, NULL);
+    err = _BIDPerformCacheObjects(gContext, gContext->AuthorityCache,
+                                  BIDPrintAuthorityCacheEntry, NULL);
 
     return err;
 }
