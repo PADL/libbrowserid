@@ -1,0 +1,21 @@
+--- /System/Library/Sandbox/Profiles/application.sb~	2013-01-30 15:37:25.000000000 +1100
++++ /System/Library/Sandbox/Profiles/application.sb	2013-01-30 19:09:39.000000000 +1100
+@@ -877,10 +877,18 @@
+         (entitlement "com.apple.security.network.server"))
+     (begin
+       (allow mach-lookup (global-name "org.h5l.kcm"))
++      (allow file-write*
++             (home-literal "/Library/Caches/com.padl.gss.BrowserID/browserid.tickets.json"))
+       (allow file-read*
++             (subpath "/usr/lib/sasl2")
++             (subpath "/usr/local/etc")
++             (subpath "/usr/local/lib")
++             (literal "/private/etc/krb5.conf")
++             (literal "/private/etc/gss/mech")
+              (literal "/Library/Preferences/edu.mit.Kerberos")
+              (literal "/Library/Preferences/com.apple.Kerberos.plist")
+              (regex #"^/Library/Preferences/com\.apple\.GSS\..*\.plist$")
++             (home-literal "/Library/Caches/com.padl.gss.BrowserID/browserid.tickets.json")
+              (home-literal "/Library/Preferences/edu.mit.Kerberos")
+              (home-literal "/Library/Preferences/com.apple.Kerberos.plist"))))
+ 

@@ -39,12 +39,7 @@
 
 /*
  * This program is a Mail.app bundle designed to fool it into thinking that
- * BrowserID is actually the GSSAPI Kerberos mechanism. Unfortunately it does
- * not work, at least under Mountain Lion, as the sandboxing prevents various
- * system configuration files being read (indeed, it actually prevents the
- * SASL plugin being loaded in the first place, although it's possible to work
- * around that by building against the system-provided GSS.framework, which is
- * no easy feat).
+ * BrowserID is actually the GSSAPI Kerberos mechanism.
  */
 
 #include <Foundation/Foundation.h>
