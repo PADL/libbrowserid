@@ -107,7 +107,6 @@ const char *_BIDErrorTable[] = {
     "Failed to generate Diffie-Hellman key",
     "No ticket cache",
     "Corrupted ticket cache",
-    "Expired ticket",
     "Certificate file unreadable",
     "Private key file unreadable",
     "Untrusted X.509 relying party certificate",
