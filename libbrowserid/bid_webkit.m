@@ -378,11 +378,10 @@
 
     [sender stringByEvaluatingJavaScriptFromString:function];
 
-    if (!silent) {
+    if (![self silent]) {
         [identityDialog makeFirstResponder:sender];
         [identityDialog setContentView:sender];
-        [identityDialog setIsVisible:YES];
-        [identityDialog makeKeyAndOrderFront:nil];
+        [identityDialog makeKeyAndOrderFront:sender];
         [identityDialog center];
     }
 }
@@ -497,8 +496,9 @@
         return (bidError = BID_S_INTERACT_REQUIRED);
 
     identityDialog = [[BIDIdentityDialog identityDialog] retain];
-    [identityDialog setIsVisible:![self silent]];
     [identityDialog setDelegate:self];
+    if ([self silent])
+        [identityDialog orderOut:nil];
     if (parentWindow != nil)
         [identityDialog setParentWindow:parentWindow];
 
