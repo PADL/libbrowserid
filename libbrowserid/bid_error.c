@@ -115,6 +115,7 @@ const char *_BIDErrorTable[] = {
     "Response from relying party does not match request",
     "JSON web token is missing signature",
     "Invalid secret handle",
+    "Negotiated key too short",
     "Unknown error code"
 };
 

@@ -73,28 +73,23 @@ BIDPrintVerboseTicketCacheEntry(
     json_t *j,
     void *data BID_UNUSED)
 {
-    unsigned char *pbArk = NULL;
-    size_t cbArk = 0;
+    size_t ulDHKeySize = 0;
     time_t issueTime, expiryTime;
     uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
 
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
     _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
-    _BIDGetJsonBinaryValue(gContext, json_object_get(j, "ark"), "secret-key", &pbArk, &cbArk);
 
-    printf("Audience:         %s\n", k);
+    ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
+
+    printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
     printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
     printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
-    printf("Key length:       %zd bits\n", cbArk * 8);
+    printf("DH key length:    %zd bits\n", ulDHKeySize);
     printf("Cert issue time:  %s", ctime(&issueTime));
     printf("Ticket expiry:    %s", ctime(&expiryTime));
     BIDPrintTicketFlags(ulTicketFlags);
     printf("\n");
-
-    if (pbArk != NULL) {
-        memset(pbArk, 0, cbArk);
-        BIDFree(pbArk);
-    }
 
     return BID_S_OK;
 }
@@ -207,13 +202,11 @@ BIDPrintVerboseReplayCacheEntry(
 {
     unsigned char *pbHash = NULL;
     size_t cbHash = 0, i;
-    unsigned char *pbArk = NULL;
-    size_t cbArk = 0;
     time_t issueTime, expiryTime, assertionExpiryTime;
     uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
+    uint32_t ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
 
     _BIDBase64UrlDecode(k, &pbHash, &cbHash);
-    _BIDGetJsonBinaryValue(gContext, json_object_get(j, "ark"), "secret-key", &pbArk, &cbArk);
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
     _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
     _BIDGetJsonTimestampValue(gContext, j, "a-exp", &assertionExpiryTime);
@@ -223,11 +216,11 @@ BIDPrintVerboseReplayCacheEntry(
         printf("%02X", pbHash[i] & 0xff);
     printf("\n");
 
-    if (pbArk != NULL) {
+    if (ulDHKeySize != 0) {
         printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
         printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
         printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
-        printf("Key length:       %zd bits\n", cbArk * 8);
+        printf("DH key length:    %zd bits\n", ulDHKeySize);
     }
 
     printf("Issue time:       %s", ctime(&issueTime));
@@ -236,10 +229,6 @@ BIDPrintVerboseReplayCacheEntry(
     BIDPrintTicketFlags(ulTicketFlags);
     printf("\n");
 
-    if (pbArk != NULL) {
-        memset(pbArk, 0, cbArk);
-        BIDFree(pbArk);
-    }
     BIDFree(pbHash);
 
     return BID_S_OK;
