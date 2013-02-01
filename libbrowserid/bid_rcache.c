@@ -107,6 +107,7 @@ _BIDUpdateReplayCache(
     json_t *ark = NULL;
     json_t *tkt = NULL;
     int bStoreReauthCreds;
+    time_t ticketExpiry = 0;
 
     err = _BIDDigestAssertion(context, szAssertion, hash, &cbHash);
     BID_BAIL_ON_ERROR(err);
@@ -130,6 +131,9 @@ _BIDUpdateReplayCache(
                             json_object_get(identity->PrivateAttributes, "a-exp"), 0);
     BID_BAIL_ON_ERROR(err);
 
+    if (context->TicketLifetime)
+        ticketExpiry = verificationTime + context->TicketLifetime;
+
     if (bStoreReauthCreds) {
         uint32_t ulTicketFlags;
 
@@ -149,6 +153,11 @@ _BIDUpdateReplayCache(
             BID_BAIL_ON_ERROR(err);
         }
 
+        if (ticketExpiry) {
+            err = _BIDSetJsonTimestampValue(context, rdata, "exp", ticketExpiry);
+            BID_BAIL_ON_ERROR(err);
+        }
+
         /*
          * Store the number of bits of entropy in the original key so that we don't
          * derive a "strong" key from an originally weak key.
@@ -156,6 +165,7 @@ _BIDUpdateReplayCache(
         err = _BIDSaveDHKeySize(context, identity, 1, rdata);
         BID_BAIL_ON_ERROR(err);
     } else {
+        /* XXX is this even necessary? */
         err = _BIDJsonObjectSet(context, rdata, "exp",
                                 json_object_get(identity->Attributes, "exp"), BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);

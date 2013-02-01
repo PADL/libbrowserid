@@ -74,11 +74,13 @@ BIDPrintVerboseTicketCacheEntry(
     void *data BID_UNUSED)
 {
     size_t ulDHKeySize = 0;
-    time_t issueTime, expiryTime;
+    time_t issueTime, certExpiryTime, tktExpiryTime;
+    json_t *tkt = json_object_get(j, "tkt");
     uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
 
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
-    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &certExpiryTime);
+    _BIDGetJsonTimestampValue(gContext, tkt, "exp", &tktExpiryTime);
 
     ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
 
@@ -87,7 +89,8 @@ BIDPrintVerboseTicketCacheEntry(
     printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
     printf("DH key length:    %zd bits\n", ulDHKeySize);
     printf("Cert issue time:  %s", ctime(&issueTime));
-    printf("Ticket expiry:    %s", ctime(&expiryTime));
+    printf("Cert expiry:      %s", ctime(&certExpiryTime));
+    printf("Ticket expiry:    %s", ctime(&tktExpiryTime));
     BIDPrintTicketFlags(ulTicketFlags);
     printf("\n");
 
@@ -202,13 +205,13 @@ BIDPrintVerboseReplayCacheEntry(
 {
     unsigned char *pbHash = NULL;
     size_t cbHash = 0, i;
-    time_t issueTime, expiryTime, assertionExpiryTime;
+    time_t issueTime, certExpiryTime, assertionExpiryTime;
     uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
     uint32_t ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
 
     _BIDBase64UrlDecode(k, &pbHash, &cbHash);
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
-    _BIDGetJsonTimestampValue(gContext, j, "exp", &expiryTime);
+    _BIDGetJsonTimestampValue(gContext, j, "exp", &certExpiryTime);
     _BIDGetJsonTimestampValue(gContext, j, "a-exp", &assertionExpiryTime);
 
     printf("Ticket ID:        ");
@@ -216,16 +219,17 @@ BIDPrintVerboseReplayCacheEntry(
         printf("%02X", pbHash[i] & 0xff);
     printf("\n");
 
+    printf("Issue time:       %s", ctime(&issueTime));
+    printf("Assertion expiry: %s", ctime(&assertionExpiryTime));
+
     if (ulDHKeySize != 0) {
+        printf("Ticket expiry:    %s", ctime(&certExpiryTime));
         printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
         printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
         printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
         printf("DH key length:    %zd bits\n", ulDHKeySize);
     }
 
-    printf("Issue time:       %s", ctime(&issueTime));
-    printf("Assertion expiry: %s", ctime(&assertionExpiryTime));
-    printf("Expiry time:      %s", ctime(&expiryTime));
     BIDPrintTicketFlags(ulTicketFlags);
     printf("\n");
 

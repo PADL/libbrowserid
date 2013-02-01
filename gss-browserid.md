@@ -171,7 +171,7 @@ formatted as a backed assertion with an empty payload, in its NegoEx metadata.
 
 Fast re-authentication allows a context to be established without acquiring a
 new BrowserID assertion. Instead an assertion signed with a secret key derived
-from the initial DH key exchange is used. Re-authentication MUST not succeed
+from the initial DH key exchange is used. Re-authentication SHOULD not succeed
 beyond the user's certificate expiry time.
 
 #### Ticket generation

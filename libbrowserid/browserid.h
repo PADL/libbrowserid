@@ -228,6 +228,7 @@ typedef enum {
     BID_PARAM_TICKET_CACHE,
     BID_PARAM_DH_PARAMS_CACHE,
     BID_PARAM_PARENT_WINDOW,
+    BID_PARAM_TICKET_LIFETIME, /* seconds */
 } BIDContextParameter;
 
 BIDError
