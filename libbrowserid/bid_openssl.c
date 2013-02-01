@@ -1452,37 +1452,28 @@ cleanup:
 }
 
 static BIDError
-_BIDSetJsonX509Name(
+_BIDSetJsonX509CommonName(
     BIDContext context,
     json_t *j,
     const char *key,
-    X509_NAME *name,
-    int cnOnly)
+    X509_NAME *name)
 {
     char *szValue = NULL;
     BIDError err;
+    int i;
+    X509_NAME_ENTRY *cn;
+    ASN1_STRING *cnValue;
 
-    if (cnOnly) {
-        int i;
-        X509_NAME_ENTRY *cn;
-        ASN1_STRING *cnValue;
+    i = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
+    if (i < 0)
+        return BID_S_MISSING_PRINCIPAL;
 
-        i = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
-        if (i < 0)
-            return BID_S_MISSING_PRINCIPAL;
+    cn = X509_NAME_get_entry(name, i);
+    if (cn == NULL)
+        return BID_S_MISSING_PRINCIPAL;
 
-        cn = X509_NAME_get_entry(name, i);
-        if (cn == NULL)
-            return BID_S_MISSING_PRINCIPAL;
-
-        cnValue = X509_NAME_ENTRY_get_data(cn);
-        ASN1_STRING_to_UTF8((unsigned char **)&szValue, cnValue);
-    } else {
-        /* XXX this is a deprecated API */
-        szValue = X509_NAME_oneline(name, NULL, -1);
-        if (szValue == NULL)
-            return BID_S_NO_MEMORY;
-    }
+    cnValue = X509_NAME_ENTRY_get_data(cn);
+    ASN1_STRING_to_UTF8((unsigned char **)&szValue, cnValue);
 
     err = _BIDJsonObjectSet(context, j, key, json_string(szValue),
                             BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
@@ -1490,6 +1481,50 @@ _BIDSetJsonX509Name(
     OPENSSL_free(szValue);
 
     return err;
+}
+
+static BIDError
+_BIDSetJsonX509DN(
+    BIDContext context,
+    json_t *j,
+    const char *key,
+    X509_NAME *name)
+{
+    char szValue[BUFSIZ], *s;
+    BIO *bio;
+    int n;
+
+    bio = BIO_new(BIO_s_mem());
+    if (bio == NULL)
+        return BID_S_NO_MEMORY;
+
+    if (X509_NAME_print_ex(bio, name, 0, XN_FLAG_RFC2253) < 0)
+        return BID_S_BAD_SUBJECT;
+
+    n = BIO_get_mem_data(bio, &s);
+    if (n >= sizeof(szValue))
+        return BID_S_BUFFER_TOO_LONG;
+
+    memcpy(szValue, s, n);
+    szValue[n] = '\0';
+    BIO_free(bio);
+
+    return _BIDJsonObjectSet(context, j, key, json_string(szValue),
+                             BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+}
+
+static BIDError
+_BIDSetJsonX509Name(
+    BIDContext context,
+    json_t *j,
+    const char *key,
+    X509_NAME *name,
+    int cnOnly)
+{
+    if (cnOnly)
+        return _BIDSetJsonX509CommonName(context, j, key, name);
+    else
+        return _BIDSetJsonX509DN(context, j, key, name);
 }
 
 static BIDError
