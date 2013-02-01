@@ -153,8 +153,7 @@ _BIDUpdateReplayCache(
          * Store the number of bits of entropy in the original key so that we don't
          * derive a "strong" key from an originally weak key.
          */
-        err = _BIDJsonObjectSet(context, rdata, "dh-key-size", json_integer(context->DHKeySize),
-                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+        err = _BIDSaveDHKeySize(context, identity, 1, rdata);
         BID_BAIL_ON_ERROR(err);
     } else {
         err = _BIDJsonObjectSet(context, rdata, "exp",

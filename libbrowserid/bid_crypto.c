@@ -415,3 +415,31 @@ _BIDGetDHParams(
 
     return err;
 }
+
+BIDError
+_BIDSaveDHKeySize(
+    BIDContext context,
+    BIDIdentity identity,
+    int publicKey,
+    json_t *cred)
+{
+    BIDError err;
+    unsigned char *pbDHKey = NULL;
+    size_t cbDHKey = 0;
+
+    err = _BIDGetJsonBinaryValue(context,
+                                 json_object_get(identity->PrivateAttributes, "dh"),
+                                 publicKey ? "y" : "x", &pbDHKey, &cbDHKey);
+    if (err == BID_S_OK) {
+        err = _BIDJsonObjectSet(context, cred, "dh-key-size",
+                                json_integer(cbDHKey * 8),
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    }
+
+    if (pbDHKey != NULL) {
+        memset(pbDHKey, 0, cbDHKey);
+        BIDFree(pbDHKey);
+    }
+
+    return err;
+}

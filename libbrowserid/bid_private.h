@@ -380,6 +380,13 @@ _BIDGetDHParams(
     BIDContext context,
     json_t **pDhParams);
 
+BIDError
+_BIDSaveDHKeySize(
+    BIDContext context,
+    BIDIdentity identity,
+    int publicKey,
+    json_t *cred);
+
 /*
  * bid_fcache.c
  */

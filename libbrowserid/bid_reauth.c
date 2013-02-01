@@ -180,9 +180,7 @@ _BIDStoreTicketInCache(
                             BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDJsonObjectSet(context, cred, "dh-key-size",
-                            json_integer(context->DHKeySize),
-                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    err = _BIDSaveDHKeySize(context, identity, 0, cred);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDGetIdentitySubject(context, identity, &szSubject);
