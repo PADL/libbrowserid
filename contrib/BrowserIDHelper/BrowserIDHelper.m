@@ -64,7 +64,6 @@ BrowserIDInterpose(
 
 @interface SASLClient (BrowserIDInterposing)
 + BrowserID_newSASLClientWithMechanismName:mechName account:account externalSecurityLayer:(unsigned int)ssf;
-- (NSString *)BrowserID_mechanismName;
 @end
 
 @implementation SASLClient (BrowserIDInterposing)
@@ -74,10 +73,6 @@ BrowserIDInterpose(
                        @selector(newSASLClientWithMechanismName:account:externalSecurityLayer:),
                        @selector(BrowserID_newSASLClientWithMechanismName:account:externalSecurityLayer:),
                        YES);
-    BrowserIDInterpose([SASLClient class],
-                       @selector(mechanismName),
-                       @selector(BrowserID_mechanismName),
-                       NO);
 }
 
 + BrowserID_newSASLClientWithMechanismName:mechName account:account externalSecurityLayer:(unsigned int)ssf
@@ -92,52 +87,6 @@ BrowserIDInterpose(
     NSLog(@"BrowserID_newSASLClientWithMechanismName:%@", newMechName);
 
     return [SASLClient BrowserID_newSASLClientWithMechanismName:newMechName account:account externalSecurityLayer:ssf];
-}
-
-- (NSString *)BrowserID_mechanismName
-{
-    NSString *realMechName = [self BrowserID_mechanismName];
-
-#if 0
-    if ([realMechName isEqual:kBrowserIDSASLMechanism])
-        return kGSSAPISASLMechanism;
-#endif
-
-    return realMechName;
-}
-@end
-
-@interface IMAPConnection (BrowserIDInterposing)
-- BrowserID_authenticationMechanisms;
-@end
-
-@implementation IMAPConnection (BrowserIDInterposing)
-+ (void)load
-{
-    BrowserIDInterpose([IMAPConnection class],
-                       @selector(authenticationMechanisms),
-                       @selector(BrowserID_authenticationMechanisms),
-                       NO);
-}
-
-- BrowserID_authenticationMechanisms
-{
-    id mechs = [self BrowserID_authenticationMechanisms];
-
-    if ([mechs containsObject:kBrowserIDSASLMechanism]) {
-        NSMutableArray *rewrittenMechs = [NSMutableArray arrayWithArray:mechs];
-        NSUInteger index;
-
-        index = [rewrittenMechs indexOfObject:kGSSAPISASLMechanism];
-        if (index != NSNotFound) {
-            [rewrittenMechs removeObject:kBrowserIDSASLMechanism];
-            [rewrittenMechs replaceObjectAtIndex:index withObject:kBrowserIDSASLMechanism];
-        }
-
-        return rewrittenMechs;
-    }
-
-    return mechs;
 }
 @end
 
