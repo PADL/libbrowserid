@@ -539,7 +539,7 @@ _BIDAcquireCacheForUser(
              szPrefix, szTemplate);
 #else
     snprintf(szFileName, sizeof(szFileName),
-             "file:/tmp/.%s.%d.json", geteuid());
+             "file:/tmp/.%s.%d.json", szTemplate, geteuid());
 #endif
 
     err = _BIDAcquireCache(context, szFileName, 0, pCache);

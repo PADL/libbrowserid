@@ -227,7 +227,7 @@ BIDPrintVerboseReplayCacheEntry(
         printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
         printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
         printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
-        printf("DH key length:    %zd bits\n", ulDHKeySize);
+        printf("DH key length:    %u bits\n", ulDHKeySize);
     }
 
     BIDPrintTicketFlags(ulTicketFlags);
