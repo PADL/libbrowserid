@@ -103,7 +103,7 @@ gssBidAllocContext(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (mech != GSS_C_NO_OID) {
+    if (ctx->encryptionType != ENCTYPE_NULL) {
         cbKey <<= 6; /* 128 bit => 1024 bit DH */
 
         err = BIDSetContextParam(ctx->bidContext, BID_PARAM_DH_KEYEX_SIZE, &cbKey);
