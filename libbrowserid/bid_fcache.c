@@ -314,7 +314,7 @@ _BIDFileCacheErase(
     if (lstat(fc->Name, &sb1))
         return BID_S_CACHE_DESTROY_ERROR;
 
-    err = _BIDFileCacheOpen(ops, context, fc, O_RDWR, 0, &fd);
+    err = _BIDFileCacheOpen(ops, context, fc, O_RDWR, &fd);
     if (err != BID_S_OK)
         return err;
 
@@ -629,7 +629,7 @@ _BIDFileCacheGetLastChangedTime(
     if (fc == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    err = _BIDFileCacheOpen(ops, context, fc, O_RDONLY | O_CLOEXEC, 0, &fd);
+    err = _BIDFileCacheOpen(ops, context, fc, O_RDONLY | O_CLOEXEC, &fd);
     if (err != BID_S_OK)
         return err;
 
