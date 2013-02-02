@@ -46,6 +46,7 @@ gssBidAllocContext(OM_uint32 *minor,
     gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
     BIDError err;
     uint32_t contextParams;
+    uint32_t ulTicketLifetime;
     size_t cbKey = 0;
 
     GSSBID_ASSERT(*pCtx == GSS_C_NO_CONTEXT);
@@ -118,6 +119,18 @@ gssBidAllocContext(OM_uint32 *minor,
      */
     err = BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CERT_CONFIG_NAME,
                              GSSBID_CONFIG_FILE);
+    if (err != BID_S_OK) {
+        major = gssBidMapError(minor, err);
+        goto cleanup;
+    }
+
+    /*
+     * Default ticket lifetime of 10 hours, similar to Kerberos.
+     */
+    ulTicketLifetime = 60 * 60 * 10;
+
+    err = BIDSetContextParam(ctx->bidContext, BID_PARAM_TICKET_LIFETIME,
+                             &ulTicketLifetime);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         goto cleanup;

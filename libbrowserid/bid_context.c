@@ -68,7 +68,7 @@ BIDAcquireContext(
     context->Skew = 60 * 5; /* 5 minutes */
     context->MaxDelegations = 6;
     context->DHKeySize = 1024;
-    context->TicketLifetime = 60 * 60 * 10; /* 10 hours */
+    context->TicketLifetime = 0;
 
     if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
         if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
