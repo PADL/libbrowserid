@@ -43,6 +43,7 @@ struct BIDMemoryCache {
     BID_MUTEX Mutex;
     char *Name;
     json_t *Data;
+    uint32_t Flags;
 };
 
 /*
@@ -83,6 +84,8 @@ _BIDMemoryCacheAcquire(
     }
 
     BID_MUTEX_INIT(&mc->Mutex);
+
+    mc->Flags = ulFlags;
 
     *cache = mc;
 
@@ -225,6 +228,11 @@ _BIDMemoryCacheSetOrRemoveObject(
 
     if (mc == NULL || (val == NULL && !remove)) {
         err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    if (mc->Flags & BID_CACHE_FLAG_READONLY) {
+        err = BID_S_CACHE_PERMISSION_DENIED;
         goto cleanup;
     }
 

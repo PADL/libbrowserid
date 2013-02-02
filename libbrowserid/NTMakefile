@@ -23,6 +23,7 @@ libbrowserid_OBJS =					\
 	$(OBJ)\bid_mshtml.obj				\
 	$(OBJ)\bid_rcache.obj				\
 	$(OBJ)\bid_reauth.obj				\
+	$(OBJ)\bid_rgycache.obj				\
 	$(OBJ)\bid_rp.obj				\
 	$(OBJ)\bid_rverify.obj				\
 	$(OBJ)\bid_user.obj				\

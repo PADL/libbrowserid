@@ -205,13 +205,15 @@ _BIDFileCacheOpen(
     BIDContext context,
     struct BIDFileCache *fc,
     int flags,
-    mode_t mode,
     int *pFd)
 {
     BIDError err;
     int exclusive = 0, fd;
+    mode_t mode;
 
     *pFd = -1;
+
+    mode = (fc->Flags & BID_CACHE_FLAG_READONLY) ? 0400 : 0600;
 
     fd = open(fc->Name, flags, mode);
     if (fd < 0) {
@@ -461,7 +463,7 @@ _BIDFileCacheInitialize(
     err = _BIDFileCacheNew(ops, context, fc, &data, &d);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDFileCacheOpen(ops, context, fc, flags, 0600, &fd);
+    err = _BIDFileCacheOpen(ops, context, fc, flags, &fd);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDFileCacheStore(ops, context, fc, fd, data);
@@ -662,7 +664,7 @@ _BIDFileCacheGetObject(
         goto cleanup;
     }
 
-    err = _BIDFileCacheOpen(ops, context, fc, O_RDONLY | O_CLOEXEC, 0600, &fd);
+    err = _BIDFileCacheOpen(ops, context, fc, O_RDONLY | O_CLOEXEC, &fd);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDFileCacheRead(ops, context, cache, fd, &data, &d);
@@ -702,7 +704,12 @@ _BIDFileCacheSetOrRemoveObject(
         goto cleanup;
     }
 
-    err = _BIDFileCacheOpen(ops, context, fc, O_RDWR | O_CREAT | O_CLOEXEC, 0600, &fd);
+    if (fc->Flags & BID_CACHE_FLAG_READONLY) {
+        err = BID_S_CACHE_PERMISSION_DENIED;
+        goto cleanup;
+    }
+
+    err = _BIDFileCacheOpen(ops, context, fc, O_RDWR | O_CREAT | O_CLOEXEC, &fd);
     if (err == BID_S_OK)
         err = _BIDFileCacheRead(ops, context, cache, fd, &data, &d);
     if (err == BID_S_CACHE_NOT_FOUND || err == BID_S_CACHE_READ_ERROR)
@@ -773,7 +780,7 @@ _BIDFileCacheFirstObject(
         goto cleanup;
     }
 
-    err = _BIDFileCacheOpen(ops, context, fc, O_RDWR | O_CLOEXEC, 0600, &fd);
+    err = _BIDFileCacheOpen(ops, context, fc, O_RDWR | O_CLOEXEC, &fd);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDFileCacheRead(ops, context, cache, fd, &data, &d);

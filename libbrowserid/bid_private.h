@@ -167,6 +167,7 @@ _BIDBase64UrlDecode(const char *str, unsigned char **pData, size_t *cbData);
  * bid_cache.c
  */
 #define BID_CACHE_FLAG_UNVERSIONED              0x00000001
+#define BID_CACHE_FLAG_READONLY                 0x00000002
 
 struct BIDCacheOps {
     const char *Scheme;
@@ -640,6 +641,14 @@ _BIDDeriveAuthenticatorRootKey(
     BIDContext context,
     BIDIdentity identity,
     BIDJWK *pArk);
+
+#ifdef WIN32
+/*
+ * bid_rgycache.c
+ */
+
+extern struct BIDCacheOps _BIDRegistryCache;
+#endif
 
 /*
  * bid_rverify.c
