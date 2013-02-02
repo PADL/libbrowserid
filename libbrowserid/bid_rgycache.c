@@ -270,7 +270,7 @@ _BIDRegistryMakeValue(
         json = json_null();
         break;
     default:
-        err = BID_S_NOT_IMPLEMENTED;
+        err = BID_S_CACHE_KEY_NOT_FOUND;
         break;
     }
 
@@ -324,6 +324,11 @@ _BIDRegistryEnumValue(
     BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
 
     err = _BIDRegistryMakeValue(context, dwType, pbData, cbData, &json);
+    if (err == BID_S_CACHE_KEY_NOT_FOUND) {
+        /* Ignore unknown registry value types */
+        err = BID_S_OK;
+        goto cleanup;
+    }
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDUcs2ToUtf8(context, wszValueName, &szValueName);
