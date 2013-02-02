@@ -230,42 +230,17 @@ _BIDRegistryEnumKey(
     json_t *pJson);
 
 static BIDError
-_BIDRegistryEnumValue(
-    struct BIDCacheOps *ops BID_UNUSED,
+_BIDRegistryMakeValue(
     BIDContext context,
-    struct BIDRegistryCache *rc,
-    HKEY hKey,
-    DWORD dwIndex,
-    json_t *jsonDictionary)
+    DWORD dwType,
+    PBYTE pbData,
+    DWORD cbData,
+    json_t **pJson)
 {
-    BIDError err;
-    LONG lResult;
-    WCHAR wszValueName[260];
-    DWORD cchValueName = ARRAYSIZE(wszValueName) - 1;
-    PBYTE pbData = NULL;
-    DWORD dwType;
-    DWORD cbData = 0;
+    BIDError err = BID_S_OK;
     json_t *json = NULL;
-    char *szValueName = NULL;
 
-    lResult = RegEnumValueW(hKey, dwIndex, wszValueName, &cchValueName,
-                            NULL, &dwType, NULL, &cbData);
-    BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
-
-    err = _BIDUcs2ToUtf8(context, wszValueName, &szValueName);
-    BID_BAIL_ON_ERROR(err);
-
-    cchValueName = ARRAYSIZE(wszValueName) - 1;
-
-    pbData = BIDMalloc(cbData);
-    if (pbData == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    lResult = RegEnumValueW(hKey, dwIndex, wszValueName, &cchValueName,
-                            NULL, &dwType, pbData, &cbData);
-    BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
+    *pJson = NULL;
 
     switch (dwType) {
     case REG_BINARY:
@@ -293,6 +268,7 @@ _BIDRegistryEnumValue(
         json = json_null();
         break;
     default:
+        err = BID_S_NOT_IMPLEMENTED;
         break;
     }
 
@@ -300,6 +276,56 @@ _BIDRegistryEnumValue(
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
+
+    *pJson = json;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(json);
+
+    return err;
+}
+
+static BIDError
+_BIDRegistryEnumValue(
+    struct BIDCacheOps *ops BID_UNUSED,
+    BIDContext context,
+    struct BIDRegistryCache *rc,
+    HKEY hKey,
+    DWORD dwIndex,
+    json_t *jsonDictionary)
+{
+    BIDError err;
+    LONG lResult;
+    WCHAR wszValueName[260];
+    DWORD cchValueName = ARRAYSIZE(wszValueName) - 1;
+    PBYTE pbData = NULL;
+    DWORD dwType;
+    DWORD cbData = 0;
+    json_t *json = NULL;
+    char *szValueName = NULL;
+
+    lResult = RegEnumValueW(hKey, dwIndex, wszValueName, &cchValueName,
+                            NULL, &dwType, NULL, &cbData);
+    BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
+
+    cchValueName = ARRAYSIZE(wszValueName) - 1;
+
+    pbData = BIDMalloc(cbData + sizeof(WCHAR));
+    if (pbData == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    lResult = RegEnumValueW(hKey, dwIndex, wszValueName, &cchValueName,
+                            NULL, &dwType, pbData, &cbData);
+    BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
+
+    err = _BIDRegistryMakeValue(context, dwType, pbData, cbData, &json);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDUcs2ToUtf8(context, wszValueName, &szValueName);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, jsonDictionary, szValueName, json,
                             BID_JSON_FLAG_REQUIRED);
@@ -402,7 +428,10 @@ _BIDRegistryCacheGetObject(
     LONG lResult;
     PWSTR wszKeyName = NULL;
     HKEY hKey = NULL;
-    json_t *jsonKeys = NULL;
+    json_t *json = NULL;
+    DWORD dwType;
+    DWORD cbData;
+    PBYTE pbData = NULL;
 
     *val = NULL;
 
@@ -415,25 +444,46 @@ _BIDRegistryCacheGetObject(
     BID_BAIL_ON_ERROR(err);
 
     lResult = RegOpenKeyExW(rc->Key, wszKeyName, 0, rc->AccessMask, &hKey);
-    BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
+    if (lResult == ERROR_FILE_NOT_FOUND) {
+        lResult = RegQueryValueExW(rc->Key, wszKeyName, 0, &dwType,
+                                   NULL, &cbData);
+        BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
 
-    jsonKeys = json_object();
-    if (jsonKeys == NULL) {
-        err = BID_S_NO_MEMORY;
+        pbData = BIDMalloc(cbData + sizeof(WCHAR));
+        if (pbData == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+
+        lResult = RegQueryValueExW(rc->Key, wszKeyName, 0, &dwType,
+                                   pbData, &cbData);
+        BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
+
+        err = _BIDRegistryMakeValue(context, dwType, pbData, cbData, &json);
+        BID_BAIL_ON_ERROR(err);
+    } else if (lResult == ERROR_SUCCESS) {
+        json = json_object();
+        if (json == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+
+        err = _BIDRegistryEnumKey(ops, context, rc, hKey, json);
+        BID_BAIL_ON_ERROR(err);
+    } else {
+        err = _BIDRegistryCacheMapError(lResult);
         goto cleanup;
     }
 
-    err = _BIDRegistryEnumKey(ops, context, rc, hKey, jsonKeys);
-    BID_BAIL_ON_ERROR(err);
-
-    *val = jsonKeys;
-    jsonKeys = NULL;
+    *val = json;
+    json = NULL;
 
 cleanup:
     if (hKey)
         RegCloseKey(hKey);
     BIDFree(wszKeyName);
-    json_decref(jsonKeys);
+    json_decref(json);
+    BIDFree(pbData);
 
     return err;
 }

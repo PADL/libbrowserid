@@ -61,12 +61,19 @@ int main(int argc, char *argv[])
     err = BIDAcquireContext(0, &context);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDAcquireCache(context, "registry:HKCU\\", 0, &cache);
+    err = _BIDAcquireCache(context, "registry:HKCU\\Volatile Environment", 0, &cache);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetCacheObject(context, cache, "Console", &z);
-    if (err == BID_S_OK)
+    err = _BIDGetCacheObject(context, cache, "1", &z);
+    if (err == BID_S_OK) {
         json_dumpf(z, stdout, JSON_INDENT(8));
+        printf("\n");
+    }
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDGetCacheObject(context, cache, "APPDATA", &j);
+    if (err == BID_S_OK)
+        printf("APPDATA: %s\n", json_string_value(j));
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
