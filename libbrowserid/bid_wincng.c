@@ -255,16 +255,24 @@ _BIDGetJsonBufferValue(
             err = _BIDParseHexNumber(context, szValue, len, blob);
     }
 
-    if (err == BID_S_OK && cbPadding) {
-        if (blob->cbBuffer > cbPadding)
+    if (err == BID_S_OK && cbPadding != 0) {
+        if (blob->cbBuffer > cbPadding) {
             err = BID_S_BUFFER_TOO_LONG;
-        else {
+        } else if (blob->cbBuffer != cbPadding) {
+            PBYTE pbPadded;
             DWORD cbOffset = cbPadding - blob->cbBuffer;
 
+            pbPadded = BIDMalloc(cbPadding);
+            if (pbPadded == NULL)
+                return BID_S_NO_MEMORY;
+
             /* Add leading zeros to pad to block size */
-            MoveMemory((PUCHAR)blob->pvBuffer + cbOffset,
-                       blob->pvBuffer, blob->cbBuffer);
-            ZeroMemory(blob->pvBuffer, cbOffset);
+            ZeroMemory(pbPadded, cbOffset);
+            CopyMemory(pbPadded + cbOffset, blob->pvBuffer, blob->cbBuffer);
+
+            BIDFree(blob->pvBuffer);
+            blob->pvBuffer = pbPadded;
+            blob->cbBuffer = cbPadding;
         }
     }
 
