@@ -16,6 +16,7 @@ libbrowserid_OBJS =					\
 	$(OBJ)\bid_cache.obj				\
 	$(OBJ)\bid_context.obj				\
 	$(OBJ)\bid_crypto.obj				\
+	$(OBJ)\bid_dhparams.obj				\
 	$(OBJ)\bid_error.obj				\
 	$(OBJ)\bid_identity.obj				\
 	$(OBJ)\bid_jwt.obj				\

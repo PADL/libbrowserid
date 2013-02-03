@@ -399,6 +399,14 @@ _BIDSaveDHKeySize(
     json_t *cred);
 
 /*
+ * bid_dhparams.c
+ */
+BIDError
+_BIDGetFixedDHParams(
+    BIDContext context,
+    json_t **pDhParams);
+
+/*
  * bid_fcache.c
  */
 

@@ -403,8 +403,16 @@ _BIDGetDHParams(
 
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_DH_KEYEX);
 
+    /*
+     * For common key sizes, use RFC 5114 fixed parameters.
+     */
+    err = _BIDGetFixedDHParams(context, pDhParams);
+    if (err == BID_S_OK || err != BID_S_DH_PARAM_GENERATION_FAILURE)
+        return err;
+
     if (context->DHParamsCache != NULL) {
-        err = _BIDGetCacheObject(context, context->DHParamsCache, "params", pDhParams);
+        err = _BIDGetCacheObject(context, context->DHParamsCache,
+                                 "params", pDhParams);
         if (err == BID_S_OK)
             return err;
     }
