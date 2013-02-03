@@ -131,7 +131,10 @@ _BIDRegistryCacheAcquire(
     lResult = RegOpenKeyExW(hRootKey, wszSubKey, 0, rc->AccessMask, &rc->Key);
     if (lResult != STATUS_SUCCESS) {
         ops->Release(ops, context, rc);
-        err = BID_S_CACHE_NOT_FOUND;
+
+        err = _BIDRegistryCacheMapError(lResult);
+        if (err == BID_S_CACHE_KEY_NOT_FOUND)
+            err = BID_S_CACHE_NOT_FOUND;
     }
 
     BIDFree(wszSubKey);
