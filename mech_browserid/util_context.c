@@ -117,12 +117,8 @@ gssBidAllocContext(OM_uint32 *minor,
      * If we are doing mutual authentication, this is whether we store the
      * server certificate and private key.
      */
-    err = BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CERT_CONFIG_NAME,
-                             GSSBID_CONFIG_FILE);
-    if (err != BID_S_OK) {
-        major = gssBidMapError(minor, err);
-        goto cleanup;
-    }
+    BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CERT_CONFIG_NAME,
+                       GSSBID_CONFIG_FILE);
 
     /*
      * Default ticket lifetime of 10 hours, similar to Kerberos.
