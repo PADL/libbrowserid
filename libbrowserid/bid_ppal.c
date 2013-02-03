@@ -67,3 +67,12 @@ _BIDGetCurrentJsonTimestamp(
 
     return (*pTs == NULL) ? BID_S_NO_MEMORY : BID_S_OK;
 }
+
+#ifdef GSSBID_DEBUG
+void
+_BIDOutputDebugJson(json_t *j)
+{
+    json_dumpf(j, stderr, JSON_INDENT(8));
+    fprintf(stderr, "\n");
+}
+#endif

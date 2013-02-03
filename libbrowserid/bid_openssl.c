@@ -1298,6 +1298,7 @@ BIDError
 _BIDLoadX509PrivateKey(
     BIDContext context BID_UNUSED,
     const char *path,
+    const char *certPath BID_UNUSED,
     BIDJWK *pPrivateKey)
 {
     BIDError err;
@@ -1367,7 +1368,7 @@ _BIDLoadX509PrivateKey(
 
         break;
     default:
-        err = BID_S_INVALID_KEY;
+        err = BID_S_UNKNOWN_ALGORITHM;
         goto cleanup;
     }
 
@@ -1406,7 +1407,8 @@ _BIDLoadX509Certificate(
         goto cleanup;
     }
 
-    pemCert = PEM_ASN1_read((void *(*) ()) d2i_X509, PEM_STRING_X509, fp, NULL, NULL, NULL);
+    pemCert = PEM_ASN1_read((void *(*) ()) d2i_X509, PEM_STRING_X509,
+                            fp, NULL, NULL, NULL);
     if (pemCert == NULL) {
         BID_CRYPTO_PRINT_ERRORS();
         err = BID_S_CERT_FILE_UNREADABLE;
@@ -1427,7 +1429,8 @@ _BIDLoadX509Certificate(
         goto cleanup;
     }
 
-    err = _BIDBase64Encode(pbData, cbData, BID_ENCODING_BASE64, &szData, &cbData);
+    err = _BIDBase64Encode(pbData, cbData, BID_ENCODING_BASE64,
+                           &szData, &cbData);
     BID_BAIL_ON_ERROR(err);
 
     cert = json_string(szData);
@@ -1637,9 +1640,9 @@ cleanup:
 BIDError
 _BIDValidateX509CertChain(
     BIDContext context,
-    const char *caCertificateFile,
-    const char *caCertificateDir,
-    json_t *certChain)
+    json_t *certChain,
+    json_t *certParams,
+    time_t verificationTime)
 {
     BIDError err;
     X509_STORE *store = NULL;
@@ -1647,6 +1650,8 @@ _BIDValidateX509CertChain(
     X509 *leafCert = NULL;
     STACK_OF(X509) *chain = NULL;
     size_t i;
+    json_t *caCertificateFile = NULL;
+    json_t *caCertificateDir = NULL;
 
     if (json_array_size(certChain) == 0) {
         err = BID_S_MISSING_CERT;
@@ -1679,7 +1684,12 @@ _BIDValidateX509CertChain(
         goto cleanup;
     }
 
-    if (X509_STORE_load_locations(store, caCertificateFile, caCertificateDir) != 1 ||
+    caCertificateFile = json_object_get(certParams, "ca-certificate");
+    caCertificateDir = json_object_get(certParams, "ca-directory");
+
+    if (X509_STORE_load_locations(store,
+                                  json_string_value(caCertificateFile),
+                                  json_string_value(caCertificateDir)) != 1 ||
         X509_STORE_set_default_paths(store) != 1 ||
         X509_STORE_CTX_init(storeCtx, store, leafCert, chain) != 1) {
         BID_CRYPTO_PRINT_ERRORS();

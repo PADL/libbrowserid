@@ -233,6 +233,37 @@ _BIDGetCacheObject(
     return err;
 }
 
+#if 0
+BIDError
+_BIDGetCacheBinaryValue(
+    BIDContext context BID_UNUSED,
+    BIDCache cache,
+    const char *key,
+    unsigned char **pbData,
+    size_t *cbData)
+{
+    BIDError err;
+    const char *src;
+    json_t *value;
+
+    err = _BIDGetCacheObject(context, cache, key, &value);
+    if (err =! BID_S_OK)
+        return err;
+
+    src = json_string_value(value);
+    if (src == NULL) {
+        json_decref(value);
+        return BID_S_UNKNOWN_JSON_KEY;
+    }
+
+    err = _BIDBase64UrlDecode(src, pbData, cbData);
+
+    json_decref(value);
+
+    return err;
+}
+#endif
+
 BIDError
 _BIDSetCacheObject(
     BIDContext context,

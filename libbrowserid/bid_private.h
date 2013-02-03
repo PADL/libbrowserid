@@ -41,9 +41,6 @@
 #define _BID_PRIVATE_H_ 1
 
 #include "config.h"
-#ifdef WIN32
-#include "bid_wpal.h"
-#endif
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
@@ -63,6 +60,9 @@
 
 #include <jansson.h>
 
+#ifdef WIN32
+#include "bid_wpal.h"
+#endif
 #include "browserid.h"
 
 #ifdef __cplusplus
@@ -223,6 +223,16 @@ _BIDGetCacheObject(
     BIDCache cache,
     const char *key,
     json_t **pValue);
+
+#if 0
+BIDError
+_BIDGetCacheBinaryValue(
+    BIDContext context BID_UNUSED,
+    BIDCache cache,
+    const char *key,
+    unsigned char **pbData,
+    size_t *cbData);
+#endif
 
 BIDError
 _BIDSetCacheObject(
@@ -554,8 +564,9 @@ _BIDDeriveKey(
 
 BIDError
 _BIDLoadX509PrivateKey(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     const char *path,
+    const char *certPath,
     BIDJWK *pPrivateKey);
 
 BIDError
@@ -574,9 +585,9 @@ _BIDPopulateX509Identity(
 BIDError
 _BIDValidateX509CertChain(
     BIDContext context,
-    const char *caCertificatePath,
-    const char *caCertificateDir,
-    json_t *certChain);
+    json_t *certChain,
+    json_t *certParams,
+    time_t verificationTime);
 
 /*
  * bid_ppal.c
@@ -595,6 +606,13 @@ BIDError
 _BIDGetCurrentJsonTimestamp(
     BIDContext context,
     json_t **pTs);
+
+#ifdef GSSBID_DEBUG
+void
+_BIDOutputDebugJson(json_t *j);
+#else
+#define _BIDOutputDebugJson(j)
+#endif
 
 /*
  * bid_reauth.c
@@ -909,14 +927,14 @@ _BIDBrowserGetAssertion(
 /*
  * bid_wpal.c
  */
-#ifdef WIN32
-#include <winbase.h>
 
+#ifdef WIN32
 #define BID_MUTEX                    CRITICAL_SECTION
 #define BID_MUTEX_INIT(m)            (InitializeCriticalSection((m)), 0)
 #define BID_MUTEX_DESTROY(m)         DeleteCriticalSection((m))
 #define BID_MUTEX_LOCK(m)            EnterCriticalSection((m))
 #define BID_MUTEX_UNLOCK(m)          LeaveCriticalSection((m))
+#endif
 
 BIDError
 _BIDTimeToSecondsSince1970(
@@ -941,7 +959,27 @@ _BIDUtf8ToUcs2(
     BIDContext context BID_UNUSED,
     const char *utf8String,
     PWSTR *pUcs2String);
-#endif /* WIN32 */
+
+BIDError
+_BIDGetJsonUcs2Value(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    PWSTR *pDst);
+
+BIDError
+_BIDSetJsonUcs2Value(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    PWSTR wsz);
+
+BIDError
+_BIDSetJsonFileTimeValue(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    PFILETIME pft);
 
 /*
  * bid_x509.c
@@ -958,7 +996,8 @@ _BIDCanMutualAuthP(BIDContext context);
 BIDError
 _BIDValidateX509(
     BIDContext context,
-    json_t *certChain);
+    json_t *certChain,
+    time_t verificationTime);
 
 /*
  * vers.c

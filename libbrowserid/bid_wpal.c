@@ -169,3 +169,75 @@ _BIDUcs2ToUtf8(
 
     return BID_S_OK;
 }
+
+BIDError
+_BIDGetJsonUcs2Value(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    PWSTR *pDst)
+{
+    const char *src = json_string_value(json_object_get(json, key));
+
+    *pDst = NULL;
+
+    if (src == NULL)
+        return BID_S_UNKNOWN_JSON_KEY;
+
+    return  _BIDUtf8ToUcs2(context, src, pDst);
+}
+
+BIDError
+_BIDSetJsonUcs2Value(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    PWSTR wsz)
+{
+    BIDError err;
+    char *sz = NULL;
+
+    err = _BIDUcs2ToUtf8(context, wsz, &sz);
+    if (err != BID_S_OK)
+        return err;
+
+    err = _BIDJsonObjectSet(context, json, key,
+                            json_string(sz),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+
+    BIDFree(sz);
+
+    return err;
+}
+
+BIDError
+_BIDSetJsonFileTimeValue(
+    BIDContext context,
+    json_t *json,
+    const char *key,
+    PFILETIME pft)
+{
+    BIDError err;
+    time_t t;
+
+    err = _BIDTimeToSecondsSince1970(context, pft, &t);
+    if (err != BID_S_OK)
+        return err;
+
+    err = _BIDSetJsonTimestampValue(context, json, key, t);
+
+    return err;
+}
+
+#ifdef GSSBID_DEBUG
+void
+_BIDOutputDebugJson(json_t *j)
+{
+    char *szJson = json_dumps(j, JSON_INDENT(8));
+
+    OutputDebugString(szJson);
+    OutputDebugString("\r\n");
+
+    BIDFree(szJson);
+}
+#endif

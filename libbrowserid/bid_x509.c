@@ -110,7 +110,10 @@ _BIDGetRPPrivateKey(
     }
 
     if (pKey != NULL) {
-        err = _BIDLoadX509PrivateKey(context, json_string_value(privateKeyPath), pKey);
+        err = _BIDLoadX509PrivateKey(context,
+                                     json_string_value(privateKeyPath),
+                                     json_string_value(certificatePath),
+                                     pKey);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -137,9 +140,11 @@ _BIDCanMutualAuthP(BIDContext context)
 BIDError
 _BIDValidateX509(
     BIDContext context,
-    json_t *certChain)
+    json_t *certChain,
+    time_t verificationTime)
 {
     BIDError err;
+    json_t *certParams = NULL;
     json_t *caCertificateFile = NULL;
     json_t *caCertificateDir = NULL;
 
@@ -148,13 +153,37 @@ _BIDValidateX509(
         goto cleanup;
     }
 
-    _BIDGetCacheObject(context, context->RPCertConfig, "ca-certificate", &caCertificateFile);
-    _BIDGetCacheObject(context, context->RPCertConfig, "ca-directory", &caCertificateDir);
+    /*
+     * We make a copy of the relevant parameters as in a future iteration
+     * we may also add the user's trust anchors, which will be context-
+     * specific rather than being stored in the global RP configuration.
+     */
+    certParams = json_object();
+    if (certParams == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
-    err = _BIDValidateX509CertChain(context, json_string_value(caCertificateFile),
-                                    json_string_value(caCertificateDir), certChain);
+    if (_BIDGetCacheObject(context, context->RPCertConfig,
+                           "ca-certificate", &caCertificateFile) == BID_S_OK) {
+        err = _BIDJsonObjectSet(context, certParams, "ca-certificate",
+                                caCertificateFile, 0);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    if (_BIDGetCacheObject(context, context->RPCertConfig,
+                           "ca-directory", &caCertificateDir) == BID_S_OK) {
+        err = _BIDJsonObjectSet(context, certParams, "ca-directory",
+                                caCertificateDir, 0);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    err = _BIDValidateX509CertChain(context, certChain, certParams,
+                                    verificationTime);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
+    json_decref(certParams);
+
     return err;
 }

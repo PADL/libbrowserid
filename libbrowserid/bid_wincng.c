@@ -78,14 +78,52 @@ _BIDAllocSecret(
     BIDSecretHandle *pSecretHandle);
 
 static BIDError
+_BIDCertStringToName(
+    BIDContext context,
+    const char *szName,
+    PCERT_NAME_BLOB pCertNameBlob);
+
+static BIDError
 _BIDNtStatusToBIDError(NTSTATUS nts)
 {
+    BIDError err;
+
     if (NT_SUCCESS(nts))
-        return BID_S_OK;
+        err = BID_S_OK;
     else if (nts == STATUS_NO_MEMORY)
-        return BID_S_NO_MEMORY;
+        err = BID_S_NO_MEMORY;
+    else if (nts == STATUS_INVALID_PARAMETER)
+        err = BID_S_INVALID_PARAMETER;
     else
-        return BID_S_CRYPTO_ERROR;
+        err = BID_S_CRYPTO_ERROR;
+
+    return err;
+}
+
+static BIDError
+_BIDSecStatusToBIDError(SECURITY_STATUS ss)
+{
+    BIDError err;
+
+    switch (ss) {
+    case SEC_E_OK:
+        err = BID_S_OK;
+        break;
+    case NTE_NO_MEMORY:
+        err = BID_S_NO_MEMORY;
+        break;
+    case NTE_INVALID_PARAMETER:
+        err = BID_S_INVALID_PARAMETER;
+        break;
+    case NTE_BAD_KEYSET:
+        err = BID_S_KEY_FILE_UNREADABLE;
+        break;
+    default:
+        err = BID_S_CRYPTO_ERROR;
+        break;
+    }
+
+    return err;
 }
 
 static void
@@ -385,23 +423,165 @@ cleanup:
 }
 
 static BIDError
-_BIDCertDataToKey(
-    struct BIDJWTAlgorithmDesc *algorithm,
-    BIDContext context BID_UNUSED,
-    BCRYPT_ALG_HANDLE hAlgorithm,
+_BIDCertDataToContext(
+    BIDContext context,
     json_t *x5c,
-    int index,
-    BCRYPT_KEY_HANDLE *phKey)
+    PCCERT_CONTEXT *ppCertContext)
 {
     BIDError err;
-    NTSTATUS nts;
     const char *szCert;
     unsigned char *pbData = NULL;
     size_t cbData = 0;
     PCCERT_CONTEXT pCertContext = NULL;
-    CERT_PUBLIC_KEY_INFO *pcpki;
+
+    szCert = json_string_value(json_array_get(x5c, 0));
+    if (szCert == NULL) {
+        err = BID_S_MISSING_CERT;
+        goto cleanup;
+    }
+
+    err = _BIDBase64UrlDecode(szCert, &pbData, &cbData);
+    BID_BAIL_ON_ERROR(err);
+
+    pCertContext = CertCreateCertificateContext(X509_ASN_ENCODING,
+                                                pbData,
+                                                cbData);
+    if (pCertContext == NULL) {
+        err = BID_S_INVALID_JSON;
+        goto cleanup;
+    }
+
+    *ppCertContext = pCertContext;
+
+cleanup:
+    if (err != BID_S_OK && pCertContext != NULL)
+        CertFreeCertificateContext(pCertContext);
+    BIDFree(pbData);
+
+    return err;
+}
+
+static BIDError
+_BIDLoadCertificateFromStore(
+    BIDContext context,
+    const char *path,
+    HCERTSTORE *phCertStore,
+    PCCERT_CONTEXT *ppCertContext)
+{
+    BIDError err;
+    CERT_NAME_BLOB cnbSubject = { 0 };
+    HCERTSTORE hCertStore = NULL;
+    PCCERT_CONTEXT pCertContext = NULL;
+    DWORD dwFlags;
+
+    *ppCertContext = NULL;
+
+    dwFlags = CERT_STORE_OPEN_EXISTING_FLAG;
+    if (context->ContextOptions & BID_CONTEXT_RP)
+        dwFlags |= CERT_SYSTEM_STORE_LOCAL_MACHINE;
+    else
+        dwFlags |= CERT_SYSTEM_STORE_CURRENT_USER;
+
+    hCertStore = CertOpenStore(CERT_STORE_PROV_SYSTEM_W,
+                               0,
+                               (HCRYPTPROV_LEGACY)0,
+                               dwFlags,
+                               L"MY");
+    if (hCertStore == NULL) {
+        err = BID_S_CERT_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
+    err = _BIDCertStringToName(context, path, &cnbSubject);
+    BID_BAIL_ON_ERROR(err);
+
+    pCertContext = CertFindCertificateInStore(hCertStore,
+                                              X509_ASN_ENCODING,
+                                              0,
+                                              CERT_FIND_SUBJECT_NAME,
+                                              &cnbSubject,
+                                              NULL);
+    if (pCertContext == NULL) {
+        err = BID_S_CERT_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
+    *phCertStore = hCertStore;
+    *ppCertContext = pCertContext;
+
+cleanup:
+    if (err != BID_S_OK && hCertStore != NULL)
+        CertCloseStore(hCertStore, 0);
+    BIDFree(cnbSubject.pbData);
+
+    return err;
+}
+
+#if 0
+static BIDError
+_CNGTranslateKey(
+    BIDContext context,
+    BCRYPT_ALG_HANDLE hAlgorithm,
+    NCRYPT_KEY_HANDLE hKey,
+    BOOLEAN bPublic,
+    BCRYPT_KEY_HANDLE *phKey)
+{
+    BIDError err;
+    NTSTATUS nts;
+    SECURITY_STATUS ss;
+    PBYTE pbKeyBlob = NULL;
+    DWORD cbKeyBlob = 0;
+    LPCWSTR wszBlobType;
+
+    wszBlobType = bPublic ? BCRYPT_PUBLIC_KEY_BLOB : BCRYPT_PRIVATE_KEY_BLOB;
+
+    /* Is this really necessary? */
+    ss = NCryptExportKey(hKey, 0, wszBlobType,
+                         NULL, NULL, 0, &cbKeyBlob, 0);
+    BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
+
+    pbKeyBlob = BIDMalloc(cbKeyBlob);
+    if (pbKeyBlob == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    ss = NCryptExportKey(hKey, 0, wszBlobType,
+                         NULL, pbKeyBlob, cbKeyBlob, &cbKeyBlob, 0);
+    BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
+
+    nts = BCryptImportKeyPair(hAlgorithm,
+                              NULL, /* hImportKey */
+                              wszBlobType,
+                              phKey,
+                              pbKeyBlob,
+                              cbKeyBlob,
+                              BCRYPT_NO_KEY_VALIDATION);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+cleanup:
+    if (pbKeyBlob != NULL) {
+        SecureZeroMemory(pbKeyBlob, cbKeyBlob);
+        BIDFree(pbKeyBlob);
+    }
+
+    return err;
+}
+#endif
+
+static BIDError
+_BIDCertDataToKey(
+    struct BIDJWTAlgorithmDesc *algorithm,
+    BIDContext context,
+    BCRYPT_ALG_HANDLE hAlgorithm,
+    json_t *x5c,
+    BCRYPT_KEY_HANDLE *phKey)
+{
+    BIDError err;
+    PCCERT_CONTEXT pCertContext = NULL;
+    CERT_PUBLIC_KEY_INFO *pcpki = NULL;
     LPCSTR szCertID;
-    LPCWSTR wszBlobID;
+    DWORD dwProv, dwFlags;
 
     *phKey = NULL;
 
@@ -411,36 +591,21 @@ _BIDCertDataToKey(
     }
 
     if (strncmp(algorithm->szAlgID, "RS", 2) == 0) {
-        wszBlobID = LEGACY_RSAPUBLIC_BLOB;
+        dwProv = PROV_RSA_SIG;
         szCertID = szOID_RSA;
-    } else if (strcmp(algorithm->szAlgID, "DS128") == 0) {
-        wszBlobID = LEGACY_DSA_PUBLIC_BLOB;
-        szCertID = szOID_X957_SHA1DSA;
     } else if (strncmp(algorithm->szAlgID, "DS", 2) == 0) {
-        wszBlobID = LEGACY_DSA_PUBLIC_BLOB;
-        szCertID = szOID_X957_DSA;
+        dwProv = PROV_DSS;
+        if (strcmp(algorithm->szAlgID, "DS128") == 0)
+            szCertID = szOID_X957_SHA1DSA;
+        else
+            szCertID = szOID_X957_DSA;
     } else {
         err = BID_S_UNKNOWN_ALGORITHM;
         goto cleanup;
     }
 
-    szCert = json_string_value(json_array_get(x5c, index));
-    if (szCert == NULL) {
-        err = BID_S_MISSING_CERT;
-        goto cleanup;
-    }
-
-    err = _BIDBase64UrlDecode(szCert, &pbData, &cbData);
+    err = _BIDCertDataToContext(context, x5c, &pCertContext);
     BID_BAIL_ON_ERROR(err);
-
-    pCertContext = CertCreateCertificateContext(X509_ASN_ENCODING |
-                                                 PKCS_7_ASN_ENCODING,
-                                                pbData,
-                                                cbData);
-    if (pCertContext == NULL) {
-        err = BID_S_INVALID_JSON;
-        goto cleanup;
-    }
 
     pcpki = &pCertContext->pCertInfo->SubjectPublicKeyInfo;
 
@@ -454,20 +619,20 @@ _BIDCertDataToKey(
         goto cleanup;
     }
 
-    nts = BCryptImportKeyPair(hAlgorithm,
-                              NULL, /* hImportKey */
-                              wszBlobID,
-                              phKey,
-                              pcpki->PublicKey.pbData,
-                              pcpki->PublicKey.cbData,
-                              0);   /* dwFlags */
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+    dwFlags = CRYPT_VERIFYCONTEXT | CRYPT_SILENT;
+
+    if (!CryptImportPublicKeyInfoEx2(X509_ASN_ENCODING,
+                                     pcpki,
+                                     CRYPT_OID_INFO_PUBKEY_SIGN_KEY_FLAG,
+                                     NULL,
+                                     phKey)) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
 
 cleanup:
     if (pCertContext != NULL)
         CertFreeCertificateContext(pCertContext);
-
-    BIDFree(pbData);
 
     return err;
 }
@@ -493,23 +658,21 @@ _BIDMakeJwtRsaKey(
 
     *phKey = NULL;
 
-    if (bPublic) {
-        err = _BIDGetJsonBufferValue(context, jwk, "e", BID_ENCODING_UNKNOWN,
-                                     cbPadding, &e);
-        BID_BAIL_ON_ERROR(err);
-    } else {
-        err = _BIDGetJsonBufferValue(context, jwk, "d", BID_ENCODING_UNKNOWN,
-                                     cbPadding, &d);
-        BID_BAIL_ON_ERROR(err);
-    }
+    err = _BIDGetJsonBufferValue(context, jwk, "e", BID_ENCODING_UNKNOWN,
+                                 cbPadding, &e);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDGetJsonBufferValue(context, jwk, "n", BID_ENCODING_UNKNOWN,
                                  cbPadding, &n);
     BID_BAIL_ON_ERROR(err);
 
-    cbRsaKey = sizeof(*rsaKey);
-    cbRsaKey += bPublic ? e.cbBuffer : d.cbBuffer;
-    cbRsaKey += n.cbBuffer;
+    if (!bPublic) {
+        err = _BIDGetJsonBufferValue(context, jwk, "d", BID_ENCODING_UNKNOWN,
+                                     cbPadding, &d);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    cbRsaKey = sizeof(*rsaKey) + e.cbBuffer + n.cbBuffer + d.cbBuffer;
 
     rsaKey = BIDMalloc(cbRsaKey);
     if (rsaKey == NULL) {
@@ -521,22 +684,23 @@ _BIDMakeJwtRsaKey(
     rsaKey->Magic       = bPublic
                         ? BCRYPT_RSAPUBLIC_MAGIC : BCRYPT_RSAPRIVATE_MAGIC;
     rsaKey->BitLength   = n.cbBuffer * 8;
-    rsaKey->cbPublicExp = bPublic ? e.cbBuffer : d.cbBuffer;
+    rsaKey->cbPublicExp = e.cbBuffer;
     rsaKey->cbModulus   = n.cbBuffer;
-    rsaKey->cbPrime1    = 0;
+    rsaKey->cbPrime1    = d.cbBuffer;
     rsaKey->cbPrime2    = 0;
 
     p = (PUCHAR)(rsaKey + 1);
 
-    if (bPublic) {
-        CopyMemory(p, e.pvBuffer, e.cbBuffer);
-        p += e.cbBuffer;
-    } else {
+    CopyMemory(p, e.pvBuffer, e.cbBuffer);
+    p += e.cbBuffer;
+
+    CopyMemory(p, n.pvBuffer, n.cbBuffer);
+    p += n.cbBuffer;
+
+    if (!bPublic) {
         CopyMemory(p, d.pvBuffer, d.cbBuffer);
         p += d.cbBuffer;
     }
-    CopyMemory(p, n.pvBuffer, n.cbBuffer);
-    p += n.cbBuffer;
 
     nts = BCryptImportKeyPair(hAlgorithm,
                               NULL, /* hImportKey */
@@ -552,22 +716,11 @@ cleanup:
         SecureZeroMemory(rsaKey, cbRsaKey);
         BIDFree(rsaKey);
     }
-    _BIDFreeBuffer(&n);
     _BIDFreeBuffer(&e);
+    _BIDFreeBuffer(&n);
     _BIDFreeBuffer(&d);
 
     return err;
-}
-
-static void
-_BIDOutputDebugJson(json_t *j)
-{
-    char *szJson = json_dumps(j, JSON_INDENT(8));
-
-    OutputDebugString(szJson);
-    OutputDebugString("\r\n");
-
-    BIDFree(szJson);
 }
 
 static BIDError
@@ -712,7 +865,7 @@ _CNGMakeKey(
 
     x5c = json_object_get(jwk, "x5c");
     if (bPublic && x5c != NULL)
-        err = _BIDCertDataToKey(algorithm, context, hAlgorithm, x5c, 0, phKey);
+        err = _BIDCertDataToKey(algorithm, context, hAlgorithm, x5c, phKey);
     else if (strncmp(algorithm->szAlgID, "RS", 2) == 0)
         err = _BIDMakeJwtRsaKey(algorithm, context, hAlgorithm, jwk, bPublic, phKey);
     else if (strncmp(algorithm->szAlgID, "DS", 2) == 0)
@@ -1111,7 +1264,7 @@ _BIDMakeDHKey(
     BCRYPT_DH_KEY_BLOB *dhKeyBlob = NULL;
     DWORD cbDhKeyBlob = 0;
     PUCHAR pbDhKeyBlob;
-    DWORD cbPad = context->DHKeySize / 8;
+    DWORD cbPad = 0;
 
     *phKey = NULL;
 
@@ -1119,6 +1272,21 @@ _BIDMakeDHKey(
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
     }
+
+    if (!bPublic) {
+        err = _BIDGetJsonBufferValue(context, dhKey, "x",
+                                     BID_ENCODING_BASE64_URL, 0, &x);
+        BID_BAIL_ON_ERROR(err);
+
+        cbPad = x.cbBuffer;
+    }
+
+    err = _BIDGetJsonBufferValue(context, dhKey, "y",
+                                 BID_ENCODING_BASE64_URL, cbPad, &y);
+    BID_BAIL_ON_ERROR(err);
+
+    if (!cbPad)
+        cbPad = y.cbBuffer;
 
     err = _BIDGetJsonBufferValue(context, dhParams, "p",
                                  BID_ENCODING_BASE64_URL, cbPad, &p);
@@ -1128,26 +1296,9 @@ _BIDMakeDHKey(
                                  BID_ENCODING_BASE64_URL, cbPad, &g);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonBufferValue(context, dhKey, "y",
-                                 BID_ENCODING_BASE64_URL, cbPad, &y);
-    BID_BAIL_ON_ERROR(err);
-
-    if (!bPublic) {
-        err = _BIDGetJsonBufferValue(context, dhKey, "x",
-                                     BID_ENCODING_BASE64_URL, cbPad, &x);
-        BID_BAIL_ON_ERROR(err);
-    }
-
-    if (p.cbBuffer != g.cbBuffer) {
-        err = BID_S_INVALID_KEY;
-        goto cleanup;
-    }
-
-    if ((x.cbBuffer && x.cbBuffer != p.cbBuffer) ||
-        (y.cbBuffer && y.cbBuffer != p.cbBuffer)) {
-        err = BID_S_INVALID_KEY;
-        goto cleanup;
-    }
+    BID_ASSERT(y.cbBuffer == p.cbBuffer);
+    BID_ASSERT(g.cbBuffer == p.cbBuffer);
+    BID_ASSERT(bPublic || (x.cbBuffer == p.cbBuffer));
 
     cbDhKeyBlob = sizeof(*dhKey);
     cbDhKeyBlob += p.cbBuffer + g.cbBuffer + y.cbBuffer + x.cbBuffer;
@@ -1804,25 +1955,351 @@ _BIDDeriveKey(
 }
 
 /*
- * X.509/mutual authentication SPIs below, not yet implemented
+ * X.509/mutual authentication SPIs
  */
 BIDError
+_BIDLoadX509RsaPrivateKey(
+    BIDContext context,
+    PUCHAR pbbcKeyBlob,
+    DWORD cbbcKeyBlob,
+    BIDJWK privateKey)
+{
+    BIDError err;
+    BCRYPT_RSAKEY_BLOB *pbcRsaKeyBlob = (BCRYPT_RSAKEY_BLOB *)pbbcKeyBlob;
+    PUCHAR pbbcRsaKeyBlob = (PUCHAR)(pbcRsaKeyBlob + 1);
+
+    BID_ASSERT(pbcRsaKeyBlob->Magic == BCRYPT_RSAPRIVATE_MAGIC);
+
+    if (cbbcKeyBlob < (pbbcRsaKeyBlob - pbbcKeyBlob) +
+                      pbcRsaKeyBlob->cbPublicExp +
+                      pbcRsaKeyBlob->cbModulus +
+                      pbcRsaKeyBlob->cbPrime1) {
+        err = BID_S_BUFFER_TOO_SMALL;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, privateKey, "algorithm",
+                            json_string("RS"), BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "e",
+                                       pbbcRsaKeyBlob,
+                                       pbcRsaKeyBlob->cbPublicExp);
+    BID_BAIL_ON_ERROR(err);
+
+    pbbcRsaKeyBlob += pbcRsaKeyBlob->cbPublicExp;
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "n",
+                                       pbbcRsaKeyBlob,
+                                       pbcRsaKeyBlob->cbModulus);
+    BID_BAIL_ON_ERROR(err);
+
+    pbbcRsaKeyBlob += pbcRsaKeyBlob->cbModulus;
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "e",
+                                       pbbcRsaKeyBlob,
+                                       pbcRsaKeyBlob->cbPrime1);
+    BID_BAIL_ON_ERROR(err);
+
+    pbbcRsaKeyBlob += pbcRsaKeyBlob->cbPrime1;
+
+cleanup:
+    return err;
+}
+
+BIDError
+_BIDLoadX509DsaPrivateKey(
+    BIDContext context,
+    PUCHAR pbbcKeyBlob,
+    DWORD cbbcKeyBlob,
+    BIDJWK privateKey)
+{
+    BIDError err;
+    PBCRYPT_DSA_KEY_BLOB pbcDsaKeyBlob = (PBCRYPT_DSA_KEY_BLOB)pbbcKeyBlob;
+    PUCHAR pbbcDsaKeyBlob = (PUCHAR)(pbcDsaKeyBlob + 1);
+
+    BID_ASSERT(pbcDsaKeyBlob->dwMagic == BCRYPT_DSA_PRIVATE_MAGIC);
+
+    if (cbbcKeyBlob < (pbbcDsaKeyBlob - pbbcKeyBlob) +
+                      (3 * pbcDsaKeyBlob->cbKey) + 20) {
+        err = BID_S_BUFFER_TOO_SMALL;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, privateKey, "algorithm",
+                            json_string("DS"), BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "q",
+                                       pbcDsaKeyBlob->q, 20);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "p",
+                                       pbbcDsaKeyBlob, pbcDsaKeyBlob->cbKey);
+    BID_BAIL_ON_ERROR(err);
+
+    pbbcDsaKeyBlob += pbcDsaKeyBlob->cbKey;
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "g",
+                                       pbbcDsaKeyBlob, pbcDsaKeyBlob->cbKey);
+    BID_BAIL_ON_ERROR(err);
+
+    pbbcDsaKeyBlob += pbcDsaKeyBlob->cbKey;
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "y",
+                                       pbbcDsaKeyBlob, pbcDsaKeyBlob->cbKey);
+    BID_BAIL_ON_ERROR(err);
+
+    pbbcDsaKeyBlob += pbcDsaKeyBlob->cbKey;
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "x",
+                                       pbbcDsaKeyBlob, 20);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    return err;
+}
+
+BIDError
 _BIDLoadX509PrivateKey(
-    BIDContext context BID_UNUSED,
-    const char *path,
+    BIDContext context,
+    const char *szPrivateKey,
+    const char *szCertificate,
     BIDJWK *pPrivateKey)
 {
-    return BID_S_NOT_IMPLEMENTED;
+    BIDError err;
+    SECURITY_STATUS ss;
+    NCRYPT_PROV_HANDLE hProvider = 0;
+    NCRYPT_KEY_HANDLE hKey = 0;
+    PWSTR wszKeyName = NULL;
+    BCRYPT_KEY_BLOB *pbcKeyBlob = NULL;
+    DWORD cbbcKeyBlob = 0;
+    BIDJWK privateKey = NULL;
+    DWORD dwFlags = 0, dwKeySpec;
+    HCERTSTORE hCertStore = NULL;
+    PCCERT_CONTEXT pCertContext = NULL;
+    BOOL fCallerFreeKey = FALSE;
+
+    *pPrivateKey = NULL;
+
+    /*
+     * Because private keys are referenced by an opaque key ID, consumers
+     * of this library may prefer to provide the certificate name instead
+     * and have us dereference the private key using the CACPK API below.
+     */
+    if (szPrivateKey != NULL) {
+        if (context->ContextOptions & BID_CONTEXT_RP)
+            dwFlags = NCRYPT_MACHINE_KEY_FLAG | NCRYPT_SILENT_FLAG;
+
+        ss = NCryptOpenStorageProvider(&hProvider, MS_KEY_STORAGE_PROVIDER, 0);
+        BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
+
+        err = _BIDUtf8ToUcs2(context, szPrivateKey, &wszKeyName);
+        BID_BAIL_ON_ERROR(err);
+
+        ss = NCryptOpenKey(hProvider, &hKey, wszKeyName, AT_SIGNATURE, dwFlags);
+        BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
+
+        fCallerFreeKey = TRUE;
+    } else {
+        dwFlags = CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG;
+        if (context->ContextOptions & BID_CONTEXT_RP)
+            dwFlags |= CRYPT_ACQUIRE_SILENT_FLAG;
+
+        err = _BIDLoadCertificateFromStore(context, szCertificate,
+                                           &hCertStore, &pCertContext);
+        BID_BAIL_ON_ERROR(err);
+
+        if (!CryptAcquireCertificatePrivateKey(pCertContext, dwFlags,
+                                               NULL, &hKey, &dwKeySpec,
+                                               &fCallerFreeKey)) {
+            err = BID_S_CRYPTO_ERROR;
+            goto cleanup;
+        }
+    }
+
+    ss = NCryptExportKey(hKey, 0, BCRYPT_PRIVATE_KEY_BLOB, NULL,
+                         NULL, 0, &cbbcKeyBlob, dwFlags);
+    BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
+
+    pbcKeyBlob = BIDMalloc(cbbcKeyBlob);
+    if (pbcKeyBlob == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    ss = NCryptExportKey(hKey, 0, BCRYPT_PRIVATE_KEY_BLOB, NULL,
+                         (PBYTE)pbcKeyBlob, cbbcKeyBlob, &cbbcKeyBlob,
+                         dwFlags);
+    BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
+
+    privateKey = json_object();
+    if (privateKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, privateKey, "version",
+                            json_string("2012.08.15"),
+                            BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    switch (pbcKeyBlob->Magic) {
+    case BCRYPT_RSAPRIVATE_MAGIC:
+        err = _BIDLoadX509RsaPrivateKey(context, (PUCHAR)pbcKeyBlob,
+                                        cbbcKeyBlob, privateKey);
+        break;
+    case BCRYPT_DSA_PRIVATE_MAGIC:
+        err = _BIDLoadX509DsaPrivateKey(context, (PUCHAR)pbcKeyBlob,
+                                        cbbcKeyBlob, privateKey);
+        break;
+    default:
+        err = BID_S_UNKNOWN_ALGORITHM;
+        goto cleanup;
+    }
+
+cleanup:
+    if (pbcKeyBlob != NULL) {
+        SecureZeroMemory(pbcKeyBlob, cbbcKeyBlob);
+        BIDFree(pbcKeyBlob);
+    }
+    if (hProvider)
+        NCryptFreeObject(hProvider);
+    if (fCallerFreeKey)
+        NCryptFreeObject(hKey);
+    if (err != BID_S_OK)
+        CertCloseStore(hCertStore, 0);
+    if (err != BID_S_OK)
+        json_decref(privateKey);
+    BIDFree(wszKeyName);
+
+    return err;
 }
 
 BIDError
 _BIDLoadX509Certificate(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     const char *path,
     json_t **pCert)
 {
-    return BID_S_NOT_IMPLEMENTED;
+    BIDError err;
+    HCERTSTORE hCertStore = NULL;
+    PCCERT_CONTEXT pCertContext = NULL;
+    LPSTR szCertificate = NULL;
+    SIZE_T cchCertificate = 0;
+    json_t *cert = NULL;
+
+    *pCert = NULL;
+
+    err = _BIDLoadCertificateFromStore(context, path,
+                                       &hCertStore, &pCertContext);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDBase64Encode(pCertContext->pbCertEncoded,
+                           pCertContext->cbCertEncoded,
+                           BID_ENCODING_BASE64,
+                           &szCertificate, &cchCertificate);
+    BID_BAIL_ON_ERROR(err);
+
+    cert = json_string(szCertificate);
+    if (cert == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    *pCert = cert;
+    err = BID_S_OK;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(cert);
+    BIDFree(szCertificate);
+
+    return err;
 }
+
+static BIDError
+_BIDGetCertNameString(
+    BIDContext context,
+    PCCERT_CONTEXT pCertContext,
+    DWORD dwType,
+    DWORD dwFlags,
+    json_t **pValue)
+{
+    BIDError err;
+    PWSTR wszNameString = NULL;
+    char *szNameString = NULL;
+    DWORD cchNameString = 0;
+    DWORD dwNameToStrFlags = CERT_X500_NAME_STR | CERT_NAME_STR_REVERSE_FLAG;
+    void *pvTypePara = NULL;
+
+    *pValue = NULL;
+
+    if (dwType == CERT_NAME_RDN_TYPE)
+        pvTypePara = &dwNameToStrFlags;
+
+    cchNameString = CertGetNameStringW(pCertContext, dwType, dwFlags,
+                                       pvTypePara, NULL, 0);
+    if (cchNameString <= 1) {
+        err = (dwFlags & CERT_NAME_ISSUER_FLAG)
+            ? BID_S_MISSING_ISSUER : BID_S_BAD_SUBJECT;
+        goto cleanup;
+    }
+
+    wszNameString = BIDMalloc(cchNameString * sizeof(WCHAR));
+    if (wszNameString == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    CertGetNameStringW(pCertContext, dwType, dwFlags,
+                       pvTypePara, wszNameString, cchNameString);
+
+    err = _BIDUcs2ToUtf8(context, wszNameString, &szNameString);
+    BID_BAIL_ON_ERROR(err);
+
+    *pValue = json_string(szNameString);
+
+    if (*pValue == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+cleanup:
+    BIDFree(wszNameString);
+    BIDFree(szNameString);
+
+    return err;
+}
+
+static BIDError
+_BIDSetJsonCertNameString(
+    BIDContext context,
+    json_t *j,
+    const char *key,
+    PCCERT_CONTEXT pCertContext,
+    DWORD dwType,
+    DWORD dwFlags)
+{
+    BIDError err;
+    json_t *name;
+
+    err = _BIDGetCertNameString(context, pCertContext, dwType, dwFlags, &name);
+    if (err == BID_S_OK)
+        err = _BIDJsonObjectSet(context, j, key, name,
+                                BID_JSON_FLAG_CONSUME_REF);
+
+    return err;
+}
+
+static struct {
+    DWORD Type;
+    const char *Key;
+} _BIDAltSubjectTypes[] = {
+    { CERT_NAME_EMAIL_TYPE,         "email"     },
+    { CERT_NAME_DNS_TYPE,           "hostname"  },
+    { CERT_NAME_URL_TYPE,           "uri"       }
+};
 
 BIDError
 _BIDPopulateX509Identity(
@@ -1831,17 +2308,375 @@ _BIDPopulateX509Identity(
     BIDIdentity identity,
     uint32_t ulReqFlags)
 {
-    return BID_S_NOT_IMPLEMENTED;
+    BIDError err;
+    json_t *certChain = NULL;
+    json_t *principal = NULL;
+    PCCERT_CONTEXT pCertContext = NULL;
+    DWORD dwSubjectType, i;
+
+    certChain = json_object_get(backedAssertion->Assertion->Header, "x5c");
+
+    err = _BIDCertDataToContext(context, certChain, &pCertContext);
+    BID_BAIL_ON_ERROR(err);
+
+    principal = json_object();
+    if (principal == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; i < ARRAYSIZE(_BIDAltSubjectTypes); i++) {
+        _BIDSetJsonCertNameString(context,
+                                  principal,
+                                  _BIDAltSubjectTypes[i].Key,
+                                  pCertContext,
+                                  _BIDAltSubjectTypes[i].Type,
+                                  0);
+    }
+
+    err = _BIDJsonObjectSet(context, identity->Attributes, "principal",
+                            principal, 0);
+    BID_BAIL_ON_ERROR(err);
+
+    if (ulReqFlags & BID_VERIFY_FLAG_RP)
+        dwSubjectType = CERT_NAME_ATTR_TYPE;
+    else
+        dwSubjectType = CERT_NAME_RDN_TYPE;
+
+    err = _BIDSetJsonCertNameString(context, identity->Attributes, "sub",
+                                    pCertContext, dwSubjectType, 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonCertNameString(context, identity->Attributes, "iss",
+                                    pCertContext, CERT_NAME_RDN_TYPE,
+                                    CERT_NAME_ISSUER_FLAG);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonFileTimeValue(context, identity->Attributes, "nbf",
+                                   &pCertContext->pCertInfo->NotBefore);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonFileTimeValue(context, identity->Attributes, "exp",
+                                   &pCertContext->pCertInfo->NotAfter);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    if (pCertContext != NULL)
+        CertFreeCertificateContext(pCertContext);
+    json_decref(principal);
+
+    return err;
+}
+
+BIDError
+_BIDValidateX509CertHash(
+    BIDContext context,
+    json_t *certParams,
+    PCCERT_CONTEXT pCertContext)
+{
+    BIDError err;
+    PBYTE pbAssertedHash = NULL;
+    BYTE pbServerHash[32];
+    SIZE_T cbAssertedHash = 0;
+    DWORD cbServerHash = sizeof(pbServerHash);
+
+    err = _BIDGetJsonBinaryValue(context, certParams, "server-certificate-hash",
+                                &pbAssertedHash, &cbAssertedHash);
+    BID_BAIL_ON_ERROR(err);
+
+    if (!CryptHashCertificate((HCRYPTPROV_LEGACY)0,
+                              CALG_SHA_256,
+                              0,
+                              pCertContext->pbCertEncoded,
+                              pCertContext->cbCertEncoded,
+                              pbServerHash,
+                              &cbServerHash)) {
+        err = BID_S_CERT_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
+    if (cbAssertedHash != cbServerHash ||
+        memcmp(pbAssertedHash, pbServerHash, cbServerHash) != 0) {
+        err = BID_S_UNTRUSTED_X509_CERT;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+
+cleanup:
+    BIDFree(pbAssertedHash);
+    BIDFree(pbServerHash);
+
+    return err;
+}
+
+static BIDError
+_BIDCertStringToName(
+    BIDContext context,
+    const char *szName,
+    PCERT_NAME_BLOB pCertNameBlob)
+{
+    BIDError err;
+    PWSTR wszName = NULL;
+
+    pCertNameBlob->pbData = NULL;
+    pCertNameBlob->cbData = 0;
+
+    err = _BIDUtf8ToUcs2(context, szName, &wszName);
+    BID_BAIL_ON_ERROR(err);
+
+    if (!CertStrToNameW(X509_ASN_ENCODING,
+                        wszName,
+                        CERT_X500_NAME_STR | CERT_NAME_STR_REVERSE_FLAG,
+                        NULL,
+                        NULL,
+                        &pCertNameBlob->cbData,
+                        NULL)) {
+        err = BID_S_BAD_SUBJECT;
+        goto cleanup;
+    }
+
+    pCertNameBlob->pbData = BIDMalloc(pCertNameBlob->cbData);
+    if (pCertNameBlob->pbData == NULL) {
+        err =  BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (!CertStrToNameW(X509_ASN_ENCODING,
+                        wszName,
+                        CERT_X500_NAME_STR | CERT_NAME_STR_REVERSE_FLAG,
+                        NULL,
+                        pCertNameBlob->pbData,
+                        &pCertNameBlob->cbData,
+                        NULL)) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+
+cleanup:
+    BIDFree(wszName);
+
+    return err;
+}
+
+BIDError
+_BIDValidateX509CertSubject(
+    BIDContext context,
+    json_t *certParams,
+    PCCERT_CONTEXT pCertContext)
+{
+    BIDError err;
+    CERT_NAME_BLOB cnbSubjectConstraint = { 0 };
+    const char *serverSubjectMatch;
+
+    serverSubjectMatch = json_string_value(json_object_get(certParams, "server-subject-match"));
+    if (serverSubjectMatch == NULL)
+        return BID_S_OK;
+
+    err = _BIDCertStringToName(context, serverSubjectMatch,
+                               &cnbSubjectConstraint);
+    if (err != BID_S_OK)
+        return err;
+
+    if (CertCompareCertificateName(X509_ASN_ENCODING,
+                                   &pCertContext->pCertInfo->Subject,
+                                   &cnbSubjectConstraint)) {
+        err = BID_S_OK;
+    } else {
+        err = BID_S_UNTRUSTED_X509_CERT;
+    }
+
+    BIDFree(cnbSubjectConstraint.pbData);
+
+    return err;
+}
+
+BIDError
+_BIDValidateX509CertAltSubject(
+    BIDContext context,
+    json_t *certParams,
+    PCCERT_CONTEXT pCertContext)
+{
+    BIDError err;
+    json_t *altSubjectConstraints = NULL;
+    DWORD i, found = 0;
+
+    altSubjectConstraints = json_object_get(certParams,
+                                            "server-altsubject-match");
+    if (altSubjectConstraints == NULL)
+        return BID_S_OK;
+
+    for (i = 0; i < ARRAYSIZE(_BIDAltSubjectTypes); i++) {
+        json_t *assertedName;
+        json_t *certName;
+
+        assertedName = json_object_get(altSubjectConstraints,
+                                       _BIDAltSubjectTypes[i].Key);
+        if (assertedName == NULL)
+            continue;
+
+        err = _BIDGetCertNameString(context, pCertContext,
+                                    _BIDAltSubjectTypes[i].Type,
+                                    0, &certName);
+        if (err != BID_S_OK)
+            continue;
+
+        if (json_equal(assertedName, certName))
+            found++;
+
+        json_decref(certName);
+    }
+
+    return (found == 0) ? BID_S_UNTRUSTED_X509_CERT : BID_S_OK;
+}
+
+static BIDError
+_BIDGetSupportingCertificateStore(
+    BIDContext context,
+    json_t *certChain,
+    HCERTSTORE *phCertStore)
+{
+    BIDError err = BID_S_OK;
+    HCERTSTORE hCertStore = NULL;
+    DWORD i;
+
+    *phCertStore = NULL;
+
+    hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY,
+                               X509_ASN_ENCODING,
+                               (HCRYPTPROV_LEGACY)0,
+                               CERT_STORE_DEFER_CLOSE_UNTIL_LAST_FREE_FLAG,
+                               NULL);
+    if (hCertStore == NULL) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    for (i = 1; err == BID_S_OK && i < json_array_size(certChain); i++) {
+        const char *szCert;
+        PBYTE pbCert;
+        SIZE_T cbCert;
+
+        szCert = json_string_value(json_array_get(certChain, i));
+        if (szCert == NULL) {
+            err = BID_S_MISSING_CERT;
+            goto cleanup;
+        }
+
+        err = _BIDBase64UrlDecode(szCert, &pbCert, &cbCert);
+        BID_BAIL_ON_ERROR(err);
+
+        err = CertAddEncodedCertificateToStore(hCertStore,
+                                               X509_ASN_ENCODING,
+                                               pbCert,
+                                               cbCert,
+                                               CERT_STORE_ADD_ALWAYS,
+                                               NULL)
+             ? BID_S_OK : BID_S_CRYPTO_ERROR;
+
+        BIDFree(pbCert);
+    }
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+    *phCertStore = hCertStore;
+    hCertStore = NULL;
+
+cleanup:
+    if (err != BID_S_OK)
+        CertCloseStore(hCertStore, 0);
+
+    return err;
 }
 
 BIDError
 _BIDValidateX509CertChain(
     BIDContext context,
-    const char *caCertificateFile,
-    const char *caCertificateDir,
-    json_t *certChain)
+    json_t *certChain,
+    json_t *certParams,
+    time_t verificationTime)
 {
-    return BID_S_NOT_IMPLEMENTED;
+    BIDError err;
+    PCERT_CONTEXT pCertContext = NULL;
+    PCCERT_CHAIN_CONTEXT pCertChainContext = NULL;
+    CERT_CHAIN_PARA certChainPara = { 0 };
+    CERT_CHAIN_POLICY_PARA certChainPolicyPara = { 0 };
+    CERT_CHAIN_POLICY_STATUS certChainPolicyStatus = { 0 };
+    LPSTR rgszUsages[] = {
+        szOID_PKIX_KP_SERVER_AUTH,
+        szOID_SERVER_GATED_CRYPTO,
+        szOID_SGC_NETSCAPE
+    };
+    DWORD dwFlags = 0;
+    FILETIME ftVerify;
+    BOOLEAN bServerCertOnly;
+    HCERTSTORE hCertStore = NULL;
+
+    err = _BIDCertDataToContext(context, certChain, &pCertContext);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDGetSupportingCertificateStore(context, certChain, &hCertStore);
+    BID_BAIL_ON_ERROR(err);
+
+    bServerCertOnly = !!(json_object_get(certParams, "server-certificate-hash"));
+
+    err = _BIDSecondsSince1970ToTime(context, verificationTime, &ftVerify);
+    BID_BAIL_ON_ERROR(err);
+
+    if (bServerCertOnly) {
+        err = _BIDValidateX509CertHash(context, certParams, pCertContext);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    certChainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
+    certChainPara.RequestedUsage.Usage.cUsageIdentifier = ARRAYSIZE(rgszUsages);
+    certChainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
+
+    dwFlags = CERT_CHAIN_ENABLE_PEER_TRUST;
+    if (bServerCertOnly)
+        dwFlags |= CERT_CHAIN_REVOCATION_CHECK_END_CERT;
+    else
+        dwFlags |= CERT_CHAIN_REVOCATION_CHECK_CHAIN;
+
+    if (!CertGetCertificateChain(HCCE_CURRENT_USER,
+                                 pCertContext,
+                                 &ftVerify,
+                                 hCertStore,
+                                 &certChainPara,
+                                 dwFlags,
+                                 NULL,
+                                 &pCertChainContext)) {
+        err = BID_S_CERT_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
+    if (!bServerCertOnly &&
+        !CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_BASIC_CONSTRAINTS,
+                                          pCertChainContext,
+                                          &certChainPolicyPara,
+                                          &certChainPolicyStatus) ||
+        certChainPolicyStatus.dwError != ERROR_SUCCESS) {
+        err = BID_S_UNTRUSTED_X509_CERT;
+        goto cleanup;
+    }
+
+    err = _BIDValidateX509CertSubject(context, certParams, pCertContext);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDValidateX509CertAltSubject(context, certParams, pCertContext);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    if (pCertContext != NULL)
+        CertFreeCertificateContext(pCertContext);
+    if (pCertChainContext != NULL)
+        CertFreeCertificateChain(pCertChainContext);
+    if (hCertStore != NULL)
+        CertCloseStore(hCertStore, 0);
+
+    return err;
 }
 
 static BIDError

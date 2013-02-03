@@ -303,7 +303,7 @@ _BIDMakeAuthenticator(
     BID_BAIL_ON_ERROR(err);
 
 #ifdef GSSBID_DEBUG
-    json_dumpf(ap->Payload, stdout, JSON_INDENT(8));
+    _BIDOutputDebugJson(ap->Payload);
 #endif
 
     *pAuthenticator = ap;
