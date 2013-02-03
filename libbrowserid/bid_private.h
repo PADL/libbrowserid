@@ -934,7 +934,6 @@ _BIDBrowserGetAssertion(
 #define BID_MUTEX_DESTROY(m)         DeleteCriticalSection((m))
 #define BID_MUTEX_LOCK(m)            EnterCriticalSection((m))
 #define BID_MUTEX_UNLOCK(m)          LeaveCriticalSection((m))
-#endif
 
 BIDError
 _BIDTimeToSecondsSince1970(
@@ -980,6 +979,7 @@ _BIDSetJsonFileTimeValue(
     json_t *json,
     const char *key,
     PFILETIME pft);
+#endif
 
 /*
  * bid_x509.c

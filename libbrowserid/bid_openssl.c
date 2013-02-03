@@ -1642,7 +1642,7 @@ _BIDValidateX509CertChain(
     BIDContext context,
     json_t *certChain,
     json_t *certParams,
-    time_t verificationTime)
+    time_t verificationTime BID_UNUSED)
 {
     BIDError err;
     X509_STORE *store = NULL;
