@@ -141,6 +141,7 @@ BIDError
 _BIDValidateX509(
     BIDContext context,
     json_t *certChain,
+    json_t *certAnchors,
     time_t verificationTime)
 {
     BIDError err;
@@ -158,7 +159,7 @@ _BIDValidateX509(
      * we may also add the user's trust anchors, which will be context-
      * specific rather than being stored in the global RP configuration.
      */
-    certParams = json_object();
+    certParams = (certAnchors != NULL) ? json_copy(certAnchors) : json_object();
     if (certParams == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;

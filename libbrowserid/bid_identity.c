@@ -98,7 +98,7 @@ BIDVerifyAssertion(
     else
         err = _BIDVerifyLocal(context, replayCache, backedAssertion, szPackedAudience, NULL,
                               pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
-                              NULL, pVerifiedIdentity, &ulRetFlags);
+                              NULL, NULL, pVerifiedIdentity, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
 
     if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH) == 0 &&

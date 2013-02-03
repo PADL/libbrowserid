@@ -131,6 +131,7 @@ BIDVerifyRPResponseToken(
     const char *szAssertion,
     const char *szAudienceName,
     uint32_t ulReqFlags,
+    json_t *certAnchors,
     json_t **pPayload,
     uint32_t *pulRetFlags)
 {
@@ -158,7 +159,7 @@ BIDVerifyRPResponseToken(
 
     err = _BIDVerifyLocal(context, NULL, backedAssertion, NULL, szAudienceName,
                           NULL, 0, time(NULL), BID_VERIFY_FLAG_RP, verifyCred,
-                          NULL, &ulVerifyFlags);
+                          certAnchors, NULL, &ulVerifyFlags);
     BID_BAIL_ON_ERROR(err);
 
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);

@@ -310,6 +310,7 @@ _BIDVerifyLocal(
     time_t verificationTime,
     uint32_t ulReqFlags,
     BIDJWK verifyCred,
+    json_t *certAnchors,
     BIDIdentity *pVerifiedIdentity,
     uint32_t *pulRetFlags)
 {
@@ -340,7 +341,7 @@ _BIDVerifyLocal(
 
         if (x509Certificate != NULL) {
             /* Maybe it's an X.509 signed assertion */
-            err = _BIDValidateX509(context, x509Certificate, verificationTime);
+            err = _BIDValidateX509(context, x509Certificate, certAnchors, verificationTime);
             BID_BAIL_ON_ERROR(err);
 
             verifyCred = json_incref(backedAssertion->Assertion->Header);

@@ -900,6 +900,7 @@ _BIDVerifyLocal(
     time_t verificationTime,
     uint32_t ulReqFlags,
     BIDJWK optionalVerifyCred,
+    json_t *optionalCertAnchors,
     BIDIdentity *pVerifiedIdentity,
     uint32_t *pulRetFlags);
 
@@ -997,6 +998,7 @@ BIDError
 _BIDValidateX509(
     BIDContext context,
     json_t *certChain,
+    json_t *certAnchors,
     time_t verificationTime);
 
 /*
