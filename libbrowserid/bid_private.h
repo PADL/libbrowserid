@@ -100,6 +100,11 @@ extern "C" {
 #define BID_CONTEXT_DH_SAFE_PRIMES          0x00010000
 
 /*
+ * Always generate DH parameters.
+ */
+#define BID_CONTEXT_DH_ALWAYS_GENERATE      0x00020000
+
+/*
  * bid_authority.c
  */
 #define BID_WELL_KNOWN_URL          "/.well-known/browserid"
