@@ -387,12 +387,6 @@ BIDSetIdentityDHPublicValue(
 }
 
 BIDError
-_BIDAcquireDefaultDHParamsCache(BIDContext context)
-{
-    return _BIDAcquireCacheForUser(context, "browserid.dhparams", &context->DHParamsCache);
-}
-
-BIDError
 _BIDGetDHParams(
     BIDContext context,
     json_t **pDhParams)
@@ -412,16 +406,7 @@ _BIDGetDHParams(
             return err;
     }
 
-    if (context->DHParamsCache != NULL) {
-        err = _BIDGetCacheObject(context, context->DHParamsCache,
-                                 "params", pDhParams);
-        if (err == BID_S_OK)
-            return err;
-    }
-
     err = _BIDGenerateDHParams(context, pDhParams);
-    if (err == BID_S_OK && context->DHParamsCache != NULL)
-        _BIDSetCacheObject(context, context->DHParamsCache, "params", *pDhParams);
 
     return err;
 }

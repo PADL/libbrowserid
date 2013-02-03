@@ -318,7 +318,6 @@ struct BIDContextDesc {
     BIDAuthorityCache AuthorityCache;
     BIDReplayCache ReplayCache;
     BIDTicketCache TicketCache;
-    BIDDHParamsCache DHParamsCache;
     uint32_t DHKeySize;
     uint32_t TicketLifetime;
     BIDCache RPCertConfig;
@@ -386,10 +385,6 @@ _BIDGetIdentityDHPublicValue(
     BIDContext context,
     BIDIdentity identity,
     json_t **y);
-
-BIDError
-_BIDAcquireDefaultDHParamsCache(
-    BIDContext context);
 
 BIDError
 _BIDGetDHParams(
