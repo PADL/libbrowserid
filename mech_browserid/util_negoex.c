@@ -84,10 +84,7 @@ gssBidIndicateRPCerts(OM_uint32 *minor,
         goto cleanup;
     }
 
-#ifdef GSSBID_DEBUG
-    json_dumpf(response, stdout, JSON_INDENT(8));
-    printf("\n");
-#endif
+    _BIDOutputDebugJson(response);
 
     major = duplicateBuffer(minor, &bufJson, outputToken);
     if (GSS_ERROR(major))

@@ -222,10 +222,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-#ifdef GSSBID_DEBUG
-    json_dumpf(response, stdout, JSON_INDENT(8));
-    printf("\n");
-#endif
+    _BIDOutputDebugJson(response);
 
     _BIDGetJsonTimestampValue(ctx->bidContext, response, "exp", &ctx->expiryTime);
 

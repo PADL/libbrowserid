@@ -95,10 +95,7 @@ makeResponseToken(OM_uint32 *minor,
     if (ulRetFlags & BID_RP_FLAG_X509)
         ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
 
-#ifdef GSSBID_DEBUG
-    json_dumpf(response, stdout, JSON_INDENT(8));
-    printf("\n");
-#endif
+    _BIDOutputDebugJson(response);
 
     major = duplicateBuffer(minor, &bufJson, outputToken);
     if (GSS_ERROR(major))
