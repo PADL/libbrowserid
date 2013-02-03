@@ -87,7 +87,7 @@ _BIDDH_RFC5114_1024_G[] = {
 };
 
 /*
- * 2.1 2048-bit MODP Group with 256-bit Prime Order Subgroup
+ * 2.1 2048-bit MODP Group with 224-bit Prime Order Subgroup
  */
 static const unsigned char
 _BIDDH_RFC5114_2048_P[] = {
