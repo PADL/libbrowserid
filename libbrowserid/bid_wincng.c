@@ -579,58 +579,6 @@ cleanup:
     return err;
 }
 
-#if 0
-static BIDError
-_CNGTranslateKey(
-    BIDContext context,
-    BCRYPT_ALG_HANDLE hAlgorithm,
-    NCRYPT_KEY_HANDLE hKey,
-    BOOLEAN bPublic,
-    BCRYPT_KEY_HANDLE *phKey)
-{
-    BIDError err;
-    NTSTATUS nts;
-    SECURITY_STATUS ss;
-    PBYTE pbKeyBlob = NULL;
-    DWORD cbKeyBlob = 0;
-    LPCWSTR wszBlobType;
-
-    wszBlobType = bPublic ? BCRYPT_PUBLIC_KEY_BLOB : BCRYPT_PRIVATE_KEY_BLOB;
-
-    /* Is this really necessary? */
-    ss = NCryptExportKey(hKey, 0, wszBlobType,
-                         NULL, NULL, 0, &cbKeyBlob, 0);
-    BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
-
-    pbKeyBlob = BIDMalloc(cbKeyBlob);
-    if (pbKeyBlob == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    ss = NCryptExportKey(hKey, 0, wszBlobType,
-                         NULL, pbKeyBlob, cbKeyBlob, &cbKeyBlob, 0);
-    BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
-
-    nts = BCryptImportKeyPair(hAlgorithm,
-                              NULL, /* hImportKey */
-                              wszBlobType,
-                              phKey,
-                              pbKeyBlob,
-                              cbKeyBlob,
-                              BCRYPT_NO_KEY_VALIDATION);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-cleanup:
-    if (pbKeyBlob != NULL) {
-        SecureZeroMemory(pbKeyBlob, cbKeyBlob);
-        BIDFree(pbKeyBlob);
-    }
-
-    return err;
-}
-#endif
-
 static BIDError
 _BIDCertDataToKey(
     struct BIDJWTAlgorithmDesc *algorithm,
