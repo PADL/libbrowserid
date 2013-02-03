@@ -478,13 +478,14 @@ _BIDLoadCertificateFromStore(
 {
     BIDError err;
     CERT_NAME_BLOB cnbSubject = { 0 };
+    PWSTR wszSubject = NULL;
     HCERTSTORE hCertStore = NULL;
     PCCERT_CONTEXT pCertContext = NULL;
     DWORD dwFlags;
 
     *ppCertContext = NULL;
 
-    dwFlags = CERT_STORE_OPEN_EXISTING_FLAG;
+    dwFlags = CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG;
     if (context->ContextOptions & BID_CONTEXT_RP)
         dwFlags |= CERT_SYSTEM_STORE_LOCAL_MACHINE;
     else
@@ -500,19 +501,31 @@ _BIDLoadCertificateFromStore(
         goto cleanup;
     }
 
-    err = _BIDCertStringToName(context, path, &cnbSubject);
-    BID_BAIL_ON_ERROR(err);
+    if (_BIDCertStringToName(context, path, &cnbSubject) == BID_S_OK) {
+        pCertContext = CertFindCertificateInStore(hCertStore,
+                                                  X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+                                                  0,
+                                                  CERT_FIND_SUBJECT_NAME,
+                                                  &cnbSubject,
+                                                  NULL);
+    } else {
+        err = _BIDUtf8ToUcs2(context, path, &wszSubject);
+        BID_BAIL_ON_ERROR(err);
 
-    pCertContext = CertFindCertificateInStore(hCertStore,
-                                              X509_ASN_ENCODING,
-                                              0,
-                                              CERT_FIND_SUBJECT_NAME,
-                                              &cnbSubject,
-                                              NULL);
+        pCertContext = CertFindCertificateInStore(hCertStore,
+                                                  X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+                                                  0,
+                                                  CERT_FIND_SUBJECT_STR,
+                                                  wszSubject,
+                                                  NULL);
+    }
+
     if (pCertContext == NULL) {
         err = BID_S_CERT_FILE_UNREADABLE;
         goto cleanup;
     }
+
+    err = BID_S_OK;
 
     *phCertStore = hCertStore;
     *ppCertContext = pCertContext;
@@ -521,6 +534,7 @@ cleanup:
     if (err != BID_S_OK && hCertStore != NULL)
         CertCloseStore(hCertStore, 0);
     BIDFree(cnbSubject.pbData);
+    BIDFree(wszSubject);
 
     return err;
 }
@@ -658,14 +672,29 @@ _BIDMakeJwtRsaKey(
     NTSTATUS nts;
     BCryptBuffer n = { 0 };
     BCryptBuffer e = { 0 };
-    BCryptBuffer d = { 0 };
+    BCryptBuffer p = { 0 };
+    BCryptBuffer q = { 0 };
     BCRYPT_RSAKEY_BLOB *rsaKey = NULL;
     DWORD cbRsaKey = 0;
-    PUCHAR p;
+    PUCHAR pbRsaKey;
     DWORD cbPadding = 0;
 
     *phKey = NULL;
 
+    /*
+     * The layout of a BCRYPT_RSAKEY_BLOB is as follows:
+     *
+     *      BCRYPT_RSAKEY_BLOB
+     *      e[cbPublicExp]
+     *      n[cbModulus]
+     *      p[cbPrime1]                 RSAPRIVATE_BLOB only
+     *      q[cbPrime2]                 RSAPRIVATE_BLOB only
+     *      dp[cbPrime1]                RSAFULLPRIVATE_BLOB only
+     *      dq[cbPrime2]                RSAFULLPRIVATE_BLOB only
+     *      coefficient[cbPrime2]       RSAFULLPRIVATE_BLOB only
+     *      d[cbModulus]                RSAFULLPRIVATE_BLOB only
+     *
+     */
     err = _BIDGetJsonBufferValue(context, jwk, "e", BID_ENCODING_UNKNOWN,
                                  cbPadding, &e);
     BID_BAIL_ON_ERROR(err);
@@ -675,12 +704,18 @@ _BIDMakeJwtRsaKey(
     BID_BAIL_ON_ERROR(err);
 
     if (!bPublic) {
-        err = _BIDGetJsonBufferValue(context, jwk, "d", BID_ENCODING_UNKNOWN,
-                                     cbPadding, &d);
+        err = _BIDGetJsonBufferValue(context, jwk, "p", BID_ENCODING_UNKNOWN,
+                                     cbPadding, &p);
+        BID_BAIL_ON_ERROR(err);
+
+        err = _BIDGetJsonBufferValue(context, jwk, "q", BID_ENCODING_UNKNOWN,
+                                     cbPadding, &q);
         BID_BAIL_ON_ERROR(err);
     }
 
-    cbRsaKey = sizeof(*rsaKey) + e.cbBuffer + n.cbBuffer + d.cbBuffer;
+    cbRsaKey = sizeof(*rsaKey) + e.cbBuffer + n.cbBuffer;
+    if (!bPublic)
+        cbRsaKey += p.cbBuffer + q.cbBuffer;
 
     rsaKey = BIDMalloc(cbRsaKey);
     if (rsaKey == NULL) {
@@ -694,20 +729,23 @@ _BIDMakeJwtRsaKey(
     rsaKey->BitLength   = n.cbBuffer * 8;
     rsaKey->cbPublicExp = e.cbBuffer;
     rsaKey->cbModulus   = n.cbBuffer;
-    rsaKey->cbPrime1    = d.cbBuffer;
-    rsaKey->cbPrime2    = 0;
+    rsaKey->cbPrime1    = p.cbBuffer;
+    rsaKey->cbPrime2    = q.cbBuffer;
 
-    p = (PUCHAR)(rsaKey + 1);
+    pbRsaKey = (PUCHAR)(rsaKey + 1);
 
-    CopyMemory(p, e.pvBuffer, e.cbBuffer);
-    p += e.cbBuffer;
+    CopyMemory(pbRsaKey, e.pvBuffer, e.cbBuffer);
+    pbRsaKey += e.cbBuffer;
 
-    CopyMemory(p, n.pvBuffer, n.cbBuffer);
-    p += n.cbBuffer;
+    CopyMemory(pbRsaKey, n.pvBuffer, n.cbBuffer);
+    pbRsaKey += n.cbBuffer;
 
     if (!bPublic) {
-        CopyMemory(p, d.pvBuffer, d.cbBuffer);
-        p += d.cbBuffer;
+        CopyMemory(pbRsaKey, p.pvBuffer, p.cbBuffer);
+        pbRsaKey += p.cbBuffer;
+
+        CopyMemory(pbRsaKey, q.pvBuffer, q.cbBuffer);
+        pbRsaKey += q.cbBuffer;
     }
 
     nts = BCryptImportKeyPair(hAlgorithm,
@@ -715,7 +753,7 @@ _BIDMakeJwtRsaKey(
                               bPublic ? BCRYPT_RSAPUBLIC_BLOB : BCRYPT_RSAPRIVATE_BLOB,
                               phKey,
                               (PUCHAR)rsaKey,
-                              p - (PUCHAR)rsaKey,
+                              pbRsaKey - (PUCHAR)rsaKey,
                               BCRYPT_NO_KEY_VALIDATION);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
@@ -726,7 +764,8 @@ cleanup:
     }
     _BIDFreeBuffer(&e);
     _BIDFreeBuffer(&n);
-    _BIDFreeBuffer(&d);
+    _BIDFreeBuffer(&p);
+    _BIDFreeBuffer(&q);
 
     return err;
 }
@@ -2004,12 +2043,19 @@ _BIDLoadX509RsaPrivateKey(
 
     pbbcRsaKeyBlob += pbcRsaKeyBlob->cbModulus;
 
-    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "e",
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "p",
                                        pbbcRsaKeyBlob,
                                        pbcRsaKeyBlob->cbPrime1);
     BID_BAIL_ON_ERROR(err);
 
     pbbcRsaKeyBlob += pbcRsaKeyBlob->cbPrime1;
+
+    err = _BIDJsonObjectSetBinaryValue(context, privateKey, "q",
+                                       pbbcRsaKeyBlob,
+                                       pbcRsaKeyBlob->cbPrime2);
+    BID_BAIL_ON_ERROR(err);
+
+    pbbcRsaKeyBlob += pbcRsaKeyBlob->cbPrime2;
 
 cleanup:
     return err;
@@ -2105,7 +2151,12 @@ _BIDLoadX509PrivateKey(
         err = _BIDUtf8ToUcs2(context, szPrivateKey, &wszKeyName);
         BID_BAIL_ON_ERROR(err);
 
-        ss = NCryptOpenKey(hProvider, &hKey, wszKeyName, AT_SIGNATURE, dwFlags);
+        ss = NCryptOpenKey(hProvider, &hKey, wszKeyName,
+                           AT_KEYEXCHANGE, dwFlags);
+        if (ss == NTE_NO_KEY) {
+            ss = NCryptOpenKey(hProvider, &hKey, wszKeyName,
+                               AT_SIGNATURE, dwFlags);
+        }
         BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
 
         fCallerFreeKey = TRUE;
@@ -2125,6 +2176,10 @@ _BIDLoadX509PrivateKey(
             goto cleanup;
         }
     }
+
+    dwFlags = 0;
+    if (context->ContextOptions & BID_CONTEXT_RP)
+        dwFlags |= NCRYPT_SILENT_FLAG;
 
     ss = NCryptExportKey(hKey, 0, BCRYPT_PRIVATE_KEY_BLOB, NULL,
                          NULL, 0, &cbbcKeyBlob, dwFlags);
@@ -2165,6 +2220,8 @@ _BIDLoadX509PrivateKey(
         err = BID_S_UNKNOWN_ALGORITHM;
         goto cleanup;
     }
+
+    *pPrivateKey = privateKey;
 
 cleanup:
     if (pbcKeyBlob != NULL) {
@@ -2553,7 +2610,7 @@ _BIDGetSupportingCertificateStore(
     *phCertStore = NULL;
 
     hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY,
-                               X509_ASN_ENCODING,
+                               X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                                (HCRYPTPROV_LEGACY)0,
                                CERT_STORE_DEFER_CLOSE_UNTIL_LAST_FREE_FLAG,
                                NULL);
@@ -2577,7 +2634,7 @@ _BIDGetSupportingCertificateStore(
         BID_BAIL_ON_ERROR(err);
 
         err = CertAddEncodedCertificateToStore(hCertStore,
-                                               X509_ASN_ENCODING,
+                                               X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                                                pbCert,
                                                cbCert,
                                                CERT_STORE_ADD_ALWAYS,

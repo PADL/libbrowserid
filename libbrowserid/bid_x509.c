@@ -120,6 +120,8 @@ _BIDGetRPPrivateKey(
                                      json_string_value(certificatePath),
                                      pKey);
         BID_BAIL_ON_ERROR(err);
+
+        BID_ASSERT(*pKey != NULL);
     }
 
     rPaths[cPaths++] = json_string_value(certificatePath);
