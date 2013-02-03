@@ -98,16 +98,21 @@ _BIDGetRPPrivateKey(
         goto cleanup;
     }
 
-    err = _BIDGetCacheObject(context, context->RPCertConfig, "private-key", &privateKeyPath);
+    err = _BIDGetCacheObject(context, context->RPCertConfig,
+                            "certificate", &certificatePath);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetCacheObject(context, context->RPCertConfig, "certificate", &certificatePath);
-    BID_BAIL_ON_ERROR(err);
-
-    if (!json_is_string(privateKeyPath)) {
+    if (!json_is_string(certificatePath)) {
         err = BID_S_INVALID_JSON;
         goto cleanup;
     }
+
+    /*
+     * We allow these to fail; the crypto provider may be able to
+     * determine the private key from the certificate.
+     */
+    _BIDGetCacheObject(context, context->RPCertConfig,
+                       "private-key", &privateKeyPath);
 
     if (pKey != NULL) {
         err = _BIDLoadX509PrivateKey(context,

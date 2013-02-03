@@ -1308,6 +1308,11 @@ _BIDLoadX509PrivateKey(
 
     *pPrivateKey = NULL;
 
+    if (path == NULL) {
+        err = BID_S_KEY_FILE_UNREADABLE;
+        goto cleanup;
+    }
+
     fp = fopen(path, "r");
     if (fp == NULL) {
         err = BID_S_KEY_FILE_UNREADABLE;
