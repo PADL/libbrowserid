@@ -2449,11 +2449,6 @@ _BIDValidateX509CertHash(
                                  &pbAssertedHash, &cbAssertedHash);
     BID_BAIL_ON_ERROR(err);
 
-    if (cbAssertedHash == 0) {
-        err = BID_S_OK;
-        goto cleanup;
-    }
-
     if (!CryptHashCertificate((HCRYPTPROV_LEGACY)0,
                               CALG_SHA_256,
                               0,
