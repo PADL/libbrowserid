@@ -454,7 +454,6 @@ BIDVerifyRPResponseToken(
     const char *szAssertion,
     const char *szAudienceName,
     uint32_t ulReqFlags,
-    json_t *certAnchors,
     json_t **pPayload,
     uint32_t *pulRetFlags);
 #endif

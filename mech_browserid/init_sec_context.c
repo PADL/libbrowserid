@@ -208,7 +208,6 @@ gssBidInitResponseToken(OM_uint32 *minor,
                                    szAssertion,
                                    (const char *)bufAudienceOrSpn.value,
                                    ulReqFlags,
-                                   ctx->bidCertAnchors,
                                    &response,
                                    &ulRetFlags);
 

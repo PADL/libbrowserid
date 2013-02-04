@@ -176,7 +176,6 @@ gssBidReleaseContext(OM_uint32 *minor,
         BIDReleaseContext(ctx->bidContext);
     }
 
-    json_decref(ctx->bidCertAnchors);
     krb5_free_keyblock_contents(krbContext, &ctx->rfc3961Key);
     gssBidReleaseName(&tmpMinor, &ctx->initiatorName);
     gssBidReleaseName(&tmpMinor, &ctx->acceptorName);

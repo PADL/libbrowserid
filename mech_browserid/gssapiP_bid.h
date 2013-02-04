@@ -208,8 +208,7 @@ struct gss_ctx_id_struct
     gss_cred_id_t cred;
     BIDContext bidContext;
     BIDIdentity bidIdentity;
-    json_t *bidCertAnchors;
-    struct {
+    struct gss_bid_initiator_ctx {
         gss_buffer_desc serverSubject;
         gss_buffer_desc serverHash;
         gss_buffer_desc serverCert;
