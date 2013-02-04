@@ -56,7 +56,7 @@
 - (id)init
 {
     NSRect frame = NSMakeRect(0, 0, 700, 375);
-    NSUInteger styleMask = NSTitledWindowMask | NSUtilityWindowMask;
+    NSUInteger styleMask = NSTitledWindowMask | NSClosableWindowMask | NSUtilityWindowMask;
     NSRect rect = [NSPanel contentRectForFrameRect:frame styleMask:styleMask];
 
     self = [super initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:YES];
