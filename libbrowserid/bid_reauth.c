@@ -39,11 +39,6 @@
 
 #include "bid_private.h"
 
-#ifdef __APPLE__
-#include <pwd.h>
-#include <sys/stat.h>
-#endif
-
 /*
  * Fast reauthentication support
  */
