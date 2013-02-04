@@ -2445,9 +2445,14 @@ _BIDValidateX509CertHash(
     SIZE_T cbAssertedHash = 0;
     DWORD cbServerHash = sizeof(pbServerHash);
 
-    err = _BIDGetJsonBinaryValue(context, certParams, "anchor-x5t",
+    err = _BIDGetJsonBinaryValue(context, certParams, "x5t",
                                  &pbAssertedHash, &cbAssertedHash);
     BID_BAIL_ON_ERROR(err);
+
+    if (cbAssertedHash == 0) {
+        err = BID_S_OK;
+        goto cleanup;
+    }
 
     if (!CryptHashCertificate((HCRYPTPROV_LEGACY)0,
                               CALG_SHA_256,
@@ -2537,7 +2542,7 @@ _BIDValidateX509CertSubject(
     const char *serverSubjectMatch;
 
     serverSubjectMatch = json_string_value(json_object_get(certParams,
-                                                           "anchor-subject"));
+                                                           "sub"));
     if (serverSubjectMatch == NULL)
         return BID_S_OK;
 
@@ -2570,7 +2575,7 @@ _BIDValidateX509CertAltSubject(
     DWORD i, found = 0;
 
     altSubjectConstraints = json_object_get(certParams,
-                                            "anchor-san");
+                                            "san");
     if (altSubjectConstraints == NULL)
         return BID_S_OK;
 
@@ -2686,7 +2691,7 @@ _BIDValidateX509CertChain(
     err = _BIDGetSupportingCertificateStore(context, certChain, &hCertStore);
     BID_BAIL_ON_ERROR(err);
 
-    bServerCertOnly = !!(json_object_get(certParams, "anchor-x5t"));
+    bServerCertOnly = !!(json_object_get(certParams, "x5t"));
 
     err = _BIDSecondsSince1970ToTime(context, verificationTime, &ftVerify);
     BID_BAIL_ON_ERROR(err);

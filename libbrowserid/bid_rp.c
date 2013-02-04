@@ -138,6 +138,7 @@ BIDVerifyRPResponseToken(
     BIDJWK verifyCred = NULL;
     BIDBackedAssertion backedAssertion = NULL;
     json_t *dh;
+    json_t *certParams;
     uint32_t ulVerifyFlags = 0;
 
     *pulRetFlags = 0;
@@ -156,9 +157,11 @@ BIDVerifyRPResponseToken(
         BID_BAIL_ON_ERROR(err);
     }
 
+    certParams = json_object_get(identity->PrivateAttributes, "anchors");
+
     err = _BIDVerifyLocal(context, NULL, backedAssertion, NULL, szAudienceName,
                           NULL, 0, time(NULL), BID_VERIFY_FLAG_RP, verifyCred,
-                          identity->PrivateAttributes, NULL, &ulVerifyFlags);
+                          certParams, NULL, &ulVerifyFlags);
     BID_BAIL_ON_ERROR(err);
 
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
