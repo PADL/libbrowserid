@@ -140,8 +140,9 @@ typedef struct BIDContextDesc *BIDContext;
 
 #define BID_C_NO_CONTEXT                    ((BIDContext)0)
 #define BID_C_NO_IDENTITY                   ((BIDIdentity)0)
-#define BID_C_NO_TICKET_CACHE               ((BIDTicketCache)0)
+#define BID_C_NO_AUTHORITY_CACHE            ((BIDAuthorityCache)0)
 #define BID_C_NO_REPLAY_CACHE               ((BIDReplayCache)0)
+#define BID_C_NO_TICKET_CACHE               ((BIDTicketCache)0)
 
 /*
  * Context is used by user-agent.

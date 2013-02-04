@@ -159,7 +159,7 @@ BIDListTicketCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
     if (argc)
         BIDToolUsage();
 
-    if (gContext->TicketCache == NULL)
+    if (gContext->TicketCache == BID_C_NO_TICKET_CACHE)
         return BID_S_INVALID_PARAMETER;
 
     err = _BIDGetCacheName(gContext, gContext->TicketCache, &szCacheName);
@@ -189,7 +189,7 @@ BIDDestroyTicketCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
     if (argc)
         BIDToolUsage();
 
-    if (gContext->TicketCache == NULL)
+    if (gContext->TicketCache == BID_C_NO_TICKET_CACHE)
         return BID_S_INVALID_PARAMETER;
 
     return _BIDDestroyCache(gContext, gContext->TicketCache);
@@ -280,7 +280,7 @@ BIDListReplayCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
     if (argc)
         BIDToolUsage();
 
-    if (gContext->ReplayCache == NULL)
+    if (gContext->ReplayCache == BID_C_NO_REPLAY_CACHE)
         return BID_S_INVALID_PARAMETER;
 
     err = _BIDGetCacheName(gContext, gContext->ReplayCache, &szCacheName);
@@ -318,7 +318,7 @@ BIDDestroyReplayCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
     if (argc)
         BIDToolUsage();
 
-    if (gContext->ReplayCache == NULL)
+    if (gContext->ReplayCache == BID_C_NO_REPLAY_CACHE)
         return BID_S_INVALID_PARAMETER;
 
     return _BIDDestroyCache(gContext, gContext->ReplayCache);
@@ -396,7 +396,7 @@ BIDListAuthorityCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
     if (argc)
         BIDToolUsage();
 
-    if (gContext->AuthorityCache == NULL)
+    if (gContext->AuthorityCache == BID_C_NO_AUTHORITY_CACHE)
         return BID_S_INVALID_PARAMETER;
 
     printf("%-30.30s %-4.4s %-20.20s\n", "Issuer", "ALG", "Expires");
@@ -425,7 +425,7 @@ BIDDestroyAuthorityCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
     if (argc)
         BIDToolUsage();
 
-    if (gContext->AuthorityCache == NULL)
+    if (gContext->AuthorityCache == BID_C_NO_AUTHORITY_CACHE)
         return BID_S_INVALID_PARAMETER;
 
     return _BIDDestroyCache(gContext, gContext->AuthorityCache);

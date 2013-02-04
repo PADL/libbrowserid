@@ -79,7 +79,7 @@ BIDAcquireContext(
         err = _BIDAcquireDefaultAuthorityCache(context);
         BID_BAIL_ON_ERROR(err);
 
-        BID_ASSERT(context->AuthorityCache != NULL);
+        BID_ASSERT(context->AuthorityCache != BID_C_NO_AUTHORITY_CACHE);
     }
 
     if (ulContextOptions & BID_CONTEXT_REPLAY_CACHE) {
@@ -91,7 +91,7 @@ BIDAcquireContext(
         err = _BIDAcquireDefaultReplayCache(context);
         BID_BAIL_ON_ERROR(err);
 
-        BID_ASSERT(context->ReplayCache != NULL);
+        BID_ASSERT(context->ReplayCache != BID_C_NO_REPLAY_CACHE);
     }
 
     if (ulContextOptions & BID_CONTEXT_TICKET_CACHE) {
@@ -104,7 +104,7 @@ BIDAcquireContext(
         err = _BIDAcquireDefaultTicketCache(context);
         BID_BAIL_ON_ERROR(err);
 
-        BID_ASSERT(context->TicketCache != NULL);
+        BID_ASSERT(context->TicketCache != BID_C_NO_TICKET_CACHE);
     }
 
     err = BID_S_OK;
