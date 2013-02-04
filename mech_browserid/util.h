@@ -248,6 +248,7 @@ gssBidMakeToken(OM_uint32 *minor,
                 gss_ctx_id_t ctx,
                 const gss_buffer_t innerToken,
                 enum gss_bid_token_type tokenType,
+                int bOidWrapping,
                 gss_buffer_t outputToken);
 
 OM_uint32

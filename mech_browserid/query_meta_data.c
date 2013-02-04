@@ -105,7 +105,7 @@ gssBidQueryMetaData(OM_uint32 *minor,
 
         if (metaDataToken.length) {
             major = gssBidMakeToken(minor, ctx, &metaDataToken,
-                                    TOK_TYPE_ACCEPTOR_META_DATA, meta_data);
+                                    TOK_TYPE_ACCEPTOR_META_DATA, 0, meta_data);
             if (GSS_ERROR(major))
                 goto cleanup;
         }

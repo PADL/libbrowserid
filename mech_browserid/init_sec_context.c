@@ -111,6 +111,7 @@ gssBidInitAssertionToken(OM_uint32 *minor,
                          OM_uint32 *time_rec GSSBID_UNUSED)
 {
     OM_uint32 major;
+    int initialContextToken = (GSSBID_SM_STATE(ctx) == GSSBID_STATE_INITIAL);
 
     if (input_token != GSS_C_NO_BUFFER && input_token->length != 0) {
         major = GSS_S_DEFECTIVE_TOKEN;
@@ -118,7 +119,7 @@ gssBidInitAssertionToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (GSSBID_SM_STATE(ctx) == GSSBID_STATE_INITIAL) {
+    if (initialContextToken) {
         major = initBegin(minor, ctx, target_name, mech_type,
                           req_flags, time_req, input_chan_bindings);
         if (GSS_ERROR(major))
@@ -128,7 +129,8 @@ gssBidInitAssertionToken(OM_uint32 *minor,
     BID_ASSERT(ctx->cred->assertion.length != 0);
 
     major = gssBidMakeToken(minor, ctx, &ctx->cred->assertion,
-                            TOK_TYPE_INITIATOR_CONTEXT, output_token);
+                            TOK_TYPE_INITIATOR_CONTEXT, initialContextToken,
+                            output_token);
     if (GSS_ERROR(major))
         goto cleanup;
 

@@ -305,7 +305,7 @@ gss_accept_sec_context(OM_uint32 *minor,
 
     if (innerOutputToken.value != NULL) {
         tmpMajor = gssBidMakeToken(&tmpMinor, ctx, &innerOutputToken,
-                                   TOK_TYPE_ACCEPTOR_CONTEXT, output_token);
+                                   TOK_TYPE_ACCEPTOR_CONTEXT, 0, output_token);
         if (GSS_ERROR(tmpMajor)) {
             major = tmpMajor;
             goto cleanup;
