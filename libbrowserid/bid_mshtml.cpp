@@ -68,6 +68,7 @@ static WCHAR _BIDHTMLInterposeAssertionSignScript[] = L"                        
 ";
 
 static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                                                  \
+    var args = JSON.parse(window.dialogArguments);                                                  \
     var options = { siteName: args.siteName, silent: window.controller.silent,                      \
                     requiredEmail: args.requiredEmail };                                            \
                                                                                                     \
@@ -405,8 +406,10 @@ CBIDIdentityController::Invoke(
         hr = _PublishController();
         BID_BAIL_ON_HERROR(hr);
 
-        hr = _InterposeAssertionSign();
-        BID_BAIL_ON_HERROR(hr);
+        if (json_object_get(_args, "claims") != NULL) {
+            hr = _InterposeAssertionSign();
+            BID_BAIL_ON_HERROR(hr);
+        }
 
         hr = _AcquireAssertion();
         BID_BAIL_ON_HERROR(hr);
@@ -526,8 +529,10 @@ CBIDIdentityController::_PackDialogArgs(
         goto cleanup;
     }
 
-    err = _BIDJsonObjectSet(_context, _args, "claims", claims, 0);
-    BID_BAIL_ON_ERROR(err);
+    if (claims != NULL && json_object_size(claims)) {
+        err = _BIDJsonObjectSet(_context, _args, "claims", claims, 0);
+        BID_BAIL_ON_ERROR(err);
+    }
 
     err = _BIDJsonObjectSet(_context, _args, "audience",
                             json_string(szPackedAudience),
