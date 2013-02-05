@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS = foreign
 
 EXTRA_DIST = gssbrowserid_err.et libbrowserid_err.et \
 	mech_browserid.exports mech_browserid-noacceptor.exports  \
-	LICENSE AUTHORS
+	AUTHORS
 
 if GSSBID_BUILD_MECH
 
