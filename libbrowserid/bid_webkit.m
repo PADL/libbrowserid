@@ -389,7 +389,8 @@
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
 {
     if ([sender isEqual:webView] && frame == [sender mainFrame]) {
-        [self interposeAssertionSign:sender];
+        if ([claims count])
+            [self interposeAssertionSign:sender];
         [self acquireAssertion:sender];
     }
 }
