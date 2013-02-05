@@ -1,6 +1,6 @@
 CFLAGS=-I../.. -I../../libbrowserid
 LDFLAGS=-L/usr/local/lib -L../../libbrowserid/.libs
-LIBS=-lbrowserid -framework WebKit -framework Foundation -framework AppKit -ljansson -lcrypto -lcurl
+LIBS=-lbrowserid
 
 all: bidget bidverify
 

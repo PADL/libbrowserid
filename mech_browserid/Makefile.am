@@ -29,21 +29,18 @@ mech_browserid_la_DEPENDENCIES = $(GSSBID_EXPORTS) $(top_builddir)/libbrowserid/
 
 mech_browserid_la_CPPFLAGS = -DBUILD_GSSBID_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\" -I$(top_srcdir)/libbrowserid
 mech_browserid_la_CFLAGS   += \
-			@KRB5_CFLAGS@ @TARGET_CFLAGS@ @JANSSON_CFLAGS@ @OPENSSL_CFLAGS@
+			@KRB5_CFLAGS@ @TARGET_CFLAGS@ @JANSSON_CFLAGS@
 mech_browserid_la_CXXFLAGS += \
 			@KRB5_CFLAGS@ @OPENSAML_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ @TARGET_CFLAGS@
 mech_browserid_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols $(GSSBID_EXPORTS) -no-undefined \
-			@KRB5_LDFLAGS@ @JANSSON_LDFLAGS@ @CURL_LDFLAGS@ @OPENSSL_LDFLAGS@ @TARGET_LDFLAGS@
+			@KRB5_LDFLAGS@ @JANSSON_LDFLAGS@ @TARGET_LDFLAGS@
 if TARGET_WINDOWS
 mech_browserid_la_LDFLAGS += -debug
 endif
 
 mech_browserid_la_LIBADD   = @KRB5_LIBS@ ../libbrowserid/libbrowserid.la \
-		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@ @CURL_LIBS@ @OPENSSL_LIBS@
-if TARGET_MACOSX
-mech_browserid_la_LDFLAGS += -framework WebKit -framework AppKit -Wl,-sectcreate,__TEXT,__info_plist,Info.plist
-endif
+		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
 
 mech_browserid_la_SOURCES =    			\
 	acquire_cred.c				\

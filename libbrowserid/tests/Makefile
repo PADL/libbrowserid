@@ -1,6 +1,8 @@
 LIBS=-L/usr/local/lib -ljansson -lcurl
 
-all: bid_sig bid_vfy bid_doc bid_acq bid_b64 bid_acq.so bid_acq_ldr bid_fct
+# most of these tests will require libbrowserid to be built as a static library
+
+all: bid_acq
 
 bid_sig: bid_sig.c ../libbrowserid.la
 	clang -I../.. -I.. -g -Wall -o bid_sig bid_sig.c -lcrypto -L../.libs -lbrowserid $(LIBS)

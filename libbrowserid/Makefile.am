@@ -1,9 +1,14 @@
 AUTOMAKE_OPTIONS = foreign
 
+EXTRA_DIST = libbrowserid.exports
+
 bin_PROGRAMS = bidtool
+
+libbrowserid_la_EXPORTS = libbrowserid.exports
 
 libbrowserid_la_CFLAGS   = -Werror -Wall -Wunused-parameter
 libbrowserid_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
+libbrowserid_la_DEPENDENCIES = $(libbrowserid_la_EXPORTS)
 
 libbrowserid_la_CPPFLAGS = -DBUILD_GSSBID_LIB -I$(top_srcdir) -I$(top_srcdir)/libbrowserid
 libbrowserid_la_SOURCES =   \
@@ -31,13 +36,18 @@ libbrowserid_la_SOURCES =   \
     bid_x509.c              \
     vers.c
 
+libbrowserid_la_LIBADD   = @JANSSON_LIBS@ @CURL_LIBS@ @OPENSSL_LIBS@
+libbrowserid_la_LDFLAGS  = -export-symbols $(libbrowserid_la_EXPORTS) -no-undefined \
+			   @JANSSON_LDFLAGS@ @CURL_LDFLAGS@ @OPENSSL_LDFLAGS@ @TARGET_LDFLAGS@
+
 if TARGET_MACOSX
+libbrowserid_la_LDFLAGS += -framework WebKit -framework AppKit
 libbrowserid_la_SOURCES += bid_json.m bid_webkit.m
 else
 libbrowserid_la_SOURCES += bid_stubs.c
 endif
 
-noinst_LTLIBRARIES = libbrowserid.la
+lib_LTLIBRARIES = libbrowserid.la
 
 BUILT_SOURCES = vers.c
 
@@ -48,4 +58,4 @@ clean-generic:
 	$(RM) vers.c
 
 bidtool_SOURCES = bidtool.c
-bidtool_LDADD = $(noinst_LTLIBRARIES) @JANSSON_LDFLAGS@ @CURL_LDFLAGS@ @OPENSSL_LDFLAGS@ @TARGET_LDFLAGS@ @JANSSON_LIBS@ @CURL_LIBS@ @OPENSSL_LIBS@
+bidtool_LDADD = $(lib_LTLIBRARIES)

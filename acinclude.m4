@@ -47,6 +47,7 @@ AC_MSG_RESULT([yes])
 done
 if test x_$found_krb5 != x_yes; then
    AC_MSG_RESULT($found_krb5)
+if test x_$build_mech != x_no; then
    AC_MSG_ERROR([
 ----------------------------------------------------------------------
   Cannot find GSS-API/Kerberos libraries.
@@ -55,6 +56,7 @@ if test x_$found_krb5 != x_yes; then
   --with-krb5=(dir).
 ----------------------------------------------------------------------
 ])
+fi
 else
 	printf "Kerberos found in $krb5dir\n";
 	AC_SUBST(KRB5_CFLAGS)
