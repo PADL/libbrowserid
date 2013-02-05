@@ -17,7 +17,7 @@ the Moonshot code).
 
 If you would just like to build libbrowserid, then execute configure with the
 --disable-gss-mech flag. This will remove Kerberos as a dependency. Sample code
-for using it in a non-GSS application can be found in contrib/sample.
+for using it in a non-GSS application can be found in sample.
 
 Information on the BrowserID GSS protocol can be found in the document
 gss-browserid.md, however essentially the protocol is the same as for web-based
