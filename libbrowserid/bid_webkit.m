@@ -275,7 +275,6 @@
 - (void)closeIdentityDialog
 {
     [identityDialog close];
-    [NSApp stopModal];
 }
 
 - (void)abortWithError:(NSError *)error
@@ -332,6 +331,11 @@
         return NO;
 
     return YES;
+}
+
+- (void)windowWillClose:(NSNotification *)notification
+{
+    [NSApp stopModal];
 }
 
 - (void)interposeAssertionSign:(WebView *)sender
