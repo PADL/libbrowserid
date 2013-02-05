@@ -82,6 +82,6 @@ AX_CHECK_JANSSON
 AX_CHECK_OPENSSL
 AM_CONDITIONAL(OPENSSL, test "x$found_openssl" = "xyes")
 
-AC_CONFIG_FILES([Makefile libbrowserid/Makefile mech_browserid/Makefile
+AC_CONFIG_FILES([Makefile libbrowserid/Makefile sample/Makefile mech_browserid/Makefile
 		 mech_browserid.spec])
 AC_OUTPUT
