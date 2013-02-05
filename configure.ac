@@ -39,7 +39,7 @@ build_mech=yes
 AC_ARG_ENABLE(gss-mech,
   [  --enable-gss-mech whether to build GSS BrowserID mechanism: yes/no; default yes ],
   [ if test "x$enableval" = "xyes" -o "x$enableval" = "xno" ; then
-      echo "building mechanism $build_mech"
+      build_mech=$enableval
     else
       echo "--enable-gss-mech argument must be yes or no"
       exit -1
