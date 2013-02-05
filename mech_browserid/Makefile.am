@@ -4,6 +4,8 @@ EXTRA_DIST = gssbrowserid_err.et libbrowserid_err.et \
 	mech_browserid.exports mech_browserid-noacceptor.exports  \
 	LICENSE AUTHORS
 
+if GSSBID_BUILD_MECH
+
 gssincludedir = $(includedir)/gssapi
 gssinclude_HEADERS = gssapi_browserid.h
 
@@ -153,3 +155,5 @@ libbrowserid_err.c: libbrowserid_err.h
 
 clean-generic:
 	rm -f gssbrowserid_err.[ch] libbrowserid_err.[ch]
+
+endif

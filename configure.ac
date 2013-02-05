@@ -36,17 +36,17 @@ dnl     TARGET_LDFLAGS=""
 dnl   esac
 
 build_mech=yes
-AC_ARG_ENABLE(gss-mechanism,
-  [  --enable-gss-mechanism whether to build GSS BrowserID mechanism: yes/no; default yes ],
+AC_ARG_ENABLE(gss-mech,
+  [  --enable-gss-mech whether to build GSS BrowserID mechanism: yes/no; default yes ],
   [ if test "x$enableval" = "xyes" -o "x$enableval" = "xno" ; then
-      build_mech=$enableval
+      echo "building mechanism $build_mech"
     else
-      echo "--enable-gss-mechanism argument must be yes or no"
+      echo "--enable-gss-mech argument must be yes or no"
       exit -1
     fi
   ])
 
-AM_CONDITIONAL(GSSBID_BUILD_MECH, test "xbuild_mech" != "xno")
+AM_CONDITIONAL(GSSBID_BUILD_MECH, test "x$build_mech" = "xyes")
 
 acceptor=yes
 AC_ARG_ENABLE(acceptor,
@@ -62,7 +62,7 @@ AC_ARG_ENABLE(acceptor,
 if test "x$acceptor" = "xyes" ; then
   TARGET_CFLAGS="$TARGET_CFLAGS -DGSSBID_ENABLE_ACCEPTOR"
 fi
-AM_CONDITIONAL(GSSBID_ENABLE_ACCEPTOR, test "x$acceptor" != "xno")
+AM_CONDITIONAL(GSSBID_ENABLE_ACCEPTOR, test "x$acceptor" = "xyes")
 
 AC_SUBST(TARGET_CFLAGS)
 AC_SUBST(TARGET_LDFLAGS)
