@@ -416,6 +416,12 @@ _BIDSetKeyAgreementObject(
     json_t *json,
     json_t *object);
 
+BIDError
+_BIDGetECDHSize(
+    BIDContext context BID_UNUSED,
+    json_t *ecDhParams,
+    ssize_t *pcbKey);
+
 /*
  * bid_dhparams.c
  */
@@ -630,11 +636,6 @@ _BIDGenerateECDHKey(
     BIDContext context,
     json_t *ecDhParams,
     BIDJWK *pEcDhKey);
-
-BIDError
-_BIDGenerateECDHParams(
-    BIDContext context,
-    json_t **pEcDhParams);
 
 /*
  * bid_ppal.c

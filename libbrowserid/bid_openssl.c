@@ -1836,27 +1836,20 @@ _BIDMakeECKeyByCurve(
     EC_KEY *ecKey = NULL;
     const char *szCurve;
     int nid = 0;
-    uint32_t assertedCurve = 0;
 
     szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
     if (szCurve != NULL) {
         if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
             nid = NID_X9_62_prime256v1;
-            assertedCurve = BID_CONTEXT_ECDH_CURVE_P256;
         } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
             nid = NID_secp384r1;
-            assertedCurve = BID_CONTEXT_ECDH_CURVE_P384;
         } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
             nid = NID_secp521r1;
-            assertedCurve = BID_CONTEXT_ECDH_CURVE_P521;
         }
     }
 
     if (nid == 0) {
         err = BID_S_UNKNOWN_EC_CURVE;
-        goto cleanup;
-    } else if (assertedCurve != context->DHKeySize) {
-        err = BID_S_INVALID_EC_CURVE;
         goto cleanup;
     }
 
@@ -1870,43 +1863,6 @@ _BIDMakeECKeyByCurve(
     *pEcKey = ecKey;
 
 cleanup:
-    return err;
-}
-
-BIDError
-_BIDGenerateECDHParams(
-    BIDContext context,
-    json_t **pEcDhParams)
-{
-    BIDError err;
-    json_t *ecDhParams = NULL;
-    DH *dh = NULL;
-    char *szCurve;
-
-    BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
-    BID_ASSERT(context->DHKeySize != 0);
-
-    ecDhParams = json_object();
-    if (ecDhParams == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    err = BIDGetContextParam(context, BID_PARAM_ECDH_CURVE, (void **)&szCurve);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDJsonObjectSet(context, ecDhParams, "crv", json_string(szCurve),
-                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-    BID_BAIL_ON_ERROR(err);
-
-    err = BID_S_OK;
-    *pEcDhParams = ecDhParams;
-
-cleanup:
-    if (err != BID_S_OK)
-        json_decref(ecDhParams);
-    DH_free(dh);
-
     return err;
 }
 
@@ -2053,7 +2009,10 @@ _BIDComputeECDHKey(
     err = _BIDGetJsonECPointValue(context, group, pubValue, &pub);
     BID_BAIL_ON_ERROR(err);
 
-    cbKey = (context->DHKeySize / 8) + 1; /* rounding */
+    err = _BIDGetECDHSize(context, ecDhParams, &cbKey);
+
+    cbKey /= 8;
+    cbKey++;
 
     pbKey = BIDMalloc(cbKey);
     if (pbKey == NULL) {

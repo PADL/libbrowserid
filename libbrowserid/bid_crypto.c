@@ -39,6 +39,41 @@
 
 #include "bid_private.h"
 
+static BIDError
+_BIDGenerateECDHParams(
+    BIDContext context,
+    json_t **pEcDhParams)
+{
+    BIDError err;
+    json_t *ecDhParams = NULL;
+    char *szCurve;
+
+    BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
+    BID_ASSERT(context->DHKeySize != 0);
+
+    ecDhParams = json_object();
+    if (ecDhParams == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = BIDGetContextParam(context, BID_PARAM_ECDH_CURVE, (void **)&szCurve);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, ecDhParams, "crv", json_string(szCurve),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+    *pEcDhParams = ecDhParams;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(ecDhParams);
+
+    return err;
+}
+
 BIDError
 _BIDIdentityComputeKey(
     BIDContext context,
@@ -55,9 +90,18 @@ _BIDIdentityComputeKey(
 
         params = json_object_get(dh, "params");
 
-        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
+        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
+            ssize_t cbKey;
+
+            err = _BIDGetECDHSize(context, params, &cbKey);
+            if (err != BID_S_OK)
+                return err;
+
+            if (cbKey < context->DHKeySize)
+                return BID_S_INVALID_EC_CURVE;
+
             err = _BIDComputeECDHKey(context, dh, params, &identity->SecretHandle);
-        else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
+        } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
             err = _BIDComputeDHKey(context, dh, params, &identity->SecretHandle);
         else
             err = BID_S_NO_KEY;
@@ -479,4 +523,29 @@ _BIDSetKeyAgreementObject(
         return BID_S_NO_KEY;
 
     return _BIDJsonObjectSet(context, json, key, object, BID_JSON_FLAG_REQUIRED);
+}
+
+BIDError
+_BIDGetECDHSize(
+    BIDContext context BID_UNUSED,
+    json_t *ecDhParams,
+    ssize_t *pcbKey)
+{
+    const char *szCurve;
+    ssize_t cbKey = 0;
+
+    szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
+    if (szCurve != NULL) {
+        if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
+            cbKey = BID_CONTEXT_ECDH_CURVE_P256;
+        } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
+            cbKey = BID_CONTEXT_ECDH_CURVE_P384;
+        } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
+            cbKey = BID_CONTEXT_ECDH_CURVE_P521;
+        }
+    }
+
+    *pcbKey = cbKey;
+
+    return (cbKey == 0) ? BID_S_UNKNOWN_EC_CURVE : BID_S_OK;
 }
