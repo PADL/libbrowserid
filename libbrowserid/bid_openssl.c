@@ -1207,6 +1207,9 @@ _BIDComputeDHKey(
     if (cbKey < 0) {
         err = BID_S_INVALID_KEY;
         goto cleanup;
+    } else if (cbKey * 8 < context->DHKeySize) {
+        err = BID_S_KEY_TOO_SHORT;
+        goto cleanup;
     }
 
     pbKey = BIDMalloc(cbKey);

@@ -1681,8 +1681,7 @@ _BIDComputeDHKey(
     BCRYPT_KEY_HANDLE hPrivateKey = NULL;
     BCRYPT_KEY_HANDLE hPublicKey = NULL;
     BCRYPT_SECRET_HANDLE hSecret = NULL;
-    PUCHAR pbKey = NULL;
-    DWORD cbKey = 0;
+    DWORD cbKey = 0, cbResult;
     BCryptBuffer pub = { 0 };
     struct BIDSecretHandleDesc keyInput = { 0 };
 
@@ -1713,6 +1712,20 @@ _BIDComputeDHKey(
                         TRUE /* bPublic */, &hPublicKey);
     BID_BAIL_ON_ERROR(err);
 
+    /*
+     * Check the strength of the public key to prevent a downgrade
+     * attack. Note that cbKey is in bits and can be directly compared
+     * to context->DHKeySize.
+     */
+    nts = BCryptGetProperty(hPublicKey, BCRYPT_KEY_STRENGTH, (PUCHAR)&cbKey,
+                            sizeof(cbKey), &cbResult, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    if (cbKey < context->DHKeySize) {
+        err = BID_S_KEY_TOO_SHORT;
+        goto cleanup;
+    }
+
     nts = BCryptSecretAgreement(hPrivateKey, hPublicKey, &hSecret, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
@@ -1725,10 +1738,6 @@ _BIDComputeDHKey(
     hSecret = NULL;
 
 cleanup:
-    if (err != BID_S_OK) {
-        SecureZeroMemory(pbKey, cbKey);
-        BIDFree(pbKey);
-    }
     if (hAlgorithm != NULL)
         BCryptCloseAlgorithmProvider(hAlgorithm, 0);
     if (hPrivateKey != NULL)
