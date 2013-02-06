@@ -47,7 +47,7 @@ A summary of the BrowserID protocol can be found at [BIDOVER]. Essentially it in
 * A user's browser generates a short-term key pair
 * The key pair is signed by the user's identity provider (which has
   previously verified the user's e-mail address and authenticated them)
-* The IdP signs the public key and issues a certificate
+* The IdP returns a certificate for the user
 * When authenticating to a relying party, the browser generates an
   "identity assertion" (similar to a Kerberos authenticator), containing
   the RP domain and an expiration time (generally a few minutes after it
