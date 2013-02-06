@@ -1974,8 +1974,8 @@ _BIDComputeECDHKey(
     EC_KEY *ec = NULL;
     const EC_GROUP *group = NULL;
     BIGNUM *d = NULL;
-    EC_POINT *priv = NULL;
-    EC_POINT *pub = NULL;
+    EC_POINT *peerKey = NULL;
+    EC_POINT *localKey = NULL;
 
     *pSecretHandle = NULL;
 
@@ -1996,17 +1996,22 @@ _BIDComputeECDHKey(
     err = _BIDMakeECKeyByCurve(context, ecDhParams, &ec);
     BID_BAIL_ON_ERROR(err);
 
+    group = EC_KEY_get0_group(ec);
+
     if (EC_KEY_set_private_key(ec, d) < 0) {
         err = BID_S_CRYPTO_ERROR;
         goto cleanup;
     }
 
-    group = EC_KEY_get0_group(ec);
-
-    err = _BIDGetJsonECPointValue(context, group, ecDhKey, &priv);
+    err = _BIDGetJsonECPointValue(context, group, ecDhKey, &localKey);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetJsonECPointValue(context, group, pubValue, &pub);
+    if (EC_KEY_set_public_key(ec, localKey) < 0) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    err = _BIDGetJsonECPointValue(context, group, pubValue, &peerKey);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDGetECDHSize(context, ecDhParams, &cbKey);
@@ -2021,7 +2026,7 @@ _BIDComputeECDHKey(
         goto cleanup;
     }
 
-    cbKey = ECDH_compute_key(pbKey, cbKey, pub, ec, _BIDKDFIdentity);
+    cbKey = ECDH_compute_key(pbKey, cbKey, peerKey, ec, _BIDKDFIdentity);
     if (cbKey < 0) {
         err = BID_S_CRYPTO_ERROR;
         goto cleanup;
@@ -2036,8 +2041,8 @@ cleanup:
             memset(pbKey, 0, cbKey);
         BIDFree(pbKey);
     }
-    EC_POINT_free(pub);
-    EC_POINT_free(priv);
+    EC_POINT_free(peerKey);
+    EC_POINT_free(localKey);
     EC_KEY_free(ec);
     BN_free(d);
 
