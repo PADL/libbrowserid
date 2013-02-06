@@ -104,9 +104,9 @@ gssBidAllocContext(OM_uint32 *minor,
     }
 
     if (ctx->encryptionType != ENCTYPE_NULL) {
-        cbKey <<= 6; /* 128 bit => 1024 bit DH */
+        uint32_t dhKeyBits = gssBidMapKeyLength(cbKey * 8);
 
-        err = BIDSetContextParam(ctx->bidContext, BID_PARAM_DH_KEYEX_SIZE, &cbKey);
+        err = BIDSetContextParam(ctx->bidContext, BID_PARAM_DH_MODULUS_SIZE, &dhKeyBits);
         if (err != BID_S_OK) {
             major = gssBidMapError(minor, err);
             goto cleanup;

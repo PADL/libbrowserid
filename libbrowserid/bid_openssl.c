@@ -114,7 +114,7 @@ _BIDGetJsonBNValue(
 
     if ((encoding == BID_ENCODING_BASE64_URL) ||
         !_BIDIsLegacyJWK(context, jwk)) {
-        unsigned char buf[512];
+        unsigned char buf[2048]; /* for large DH keys */
         unsigned char *pBuf = buf;
         size_t len = sizeof(buf);
         BIDError err2;

@@ -395,3 +395,37 @@ gssBidAllocIov(gss_iov_buffer_t iov, size_t size)
 
     return 0;
 }
+
+/* NIST SP800-57 Part 1 Revision 3 Table 2 */
+static struct {
+    unsigned int symmetricKeyLength;
+    unsigned int dhKeyLength;
+} gssBidKeySizeMap[] = {
+    { 80,   3072    },
+    { 112,  2048    },
+    { 128,  3072    },
+    { 192,  7680    },
+    { 256,  15360   },
+};
+
+unsigned int
+gssBidMapKeyLength(unsigned int symmetricKeyLength)
+{
+    size_t i;
+    unsigned int dhKeyLength = 0;
+
+    for (i = 0;
+         i < sizeof(gssBidKeySizeMap) / sizeof(gssBidKeySizeMap[0]);
+         i++) {
+        if (gssBidKeySizeMap[i].symmetricKeyLength >= symmetricKeyLength) {
+            dhKeyLength = gssBidKeySizeMap[i].dhKeyLength;
+            break;
+        }
+    }
+
+    /* Currently generating longer keys is pretty expensive. */
+    if (dhKeyLength > 8192)
+        dhKeyLength = 8192;
+
+    return dhKeyLength;
+}

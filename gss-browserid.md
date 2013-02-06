@@ -17,6 +17,7 @@ The GSS BrowserID mechanism imports the [BrowserID spec][BIDSPEC].
 
 [BIDSPEC]: https://github.com/mozilla/id-specs/blob/prod/browserid/index.md "BrowserID specification"
 [BIDOVER]: https://developer.mozilla.org/en-US/docs/Persona/Protocol_Overview
+[NIST80056A]: http://csrc.nist.gov/publications/nistpubs/800-57/sp800-57_part1_rev3_general.pdf
 [RFC2743]: http://www.ietf.org/rfc/rfc2743.txt
 [RFC3961]: http://www.ietf.org/rfc/rfc3961.txt
 [RFC4121]: http://www.ietf.org/rfc/rfc4121.txt
@@ -449,7 +450,8 @@ relying party: "g" contains the generator, "p" the prime, and "y" the public
 value. All are base64 URL encoded.
 
 The prime length should be an equivalent number of bits to the negotiated
-[RFC4121] encryption type: that is, at least 1024 bits for a 128 bit AES key.
+[RFC4121] encryption type: that is, at least 3072 bits for a 128 bit AES key
+(see [NIST80056A]).
 
 **TODO** is this strong enough?
 

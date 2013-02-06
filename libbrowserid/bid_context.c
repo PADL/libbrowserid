@@ -166,8 +166,12 @@ BIDSetContextParam(
     case BID_PARAM_SKEW:
         context->Skew = *(uint32_t *)value;
         break;
-    case BID_PARAM_DH_KEYEX_SIZE:
-        context->DHKeySize = *(uint32_t *)value;
+    case BID_PARAM_DH_MODULUS_SIZE:
+        if (*(uint32_t *)value == 0 &&
+            (context->ContextOptions & BID_CONTEXT_DH_KEYEX))
+            err = BID_S_INVALID_PARAMETER;
+        else
+            context->DHKeySize = *(uint32_t *)value;
         break;
     case BID_PARAM_AUTHORITY_CACHE_NAME:
     case BID_PARAM_REPLAY_CACHE_NAME:
@@ -292,7 +296,7 @@ BIDGetContextParam(
     case BID_PARAM_TICKET_CACHE:
         *pValue = context->TicketCache;
         break;
-    case BID_PARAM_DH_KEYEX_SIZE:
+    case BID_PARAM_DH_MODULUS_SIZE:
         *((uint32_t *)pValue) = context->DHKeySize;
         break;
     case BID_PARAM_PARENT_WINDOW:
