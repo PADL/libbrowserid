@@ -1989,7 +1989,7 @@ cleanup:
 }
 
 static void *
-_KDFIdentity(
+_BIDKDFIdentity(
     const void *in,
     size_t inlen,
     void *out,
@@ -2061,7 +2061,7 @@ _BIDComputeECDHKey(
         goto cleanup;
     }
 
-    cbKey = ECDH_compute_key(pbKey, cbKey, pub, ec, _KDFIdentity);
+    cbKey = ECDH_compute_key(pbKey, cbKey, pub, ec, _BIDKDFIdentity);
     if (cbKey < 0) {
         err = BID_S_CRYPTO_ERROR;
         goto cleanup;
