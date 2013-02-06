@@ -196,7 +196,12 @@ gssBidInitResponseToken(OM_uint32 *minor,
             goto cleanup;
     }
 
-    ulReqFlags = 0;
+    /*
+     * This flag indicates that it is OK to not require the complete URI
+     * in the X.509 certificate. This is a security vs convenience tradeoff
+     * which we should make configurable.
+     */
+    ulReqFlags = BID_RP_FLAG_HOSTNAME_MATCH_OK;
     if (ctx->encryptionType != ENCTYPE_NULL)
         ulReqFlags |= BID_RP_FLAG_HAVE_SESSION_KEY;
     if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {

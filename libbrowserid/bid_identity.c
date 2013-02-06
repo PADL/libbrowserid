@@ -545,8 +545,12 @@ _BIDValidateSubject(
 
         assertedURI = json_object_get(assertedPrincipal, "uri");
         if (json_is_string(assertedURI) &&
-            strcmp(json_string_value(assertedURI), szPackedAudience) == 0)
+            strcmp(json_string_value(assertedURI), szPackedAudience) == 0) {
             bMatchedSubject++;
+        } else if ((ulReqFlags & BID_VERIFY_FLAG_HOSTNAME_MATCH_OK) == 0) {
+            err = BID_S_BAD_SUBJECT;
+            goto cleanup;
+        }
 
         assertedPrincipalValue = json_object_get(assertedPrincipal, "hostname");
     } else {

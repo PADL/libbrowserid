@@ -896,6 +896,12 @@ struct BIDIdentityDesc {
     BIDSecretHandle SecretHandle;
 };
 
+/* Private input flags (ulReqFlags) */
+#define BID_VERIFY_FLAG_RP                      0x00010000
+#define BID_VERIFY_FLAG_HOSTNAME_MATCH_OK       0x00020000
+
+/* Private output flags (ulRetFlags) */
+
 BIDError
 _BIDVerifyLocal(
     BIDContext context,

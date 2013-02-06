@@ -316,7 +316,6 @@ BIDFreeAssertion(
 
 /* Input flags (ulReqFlags) */
 #define BID_VERIFY_FLAG_REAUTH                  0x00000001
-#define BID_VERIFY_FLAG_RP                      0x00000002
 
 /* Output flags (ulRetFlags) */
 #define BID_VERIFY_FLAG_REMOTE                  0x00010000
@@ -432,6 +431,7 @@ BIDStoreTicketInCache(
 #define BID_RP_FLAG_INITIAL                     0x00000002 /* not reauth-based auth */
 #define BID_RP_FLAG_VERIFY_NONCE                0x00000004
 #define BID_RP_FLAG_X509_THUMBPRINT             0x00000008 /* send thumbprint not cert */
+#define BID_RP_FLAG_HOSTNAME_MATCH_OK           0x00000010 /* don't require URI SAN in cert */
 
 /* Output flags (ulRetFlags) */
 #define BID_RP_FLAG_VALIDATED_CERTS             0x00020000

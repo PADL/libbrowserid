@@ -139,7 +139,8 @@ BIDVerifyRPResponseToken(
     BIDBackedAssertion backedAssertion = NULL;
     json_t *dh;
     json_t *certParams;
-    uint32_t ulVerifyFlags = 0;
+    uint32_t ulVerifyReqFlags = 0;
+    uint32_t ulVerifyRetFlags = 0;
 
     *pulRetFlags = 0;
 
@@ -159,16 +160,20 @@ BIDVerifyRPResponseToken(
 
     certParams = json_object_get(identity->PrivateAttributes, "anchors");
 
+    ulVerifyReqFlags = BID_VERIFY_FLAG_RP;
+    if (ulReqFlags & BID_RP_FLAG_HOSTNAME_MATCH_OK)
+        ulVerifyReqFlags |= BID_VERIFY_FLAG_HOSTNAME_MATCH_OK;
+
     err = _BIDVerifyLocal(context, NULL, backedAssertion, NULL, szAudienceName,
-                          NULL, 0, time(NULL), BID_VERIFY_FLAG_RP, verifyCred,
-                          certParams, NULL, &ulVerifyFlags);
+                          NULL, 0, time(NULL), ulVerifyReqFlags, verifyCred,
+                          certParams, NULL, &ulVerifyRetFlags);
     BID_BAIL_ON_ERROR(err);
 
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
 
-    if (ulVerifyFlags & BID_VERIFY_FLAG_VALIDATED_CERTS)
+    if (ulVerifyRetFlags & BID_VERIFY_FLAG_VALIDATED_CERTS)
         *pulRetFlags |= BID_RP_FLAG_VALIDATED_CERTS;
-    if (ulVerifyFlags & BID_VERIFY_FLAG_X509)
+    if (ulVerifyRetFlags & BID_VERIFY_FLAG_X509)
         *pulRetFlags |= BID_RP_FLAG_X509;
 
     if (*pulRetFlags & BID_RP_FLAG_VALIDATED_CERTS) {
