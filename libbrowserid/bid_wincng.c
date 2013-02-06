@@ -1491,8 +1491,6 @@ _BIDGenerateDHParams(
     err = _BIDCryptGetKeyParam(context, hKey, KP_G, dhParams, "g");
     BID_BAIL_ON_ERROR(err);
 
-    _BIDOutputDebugJson(dhParams);
-
     err = BID_S_OK;
     *pDhParams = dhParams;
 

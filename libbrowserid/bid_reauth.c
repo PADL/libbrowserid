@@ -297,10 +297,6 @@ _BIDMakeAuthenticator(
     err = _BIDJsonObjectSet(context, ap->Payload, "cbt", cbt, 0);
     BID_BAIL_ON_ERROR(err);
 
-#ifdef GSSBID_DEBUG
-    _BIDOutputDebugJson(ap->Payload);
-#endif
-
     *pAuthenticator = ap;
 
 cleanup:
