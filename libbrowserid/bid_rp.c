@@ -50,7 +50,7 @@ BIDMakeRPResponseToken(
     uint32_t *pulRetFlags)
 {
     BIDError err;
-    struct BIDJWTDesc jwt;
+    struct BIDJWTDesc jwt = { 0 };
     struct BIDBackedAssertionDesc backedAssertion = { 0 };
     BIDJWK key = NULL;
     json_t *payload = NULL;
