@@ -259,8 +259,8 @@ The initial context token is framed per section 1 of [RFC2743].
                     }
             END
             
-Subsequent context tokens do not have this framing, i.e. they consist only
-of the innerToken.
+Metadata and subsequent context tokens do not have this framing, i.e. they
+consist only of the innerToken.
 
 The innerToken always contains a two octet token ID followed by a BrowserID
 backed assertion. This document defines the following token IDs:
