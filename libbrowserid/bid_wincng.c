@@ -337,6 +337,7 @@ _BIDMapECDHAlgorithmID(
     json_t *ecDhParams,
     LPCWSTR *pAlgID)
 {
+    BIDError err;
     LPCWSTR algID = NULL;
     ssize_t curve;
 
@@ -1397,7 +1398,6 @@ _BIDMakeECDHKey(
 {
     BIDError err;
     NTSTATUS nts;
-    LPCSTR szCurve = NULL;
     BCryptBuffer x = { 0 };
     BCryptBuffer y = { 0 };
     BCryptBuffer d = { 0 };
