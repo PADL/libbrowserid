@@ -157,7 +157,7 @@ _BIDUpdateReplayCache(
          * Store the number of bits of entropy in the original key so that we don't
          * derive a "strong" key from an originally weak key.
          */
-        err = _BIDSaveDHKeySize(context, identity, 1, rdata);
+        err = _BIDSaveKeyAgreementStrength(context, identity, 1, rdata);
         BID_BAIL_ON_ERROR(err);
     } else {
         /* XXX is this even necessary? */

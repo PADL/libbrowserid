@@ -76,10 +76,10 @@ BIDMakeRPResponseToken(
         err = _BIDJsonObjectSet(context, payload, "n", json_object_get(identity->PrivateAttributes, "n"), 0);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDGetIdentityDHPublicValue(context, identity, &dh);
+        err = _BIDGetKeyAgreementPublicValue(context, identity, &dh);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDJsonObjectSet(context, payload, "dh", dh, BID_JSON_FLAG_CONSUME_REF);
+        err = _BIDSetKeyAgreementObject(context, payload, dh);
         BID_BAIL_ON_ERROR(err);
 
         if (_BIDGetIdentityReauthTicket(context, identity, &ticket) == BID_S_OK) {
@@ -147,9 +147,9 @@ BIDVerifyRPResponseToken(
     err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
     BID_BAIL_ON_ERROR(err);
 
-    dh = json_object_get(backedAssertion->Assertion->Payload, "dh");
-    if (dh != NULL) {
-        err = _BIDSetIdentityDHPublicValue(context, identity, json_object_get(dh, "y"));
+    err = _BIDGetKeyAgreementObject(context, backedAssertion->Assertion->Payload, &dh);
+    if (err == BID_S_OK) {
+        err = _BIDSetKeyAgreementPublicValue(context, identity, dh);
         BID_BAIL_ON_ERROR(err);
     }
 

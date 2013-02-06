@@ -44,14 +44,17 @@ _BIDMakeClaims(
     BIDContext context,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
-    json_t **pClaims)
+    json_t **pClaims,
+    json_t **pKey)
 {
     BIDError err;
     json_t *claims = NULL;
     json_t *cbt = NULL;
     json_t *dh = NULL;
+    json_t *key = NULL;
 
     *pClaims = NULL;
+    *pKey = NULL;
 
     claims = json_object();
     if (claims == NULL) {
@@ -67,20 +70,38 @@ _BIDMakeClaims(
         BID_BAIL_ON_ERROR(err);
     }
 
-    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        err = _BIDGetDHParams(context, &dh);
+    if (context->ContextOptions & BID_CONTEXT_KEYEX_MASK) {
+        err = _BIDGetKeyAgreementParams(context, &dh);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDJsonObjectSet(context, claims, "dh", dh, 0);
+        err = _BIDSetKeyAgreementObject(context, claims, dh);
+        BID_BAIL_ON_ERROR(err);
+
+        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
+            err = _BIDGenerateECDHKey(context, dh, &key);
+        else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
+            err = _BIDGenerateDHKey(context, dh, &key);
+        BID_BAIL_ON_ERROR(err);
+
+        /* Copy public value to parameters so we can send them. */
+        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
+            err = _BIDJsonObjectSet(context, dh, "x", json_object_get(key, "x"), BID_JSON_FLAG_REQUIRED);
+            BID_BAIL_ON_ERROR(err);
+        }
+
+        err = _BIDJsonObjectSet(context, dh, "y", json_object_get(key, "y"), BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);
     }
 
     err = BID_S_OK;
     *pClaims = claims;
+    *pKey = key;
 
 cleanup:
-    if (err != BID_S_OK)
+    if (err != BID_S_OK) {
         json_decref(claims);
+        json_decref(key);
+    }
     json_decref(cbt);
     json_decref(dh);
 
@@ -146,19 +167,8 @@ BIDAcquireAssertion(
     }
 #endif
 
-    err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings, &claims);
+    err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings, &claims, &key);
     BID_BAIL_ON_ERROR(err);
-
-    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        json_t *dh = json_object_get(claims, "dh");
-
-        err = _BIDGenerateDHKey(context, dh, &key);
-        BID_BAIL_ON_ERROR(err);
-
-        /* Copy public value to parameters so we can send them. */
-        err = _BIDJsonObjectSet(context, dh, "y", json_object_get(key, "y"), BID_JSON_FLAG_REQUIRED);
-        BID_BAIL_ON_ERROR(err);
-    }
 
     if (ulReqFlags & BID_ACQUIRE_FLAG_NONCE) {
         err = _BIDGenerateNonce(context, &n);
@@ -179,8 +189,8 @@ BIDAcquireAssertion(
     if (pAssertedIdentity != NULL) {
         BIDIdentity assertedIdentity = *pAssertedIdentity;
 
-        if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-            err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "dh", key, 0);
+        if (context->ContextOptions & BID_CONTEXT_KEYEX_MASK) {
+            err = _BIDSetKeyAgreementObject(context, assertedIdentity->PrivateAttributes, key);
             BID_BAIL_ON_ERROR(err);
         }
 

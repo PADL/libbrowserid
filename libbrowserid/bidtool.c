@@ -74,6 +74,7 @@ BIDPrintVerboseTicketCacheEntry(
     void *data BID_UNUSED)
 {
     size_t ulDHKeySize = 0;
+    const char *szECDHCurve = NULL;
     time_t issueTime, certExpiryTime, tktExpiryTime;
     json_t *tkt = json_object_get(j, "tkt");
     uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
@@ -83,11 +84,15 @@ BIDPrintVerboseTicketCacheEntry(
     _BIDGetJsonTimestampValue(gContext, tkt, "exp", &tktExpiryTime);
 
     ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
+    szECDHCurve = json_string_value(json_object_get(j, "crv"));
 
     printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
     printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
     printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
-    printf("DH key length:    %zd bits\n", ulDHKeySize);
+    if (ulDHKeySize)
+        printf("DH key length:    %zd bits\n", ulDHKeySize);
+    else if (szECDHCurve != NULL)
+        printf("ECDH curve:       %s\n", szECDHCurve);
     printf("Cert issue time:  %s", ctime(&issueTime));
     printf("Cert expiry:      %s", ctime(&certExpiryTime));
     printf("Ticket expiry:    %s", ctime(&tktExpiryTime));
@@ -208,6 +213,7 @@ BIDPrintVerboseReplayCacheEntry(
     time_t issueTime, certExpiryTime, assertionExpiryTime;
     uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
     uint32_t ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
+    const char *szECDHCurve = json_string_value(json_object_get(j, "crv"));
 
     _BIDBase64UrlDecode(k, &pbHash, &cbHash);
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
@@ -227,7 +233,10 @@ BIDPrintVerboseReplayCacheEntry(
         printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
         printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
         printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
-        printf("DH key length:    %u bits\n", ulDHKeySize);
+        if (ulDHKeySize)
+            printf("DH key length:    %zd bits\n", ulDHKeySize);
+        else if (szECDHCurve != NULL)
+            printf("ECDH curve:       %s\n", szECDHCurve);
     }
 
     BIDPrintTicketFlags(ulTicketFlags);

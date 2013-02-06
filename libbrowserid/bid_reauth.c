@@ -45,11 +45,11 @@
 
 static BIDError
 _BIDMakeTicketCacheKey(
-    BIDContext context BID_UNUSED,
-    uint32_t DHKeySize,
+    BIDContext context,
     const char *szPackedAudience,
     char **pszCacheKey)
 {
+    BIDError err;
     char szCachePrefix[64];
     char *szCacheKey = NULL;
     size_t cchCachePrefix, cchPackedAudience;
@@ -61,11 +61,23 @@ _BIDMakeTicketCacheKey(
         return BID_S_INVALID_PARAMETER;
 
     /*
-     * Encode the number of bits in the DH key so we can quickly find an
-     * ticket that suits the context encryption type.
+     * Encode the number of bits in the DH key, or the ECDH curve, so we can
+     * quickly find a ticket that suits the context encryption type.
      */
+    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
+        const char *szCurve;
 
-    snprintf(szCachePrefix, sizeof(szCachePrefix), "%u$", DHKeySize);
+        err = BIDGetContextParam(context, BID_PARAM_ECDH_CURVE, (void **)&szCurve);
+        if (err != BID_S_OK)
+            return err;
+
+        snprintf(szCachePrefix, sizeof(szCachePrefix), "%s$", szCurve);
+    } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
+        snprintf(szCachePrefix, sizeof(szCachePrefix), "%u$", context->DHKeySize);
+    } else {
+        return BID_S_CACHE_KEY_NOT_FOUND;
+    }
+
     cchCachePrefix = strlen(szCachePrefix);
     cchPackedAudience = strlen(szPackedAudience);
     cchCacheKey = cchCachePrefix + cchPackedAudience;
@@ -175,7 +187,7 @@ _BIDStoreTicketInCache(
                             BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDSaveDHKeySize(context, identity, 0, cred);
+    err = _BIDSaveKeyAgreementStrength(context, identity, 0, cred);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDGetIdentitySubject(context, identity, &szSubject);
@@ -184,8 +196,7 @@ _BIDStoreTicketInCache(
     err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDMakeTicketCacheKey(context, context->DHKeySize,
-                                 szPackedAudience, &szCacheKey);
+    err = _BIDMakeTicketCacheKey(context, szPackedAudience, &szCacheKey);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetCacheObject(context, context->TicketCache, szCacheKey, cred);
@@ -410,7 +421,7 @@ _BIDFindTicketInCache(
     args.szIdentityName = szIdentityName;
     args.cred = NULL;
 
-    err = _BIDMakeTicketCacheKey(context, context->DHKeySize, szPackedAudience, &args.szCacheKey);
+    err = _BIDMakeTicketCacheKey(context, szPackedAudience, &args.szCacheKey);
     BID_BAIL_ON_ERROR(err);
 
     if (szIdentityName != NULL) {
@@ -441,6 +452,33 @@ cleanup:
     return err;
 }
 
+static BIDError
+_BIDValidateReauthCredStrength(
+    BIDContext context,
+    json_t *cred)
+{
+    BIDError err;
+
+    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
+        const char *szCredCurve = json_string_value(json_object_get(cred, "crv"));
+        const char *szContextCurve;
+
+        err = BIDGetContextParam(context, BID_PARAM_ECDH_CURVE, (void **)&szContextCurve);
+        if (err != BID_S_OK)
+            return err;
+
+        if (szCredCurve == NULL || strcmp(szCredCurve, szContextCurve) != 0)
+            return BID_S_INVALID_EC_CURVE;
+    } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
+        uint32_t ulDHKeySize = json_integer_value(json_object_get(cred, "dh-key-size"));
+
+        if (ulDHKeySize < context->DHKeySize)
+            return BID_S_KEY_TOO_SHORT;
+    }
+
+    return BID_S_OK;
+}
+
 /*
  * Try to make a reauthentication assertion.
  */
@@ -463,7 +501,6 @@ _BIDGetReauthAssertion(
     BIDJWT ap = NULL;
     struct BIDBackedAssertionDesc backedAssertion = { 0 };
     time_t now = 0;
-    uint32_t ulDHKeySize;
 
     BID_CONTEXT_VALIDATE(context);
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_REAUTH);
@@ -498,11 +535,8 @@ _BIDGetReauthAssertion(
     err = _BIDValidateExpiry(context, now, tkt);
     BID_BAIL_ON_ERROR(err);
 
-    ulDHKeySize = json_integer_value(json_object_get(cred, "dh-key-size"));
-    if (ulDHKeySize < context->DHKeySize) {
-        err = BID_S_KEY_TOO_SHORT;
-        goto cleanup;
-    }
+    err = _BIDValidateReauthCredStrength(context, cred);
+    BID_BAIL_ON_ERROR(err);
 
     backedAssertion.Assertion = ap;
     backedAssertion.cCertificates = 0;
@@ -545,7 +579,6 @@ _BIDVerifyReauthAssertion(
     const char *szTicket;
     json_t *cred = NULL;
     uint32_t ulTicketFlags = 0;
-    uint32_t ulDHKeySize = 0;
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pVerifierCred = NULL;
@@ -574,11 +607,8 @@ _BIDVerifyReauthAssertion(
 
     ulTicketFlags = json_integer_value(json_object_get(cred, "flags"));
 
-    ulDHKeySize = json_integer_value(json_object_get(cred, "dh-key-size"));
-    if (ulDHKeySize < context->DHKeySize) {
-        err = BID_S_KEY_TOO_SHORT;
-        goto cleanup;
-    }
+    err = _BIDValidateReauthCredStrength(context, cred);
+    BID_BAIL_ON_ERROR(err);
 
     /*
      * _BIDVerifyLocal will verify the authenticator expiry as it is in the

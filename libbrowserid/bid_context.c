@@ -67,7 +67,6 @@ BIDAcquireContext(
     context->ContextOptions = ulContextOptions;
     context->Skew = 60 * 5; /* 5 minutes */
     context->MaxDelegations = 6;
-    context->DHKeySize = 1024;
     context->TicketLifetime = 0;
 
     if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
@@ -106,6 +105,19 @@ BIDAcquireContext(
 
         BID_ASSERT(context->TicketCache != BID_C_NO_TICKET_CACHE);
     }
+
+    /* Can only select one of DH and ECDH */
+    if ((ulContextOptions & BID_CONTEXT_KEYEX_MASK) == BID_CONTEXT_KEYEX_MASK) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
+        context->DHKeySize = BID_CONTEXT_ECDH_CURVE_P256;
+    else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
+        context->DHKeySize = 1024;
+    else
+        context->DHKeySize = 0;
 
     err = BID_S_OK;
     *pContext = context;
@@ -167,8 +179,8 @@ BIDSetContextParam(
         context->Skew = *(uint32_t *)value;
         break;
     case BID_PARAM_DH_MODULUS_SIZE:
-        if (*(uint32_t *)value == 0 &&
-            (context->ContextOptions & BID_CONTEXT_DH_KEYEX))
+        /* Zero values permitted only if DH_KEYEX is unset */
+        if ((*(uint32_t *)value == 0) != !(context->ContextOptions & BID_CONTEXT_DH_KEYEX))
             err = BID_S_INVALID_PARAMETER;
         else
             context->DHKeySize = *(uint32_t *)value;
@@ -229,6 +241,20 @@ BIDSetContextParam(
         break;
     case BID_PARAM_TICKET_LIFETIME:
         context->TicketLifetime = *((uint32_t *)value);
+        break;
+    case BID_PARAM_ECDH_CURVE:
+        if ((context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) == 0 ||
+            value == NULL)
+            return BID_S_INVALID_PARAMETER;
+
+        if (strcmp(value, BID_ECDH_CURVE_P256) == 0)
+            context->DHKeySize = BID_CONTEXT_ECDH_CURVE_P256;
+        else if (strcmp(value, BID_ECDH_CURVE_P384) == 0)
+            context->DHKeySize = BID_CONTEXT_ECDH_CURVE_P384;
+        else if (strcmp(value, BID_ECDH_CURVE_P521) == 0)
+            context->DHKeySize = BID_CONTEXT_ECDH_CURVE_P521;
+        else
+            return BID_S_INVALID_PARAMETER;
         break;
     default:
         err = BID_S_INVALID_PARAMETER;
@@ -297,6 +323,9 @@ BIDGetContextParam(
         *pValue = context->TicketCache;
         break;
     case BID_PARAM_DH_MODULUS_SIZE:
+        if ((context->ContextOptions & BID_CONTEXT_DH_KEYEX) == 0)
+            return BID_S_INVALID_PARAMETER;
+
         *((uint32_t *)pValue) = context->DHKeySize;
         break;
     case BID_PARAM_PARENT_WINDOW:
@@ -304,6 +333,19 @@ BIDGetContextParam(
         break;
     case BID_PARAM_TICKET_LIFETIME:
         *((uint32_t *)pValue) = context->TicketLifetime;
+        break;
+    case BID_PARAM_ECDH_CURVE:
+        if ((context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) == 0)
+            return BID_S_INVALID_PARAMETER;
+
+        if (context->DHKeySize == BID_CONTEXT_ECDH_CURVE_P256)
+            *pValue = BID_ECDH_CURVE_P256;
+        else if (context->DHKeySize == BID_CONTEXT_ECDH_CURVE_P384)
+            *pValue = BID_ECDH_CURVE_P384;
+        else if (context->DHKeySize == BID_CONTEXT_ECDH_CURVE_P521)
+            *pValue = BID_ECDH_CURVE_P521;
+        else
+            return BID_S_INVALID_PARAMETER;
         break;
     default:
         err = BID_S_INVALID_PARAMETER;

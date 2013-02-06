@@ -223,6 +223,8 @@ _BIDUnpackBackedAssertion(
 
     BID_ASSERT(assertion->Assertion->Payload != NULL);
 
+    _BIDOutputDebugJson(assertion->Assertion->Payload);
+
     *pAssertion = assertion;
 
 cleanup:
@@ -253,6 +255,8 @@ _BIDPackBackedAssertion(
 
     BID_ASSERT(assertion != NULL);
     BID_ASSERT(assertion->Assertion != NULL);
+
+    _BIDOutputDebugJson(assertion->Assertion->Payload);
 
     err = _BIDMakeSignature(context, assertion->Assertion, keyset, certChain,
                             &szEncodedAssertion, &cchEncodedAssertion);

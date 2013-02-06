@@ -93,6 +93,8 @@ extern "C" {
             goto cleanup;                           \
     } while (0)
 
+#define BID_CONTEXT_KEYEX_MASK              ( BID_CONTEXT_DH_KEYEX | BID_CONTEXT_ECDH_KEYEX )
+
 /*
  * Generate safe DH primes. Should never be necessary as we
  * always generate a new key.
@@ -327,6 +329,10 @@ struct BIDContextDesc {
 /*
  * bid_crypto.c
  */
+#define BID_CONTEXT_ECDH_CURVE_P256             256
+#define BID_CONTEXT_ECDH_CURVE_P384             384
+#define BID_CONTEXT_ECDH_CURVE_P521             521
+
 struct BIDJWTDesc;
 typedef struct BIDJWTDesc *BIDJWT;
 
@@ -370,33 +376,45 @@ _BIDFindKeyInKeyset(
     BIDJWK *pKey);
 
 BIDError
-_BIDVerifierDHKeyEx(
+_BIDVerifierKeyAgreement(
     BIDContext context,
     BIDIdentity identity);
 
 BIDError
-_BIDSetIdentityDHPublicValue(
+_BIDSetKeyAgreementPublicValue(
     BIDContext context,
     BIDIdentity identity,
     json_t *y);
 
 BIDError
-_BIDGetIdentityDHPublicValue(
+_BIDGetKeyAgreementPublicValue(
     BIDContext context,
     BIDIdentity identity,
     json_t **y);
 
 BIDError
-_BIDGetDHParams(
+_BIDGetKeyAgreementParams(
     BIDContext context,
     json_t **pDhParams);
 
 BIDError
-_BIDSaveDHKeySize(
+_BIDSaveKeyAgreementStrength(
     BIDContext context,
     BIDIdentity identity,
     int publicKey,
     json_t *cred);
+
+BIDError
+_BIDGetKeyAgreementObject(
+    BIDContext context,
+    json_t *json,
+    json_t **object);
+
+BIDError
+_BIDSetKeyAgreementObject(
+    BIDContext context,
+    json_t *json,
+    json_t *object);
 
 /*
  * bid_dhparams.c
@@ -596,6 +614,27 @@ _BIDValidateX509CertChain(
     json_t *certChain,
     json_t *certParams,
     time_t verificationTime);
+
+/*
+ * ECDH
+ */
+BIDError
+_BIDComputeECDHKey(
+    BIDContext context,
+    BIDJWK ecDhKey,
+    json_t *pubValue,
+    BIDSecretHandle *pSecretHandle);
+
+BIDError
+_BIDGenerateECDHKey(
+    BIDContext context,
+    json_t *ecDhParams,
+    BIDJWK *pEcDhKey);
+
+BIDError
+_BIDGenerateECDHParams(
+    BIDContext context,
+    json_t **pEcDhParams);
 
 /*
  * bid_ppal.c

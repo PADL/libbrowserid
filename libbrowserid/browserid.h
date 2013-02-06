@@ -128,6 +128,8 @@ typedef enum {
     BID_S_MISSING_SIGNATURE,
     BID_S_INVALID_SECRET,
     BID_S_KEY_TOO_SHORT,
+    BID_S_UNKNOWN_EC_CURVE,
+    BID_S_INVALID_EC_CURVE,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -202,6 +204,11 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_CONTEXT_TICKET_CACHE            0x00000400
 
 /*
+ * ECDH key exchange
+ */
+#define BID_CONTEXT_ECDH_KEYEX              0x00000800
+
+/*
  * Context management.
  */
 BIDError
@@ -209,6 +216,10 @@ BIDAcquireContext(uint32_t ulContextOptions, BIDContext *pContext);
 
 BIDError
 BIDReleaseContext(BIDContext context);
+
+#define BID_ECDH_CURVE_P256                 "P-256"
+#define BID_ECDH_CURVE_P384                 "P-384"
+#define BID_ECDH_CURVE_P521                 "P-521"
 
 typedef enum {
     BID_PARAM_AUDIENCES = 1,
@@ -228,6 +239,7 @@ typedef enum {
     BID_PARAM_TICKET_CACHE,
     BID_PARAM_PARENT_WINDOW,
     BID_PARAM_TICKET_LIFETIME, /* seconds */
+    BID_PARAM_ECDH_CURVE,
 } BIDContextParameter;
 
 BIDError

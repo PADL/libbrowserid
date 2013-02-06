@@ -116,6 +116,8 @@ const char *_BIDErrorTable[] = {
     "JSON web token is missing signature",
     "Invalid secret handle",
     "Negotiated key too short",
+    "Unknown Elliptic Curve",
+    "Invalid Elliptic Curve for context",
     "Unknown error code"
 };
 

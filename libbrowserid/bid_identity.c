@@ -102,8 +102,8 @@ BIDVerifyAssertion(
     BID_BAIL_ON_ERROR(err);
 
     if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH) == 0 &&
-        (context->ContextOptions & BID_CONTEXT_DH_KEYEX)) {
-        err = _BIDVerifierDHKeyEx(context, *pVerifiedIdentity);
+        (context->ContextOptions & BID_CONTEXT_KEYEX_MASK)) {
+        err = _BIDVerifierKeyAgreement(context, *pVerifiedIdentity);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -445,10 +445,11 @@ _BIDPopulateIdentity(
                             json_object_get(assertion, "aud"), 0);
     BID_BAIL_ON_ERROR(err);
 
-    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        json_t *params = json_object_get(backedAssertion->Assertion->Payload, "dh");
+    if (context->ContextOptions & BID_CONTEXT_KEYEX_MASK) {
+        json_t *params;
 
-        if (params != NULL) {
+        err = _BIDGetKeyAgreementObject(context, backedAssertion->Assertion->Payload, &params);
+        if (err == BID_S_OK) {
             json_t *dh = json_object();
 
             if (dh == NULL) {
@@ -459,7 +460,7 @@ _BIDPopulateIdentity(
             err = _BIDJsonObjectSet(context, dh, "params", params, 0);
             BID_BAIL_ON_ERROR(err);
 
-            err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "dh", dh, 0);
+            err = _BIDSetKeyAgreementObject(context, identity->PrivateAttributes, dh);
             BID_BAIL_ON_ERROR(err);
         }
     }

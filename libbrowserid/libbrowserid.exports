@@ -10,7 +10,6 @@ BIDFreeIdentityDerivedKey
 BIDGetContextParam
 BIDGetIdentityAttribute
 BIDGetIdentityAudience
-BIDGetIdentityDHPublicValue
 BIDGetIdentityExpiryTime
 BIDGetIdentityIssuer
 BIDGetIdentityJsonObject
@@ -23,7 +22,6 @@ BIDReleaseIdentity
 BIDReleaseReplayCache
 BIDReleaseTicketCache
 BIDSetContextParam
-BIDSetIdentityDHPublicValue
 BIDStoreTicketInCache
 BIDVerifyAssertion
 BIDVerifyRPResponseToken

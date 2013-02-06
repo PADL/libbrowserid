@@ -91,7 +91,7 @@ gssBidAllocContext(OM_uint32 *minor,
 
     contextParams = BID_CONTEXT_GSS | BID_CONTEXT_REAUTH;
     if (ctx->encryptionType != ENCTYPE_NULL)
-        contextParams |= BID_CONTEXT_DH_KEYEX;
+        contextParams |= BID_CONTEXT_ECDH_KEYEX;
     if (isInitiator)
         contextParams |= BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT | BID_CONTEXT_TICKET_CACHE;
     else
@@ -104,9 +104,16 @@ gssBidAllocContext(OM_uint32 *minor,
     }
 
     if (ctx->encryptionType != ENCTYPE_NULL) {
-        uint32_t dhKeyBits = gssBidMapKeyLength(cbKey * 8);
+        char *szCurve;
 
-        err = BIDSetContextParam(ctx->bidContext, BID_PARAM_DH_MODULUS_SIZE, &dhKeyBits);
+        if (cbKey >= 256)
+            szCurve = BID_ECDH_CURVE_P521;
+        else if (cbKey >= 192)
+            szCurve = BID_ECDH_CURVE_P384;
+        else
+            szCurve = BID_ECDH_CURVE_P256;
+
+        err = BIDSetContextParam(ctx->bidContext, BID_PARAM_ECDH_CURVE, szCurve);
         if (err != BID_S_OK) {
             major = gssBidMapError(minor, err);
             goto cleanup;

@@ -46,6 +46,7 @@
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <openssl/dh.h>
+#include <openssl/ecdh.h>
 #include <openssl/hmac.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
@@ -143,6 +144,47 @@ _BIDGetJsonBNValue(
     return err;
 }
 
+static BIDError
+_BIDGetJsonECPointValue(
+    BIDContext context,
+    const EC_GROUP *group,
+    json_t *json,
+    EC_POINT **pEcPoint)
+{
+    BIDError err;
+    BIGNUM *x = NULL;
+    BIGNUM *y = NULL;
+    EC_POINT *ecPoint = NULL;
+
+    err = _BIDGetJsonBNValue(context, json, "x", BID_ENCODING_BASE64_URL, &x);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDGetJsonBNValue(context, json, "y", BID_ENCODING_BASE64_URL, &y);
+    BID_BAIL_ON_ERROR(err);
+
+    ecPoint = EC_POINT_new(group);
+    if (ecPoint == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (!EC_POINT_set_affine_coordinates_GFp(group, ecPoint, x, y, NULL)) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+    *pEcPoint = ecPoint;
+
+cleanup:
+    if (err != BID_S_OK)
+        EC_POINT_free(ecPoint);
+    BN_free(x);
+    BN_free(y);
+
+    return err;
+}
+
 #if 0
 static void
 _BIDDebugJsonBNValue(
@@ -167,7 +209,7 @@ _BIDSetJsonBNValue(
     BIDContext context,
     BIDJWK jwk,
     const char *key,
-    BIGNUM *bn)
+    const BIGNUM *bn)
 {
     BIDError err;
     unsigned char buf[1024];
@@ -1130,12 +1172,6 @@ _BIDGenerateDHKey(
     err = _BIDMakeDHKey(context, dhParams, NULL, &dh);
     BID_BAIL_ON_ERROR(err);
 
-    dhKey = json_object();
-    if (dhKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
     if (!DH_generate_key(dh)) {
         err = BID_S_DH_KEY_GENERATION_FAILURE;
         goto cleanup;
@@ -1788,4 +1824,262 @@ _BIDImportSecretKeyData(
     BIDSecretHandle *pSecretHandle)
 {
     return _BIDAllocSecret(context, pbSecret, cbSecret, 0, pSecretHandle);
+}
+
+static BIDError
+_BIDMakeECKeyByCurve(
+    BIDContext context BID_UNUSED,
+    json_t *ecDhParams,
+    EC_KEY **pEcKey)
+{
+    BIDError err;
+    EC_KEY *ecKey = NULL;
+    const char *szCurve;
+    int nid = 0;
+    uint32_t assertedCurve = 0;
+
+    szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
+    if (szCurve != NULL) {
+        if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
+            nid = NID_X9_62_prime256v1;
+            assertedCurve = BID_CONTEXT_ECDH_CURVE_P256;
+        } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
+            nid = NID_secp384r1;
+            assertedCurve = BID_CONTEXT_ECDH_CURVE_P384;
+        } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
+            nid = NID_secp521r1;
+            assertedCurve = BID_CONTEXT_ECDH_CURVE_P521;
+        }
+    }
+
+    if (nid == 0) {
+        err = BID_S_UNKNOWN_EC_CURVE;
+        goto cleanup;
+    } else if (assertedCurve != context->DHKeySize) {
+        err = BID_S_INVALID_EC_CURVE;
+        goto cleanup;
+    }
+
+    ecKey = EC_KEY_new_by_curve_name(nid);
+    if (ecKey == NULL) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+    *pEcKey = ecKey;
+
+cleanup:
+    return err;
+}
+
+BIDError
+_BIDGenerateECDHParams(
+    BIDContext context,
+    json_t **pEcDhParams)
+{
+    BIDError err;
+    json_t *ecDhParams = NULL;
+    DH *dh = NULL;
+    char *szCurve;
+
+    BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
+    BID_ASSERT(context->DHKeySize != 0);
+
+    ecDhParams = json_object();
+    if (ecDhParams == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = BIDGetContextParam(context, BID_PARAM_ECDH_CURVE, (void **)&szCurve);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, ecDhParams, "crv", json_string(szCurve),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+    *pEcDhParams = ecDhParams;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(ecDhParams);
+    DH_free(dh);
+
+    return err;
+}
+
+BIDError
+_BIDGenerateECDHKey(
+    BIDContext context,
+    json_t *ecDhParams,
+    BIDJWK *pEcDhKey)
+{
+    BIDError err;
+    json_t *ecDhKey = NULL;
+    EC_KEY *ec = NULL;
+    BN_CTX *bnCtx = NULL;
+    BIGNUM *x = NULL, *y = NULL;
+    const EC_GROUP *group = NULL;
+    const EC_POINT *publicKey = NULL;
+
+    ecDhKey = json_object();
+    if (ecDhKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDMakeECKeyByCurve(context, ecDhParams, &ec);
+    BID_BAIL_ON_ERROR(err);
+
+    if (!EC_KEY_generate_key(ec)) {
+        err = BID_S_DH_KEY_GENERATION_FAILURE;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, ecDhKey, "params", ecDhParams, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    bnCtx = BN_CTX_new();
+    if (bnCtx == NULL) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    group = EC_KEY_get0_group(ec);
+    publicKey = EC_KEY_get0_public_key(ec);
+
+    BID_ASSERT(EC_METHOD_get_field_type(EC_GROUP_method_of(group)) == NID_X9_62_prime_field);
+
+    x = BN_new();
+    y = BN_new();
+    if (x == NULL || y == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (!EC_POINT_get_affine_coordinates_GFp(group, publicKey, x, y, bnCtx)) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    err = _BIDSetJsonBNValue(context, ecDhKey, "x", x);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonBNValue(context, ecDhKey, "y", y);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDSetJsonBNValue(context, ecDhKey, "d", EC_KEY_get0_private_key(ec));
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+    *pEcDhKey = ecDhKey;
+
+cleanup:
+    if (err != BID_S_OK) {
+        json_decref(ecDhKey);
+    }
+    BN_free(x);
+    BN_free(y);
+    BN_CTX_free(bnCtx);
+    EC_KEY_free(ec);
+
+    return err;
+}
+
+static void *
+_KDFIdentity(
+    const void *in,
+    size_t inlen,
+    void *out,
+    size_t *outlen)
+{
+    if (*outlen < inlen)
+        return NULL;
+
+    memcpy(out, in, inlen);
+    *outlen = inlen;
+
+    return out;
+}
+
+BIDError
+_BIDComputeECDHKey(
+    BIDContext context,
+    BIDJWK ecDhKey,
+    json_t *pubValue,
+    BIDSecretHandle *pSecretHandle)
+{
+    BIDError err;
+    json_t *ecDhParams;
+    unsigned char *pbKey = NULL;
+    ssize_t cbKey = 0;
+    EC_KEY *ec = NULL;
+    const EC_GROUP *group = NULL;
+    BIGNUM *d = NULL;
+    EC_POINT *priv = NULL;
+    EC_POINT *pub = NULL;
+
+    *pSecretHandle = NULL;
+
+    if (ecDhKey == NULL || pubValue == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    ecDhParams = json_object_get(ecDhKey, "params");
+    if (ecDhParams == NULL) {
+        err = BID_S_INVALID_KEY;
+        goto cleanup;
+    }
+
+    err = _BIDGetJsonBNValue(context, ecDhKey, "d", BID_ENCODING_BASE64_URL, &d);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDMakeECKeyByCurve(context, ecDhParams, &ec);
+    BID_BAIL_ON_ERROR(err);
+
+    if (EC_KEY_set_private_key(ec, d) < 0) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    group = EC_KEY_get0_group(ec);
+
+    err = _BIDGetJsonECPointValue(context, group, ecDhKey, &priv);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDGetJsonECPointValue(context, group, pubValue, &pub);
+    BID_BAIL_ON_ERROR(err);
+
+    cbKey = (context->DHKeySize / 8) + 1; /* rounding */
+
+    pbKey = BIDMalloc(cbKey);
+    if (pbKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    cbKey = ECDH_compute_key(pbKey, cbKey, pub, ec, _KDFIdentity);
+    if (cbKey < 0) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    err = _BIDAllocSecret(context, pbKey, cbKey, 1, pSecretHandle);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    if (err != BID_S_OK) {
+        if (cbKey > 0)
+            memset(pbKey, 0, cbKey);
+        BIDFree(pbKey);
+    }
+    EC_POINT_free(pub);
+    EC_POINT_free(priv);
+    EC_KEY_free(ec);
+    BN_free(d);
+
+    return err;
 }

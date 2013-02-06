@@ -367,9 +367,6 @@ gssBidDeriveRfc3961Key(OM_uint32 *minor,
                        krb5_enctype enctype,
                        krb5_keyblock *pKey);
 
-unsigned int
-gssBidMapKeyLength(unsigned int symmetricKeyLength);
-
 /* util_krb.c */
 
 #ifndef KRB_MALLOC
