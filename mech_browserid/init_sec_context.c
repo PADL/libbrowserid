@@ -224,8 +224,6 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
-    _BIDOutputDebugJson(response);
-
     _BIDGetJsonTimestampValue(ctx->bidContext, response, "exp", &ctx->expiryTime);
 
     major = gssBidContextReady(minor, ctx, cred); /* need key to verify */

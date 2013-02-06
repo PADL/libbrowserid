@@ -84,8 +84,6 @@ gssBidIndicateRPCerts(OM_uint32 *minor,
         goto cleanup;
     }
 
-    _BIDOutputDebugJson(response);
-
     major = duplicateBuffer(minor, &bufJson, outputToken);
     if (GSS_ERROR(major))
         goto cleanup;
