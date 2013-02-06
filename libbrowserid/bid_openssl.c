@@ -2010,6 +2010,7 @@ _BIDComputeECDHKey(
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDGetECDHSize(context, ecDhParams, &cbKey);
+    BID_BAIL_ON_ERROR(err);
 
     cbKey /= 8;
     cbKey++;
