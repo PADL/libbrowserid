@@ -94,7 +94,7 @@ BIDGSSShibbolethAttributeProvider::~BIDGSSShibbolethAttributeProvider(void)
 
 bool
 BIDGSSShibbolethAttributeProvider::initWithExistingContext(const BIDGSSAttributeContext *manager,
-                                                    const BIDGSSAttributeProvider *ctx)
+                                                           const BIDGSSAttributeProvider *ctx)
 {
     const BIDGSSShibbolethAttributeProvider *shib;
 
@@ -117,8 +117,8 @@ BIDGSSShibbolethAttributeProvider::initWithExistingContext(const BIDGSSAttribute
 
 bool
 BIDGSSShibbolethAttributeProvider::initWithGssContext(const BIDGSSAttributeContext *manager,
-                                               const gss_cred_id_t gssCred,
-                                               const gss_ctx_id_t gssCtx)
+                                                      const gss_cred_id_t gssCred,
+                                                      const gss_ctx_id_t gssCtx)
 {
     if (!BIDGSSAttributeProvider::initWithGssContext(manager, gssCred, gssCtx))
         return false;
@@ -160,18 +160,12 @@ BIDGSSShibbolethAttributeProvider::initWithGssContext(const BIDGSSAttributeConte
     }
 #else
     /* If no OpenSAML, parse the XML assertion explicitly */
-    const BIDGSSJWTAssertionProvider *jwt;
-    int authenticated, complete;
-    gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
+    const BIDGSSJWTAttributeProvider *jwt;
 
-    jwt = static_cast<const BIDGSSJWTAssetionProvider *>
+    jwt = static_cast<const BIDGSSJWTAttributeProvider *>
         (m_manager->getProvider(ATTR_TYPE_JWT));
     if (jwt != NULL) {
         JSONObject samlAttribute = jwt->jsonRepresentation().get("saml");
-        if (samlAttribute.isString()) {
-            gss_buffer_desc value = samlAttribute.buffer();
-            setAssertion(&value, jwt->authenticated());
-        }
 
         string str(samlAttribute.string(), strlen(samlAttribute.string()));
         istringstream istream(str);
@@ -221,8 +215,8 @@ BIDGSSShibbolethAttributeProvider::getAttributeIndex(const gss_buffer_t attr) co
 
 bool
 BIDGSSShibbolethAttributeProvider::setAttribute(int complete GSSBID_UNUSED,
-                                         const gss_buffer_t attr,
-                                         const gss_buffer_t value)
+                                                const gss_buffer_t attr,
+                                                const gss_buffer_t value)
 {
     string attrStr((char *)attr->value, attr->length);
     vector <string> ids(1, attrStr);
