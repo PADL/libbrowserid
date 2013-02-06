@@ -21,6 +21,7 @@ The GSS BrowserID mechanism imports the [BrowserID spec][BIDSPEC].
 [RFC2743]: http://www.ietf.org/rfc/rfc2743.txt
 [RFC3961]: http://www.ietf.org/rfc/rfc3961.txt
 [RFC4121]: http://www.ietf.org/rfc/rfc4121.txt
+[JWA]: http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms
 [JWT]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-token
 [JWS]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-signature
 [GSS-REST]: http://www.w3.org/2011/identity-ws/papers/idbrowser2011_submission_16.pdf
@@ -64,7 +65,7 @@ authentication of the acceptor and a ticket-based re-authentication scheme.
 ### Initiator to acceptor
 
 1. The initiator composes a set of claims including, if applicable, channel
-binding information and DH parameters for session key establishment.
+binding information and ECDH parameters for session key establishment.
 
 2. The initiator composes an audience URL from the target service name.
 
@@ -91,16 +92,16 @@ immediately returned.
 3. The acceptor verifies the channel binding token and any other GSS-specific
 claims in the assertion. In the case of failure, an error token is generated.
 
-4. If required, the acceptor generates a DH public key using the parameters
+4. If required, the acceptor generates a ECDH public key using the parameters
 received from the client, and from it derives a RP Response Key (RRK).
 
-5. The acceptor generates a response assertion containing the DH public key and
+5. The acceptor generates a response assertion containing the ECDH public key and
 context expiry time. The response assertion is signed using the RP Response Key
 (RRK) unless mutual authentication is desired, in which case it may be signed
 in the acceptor's private key (see below). (For extensibility, the response
 token is formatted as a backed assertion.)
 
-6. The context root key (CRK) is derived from the DH key and GSS\_S\_COMPLETE
+6. The context root key (CRK) is derived from the ECDH key and GSS\_S\_COMPLETE
 is returned, along with the initiator name from the verified assertion. Other
 assertion attributes may be made available via GSS\_Get\_name\_attribute().
 
@@ -108,7 +109,7 @@ assertion attributes may be made available via GSS\_Get\_name\_attribute().
 
 1. The initiator unpacks the acceptor response assertion.
 
-2. The DH shared secret is computed from the acceptor's DH public key.
+2. The ECDH shared secret is computed from the acceptor's ECDH public key.
 
 3. The RP Response Key (RRK) is used to verify the acceptor's response
 assertion unless mutual authentication is desired, in which case the
@@ -118,7 +119,7 @@ acceptor's public key may be used (see below).
 response assertion. If the context has expired, GSS\_S\_CONTEXT\_EXPIRED is
 returned and context establishment fails.
 
-4. The context root key (CRK) is derived from the DH shared secret and
+4. The context root key (CRK) is derived from the ECDH shared secret and
 GSS\_S\_COMPLETE is returned to indicate the user is authenticated and the
 context is ready for use. No output token is emitted.
 
@@ -172,8 +173,8 @@ formatted as a backed assertion with an empty payload, in its NegoEx metadata.
 
 Fast re-authentication allows a context to be established without acquiring a
 new BrowserID assertion. Instead an assertion signed with a secret key derived
-from the initial DH key exchange is used. Re-authentication SHOULD not succeed
-beyond the user's certificate expiry time.
+from the initial ECDH key exchange is used. Re-authentication SHOULD not
+succeed beyond the user's certificate expiry time.
 
 #### Ticket generation
 
@@ -419,16 +420,17 @@ implementation does not support replay detection.
 
 These claims are included in the assertion sent to the acceptor and are
 authenticated by the initiator's private key and certificate chain. Here is an
-example assertion containing Diffie-Hellman parameters:
+example assertion containing Elliptic Curve Diffie-Hellman parameters:
 
     {
-        "exp": 1357513493687,
-        "dh": {
-                "p": "xCH1z_Vz5ZywtFfgiUhQgw",
-                "g": "Ag",
-                "y": "FzsKcE3WbImpvgjy9NxbpA"
+        "exp": 1360158396188,
+        "ecdh": {
+                "crv": "P-256",
+                "x": "JR5UPDgMLFPZwOGaKKSF24658tB1DccM1_oHPbCHeZg",
+                "y": "S45Esx_6DfE5-xdB3X7sIIJ16MwO0Y_RiDc-i5ZTLQ8"
         },
-        "aud": "urn:x-gss:host/www.browserid.org"
+        "n": "GnK2IBA42iQ",
+        "aud": "urn:x-gss:host/rand.mit.de.padl.com"
     }
  
 Because the current implementation of BrowserID.internal.get() does not allow
@@ -443,17 +445,15 @@ channel (e.g. see RFC 5929). Its value is the base64 URL encoding of the
 application-specific data component of the channel bindings passed to
 GSS\_Init\_sec\_context() or GSS\_accept\_sec\_context().
 
-#### "dh" (Diffie-Hellman key exchange)
+#### "ecdh" (Elliptic Curve Diffie-Hellman key exchange)
 
-These contain DH key parameters for deriving a shared session key with the
-relying party: "g" contains the generator, "p" the prime, and "y" the public
-value. All are base64 URL encoded.
+These contain ECDH key parameters for deriving a shared session key with the
+relying party: "crv" contains the curve, "x" the X coordinate and "y" the Y
+coordinate (see [JWA] section 5.2).
 
-The prime length should be an equivalent number of bits to the negotiated
-[RFC4121] encryption type: that is, at least 3072 bits for a 128 bit AES key
-(see [NIST80056A]).
-
-**TODO** is this strong enough?
+The curve should have an equivalent strength to the negotiated [RFC4121]
+encryption type: at least P-256 MUST be used for browserid-aes128, and P-521
+for browserid-aes256.
 
 #### "n" (Mutual authentication nonce)
 
@@ -493,10 +493,15 @@ the initiator to compensate for clock differences when generating assertions.
 
 **TBD** not defined yet how this is to be used
 
-#### dh
+#### ecdh
 
-This contains a JSON object with a single key, "y", containing the base64 URL
-encoding of the acceptor's DH public value.
+This contains a JSON object containing the coordinates of the acceptor's ECDH
+public key. For example:
+
+    "ecdh": {
+            "x": "5OMPs8gyw8XVTR-3SHJh7WP1kUjc-oB83tACI-nSOSs",
+            "y": "9qMlGZlOzcBlRZeSPG5REeY1ahC4Dmt_DziOcM9MHnU"
+    }
 
 #### exp
 
@@ -553,10 +558,9 @@ with Windows CNG BCryptDeriveKey.
 
 #### Diffie-Hellman Key (DHK)
 
-This key is the shared secret resulting from the Diffie-Hellman exchange. It
-must be at least as many bits as the key size of the negotiated [RFC3961]
-encryption type. It is never used without derivation and thus may be used with
-implementations that do not expose the DH value directly.
+This key is the shared secret resulting from the ECDH exchange. Its length
+corresponds to the selected EC curve. It is never used without derivation and
+thus may be used with implementations that do not expose the DH value directly.
 
 #### Context Master Key (CMK)
 
