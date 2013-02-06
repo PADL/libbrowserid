@@ -423,7 +423,11 @@ gssBidMapKeyLength(unsigned int symmetricKeyLength)
         }
     }
 
-    /* Currently generating longer keys is pretty expensive. */
+    /*
+     * Currently generating longer keys is pretty expensive. We need to
+     * move to ECDH in order to properly support the browserid-aes256
+     * mechanism.
+     */
     if (dhKeyLength > 8192)
         dhKeyLength = 8192;
 
