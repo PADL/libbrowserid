@@ -1834,23 +1834,26 @@ _BIDMakeECKeyByCurve(
 {
     BIDError err;
     EC_KEY *ecKey = NULL;
-    const char *szCurve;
+    ssize_t curve = 0;
     int nid = 0;
 
-    szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
-    if (szCurve != NULL) {
-        if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
-            nid = NID_X9_62_prime256v1;
-        } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
-            nid = NID_secp384r1;
-        } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
-            nid = NID_secp521r1;
-        }
-    }
+    err = _BIDGetECDHCurve(context, ecDhParams, &curve);
+    BID_BAIL_ON_ERROR(err);
 
-    if (nid == 0) {
+    switch (curve) {
+    case BID_CONTEXT_ECDH_CURVE_P256:
+        nid = NID_X9_62_prime256v1;
+        break;
+    case BID_CONTEXT_ECDH_CURVE_P384:
+        nid = NID_secp384r1;
+        break;
+    case BID_CONTEXT_ECDH_CURVE_P521:
+        nid = NID_secp521r1;
+        break;
+    default:
         err = BID_S_UNKNOWN_EC_CURVE;
         goto cleanup;
+        break;
     }
 
     ecKey = EC_KEY_new_by_curve_name(nid);
@@ -2014,7 +2017,7 @@ _BIDComputeECDHKey(
     err = _BIDGetJsonECPointValue(context, group, pubValue, &peerKey);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetECDHSize(context, ecDhParams, &cbKey);
+    err = _BIDGetECDHCurve(context, ecDhParams, &cbKey);
     BID_BAIL_ON_ERROR(err);
 
     cbKey /= 8;

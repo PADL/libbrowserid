@@ -93,7 +93,7 @@ _BIDIdentityComputeKey(
         if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
             ssize_t cbKey;
 
-            err = _BIDGetECDHSize(context, params, &cbKey);
+            err = _BIDGetECDHCurve(context, params, &cbKey);
             if (err != BID_S_OK)
                 return err;
 
@@ -526,7 +526,7 @@ _BIDSetKeyAgreementObject(
 }
 
 BIDError
-_BIDGetECDHSize(
+_BIDGetECDHCurve(
     BIDContext context BID_UNUSED,
     json_t *ecDhParams,
     ssize_t *pcbKey)

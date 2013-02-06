@@ -338,7 +338,7 @@ _BIDMapECDHAlgorithmID(
     LPCWSTR *pAlgID)
 {
     LPCWSTR algID = NULL;
-    const char *szCurve;
+    ssize_t curve;
 
     *pAlgID = NULL;
 
@@ -349,19 +349,24 @@ _BIDMapECDHAlgorithmID(
         return BID_S_OK;
     }
 
-    szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
-    if (szCurve != NULL) {
-        if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
-            algID = BCRYPT_ECDH_P256_ALGORITHM;
-        } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
-            algID = BCRYPT_ECDH_P384_ALGORITHM;
-        } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
-            algID = BCRYPT_ECDH_P521_ALGORITHM;
-        }
-    }
+    err = _BIDGetECDHCurve(context, ecDhParams, &curve);
+    if (err != BID_S_OK)
+        return err;
 
-    if (algID == NULL)
+    switch (curve) {
+    case BID_CONTEXT_ECDH_CURVE_P256:
+        algID = BCRYPT_ECDH_P256_ALGORITHM;
+        break;
+    case BID_CONTEXT_ECDH_CURVE_P384:
+        algID = BCRYPT_ECDH_P384_ALGORITHM;
+        break;
+    case BID_CONTEXT_ECDH_CURVE_P521:
+        algID = BCRYPT_ECDH_P521_ALGORITHM;
+        break;
+    default:
         return BID_S_UNKNOWN_EC_CURVE;
+        break;
+    }
 
     *pAlgID = algID;
     return BID_S_OK;
@@ -1400,6 +1405,7 @@ _BIDMakeECDHKey(
     DWORD cbEcDhKeyBlob = 0;
     PUCHAR pbEcDhKeyBlob;
     DWORD cbPad = 0, dwMagic = 0;
+    ssize_t curve;
 
     *phKey = NULL;
 
@@ -1408,24 +1414,26 @@ _BIDMakeECDHKey(
         goto cleanup;
     }
 
-    szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
-    if (szCurve == NULL) {
-        err = BID_S_UNKNOWN_EC_CURVE;
-        goto cleanup;
-    }
+    err = _BIDGetECDHCurve(context, ecDhParams, &curve);
+    BID_BAIL_ON_ERROR(err);
 
-    if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
+    switch (curve) {
+    case BID_CONTEXT_ECDH_CURVE_P256:
         dwMagic = bPublic ? BCRYPT_ECDH_PUBLIC_P256_MAGIC : BCRYPT_ECDH_PRIVATE_P256_MAGIC;
         cbPad = 32;
-    } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
+        break;
+    case BID_CONTEXT_ECDH_CURVE_P384:
         dwMagic = bPublic ? BCRYPT_ECDH_PUBLIC_P384_MAGIC : BCRYPT_ECDH_PRIVATE_P384_MAGIC;
         cbPad = 48;
-    } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
+        break;
+    case BID_CONTEXT_ECDH_CURVE_P521:
         dwMagic = bPublic ? BCRYPT_ECDH_PUBLIC_P521_MAGIC : BCRYPT_ECDH_PRIVATE_P521_MAGIC;
         cbPad = 66;
-    } else {
+        break;
+    default:
         err = BID_S_UNKNOWN_EC_CURVE;
         goto cleanup;
+        break;
     }
 
     err = _BIDGetJsonBufferValue(context, dhKey, "x",

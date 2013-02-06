@@ -417,7 +417,7 @@ _BIDSetKeyAgreementObject(
     json_t *object);
 
 BIDError
-_BIDGetECDHSize(
+_BIDGetECDHCurve(
     BIDContext context BID_UNUSED,
     json_t *ecDhParams,
     ssize_t *pcbKey);
