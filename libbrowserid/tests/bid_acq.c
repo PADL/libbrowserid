@@ -94,6 +94,11 @@ int main(int argc, const char *argv[])
         argc--;
         argv++;
     }
+    if (argc > 1 && !strcmp(argv[1], "-ecdh")) {
+        options |= BID_CONTEXT_ECDH_KEYEX;
+        argc--;
+        argv++;
+    }
     if (argc > 1) {
         audience = argv[1];
         argc--;

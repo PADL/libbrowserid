@@ -332,6 +332,46 @@ _BIDMapCryptAlgorithmID(
 }
 
 static BIDError
+_BIDMapECDHAlgorithmID(
+    BIDContext context,
+    json_t *ecDhParams,
+    LPCWSTR *pAlgID)
+{
+    LPCWSTR algID = NULL;
+    const char *szCurve;
+    uint32_t ulECDHCurve = 0;
+
+    *pAlgID = NULL;
+
+    BID_ASSERT(context->ContextOptions & BID_CONTEXT_KEYEX_MASK);
+
+    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
+        *pAlgID = BCRYPT_DH_ALGORITHM;
+        return BID_S_OK;
+    }
+
+    szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
+    if (szCurve != NULL) {
+        if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
+            algID = BCRYPT_ECDH_P256_ALGORITHM;
+            ulECDHCurve = BID_CONTEXT_ECDH_CURVE_P256;
+        } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
+            algID = BCRYPT_ECDH_P384_ALGORITHM;
+            ulECDHCurve = BID_CONTEXT_ECDH_CURVE_P384;
+        } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
+            algID = BCRYPT_ECDH_P521_ALGORITHM;
+            ulECDHCurve = BID_CONTEXT_ECDH_CURVE_P521;
+        }
+    }
+
+    if (algID == NULL)
+        return BID_S_UNKNOWN_EC_CURVE;
+
+    *pAlgID = algID;
+    return BID_S_OK;
+}
+
+static BIDError
 _BIDMakeShaDigest(
     struct BIDJWTAlgorithmDesc *algorithm,
     BIDContext context BID_UNUSED,
@@ -1398,6 +1438,113 @@ cleanup:
 }
 
 static BIDError
+_BIDMakeECDHKey(
+    BIDContext context,
+    BCRYPT_ALG_HANDLE hAlgorithm,
+    json_t *ecDhParams,
+    json_t *dhKey,
+    BOOLEAN bPublic,
+    BCRYPT_KEY_HANDLE *phKey)
+{
+    BIDError err;
+    NTSTATUS nts;
+    LPCSTR szCurve = NULL;
+    BCryptBuffer x = { 0 };
+    BCryptBuffer y = { 0 };
+    BCryptBuffer d = { 0 };
+    BCRYPT_ECCKEY_BLOB *ecDhKeyBlob = NULL;
+    DWORD cbEcDhKeyBlob = 0;
+    PUCHAR pbEcDhKeyBlob;
+    DWORD cbPad = 0, dwMagic = 0;
+
+    *phKey = NULL;
+
+    if (ecDhParams == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
+    if (szCurve == NULL) {
+        err = BID_S_UNKNOWN_EC_CURVE;
+        goto cleanup;
+    }
+
+    if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
+        dwMagic = bPublic ? BCRYPT_ECDH_PUBLIC_P256_MAGIC : BCRYPT_ECDH_PRIVATE_P256_MAGIC;
+        cbPad = 32;
+    } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
+        dwMagic = bPublic ? BCRYPT_ECDH_PUBLIC_P384_MAGIC : BCRYPT_ECDH_PRIVATE_P384_MAGIC;
+        cbPad = 48;
+    } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
+        dwMagic = bPublic ? BCRYPT_ECDH_PUBLIC_P521_MAGIC : BCRYPT_ECDH_PRIVATE_P521_MAGIC;
+        cbPad = 66;
+    } else {
+        err = BID_S_UNKNOWN_EC_CURVE;
+        goto cleanup;
+    }
+
+    err = _BIDGetJsonBufferValue(context, dhKey, "x",
+                                 BID_ENCODING_BASE64_URL, cbPad, &x);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDGetJsonBufferValue(context, dhKey, "y",
+                                 BID_ENCODING_BASE64_URL, cbPad, &y);
+    BID_BAIL_ON_ERROR(err);
+
+    if (!bPublic) {
+        err = _BIDGetJsonBufferValue(context, dhKey, "d",
+                                     BID_ENCODING_BASE64_URL, cbPad, &d);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    cbEcDhKeyBlob = sizeof(*dhKey);
+    cbEcDhKeyBlob += x.cbBuffer + y.cbBuffer + d.cbBuffer;
+
+    ecDhKeyBlob = BIDCalloc(1, cbEcDhKeyBlob);
+    if (dhKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    ecDhKeyBlob->dwMagic = dwMagic;
+    ecDhKeyBlob->cbKey   = cbPad;
+
+    pbEcDhKeyBlob = (PUCHAR)(ecDhKeyBlob + 1);
+
+    CopyMemory(pbEcDhKeyBlob, x.pvBuffer, x.cbBuffer);
+    pbEcDhKeyBlob += x.cbBuffer;
+
+    CopyMemory(pbEcDhKeyBlob, y.pvBuffer, y.cbBuffer);
+    pbEcDhKeyBlob += y.cbBuffer;
+
+    if (!bPublic) {
+        CopyMemory(pbEcDhKeyBlob, d.pvBuffer, d.cbBuffer);
+        pbEcDhKeyBlob += d.cbBuffer;
+    }
+
+    nts = BCryptImportKeyPair(hAlgorithm,
+                              NULL, /* hImportKey */
+                              bPublic ? BCRYPT_ECCPUBLIC_BLOB : BCRYPT_ECCPRIVATE_BLOB,
+                              phKey,
+                              (PUCHAR)ecDhKeyBlob,
+                              pbEcDhKeyBlob - (PUCHAR)ecDhKeyBlob,
+                              BCRYPT_NO_KEY_VALIDATION);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+cleanup:
+    if (dhKey != NULL) {
+        SecureZeroMemory(ecDhKeyBlob, cbEcDhKeyBlob);
+        BIDFree(ecDhKeyBlob);
+    }
+    _BIDFreeBuffer(&x);
+    _BIDFreeBuffer(&y);
+    _BIDFreeBuffer(&d);
+
+    return err;
+}
+
+static BIDError
 _BIDCryptGetKeyParam(
     BIDContext context,
     HCRYPTKEY hKey,
@@ -1677,6 +1824,7 @@ _BIDComputeDHKey(
     BIDError err;
     NTSTATUS nts;
     json_t *dhParams;
+    LPCWSTR wszAlgID = NULL;
     BCRYPT_ALG_HANDLE hAlgorithm = NULL;
     BCRYPT_KEY_HANDLE hPrivateKey = NULL;
     BCRYPT_KEY_HANDLE hPublicKey = NULL;
@@ -1684,6 +1832,8 @@ _BIDComputeDHKey(
     DWORD cbKey = 0, cbResult;
     BCryptBuffer pub = { 0 };
     struct BIDSecretHandleDesc keyInput = { 0 };
+    BIDError (*fnMakeKey)(BIDContext, BCRYPT_ALG_HANDLE, json_t *,
+                          json_t *, BOOLEAN, BCRYPT_KEY_HANDLE *);
 
     *pSecretHandle = NULL;
 
@@ -1698,18 +1848,27 @@ _BIDComputeDHKey(
         goto cleanup;
     }
 
-    nts = BCryptOpenAlgorithmProvider(&hAlgorithm,
-                                      BCRYPT_DH_ALGORITHM,
-                                      NULL,
-                                      0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
+        fnMakeKey = _BIDMakeECDHKey;
+    else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
+        fnMakeKey = _BIDMakeDHKey;
+    else {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
 
-    err = _BIDMakeDHKey(context, hAlgorithm, dhParams, dhKey,
-                        FALSE /* bPublic */, &hPrivateKey);
+    err = _BIDMapECDHAlgorithmID(context, dhParams, &wszAlgID);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDMakeDHKey(context, hAlgorithm, dhParams, pubValue,
-                        TRUE /* bPublic */, &hPublicKey);
+    nts = BCryptOpenAlgorithmProvider(&hAlgorithm, wszAlgID, NULL, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    err = fnMakeKey(context, hAlgorithm, dhParams, dhKey,
+                    FALSE /* bPublic */, &hPrivateKey);
+    BID_BAIL_ON_ERROR(err);
+
+    err = fnMakeKey(context, hAlgorithm, dhParams, pubValue,
+                    TRUE /* bPublic */, &hPublicKey);
     BID_BAIL_ON_ERROR(err);
 
     /*
@@ -2840,4 +2999,116 @@ _BIDImportSecretKeyData(
     keyInput.SecretData.Imported.cbSecret = cbSecret;
 
     return _BIDAllocSecret(context, &keyInput, pSecretHandle);
+}
+
+BIDError
+_BIDGenerateECDHKey(
+    BIDContext context,
+    json_t *ecDhParams,
+    BIDJWK *pEcDhKey)
+{
+    BIDError err;
+    NTSTATUS nts;
+    json_t *ecDhKey = NULL;
+    BCRYPT_ALG_HANDLE hAlgorithm = NULL;
+    BCRYPT_KEY_HANDLE hKey = NULL;
+    BCRYPT_ECCKEY_BLOB *ecDhKeyBlob = NULL;
+    DWORD cbEcDhKeyBlob = 0;
+    PUCHAR pbEcDhKeyBlob;
+    LPCWSTR wszAlgID;
+
+    err = _BIDMapECDHAlgorithmID(context, ecDhParams, &wszAlgID);
+    BID_BAIL_ON_ERROR(err);
+
+    nts = BCryptOpenAlgorithmProvider(&hAlgorithm, wszAlgID, NULL, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    nts = BCryptGenerateKeyPair(hAlgorithm, &hKey, context->DHKeySize, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    nts = BCryptFinalizeKeyPair(hKey, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    nts = BCryptExportKey(hKey, NULL, BCRYPT_ECCPRIVATE_BLOB,
+                          NULL, 0, &cbEcDhKeyBlob, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    ecDhKeyBlob = BIDMalloc(cbEcDhKeyBlob);
+    if (ecDhKeyBlob == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    nts = BCryptExportKey(hKey, NULL, BCRYPT_ECCPRIVATE_BLOB,
+                          (PUCHAR)ecDhKeyBlob, cbEcDhKeyBlob, &cbEcDhKeyBlob, 0);
+    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
+
+    if (cbEcDhKeyBlob < sizeof(*ecDhKeyBlob) + 3 * ecDhKeyBlob->cbKey) {
+        err = BID_S_INVALID_KEY;
+        goto cleanup;
+    }
+
+    ecDhKey = json_object();
+    if (ecDhKey == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, ecDhKey, "params", ecDhParams,
+                            BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    pbEcDhKeyBlob = (PUCHAR)(ecDhKeyBlob + 1);
+
+    /* Layout is ECCKEY_KEY_BLOB || x || y || d */
+    /*                              0    1    2 */
+    err = _BIDJsonObjectSetBinaryValue(context,
+                                       ecDhKey,
+                                       "x",
+                                       &pbEcDhKeyBlob[0 * ecDhKeyBlob->cbKey],
+                                       ecDhKeyBlob->cbKey);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSetBinaryValue(context,
+                                       ecDhKey,
+                                       "y",
+                                       &pbEcDhKeyBlob[1 * ecDhKeyBlob->cbKey],
+                                       ecDhKeyBlob->cbKey);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSetBinaryValue(context,
+                                       ecDhKey,
+                                       "d",
+                                       &pbEcDhKeyBlob[2 * ecDhKeyBlob->cbKey],
+                                       ecDhKeyBlob->cbKey);
+    BID_BAIL_ON_ERROR(err);
+
+    err = BID_S_OK;
+    *pEcDhKey = ecDhKey;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(ecDhKey);
+    if (hAlgorithm != NULL)
+        BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+    if (hKey != NULL)
+        BCryptDestroyKey(hKey);
+    if (ecDhKeyBlob != NULL) {
+        SecureZeroMemory(ecDhKeyBlob, cbEcDhKeyBlob);
+        BIDFree(ecDhKeyBlob);
+    }
+
+    return err;
+}
+
+BIDError
+_BIDComputeECDHKey(
+    BIDContext context,
+    BIDJWK ecDhKey,
+    json_t *pubValue,
+    BIDSecretHandle *pSecretHandle)
+{
+    BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
+
+    return _BIDComputeDHKey(context, ecDhKey, pubValue, pSecretHandle);
 }
