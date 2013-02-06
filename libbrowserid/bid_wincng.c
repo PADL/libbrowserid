@@ -339,7 +339,6 @@ _BIDMapECDHAlgorithmID(
 {
     LPCWSTR algID = NULL;
     const char *szCurve;
-    uint32_t ulECDHCurve = 0;
 
     *pAlgID = NULL;
 
@@ -354,13 +353,10 @@ _BIDMapECDHAlgorithmID(
     if (szCurve != NULL) {
         if (strcmp(szCurve, BID_ECDH_CURVE_P256) == 0) {
             algID = BCRYPT_ECDH_P256_ALGORITHM;
-            ulECDHCurve = BID_CONTEXT_ECDH_CURVE_P256;
         } else if (strcmp(szCurve, BID_ECDH_CURVE_P384) == 0) {
             algID = BCRYPT_ECDH_P384_ALGORITHM;
-            ulECDHCurve = BID_CONTEXT_ECDH_CURVE_P384;
         } else if (strcmp(szCurve, BID_ECDH_CURVE_P521) == 0) {
             algID = BCRYPT_ECDH_P521_ALGORITHM;
-            ulECDHCurve = BID_CONTEXT_ECDH_CURVE_P521;
         }
     }
 
