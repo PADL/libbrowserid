@@ -75,7 +75,7 @@ cleanup:
 }
 
 BIDError
-_BIDIdentityComputeKey(
+_BIDIdentitySecretAgreement(
     BIDContext context,
     BIDIdentity identity)
 {
@@ -100,9 +100,9 @@ _BIDIdentityComputeKey(
             if (cbKey < context->DHKeySize)
                 return BID_S_INVALID_EC_CURVE;
 
-            err = _BIDComputeECDHKey(context, dh, params, &identity->SecretHandle);
+            err = _BIDECDHSecretAgreement(context, dh, params, &identity->SecretHandle);
         } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
-            err = _BIDComputeDHKey(context, dh, params, &identity->SecretHandle);
+            err = _BIDDHSecretAgreement(context, dh, params, &identity->SecretHandle);
         else
             err = BID_S_NO_KEY;
     } else
@@ -128,7 +128,7 @@ _BIDDeriveSessionSubkey(
 
     BID_ASSERT(szSalt != NULL);
 
-    err = _BIDIdentityComputeKey(context, identity);
+    err = _BIDIdentitySecretAgreement(context, identity);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDDeriveKey(context, identity->SecretHandle,

@@ -348,7 +348,7 @@ typedef struct BIDJWTAlgorithmDesc {
 } *BIDJWTAlgorithm;
 
 BIDError
-_BIDIdentityComputeKey(
+_BIDIdentitySecretAgreement(
     BIDContext context,
     BIDIdentity identity);
 
@@ -565,10 +565,10 @@ _BIDGenerateDHParams(
     json_t **pDhParams);
 
 /*
- * Compute a Diffie-Hellman shared secret.
+ * Derive a Diffie-Hellman shared secret.
  */
 BIDError
-_BIDComputeDHKey(
+_BIDDHSecretAgreement(
     BIDContext context,
     BIDJWK dhKey,
     json_t *pubValue,
@@ -625,7 +625,7 @@ _BIDValidateX509CertChain(
  * ECDH
  */
 BIDError
-_BIDComputeECDHKey(
+_BIDECDHSecretAgreement(
     BIDContext context,
     BIDJWK ecDhKey,
     json_t *pubValue,

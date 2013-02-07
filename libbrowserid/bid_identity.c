@@ -308,7 +308,7 @@ BIDIdentityDeriveKey(
         goto cleanup;
     }
 
-    err = _BIDIdentityComputeKey(context, identity);
+    err = _BIDIdentitySecretAgreement(context, identity);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDDeriveKey(context, identity->SecretHandle, pbSalt, cbSalt,

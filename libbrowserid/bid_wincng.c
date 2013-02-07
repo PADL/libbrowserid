@@ -1767,7 +1767,7 @@ cleanup:
 }
 
 BIDError
-_BIDComputeDHKey(
+_BIDDHSecretAgreement(
     BIDContext context,
     BIDJWK dhKey,
     json_t *pubValue,
@@ -3054,7 +3054,7 @@ cleanup:
 }
 
 BIDError
-_BIDComputeECDHKey(
+_BIDECDHSecretAgreement(
     BIDContext context,
     BIDJWK ecDhKey,
     json_t *pubValue,
@@ -3062,5 +3062,5 @@ _BIDComputeECDHKey(
 {
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
 
-    return _BIDComputeDHKey(context, ecDhKey, pubValue, pSecretHandle);
+    return _BIDDHSecretAgreement(context, ecDhKey, pubValue, pSecretHandle);
 }

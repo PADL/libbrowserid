@@ -1205,7 +1205,7 @@ cleanup:
 }
 
 BIDError
-_BIDComputeDHKey(
+_BIDDHSecretAgreement(
     BIDContext context,
     BIDJWK dhKey,
     json_t *pubValue,
@@ -1964,7 +1964,7 @@ _BIDKDFIdentity(
 }
 
 BIDError
-_BIDComputeECDHKey(
+_BIDECDHSecretAgreement(
     BIDContext context,
     BIDJWK ecDhKey,
     json_t *pubValue,
