@@ -63,7 +63,7 @@ struct BIDSecretHandleDesc {
         SECRET_TYPE_IMPORTED
     } SecretType;
     union {
-        BCRYPT_SECRET_HANDLE KeyAgreement;
+        BCRYPT_SECRET_HANDLE SecretAgreement;
         struct {
             unsigned char *pbSecret;
             size_t cbSecret;
@@ -1841,7 +1841,7 @@ _BIDDHSecretAgreement(
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
     keyInput.SecretType = SECRET_TYPE_KEY_AGREEMENT;
-    keyInput.SecretData.KeyAgreement = hSecret;
+    keyInput.SecretData.SecretAgreement = hSecret;
 
     err = _BIDAllocSecret(context, &keyInput, pSecretHandle);
     BID_BAIL_ON_ERROR(err);
@@ -1894,7 +1894,7 @@ cleanup:
 static UCHAR _BIDSalt[9] = "BrowserID";
 
 static BIDError
-_BIDDeriveKeyKeyAgreement(
+_BIDDeriveKeySecretAgreement(
     BIDContext context BID_UNUSED,
     BIDSecretHandle secretHandle,
     const unsigned char *pbSalt,
@@ -1914,7 +1914,7 @@ _BIDDeriveKeyKeyAgreement(
     *ppbDerivedKey = NULL;
     *pcbDerivedKey = 0;
 
-    if (secretHandle->SecretData.KeyAgreement == NULL) {
+    if (secretHandle->SecretData.SecretAgreement == NULL) {
         err = BID_S_INVALID_SECRET;
         goto cleanup;
     }
@@ -1939,7 +1939,7 @@ _BIDDeriveKeyKeyAgreement(
     params.cBuffers  = ARRAYSIZE(paramBuffers);
     params.pBuffers  = paramBuffers;
 
-    nts = BCryptDeriveKey(secretHandle->SecretData.KeyAgreement,
+    nts = BCryptDeriveKey(secretHandle->SecretData.SecretAgreement,
                           BCRYPT_KDF_HMAC,
                           &params,
                           NULL,
@@ -1954,7 +1954,7 @@ _BIDDeriveKeyKeyAgreement(
         goto cleanup;
     }
 
-    nts = BCryptDeriveKey(secretHandle->SecretData.KeyAgreement,
+    nts = BCryptDeriveKey(secretHandle->SecretData.SecretAgreement,
                           BCRYPT_KDF_HMAC,
                           &params,
                           pbDerivedKey,
@@ -2102,9 +2102,9 @@ _BIDDeriveKey(
 
     switch (secretHandle->SecretType) {
     case SECRET_TYPE_KEY_AGREEMENT:
-        err = _BIDDeriveKeyKeyAgreement(context, secretHandle,
-                                        pbSalt, cbSalt,
-                                        ppbDerivedKey, pcbDerivedKey);
+        err = _BIDDeriveKeySecretAgreement(context, secretHandle,
+                                           pbSalt, cbSalt,
+                                           ppbDerivedKey, pcbDerivedKey);
         break;
     case SECRET_TYPE_IMPORTED:
         err = _BIDDeriveKeyImported(context, secretHandle,
@@ -2881,9 +2881,9 @@ _BIDAllocSecret(
 
     switch (keyInput->SecretType) {
     case SECRET_TYPE_KEY_AGREEMENT:
-        secretHandle->SecretData.KeyAgreement =
-            keyInput->SecretData.KeyAgreement;
-        keyInput->SecretData.KeyAgreement = NULL;
+        secretHandle->SecretData.SecretAgreement =
+            keyInput->SecretData.SecretAgreement;
+        keyInput->SecretData.SecretAgreement = NULL;
         /* no way to duplicate this */
         break;
     case SECRET_TYPE_IMPORTED:
@@ -2919,7 +2919,7 @@ _BIDDestroySecret(
 
     switch (secretHandle->SecretType) {
     case SECRET_TYPE_KEY_AGREEMENT:
-        nts = BCryptDestroySecret(secretHandle->SecretData.KeyAgreement);
+        nts = BCryptDestroySecret(secretHandle->SecretData.SecretAgreement);
         err = _BIDNtStatusToBIDError(nts);
         break;
     case SECRET_TYPE_IMPORTED:
