@@ -571,8 +571,15 @@ _BIDAcquireCacheForUser(
              "file:%s/Library/Caches/com.padl.gss.BrowserID/%s.json",
              szPrefix, szTemplate);
 #else
-    snprintf(szFileName, sizeof(szFileName),
-             "file:/tmp/.%s.%d.json", szTemplate, geteuid());
+    char *szRuntimeDir;
+
+    szRuntimeDir = getenv("XDG_RUNTIME_DIR");
+    if (szRuntimeDir != NULL)
+        snprintf(szFileName, sizeof(szFileName),
+                 "file:%s/%s.json", szRuntimeDir, szTemplate);
+    else
+        snprintf(szFileName, sizeof(szFileName),
+                 "file:/tmp/.%s.%d.json", szTemplate, geteuid());
 #endif
 
     err = _BIDAcquireCache(context, szFileName, 0, pCache);
