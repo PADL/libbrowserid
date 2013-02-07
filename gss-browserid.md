@@ -21,6 +21,7 @@ The GSS BrowserID mechanism imports the [BrowserID spec][BIDSPEC].
 [RFC2743]: http://www.ietf.org/rfc/rfc2743.txt
 [RFC3961]: http://www.ietf.org/rfc/rfc3961.txt
 [RFC4121]: http://www.ietf.org/rfc/rfc4121.txt
+[RFC5801]: http://www.ietf.org/rfc/rfc5801.txt
 [JWA]: http://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms
 [JWT]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-token
 [JWS]: http://tools.ietf.org/html/draft-ietf-oauth-json-web-signature
@@ -265,14 +266,18 @@ Metadata and subsequent context tokens do not have this framing, i.e. they
 consist only of the innerToken.
 
 The innerToken always contains a two octet token ID followed by a BrowserID
-backed assertion. This document defines the following token IDs:
+backed assertion. Note that unlike other GSS mechanisms, the token IDs are
+ASCII so as to ease the implementation cost of [RFC5801] SASL-only
+implementations.
 
-    TOK_TYPE_INITIATOR_CONTEXT                  0xB1 0xD1
-    TOK_TYPE_ACCEPTOR_CONTEXT                   0xB1 0xD2
-    TOK_TYPE_DELETE_CONTEXT                     0xB1 0xD3
-    TOK_TYPE_INITIATOR_META_DATA                0xB1 0xD4
-    TOK_TYPE_ACCEPTOR_META_DATA                 0xB1 0xD5
-    
+This document defines the following token IDs:
+
+    0x63 0x2C  -- initiator context token  (ASCII string "c,")
+    0x43 0x2C  -- acceptor context token   (ASCII string "C,")
+    0x44 0x2C  -- context deletion token   (ASCII string "D,")
+    0x6D 0x2C  -- initiator metadata token (ASCII string "m,")
+    0x4D 0x2C  -- acceptor metadata token  (ASCII string "M,")
+   
 Message protection (confidentiality/wrap) are framed according to [RFC4121].
 
 **TBD**:

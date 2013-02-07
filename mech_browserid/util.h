@@ -218,11 +218,11 @@ enum gss_bid_token_type {
     TOK_TYPE_WRAP                    = 0x0504,  /* RFC 4121 wrap token */
     TOK_TYPE_EXPORT_NAME             = 0x0401,  /* RFC 2743 exported name */
     TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,  /* exported composite name */
-    TOK_TYPE_INITIATOR_CONTEXT       = 0xB1D1,  /* initiator-sent context token */
-    TOK_TYPE_ACCEPTOR_CONTEXT        = 0xB1D2,  /* acceptor-sent context token */
-    TOK_TYPE_DELETE_CONTEXT          = 0xB1D3,  /* RFC 2743 delete context */
-    TOK_TYPE_INITIATOR_META_DATA     = 0xB1D4,
-    TOK_TYPE_ACCEPTOR_META_DATA      = 0xB1D5
+    TOK_TYPE_INITIATOR_CONTEXT       = 0x632C,  /* initiator-sent context token */
+    TOK_TYPE_ACCEPTOR_CONTEXT        = 0x432C,  /* acceptor-sent context token */
+    TOK_TYPE_DELETE_CONTEXT          = 0x442C,  /* RFC 2743 delete context */
+    TOK_TYPE_INITIATOR_META_DATA     = 0x6D2C,  /* initiator NegoEx token token */
+    TOK_TYPE_ACCEPTOR_META_DATA      = 0x4D2C,  /* acceptor NegoEx metadata token */
 };
 
 #define GSSBID_WIRE_FLAGS_MASK          ( GSS_C_MUTUAL_FLAG             | \
