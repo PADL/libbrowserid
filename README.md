@@ -129,6 +129,16 @@ Note that if the server name has aliases (i.e. you can't guarantee which name
 the client will choose, you'll also need to set the
 GSSAPIStrictAcceptorCheck=no option.
 
+### IMAP
+
+The Cyrus IMAP server works fine with the GSS BrowserID mechanism. Note that
+if you haven't configured mutual authentication, you will need to apply the
+patch in contrib/cyrus-sasl.patch and rebuild the GS2 plugin.
+
+It's also possible to use the OS X Mail application with GSS BrowserID. You
+will need to build a small plugin that allows the mechanism to pose as the
+GSSAPI SASL mechanism. See contrib/BrowserIDHelper.
+
 ## bidtool
 
 The BrowserID tool, bidtool, is provided for managing ticket, replay and
