@@ -228,7 +228,7 @@ BIDPrintVerboseReplayCacheEntry(
     printf("Issue time:       %s", ctime(&issueTime));
     printf("Assertion expiry: %s", ctime(&assertionExpiryTime));
 
-    if (ulDHKeySize != 0) {
+    if (ulDHKeySize != 0 || szECDHCurve != NULL) {
         printf("Ticket expiry:    %s", ctime(&certExpiryTime));
         printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
         printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
