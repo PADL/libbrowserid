@@ -143,25 +143,26 @@ Normal mode:
     
     Identity        Audience                  Issuer        Expires                 
     --------------------------------------------------------------------------------
-    lukeh@padl.com  host/monk.off.padl.com    login.persona >>> Expired <<<  
+    lukeh@lukktone. imap/mail.lukktone.com    login.persona Fri Feb  8 04:58:50 2013
 
 Verbose mode:
 
     % bidtool tlist -verbose
     Ticket cache: /Users/lukeh/Library/Caches/com.padl.gss.BrowserID/browserid.tickets.json
 
-    Audience:         urn:x-gss:host/monk.off.padl.com
-    Subject:          lukeh@padl.com
+    Audience:         urn:x-gss:imap/mail.lukktone.com
+    Subject:          lukeh@lukktone.com
     Issuer:           login.persona.org
-    Key length:       256 bits
-    Cert issue time:  Mon Jan  7 19:29:31 2013
-    Ticket expiry:    Mon Jan  7 20:29:31 2013
+    ECDH curve:       P-256
+    Cert issue time:  Thu Feb  7 18:58:49 2013
+    Cert expiry:      Thu Feb  7 19:58:49 2013
+    Ticket expiry:    Fri Feb  8 04:58:50 2013
     Ticket flags:     MUTUAL
 
 ### Replay
 
     % bidtool rlist
-    Replay cache:     .browserid.replay.json
+    Replay cache:     /Users/lukeh/Library/Caches/com.padl.gss.BrowserID/browserid.replay.json
 
     Timestamp                 Ticket ID
     ------------------------------------------------------------------------------------------
