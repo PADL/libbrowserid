@@ -544,8 +544,6 @@ _BIDAcquireCacheForUser(
 #else
     char szFileName[PATH_MAX];
 
-    *pCache = NULL;
-
 #ifdef __APPLE__
     struct passwd *pw, pwd;
     char pwbuf[BUFSIZ];
@@ -587,6 +585,9 @@ _BIDAcquireCacheForUser(
 
 cleanup:
 #endif /* WIN32 */
+
+    if (err != BID_S_OK)
+        *pCache = NULL;
 
     return err;
 }
