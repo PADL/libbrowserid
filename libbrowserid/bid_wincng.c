@@ -940,7 +940,7 @@ _CNGKeySize(
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
     /* XXX this is all a bit ugly, is there a better way? */
-    bPublic = (json_object_get(jwk, bDsaKey ? "y" : "e") != NULL);
+    bPublic = (json_object_get(jwk, bDsaKey ? "x" : "p") == NULL);
 
     err = _CNGMakeKey(algorithm, context, hAlgorithm, jwk, bPublic, &hKey);
     BID_BAIL_ON_ERROR(err);
