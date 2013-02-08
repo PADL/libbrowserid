@@ -550,7 +550,7 @@ _BIDAcquireCacheForUser(
     struct stat sb;
     const char *szPrefix;
 
-    if (getpwuid_r(geteuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) < 0 ||
+    if (getpwuid_r(getuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) < 0 ||
         pw == NULL ||
         pw->pw_dir == NULL) {
         err = BID_S_CACHE_OPEN_ERROR;
@@ -577,7 +577,7 @@ _BIDAcquireCacheForUser(
                  "file:%s/%s.json", szRuntimeDir, szTemplate);
     else
         snprintf(szFileName, sizeof(szFileName),
-                 "file:/tmp/.%s.%d.json", szTemplate, geteuid());
+                 "file:/tmp/.%s.%d.json", szTemplate, getuid());
 #endif
 
     err = _BIDAcquireCache(context, szFileName, 0, pCache);
