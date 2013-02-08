@@ -184,6 +184,9 @@ _BIDInitCurlHandle(
     cc = curl_easy_setopt(curlHandle, CURLOPT_USERAGENT, szUserAgent);
     BID_BAIL_ON_ERROR(cc);
 
+    cc = curl_easy_setopt(curlHandle, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+    BID_BAIL_ON_ERROR(cc);
+
     *pCurlHandle = curlHandle;
 
 cleanup:
