@@ -406,7 +406,7 @@ _BIDDH_RFC3526_6144_G[] = {
 };
 
 /*
- * 7. 8192-bit MODP Group (Group 18) (Group 18) (Group 18) (Group 18)
+ * 7. 8192-bit MODP Group (Group 18)
  */
 static const unsigned char
 _BIDDH_RFC3526_8192_P[] = {
