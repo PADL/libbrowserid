@@ -2,9 +2,7 @@
 # Sample mechanism glue configuration for BrowserID GSS mechanism.
 #
 # Any encryption type supported by Kerberos can be defined as the
-# last element of the OID arc. Because BrowserID does not yet support
-# exchange, we just define browserid-none for now.
+# last element of the OID arc.
 #
-#browserid-none			1.3.6.1.4.1.5322.24.1.0			mech_browserid.so
 browserid-aes128		1.3.6.1.4.1.5322.24.1.17		mech_browserid.so
-#browserid-aes256		1.3.6.1.4.1.5322.24.1.18		mech_browserid.so
+browserid-aes256		1.3.6.1.4.1.5322.24.1.18		mech_browserid.so
