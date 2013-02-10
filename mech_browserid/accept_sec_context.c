@@ -38,7 +38,7 @@
  */
 /*
  * Establish a security context on the acceptor (server). These functions
- * wrap around libradsec and (thus) talk to a RADIUS server or proxy.
+ * wrap around libbrowserid.
  */
 
 #include "gssapiP_bid.h"

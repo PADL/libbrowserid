@@ -31,7 +31,7 @@
  */
 
 /*
- * RADIUS attribute provider.
+ * BrowserID attribute provider.
  */
 
 #ifndef _UTIL_BROWSERID_H_
