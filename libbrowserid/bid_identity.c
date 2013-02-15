@@ -471,8 +471,8 @@ _BIDPopulateIdentity(
     BID_BAIL_ON_ERROR(err);
 
     /* Save optional nonce, internal use only */
-    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "n",
-                            json_object_get(assertion, "n"), 0);
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "nonce",
+                            json_object_get(assertion, "nonce"), 0);
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;

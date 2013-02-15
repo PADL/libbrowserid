@@ -434,7 +434,7 @@ example assertion containing Elliptic Curve Diffie-Hellman parameters:
                 "x": "JR5UPDgMLFPZwOGaKKSF24658tB1DccM1_oHPbCHeZg",
                 "y": "S45Esx_6DfE5-xdB3X7sIIJ16MwO0Y_RiDc-i5ZTLQ8"
         },
-        "n": "GnK2IBA42iQ",
+        "nonce": "GnK2IBA42iQ",
         "aud": "urn:x-gss:host/rand.mit.de.padl.com"
     }
  
@@ -460,7 +460,7 @@ The curve should have an equivalent strength to the negotiated [RFC4121]
 encryption type: at least P-256 MUST be used for browserid-aes128, and P-521
 for browserid-aes256.
 
-#### "n" (Mutual authentication nonce)
+#### "nonce" (Mutual authentication nonce)
 
 This is a random quantity of at least 64 bits, base 64 URL encoded, which
 is used to bind the initiator and acceptor assertions, in the case where
@@ -512,7 +512,7 @@ public key. For example:
 
 This contains the time when the context expires.
 
-#### n
+#### nonce
 
 The nonce as received from the initiator. This SHOULD NOT be present unless a
 nonce was received from the initiator.

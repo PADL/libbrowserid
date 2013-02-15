@@ -243,7 +243,7 @@ _BIDMakeAuthenticator(
 {
     BIDError err;
     BIDJWT ap = NULL;
-    json_t *n = NULL;
+    json_t *nonce = NULL;
     json_t *iat = NULL;
     json_t *exp = NULL;
     json_t *aud = NULL;
@@ -267,7 +267,7 @@ _BIDMakeAuthenticator(
         goto cleanup;
     }
 
-    err = _BIDGenerateNonce(context, &n);
+    err = _BIDGenerateNonce(context, &nonce);
     BID_BAIL_ON_ERROR(err);
 
     aud = json_string(szAudienceOrSpn);
@@ -296,7 +296,7 @@ _BIDMakeAuthenticator(
     err = _BIDJsonObjectSet(context, ap->Payload, "iat", iat, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDJsonObjectSet(context, ap->Payload, "n", n, BID_JSON_FLAG_REQUIRED);
+    err = _BIDJsonObjectSet(context, ap->Payload, "nonce", nonce, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, ap->Payload, "tkt", tkt, BID_JSON_FLAG_REQUIRED);
@@ -315,7 +315,7 @@ cleanup:
         _BIDReleaseJWT(context, ap);
     json_decref(iat);
     json_decref(exp);
-    json_decref(n);
+    json_decref(nonce);
     json_decref(aud);
     json_decref(cbt);
 

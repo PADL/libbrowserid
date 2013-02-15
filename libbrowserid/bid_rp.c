@@ -73,7 +73,7 @@ BIDMakeRPResponseToken(
         json_t *dh = NULL;
         json_t *ticket = NULL;
 
-        err = _BIDJsonObjectSet(context, payload, "n", json_object_get(identity->PrivateAttributes, "n"), 0);
+        err = _BIDJsonObjectSet(context, payload, "nonce", json_object_get(identity->PrivateAttributes, "nonce"), 0);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDGetKeyAgreementPublicValue(context, identity, &dh);
@@ -189,8 +189,8 @@ BIDVerifyRPResponseToken(
          * Where the server was authenticated, the nonce must match.
          */
         if (ulReqFlags & BID_RP_FLAG_VERIFY_NONCE) {
-            json_t *storedNonce   = json_object_get(identity->PrivateAttributes, "n");
-            json_t *assertedNonce = json_object_get(backedAssertion->Assertion->Payload, "n");
+            json_t *storedNonce   = json_object_get(identity->PrivateAttributes, "nonce");
+            json_t *assertedNonce = json_object_get(backedAssertion->Assertion->Payload, "nonce");
 
             if (!json_equal(storedNonce, assertedNonce)) {
                 err = BID_S_MISMATCHED_RP_RESPONSE;

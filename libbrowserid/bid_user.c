@@ -126,7 +126,7 @@ BIDAcquireAssertion(
     BIDBackedAssertion backedAssertion = NULL;
     json_t *claims = NULL;
     json_t *key = NULL;
-    json_t *n = NULL;
+    json_t *nonce = NULL;
     char *szAssertion = NULL;
     char *szPackedAudience = NULL;
     uint32_t ulRetFlags = 0;
@@ -171,10 +171,10 @@ BIDAcquireAssertion(
     BID_BAIL_ON_ERROR(err);
 
     if (ulReqFlags & BID_ACQUIRE_FLAG_NONCE) {
-        err = _BIDGenerateNonce(context, &n);
+        err = _BIDGenerateNonce(context, &nonce);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDJsonObjectSet(context, claims, "n", n, BID_JSON_FLAG_REQUIRED);
+        err = _BIDJsonObjectSet(context, claims, "nonce", nonce, BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -195,7 +195,7 @@ BIDAcquireAssertion(
         }
 
         if (ulReqFlags & BID_ACQUIRE_FLAG_NONCE) {
-            err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "n", n, 0);
+            err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "nonce", nonce, 0);
             BID_BAIL_ON_ERROR(err);
         }
     }
@@ -209,7 +209,7 @@ cleanup:
         BIDFree(szAssertion);
     json_decref(claims);
     json_decref(key);
-    json_decref(n);
+    json_decref(nonce);
     _BIDReleaseBackedAssertion(context, backedAssertion);
     BIDFree(szPackedAudience);
 
