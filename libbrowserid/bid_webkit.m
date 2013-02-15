@@ -135,6 +135,8 @@
 - (void)acquireAssertion:(WebView *)webView;
 - (WebView *)newWebView;
 
+- (void)fillFormWithDefaultEmail:(WebView *)sender;
+
 /* public interface */
 - (BIDError)getAssertion;
 - (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims;
@@ -357,6 +359,14 @@
     [sender stringByEvaluatingJavaScriptFromString:function];
 }
 
+- (void)fillFormWithDefaultEmail:(WebView *)sender
+{
+    if (requiredEmail != nil) {
+        DOMHTMLInputElement *email = (DOMHTMLInputElement *)[[[sender mainFrame] DOMDocument] getElementById:@"authentication_email"];
+        [email setValue:requiredEmail];
+    }
+}
+
 - (void)acquireAssertion:(WebView *)sender
 {
     NSString *function = @"                                                                             \
@@ -383,11 +393,17 @@
     [sender stringByEvaluatingJavaScriptFromString:function];
 
     if (![self silent]) {
+        [self fillFormWithDefaultEmail:sender];
         [identityDialog makeFirstResponder:sender];
         [identityDialog setContentView:sender];
         [identityDialog makeKeyAndOrderFront:sender];
         [identityDialog center];
     }
+}
+
+- (void)webView:(WebView *)webView addMessageToConsole:(NSDictionary *)message
+{
+    NSLog(@"%@", message);
 }
 
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
