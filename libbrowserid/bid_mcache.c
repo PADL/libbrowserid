@@ -52,7 +52,6 @@ struct BIDMemoryCache {
  *
  * - libjansson is compiled with atomic refcounting ops
  * - returned values are immutable
- * - iteration APIs are not used
  */
 #define BIDMemoryCacheLock(mc)      BID_MUTEX_LOCK(&(mc)->Mutex)
 #define BIDMemoryCacheUnlock(mc)    BID_MUTEX_UNLOCK(&(mc)->Mutex)
