@@ -44,6 +44,7 @@ struct BIDMemoryCache {
     char *Name;
     json_t *Data;
     uint32_t Flags;
+    time_t LastChangedTime;
 };
 
 /*
@@ -177,7 +178,7 @@ _BIDMemoryCacheGetLastChangedTime(
     if (mc == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    *pTime = time(NULL); /* XXX */
+    *pTime = mc->LastChangedTime;
 
     return BID_S_OK;
 }
@@ -244,6 +245,8 @@ _BIDMemoryCacheSetOrRemoveObject(
     BIDMemoryCacheUnlock(mc);
 
     BID_BAIL_ON_ERROR(err);
+
+    time(&mc->LastChangedTime);
 
     err = BID_S_OK;
 
