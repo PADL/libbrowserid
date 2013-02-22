@@ -1,4 +1,4 @@
-# BrowserID GSS Mechanism
+# BrowserID GSS/SASL Mechanism
 
 The BrowserID GSS mechanism is a plugin for the GSS-API that allows you to use
 BrowserID-generated assertions for signing in to non-web protocols, such as
