@@ -360,7 +360,7 @@ BIDPrintAuthorityCacheEntry(
     BIDBackedAssertion backedAssertion = NULL;
     BIDIdentity identity = NULL;
     BIDJWK publicKey = NULL;
-    const char *szAlgorithm;
+    const char *szAlgorithm = NULL;
     time_t expiryTime;
     const char *szExpiry;
 
