@@ -110,7 +110,7 @@ _BIDGrowHttpBuffer(
         if (buffer->Size == 0)
             tmpBuffer = LocalAlloc(LMEM_FIXED, newSize);
         else
-            tmpBuffer = LocalReAlloc(buffer->Data, newSize, LMEM_FIXED);
+            tmpBuffer = LocalReAlloc(buffer->Data, newSize, LMEM_MOVEABLE);
         if (tmpBuffer == NULL)
             return BID_S_NO_MEMORY;
 
