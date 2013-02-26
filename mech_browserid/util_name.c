@@ -59,11 +59,11 @@
 
 #include "gssapiP_bid.h"
 
-static gss_OID_desc gssBidNtBrowserIDName = {
+static gss_OID_desc gssBidNtEmailOrSpn = {
     10, "\x2B\x06\x01\x04\x01\xA9\x4A\x18\x02\x01" 
 };
 
-gss_OID GSS_BROWSERID_NT_EMAIL_OR_SPN = &gssBidNtBrowserIDName;
+gss_OID GSS_BROWSERID_NT_EMAIL_OR_SPN = &gssBidNtEmailOrSpn;
 
 OM_uint32
 gssBidAllocName(OM_uint32 *minor, gss_name_t *pName)
