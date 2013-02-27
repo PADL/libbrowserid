@@ -279,8 +279,8 @@ internalizeOid(const gss_OID oid,
     }
 
     if (*pInternalizedOid == GSS_C_NO_OID) {
-        if (oidEqual(oid, GSS_BROWSERID_NT_EMAIL_OR_SPN))
-            *pInternalizedOid = (const gss_OID)GSS_BROWSERID_NT_EMAIL_OR_SPN;
+        if (oidEqual(oid, GSS_C_NT_BROWSERID_PRINCIPAL))
+            *pInternalizedOid = (const gss_OID)GSS_C_NT_BROWSERID_PRINCIPAL;
     }
 
     if (*pInternalizedOid == GSS_C_NO_OID) {

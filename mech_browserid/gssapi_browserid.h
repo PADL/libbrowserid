@@ -49,7 +49,7 @@ extern gss_OID GSS_BROWSERID_AES256_CTS_HMAC_SHA1_96_MECHANISM;
 /*
  * Mechanism name OID.
  */
-extern gss_OID GSS_BROWSERID_NT_EMAIL_OR_SPN;
+extern gss_OID GSS_C_NT_BROWSERID_PRINCIPAL;
 
 /*
  * If the application acquired the assertion itself, then it can

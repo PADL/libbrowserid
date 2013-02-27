@@ -63,7 +63,7 @@ static gss_OID_desc gssBidNtEmailOrSpn = {
     10, "\x2B\x06\x01\x04\x01\xA9\x4A\x18\x02\x01" 
 };
 
-gss_OID GSS_BROWSERID_NT_EMAIL_OR_SPN = &gssBidNtEmailOrSpn;
+gss_OID GSS_C_NT_BROWSERID_PRINCIPAL = &gssBidNtEmailOrSpn;
 
 OM_uint32
 gssBidAllocName(OM_uint32 *minor, gss_name_t *pName)
@@ -494,7 +494,7 @@ gssBidImportName(OM_uint32 *minor,
                  gss_name_t *pName)
 {
     struct gss_bid_name_import_provider nameTypes[] = {
-        { GSS_BROWSERID_NT_EMAIL_OR_SPN,    importBidName               },
+        { GSS_C_NT_BROWSERID_PRINCIPAL,    importBidName               },
         { GSS_C_NT_USER_NAME,               importUserName              },
         { GSS_C_NT_HOSTBASED_SERVICE,       importServiceName           },
         { GSS_C_NT_HOSTBASED_SERVICE_X,     importServiceName           },
@@ -512,7 +512,7 @@ gssBidImportName(OM_uint32 *minor,
 
     for (i = 0; i < sizeof(nameTypes) / sizeof(nameTypes[0]); i++) {
         if (oidEqual(nameTypes[i].oid,
-                     nameType == GSS_C_NO_OID ? GSS_BROWSERID_NT_EMAIL_OR_SPN : nameType)) {
+                     nameType == GSS_C_NO_OID ? GSS_C_NT_BROWSERID_PRINCIPAL : nameType)) {
             major = nameTypes[i].import(minor, nameBuffer, &name);
             break;
         }
@@ -766,7 +766,7 @@ gssBidDisplayName(OM_uint32 *minor,
     } else if (name->flags & NAME_FLAG_EMAIL) {
         name_type = GSS_C_NT_USER_NAME;
     } else {
-        name_type = GSS_BROWSERID_NT_EMAIL_OR_SPN;
+        name_type = GSS_C_NT_BROWSERID_PRINCIPAL;
     }
 
     if (output_name_type != NULL)

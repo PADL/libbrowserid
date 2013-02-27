@@ -49,7 +49,7 @@ gss_inquire_names_for_mech(OM_uint32 *minor,
 #ifdef HAVE_GSS_C_NT_COMPOSITE_EXPORT
         GSS_C_NT_COMPOSITE_EXPORT,
 #endif
-        GSS_BROWSERID_NT_EMAIL_OR_SPN,
+        GSS_C_NT_BROWSERID_PRINCIPAL,
         GSS_C_NT_ANONYMOUS,
     };
     size_t i;
