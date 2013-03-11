@@ -113,6 +113,7 @@ const char *_BIDErrorTable[] = {
     "Assertion is not re-authentication assertion",
     "Bad subject name",
     "Response from relying party does not match request",
+    "Response from relying party is reflected",
     "JSON web token is missing signature",
     "Invalid secret handle",
     "Negotiated key too short",

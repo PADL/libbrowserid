@@ -171,6 +171,14 @@ BIDVerifyRPResponseToken(
 
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
 
+    if (json_object_get(backedAssertion->Assertion->Payload, "aud") != NULL) {
+        /*
+         * Check audience is absent to avoid reflection attacks.
+         */
+        err = BID_S_REFLECTED_RP_RESPONSE;
+        goto cleanup;
+    }
+
     if (ulVerifyRetFlags & BID_VERIFY_FLAG_VALIDATED_CERTS)
         *pulRetFlags |= BID_RP_FLAG_VALIDATED_CERTS;
     if (ulVerifyRetFlags & BID_VERIFY_FLAG_X509)
