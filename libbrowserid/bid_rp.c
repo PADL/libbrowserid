@@ -90,6 +90,7 @@ BIDMakeRPResponseToken(
 
     err = BID_S_NO_KEY;
     if (ulReqFlags & BID_RP_FLAG_INITIAL) {
+        /* XXX should we check for a nonce before signing with X.509? */
         err = _BIDGetRPPrivateKey(context, &key, &certChain);
         if (err == BID_S_OK)
             *pulRetFlags |= BID_RP_FLAG_X509;
