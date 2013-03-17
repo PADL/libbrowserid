@@ -334,6 +334,40 @@ BIDGSSJWTAttributeProvider::getExpiryTime(void) const
 }
 
 OM_uint32
+gssBidApiToWireError(OM_uint32 minor)
+{
+    if (minor >= ERROR_TABLE_BASE_bidg && minor <= GSSBID_BAD_INVOCATION) {
+        minor -= ERROR_TABLE_BASE_bidg;
+        minor |= GSSBID_GSS_WIRE_ERROR;
+    } else if (minor >= ERROR_TABLE_BASE_lbid &&
+               minor <= ERROR_TABLE_BASE_lbid + BID_S_UNKNOWN_ERROR_CODE) {
+        minor -= ERROR_TABLE_BASE_lbid;
+    } else {
+        minor = 0;
+    }
+
+    return minor;
+}
+
+OM_uint32
+gssBidWireToApiError(OM_uint32 minor)
+{
+    if (minor & GSSBID_GSS_WIRE_ERROR) {
+        minor &= ~(GSSBID_GSS_WIRE_ERROR);
+        minor += ERROR_TABLE_BASE_bidg;
+
+        if (minor > GSSBID_BAD_INVOCATION)
+            minor = 0; /* unknown */
+    } else if (minor != 0 && minor <= BID_S_UNKNOWN_ERROR_CODE) {
+        minor += ERROR_TABLE_BASE_lbid;
+    } else {
+        minor = 0;
+    }
+
+    return minor;
+}
+
+OM_uint32
 gssBidMapError(OM_uint32 *minor, BIDError err)
 {
     OM_uint32 major;

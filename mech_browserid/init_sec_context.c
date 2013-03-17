@@ -219,7 +219,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
                                    &ulRetFlags);
 
     major = json_integer_value(json_object_get(response, "gss-maj"));
-    *minor = json_integer_value(json_object_get(response, "gss-min"));
+    *minor = gssBidWireToApiError(json_integer_value(json_object_get(response, "gss-min")));
     if (GSS_ERROR(major) || *minor != 0)
         goto cleanup;
     if (err == BID_S_MISSING_SIGNATURE && ctx->encryptionType == ENCTYPE_NULL)

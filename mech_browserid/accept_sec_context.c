@@ -202,7 +202,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
         major = gssBidContextReady(minor, ctx, cred);
     }
 
-    tmpMajor = makeResponseToken(minor, ctx, major, *minor, output_token);
+    tmpMajor = makeResponseToken(minor, ctx, major, gssBidApiToWireError(*minor), output_token);
     if (GSS_ERROR(tmpMajor))
         major = tmpMajor;
     if (GSS_ERROR(major))

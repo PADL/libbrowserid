@@ -43,10 +43,6 @@ error_code GSSBID_BAD_TOK_HEADER,               "Token header is malformed or co
 error_code GSSBID_TOK_TRUNC,                    "Token is missing data"
 error_code GSSBID_BAD_DIRECTION,                "Packet was replayed in wrong direction"
 error_code GSSBID_WRONG_TOK_ID,                 "Received token ID does not match expected token ID"
-error_code GSSBID_CRIT_ITOK_UNAVAILABLE,        "Critical inner token type unavailable"
-error_code GSSBID_MISSING_REQUIRED_ITOK,        "Missing required inner token"
-error_code GSSBID_DUPLICATE_ITOK,               "Duplicate inner token received"
-error_code GSSBID_WRONG_ITOK,                   "Recieved invalid inner token for current state"
 error_code GSSBID_KEY_UNAVAILABLE,              "BrowserID key unavailable"
 error_code GSSBID_KEY_TOO_SHORT,                "BrowserID key too short"
 

@@ -92,6 +92,14 @@ extern "C" {
 OM_uint32 gssBidJwtAttrProviderInit(OM_uint32 *minor);
 OM_uint32 gssBidJwtAttrProviderFinalize(OM_uint32 *minor);
 
+#define GSSBID_GSS_WIRE_ERROR   0x80000000
+
+OM_uint32
+gssBidApiToWireError(OM_uint32 minor);
+
+OM_uint32
+gssBidWireToApiError(OM_uint32 minor);
+
 OM_uint32
 gssBidMapError(OM_uint32 *minor, BIDError err);
 
