@@ -261,7 +261,7 @@ _BIDMakeAuthenticator(
     err = _BIDGetCurrentJsonTimestamp(context, &iat);
     BID_BAIL_ON_ERROR(err);
 
-    exp = json_integer(json_integer_value(iat) + context->Skew);
+    exp = json_integer(json_integer_value(iat) + context->Skew * 1000);
     if (exp == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -294,6 +294,9 @@ _BIDMakeAuthenticator(
     }
 
     err = _BIDJsonObjectSet(context, ap->Payload, "iat", iat, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, ap->Payload, "exp", exp, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, ap->Payload, "nonce", nonce, BID_JSON_FLAG_REQUIRED);
@@ -532,6 +535,12 @@ _BIDGetReauthAssertion(
 
     _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &now);
 
+    /*
+     * In the current implementation, we only send the expiry time.
+     */
+    err = _BIDJsonObjectDel(context, ap->Payload, "iat", 0);
+    BID_BAIL_ON_ERROR(err);
+
     err = _BIDValidateExpiry(context, now, tkt);
     BID_BAIL_ON_ERROR(err);
 
@@ -618,14 +627,6 @@ _BIDVerifyReauthAssertion(
      * the exp attribute.
      */
     err = _BIDValidateExpiry(context, verificationTime, cred);
-    BID_BAIL_ON_ERROR(err);
-
-    /*
-     * Authenticators MUST expire Skew minutes after they are issued.
-     * Delete the expiry attribute, if present, to prevent the initiator
-     * sending an authenticator that expires too far into the future.
-     */
-    err = _BIDJsonObjectDel(context, ap->Payload, "exp", 0);
     BID_BAIL_ON_ERROR(err);
 
     if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
