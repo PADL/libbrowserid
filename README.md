@@ -80,6 +80,17 @@ the following keys:
 You can use OpenSSL to create these files as you would when setting a server up
 for TLS. The subjectAltName or the CN must match the acceptor host name.
 
+## Other configruation
+
+You can configure the maximum ticket lifetime and renewable lifetime with
+the maxticketage and maxrenewage properties in browserid.json, respectively
+(this is the same file used to configure mutual authentication above).
+
+Otherwise, the GSS BrowserID mechanism sets the ticket lifetime to 10 hours
+and the renewable lifetime to 7 days.
+
+Clock skew is not currently configurable but may be in a future release.
+
 ## Testing
 
 ### gss-sample
