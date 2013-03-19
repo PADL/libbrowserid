@@ -208,7 +208,6 @@ static OM_uint32
 peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     struct wpabuf *buf = NULL;
-    int component, components = 0;
     unsigned int requested = 0;
     krb5_principal princ;
     gss_buffer_desc nameBuf;
@@ -228,7 +227,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
     krbPrincComponentToGssBuffer(princ, 0, &nameBuf);
     if (nameBuf.length > 0) {
         major = gssEapRadiusAddAttr(minor, &buf, PW_GSS_ACCEPTOR_SERVICE_NAME,
-                                    VENDORPEC_UKERNA, &nameBuf);
+                                    0, &nameBuf);
         if (GSS_ERROR(major))
             goto init_chbind_cleanup;
         requested |= CHBIND_SERVICE_NAME_FLAG;
@@ -237,7 +236,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
     krbPrincComponentToGssBuffer(princ, 1, &nameBuf);
     if (nameBuf.length > 0) {
         major = gssEapRadiusAddAttr(minor, &buf, PW_GSS_ACCEPTOR_HOST_NAME,
-                                    VENDORPEC_UKERNA, &nameBuf);
+                                    0, &nameBuf);
         if (GSS_ERROR(major))
             goto init_chbind_cleanup;
         requested |= CHBIND_HOST_NAME_FLAG;
@@ -250,8 +249,8 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 
     if (nameBuf.length > 0) {
         major = gssEapRadiusAddAttr(minor, &buf,
-                                    PW_GSS_ACCEPTOR_SERVICE_SPECIFIC,
-                                    VENDORPEC_UKERNA, &nameBuf);
+                                    PW_GSS_ACCEPTOR_SERVICE_SPECIFICS,
+                                    0, &nameBuf);
         if (GSS_ERROR(major)) {
             krbFreeUnparsedName(krbContext, &nameBuf);
             goto init_chbind_cleanup;
@@ -264,7 +263,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
     if (nameBuf.length > 0) {
         major = gssEapRadiusAddAttr(minor, &buf,
                                     PW_GSS_ACCEPTOR_REALM_NAME,
-                                    VENDORPEC_UKERNA, &nameBuf);
+                                    0, &nameBuf);
         requested |= CHBIND_REALM_NAME_FLAG;
     }
 
@@ -285,14 +284,13 @@ static void
 peerProcessChbindResponse(void *context, int code, int nsid,
                           u8 *data, size_t len)
 {
-    radius_parser msg, vendor_specific;
+  radius_parser msg;
     gss_ctx_id_t ctx = (gss_ctx_id_t )context;
     void *vsadata;
     u8 type;
     u32 vendor_id;
     u32 accepted = 0;
     size_t vsadata_len;
-    int i;
 
     if (nsid != CHBIND_NSID_RADIUS)
         return;
@@ -301,40 +299,25 @@ peerProcessChbindResponse(void *context, int code, int nsid,
         return;
     while (radius_parser_parse_tlv(msg, &type, &vendor_id, &vsadata,
                                    &vsadata_len) == 0) {
-        void *unused_data;
-        size_t unused_len;
-        u8 vendor_type;
 
-        if ((type != RADIUS_ATTR_VENDOR_SPECIFIC) ||
-            (vendor_id != VENDORPEC_UKERNA))
-            continue;
-        vendor_specific = radius_parser_start(vsadata, vsadata_len);
-        if (!vendor_specific)
-            continue;
-        while (radius_parser_parse_vendor_specific(vendor_specific,
-                                                   &vendor_type,
-                                                   &unused_data,
-                                                   &unused_len) == 0) {
-            switch (vendor_type) {
+            switch (type) {
             case PW_GSS_ACCEPTOR_SERVICE_NAME:
                 accepted |= CHBIND_SERVICE_NAME_FLAG;
                 break;
             case PW_GSS_ACCEPTOR_HOST_NAME:
                 accepted |= CHBIND_HOST_NAME_FLAG;
                 break;
-            case PW_GSS_ACCEPTOR_SERVICE_SPECIFIC:
+            case PW_GSS_ACCEPTOR_SERVICE_SPECIFICS:
                 accepted |= CHBIND_SERVICE_SPECIFIC_FLAG;
                 break;
             case PW_GSS_ACCEPTOR_REALM_NAME:
                 accepted |= CHBIND_REALM_NAME_FLAG;
                 break;
             }
-        }
-        radius_parser_finish(vendor_specific);
     }
     radius_parser_finish(msg);
     if ((code == CHBIND_CODE_SUCCESS) &&
-        (accepted == ctx->initiatorCtx.chbindReqFlags)) {
+        ((accepted & ctx->initiatorCtx.chbindReqFlags) == ctx->initiatorCtx.chbindReqFlags)) {
         ctx->flags |= CTX_FLAG_EAP_CHBIND_ACCEPT;
         ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
         /* Accepted! */
@@ -459,7 +442,7 @@ peerConfigFree(OM_uint32 *minor,
  * Mark an initiator context as ready for cryptographic operations
  */
 static OM_uint32
-initReady(OM_uint32 *minor, gss_ctx_id_t ctx, OM_uint32 reqFlags)
+initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     OM_uint32 major;
     const unsigned char *key;
@@ -856,7 +839,7 @@ eapGssSmInitAuthenticate(OM_uint32 *minor,
 
         resp = eap_get_eapRespData(ctx->initiatorCtx.eap);
     } else if (ctx->flags & CTX_FLAG_EAP_SUCCESS) {
-        major = initReady(minor, ctx, reqFlags);
+        major = initReady(minor, ctx);
         if (GSS_ERROR(major))
             goto cleanup;
 
