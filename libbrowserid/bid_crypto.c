@@ -454,9 +454,14 @@ _BIDSaveKeyAgreementStrength(
     json_t *dh;
 
     err = _BIDGetKeyAgreementObject(context, identity->PrivateAttributes, &dh);
-    BID_BAIL_ON_ERROR(err);
+    if (err == BID_S_NO_KEY) {
+        /* If it's a re-authentication context, then propagate EC curve or DH key size */
+        err = _BIDJsonObjectSet(context, cred, "crv", json_object_get(identity->PrivateAttributes, "crv"), 0);
+        BID_BAIL_ON_ERROR(err);
 
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
+        err = _BIDJsonObjectSet(context, cred, "dh-key-size", json_object_get(identity->PrivateAttributes, "dh-key-size"), 0);
+        BID_BAIL_ON_ERROR(err);
+    } else if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
         err = _BIDJsonObjectSet(context, cred, "crv",
                                 json_object_get(json_object_get(dh, "params"), "crv"),
                                 BID_JSON_FLAG_REQUIRED);

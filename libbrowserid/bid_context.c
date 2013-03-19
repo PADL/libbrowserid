@@ -68,6 +68,7 @@ BIDAcquireContext(
     context->Skew = 60 * 5; /* 5 minutes */
     context->MaxDelegations = 6;
     context->TicketLifetime = 0;
+    context->RenewLifetime = 0;
 
     if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
         if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
@@ -242,6 +243,9 @@ BIDSetContextParam(
     case BID_PARAM_TICKET_LIFETIME:
         context->TicketLifetime = *((uint32_t *)value);
         break;
+    case BID_PARAM_RENEW_LIFETIME:
+        context->RenewLifetime = *((uint32_t *)value);
+        break;
     case BID_PARAM_ECDH_CURVE:
         if ((context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) == 0 ||
             value == NULL)
@@ -333,6 +337,9 @@ BIDGetContextParam(
         break;
     case BID_PARAM_TICKET_LIFETIME:
         *((uint32_t *)pValue) = context->TicketLifetime;
+        break;
+    case BID_PARAM_RENEW_LIFETIME:
+        *((uint32_t *)pValue) = context->RenewLifetime;
         break;
     case BID_PARAM_ECDH_CURVE:
         if ((context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) == 0)

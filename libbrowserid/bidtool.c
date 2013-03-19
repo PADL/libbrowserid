@@ -58,10 +58,12 @@ static void
 BIDPrintTicketFlags(uint32_t ulTicketFlags)
 {
     printf("Ticket flags:     ");
+    if (ulTicketFlags & BID_TICKET_FLAG_RENEWED)
+        printf("RENEWED ");
     if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
-        printf("MUTUAL");
+        printf("MUTUAL ");
     if (ulTicketFlags == 0)
-        printf("NONE");
+        printf("NONE ");
     printf("\n");
 }
 

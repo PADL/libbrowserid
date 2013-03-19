@@ -101,7 +101,8 @@ _BIDUpdateReplayCache(
     size_t cbHash = sizeof(hash), cchHash;
     json_t *ark = NULL;
     json_t *tkt = NULL;
-    int bStoreReauthCreds;
+    int bStoreReauthCreds = 0;
+    time_t renewExpiry = 0;
     time_t ticketExpiry = 0;
 
     err = _BIDDigestAssertion(context, szAssertion, hash, &cbHash);
@@ -110,8 +111,17 @@ _BIDUpdateReplayCache(
     err = _BIDBase64UrlEncode(hash, cbHash, &szHash, &cchHash);
     BID_BAIL_ON_ERROR(err);
 
-    bStoreReauthCreds = (context->ContextOptions & BID_CONTEXT_REAUTH) &&
-                        !(ulFlags & BID_VERIFY_FLAG_REAUTH);
+    _BIDGetJsonTimestampValue(context, identity->PrivateAttributes, "renew-exp", &renewExpiry);
+
+    /*
+     * Issue a new ticket if we have a certificate-signed assertion or if the
+     * re-authentication ticket is within the renewable lifetime.
+     */
+    if (context->ContextOptions & BID_CONTEXT_REAUTH) {
+        bStoreReauthCreds =
+            (ulFlags & BID_VERIFY_FLAG_REAUTH) == 0 ||
+            (verificationTime - renewExpiry <= context->Skew);
+    }
 
     rdata = bStoreReauthCreds ? json_copy(identity->Attributes) : json_object();
     if (rdata == NULL) {
@@ -128,6 +138,8 @@ _BIDUpdateReplayCache(
 
     if (context->TicketLifetime)
         ticketExpiry = verificationTime + context->TicketLifetime;
+    if ((ulFlags & BID_VERIFY_FLAG_REAUTH) == 0)
+        renewExpiry = verificationTime + context->RenewLifetime;
 
     if (bStoreReauthCreds) {
         uint32_t ulTicketFlags;
@@ -139,6 +151,8 @@ _BIDUpdateReplayCache(
         BID_BAIL_ON_ERROR(err);
 
         ulTicketFlags = 0;
+        if (ulFlags & BID_VERIFY_FLAG_REAUTH)
+            ulTicketFlags |= BID_TICKET_FLAG_RENEWED;
         if (_BIDCanMutualAuthP(context))
             ulTicketFlags |= BID_TICKET_FLAG_MUTUAL_AUTH;
 
@@ -150,6 +164,11 @@ _BIDUpdateReplayCache(
 
         if (ticketExpiry) {
             err = _BIDSetJsonTimestampValue(context, rdata, "exp", ticketExpiry);
+            BID_BAIL_ON_ERROR(err);
+        }
+
+        if (renewExpiry) {
+            err = _BIDSetJsonTimestampValue(context, rdata, "renew-exp", renewExpiry);
             BID_BAIL_ON_ERROR(err);
         }
 

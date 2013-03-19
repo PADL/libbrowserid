@@ -322,6 +322,7 @@ struct BIDContextDesc {
     BIDTicketCache TicketCache;
     uint32_t DHKeySize;
     uint32_t TicketLifetime;
+    uint32_t RenewLifetime;
     BIDCache RPCertConfig;
     void *ParentWindow;
 };
@@ -665,6 +666,7 @@ _BIDOutputDebugJson(json_t *j);
 /*
  * bid_reauth.c
  */
+#define BID_TICKET_FLAG_RENEWED                 0x1
 #define BID_TICKET_FLAG_MUTUAL_AUTH             0x2
 
 BIDError

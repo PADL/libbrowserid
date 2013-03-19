@@ -640,6 +640,23 @@ _BIDVerifyReauthAssertion(
     err = _BIDMakeReauthIdentity(context, cred, ap, pVerifiedIdentity);
     BID_BAIL_ON_ERROR(err);
 
+    /*
+     * Propagate the renew-exp, crv and/or dh-key-size attributes from the
+     * original ticket into the identity so that any additional tickets
+     * also have this same value.
+     */
+    err = _BIDJsonObjectSet(context, (*pVerifiedIdentity)->PrivateAttributes,
+                            "renew-exp", json_object_get(cred, "renew-exp"), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, (*pVerifiedIdentity)->PrivateAttributes,
+                            "crv", json_object_get(cred, "crv"), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, (*pVerifiedIdentity)->PrivateAttributes,
+                            "dh-key-size", json_object_get(cred, "dh-key-size"), 0);
+    BID_BAIL_ON_ERROR(err);
+
 cleanup:
     if (err != BID_S_OK) {
         json_decref(*pVerifierCred);

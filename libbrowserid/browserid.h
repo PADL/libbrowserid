@@ -241,6 +241,7 @@ typedef enum {
     BID_PARAM_PARENT_WINDOW,
     BID_PARAM_TICKET_LIFETIME, /* seconds */
     BID_PARAM_ECDH_CURVE,
+    BID_PARAM_RENEW_LIFETIME, /* seconds */
 } BIDContextParameter;
 
 BIDError
