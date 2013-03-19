@@ -148,7 +148,7 @@ BIDReleaseContext(BIDContext context)
     _BIDReleaseCache(context, context->AuthorityCache);
     _BIDReleaseCache(context, context->ReplayCache);
     _BIDReleaseCache(context, context->TicketCache);
-    _BIDReleaseCache(context, context->RPCertConfig);
+    _BIDReleaseCache(context, context->RPConfig);
 
     memset(context, 0, sizeof(*context));
     BIDFree(context);
@@ -189,7 +189,7 @@ BIDSetContextParam(
     case BID_PARAM_AUTHORITY_CACHE_NAME:
     case BID_PARAM_REPLAY_CACHE_NAME:
     case BID_PARAM_TICKET_CACHE_NAME:
-    case BID_PARAM_RP_CERT_CONFIG_NAME: {
+    case BID_PARAM_RP_CONFIG_NAME: {
         const char *szCacheName;
         BIDCache cache, *pCache = NULL;
         uint32_t ulFlags = 0;
@@ -200,8 +200,8 @@ BIDSetContextParam(
             pCache = &context->ReplayCache;
         else if (ulParam == BID_PARAM_TICKET_CACHE_NAME)
             pCache = &context->TicketCache;
-        else if (ulParam == BID_PARAM_RP_CERT_CONFIG_NAME) {
-            pCache = &context->RPCertConfig;
+        else if (ulParam == BID_PARAM_RP_CONFIG_NAME) {
+            pCache = &context->RPConfig;
             ulFlags |= BID_CACHE_FLAG_UNVERSIONED;
         }
 
@@ -314,8 +314,8 @@ BIDGetContextParam(
         err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
         break;
         break;
-    case BID_PARAM_RP_CERT_CONFIG_NAME:
-        err = _BIDGetCacheName(context, context->RPCertConfig, (const char **)pValue);
+    case BID_PARAM_RP_CONFIG_NAME:
+        err = _BIDGetCacheName(context, context->RPConfig, (const char **)pValue);
         break;
     case BID_PARAM_REPLAY_CACHE:
         *pValue = context->ReplayCache;

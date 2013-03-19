@@ -323,7 +323,7 @@ struct BIDContextDesc {
     uint32_t DHKeySize;
     uint32_t TicketLifetime;
     uint32_t RenewLifetime;
-    BIDCache RPCertConfig;
+    BIDCache RPConfig;
     void *ParentWindow;
 };
 

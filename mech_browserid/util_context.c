@@ -151,7 +151,7 @@ gssBidAllocContext(OM_uint32 *minor,
      * If we are doing mutual authentication, this is whether we store the
      * server certificate and private key.
      */
-    BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CERT_CONFIG_NAME,
+    BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CONFIG_NAME,
                        GSSBID_CONFIG_FILE);
 
     major = gssBidSetReauthPolicy(minor, ctx);

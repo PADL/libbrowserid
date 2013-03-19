@@ -85,6 +85,39 @@ cleanup:
     return err;
 }
 
+static BIDError
+_BIDGetReauthPolicy(
+    BIDContext context,
+    uint32_t *pulTicketLifetime,
+    uint32_t *pulRenewLifetime)
+{
+    json_t *tmp = NULL;
+    uint32_t ulTicketLifetime = 0;
+    uint32_t ulRenewLifetime = 0;
+
+    if (_BIDGetCacheObject(context, context->RPConfig, "maxticketage", &tmp) == BID_S_OK) {
+        ulTicketLifetime = json_integer_value(tmp);
+        json_decref(tmp);
+    }
+
+    if (ulTicketLifetime == 0)
+        BIDGetContextParam(context, BID_PARAM_TICKET_LIFETIME, (void **)&ulTicketLifetime);
+
+    *pulTicketLifetime = ulTicketLifetime;
+
+    if (_BIDGetCacheObject(context, context->RPConfig, "maxrenewage", &tmp) == BID_S_OK) {
+        ulRenewLifetime = json_integer_value(tmp);
+        json_decref(tmp);
+    }
+
+    if (ulRenewLifetime == 0)
+        BIDGetContextParam(context, BID_PARAM_RENEW_LIFETIME, (void **)&ulRenewLifetime);
+
+    *pulRenewLifetime = ulRenewLifetime;
+
+    return BID_S_OK;
+}
+
 BIDError
 _BIDUpdateReplayCache(
     BIDContext context,
@@ -102,8 +135,8 @@ _BIDUpdateReplayCache(
     json_t *ark = NULL;
     json_t *tkt = NULL;
     int bStoreReauthCreds = 0;
-    time_t renewExpiry = 0;
-    time_t ticketExpiry = 0;
+    uint32_t ticketLifetime = 0, renewLifetime = 0;
+    time_t ticketExpiry = 0, renewExpiry = 0;
 
     err = _BIDDigestAssertion(context, szAssertion, hash, &cbHash);
     BID_BAIL_ON_ERROR(err);
@@ -123,6 +156,9 @@ _BIDUpdateReplayCache(
             (verificationTime - renewExpiry <= context->Skew);
     }
 
+    err = _BIDGetReauthPolicy(context, &ticketLifetime, &renewLifetime);
+    BID_BAIL_ON_ERROR(err);
+
     rdata = bStoreReauthCreds ? json_copy(identity->Attributes) : json_object();
     if (rdata == NULL) {
         err = BID_S_NO_MEMORY;
@@ -137,9 +173,9 @@ _BIDUpdateReplayCache(
     BID_BAIL_ON_ERROR(err);
 
     if (context->TicketLifetime)
-        ticketExpiry = verificationTime + context->TicketLifetime;
+        ticketExpiry = verificationTime + ticketLifetime;
     if ((ulFlags & BID_VERIFY_FLAG_REAUTH) == 0)
-        renewExpiry = verificationTime + context->RenewLifetime;
+        renewExpiry = verificationTime + renewLifetime;
 
     if (bStoreReauthCreds) {
         uint32_t ulTicketFlags;
