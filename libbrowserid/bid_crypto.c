@@ -472,8 +472,8 @@ _BIDSaveKeyAgreementStrength(
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDJsonObjectSet(context, cred, "dh-key-size",
-                            json_integer(cbDHKey * 8),
-                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+                                json_integer(cbDHKey * 8),
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
     }
 
