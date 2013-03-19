@@ -44,8 +44,7 @@
  * XXX make this configurable.
  */
 static OM_uint32
-gssBidSetReauthPolicy(OM_uint32 *minor,
-                      gss_ctx_id_t ctx)
+gssBidSetDefaultReauthPolicy(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     BIDError err;
     uint32_t ulTicketLifetime = 60 * 60 * 10;       /* 10 hours */
@@ -154,7 +153,7 @@ gssBidAllocContext(OM_uint32 *minor,
     BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CONFIG_NAME,
                        GSSBID_CONFIG_FILE);
 
-    major = gssBidSetReauthPolicy(minor, ctx);
+    major = gssBidSetDefaultReauthPolicy(minor, ctx);
     if (GSS_ERROR(major))
         goto cleanup;
 
