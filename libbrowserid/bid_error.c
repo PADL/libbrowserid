@@ -119,6 +119,7 @@ const char *_BIDErrorTable[] = {
     "Negotiated key too short",
     "Unknown Elliptic Curve",
     "Invalid Elliptic Curve for context",
+    "Missing nonce",
     "Unknown error code"
 };
 

@@ -150,7 +150,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
                        gss_ctx_id_t ctx,
                        gss_name_t target_name,
                        gss_OID mech_type GSSBID_UNUSED,
-                       OM_uint32 req_flags,
+                       OM_uint32 req_flags GSSBID_UNUSED,
                        OM_uint32 time_req GSSBID_UNUSED,
                        gss_channel_bindings_t input_chan_bindings GSSBID_UNUSED,
                        gss_buffer_t input_token,
@@ -204,11 +204,8 @@ gssBidInitResponseToken(OM_uint32 *minor,
     ulReqFlags = BID_RP_FLAG_HOSTNAME_MATCH_OK;
     if (ctx->encryptionType != ENCTYPE_NULL)
         ulReqFlags |= BID_RP_FLAG_HAVE_SESSION_KEY;
-    if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {
+    if ((ctx->flags & CTX_FLAG_REAUTH) == 0)
         ulReqFlags |= BID_RP_FLAG_INITIAL;
-        if (req_flags & GSS_C_MUTUAL_FLAG)
-            ulReqFlags |= BID_RP_FLAG_VERIFY_NONCE;
-    }
 
     err = BIDVerifyRPResponseToken(ctx->bidContext,
                                    ctx->bidIdentity,

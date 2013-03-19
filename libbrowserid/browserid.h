@@ -131,6 +131,7 @@ typedef enum {
     BID_S_KEY_TOO_SHORT,
     BID_S_UNKNOWN_EC_CURVE,
     BID_S_INVALID_EC_CURVE,
+    BID_S_MISSING_NONCE,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -443,7 +444,6 @@ BIDStoreTicketInCache(
 /* Input flags (ulReqFlags) */
 #define BID_RP_FLAG_HAVE_SESSION_KEY            0x00000001 /* have a session key */
 #define BID_RP_FLAG_INITIAL                     0x00000002 /* not reauth-based auth */
-#define BID_RP_FLAG_VERIFY_NONCE                0x00000004
 #define BID_RP_FLAG_X509_THUMBPRINT             0x00000008 /* send thumbprint not cert */
 #define BID_RP_FLAG_HOSTNAME_MATCH_OK           0x00000010 /* don't require URI SAN in cert */
 

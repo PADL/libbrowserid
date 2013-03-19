@@ -70,14 +70,6 @@ BIDMakeRPResponseToken(
         goto cleanup;
     }
 
-    /*
-     * Echo back nonce to initiator if one was present.
-     */
-    if (identity != NULL) {
-        err = _BIDJsonObjectSet(context, payload, "nonce", json_object_get(identity->PrivateAttributes, "nonce"), 0);
-        BID_BAIL_ON_ERROR(err);
-    }
-
     if (ulReqFlags & BID_RP_FLAG_HAVE_SESSION_KEY) {
         if (ulReqFlags & BID_RP_FLAG_INITIAL) {
             err = _BIDGetKeyAgreementPublicValue(context, identity, &dh);
@@ -103,6 +95,23 @@ BIDMakeRPResponseToken(
     if (err != BID_S_OK &&
         (ulReqFlags & BID_RP_FLAG_HAVE_SESSION_KEY)) {
         err = _BIDDeriveSessionSubkey(context, identity, "RRK", &key);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    /*
+     * Echo back nonce to initiator if one was present and we are doing
+     * certificate-based mutual authentication or re-authentication. Only
+     * do this if we are actually signing a valid payload (this is to make
+     * NegoEx certificate advertisement work).
+     */
+    if (json_object_size(identity->PrivateAttributes) &&
+        ((*pulRetFlags & BID_RP_FLAG_X509) ||
+         ((ulReqFlags & BID_RP_FLAG_INITIAL) == 0))) {
+        err = _BIDJsonObjectSet(context, payload, "nonce",
+                                json_object_get(identity->PrivateAttributes, "nonce"),
+                                BID_JSON_FLAG_REQUIRED);
+        if (err == BID_S_UNKNOWN_JSON_KEY)
+            err = BID_S_MISSING_NONCE;
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -192,26 +201,32 @@ BIDVerifyRPResponseToken(
     if (ulVerifyRetFlags & BID_VERIFY_FLAG_X509)
         *pulRetFlags |= BID_RP_FLAG_X509;
 
-    if (*pulRetFlags & BID_RP_FLAG_VALIDATED_CERTS) {
-        /*
-         * Re-authentication responses must signed with the RRK, not a certificate.
-         */
-        if ((ulReqFlags & BID_RP_FLAG_INITIAL) == 0) {
+    /*
+     * Re-authentication responses must signed with the RRK, not a certificate.
+     */
+    if ((*pulRetFlags & BID_RP_FLAG_VALIDATED_CERTS) &&
+        (ulReqFlags & BID_RP_FLAG_INITIAL) == 0) {
+        err = BID_S_MISMATCHED_RP_RESPONSE;
+        goto cleanup;
+    }
+
+    /*
+     * Where a key other than a newly agreed key was used to authenticate the
+     * response, the nonce must match, to guard against replaying the response
+     * assertion. This is the case for certificate-based mutual authentication
+     * (where the RP key is used) or re-authentication assertions.
+     */
+    if ((*pulRetFlags & BID_RP_FLAG_VALIDATED_CERTS) ||
+        (ulReqFlags & BID_RP_FLAG_INITIAL) == 0) {
+        json_t *storedNonce   = json_object_get(identity->PrivateAttributes, "nonce");
+        json_t *assertedNonce = json_object_get(backedAssertion->Assertion->Payload, "nonce");
+
+        if (assertedNonce == NULL) {
+            err = BID_S_MISSING_NONCE;
+            goto cleanup;
+        } else if (!json_equal(storedNonce, assertedNonce)) {
             err = BID_S_MISMATCHED_RP_RESPONSE;
             goto cleanup;
-        }
-
-        /*
-         * Where the server was authenticated, the nonce must match.
-         */
-        if (ulReqFlags & BID_RP_FLAG_VERIFY_NONCE) {
-            json_t *storedNonce   = json_object_get(identity->PrivateAttributes, "nonce");
-            json_t *assertedNonce = json_object_get(backedAssertion->Assertion->Payload, "nonce");
-
-            if (!json_equal(storedNonce, assertedNonce)) {
-                err = BID_S_MISMATCHED_RP_RESPONSE;
-                goto cleanup;
-            }
         }
     }
 
