@@ -104,7 +104,8 @@ BIDMakeRPResponseToken(
      * do this if we are actually signing a valid payload (this is to make
      * NegoEx certificate advertisement work).
      */
-    if (json_object_size(identity->PrivateAttributes) &&
+    if (identity != NULL &&
+        json_object_size(identity->PrivateAttributes) &&
         ((*pulRetFlags & BID_RP_FLAG_X509) ||
          ((ulReqFlags & BID_RP_FLAG_INITIAL) == 0))) {
         err = _BIDJsonObjectSet(context, payload, "nonce",
