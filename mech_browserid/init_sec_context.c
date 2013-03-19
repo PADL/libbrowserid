@@ -246,6 +246,8 @@ gssBidInitResponseToken(OM_uint32 *minor,
     if (tkt != NULL && target_name != GSS_C_NO_NAME) {
         uint32_t ulTicketFlags = 0;
 
+        if (ctx->flags & CTX_FLAG_REAUTH)
+            ulTicketFlags |= BID_TICKET_FLAG_RENEWED;
         if (ctx->gssFlags & GSS_C_MUTUAL_FLAG)
             ulTicketFlags |= BID_TICKET_FLAG_MUTUAL_AUTH;
 

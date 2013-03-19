@@ -36,6 +36,34 @@
 
 #include "gssapiP_bid.h"
 
+/*
+ * Set the re-authentication ticket and renewable lifetimes. By
+ * default these match typical Kerberos defaults of 10 hours and
+ * 7 days, respectively.
+ *
+ * XXX make this configurable.
+ */
+static OM_uint32
+gssBidSetReauthPolicy(OM_uint32 *minor,
+                      gss_ctx_id_t ctx)
+{
+    BIDError err;
+    uint32_t ulTicketLifetime = 60 * 60 * 10;       /* 10 hours */
+    uint32_t ulRenewLifetime = 60 * 60 * 24 * 7;    /* 7 days */
+
+    err = BIDSetContextParam(ctx->bidContext, BID_PARAM_TICKET_LIFETIME,
+                             &ulTicketLifetime);
+    if (err != BID_S_OK)
+        return gssBidMapError(minor, err);
+
+    err = BIDSetContextParam(ctx->bidContext, BID_PARAM_RENEW_LIFETIME,
+                             &ulRenewLifetime);
+    if (err != BID_S_OK)
+        return gssBidMapError(minor, err);
+
+    return GSS_S_COMPLETE;
+}
+
 OM_uint32
 gssBidAllocContext(OM_uint32 *minor,
                    int isInitiator,
@@ -46,7 +74,6 @@ gssBidAllocContext(OM_uint32 *minor,
     gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
     BIDError err;
     uint32_t contextParams;
-    uint32_t ulTicketLifetime;
     size_t cbKey = 0;
 
     GSSBID_ASSERT(*pCtx == GSS_C_NO_CONTEXT);
@@ -127,17 +154,9 @@ gssBidAllocContext(OM_uint32 *minor,
     BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CERT_CONFIG_NAME,
                        GSSBID_CONFIG_FILE);
 
-    /*
-     * Default ticket lifetime of 10 hours, similar to Kerberos.
-     */
-    ulTicketLifetime = 60 * 60 * 10;
-
-    err = BIDSetContextParam(ctx->bidContext, BID_PARAM_TICKET_LIFETIME,
-                             &ulTicketLifetime);
-    if (err != BID_S_OK) {
-        major = gssBidMapError(minor, err);
+    major = gssBidSetReauthPolicy(minor, ctx);
+    if (GSS_ERROR(major))
         goto cleanup;
-    }
 
     /*
      * Integrity, confidentiality, sequencing and replay detection are
