@@ -362,11 +362,6 @@ _BIDMakeReauthIdentity(
                             json_object_get(cred, "a-exp"), 0);
     BID_BAIL_ON_ERROR(err);
 
-    /* copy over the nonce */
-    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "nonce",
-                            json_object_get(ap->Payload, "nonce"), BID_JSON_FLAG_REQUIRED);
-    BID_BAIL_ON_ERROR(err);
-
     err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
                                             &identity->SecretHandle);
     BID_BAIL_ON_ERROR(err);
@@ -660,14 +655,6 @@ _BIDVerifyReauthAssertion(
 
     err = _BIDJsonObjectSet(context, (*pVerifiedIdentity)->PrivateAttributes,
                             "dh-key-size", json_object_get(cred, "dh-key-size"), 0);
-    BID_BAIL_ON_ERROR(err);
-
-    /*
-     * Propagate the nonce attribute from the assertion so it can be echoed
-     * back to the initiator.
-     */
-    err = _BIDJsonObjectSet(context, (*pVerifiedIdentity)->PrivateAttributes,
-                            "nonce", json_object_get(ap->Payload, "nonce"), 0);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:

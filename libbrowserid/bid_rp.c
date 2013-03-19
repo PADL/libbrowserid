@@ -99,15 +99,15 @@ BIDMakeRPResponseToken(
     }
 
     /*
-     * Echo back nonce to initiator if one was present and we are doing
-     * certificate-based mutual authentication or re-authentication. Only
-     * do this if we are actually signing a valid payload (this is to make
-     * NegoEx certificate advertisement work).
+     * Echo back nonce to initiator if we are doing mutual authentication
+     * with certificates.
+     *
+     * Only do this if we are actually signing a valid payload (this is to
+     * make NegoEx certificate advertisement work).
      */
     if (identity != NULL &&
         json_object_size(identity->PrivateAttributes) &&
-        ((*pulRetFlags & BID_RP_FLAG_X509) ||
-         ((ulReqFlags & BID_RP_FLAG_INITIAL) == 0))) {
+        (*pulRetFlags & BID_RP_FLAG_X509)) {
         err = _BIDJsonObjectSet(context, payload, "nonce",
                                 json_object_get(identity->PrivateAttributes, "nonce"),
                                 BID_JSON_FLAG_REQUIRED);
@@ -202,23 +202,12 @@ BIDVerifyRPResponseToken(
     if (ulVerifyRetFlags & BID_VERIFY_FLAG_X509)
         *pulRetFlags |= BID_RP_FLAG_X509;
 
-    /*
-     * Re-authentication responses must signed with the RRK, not a certificate.
-     */
-    if ((*pulRetFlags & BID_RP_FLAG_VALIDATED_CERTS) &&
-        (ulReqFlags & BID_RP_FLAG_INITIAL) == 0) {
-        err = BID_S_MISMATCHED_RP_RESPONSE;
-        goto cleanup;
-    }
-
-    /*
-     * Where a key other than a newly agreed key was used to authenticate the
-     * response, the nonce must match, to guard against replaying the response
-     * assertion. This is the case for certificate-based mutual authentication
-     * (where the RP key is used) or re-authentication assertions.
-     */
-    if ((*pulRetFlags & BID_RP_FLAG_VALIDATED_CERTS) ||
-        (ulReqFlags & BID_RP_FLAG_INITIAL) == 0) {
+    if (*pulRetFlags & BID_RP_FLAG_VALIDATED_CERTS) {
+        /*
+         * When doing mutual authentication with certificates, the nonce must
+         * match that asserted by the initiator, to guard against replayed response
+         * assertions.
+         */
         json_t *storedNonce   = json_object_get(identity->PrivateAttributes, "nonce");
         json_t *assertedNonce = json_object_get(backedAssertion->Assertion->Payload, "nonce");
 
@@ -226,6 +215,14 @@ BIDVerifyRPResponseToken(
             err = BID_S_MISSING_NONCE;
             goto cleanup;
         } else if (!json_equal(storedNonce, assertedNonce)) {
+            err = BID_S_MISMATCHED_RP_RESPONSE;
+            goto cleanup;
+        }
+
+        /*
+         * Re-authentication responses must signed with the RRK, not a certificate.
+         */
+        if ((ulReqFlags & BID_RP_FLAG_INITIAL) == 0) {
             err = BID_S_MISMATCHED_RP_RESPONSE;
             goto cleanup;
         }
