@@ -172,9 +172,9 @@ _BIDUpdateReplayCache(
                             json_object_get(identity->PrivateAttributes, "a-exp"), 0);
     BID_BAIL_ON_ERROR(err);
 
-    if (context->TicketLifetime)
+    if (ticketLifetime != 0)
         ticketExpiry = verificationTime + ticketLifetime;
-    if ((ulFlags & BID_VERIFY_FLAG_REAUTH) == 0)
+    if ((ulFlags & BID_VERIFY_FLAG_REAUTH) == 0 && renewLifetime != 0)
         renewExpiry = verificationTime + renewLifetime;
 
     if (bStoreReauthCreds) {
@@ -191,19 +191,18 @@ _BIDUpdateReplayCache(
             ulTicketFlags |= BID_TICKET_FLAG_RENEWED;
         if (_BIDCanMutualAuthP(context))
             ulTicketFlags |= BID_TICKET_FLAG_MUTUAL_AUTH;
-
-        if (ulTicketFlags) {
+        if (ulTicketFlags != 0) {
             err = _BIDJsonObjectSet(context, rdata, "flags", json_integer(ulTicketFlags),
                                     BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
             BID_BAIL_ON_ERROR(err);
         }
 
-        if (ticketExpiry) {
+        if (ticketExpiry != 0) {
             err = _BIDSetJsonTimestampValue(context, rdata, "exp", ticketExpiry);
             BID_BAIL_ON_ERROR(err);
         }
 
-        if (renewExpiry) {
+        if (renewExpiry != 0) {
             err = _BIDSetJsonTimestampValue(context, rdata, "renew-exp", renewExpiry);
             BID_BAIL_ON_ERROR(err);
         }
