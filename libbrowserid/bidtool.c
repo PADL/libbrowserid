@@ -212,7 +212,7 @@ BIDPrintVerboseReplayCacheEntry(
 {
     unsigned char *pbHash = NULL;
     size_t cbHash = 0, i;
-    time_t issueTime, certExpiryTime, assertionExpiryTime;
+    time_t issueTime, certExpiryTime, assertionExpiryTime, renewExpiryTime;
     uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
     uint32_t ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
     const char *szECDHCurve = json_string_value(json_object_get(j, "crv"));
@@ -221,6 +221,7 @@ BIDPrintVerboseReplayCacheEntry(
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
     _BIDGetJsonTimestampValue(gContext, j, "exp", &certExpiryTime);
     _BIDGetJsonTimestampValue(gContext, j, "a-exp", &assertionExpiryTime);
+    _BIDGetJsonTimestampValue(gContext, j, "renew-exp", &renewExpiryTime);
 
     printf("Ticket ID:        ");
     for (i = 0; i < cbHash; i++)
@@ -232,6 +233,7 @@ BIDPrintVerboseReplayCacheEntry(
 
     if (ulDHKeySize != 0 || szECDHCurve != NULL) {
         printf("Ticket expiry:    %s", ctime(&certExpiryTime));
+        printf("Renewable until:  %s", ctime(&renewExpiryTime));
         printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
         printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
         printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
