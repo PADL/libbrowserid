@@ -132,11 +132,11 @@ gssBidAllocContext(OM_uint32 *minor,
     if (ctx->encryptionType != ENCTYPE_NULL) {
         char *szCurve;
 
-        if (cbKey >= 256)
+        if (cbKey >= 32)                            /* aes256 */
             szCurve = BID_ECDH_CURVE_P521;
-        else if (cbKey >= 192)
+        else if (cbKey >= 24)                       /* aes192 */
             szCurve = BID_ECDH_CURVE_P384;
-        else
+        else                                        /* aes128 */
             szCurve = BID_ECDH_CURVE_P256;
 
         err = BIDSetContextParam(ctx->bidContext, BID_PARAM_ECDH_CURVE, szCurve);
