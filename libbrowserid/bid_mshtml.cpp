@@ -76,6 +76,11 @@ static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                              
         BrowserID.User.getHostname = function() { return args.servicePrincipalName; };              \
     }                                                                                               \
                                                                                                     \
+    if (args.requiredEmail) {                                                                       \
+        var email = document.getElementById('authentication_email');                                \
+        email.value = args.requiredEmail;                                                           \
+    }                                                                                               \
+                                                                                                    \
     BrowserID.internal.setPersistent(                                                               \
         args.audience,                                                                              \
         function() {                                                                                \
