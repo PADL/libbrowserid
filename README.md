@@ -83,7 +83,7 @@ the following keys:
 You can use OpenSSL to create these files as you would when setting a server up
 for TLS. The subjectAltName or the CN must match the acceptor host name.
 
-## Other configruation
+## Other configuration
 
 You can configure the maximum ticket lifetime and renewable lifetime with
 the maxticketage and maxrenewage properties in browserid.json, respectively
