@@ -15,6 +15,7 @@
 #include "includes.h"
 
 #include "common.h"
+#include "radius/radius.h"
 #include "crypto/ms_funcs.h"
 #include "crypto/sha1.h"
 #include "crypto/tls.h"
@@ -263,14 +264,14 @@ static int eap_ttls_avp_encapsulate(struct wpabuf **resp, u32 avp_code,
 }
 
 /* chop up resp into multiple vsa's as necessary*/
-static int eap_ttls_avp_vsa_encapsulate(struct wpabuf **resp, u32 vendor,
+static int eap_ttls_avp_radius_vsa_encapsulate(struct wpabuf **resp, u32 vendor,
 					u8 attr, int mandatory)
 {
 	struct wpabuf *msg;
-	u8 *avp, *pos, *src;
+	u8 *avp, *pos, *src, *final;
 	size_t size = wpabuf_len(*resp);
 	size_t num_msgs = 1 + (size / 248);
-	size_t msg_wrapper_size = sizeof(struct ttls_avp_vendor) + 4;
+	size_t msg_wrapper_size = sizeof(struct ttls_avp_vendor) + 6;
 	size_t allocated_total = num_msgs * (4 + msg_wrapper_size) + size;
 
 	msg = wpabuf_alloc(allocated_total);
@@ -284,14 +285,20 @@ static int eap_ttls_avp_vsa_encapsulate(struct wpabuf **resp, u32 vendor,
 	while (size > 0) {
 		int avp_size = size > 248 ? 248 : size;
 		size -= avp_size;
-		pos = eap_ttls_avp_hdr(avp, attr, vendor, mandatory,
-				       avp_size);
-		os_memcpy(pos, src, avp_size);
-		pos += avp_size;
+		pos = eap_ttls_avp_hdr(avp, RADIUS_ATTR_VENDOR_SPECIFIC, 0, mandatory,
+				       avp_size+6);
+		wpabuf_put(msg, pos-avp);
+		wpabuf_put_be32(msg, vendor);
+		wpabuf_put_u8(msg, (u8) attr);
+		wpabuf_put_u8(msg, (u8) avp_size+2);
+		wpabuf_put_data(msg, src, avp_size);
 		src += avp_size;
-		AVP_PAD(avp, pos);
-		wpabuf_put(msg, pos - avp);
-		avp = pos;
+		pos = wpabuf_mhead_u8(msg) + wpabuf_len(msg);
+		final = pos; /*keep pos so we know how much padding is added*/
+		AVP_PAD(avp, final); /*final modified*/
+		if (final > pos)
+			wpabuf_put(msg, final-pos);
+		avp = final;
 	}
 	/* check avp-wpabuf_mhead(msg) < allocated_total */
 	wpabuf_free(*resp);
@@ -1385,7 +1392,7 @@ static int eap_ttls_add_chbind_request(struct eap_sm *sm,
 		wpabuf_put_data(chbind_req, chbind_config->req_data,
 				chbind_config->req_data_len);
 	}
-	if (eap_ttls_avp_vsa_encapsulate(&chbind_req,
+	if (eap_ttls_avp_radius_vsa_encapsulate(&chbind_req,
 					 RADIUS_VENDOR_ID_UKERNA,
 					 RADIUS_ATTR_UKERNA_CHBIND, 0) < 0)
 		return -1;
