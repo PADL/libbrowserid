@@ -145,19 +145,19 @@ _BIDParseHexNumber(
     size_t cchValue,
     BCryptBuffer *blob)
 {
-    size_t i;
+    size_t i, cbBuffer = cchValue / 2;
 
     if (cchValue % 2)
-        return BID_S_INVALID_JSON;
+        cbBuffer++;
 
-    blob->pvBuffer = BIDMalloc(cchValue / 2);
+    blob->pvBuffer = BIDMalloc(cbBuffer);
     if (blob->pvBuffer == NULL)
         return BID_S_NO_MEMORY;
 
-    for (i = 0; i < cchValue / 2; i++) {
+    for (i = 0; i < cbBuffer; i++) {
         int b;
 
-        if (sscanf(&szValue[i * 2], "%02x", &b) != 1) {
+        if (sscanf(&szValue[cbBuffer * 2], "%02x", &b) != 1) {
             BIDFree(blob->pvBuffer);
             blob->pvBuffer = NULL;
             return BID_S_INVALID_JSON;
@@ -166,7 +166,7 @@ _BIDParseHexNumber(
             b <<= 4;
         ((PUCHAR)blob->pvBuffer)[i] = b & 0xff;
     }
-    blob->cbBuffer = cchValue / 2;
+    blob->cbBuffer = cbBuffer;
     return BID_S_OK;
 }
 
@@ -248,7 +248,7 @@ _BIDGetJsonBufferValue(
                 cchDecimal++;
         }
 
-        if (cchDecimal == len || (len % 2))
+        if (cchDecimal == len)
             err = _BIDParseDecimalNumber(context, szValue, len, blob);
         else
             err = BID_S_INVALID_JSON;
