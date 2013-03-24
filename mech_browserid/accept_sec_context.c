@@ -175,25 +175,46 @@ gssBidAcceptSecContext(OM_uint32 *minor,
         cbChannelBindings = input_chan_bindings->application_data.length;
     }
 
-    err = BIDVerifyAssertion(ctx->bidContext,
-                             cred->bidReplayCache,
-                             szAssertion,
-                             (char *)bufAudienceOrSpn.value,
-                             pbChannelBindings,
-                             cbChannelBindings,
-                             time(NULL),
-                             GSSBID_SM_STATE(ctx) == GSSBID_STATE_RETRY_INITIAL ? 0 : BID_VERIFY_FLAG_REAUTH,
-                             &ctx->bidIdentity,
-                             &ctx->expiryTime,
-                             &ulBidFlags);
-    major = gssBidMapError(minor, err);
-    if (ulBidFlags & BID_VERIFY_FLAG_REAUTH) {
-        /* recoverable errors */
-        if (err == BID_S_INVALID_ASSERTION || err == BID_S_EXPIRED_ASSERTION) {
+    switch (GSSBID_SM_STATE(ctx)) {
+    case GSSBID_STATE_INITIAL:
+    case GSSBID_STATE_RETRY_INITIAL:
+        err = BIDVerifyAssertion(ctx->bidContext,
+                                 cred->bidReplayCache,
+                                 szAssertion,
+                                 (char *)bufAudienceOrSpn.value,
+                                 pbChannelBindings,
+                                 cbChannelBindings,
+                                 time(NULL),
+                                 GSSBID_SM_STATE(ctx) == GSSBID_STATE_RETRY_INITIAL ? 0 : BID_VERIFY_FLAG_REAUTH,
+                                 &ctx->bidIdentity,
+                                 &ctx->expiryTime,
+                                 &ulBidFlags);
+         major = gssBidMapError(minor, err);
+         if (ulBidFlags & BID_VERIFY_FLAG_REAUTH) {
+            /* recoverable errors */
+            if (err == BID_S_INVALID_ASSERTION || err == BID_S_EXPIRED_ASSERTION) {
+                major = GSS_S_CONTINUE_NEEDED;
+                *minor = GSSBID_REAUTH_FAILED;
+            } else
+                ctx->flags |= CTX_FLAG_REAUTH;
+        }
+        if (ulBidFlags & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
             major = GSS_S_CONTINUE_NEEDED;
-            *minor = GSSBID_REAUTH_FAILED;
-        } else
-            ctx->flags |= CTX_FLAG_REAUTH;
+            ctx->flags |= CTX_FLAG_EXTRA_ROUND_TRIP;
+        }
+        break;
+    case GSSBID_STATE_EXTRA_ROUND_TRIP:
+        err = BIDVerifyXRTToken(ctx->bidContext,
+                                ctx->bidIdentity,
+                                szAssertion,
+                                0,
+                                NULL,
+                                &ulBidFlags);
+        major = gssBidMapError(minor, err);
+        break;
+    default:
+        GSSBID_ASSERT(0 && "Invalid state");
+        break;
     }
 
     if (major == GSS_S_COMPLETE) {
@@ -202,16 +223,22 @@ gssBidAcceptSecContext(OM_uint32 *minor,
         major = gssBidContextReady(minor, ctx, cred);
     }
 
-    tmpMajor = makeResponseToken(minor, ctx, major, gssBidApiToWireError(*minor), output_token);
-    if (GSS_ERROR(tmpMajor))
-        major = tmpMajor;
-    if (GSS_ERROR(major))
-        goto cleanup;
+    if (GSSBID_SM_STATE(ctx) != GSSBID_STATE_EXTRA_ROUND_TRIP) {
+        tmpMajor = makeResponseToken(minor, ctx, major, gssBidApiToWireError(*minor), output_token);
+        if (GSS_ERROR(tmpMajor))
+            major = tmpMajor;
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
 
-    if (major == GSS_S_CONTINUE_NEEDED)
-        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_RETRY_INITIAL);
-    else
+    if (major == GSS_S_CONTINUE_NEEDED) {
+        if (ctx->flags & CTX_FLAG_EXTRA_ROUND_TRIP)
+            GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_EXTRA_ROUND_TRIP);
+        else
+            GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_RETRY_INITIAL);
+    } else {
         GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
+    }
 
     GSSBID_ASSERT(CTX_IS_ESTABLISHED(ctx) || major == GSS_S_CONTINUE_NEEDED);
 

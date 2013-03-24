@@ -702,7 +702,8 @@ enum gss_bid_state {
     GSSBID_STATE_AUTHENTICATE       = 0x02,     /* exchange assertion */
     GSSBID_STATE_RETRY_INITIAL      = 0x04,     /* retry reauth */
     GSSBID_STATE_RETRY_AUTHENTICATE = 0x08,     /* retry reauth */
-    GSSBID_STATE_ESTABLISHED        = 0x10,     /* context established */
+    GSSBID_STATE_EXTRA_ROUND_TRIP   = 0x10,     /* replay cache avoidance */
+    GSSBID_STATE_ESTABLISHED        = 0x20,     /* context established */
 };
 
 #define GSSBID_STATE_NEXT(s)    ((s) << 1)

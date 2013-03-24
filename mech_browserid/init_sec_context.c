@@ -175,6 +175,9 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
+    output_token->length = 0;
+    output_token->value = NULL;
+
     major = gssBidVerifyToken(minor, input_token, &actualTokenType,
                               &bufInnerToken, &ctx->mechanismUsed);
     if (GSS_ERROR(major))
@@ -228,17 +231,6 @@ gssBidInitResponseToken(OM_uint32 *minor,
 
     _BIDGetJsonTimestampValue(ctx->bidContext, response, "exp", &ctx->expiryTime);
 
-    major = gssBidContextReady(minor, ctx, cred); /* need key to verify */
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {
-        if (ulRetFlags & BID_RP_FLAG_VALIDATED_CERTS)
-            ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
-        else
-            ctx->gssFlags &= ~(GSS_C_MUTUAL_FLAG);
-    }
-
     tkt = json_object_get(response, "tkt");
     if (tkt != NULL && target_name != GSS_C_NO_NAME) {
         uint32_t ulTicketFlags = 0;
@@ -253,10 +245,45 @@ gssBidInitResponseToken(OM_uint32 *minor,
                                ulTicketFlags);
     }
 
-    output_token->length = 0;
-    output_token->value = NULL;
+    if (ulRetFlags & BID_RP_FLAG_EXTRA_ROUND_TRIP) {
+        gss_buffer_desc xrtToken = GSS_C_EMPTY_BUFFER;
+        uint32_t ulXRTFlags;
 
-    GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
+        ctx->flags |= CTX_FLAG_EXTRA_ROUND_TRIP;
+
+        err = BIDMakeXRTToken(ctx->bidContext, ctx->bidIdentity, NULL, 0,
+                              (char **)&xrtToken.value, &xrtToken.length, &ulXRTFlags);
+        if (err != BID_S_OK) {
+            major = gssBidMapError(minor, err);
+            goto cleanup;
+        }
+
+        major = gssBidMakeToken(minor, ctx, &xrtToken,
+                                TOK_TYPE_INITIATOR_CONTEXT, 0,
+                                output_token);
+        BIDFree(xrtToken.value);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    } else
+        ctx->gssFlags &= ~(GSS_C_DCE_STYLE);
+
+    major = gssBidContextReady(minor, ctx, cred); /* need key to verify */
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {
+        if (ulRetFlags & BID_RP_FLAG_VALIDATED_CERTS)
+            ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
+        else
+            ctx->gssFlags &= ~(GSS_C_MUTUAL_FLAG);
+    }
+
+#if 0
+    if (ctx->flags & CTX_FLAG_EXTRA_ROUND_TRIP)
+        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_EXTRA_ROUND_TRIP);
+    else
+#endif
+        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
 
 cleanup:
     GSSBID_FREE(szAssertion);
@@ -272,7 +299,7 @@ gssBidInitSecContext(OM_uint32 *minor,
                      gss_ctx_id_t ctx,
                      gss_name_t target_name,
                      gss_OID mech_type GSSBID_UNUSED,
-                     OM_uint32 req_flags GSSBID_UNUSED,
+                     OM_uint32 req_flags,
                      OM_uint32 time_req GSSBID_UNUSED,
                      gss_channel_bindings_t input_chan_bindings,
                      gss_buffer_t input_token,
@@ -347,6 +374,7 @@ gssBidInitSecContext(OM_uint32 *minor,
                 GSSBID_MUTEX_LOCK(&ctx->cred->mutex);
             }
             break;
+        case GSSBID_STATE_EXTRA_ROUND_TRIP:
         case GSSBID_STATE_ESTABLISHED:
             major = GSS_S_FAILURE;
             *minor = GSSBID_CONTEXT_ESTABLISHED;
