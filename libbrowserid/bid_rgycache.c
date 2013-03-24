@@ -117,6 +117,8 @@ _BIDRegistryCacheAcquire(
     if (rc == NULL)
         return BID_S_NO_MEMORY;
 
+    rc->Key = (HKEY)0;
+
     err = _BIDUtf8ToUcs2(context, &name[5], &wszSubKey);
     if (err != BID_S_OK) {
         ops->Release(ops, context, rc);
@@ -135,13 +137,15 @@ _BIDRegistryCacheAcquire(
         err = _BIDRegistryCacheMapError(lResult);
         if (err == BID_S_CACHE_KEY_NOT_FOUND)
             err = BID_S_CACHE_NOT_FOUND;
-    }
+    } else
+        err = BID_S_OK;
 
     BIDFree(wszSubKey);
 
-    *cache = rc;
+    if (err == BID_S_OK)
+        *cache = rc;
 
-    return BID_S_OK;
+    return err;
 }
 
 static BIDError
