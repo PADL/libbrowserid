@@ -497,6 +497,34 @@ cleanup:
     return err;
 }
 
+/*
+ * If we are validating a hostname subject (as is the case with an
+ * RP response assertion), then we can do a case-insensitive comparison
+ * on the (hopefully ASCII) subject name.
+ *
+ * Otherwise, an exact match is required.
+ */
+static int
+_BIDSubjectEqual(
+    const char *a1,
+    const char *a2,
+    uint32_t ulReqFlags)
+{
+    int ret;
+
+    if (ulReqFlags & BID_VERIFY_FLAG_RP) {
+#ifdef WIN32
+        ret = (_strcmpi(a1, a2) == 0);
+#else
+        ret = (strcasecmp(a1, a2) == 0);
+#endif
+    } else {
+        ret = (strcmp(a1, a2) == 0);
+    }
+
+    return ret;
+}
+
 BIDError
 _BIDValidateSubject(
     BIDContext context BID_UNUSED,
@@ -557,7 +585,7 @@ _BIDValidateSubject(
 
         assertedURI = json_object_get(assertedPrincipal, "uri");
         if (json_is_string(assertedURI) &&
-            strcmp(json_string_value(assertedURI), szPackedAudience) == 0) {
+            _BIDSubjectEqual(json_string_value(assertedURI), szPackedAudience, ulReqFlags)) {
             bMatchedSubject++;
         } else if ((ulReqFlags & BID_VERIFY_FLAG_HOSTNAME_MATCH_OK) == 0) {
             err = BID_S_BAD_SUBJECT;
@@ -573,12 +601,12 @@ _BIDValidateSubject(
     BID_ASSERT(p != NULL);
 
     if (json_is_string(assertedPrincipalValue) &&
-        strcmp(json_string_value(assertedPrincipalValue), p) == 0)
+        _BIDSubjectEqual(json_string_value(assertedPrincipalValue), p, ulReqFlags))
         bMatchedSubject++;
 
     assertedSubject = json_object_get(identity->Attributes, "sub");
     if (json_is_string(assertedSubject) &&
-        strcmp(json_string_value(assertedSubject), p) == 0)
+        _BIDSubjectEqual(json_string_value(assertedSubject), p, ulReqFlags))
         bMatchedSubject++;
 
     err = BID_S_OK;
