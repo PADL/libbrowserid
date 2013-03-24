@@ -1870,7 +1870,7 @@ _BIDGenerateNonce(
     BIDError err;
     NTSTATUS nts;
     BCRYPT_ALG_HANDLE hAlgorithm = NULL;
-    unsigned char nonce[8];
+    unsigned char nonce[16];
 
     *pNonce = NULL;
 

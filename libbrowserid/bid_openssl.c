@@ -1277,7 +1277,7 @@ _BIDGenerateNonce(
     BIDContext context,
     json_t **pNonce)
 {
-    unsigned char nonce[8];
+    unsigned char nonce[16];
 
     *pNonce = NULL;
 
