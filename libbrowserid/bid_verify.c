@@ -399,6 +399,11 @@ _BIDVerifyLocal(
         BID_BAIL_ON_ERROR(err);
     }
 
+    err = _BIDParseProtocolOpts(context,
+                                json_object_get(backedAssertion->Assertion->Payload, "opts"),
+                                pulRetFlags);
+    BID_BAIL_ON_ERROR(err);
+
     err = BID_S_OK;
     if (pVerifiedIdentity != NULL)
         *pVerifiedIdentity = verifiedIdentity;

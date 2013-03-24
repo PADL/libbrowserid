@@ -291,6 +291,7 @@ BIDReleaseReplayCache(
 #define BID_ACQUIRE_FLAG_NO_INTERACT        0x00000001
 #define BID_ACQUIRE_FLAG_NO_CACHED          0x00000002
 #define BID_ACQUIRE_FLAG_NONCE              0x00000004
+#define BID_ACQUIRE_FLAG_EXTRA_ROUND_TRIP   0x00000008 /* request XRT extension */
 
 /* Output flags (ulRetFlags) */
 #define BID_ACQUIRE_FLAG_REAUTH             0x00010000
@@ -337,6 +338,7 @@ BIDFreeAssertion(
 #define BID_VERIFY_FLAG_VALIDATED_CERTS         0x00020000
 #define BID_VERIFY_FLAG_X509                    0x00040000
 #define BID_VERIFY_FLAG_REAUTH_MUTUAL           0x00080000
+#define BID_VERIFY_FLAG_EXTRA_ROUND_TRIP        0x00100000 /* client requested XRT extension */
 
 BIDError
 BIDVerifyAssertion(
@@ -448,8 +450,9 @@ BIDStoreTicketInCache(
 #define BID_RP_FLAG_HOSTNAME_MATCH_OK           0x00000010 /* don't require URI SAN in cert */
 
 /* Output flags (ulRetFlags) */
-#define BID_RP_FLAG_VALIDATED_CERTS             0x00020000
-#define BID_RP_FLAG_X509                        0x00040000
+#define BID_RP_FLAG_VALIDATED_CERTS             0x00020000 /* validated certificate chain */
+#define BID_RP_FLAG_X509                        0x00040000 /* certs were X.509 */
+#define BID_RP_FLAG_EXTRA_ROUND_TRIP            0x00080000 /* server supports XRT extension */
 
 #ifdef JANSSON_H
 BIDError
@@ -471,13 +474,31 @@ BIDVerifyRPResponseToken(
     uint32_t ulReqFlags,
     json_t **pPayload,
     uint32_t *pulRetFlags);
-#endif
+
+BIDError
+BIDMakeXRTToken(
+    BIDContext context,
+    BIDIdentity identity,
+    json_t *additionalClaims,
+    uint32_t ulReqFlags,
+    char **pszResponseToken,
+    size_t *pchResponseToken,
+    uint32_t *pulRetFlags);
+
+BIDError
+BIDVerifyXRTToken(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *szAssertion,
+    uint32_t ulReqFlags,
+    json_t **pPayload,
+    uint32_t *pulRetFlags);
+#endif /* JANSSON_H */
 
 BIDError
 BIDFreeData(
     BIDContext context,
     char *s);
-
 
 #ifdef __cplusplus
 }

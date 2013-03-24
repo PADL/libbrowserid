@@ -57,6 +57,8 @@ BIDMakeRPResponseToken(
     json_t *certChain = NULL;
     json_t *dh = NULL;
     json_t *ticket = NULL;
+    json_t *jti = NULL;
+    uint32_t ulProtoOpts = 0;
 
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_RP);
 
@@ -105,15 +107,31 @@ BIDMakeRPResponseToken(
      * Only do this if we are actually signing a valid payload (this is to
      * make NegoEx certificate advertisement work).
      */
-    if (identity != NULL &&
-        json_object_size(identity->PrivateAttributes) &&
-        (*pulRetFlags & BID_RP_FLAG_X509)) {
-        err = _BIDJsonObjectSet(context, payload, "nonce",
-                                json_object_get(identity->PrivateAttributes, "nonce"),
-                                BID_JSON_FLAG_REQUIRED);
-        if (err == BID_S_UNKNOWN_JSON_KEY)
-            err = BID_S_MISSING_NONCE;
+    if (identity != NULL && json_object_size(identity->PrivateAttributes)) {
+        err = _BIDParseProtocolOpts(context,
+                                    json_object_get(identity->PrivateAttributes, "opts"),
+                                    &ulProtoOpts);
         BID_BAIL_ON_ERROR(err);
+
+        if (ulProtoOpts & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
+            err = _BIDGenerateNonce(context, &jti);
+            BID_BAIL_ON_ERROR(err);
+
+            err = _BIDJsonObjectSet(context, payload, "jti", jti, 0);
+            BID_BAIL_ON_ERROR(err);
+
+            err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "jti", jti, 0);
+            BID_BAIL_ON_ERROR(err);
+        }
+
+        if ((*pulRetFlags & BID_RP_FLAG_X509)) {
+            err = _BIDJsonObjectSet(context, payload, "nonce",
+                                    json_object_get(identity->PrivateAttributes, "nonce"),
+                                    BID_JSON_FLAG_REQUIRED);
+            if (err == BID_S_UNKNOWN_JSON_KEY)
+                err = BID_S_MISSING_NONCE;
+            BID_BAIL_ON_ERROR(err);
+        }
     }
 
     jwt.EncData = NULL;
@@ -137,6 +155,7 @@ cleanup:
     json_decref(certChain);
     json_decref(dh);
     json_decref(ticket);
+    json_decref(jti);
     _BIDReleaseJWTInternal(context, &jwt, 0);
 
     return err;
@@ -159,6 +178,7 @@ BIDVerifyRPResponseToken(
     json_t *certParams;
     uint32_t ulVerifyReqFlags = 0;
     uint32_t ulVerifyRetFlags = 0;
+    uint32_t ulProtoOpts = 0;
 
     *pulRetFlags = 0;
 
@@ -225,6 +245,23 @@ BIDVerifyRPResponseToken(
         if ((ulReqFlags & BID_RP_FLAG_INITIAL) == 0) {
             err = BID_S_MISMATCHED_RP_RESPONSE;
             goto cleanup;
+        }
+    }
+
+    err = _BIDParseProtocolOpts(context,
+                                json_object_get(identity->PrivateAttributes, "opts"),
+                                &ulProtoOpts);
+    BID_BAIL_ON_ERROR(err);
+
+    if (ulProtoOpts & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
+        json_t *jti = json_object_get(backedAssertion->Assertion->Payload, "jti");
+
+        if (jti != NULL) {
+            err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "jti", jti, 0);
+            BID_BAIL_ON_ERROR(err);
+
+            /* indicate to the caller that the RP supported the XRT option */
+            *pulRetFlags |= BID_RP_FLAG_EXTRA_ROUND_TRIP;
         }
     }
 

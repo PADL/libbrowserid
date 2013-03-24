@@ -685,6 +685,7 @@ _BIDGetReauthAssertion(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     const char *szIdentityName, /* optional */
+    uint32_t ulReqFlags,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
     time_t *ptExpiryTime,
@@ -876,6 +877,18 @@ int
 _BIDCanInteractP(
     BIDContext context,
     uint32_t ulReqFlags);
+
+BIDError
+_BIDMakeProtocolOpts(
+    BIDContext context BID_UNUSED,
+    uint32_t ulOpts,
+    json_t **pOpts);
+
+BIDError
+_BIDParseProtocolOpts(
+    BIDContext context BID_UNUSED,
+    json_t *opts,
+    uint32_t *pulOpts);
 
 /*
  * bid_rcache.c

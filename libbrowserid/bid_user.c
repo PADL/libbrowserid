@@ -44,6 +44,7 @@ _BIDMakeClaims(
     BIDContext context,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
+    uint32_t ulReqFlags,
     json_t **pClaims,
     json_t **pKey)
 {
@@ -52,6 +53,7 @@ _BIDMakeClaims(
     json_t *cbt = NULL;
     json_t *dh = NULL;
     json_t *key = NULL;
+    json_t *opts = NULL;
 
     *pClaims = NULL;
     *pKey = NULL;
@@ -93,6 +95,14 @@ _BIDMakeClaims(
         BID_BAIL_ON_ERROR(err);
     }
 
+    err = _BIDMakeProtocolOpts(context, ulReqFlags, &opts);
+    BID_BAIL_ON_ERROR(err);
+
+    if (opts != NULL) {
+        err = _BIDJsonObjectSet(context, claims, "opts", opts, 0);
+        BID_BAIL_ON_ERROR(err);
+    }
+
     err = BID_S_OK;
     *pClaims = claims;
     *pKey = key;
@@ -104,6 +114,7 @@ cleanup:
     }
     json_decref(cbt);
     json_decref(dh);
+    json_decref(opts);
 
     return err;
 }
@@ -149,7 +160,7 @@ BIDAcquireAssertion(
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_CACHED) == 0) {
         err = _BIDGetReauthAssertion(context, ticketCache, szPackedAudience,
                                      pbChannelBindings, cbChannelBindings, szIdentityName,
-                                     pAssertion, pAssertedIdentity, ptExpiryTime,
+                                     ulReqFlags, pAssertion, pAssertedIdentity, ptExpiryTime,
                                      &ulTicketFlags);
         if (err == BID_S_OK) {
             ulRetFlags |= BID_ACQUIRE_FLAG_REAUTH;
@@ -167,7 +178,7 @@ BIDAcquireAssertion(
     }
 #endif
 
-    err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings, &claims, &key);
+    err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings, ulReqFlags, &claims, &key);
     BID_BAIL_ON_ERROR(err);
 
     if (ulReqFlags & BID_ACQUIRE_FLAG_NONCE) {

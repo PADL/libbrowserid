@@ -17,6 +17,7 @@ BIDGetIdentityReauthTicket
 BIDGetIdentitySubject
 BIDIdentityDeriveKey
 BIDMakeRPResponseToken
+BIDMakeXRTToken
 BIDReleaseContext
 BIDReleaseIdentity
 BIDReleaseReplayCache
@@ -25,6 +26,7 @@ BIDSetContextParam
 BIDStoreTicketInCache
 BIDVerifyAssertion
 BIDVerifyRPResponseToken
+BIDVerifyXRTToken
 _BIDAcquireCache
 _BIDAllocIdentity
 _BIDBase64UrlDecode

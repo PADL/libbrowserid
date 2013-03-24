@@ -559,3 +559,92 @@ _BIDJsonObjectSetBinaryValue(
 
     return err;
 }
+
+static struct {
+    uint32_t ulAcquireOpt;
+    uint32_t ulVerifyOpt;
+    const char *szOpt;
+} _BIDOptionsMap[] = {
+    {
+        BID_ACQUIRE_FLAG_EXTRA_ROUND_TRIP,
+        BID_VERIFY_FLAG_EXTRA_ROUND_TRIP,
+        "xrt"
+    },
+};
+
+BIDError
+_BIDMakeProtocolOpts(
+    BIDContext context BID_UNUSED,
+    uint32_t ulOpts,
+    json_t **pOpts)
+{
+    BIDError err;
+    json_t *opts = NULL;
+    size_t i;
+
+    opts = json_array();
+    if (opts == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; i < sizeof(_BIDOptionsMap) / sizeof(_BIDOptionsMap[0]); i++) {
+        if (ulOpts & _BIDOptionsMap[i].ulAcquireOpt) {
+            json_t *opt = json_string(_BIDOptionsMap[i].szOpt);
+
+            if (opt == NULL) {
+                err = BID_S_NO_MEMORY;
+                goto cleanup;
+            }
+
+            json_array_append_new(opts, opt);
+        }
+    }
+
+    if (json_array_size(opts)) {
+        *pOpts = opts;
+        opts = NULL;
+    }
+
+    err = BID_S_OK;
+
+cleanup:
+    json_decref(opts);
+
+    return err;
+}
+
+BIDError
+_BIDParseProtocolOpts(
+    BIDContext context BID_UNUSED,
+    json_t *opts,
+    uint32_t *pulOpts)  /* BID_VERIFY_FLAG_XXX */
+{
+    size_t i, j;
+
+    /* don't zero pulOpts, caller may have already set some flags */
+
+    if (opts == NULL)
+        return BID_S_OK;
+
+    if (!json_is_array(opts))
+        return BID_S_INVALID_JSON;
+
+    for (i = 0; i < json_array_size(opts); i++) {
+        json_t *opt = json_array_get(opts, i);
+        const char *szOpt;
+
+        szOpt = json_string_value(opt);
+        if (szOpt == NULL)
+            continue;
+
+        for (j = 0; j < sizeof(_BIDOptionsMap) / sizeof(_BIDOptionsMap[0]); j++) {
+            if (strcmp(szOpt, _BIDOptionsMap[j].szOpt) == 0) {
+                *pulOpts |= _BIDOptionsMap[j].ulVerifyOpt;
+                break;
+            }
+        }
+    }
+
+    return BID_S_OK;
+}

@@ -57,6 +57,7 @@ BIDVerifyAssertion(
     BIDBackedAssertion backedAssertion = NULL;
     uint32_t ulRetFlags = 0;
     char *szPackedAudience = NULL;
+    int bUseReplayCache;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -72,11 +73,6 @@ BIDVerifyAssertion(
 
     if (replayCache == BID_C_NO_REPLAY_CACHE)
         replayCache = context->ReplayCache;
-
-    if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
-        err = _BIDCheckReplayCache(context, replayCache, szAssertion, verificationTime);
-        BID_BAIL_ON_ERROR(err);
-    }
 
     /*
      * Split backed identity assertion out into
@@ -101,13 +97,23 @@ BIDVerifyAssertion(
                               NULL, NULL, pVerifiedIdentity, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
 
+    bUseReplayCache =
+        (ulRetFlags & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) == 0 &&
+        (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE);
+
+    /* If we are doing an extra round trip, we can avoid checking the replay cache */
+    if (bUseReplayCache) {
+        err = _BIDCheckReplayCache(context, replayCache, szAssertion, verificationTime);
+        BID_BAIL_ON_ERROR(err);
+    }
+
     if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH) == 0 &&
         (context->ContextOptions & BID_CONTEXT_KEYEX_MASK)) {
         err = _BIDVerifierKeyAgreement(context, *pVerifiedIdentity);
         BID_BAIL_ON_ERROR(err);
     }
 
-    if (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE) {
+    if (bUseReplayCache || (context->ContextOptions & BID_CONTEXT_REAUTH)) {
         err = _BIDUpdateReplayCache(context, replayCache, *pVerifiedIdentity, szAssertion,
                                     verificationTime, ulRetFlags);
         BID_BAIL_ON_ERROR(err);
@@ -473,6 +479,11 @@ _BIDPopulateIdentity(
     /* Save optional nonce, internal use only */
     err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "nonce",
                             json_object_get(assertion, "nonce"), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    /* Save protocol options, internal use only */
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "opts",
+                            json_object_get(assertion, "opts"), 0);
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;

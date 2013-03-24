@@ -35,6 +35,7 @@ libbrowserid_la_SOURCES =   \
     bid_util.c              \
     bid_verify.c            \
     bid_x509.c              \
+    bid_xrt.c               \
     vers.c
 
 libbrowserid_la_LIBADD   = @JANSSON_LIBS@ @CURL_LIBS@ @OPENSSL_LIBS@

@@ -238,6 +238,7 @@ _BIDMakeAuthenticator(
     const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
+    uint32_t ulReqFlags,
     json_t *tkt,
     BIDJWT *pAuthenticator)
 {
@@ -248,6 +249,7 @@ _BIDMakeAuthenticator(
     json_t *exp = NULL;
     json_t *aud = NULL;
     json_t *cbt = NULL;
+    json_t *opts = NULL;
 
     *pAuthenticator = NULL;
 
@@ -311,6 +313,14 @@ _BIDMakeAuthenticator(
     err = _BIDJsonObjectSet(context, ap->Payload, "cbt", cbt, 0);
     BID_BAIL_ON_ERROR(err);
 
+    err = _BIDMakeProtocolOpts(context, ulReqFlags, &opts);
+    BID_BAIL_ON_ERROR(err);
+
+    if (opts != NULL) {
+        err = _BIDJsonObjectSet(context, ap->Payload, "opts", opts, 0);
+        BID_BAIL_ON_ERROR(err);
+    }
+
     *pAuthenticator = ap;
 
 cleanup:
@@ -321,6 +331,7 @@ cleanup:
     json_decref(nonce);
     json_decref(aud);
     json_decref(cbt);
+    json_decref(opts);
 
     return err;
 }
@@ -360,6 +371,11 @@ _BIDMakeReauthIdentity(
     /* copy over the assertion expiry time */
     err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "a-exp",
                             json_object_get(cred, "a-exp"), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    /* Save protocol options, internal use only */
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "opts",
+                            json_object_get(ap->Payload, "opts"), 0);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDDeriveAuthenticatorSessionKey(context, json_object_get(cred, "ark"), ap,
@@ -493,6 +509,7 @@ _BIDGetReauthAssertion(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     const char *szIdentityName,
+    uint32_t ulReqFlags,
     char **pAssertion,
     BIDIdentity *pAssertedIdentity,
     time_t *ptExpiryTime,
@@ -530,7 +547,7 @@ _BIDGetReauthAssertion(
     }
 
     err = _BIDMakeAuthenticator(context, szPackedAudience, pbChannelBindings, cbChannelBindings,
-                                json_object_get(tkt, "jti"), &ap);
+                                ulReqFlags, json_object_get(tkt, "jti"), &ap);
     BID_BAIL_ON_ERROR(err);
 
     _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &now);
