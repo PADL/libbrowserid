@@ -157,7 +157,7 @@ _BIDParseHexNumber(
     for (i = 0; i < cbBuffer; i++) {
         int b;
 
-        if (sscanf(&szValue[cbBuffer * 2], "%02x", &b) != 1) {
+        if (sscanf(&szValue[i * 2], "%02x", &b) != 1) {
             BIDFree(blob->pvBuffer);
             blob->pvBuffer = NULL;
             return BID_S_INVALID_JSON;
