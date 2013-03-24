@@ -33,6 +33,7 @@ libbrowserid_OBJS =					\
 	$(OBJ)\bid_wincng.obj				\
 	$(OBJ)\bid_winhttp.obj				\
 	$(OBJ)\bid_wpal.obj				\
+	$(OBJ)\bid_xrt.obj				\
 	$(OBJ)\bid_x509.obj				
 
 $(LIBBROWSERID): $(libbrowserid_OBJS)
