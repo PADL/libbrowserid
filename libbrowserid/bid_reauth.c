@@ -142,15 +142,15 @@ BIDError
 _BIDStoreTicketInCache(
     BIDContext context,
     BIDIdentity identity,
-    const char *szAudienceOrSpn,
+    const char *szUnused BID_UNUSED,
     json_t *ticket,
     uint32_t ulTicketFlags)
 {
     BIDError err;
     json_t *cred = NULL;
     BIDJWK ark = NULL;
+    const char *szAudienceOrSpn = NULL;
     const char *szSubject = NULL;
-    char *szPackedAudience = NULL;
     char *szCacheKey = NULL;
 
     BID_CONTEXT_VALIDATE(context);
@@ -197,10 +197,7 @@ _BIDStoreTicketInCache(
     err = BIDGetIdentitySubject(context, identity, &szSubject);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDMakeTicketCacheKey(context, szPackedAudience, &szCacheKey);
+    err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, &szCacheKey);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDSetCacheObject(context, context->TicketCache, szCacheKey, cred);
@@ -209,7 +206,6 @@ _BIDStoreTicketInCache(
 cleanup:
     json_decref(cred);
     json_decref(ark);
-    BIDFree(szPackedAudience);
     BIDFree(szCacheKey);
 
     return err;
