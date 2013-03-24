@@ -341,7 +341,7 @@ gssBidApiToWireError(OM_uint32 minor)
         minor |= GSSBID_GSS_WIRE_ERROR;
     } else if (minor >= ERROR_TABLE_BASE_lbid &&
                minor <= ERROR_TABLE_BASE_lbid + BID_S_UNKNOWN_ERROR_CODE) {
-        minor -= ERROR_TABLE_BASE_lbid;
+        minor -= (OM_uint32)ERROR_TABLE_BASE_lbid;
     } else {
         minor = 0;
     }
@@ -359,7 +359,7 @@ gssBidWireToApiError(OM_uint32 minor)
         if (minor > GSSBID_BAD_INVOCATION)
             minor = 0; /* unknown */
     } else if (minor != 0 && minor <= BID_S_UNKNOWN_ERROR_CODE) {
-        minor += ERROR_TABLE_BASE_lbid;
+        minor += (OM_uint32)ERROR_TABLE_BASE_lbid;
     } else {
         minor = 0;
     }
