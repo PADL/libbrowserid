@@ -167,11 +167,13 @@ BIDGSSShibbolethAttributeProvider::initWithGssContext(const BIDGSSAttributeConte
     if (jwt != NULL) {
         JSONObject samlAttribute = jwt->jsonRepresentation().get("saml");
 
-        string str(samlAttribute.string(), strlen(samlAttribute.string()));
-        istringstream istream(str);
-        DOMDocument *doc = XMLToolingConfig::getConfig().getParser().parse(istream);
-        const XMLObjectBuilder *b = XMLObjectBuilder::getBuilder(doc->getDocumentElement());
-        resolver->addToken(b->buildFromDocument(doc));
+        if (samlAttribute.isString()) {
+            string str(samlAttribute.string(), strlen(samlAttribute.string()));
+            istringstream istream(str);
+            DOMDocument *doc = XMLToolingConfig::getConfig().getParser().parse(istream);
+            const XMLObjectBuilder *b = XMLObjectBuilder::getBuilder(doc->getDocumentElement());
+            resolver->addToken(b->buildFromDocument(doc));
+        }
     }
 #endif /* HAVE_OPENSAML */
 
