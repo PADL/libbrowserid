@@ -155,15 +155,19 @@ _BIDStoreTicketInCache(
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (identity == BID_C_NO_IDENTITY ||
-        szAudienceOrSpn == NULL ||
-        ticket == NULL) {
+    if (identity == BID_C_NO_IDENTITY || ticket == NULL) {
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
     }
 
     if (context->TicketCache == BID_C_NO_TICKET_CACHE) {
         err = BID_S_NO_TICKET_CACHE;
+        goto cleanup;
+    }
+
+    szAudienceOrSpn = json_string_value(json_object_get(identity->Attributes, "aud"));
+    if (szAudienceOrSpn == NULL) {
+        err = BID_S_INVALID_PARAMETER;
         goto cleanup;
     }
 
@@ -538,6 +542,16 @@ _BIDGetReauthAssertion(
         ticketCache = context->TicketCache;
 
     err = _BIDFindTicketInCache(context, ticketCache, szPackedAudience, szIdentityName, &cred);
+    if (err == BID_S_CACHE_KEY_NOT_FOUND &&
+        (context->ContextOptions & BID_CONTEXT_HOST_SPN_ALIAS)) {
+        char *szHostSpnAudience;
+
+        err = _BIDHostifySpn(context, szPackedAudience, &szHostSpnAudience);
+        if (err == BID_S_OK) {
+            err = _BIDFindTicketInCache(context, ticketCache, szHostSpnAudience, szIdentityName, &cred);
+            BIDFree(szHostSpnAudience);
+        }
+    }
     BID_BAIL_ON_ERROR(err);
 
     tkt = json_object_get(cred, "tkt");

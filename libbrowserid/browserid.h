@@ -211,6 +211,11 @@ typedef struct BIDContextDesc *BIDContext;
 #define BID_CONTEXT_ECDH_KEYEX              0x00000800
 
 /*
+ * Allow host SPN when validating audiences
+ */
+#define BID_CONTEXT_HOST_SPN_ALIAS          0x00001000
+
+/*
  * Context management.
  */
 BIDError

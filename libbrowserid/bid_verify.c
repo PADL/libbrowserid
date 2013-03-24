@@ -85,6 +85,38 @@ cleanup:
     return err;
 }
 
+static BIDError
+_BIDValidateAudienceHostAlias(
+    BIDContext context,
+    const char *szAudienceOrSpn,
+    const char *szAssertionSpn)
+{
+    BIDError err = BID_S_BAD_AUDIENCE;
+
+    /*
+     * If audience is a GSS SPN beginning with "host/", then just
+     * match on the remainder of the SPN.
+     */
+    if (strncmp(szAssertionSpn,
+                BID_GSS_AUDIENCE_PREFIX "host/",
+                BID_GSS_AUDIENCE_PREFIX_LEN + 5) == 0) {
+        char *szHostSpnAudience = NULL;
+
+        err = _BIDHostifySpn(context, szAudienceOrSpn, &szHostSpnAudience);
+        BID_BAIL_ON_ERROR(err);
+
+        if (strcmp(szAssertionSpn, szHostSpnAudience) == 0)
+            err = BID_S_OK;
+        else
+            err = BID_S_BAD_AUDIENCE;
+
+        BIDFree(szHostSpnAudience);
+    }
+
+cleanup:
+    return err;
+}
+
 /*
  * From https://github.com/mozilla/id-specs/blob/prod/browserid/index.md:
  *
@@ -114,12 +146,16 @@ _BIDValidateAudience(
     if (szAudienceOrSpn != NULL) {
         const char *szAssertionSpn = json_string_value(json_object_get(claims, "aud"));
 
+        err = BID_S_BAD_AUDIENCE;
+
         if (szAssertionSpn == NULL) {
             err = BID_S_MISSING_AUDIENCE;
             goto cleanup;
-        } else if (strcmp(szAudienceOrSpn, szAssertionSpn) != 0) {
-            err = BID_S_BAD_AUDIENCE;
-            goto cleanup;
+        } else if (strcmp(szAudienceOrSpn, szAssertionSpn) == 0) {
+            err = BID_S_OK;
+        } else if (context->ContextOptions & BID_CONTEXT_HOST_SPN_ALIAS) {
+            err = _BIDValidateAudienceHostAlias(context, szAudienceOrSpn, szAssertionSpn);
+            BID_BAIL_ON_ERROR(err);
         }
     }
 

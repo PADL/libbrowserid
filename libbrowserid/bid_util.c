@@ -648,3 +648,64 @@ _BIDParseProtocolOpts(
 
     return BID_S_OK;
 }
+
+/*
+ * Transform a GSS BrowserID audience into a host SPN one.
+ * Service-specific and realms are discarded.
+ */
+BIDError
+_BIDHostifySpn(
+    BIDContext context BID_UNUSED,
+    const char *szSpn,
+    char **pszPackedAudience)
+{
+    const char *q, *szSpnHost = NULL;
+    ssize_t cchSpnHost = 0;
+    int bEscape = 0;
+    char *p;
+
+    *pszPackedAudience = NULL;
+
+    if (strncmp(szSpn, BID_GSS_AUDIENCE_PREFIX,
+        BID_GSS_AUDIENCE_PREFIX_LEN) != 0)
+        return BID_S_BAD_AUDIENCE;
+
+    for (q = szSpn + BID_GSS_AUDIENCE_PREFIX_LEN; *q != '\0'; q++) {
+        if (*q == '\\') {
+            bEscape++;
+        } else if (bEscape) {
+            bEscape = 0;
+        } else {
+            if (szSpnHost == NULL && *q == '/') {
+                szSpnHost = q + 1;
+                continue;
+            } else if (*q == '/' || *q == '@')
+                break;
+        }
+        if (szSpnHost != NULL)
+            cchSpnHost++;
+    }
+
+    if (szSpnHost == NULL)
+        return BID_S_BAD_AUDIENCE;
+
+    *pszPackedAudience = BIDMalloc(BID_GSS_AUDIENCE_PREFIX_LEN + 5 +
+                                   cchSpnHost + 1);
+    if (*pszPackedAudience == NULL)
+        return BID_S_NO_MEMORY;
+
+    p = *pszPackedAudience;
+
+    memcpy(p, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN);
+    p += BID_GSS_AUDIENCE_PREFIX_LEN;
+
+    memcpy(p, "host/", 5);
+    p += 5;
+
+    memcpy(p, szSpnHost, cchSpnHost);
+    p += cchSpnHost;
+
+    *p = '\0';
+
+    return BID_S_OK;
+}

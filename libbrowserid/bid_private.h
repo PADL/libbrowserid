@@ -890,6 +890,12 @@ _BIDParseProtocolOpts(
     json_t *opts,
     uint32_t *pulOpts);
 
+BIDError
+_BIDHostifySpn(
+    BIDContext context BID_UNUSED,
+    const char *szSpn,
+    char **pszPackedAudience);
+
 /*
  * bid_rcache.c
  */
