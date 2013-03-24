@@ -660,7 +660,7 @@ _BIDHostifySpn(
     char **pszPackedAudience)
 {
     const char *q, *szSpnHost = NULL;
-    ssize_t cchSpnHost = 0;
+    size_t cchSpnHost = 0, i;
     int bEscape = 0;
     char *p;
 
@@ -702,8 +702,9 @@ _BIDHostifySpn(
     memcpy(p, "host/", 5);
     p += 5;
 
-    memcpy(p, szSpnHost, cchSpnHost);
-    p += cchSpnHost;
+    /* lowercase the hostname */
+    for (i = 0; i < cchSpnHost; i++)
+        *p++ = tolower(szSpnHost[i]);
 
     *p = '\0';
 
