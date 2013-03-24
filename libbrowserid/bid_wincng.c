@@ -162,6 +162,8 @@ _BIDParseHexNumber(
             blob->pvBuffer = NULL;
             return BID_S_INVALID_JSON;
         }
+        if ((cchValue % 2) && i == cbBuffer - 1)
+            b <<= 4;
         ((PUCHAR)blob->pvBuffer)[i] = b & 0xff;
     }
     blob->cbBuffer = cchValue / 2;
