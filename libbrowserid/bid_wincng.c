@@ -2460,7 +2460,7 @@ cleanup:
 static BIDError
 _BIDSetJsonCertNameString(
     BIDContext context,
-    json_t *principal,
+    json_t *dict,
     const char *key,
     PCCERT_CONTEXT pCertContext,
     DWORD dwType,
@@ -2468,35 +2468,119 @@ _BIDSetJsonCertNameString(
 {
     BIDError err;
     json_t *name;
-    json_t *values;
 
     err = _BIDGetCertNameString(context, pCertContext, dwType, dwFlags, &name);
     if (err != BID_S_OK)
         return err;
 
-    values = json_object_get(principal, key);
-    if (values == NULL) {
-        values = json_array();
+    err = _BIDJsonObjectSet(context, dict, key, name,
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    if (err != BID_S_OK)
+        return err;
 
-        err = _BIDJsonObjectSet(context, principal, key, values,
-                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-        if (err != BID_S_OK)
-            return err;
+    return BID_S_OK;
+}
+
+static BIDError
+_BIDGetCertAltNames(
+    BIDContext context,
+    PCCERT_CONTEXT pCertContext,
+    DWORD dwAltNameChoice,
+    json_t **pValues)
+{
+    BIDError err;
+    PCERT_EXTENSION pCertExtension = NULL;
+    PCERT_ALT_NAME_INFO pCertAltNameInfo = NULL;
+    DWORD i, cbStructInfo;
+    json_t *values = NULL;
+
+    *pValues = NULL;
+
+    pCertExtension = CertFindExtension(szOID_SUBJECT_ALT_NAME2,
+                                       pCertContext->pCertInfo->cExtension,
+                                       pCertContext->pCertInfo->rgExtension);
+    if (pCertExtension == NULL) {
+        err = BID_S_MISSING_PRINCIPAL;
+        goto cleanup;
     }
 
-    if (json_array_append_new(values, name) < 0)
-        return BID_S_NO_MEMORY;
+    if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+                             szOID_SUBJECT_ALT_NAME2,
+                             pCertExtension->Value.pbData,
+                             pCertExtension->Value.cbData,
+                             CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG,
+                             NULL,
+                             (PVOID)&pCertAltNameInfo,
+                             &cbStructInfo)) {
+        err = BID_S_BAD_SUBJECT;
+        goto cleanup;
+    }
+
+    values = json_array();
+    if (values == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; i < pCertAltNameInfo->cAltEntry; i++) {
+        PCERT_ALT_NAME_ENTRY pCertAltNameEntry = &pCertAltNameInfo->rgAltEntry[i];
+        char *szName = NULL;
+
+        if (pCertAltNameEntry->dwAltNameChoice != dwAltNameChoice)
+            continue;
+
+        err = _BIDUcs2ToUtf8(context, pCertAltNameEntry->pwszRfc822Name, &szName);
+        BID_BAIL_ON_ERROR(err);
+
+        json_array_append_new(values, json_string(szName));
+
+        BIDFree(szName);
+    }
+
+    if (json_array_size(values) > 0) {
+        *pValues = values;
+        values = NULL;
+    }
+
+    err = BID_S_OK;
+
+cleanup:
+    json_decref(values);
+    LocalFree(pCertAltNameInfo);
+
+    return err;
+}
+
+static BIDError
+_BIDSetJsonCertAltNames(
+    BIDContext context,
+    json_t *dict,
+    const char *key,
+    PCCERT_CONTEXT pCertContext,
+    DWORD dwAltNameChoice)
+{
+    BIDError err;
+    json_t *names;
+
+    err = _BIDGetCertAltNames(context, pCertContext, dwAltNameChoice, &names);
+    if (err != BID_S_OK)
+        return err;
+
+    err = _BIDJsonObjectSet(context, dict, key, names,
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    if (err != BID_S_OK)
+        return err;
 
     return BID_S_OK;
 }
 
 static struct {
-    DWORD Type;
+    DWORD AltNameChoice;
     const char *Key;
 } _BIDAltSubjectTypes[] = {
-    { CERT_NAME_EMAIL_TYPE,         "email"     },
-    { CERT_NAME_DNS_TYPE,           "hostname"  },
-    { CERT_NAME_URL_TYPE,           "uri"       }
+    { CERT_ALT_NAME_RFC822_NAME,        "email"     },
+    { CERT_ALT_NAME_DNS_NAME,           "hostname"  },
+    { CERT_ALT_NAME_URL,                "uri"       }
 };
 
 BIDError
@@ -2524,12 +2608,11 @@ _BIDPopulateX509Identity(
     }
 
     for (i = 0; i < ARRAYSIZE(_BIDAltSubjectTypes); i++) {
-        _BIDSetJsonCertNameString(context,
-                                  principal,
-                                  _BIDAltSubjectTypes[i].Key,
-                                  pCertContext,
-                                  _BIDAltSubjectTypes[i].Type,
-                                  0);
+        _BIDSetJsonCertAltNames(context,
+                                principal,
+                                _BIDAltSubjectTypes[i].Key,
+                                pCertContext,
+                                _BIDAltSubjectTypes[i].AltNameChoice);
     }
 
     err = _BIDJsonObjectSet(context, identity->Attributes, "principal",
@@ -2702,30 +2785,36 @@ _BIDValidateX509CertAltSubject(
     json_t *altSubjectConstraints = NULL;
     DWORD i, found = 0;
 
-    altSubjectConstraints = json_object_get(certParams,
-                                            "san");
+    altSubjectConstraints = json_object_get(certParams, "san");
     if (altSubjectConstraints == NULL)
         return BID_S_OK;
 
     for (i = 0; i < ARRAYSIZE(_BIDAltSubjectTypes); i++) {
         json_t *assertedName;
-        json_t *certName;
+        json_t *certNames;
+        DWORD j;
 
         assertedName = json_object_get(altSubjectConstraints,
                                        _BIDAltSubjectTypes[i].Key);
         if (assertedName == NULL)
             continue;
 
-        err = _BIDGetCertNameString(context, pCertContext,
-                                    _BIDAltSubjectTypes[i].Type,
-                                    0, &certName);
+        err = _BIDGetCertAltNames(context, pCertContext,
+                                   _BIDAltSubjectTypes[i].AltNameChoice,
+                                   &certNames);
         if (err != BID_S_OK)
             continue;
 
-        if (json_equal(assertedName, certName))
-            found++;
+        for (j = 0; j < json_array_size(certNames); j++) {
+            json_t *certName = json_array_get(certNames, j);
 
-        json_decref(certName);
+            if (json_equal(assertedName, certName)) {
+                found++;
+                break;
+            }
+        }
+
+        json_decref(certNames);
     }
 
     return (found == 0) ? BID_S_UNTRUSTED_X509_CERT : BID_S_OK;
