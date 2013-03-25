@@ -83,6 +83,10 @@ the following keys:
 You can use OpenSSL to create these files as you would when setting a server up
 for TLS. The subjectAltName or the CN must match the acceptor host name.
 
+Multiple subjectAltName values are permitted and the subjectAltName can either
+contain a DNS name or a URI of the form urn:x-gss:spn where, spn is a BrowserID
+service principal name.
+
 ## Other configuration
 
 You can configure the maximum ticket lifetime and renewable lifetime with
