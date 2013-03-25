@@ -1635,6 +1635,7 @@ _BIDPopulateX509Identity(
         for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
             GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
             const char *key = NULL;
+            json_t *values = NULL;
 
             switch (gen->type) {
             case GEN_EMAIL:
@@ -1650,11 +1651,18 @@ _BIDPopulateX509Identity(
                 break;
             }
 
-            if (key != NULL) {
-                err = _BIDJsonObjectSet(context, principal, key,
-                                        json_string((char *)gen->d.ia5->data),
+            values = json_object_get(principal, key);
+            if (values == NULL) {
+                values = json_array();
+
+                err = _BIDJsonObjectSet(context, principal, key, values,
                                         BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
                 BID_BAIL_ON_ERROR(err);
+            }
+
+            if (json_array_append_new(values, json_string((char *)gen->d.ia5->data)) < 0) {
+                err = BID_S_NO_MEMORY;
+                goto cleanup;
             }
         }
     }

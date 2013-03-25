@@ -505,24 +505,52 @@ cleanup:
  * Otherwise, an exact match is required.
  */
 static int
-_BIDSubjectEqual(
+_BIDSubjectCompare(
     const char *a1,
     const char *a2,
     uint32_t ulReqFlags)
 {
-    int ret;
+    int cmp;
 
     if (ulReqFlags & BID_VERIFY_FLAG_RP) {
 #ifdef WIN32
-        ret = (_strcmpi(a1, a2) == 0);
+        cmp = _strcmpi(a1, a2);
 #else
-        ret = (strcasecmp(a1, a2) == 0);
+        cmp = strcasecmp(a1, a2);
 #endif
     } else {
-        ret = (strcmp(a1, a2) == 0);
+        cmp = strcmp(a1, a2);
     }
 
-    return ret;
+    return cmp;
+}
+
+static int
+_BIDSubjectEqualP(
+    json_t *assertedSubject,
+    const char *szSubject,
+    uint32_t ulReqFlags)
+{
+    int cmp = -1;
+
+    if (json_is_string(assertedSubject)) {
+        cmp = _BIDSubjectCompare(json_string_value(assertedSubject), szSubject, ulReqFlags);
+    } else if (json_is_array(assertedSubject)) {
+        size_t i;
+
+        for (i = 0; i < json_array_size(assertedSubject); i++) {
+            json_t *sub = json_array_get(assertedSubject, i);
+
+            if (!json_is_string(sub))
+                continue;
+
+            cmp = _BIDSubjectCompare(json_string_value(sub), szSubject, ulReqFlags);
+            if (cmp == 0)
+                break;
+        }
+    }
+
+    return (cmp == 0);
 }
 
 BIDError
@@ -586,8 +614,7 @@ _BIDValidateSubject(
         }
 
         assertedURI = json_object_get(assertedPrincipal, "uri");
-        if (json_is_string(assertedURI) &&
-            _BIDSubjectEqual(json_string_value(assertedURI), szPackedAudience, ulReqFlags)) {
+        if (_BIDSubjectEqualP(assertedURI, szPackedAudience, ulReqFlags)) {
             bMatchedSubject++;
         } else if ((ulReqFlags & BID_VERIFY_FLAG_HOSTNAME_MATCH_OK) == 0) {
             err = BID_S_BAD_SUBJECT;
@@ -602,13 +629,11 @@ _BIDValidateSubject(
 
     BID_ASSERT(p != NULL);
 
-    if (json_is_string(assertedPrincipalValue) &&
-        _BIDSubjectEqual(json_string_value(assertedPrincipalValue), p, ulReqFlags))
+    if (_BIDSubjectEqualP(assertedPrincipalValue, p, ulReqFlags))
         bMatchedSubject++;
 
     assertedSubject = json_object_get(identity->Attributes, "sub");
-    if (json_is_string(assertedSubject) &&
-        _BIDSubjectEqual(json_string_value(assertedSubject), p, ulReqFlags))
+    if (_BIDSubjectEqualP(assertedSubject, p, ulReqFlags))
         bMatchedSubject++;
 
     err = BID_S_OK;

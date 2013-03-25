@@ -2468,13 +2468,26 @@ _BIDSetJsonCertNameString(
 {
     BIDError err;
     json_t *name;
+    json_t *values;
 
     err = _BIDGetCertNameString(context, pCertContext, dwType, dwFlags, &name);
-    if (err == BID_S_OK)
-        err = _BIDJsonObjectSet(context, j, key, name,
-                                BID_JSON_FLAG_CONSUME_REF);
+    if (err != BID_S_OK)
+        return err;
 
-    return err;
+    values = json_object_get(principal, key);
+    if (values == NULL) {
+        values = json_array();
+
+        err = _BIDJsonObjectSet(context, principal, key, values,
+                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+        if (err != BID_S_OK)
+            return err;
+    }
+
+    if (json_array_append_new(values, name) < 0)
+        return BID_S_NO_MEMORY;
+
+    return BID_S_OK;
 }
 
 static struct {
