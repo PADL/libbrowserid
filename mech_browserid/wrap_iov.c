@@ -149,6 +149,7 @@ gssBidWrapOrGetMIC(OM_uint32 *minor,
     if (toktype == TOK_TYPE_WRAP && conf_req_flag) {
         size_t krbHeaderLen, krbTrailerLen, krbPadLen;
         size_t ec = 0, confDataLen = dataLen - assocDataLen;
+        int bHasAEAD;
 
         code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
                                KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
@@ -161,8 +162,16 @@ gssBidWrapOrGetMIC(OM_uint32 *minor,
         if (code != 0)
             goto cleanup;
 
-        if (krbPadLen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE)) {
-            /* Windows rejects AEAD tokens with non-zero EC */
+        /*
+         * Windows' Kerberos SSP rejects AEAD tokens with non-zero EC;
+         * let's be bug-for-bug compatible with that. We do an extra check
+         * that AEAD is actually in use to guard against a corner case on
+         * Windows where DCE_STYLE may be set for a non-DCE context.
+         */
+        bHasAEAD = (gssBidLocateIov(iov, iov_count,
+                                    GSS_IOV_BUFFER_TYPE_SIGN_ONLY) != NULL);
+
+        if (krbPadLen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE) && bHasAEAD) {
             code = krbBlockSize(krbContext, KRB_CRYPTO_CONTEXT(ctx), &ec);
             if (code != 0)
                 goto cleanup;
