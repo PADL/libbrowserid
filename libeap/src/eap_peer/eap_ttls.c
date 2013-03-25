@@ -91,7 +91,7 @@ struct eap_ttls_data {
 struct chbind_hdr {
 	u16 len;
 	u8 nsid;
-};
+} STRUCT_PACKED;
 
 #ifdef _MSC_VER
 #pragma pack(pop)
