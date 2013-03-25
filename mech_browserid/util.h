@@ -225,11 +225,6 @@ enum gss_bid_token_type {
     TOK_TYPE_ACCEPTOR_META_DATA      = 0x4D2C,  /* acceptor NegoEx metadata token */
 };
 
-#define GSSBID_WIRE_FLAGS_MASK          ( GSS_C_MUTUAL_FLAG             | \
-                                          GSS_C_DCE_STYLE               | \
-                                          GSS_C_IDENTIFY_FLAG           | \
-                                          GSS_C_EXTENDED_ERROR_FLAG       )
-
 OM_uint32 gssBidAllocContext(OM_uint32 *minor,
                              int isInitiator,
                              gss_const_OID mech,
