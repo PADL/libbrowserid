@@ -2460,7 +2460,7 @@ cleanup:
 static BIDError
 _BIDSetJsonCertNameString(
     BIDContext context,
-    json_t *j,
+    json_t *principal,
     const char *key,
     PCCERT_CONTEXT pCertContext,
     DWORD dwType,
