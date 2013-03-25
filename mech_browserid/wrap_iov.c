@@ -82,6 +82,21 @@ rfc4121Flags(gss_ctx_id_t ctx, int receiving)
     return flags;
 }
 
+static int
+hasSignOnlyP(gss_iov_buffer_desc *iov, int iov_count)
+{
+    int i, ret = 0;
+
+    for (i = 0; i < iov_count; i++) {
+        if (GSS_IOV_BUFFER_TYPE(iov[i].type) == GSS_IOV_BUFFER_TYPE_SIGN_ONLY) {
+            ret = 1;
+            break;
+        }
+    }
+
+    return ret;
+}
+
 OM_uint32
 gssBidWrapOrGetMIC(OM_uint32 *minor,
                    gss_ctx_id_t ctx,
@@ -149,7 +164,6 @@ gssBidWrapOrGetMIC(OM_uint32 *minor,
     if (toktype == TOK_TYPE_WRAP && conf_req_flag) {
         size_t krbHeaderLen, krbTrailerLen, krbPadLen;
         size_t ec = 0, confDataLen = dataLen - assocDataLen;
-        int bHasAEAD;
 
         code = krbCryptoLength(krbContext, KRB_CRYPTO_CONTEXT(ctx),
                                KRB5_CRYPTO_TYPE_HEADER, &krbHeaderLen);
@@ -168,10 +182,8 @@ gssBidWrapOrGetMIC(OM_uint32 *minor,
          * that AEAD is actually in use to guard against a corner case on
          * Windows where DCE_STYLE may be set for a non-DCE context.
          */
-        bHasAEAD = (gssBidLocateIov(iov, iov_count,
-                                    GSS_IOV_BUFFER_TYPE_SIGN_ONLY) != NULL);
-
-        if (krbPadLen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE) && bHasAEAD) {
+        if (krbPadLen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE) &&
+            hasSignOnlyP(iov, iov_count)) {
             code = krbBlockSize(krbContext, KRB_CRYPTO_CONTEXT(ctx), &ec);
             if (code != 0)
                 goto cleanup;
