@@ -534,6 +534,7 @@ _BIDValidateSubject(
 {
     BIDError err;
     char *szPackedAudience = NULL;
+    char *szHostnameAudience = NULL;
     const char *p = NULL;
     json_t *assertedPrincipal = NULL;
     json_t *assertedPrincipalValue = NULL;
@@ -561,14 +562,18 @@ _BIDValidateSubject(
     if (ulReqFlags & BID_VERIFY_FLAG_RP) {
         json_t *assertedURI;
 
-        if (context->ContextOptions & BID_CONTEXT_GSS) {
-            p = strchr(szSubjectName, '/');
-            if (p == NULL) {
-                err = BID_S_BAD_AUDIENCE;
-                goto cleanup;
-            }
+        err = _BIDMakeAudience(context, szSubjectName, &szPackedAudience);
+        BID_BAIL_ON_ERROR(err);
 
-            p++; /* XXX does not deal with >2 component service names */
+        if (context->ContextOptions & BID_CONTEXT_GSS) {
+            err = _BIDHostifySpn(context, szPackedAudience, &szHostnameAudience);
+            BID_BAIL_ON_ERROR(err);
+
+            BID_ASSERT(strncmp(szHostnameAudience,
+                               BID_GSS_AUDIENCE_PREFIX "host/",
+                               BID_GSS_AUDIENCE_PREFIX_LEN + 5) == 0);
+
+            p = &szHostnameAudience[BID_GSS_AUDIENCE_PREFIX_LEN + 5];
         } else {
             if (strncmp(szSubjectName, "http://", 7) == 0)
                 p = &szSubjectName[7];
@@ -579,9 +584,6 @@ _BIDValidateSubject(
                 goto cleanup;
             }
         }
-
-        err = _BIDMakeAudience(context, szSubjectName, &szPackedAudience);
-        BID_BAIL_ON_ERROR(err);
 
         assertedURI = json_object_get(assertedPrincipal, "uri");
         if (json_is_string(assertedURI) &&
@@ -616,6 +618,7 @@ cleanup:
         err = BID_S_BAD_SUBJECT;
 
     BIDFree(szPackedAudience);
+    BIDFree(szHostnameAudience);
 
     return err;
 }
