@@ -2485,16 +2485,21 @@ static BIDError
 _BIDGetCertAltNames(
     BIDContext context,
     PCCERT_CONTEXT pCertContext,
-    DWORD dwAltNameChoice,
-    json_t **pValues)
+    json_t **pPrincipal)
 {
     BIDError err;
     PCERT_EXTENSION pCertExtension = NULL;
     PCERT_ALT_NAME_INFO pCertAltNameInfo = NULL;
     DWORD i, cbStructInfo;
-    json_t *values = NULL;
+    json_t *principal = NULL;
 
-    *pValues = NULL;
+    *pPrincipal = NULL;
+
+    principal = json_object();
+    if (principal == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     pCertExtension = CertFindExtension(szOID_SUBJECT_ALT_NAME2,
                                        pCertContext->pCertInfo->cExtension,
@@ -2516,18 +2521,34 @@ _BIDGetCertAltNames(
         goto cleanup;
     }
 
-    values = json_array();
-    if (values == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
     for (i = 0; i < pCertAltNameInfo->cAltEntry; i++) {
         PCERT_ALT_NAME_ENTRY pCertAltNameEntry = &pCertAltNameInfo->rgAltEntry[i];
         char *szName = NULL;
+        const char *szKey = NULL;
+        json_t *values = NULL;
 
-        if (pCertAltNameEntry->dwAltNameChoice != dwAltNameChoice)
+        switch (pCertAltNameEntry->dwAltNameChoice) {
+        case CERT_ALT_NAME_RFC822_NAME:
+            szKey = "email";
+            break;
+        case CERT_ALT_NAME_DNS_NAME:
+            szKey = "hostname";
+            break;
+        case CERT_ALT_NAME_URL:
+            szKey = "uri";
+            break;
+        default:
             continue;
+        }
+
+        values = json_object_get(principal, szKey);
+        if (values == NULL) {
+            values = json_array();
+
+            err = _BIDJsonObjectSet(context, principal, szKey, values,
+                                    BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+            BID_BAIL_ON_ERROR(err);
+        }
 
         err = _BIDUcs2ToUtf8(context, pCertAltNameEntry->pwszRfc822Name, &szName);
         BID_BAIL_ON_ERROR(err);
@@ -2537,51 +2558,14 @@ _BIDGetCertAltNames(
         BIDFree(szName);
     }
 
-    if (json_array_size(values) > 0) {
-        *pValues = values;
-        values = NULL;
-    }
-
+    *pPrincipal = principal;
     err = BID_S_OK;
 
 cleanup:
-    json_decref(values);
     LocalFree(pCertAltNameInfo);
 
     return err;
 }
-
-static BIDError
-_BIDSetJsonCertAltNames(
-    BIDContext context,
-    json_t *dict,
-    const char *key,
-    PCCERT_CONTEXT pCertContext,
-    DWORD dwAltNameChoice)
-{
-    BIDError err;
-    json_t *names;
-
-    err = _BIDGetCertAltNames(context, pCertContext, dwAltNameChoice, &names);
-    if (err != BID_S_OK)
-        return err;
-
-    err = _BIDJsonObjectSet(context, dict, key, names,
-                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-    if (err != BID_S_OK)
-        return err;
-
-    return BID_S_OK;
-}
-
-static struct {
-    DWORD AltNameChoice;
-    const char *Key;
-} _BIDAltSubjectTypes[] = {
-    { CERT_ALT_NAME_RFC822_NAME,        "email"     },
-    { CERT_ALT_NAME_DNS_NAME,           "hostname"  },
-    { CERT_ALT_NAME_URL,                "uri"       }
-};
 
 BIDError
 _BIDPopulateX509Identity(
@@ -2594,26 +2578,15 @@ _BIDPopulateX509Identity(
     json_t *certChain = NULL;
     json_t *principal = NULL;
     PCCERT_CONTEXT pCertContext = NULL;
-    DWORD dwSubjectType, i;
+    DWORD dwSubjectType;
 
     certChain = json_object_get(backedAssertion->Assertion->Header, "x5c");
 
     err = _BIDCertDataToContext(context, certChain, &pCertContext);
     BID_BAIL_ON_ERROR(err);
 
-    principal = json_object();
-    if (principal == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    for (i = 0; i < ARRAYSIZE(_BIDAltSubjectTypes); i++) {
-        _BIDSetJsonCertAltNames(context,
-                                principal,
-                                _BIDAltSubjectTypes[i].Key,
-                                pCertContext,
-                                _BIDAltSubjectTypes[i].AltNameChoice);
-    }
+    err = _BIDGetCertAltNames(context, pCertContext, &principal);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, identity->Attributes, "principal",
                             principal, 0);
@@ -2783,39 +2756,43 @@ _BIDValidateX509CertAltSubject(
 {
     BIDError err;
     json_t *altSubjectConstraints = NULL;
+    json_t *certNames = NULL;
     DWORD i, found = 0;
+    void *iter;
 
     altSubjectConstraints = json_object_get(certParams, "san");
     if (altSubjectConstraints == NULL)
         return BID_S_OK;
 
-    for (i = 0; i < ARRAYSIZE(_BIDAltSubjectTypes); i++) {
-        json_t *assertedName;
-        json_t *certNames;
-        DWORD j;
+    err = _BIDGetCertAltNames(context, pCertContext, &certNames);
+    if (err != BID_S_OK)
+        return BID_S_UNTRUSTED_X509_CERT;
 
-        assertedName = json_object_get(altSubjectConstraints,
-                                       _BIDAltSubjectTypes[i].Key);
-        if (assertedName == NULL)
+    for (iter = json_object_iter(altSubjectConstraints);
+         iter != NULL;
+         iter = json_object_iter_next(altSubjectConstraints, iter)) {
+        json_t *sans;
+
+        /* Find all SANs in the certificate that match this constraint */
+        sans = json_object_get(certNames, json_object_iter_key(iter));
+        if (sans == NULL)
             continue;
 
-        err = _BIDGetCertAltNames(context, pCertContext,
-                                   _BIDAltSubjectTypes[i].AltNameChoice,
-                                   &certNames);
-        if (err != BID_S_OK)
-            continue;
+        /* If one SAN value matches, return OK */
+        for (i = 0; i < json_array_size(sans); i++) {
+            json_t *san = json_array_get(sans, i);
 
-        for (j = 0; j < json_array_size(certNames); j++) {
-            json_t *certName = json_array_get(certNames, j);
-
-            if (json_equal(assertedName, certName)) {
+            if (json_equal(san, json_object_iter_value(iter))) {
                 found++;
                 break;
             }
         }
 
-        json_decref(certNames);
+        if (found)
+            break;
     }
+
+    json_decref(certNames);
 
     return (found == 0) ? BID_S_UNTRUSTED_X509_CERT : BID_S_OK;
 }
