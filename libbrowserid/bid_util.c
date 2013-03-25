@@ -570,6 +570,11 @@ static struct {
         BID_VERIFY_FLAG_EXTRA_ROUND_TRIP,
         "xrt"
     },
+    {
+        BID_ACQUIRE_FLAG_DCE,
+        BID_VERIFY_FLAG_DCE,
+        "dce"
+    },
 };
 
 BIDError

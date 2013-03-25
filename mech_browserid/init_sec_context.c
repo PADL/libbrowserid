@@ -264,8 +264,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
         BIDFree(xrtToken.value);
         if (GSS_ERROR(major))
             goto cleanup;
-    } else
-        ctx->gssFlags &= ~(GSS_C_DCE_STYLE);
+    }
 
     major = gssBidContextReady(minor, ctx, cred); /* need key to verify */
     if (GSS_ERROR(major))
@@ -278,12 +277,7 @@ gssBidInitResponseToken(OM_uint32 *minor,
             ctx->gssFlags &= ~(GSS_C_MUTUAL_FLAG);
     }
 
-#if 0
-    if (ctx->flags & CTX_FLAG_EXTRA_ROUND_TRIP)
-        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_EXTRA_ROUND_TRIP);
-    else
-#endif
-        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
+    GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
 
 cleanup:
     GSSBID_FREE(szAssertion);

@@ -552,7 +552,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         if (req_flags & GSS_C_MUTUAL_FLAG)
             ulReqFlags |= BID_ACQUIRE_FLAG_NONCE;
         if (req_flags & GSS_C_DCE_STYLE)
-            ulReqFlags |= BID_ACQUIRE_FLAG_EXTRA_ROUND_TRIP;
+            ulReqFlags |= BID_ACQUIRE_FLAG_EXTRA_ROUND_TRIP | BID_ACQUIRE_FLAG_DCE;
 
         err = BIDAcquireAssertion(ctx->bidContext,
                                   (cred == GSS_C_NO_CREDENTIAL) ? NULL : cred->bidTicketCache,
