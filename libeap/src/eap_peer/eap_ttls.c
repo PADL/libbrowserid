@@ -75,6 +75,8 @@ struct eap_ttls_data {
 
 	struct wpabuf *pending_phase2_req;
 	int chbind_req_sent; /* channel binding request was sent */
+	int done_butfor_cb; /*we turned METHOD_DONE into METHOD_MAY_CONT to receive cb*/
+  EapDecision cbDecision;
 #ifdef EAP_TNC
 	int ready_for_tnc;
 	int tnc_started;
@@ -1631,6 +1633,19 @@ static int eap_ttls_process_decrypted(struct eap_sm *sm,
 		phase2_type = EAP_TTLS_PHASE2_EAP;
 #endif /* EAP_TNC */
 
+	/* handle channel binding response here */
+	if (parse->chbind_data) {
+		/* received channel binding repsonse */
+		if (eap_ttls_process_chbind(sm, data, ret, parse, &resp) < 0)
+			return -1;
+		if (data->done_butfor_cb) {
+			ret->methodState = METHOD_DONE;
+			ret->decision = data->cbDecision;
+			data->phase2_success = 1;
+			return 1; /*request ack*/
+		}
+	}
+
 	switch (phase2_type) {
 	case EAP_TTLS_PHASE2_EAP:
 		if (eap_ttls_process_phase2_eap(sm, data, ret, parse, &resp) <
@@ -1679,18 +1694,17 @@ static int eap_ttls_process_decrypted(struct eap_sm *sm,
 		return 0;
 	}
 
-	/* handle channel binding response here */
-	if (parse->chbind_data) {
-		/* received channel binding repsonse */
-		if (eap_ttls_process_chbind(sm, data, ret, parse, &resp) < 0)
-			return -1;
-	}
 	/* issue channel binding request when appropriate */
 	if (config->chbind_config && config->chbind_config_len > 0 &&
 		!data->chbind_req_sent) {
 		if (eap_ttls_add_chbind_request(sm, data, &resp) < 0)
 			return -1;
 		data->chbind_req_sent = 1;
+		if (ret->methodState == METHOD_DONE) {
+			data->done_butfor_cb = 1;
+			data->cbDecision = ret->decision;
+			ret->methodState = METHOD_MAY_CONT;
+		}
 	}
 
 	if (resp) {
