@@ -73,28 +73,10 @@ rfc4121Flags(gss_ctx_id_t ctx, int receiving)
     if (isAcceptor)
         flags |= TOK_FLAG_SENDER_IS_ACCEPTOR;
 
-#if 0
-    if ((ctx->flags & CTX_FLAG_KRB_REAUTH) &&
-        (ctx->gssFlags & GSS_C_MUTUAL_FLAG))
+    if (ctx->flags & CTX_FLAG_EXTRA_ROUND_TRIP)
         flags |= TOK_FLAG_ACCEPTOR_SUBKEY;
-#endif
 
     return flags;
-}
-
-static int
-hasSignOnlyP(gss_iov_buffer_desc *iov, int iov_count)
-{
-    int i, ret = 0;
-
-    for (i = 0; i < iov_count; i++) {
-        if (GSS_IOV_BUFFER_TYPE(iov[i].type) == GSS_IOV_BUFFER_TYPE_SIGN_ONLY) {
-            ret = 1;
-            break;
-        }
-    }
-
-    return ret;
 }
 
 OM_uint32
@@ -176,14 +158,7 @@ gssBidWrapOrGetMIC(OM_uint32 *minor,
         if (code != 0)
             goto cleanup;
 
-        /*
-         * Windows' Kerberos SSP rejects AEAD tokens with non-zero EC;
-         * let's be bug-for-bug compatible with that. We do an extra check
-         * that AEAD is actually in use to guard against a corner case on
-         * Windows where DCE_STYLE may be set for a non-DCE context.
-         */
-        if (krbPadLen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE) &&
-            hasSignOnlyP(iov, iov_count)) {
+        if (krbPadLen == 0 && (ctx->gssFlags & GSS_C_DCE_STYLE)) {
             code = krbBlockSize(krbContext, KRB_CRYPTO_CONTEXT(ctx), &ec);
             if (code != 0)
                 goto cleanup;

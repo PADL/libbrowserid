@@ -64,7 +64,7 @@
  * for DCE in which case it can just provide TOKEN | DATA (must
  * guarantee that DATA is padded)
  */
-OM_uint32
+static OM_uint32
 unwrapToken(OM_uint32 *minor,
             gss_ctx_id_t ctx,
 #ifdef HAVE_HEIMDAL_VERSION
