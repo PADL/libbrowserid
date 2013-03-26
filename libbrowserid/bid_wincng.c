@@ -146,24 +146,26 @@ _BIDParseHexNumber(
     BCryptBuffer *blob)
 {
     size_t i, cbBuffer = cchValue / 2;
+    int pad = !!(cchValue % 2);
 
-    if (cchValue % 2)
-        cbBuffer++;
+    cbBuffer += pad;
 
     blob->pvBuffer = BIDMalloc(cbBuffer);
     if (blob->pvBuffer == NULL)
         return BID_S_NO_MEMORY;
 
     for (i = 0; i < cbBuffer; i++) {
-        int b;
+        int b, n;
 
-        if (sscanf(&szValue[i * 2], "%02x", &b) != 1) {
+        if (pad && i == 0)
+            n = sscanf(&szValue[0], "%01x", &b);
+        else
+            n = sscanf(&szValue[i * 2 - pad], "%02x", &b);
+        if (n != 1) {
             BIDFree(blob->pvBuffer);
             blob->pvBuffer = NULL;
             return BID_S_INVALID_JSON;
         }
-        if ((cchValue % 2) && i == cbBuffer - 1)
-            b <<= 4;
         ((PUCHAR)blob->pvBuffer)[i] = b & 0xff;
     }
     blob->cbBuffer = cbBuffer;
