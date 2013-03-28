@@ -569,11 +569,11 @@ _BIDBrowserGetAssertion(
     @autoreleasepool {
         NSDictionary *claimsDict = [[BIDJsonDictionary alloc] initWithJsonObject:claims];
 
-        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithCString:szPackedAudience] claims:claimsDict];
+        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szPackedAudience] claims:claimsDict];
         if (context->ContextOptions & BID_CONTEXT_GSS)
-            [controller setServicePrincipalName:[NSString stringWithCString:szAudienceOrSpn]];
+            [controller setServicePrincipalName:[NSString stringWithUTF8String:szAudienceOrSpn]];
         if (szIdentityName != NULL) {
-            [controller setRequiredEmail:[NSString stringWithCString:szIdentityName]];
+            [controller setRequiredEmail:[NSString stringWithUTF8String:szIdentityName]];
             [controller setSilent:!!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT)];
         }
         if (context->ParentWindow != NULL)
