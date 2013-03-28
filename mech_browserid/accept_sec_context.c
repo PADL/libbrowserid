@@ -204,6 +204,8 @@ gssBidAcceptSecContext(OM_uint32 *minor,
         }
         if (ulBidFlags & BID_VERIFY_FLAG_DCE)
             ctx->gssFlags |= GSS_C_DCE_STYLE;
+        if (ulBidFlags & BID_VERIFY_FLAG_IDENTIFY)
+            ctx->gssFlags |= GSS_C_IDENTIFY_FLAG;
         break;
     case GSSBID_STATE_EXTRA_ROUND_TRIP:
         err = BIDVerifyXRTToken(ctx->bidContext,

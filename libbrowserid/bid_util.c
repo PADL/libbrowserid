@@ -575,6 +575,11 @@ static struct {
         BID_VERIFY_FLAG_DCE,
         "dce"
     },
+    {
+        BID_ACQUIRE_FLAG_IDENTIFY,
+        BID_VERIFY_FLAG_IDENTIFY,
+        "ify"
+    },
 };
 
 BIDError

@@ -298,6 +298,7 @@ BIDReleaseReplayCache(
 #define BID_ACQUIRE_FLAG_NONCE              0x00000004
 #define BID_ACQUIRE_FLAG_EXTRA_ROUND_TRIP   0x00000008 /* request XRT option */
 #define BID_ACQUIRE_FLAG_DCE                0x00000010 /* request DCE option */
+#define BID_ACQUIRE_FLAG_IDENTIFY           0x00000020 /* request identify option */
 
 /* Output flags (ulRetFlags) */
 #define BID_ACQUIRE_FLAG_REAUTH             0x00010000
@@ -346,6 +347,7 @@ BIDFreeAssertion(
 #define BID_VERIFY_FLAG_REAUTH_MUTUAL           0x00080000
 #define BID_VERIFY_FLAG_EXTRA_ROUND_TRIP        0x00100000 /* requested XRT option */
 #define BID_VERIFY_FLAG_DCE                     0x00200000 /* requested DCE option */
+#define BID_VERIFY_FLAG_IDENTIFY                0x00400000 /* requested identify option */
 
 BIDError
 BIDVerifyAssertion(
