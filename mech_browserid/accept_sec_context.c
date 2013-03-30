@@ -191,8 +191,21 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                                  &ulBidFlags);
          major = gssBidMapError(minor, err);
          if (ulBidFlags & BID_VERIFY_FLAG_REAUTH) {
-            /* recoverable errors */
-            if (err == BID_S_INVALID_ASSERTION || err == BID_S_EXPIRED_ASSERTION) {
+            uint32_t ulContextOptions = 0;
+
+            BIDGetContextParam(ctx->bidContext, BID_PARAM_CONTEXT_OPTIONS, (void **)&ulContextOptions);
+
+            /*
+             * The following errors are recoverable and the initiator should send a
+             * fresh, certificate-signed assertion:
+             *
+             * - The assertion was not found in the replay cache
+             * - The assertion has expired
+             * - The initiator assumed it could send a ticket for the host SPN
+             *   but the acceptor does not have HOST_SPN_ALIAS set
+             */
+            if (err == BID_S_INVALID_ASSERTION || err == BID_S_EXPIRED_ASSERTION ||
+                ((ulContextOptions & BID_CONTEXT_HOST_SPN_ALIAS) == 0 && err == BID_S_BAD_AUDIENCE)) {
                 major = GSS_S_CONTINUE_NEEDED;
                 *minor = GSSBID_REAUTH_FAILED;
             } else
