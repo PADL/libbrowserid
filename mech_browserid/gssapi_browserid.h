@@ -42,7 +42,7 @@ extern "C" {
 /*
  * GSS BrowserID mechanism OIDs.
  */
-extern gss_OID GSS_BROWSERID_NONE_MECHANISM; /* no message services */
+extern gss_OID GSS_BROWSERID_NULL_MECHANISM; /* no message services */
 extern gss_OID GSS_BROWSERID_AES128_CTS_HMAC_SHA1_96_MECHANISM;
 extern gss_OID GSS_BROWSERID_AES256_CTS_HMAC_SHA1_96_MECHANISM;
 

@@ -79,7 +79,7 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
         MA_SUPPORTED(GSS_C_MA_ITOK_FRAMED);
         MA_SUPPORTED(GSS_C_MA_AUTH_INIT);
         MA_SUPPORTED(GSS_C_MA_AUTH_INIT_INIT);
-        if (!oidEqual(mech_oid, GSS_BROWSERID_NONE_MECHANISM)) {
+        if (!oidEqual(mech_oid, GSS_BROWSERID_NULL_MECHANISM)) {
             MA_SUPPORTED(GSS_C_MA_INTEG_PROT);
             MA_SUPPORTED(GSS_C_MA_CONF_PROT);
             MA_SUPPORTED(GSS_C_MA_MIC);

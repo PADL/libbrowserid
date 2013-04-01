@@ -63,7 +63,7 @@ static gss_OID_desc gssBidMechOids[] = {
 };
 
 gss_OID GSS_BROWSERID_MECHANISM                            = &gssBidMechOids[0];
-gss_OID GSS_BROWSERID_NONE_MECHANISM                       = &gssBidMechOids[1];
+gss_OID GSS_BROWSERID_NULL_MECHANISM                       = &gssBidMechOids[1];
 gss_OID GSS_BROWSERID_AES128_CTS_HMAC_SHA1_96_MECHANISM    = &gssBidMechOids[2];
 gss_OID GSS_BROWSERID_AES256_CTS_HMAC_SHA1_96_MECHANISM    = &gssBidMechOids[3];
 
