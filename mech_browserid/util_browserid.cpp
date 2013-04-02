@@ -339,8 +339,7 @@ gssBidApiToWireError(OM_uint32 minor)
     if (minor >= ERROR_TABLE_BASE_bidg && minor <= GSSBID_BAD_INVOCATION) {
         minor -= ERROR_TABLE_BASE_bidg;
         minor |= GSSBID_GSS_WIRE_ERROR;
-    } else if (minor >= ERROR_TABLE_BASE_lbid &&
-               minor <= ERROR_TABLE_BASE_lbid + BID_S_UNKNOWN_ERROR_CODE) {
+    } else if (IS_BROWSERID_ERROR(minor)) {
         minor -= (OM_uint32)ERROR_TABLE_BASE_lbid;
     } else {
         minor = 0;
