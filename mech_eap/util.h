@@ -776,20 +776,20 @@ verifyTokenHeader(OM_uint32 *minor,
                   enum gss_eap_token_type *ret_tok_type);
 
 /* Helper macros */
+#ifndef GSSEAP_MALLOC
 #if _WIN32
 #include <gssapi/gssapi_alloc.h>
-#define GSSEAP_MALLOC gssalloc_malloc
-#define GSSEAP_CALLOC gssalloc_calloc
-#define GSSEAP_FREE gssalloc_free
-#define GSSEAP_REALLOC gssalloc_realloc
-#endif
-
-#ifndef GSSEAP_MALLOC
+#define GSSEAP_MALLOC                   gssalloc_malloc
+#define GSSEAP_CALLOC                   gssalloc_calloc
+#define GSSEAP_FREE                     gssalloc_free
+#define GSSEAP_REALLOC                  gssalloc_realloc
+#else
 #define GSSEAP_CALLOC                   calloc
 #define GSSEAP_MALLOC                   malloc
 #define GSSEAP_FREE                     free
 #define GSSEAP_REALLOC                  realloc
-#endif
+#endif /* _WIN32 */
+#endif /* !GSSEAP_MALLOC */
 
 #ifndef GSSAPI_CALLCONV
 #define GSSAPI_CALLCONV                 KRB5_CALLCONV
@@ -1019,6 +1019,7 @@ krbPrincUnparseServiceSpecifics(krb5_context krbContext, krb5_principal krbPrinc
         nameBuf->value = NULL;
         nameBuf->length = 0;
     }
+
     return result;
 }
 
@@ -1026,6 +1027,8 @@ static inline void
 krbFreeUnparsedName(krb5_context krbContext, gss_buffer_t nameBuf)
 {
     krb5_free_unparsed_name(krbContext, (char *)(nameBuf->value));
+    nameBuf->value = NULL;
+    nameBuf->length = 0;
 }
 
 static inline void
