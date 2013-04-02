@@ -42,6 +42,8 @@
 
 #include "gssapiP_bid.h"
 
+#ifdef GSSBID_ENABLE_ACCEPTOR
+
 #define BID_MAP_ERROR(code)  (ERROR_TABLE_BASE_lbid + (code))
 
 BIDGSSJWTAttributeProvider::BIDGSSJWTAttributeProvider(void)
@@ -332,6 +334,8 @@ BIDGSSJWTAttributeProvider::getExpiryTime(void) const
 {
     return (*m_attrs)["exp"].integer() / 1000;
 }
+
+#endif /* GSSBID_ENABLE_ACCEPTOR */
 
 OM_uint32
 gssBidApiToWireError(OM_uint32 minor)

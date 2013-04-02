@@ -79,7 +79,7 @@ mech_browserid_la_SOURCES =    			\
 	pseudo_random.c				\
 	query_mechanism_info.c			\
 	query_meta_data.c			\
-	libbrowserid_err.c				\
+	libbrowserid_err.c			\
 	release_cred.c				\
 	release_name.c				\
 	release_oid.c				\
@@ -88,6 +88,7 @@ mech_browserid_la_SOURCES =    			\
 	store_cred.c				\
 	unwrap.c				\
 	unwrap_iov.c				\
+	util_browserid.cpp			\
 	util_buffer.c				\
 	util_context.c				\
 	util_cksum.c				\
@@ -106,20 +107,20 @@ mech_browserid_la_SOURCES =    			\
 	wrap.c					\
 	wrap_iov.c				\
 	wrap_iov_length.c			\
-	wrap_size_limit.c \
-	gssapiP_browserid.h \
-	util_attr.h \
-	util_base64.h \
-	util.h \
-	util_json.h \
-	util_browserid.h \
-	util_reauth.h \
-	util_saml.h \
+	wrap_size_limit.c			\
+	gssapiP_browserid.h			\
+	util_attr.h				\
+	util_base64.h				\
+	util.h					\
+	util_json.h				\
+	util_browserid.h			\
+	util_reauth.h				\
+	util_saml.h				\
 	util_shib.h
 
 if GSSBID_ENABLE_ACCEPTOR
 
-mech_browserid_la_SOURCES +=				\
+mech_browserid_la_SOURCES +=			\
 	accept_sec_context.c			\
 	delete_name_attribute.c			\
 	export_name_composite.c			\
@@ -130,8 +131,7 @@ mech_browserid_la_SOURCES +=				\
 	set_name_attribute.c			\
 	util_attr.cpp				\
 	util_base64.c				\
-	util_json.cpp				\
-	util_browserid.cpp
+	util_json.cpp
 
 if OPENSAML
 mech_browserid_la_SOURCES += util_saml.cpp

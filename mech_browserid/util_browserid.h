@@ -37,7 +37,7 @@
 #ifndef _UTIL_BROWSERID_H_
 #define _UTIL_BROWSERID_H_ 1
 
-#ifdef __cplusplus
+#if defined(GSSBID_ENABLE_ACCEPTOR) && defined(__cplusplus)
 
 struct BIDGSSJWTAttributeProvider : BIDGSSAttributeProvider {
 public:
@@ -85,7 +85,9 @@ private:
     JSONObject *m_attrs;
 };
 
-/* For now */
+#endif /* GSSBID_ENABLE_ACCEPTOR && __cplusplus */
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
