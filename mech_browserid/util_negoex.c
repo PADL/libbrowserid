@@ -50,7 +50,6 @@ gssBidIndicateRPCerts(OM_uint32 *minor,
     json_t *iat = NULL;
     BIDError err;
     uint32_t ulReqFlags, ulRetFlags = 0;
-    BIDIdentity bidIdentity = BID_C_NO_IDENTITY;
 
     outputToken->length = 0;
     outputToken->value = NULL;
@@ -64,14 +63,8 @@ gssBidIndicateRPCerts(OM_uint32 *minor,
 
     ulReqFlags = BID_RP_FLAG_INITIAL;
 
-    err = _BIDAllocIdentity(ctx->bidContext, NULL, &bidIdentity);
-    if (err != BID_S_OK) {
-        major = gssBidMapError(minor, err);
-        goto cleanup;
-    }
-
     err = BIDMakeRPResponseToken(ctx->bidContext,
-                                 bidIdentity,
+                                 BID_C_NO_IDENTITY,
                                  response,
                                  ulReqFlags,
                                  (char **)&bufJson.value,
@@ -95,7 +88,6 @@ cleanup:
     json_decref(iat);
     json_decref(response);
     BIDFreeData(ctx->bidContext, bufJson.value);
-    BIDReleaseIdentity(ctx->bidContext, bidIdentity);
 
     return major;
 }
