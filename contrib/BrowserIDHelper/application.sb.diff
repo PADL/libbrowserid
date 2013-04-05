@@ -6,7 +6,6 @@
        (allow mach-lookup (global-name "org.h5l.kcm"))
 +      (allow file-write*
 +             (home-regex #"/Library/Caches/com.padl.gss.BrowserID/browserid.tickets.json*")
-+             (home-regex #"/Library/Caches/com.padl.gss.BrowserID/browserid.dhparams.json*")
        (allow file-read*
 +             (subpath "/usr/lib/sasl2")
 +             (subpath "/usr/local/etc")
@@ -17,7 +16,6 @@
               (literal "/Library/Preferences/com.apple.Kerberos.plist")
               (regex #"^/Library/Preferences/com\.apple\.GSS\..*\.plist$")
 +             (home-regex #"/Library/Caches/com.padl.gss.BrowserID/browserid.tickets.json*")
-+             (home-regex #"/Library/Caches/com.padl.gss.BrowserID/browserid.dhparams.json*")
               (home-literal "/Library/Preferences/edu.mit.Kerberos")
               (home-literal "/Library/Preferences/com.apple.Kerberos.plist"))))
  
