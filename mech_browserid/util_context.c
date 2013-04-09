@@ -379,7 +379,7 @@ gssBidContextReady(OM_uint32 *minor, gss_ctx_id_t ctx, gss_cred_id_t cred)
         return major;
 
 #ifdef GSSBID_ENABLE_ACCEPTOR
-    if ((ctx->flags & CTX_FLAG_INITIATOR) == 0) {
+    if (!CTX_IS_INITIATOR(ctx)) {
         major = gssBidCreateAttrContext(minor, cred, ctx,
                                         &ctx->initiatorName->attrCtx,
                                         &ctx->expiryTime);
