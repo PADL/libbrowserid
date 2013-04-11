@@ -235,9 +235,11 @@ _BIDOutputDebugJson(json_t *j)
 {
     char *szJson = json_dumps(j, JSON_INDENT(8));
 
-    OutputDebugString(szJson);
-    OutputDebugString("\r\n");
+    if (szJson != NULL) {
+        OutputDebugString(szJson);
+        OutputDebugString("\r\n");
 
-    BIDFree(szJson);
+        BIDFree(szJson);
+    }
 }
 #endif
