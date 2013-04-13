@@ -72,6 +72,9 @@ _BIDGetCurrentJsonTimestamp(
 void
 _BIDOutputDebugJson(json_t *j)
 {
+    if (j == NULL)
+        return;
+
     json_dumpf(j, stdout, JSON_INDENT(8));
     fprintf(stdout, "\n");
 }

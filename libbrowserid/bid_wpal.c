@@ -233,13 +233,18 @@ _BIDSetJsonFileTimeValue(
 void
 _BIDOutputDebugJson(json_t *j)
 {
-    char *szJson = json_dumps(j, JSON_INDENT(8));
+    char *szJson;
 
-    if (szJson != NULL) {
-        OutputDebugString(szJson);
-        OutputDebugString("\r\n");
+    if (j == NULL)
+        return;
 
-        BIDFree(szJson);
-    }
+    szJson = json_dumps(j, JSON_INDENT(8));
+    if (szJson == NULL)
+        return;
+
+    OutputDebugString(szJson);
+    OutputDebugString("\r\n");
+
+    BIDFree(szJson);
 }
 #endif
