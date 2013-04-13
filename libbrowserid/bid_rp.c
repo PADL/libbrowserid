@@ -176,9 +176,9 @@ BIDVerifyRPResponseToken(
     BIDBackedAssertion backedAssertion = NULL;
     json_t *dh;
     json_t *certParams;
+    json_t *jti;
     uint32_t ulVerifyReqFlags = 0;
     uint32_t ulVerifyRetFlags = 0;
-    uint32_t ulProtoOpts = 0;
 
     *pulRetFlags = 0;
 
@@ -249,21 +249,13 @@ BIDVerifyRPResponseToken(
         }
     }
 
-    err = _BIDParseProtocolOpts(context,
-                                json_object_get(identity->PrivateAttributes, "opts"),
-                                &ulProtoOpts);
-    BID_BAIL_ON_ERROR(err);
+    jti = json_object_get(backedAssertion->Assertion->Payload, "jti");
+    if (jti != NULL) {
+        err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "jti", jti, 0);
+        BID_BAIL_ON_ERROR(err);
 
-    if (ulProtoOpts & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
-        json_t *jti = json_object_get(backedAssertion->Assertion->Payload, "jti");
-
-        if (jti != NULL) {
-            err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "jti", jti, 0);
-            BID_BAIL_ON_ERROR(err);
-
-            /* indicate to the caller that the RP supported the XRT option */
-            *pulRetFlags |= BID_RP_FLAG_EXTRA_ROUND_TRIP;
-        }
+        /* indicate to the caller that the RP supported the XRT option */
+        *pulRetFlags |= BID_RP_FLAG_EXTRA_ROUND_TRIP;
     }
 
 cleanup:
