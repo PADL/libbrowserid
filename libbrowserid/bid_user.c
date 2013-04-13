@@ -50,7 +50,7 @@ _BIDMakeClaims(
 {
     BIDError err;
     json_t *claims = NULL;
-    json_t *cbt = NULL;
+    json_t *cb = NULL;
     json_t *dh = NULL;
     json_t *key = NULL;
     json_t *opts = NULL;
@@ -65,10 +65,10 @@ _BIDMakeClaims(
     }
 
     if (pbChannelBindings != NULL) {
-        err = _BIDJsonBinaryValue(context, pbChannelBindings, cbChannelBindings, &cbt);
+        err = _BIDJsonBinaryValue(context, pbChannelBindings, cbChannelBindings, &cb);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDJsonObjectSet(context, claims, "cbt", cbt, 0);
+        err = _BIDJsonObjectSet(context, claims, "cb", cb, 0);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -112,7 +112,7 @@ cleanup:
         json_decref(claims);
         json_decref(key);
     }
-    json_decref(cbt);
+    json_decref(cb);
     json_decref(dh);
     json_decref(opts);
 

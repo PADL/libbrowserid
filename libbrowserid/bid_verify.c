@@ -160,7 +160,7 @@ _BIDValidateAudience(
     }
 
     if (pbChannelBindings != NULL) {
-        err = _BIDGetJsonBinaryValue(context, claims, "cbt", &pbAssertionCB, &cbAssertionCB);
+        err = _BIDGetJsonBinaryValue(context, claims, "cb", &pbAssertionCB, &cbAssertionCB);
         if (err == BID_S_UNKNOWN_JSON_KEY)
             err = BID_S_MISSING_CHANNEL_BINDINGS;
         BID_BAIL_ON_ERROR(err);

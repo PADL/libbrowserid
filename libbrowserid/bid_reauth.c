@@ -248,7 +248,7 @@ _BIDMakeAuthenticator(
     json_t *iat = NULL;
     json_t *exp = NULL;
     json_t *aud = NULL;
-    json_t *cbt = NULL;
+    json_t *cb = NULL;
     json_t *opts = NULL;
 
     *pAuthenticator = NULL;
@@ -279,7 +279,7 @@ _BIDMakeAuthenticator(
     }
 
     if (pbChannelBindings != NULL) {
-        err = _BIDJsonBinaryValue(context, pbChannelBindings, cbChannelBindings, &cbt);
+        err = _BIDJsonBinaryValue(context, pbChannelBindings, cbChannelBindings, &cb);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -310,7 +310,7 @@ _BIDMakeAuthenticator(
     err = _BIDJsonObjectSet(context, ap->Payload, "aud", aud, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDJsonObjectSet(context, ap->Payload, "cbt", cbt, 0);
+    err = _BIDJsonObjectSet(context, ap->Payload, "cb", cb, 0);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDMakeProtocolOpts(context, ulReqFlags, &opts);
@@ -330,7 +330,7 @@ cleanup:
     json_decref(exp);
     json_decref(nonce);
     json_decref(aud);
-    json_decref(cbt);
+    json_decref(cb);
     json_decref(opts);
 
     return err;
