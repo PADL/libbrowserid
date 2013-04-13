@@ -104,6 +104,8 @@ _BIDDeriveAuthenticatorSessionKey(
 {
     BIDError err;
     BIDSecretHandle secretHandle = NULL;
+    unsigned char *pbNonce = NULL;
+    size_t cbNonce = 0;
     unsigned char *pbASK = NULL;
     size_t cbASK = 0;
 
@@ -112,9 +114,10 @@ _BIDDeriveAuthenticatorSessionKey(
     err = _BIDImportSecretKey(context, ark, &secretHandle);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDDeriveKey(context, secretHandle,
-                        (unsigned char *)ap->EncData, ap->EncDataLength,
-                        &pbASK, &cbASK);
+    err = _BIDGetJsonBinaryValue(context, ap->Payload, "nonce", &pbNonce, &cbNonce);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDDeriveKey(context, secretHandle, pbNonce, cbNonce, &pbASK, &cbASK);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDImportSecretKeyData(context, pbASK, cbASK, pSecretHandle);
@@ -124,6 +127,7 @@ _BIDDeriveAuthenticatorSessionKey(
 
 cleanup:
     _BIDDestroySecret(context, secretHandle);
+    BIDFree(pbNonce);
     if (pbASK != NULL) {
         memset(pbASK, 0, cbASK);
         BIDFree(pbASK);
