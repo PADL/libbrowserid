@@ -568,6 +568,7 @@ _BIDValidateSubject(
     json_t *assertedPrincipalValue = NULL;
     json_t *assertedSubject = NULL;
     int bMatchedSubject = 0;
+    int bMatchedService = 0;
 
     BID_ASSERT(identity != BID_C_NO_IDENTITY);
 
@@ -616,9 +617,7 @@ _BIDValidateSubject(
         assertedURI = json_object_get(assertedPrincipal, "uri");
         if (_BIDSubjectEqualP(assertedURI, szPackedAudience, ulReqFlags)) {
             bMatchedSubject++;
-        } else if ((ulReqFlags & BID_VERIFY_FLAG_HOSTNAME_MATCH_OK) == 0) {
-            err = BID_S_BAD_SUBJECT;
-            goto cleanup;
+            bMatchedService++;
         }
 
         assertedPrincipalValue = json_object_get(assertedPrincipal, "hostname");
@@ -636,11 +635,22 @@ _BIDValidateSubject(
     if (_BIDSubjectEqualP(assertedSubject, p, ulReqFlags))
         bMatchedSubject++;
 
+    if (bMatchedService == 0) {
+        /* XXX look at certificate EKUs for service name/specifics match */
+    }
+
     err = BID_S_OK;
 
 cleanup:
-    if (err == BID_S_OK && bMatchedSubject == 0)
-        err = BID_S_BAD_SUBJECT;
+    /*
+     * If there was no error, but we didn't match the subject, or we only matched the
+     * hostname component and a complete match was required, then return BAD_SUBJECT.
+     */
+    if (err == BID_S_OK) {
+        if (bMatchedSubject == 0 ||
+            (bMatchedService == 0 && (ulReqFlags & BID_VERIFY_FLAG_HOSTNAME_MATCH_OK) == 0))
+            err = BID_S_BAD_SUBJECT;
+    }
 
     BIDFree(szPackedAudience);
     BIDFree(szHostnameAudience);
