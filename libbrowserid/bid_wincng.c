@@ -2565,6 +2565,59 @@ _BIDGetCertAltNames(
 
 cleanup:
     LocalFree(pCertAltNameInfo);
+    if (err != BID_S_OK)
+        json_decref(principal);
+
+    return err;
+}
+
+static BIDError
+_BIDGetCertEnhancedKeyUsage(
+    BIDContext context BID_UNUSED,
+    PCCERT_CONTEXT pCertContext,
+    json_t **pEku)
+{
+    BIDError err;
+    PCERT_ENHKEY_USAGE pCertEnhkeyUsage = NULL;
+    DWORD i, cbCertEnhkeyUsage;
+    json_t *eku = NULL;
+
+    *pEku = NULL;
+
+    if (!CertGetEnhancedKeyUsage(pCertContext, CERT_FIND_EXT_ONLY_ENHKEY_USAGE_FLAG,
+                                 NULL, &cbCertEnhkeyUsage)) {
+        err = BID_S_OK; /* no EKU */
+        goto cleanup;
+    }
+
+    eku = BIDMalloc(cbCertEnhkeyUsage);
+    if (eku == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (!CertGetEnhancedKeyUsage(pCertContext, CERT_FIND_EXT_ONLY_ENHKEY_USAGE_FLAG,
+                                 pCertEnhkeyUsage, &cbCertEnhkeyUsage)) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+    eku = json_array();
+    if (eku == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; i < pCertEnhkeyUsage->cUsageIdentifier; i++)
+        json_array_append_new(eku, json_string(pCertEnhkeyUsage->rgpszUsageIdentifier[i]));
+
+    *pEku = eku;
+    err = BID_S_OK;
+
+cleanup:
+    BIDFree(pCertEnhkeyUsage);
+    if (err != BID_S_OK)
+        json_decref(eku);
 
     return err;
 }
@@ -2579,6 +2632,7 @@ _BIDPopulateX509Identity(
     BIDError err;
     json_t *certChain = NULL;
     json_t *principal = NULL;
+    json_t *eku = NULL;
     PCCERT_CONTEXT pCertContext = NULL;
     DWORD dwSubjectType;
 
@@ -2616,10 +2670,17 @@ _BIDPopulateX509Identity(
                                    &pCertContext->pCertInfo->NotAfter);
     BID_BAIL_ON_ERROR(err);
 
+    err = _BIDGetCertEnhancedKeyUsage(context, x509, &eku);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, identity->Attributes, "eku", eku, 0);
+    BID_BAIL_ON_ERROR(err);
+
 cleanup:
     if (pCertContext != NULL)
         CertFreeCertificateContext(pCertContext);
     json_decref(principal);
+    json_decref(eku);
 
     return err;
 }

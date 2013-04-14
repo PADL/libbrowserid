@@ -1613,6 +1613,53 @@ _BIDSetJsonX509Time(
     return _BIDSetJsonTimestampValue(context, j, key, timegm(&tm));
 }
 
+static BIDError
+_BIDGetCertEnhancedKeyUsage(
+    BIDContext context BID_UNUSED,
+    X509 *x509,
+    json_t **pJsonEku)
+{
+    BIDError err;
+    EXTENDED_KEY_USAGE *eku = NULL;
+    int i;
+    json_t *jsonEku = NULL;
+
+    *pJsonEku = NULL;
+
+    eku = X509_get_ext_d2i(x509, NID_ext_key_usage, NULL, NULL);
+    if (eku == NULL) {
+        err = BID_S_OK;
+        goto cleanup;
+    }
+
+    jsonEku = json_array();
+    if (jsonEku == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; i < sk_ASN1_OBJECT_num(eku); i++) {
+        ASN1_OBJECT *oid;
+        char szOid[BUFSIZ];
+
+        oid = sk_ASN1_OBJECT_value(eku, i);
+
+        if (OBJ_obj2txt(szOid, sizeof(szOid), oid, 1) != -1)
+            json_array_append_new(jsonEku, json_string(szOid));
+    }
+
+    *pJsonEku = jsonEku;
+    err = BID_S_OK;
+
+cleanup:
+    if (eku != NULL)
+        sk_ASN1_OBJECT_pop_free(eku, ASN1_OBJECT_free);
+    if (err != BID_S_OK)
+        json_decref(jsonEku);
+
+    return err;
+}
+
 BIDError
 _BIDPopulateX509Identity(
     BIDContext context,
@@ -1623,8 +1670,9 @@ _BIDPopulateX509Identity(
     BIDError err;
     json_t *certChain = json_object_get(backedAssertion->Assertion->Header, "x5c");
     json_t *principal = json_object();
+    json_t *eku = NULL;
     X509 *x509 = NULL;
-    STACK_OF(GENERAL_NAME) *gens;
+    STACK_OF(GENERAL_NAME) *gens = NULL;
     int i;
 
     err = _BIDCertDataToX509(context, certChain, 0, &x509);
@@ -1683,8 +1731,17 @@ _BIDPopulateX509Identity(
     err = _BIDSetJsonX509Time(context, identity->Attributes, "exp", X509_get_notAfter(x509));
     BID_BAIL_ON_ERROR(err);
 
+    err = _BIDGetCertEnhancedKeyUsage(context, x509, &eku);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, identity->Attributes, "eku", eku, 0);
+    BID_BAIL_ON_ERROR(err);
+
 cleanup:
+    if (gens != NULL)
+        sk_GENERAL_NAME_pop_free(gens, GENERAL_NAME_free);
     json_decref(principal);
+    json_decref(eku);
 
     return err;
 }
