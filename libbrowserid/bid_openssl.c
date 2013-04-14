@@ -1614,7 +1614,7 @@ _BIDSetJsonX509Time(
 }
 
 static BIDError
-_BIDGetCertEnhancedKeyUsage(
+_BIDGetCertEKUs(
     BIDContext context BID_UNUSED,
     X509 *x509,
     json_t **pJsonEku)
@@ -1731,7 +1731,7 @@ _BIDPopulateX509Identity(
     err = _BIDSetJsonX509Time(context, identity->Attributes, "exp", X509_get_notAfter(x509));
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetCertEnhancedKeyUsage(context, x509, &eku);
+    err = _BIDGetCertEKUs(context, x509, &eku);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, identity->Attributes, "eku", eku, 0);

@@ -1061,6 +1061,8 @@ _BIDSetJsonFileTimeValue(
 /*
  * bid_x509.c
  */
+#define BID_SERVER_AUTH_EKU_OID     "1.3.6.1.4.1.5322.24.3.1"
+
 BIDError
 _BIDGetRPPrivateKey(
     BIDContext context,

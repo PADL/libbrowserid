@@ -2572,7 +2572,7 @@ cleanup:
 }
 
 static BIDError
-_BIDGetCertEnhancedKeyUsage(
+_BIDGetCertEKUs(
     BIDContext context BID_UNUSED,
     PCCERT_CONTEXT pCertContext,
     json_t **pEku)
@@ -2670,7 +2670,7 @@ _BIDPopulateX509Identity(
                                    &pCertContext->pCertInfo->NotAfter);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetCertEnhancedKeyUsage(context, x509, &eku);
+    err = _BIDGetCertEKUs(context, x509, &eku);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, identity->Attributes, "eku", eku, 0);
@@ -2935,7 +2935,8 @@ _BIDValidateX509CertChain(
     LPSTR rgszUsages[] = {
         szOID_PKIX_KP_SERVER_AUTH,
         szOID_SERVER_GATED_CRYPTO,
-        szOID_SGC_NETSCAPE
+        szOID_SGC_NETSCAPE,
+        BID_SERVER_AUTH_EKU_OID     /* BrowserID extended key usage */
     };
     DWORD dwFlags = 0;
     FILETIME ftVerify;
