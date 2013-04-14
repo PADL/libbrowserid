@@ -1,2 +1,4 @@
 - replay/reauth cache grows unbounded
 - cache purging API needs to lock cache
+- validate serverAuth or browserIDServerAuth EKU
+- parse to be specified service name/specific EKUs
