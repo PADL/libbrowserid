@@ -2935,8 +2935,7 @@ _BIDValidateX509CertChain(
     LPSTR rgszUsages[] = {
         szOID_PKIX_KP_SERVER_AUTH,
         szOID_SERVER_GATED_CRYPTO,
-        szOID_SGC_NETSCAPE,
-        BID_SERVER_AUTH_EKU_OID     /* BrowserID extended key usage */
+        szOID_SGC_NETSCAPE
     };
     DWORD dwFlags = 0;
     FILETIME ftVerify;
