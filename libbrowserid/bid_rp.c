@@ -115,7 +115,8 @@ BIDMakeRPResponseToken(
      * make NegoEx certificate advertisement work).
      */
     if (identity != NULL && json_object_size(identity->PrivateAttributes)) {
-        if (ulProtoOpts & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
+        if ((ulReqFlags & BID_RP_FLAG_FORCE_EXTRA_ROUND_TRIP) ||
+            (ulProtoOpts & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP)) {
             err = _BIDGenerateNonce(context, &jti);
             BID_BAIL_ON_ERROR(err);
 
