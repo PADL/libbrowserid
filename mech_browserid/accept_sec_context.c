@@ -211,6 +211,9 @@ gssBidAcceptSecContext(OM_uint32 *minor,
             } else
                 ctx->flags |= CTX_FLAG_REAUTH;
         }
+        if ((ulBidFlags & BID_VERIFY_FLAG_REAUTH_MUTUAL) &&     /* master (transitive) context */
+            (ulBidFlags & BID_VERIFY_FLAG_MUTUAL_AUTH))         /* initiator context opts */
+            ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
         if (ulBidFlags & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
             major = GSS_S_CONTINUE_NEEDED;
             ctx->flags |= CTX_FLAG_EXTRA_ROUND_TRIP;
@@ -235,8 +238,6 @@ gssBidAcceptSecContext(OM_uint32 *minor,
     }
 
     if (major == GSS_S_COMPLETE) {
-        if (ulBidFlags & BID_VERIFY_FLAG_REAUTH_MUTUAL)
-            ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
         major = gssBidContextReady(minor, ctx, cred);
     }
 

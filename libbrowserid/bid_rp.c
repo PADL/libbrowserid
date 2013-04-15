@@ -87,9 +87,16 @@ BIDMakeRPResponseToken(
         }
     }
 
+    if (identity != NULL && json_object_size(identity->PrivateAttributes)) {
+        err = _BIDParseProtocolOpts(context,
+                                    json_object_get(identity->PrivateAttributes, "opts"),
+                                    &ulProtoOpts);
+        BID_BAIL_ON_ERROR(err);
+    }
+
     err = BID_S_NO_KEY;
-    if (ulReqFlags & BID_RP_FLAG_INITIAL) {
-        /* XXX should we check for a nonce before signing with X.509? */
+    if ((ulReqFlags & BID_RP_FLAG_INITIAL) &&
+        (ulProtoOpts & BID_VERIFY_FLAG_MUTUAL_AUTH)) {
         err = _BIDGetRPPrivateKey(context, &key, &certChain);
         if (err == BID_S_OK)
             *pulRetFlags |= BID_RP_FLAG_X509;
@@ -108,11 +115,6 @@ BIDMakeRPResponseToken(
      * make NegoEx certificate advertisement work).
      */
     if (identity != NULL && json_object_size(identity->PrivateAttributes)) {
-        err = _BIDParseProtocolOpts(context,
-                                    json_object_get(identity->PrivateAttributes, "opts"),
-                                    &ulProtoOpts);
-        BID_BAIL_ON_ERROR(err);
-
         if (ulProtoOpts & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
             err = _BIDGenerateNonce(context, &jti);
             BID_BAIL_ON_ERROR(err);
@@ -124,7 +126,7 @@ BIDMakeRPResponseToken(
             BID_BAIL_ON_ERROR(err);
         }
 
-        if ((*pulRetFlags & BID_RP_FLAG_X509)) {
+        if (*pulRetFlags & BID_RP_FLAG_X509) {
             err = _BIDJsonObjectSet(context, payload, "nonce",
                                     json_object_get(identity->PrivateAttributes, "nonce"),
                                     BID_JSON_FLAG_REQUIRED);

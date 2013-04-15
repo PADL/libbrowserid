@@ -295,7 +295,7 @@ BIDReleaseReplayCache(
 /* Input flags (ulReqFlags) */
 #define BID_ACQUIRE_FLAG_NO_INTERACT        0x00000001
 #define BID_ACQUIRE_FLAG_NO_CACHED          0x00000002
-#define BID_ACQUIRE_FLAG_NONCE              0x00000004
+#define BID_ACQUIRE_FLAG_MUTUAL_AUTH        0x00000004
 #define BID_ACQUIRE_FLAG_EXTRA_ROUND_TRIP   0x00000008 /* request XRT option */
 #define BID_ACQUIRE_FLAG_DCE                0x00000010 /* request DCE option */
 #define BID_ACQUIRE_FLAG_IDENTIFY           0x00000020 /* request identify option */
@@ -348,6 +348,7 @@ BIDFreeAssertion(
 #define BID_VERIFY_FLAG_EXTRA_ROUND_TRIP        0x00100000 /* requested XRT option */
 #define BID_VERIFY_FLAG_DCE                     0x00200000 /* requested DCE option */
 #define BID_VERIFY_FLAG_IDENTIFY                0x00400000 /* requested identify option */
+#define BID_VERIFY_FLAG_MUTUAL_AUTH             0x00800000 /* requested MA option */
 
 BIDError
 BIDVerifyAssertion(
@@ -457,6 +458,7 @@ BIDStoreTicketInCache(
 #define BID_RP_FLAG_INITIAL                     0x00000002 /* not reauth-based auth */
 #define BID_RP_FLAG_X509_THUMBPRINT             0x00000008 /* send thumbprint not cert */
 #define BID_RP_FLAG_HOSTNAME_MATCH_OK           0x00000010 /* don't require URI SAN in cert */
+#define BID_RP_FLAG_FORCE_EXTRA_ROUND_TRIP      0x00000020 /* force XRT even if initiator didn't request it */
 
 /* Output flags (ulRetFlags) */
 #define BID_RP_FLAG_VALIDATED_CERTS             0x00020000 /* validated certificate chain */

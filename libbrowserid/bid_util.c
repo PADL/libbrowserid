@@ -580,6 +580,11 @@ static struct {
         BID_VERIFY_FLAG_IDENTIFY,
         "ify"
     },
+    {
+        BID_ACQUIRE_FLAG_MUTUAL_AUTH,
+        BID_VERIFY_FLAG_MUTUAL_AUTH,
+        "ma"
+    },
 };
 
 BIDError

@@ -550,7 +550,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         if (ctx->flags & CTX_FLAG_REAUTH)
             ulReqFlags |= BID_ACQUIRE_FLAG_NO_CACHED;
         if (req_flags & GSS_C_MUTUAL_FLAG)
-            ulReqFlags |= BID_ACQUIRE_FLAG_NONCE;
+            ulReqFlags |= BID_ACQUIRE_FLAG_MUTUAL_AUTH;
         if (req_flags & GSS_C_DCE_STYLE)
             ulReqFlags |= BID_ACQUIRE_FLAG_EXTRA_ROUND_TRIP | BID_ACQUIRE_FLAG_DCE;
         if (req_flags & GSS_C_IDENTIFY_FLAG)

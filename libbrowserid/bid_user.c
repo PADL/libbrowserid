@@ -181,7 +181,7 @@ BIDAcquireAssertion(
     err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings, ulReqFlags, &claims, &key);
     BID_BAIL_ON_ERROR(err);
 
-    if (ulReqFlags & BID_ACQUIRE_FLAG_NONCE) {
+    if (ulReqFlags & BID_ACQUIRE_FLAG_MUTUAL_AUTH) {
         err = _BIDGenerateNonce(context, &nonce);
         BID_BAIL_ON_ERROR(err);
 
@@ -205,7 +205,7 @@ BIDAcquireAssertion(
             BID_BAIL_ON_ERROR(err);
         }
 
-        if (ulReqFlags & BID_ACQUIRE_FLAG_NONCE) {
+        if (ulReqFlags & BID_ACQUIRE_FLAG_MUTUAL_AUTH) {
             err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "nonce", nonce, 0);
             BID_BAIL_ON_ERROR(err);
         }

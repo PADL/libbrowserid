@@ -229,6 +229,13 @@ gssBidInitResponseToken(OM_uint32 *minor,
         goto cleanup;
     }
 
+    if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {
+        if (ulRetFlags & BID_RP_FLAG_VALIDATED_CERTS)
+            ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
+        else
+            ctx->gssFlags &= ~(GSS_C_MUTUAL_FLAG);
+    }
+
     _BIDGetJsonTimestampValue(ctx->bidContext, response, "exp", &ctx->expiryTime);
 
     tkt = json_object_get(response, "tkt");
@@ -269,13 +276,6 @@ gssBidInitResponseToken(OM_uint32 *minor,
     major = gssBidContextReady(minor, ctx, cred); /* need key to verify */
     if (GSS_ERROR(major))
         goto cleanup;
-
-    if ((ctx->flags & CTX_FLAG_REAUTH) == 0) {
-        if (ulRetFlags & BID_RP_FLAG_VALIDATED_CERTS)
-            ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
-        else
-            ctx->gssFlags &= ~(GSS_C_MUTUAL_FLAG);
-    }
 
     GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_ESTABLISHED);
 
