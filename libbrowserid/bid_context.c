@@ -311,7 +311,6 @@ BIDGetContextParam(
     case BID_PARAM_TICKET_CACHE_NAME:
         err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
         break;
-        break;
     case BID_PARAM_RP_CONFIG_NAME:
         err = _BIDGetCacheName(context, context->RPConfig, (const char **)pValue);
         break;
