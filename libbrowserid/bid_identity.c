@@ -647,8 +647,11 @@ cleanup:
      * hostname component and a complete match was required, then return BAD_SUBJECT.
      */
     if (err == BID_S_OK) {
-        if (bMatchedSubject == 0 ||
-            (bMatchedService == 0 && (ulReqFlags & BID_VERIFY_FLAG_HOSTNAME_MATCH_OK) == 0))
+        if (bMatchedSubject == 0)
+            err = BID_S_BAD_SUBJECT;
+        else if (bMatchedService == 0 &&
+                 (ulReqFlags & BID_VERIFY_FLAG_RP) &&
+                 (ulReqFlags & BID_VERIFY_FLAG_HOSTNAME_MATCH_OK) == 0)
             err = BID_S_BAD_SUBJECT;
     }
 
