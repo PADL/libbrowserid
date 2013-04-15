@@ -278,8 +278,6 @@ BIDGetContextParam(
 
     BID_CONTEXT_VALIDATE(context);
 
-    *pValue = NULL;
-
     switch (ulParam) {
     case BID_PARAM_SECONDARY_AUTHORITIES:
         *pValue = context->SecondaryAuthorities;
