@@ -960,7 +960,6 @@ struct BIDIdentityDesc {
 
 /* Private input flags (ulReqFlags) */
 #define BID_VERIFY_FLAG_RP                      0x00010000
-#define BID_VERIFY_FLAG_HOSTNAME_MATCH_OK       0x00020000
 
 /* Private output flags (ulRetFlags) */
 
@@ -1061,6 +1060,9 @@ _BIDSetJsonFileTimeValue(
 /*
  * bid_x509.c
  */
+#define BID_OID_ANY_ENHANCED_KEY_USAGE      "2.5.29.37.0"
+#define BID_OID_PKIX_KP_SERVER_AUTH         "1.3.6.1.5.5.7.3.1"
+
 BIDError
 _BIDGetRPPrivateKey(
     BIDContext context,

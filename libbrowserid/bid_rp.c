@@ -202,9 +202,6 @@ BIDVerifyRPResponseToken(
     certParams = json_object_get(identity->PrivateAttributes, "anchors");
 
     ulVerifyReqFlags = BID_VERIFY_FLAG_RP;
-    if ((ulReqFlags & BID_RP_FLAG_HOSTNAME_MATCH_OK) ||
-        (context->ContextOptions & BID_CONTEXT_HOST_SPN_ALIAS))
-        ulVerifyReqFlags |= BID_VERIFY_FLAG_HOSTNAME_MATCH_OK;
 
     err = _BIDVerifyLocal(context, NULL, backedAssertion, NULL, szAudienceName,
                           NULL, 0, time(NULL), ulVerifyReqFlags, verifyCred,

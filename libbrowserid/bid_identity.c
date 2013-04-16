@@ -553,6 +553,74 @@ _BIDSubjectEqualP(
     return (cmp == 0);
 }
 
+static struct {
+    const char *szOid;
+    const char *szServiceName;
+} _BIDEKUMap[] = {
+    { BID_OID_PKIX_KP_SERVER_AUTH,          "http/" },
+};
+
+static int
+_BIDEKUIsPresentP(
+    BIDContext context BID_UNUSED,
+    json_t *eku,
+    const char *szDesiredOid)
+{
+    size_t i;
+
+    BID_ASSERT(eku != NULL);
+
+    for (i = 0; i < json_array_size(eku); i++) {
+        json_t *oid = json_array_get(eku, i);
+        const char *szOid;
+
+        szOid = json_string_value(oid);
+        if (szOid == NULL)
+            continue;
+
+        if (strcmp(szOid, szDesiredOid) == 0)
+            return 1;
+    }
+
+    return 0;
+}
+
+static BIDError
+_BIDValidateEKUs(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *szSubjectName,
+    uint32_t ulReqFlags BID_UNUSED)
+{
+    json_t *eku;
+    int valid = 0;
+
+    eku = json_object_get(identity->Attributes, "eku");
+    if (eku == NULL ||
+        (json_array_size(eku) == 1 &&
+         _BIDEKUIsPresentP(context, eku, BID_OID_ANY_ENHANCED_KEY_USAGE))) {
+        /* No EKU or any EKU OID is present */
+        valid++;
+    } else {
+        if (context->ContextOptions & BID_CONTEXT_GSS) {
+            size_t i;
+
+            for (i = 0; i < sizeof(_BIDEKUMap) / sizeof(_BIDEKUMap[0]); i++) {
+                if (strncmp(szSubjectName, _BIDEKUMap[i].szServiceName,
+                            strlen(_BIDEKUMap[i].szServiceName)) == 0) {
+                    valid++;
+                    break;
+                }
+            }
+        } else {
+            /* For HTTP, just check for serverAuth EKU */
+            valid = _BIDEKUIsPresentP(context, eku, BID_OID_PKIX_KP_SERVER_AUTH);
+        }
+    }
+
+    return valid ? BID_S_OK : BID_S_BAD_SUBJECT;
+}
+
 BIDError
 _BIDValidateSubject(
     BIDContext context BID_UNUSED,
@@ -568,7 +636,6 @@ _BIDValidateSubject(
     json_t *assertedPrincipalValue = NULL;
     json_t *assertedSubject = NULL;
     int bMatchedSubject = 0;
-    int bMatchedService = 0;
 
     BID_ASSERT(identity != BID_C_NO_IDENTITY);
 
@@ -617,7 +684,10 @@ _BIDValidateSubject(
         assertedURI = json_object_get(assertedPrincipal, "uri");
         if (_BIDSubjectEqualP(assertedURI, szPackedAudience, ulReqFlags)) {
             bMatchedSubject++;
-            bMatchedService++;
+        } else if (assertedURI != NULL) {
+            /* If a URI SAN was present, we require a match. */
+            err = BID_S_BAD_SUBJECT;
+            goto cleanup;
         }
 
         assertedPrincipalValue = json_object_get(assertedPrincipal, "hostname");
@@ -635,8 +705,9 @@ _BIDValidateSubject(
     if (_BIDSubjectEqualP(assertedSubject, p, ulReqFlags))
         bMatchedSubject++;
 
-    if (bMatchedService == 0) {
-        /* XXX look at certificate EKUs for service name/specifics match */
+    if (bMatchedSubject && (ulReqFlags & BID_VERIFY_FLAG_RP)) {
+        err = _BIDValidateEKUs(context, identity, szSubjectName, ulReqFlags);
+        BID_BAIL_ON_ERROR(err);
     }
 
     err = BID_S_OK;
@@ -646,14 +717,8 @@ cleanup:
      * If there was no error, but we didn't match the subject, or we only matched the
      * hostname component and a complete match was required, then return BAD_SUBJECT.
      */
-    if (err == BID_S_OK) {
-        if (bMatchedSubject == 0)
-            err = BID_S_BAD_SUBJECT;
-        else if (bMatchedService == 0 &&
-                 (ulReqFlags & BID_VERIFY_FLAG_RP) &&
-                 (ulReqFlags & BID_VERIFY_FLAG_HOSTNAME_MATCH_OK) == 0)
-            err = BID_S_BAD_SUBJECT;
-    }
+    if (err == BID_S_OK && bMatchedSubject == 0)
+        err = BID_S_BAD_SUBJECT;
 
     BIDFree(szPackedAudience);
     BIDFree(szHostnameAudience);

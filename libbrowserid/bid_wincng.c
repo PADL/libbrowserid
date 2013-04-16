@@ -2932,11 +2932,13 @@ _BIDValidateX509CertChain(
     CERT_CHAIN_PARA certChainPara = { 0 };
     CERT_CHAIN_POLICY_PARA certChainPolicyPara = { 0 };
     CERT_CHAIN_POLICY_STATUS certChainPolicyStatus = { 0 };
+#if 0
     LPSTR rgszUsages[] = {
         szOID_PKIX_KP_SERVER_AUTH,
         szOID_SERVER_GATED_CRYPTO,
         szOID_SGC_NETSCAPE
     };
+#endif
     DWORD dwFlags = 0;
     FILETIME ftVerify;
     BOOLEAN bServerCertOnly;
@@ -2958,9 +2960,11 @@ _BIDValidateX509CertChain(
         BID_BAIL_ON_ERROR(err);
     }
 
+#if 0
     certChainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
     certChainPara.RequestedUsage.Usage.cUsageIdentifier = ARRAYSIZE(rgszUsages);
     certChainPara.RequestedUsage.Usage.rgpszUsageIdentifier = rgszUsages;
+#endif
 
     dwFlags = CERT_CHAIN_ENABLE_PEER_TRUST;
     if (bServerCertOnly)
