@@ -636,6 +636,7 @@ _BIDValidateSubject(
     json_t *assertedPrincipalValue = NULL;
     json_t *assertedSubject = NULL;
     int bMatchedSubject = 0;
+    int bMatchedServiceName = 0;
 
     BID_ASSERT(identity != BID_C_NO_IDENTITY);
 
@@ -684,6 +685,7 @@ _BIDValidateSubject(
         assertedURI = json_object_get(assertedPrincipal, "uri");
         if (_BIDSubjectEqualP(assertedURI, szPackedAudience, ulReqFlags)) {
             bMatchedSubject++;
+            bMatchedServiceName++;
         } else if (assertedURI != NULL) {
             /* If a URI SAN was present, we require a match. */
             err = BID_S_BAD_SUBJECT;
@@ -705,7 +707,8 @@ _BIDValidateSubject(
     if (_BIDSubjectEqualP(assertedSubject, p, ulReqFlags))
         bMatchedSubject++;
 
-    if (bMatchedSubject && (ulReqFlags & BID_VERIFY_FLAG_RP)) {
+    if (bMatchedSubject && (ulReqFlags & BID_VERIFY_FLAG_RP) &&
+        bMatchedServiceName == 0) {
         err = _BIDValidateEKUs(context, identity, szSubjectName, ulReqFlags);
         BID_BAIL_ON_ERROR(err);
     }
