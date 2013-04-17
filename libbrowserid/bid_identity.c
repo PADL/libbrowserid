@@ -717,8 +717,8 @@ _BIDValidateSubject(
 
 cleanup:
     /*
-     * If there was no error, but we didn't match the subject, or we only matched the
-     * hostname component and a complete match was required, then return BAD_SUBJECT.
+     * If there was no error otherwise, but we didn't match the subject,
+     * return BAD_SUBJECT.
      */
     if (err == BID_S_OK && bMatchedSubject == 0)
         err = BID_S_BAD_SUBJECT;
