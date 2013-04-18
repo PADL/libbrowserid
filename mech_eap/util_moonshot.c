@@ -157,13 +157,13 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
     MoonshotError *error = NULL;
 
     if (cred->name != GSS_C_NO_NAME) {
-      major = gssEapDisplayName(minor, cred->name, &initiator, NULL);
+        major = gssEapDisplayName(minor, cred->name, &initiator, NULL);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
     if (targetName != GSS_C_NO_NAME) {
-      major = gssEapDisplayName(minor, targetName, &target, NULL);
+        major = gssEapDisplayName(minor, targetName, &target, NULL);
         if (GSS_ERROR(major))
             goto cleanup;
     }
