@@ -163,13 +163,12 @@ gss_eap_shib_attr_provider::initWithGssContext(const gss_eap_attr_ctx *manager,
     const gss_eap_radius_attr_provider *radius;
     int authenticated, complete;
     gss_buffer_desc value = GSS_C_EMPTY_BUFFER;
+    gss_eap_attrid attrid(VENDORPEC_UKERNA, PW_SAML_AAA_ASSERTION);
 
     radius = static_cast<const gss_eap_radius_attr_provider *>
         (m_manager->getProvider(ATTR_TYPE_RADIUS));
     if (radius != NULL &&
-        radius->getFragmentedAttribute(PW_SAML_AAA_ASSERTION,
-                                       VENDORPEC_UKERNA,
-                                       &authenticated, &complete, &value)) {
+        radius->getFragmentedAttribute(attrid, &authenticated, &complete, &value)) {
         string str((char *)value.value, value.length);
         istringstream istream(str);
         DOMDocument *doc = XMLToolingConfig::getConfig().getParser().parse(istream);
