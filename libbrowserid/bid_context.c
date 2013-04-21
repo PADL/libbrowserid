@@ -427,8 +427,6 @@ BIDGetContextParam(
     switch (ulParam) {
     case BID_PARAM_SECONDARY_AUTHORITIES:
         *pValue = context->SecondaryAuthorities;
-        if (*pValue == NULL)
-            *pValue = (void *)_BIDSecondaryAuthorities;
         break;
     case BID_PARAM_VERIFIER_URL:
         if (context->VerifierUrl != NULL)

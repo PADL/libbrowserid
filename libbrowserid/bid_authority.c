@@ -133,7 +133,7 @@ _BIDIssuerIsAuthoritative(
     size_t i;
     int bIsAuthoritative = 0;
     BIDAuthority authority = NULL;
-    const char **secondaryAuthorities;
+    const char **secondaryAuthorities = NULL;
 
     BID_CONTEXT_VALIDATE(context);
 
@@ -150,10 +150,12 @@ _BIDIssuerIsAuthoritative(
         err = BIDGetContextParam(context, BID_PARAM_SECONDARY_AUTHORITIES, (void **)&secondaryAuthorities);
         BID_BAIL_ON_ERROR(err);
 
-        for (i = 0; secondaryAuthorities[i] != NULL; i++) {
-            if (_BIDAuthorityEqual(szIssuer, secondaryAuthorities[i])) {
-                bIsAuthoritative = 1;
-                break;
+        if (secondaryAuthorities != NULL) {
+            for (i = 0; secondaryAuthorities[i] != NULL; i++) {
+                if (_BIDAuthorityEqual(szIssuer, secondaryAuthorities[i])) {
+                    bIsAuthoritative = 1;
+                    break;
+                }
             }
         }
     }
