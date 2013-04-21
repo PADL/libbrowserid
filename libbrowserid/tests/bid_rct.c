@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     json_t *k = NULL;
     json_t *z = NULL;
 
-    err = BIDAcquireContext(0, &context);
+    err = BIDAcquireContext(NULL, 0, NULL, &context);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDAcquireCache(context, "registry:HKCU\\Volatile Environment", 0, &cache);

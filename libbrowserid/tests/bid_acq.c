@@ -106,7 +106,7 @@ int main(int argc, const char *argv[])
     }
 #endif /* !BUILD_AS_DSO */
 
-    err = BIDAcquireContext(options, &context);
+    err = BIDAcquireContext(NULL, options, NULL, &context);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDAcquireAssertion(context, BID_C_NO_TICKET_CACHE,

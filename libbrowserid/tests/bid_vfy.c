@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
         exit(BID_S_INVALID_PARAMETER);
     }
 
-    err = BIDAcquireContext(options, &context);
+    err = BIDAcquireContext(NULL, options, NULL, &context);
     BID_BAIL_ON_ERROR(err);
 
     err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE, argv[1], argv[2], NULL, 0,

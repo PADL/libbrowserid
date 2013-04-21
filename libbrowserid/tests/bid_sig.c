@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
     BIDError err;
     BIDContext context = NULL;
 
-    err = BIDAcquireContext(BID_CONTEXT_RP, &context);
+    err = BIDAcquireContext(NULL, BID_CONTEXT_RP, NULL, &context);
     BID_BAIL_ON_ERROR(err);
 
     printf("Test DSA sign = ERROR %d\n", TestDsaSignVerify(context, DsaPublicKey, DsaSecretKey));

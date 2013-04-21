@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     BIDJWK pkey = NULL;
     const char *s;
 
-    err = BIDAcquireContext(BID_CONTEXT_RP | BID_CONTEXT_VERIFY_REMOTE, &context);
+    err = BIDAcquireContext(NULL, BID_CONTEXT_RP | BID_CONTEXT_VERIFY_REMOTE, NULL, &context);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDAcquireAuthority(context, "login.persona.org", time(NULL), &authority);
