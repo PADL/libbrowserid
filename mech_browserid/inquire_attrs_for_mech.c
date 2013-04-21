@@ -96,13 +96,15 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
      * XXX hack to advertise whether we can do mutual authentication.
      * needs a better solution
      */
-    err = BIDAcquireContext(BID_CONTEXT_GSS, &bidContext);
+    err = BIDAcquireContext(GSSBID_CONFIG_FILE, BID_CONTEXT_GSS, NULL, &bidContext);
     if (err == BID_S_OK) {
-        err = _BIDAcquireCache(bidContext, GSSBID_CONFIG_FILE,
-                               BID_CACHE_FLAG_UNVERSIONED, &bidConfig);
+        BIDCache config = NULL;
+
+        err = BIDGetContextParam(bidContext, BID_PARAM_CONFIG_CACHE, (void **)&config);
+
         if (err == BID_S_OK &&
-            (_BIDGetCacheObject(bidContext, bidConfig, "ca-certificate", NULL) == BID_S_OK ||
-             _BIDGetCacheObject(bidContext, bidConfig, "ca-directory", NULL)   == BID_S_OK))
+            (_BIDGetCacheObject(bidContext, bidContext->Config, "ca-certificate", NULL) == BID_S_OK ||
+             _BIDGetCacheObject(bidContext, bidContext->Config, "ca-directory", NULL)   == BID_S_OK))
             MA_SUPPORTED(GSS_C_MA_AUTH_TARG_INIT);
     }
 

@@ -85,39 +85,6 @@ cleanup:
     return err;
 }
 
-static BIDError
-_BIDGetReauthPolicy(
-    BIDContext context,
-    uint32_t *pulTicketLifetime,
-    uint32_t *pulRenewLifetime)
-{
-    json_t *tmp = NULL;
-    uint32_t ulTicketLifetime = 0;
-    uint32_t ulRenewLifetime = 0;
-
-    if (_BIDGetCacheObject(context, context->RPConfig, "maxticketage", &tmp) == BID_S_OK) {
-        ulTicketLifetime = json_integer_value(tmp);
-        json_decref(tmp);
-    }
-
-    if (ulTicketLifetime == 0)
-        BIDGetContextParam(context, BID_PARAM_TICKET_LIFETIME, (void **)&ulTicketLifetime);
-
-    *pulTicketLifetime = ulTicketLifetime;
-
-    if (_BIDGetCacheObject(context, context->RPConfig, "maxrenewage", &tmp) == BID_S_OK) {
-        ulRenewLifetime = json_integer_value(tmp);
-        json_decref(tmp);
-    }
-
-    if (ulRenewLifetime == 0)
-        BIDGetContextParam(context, BID_PARAM_RENEW_LIFETIME, (void **)&ulRenewLifetime);
-
-    *pulRenewLifetime = ulRenewLifetime;
-
-    return BID_S_OK;
-}
-
 BIDError
 _BIDUpdateReplayCache(
     BIDContext context,
@@ -156,8 +123,8 @@ _BIDUpdateReplayCache(
             (verificationTime - renewExpiry <= context->Skew);
     }
 
-    err = _BIDGetReauthPolicy(context, &ticketLifetime, &renewLifetime);
-    BID_BAIL_ON_ERROR(err);
+    BIDGetContextParam(context, BID_PARAM_TICKET_LIFETIME, (void **)&ticketLifetime);
+    BIDGetContextParam(context, BID_PARAM_RENEW_LIFETIME, (void **)&renewLifetime);
 
     rdata = bStoreReauthCreds ? json_copy(identity->Attributes) : json_object();
     if (rdata == NULL) {

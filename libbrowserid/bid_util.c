@@ -342,6 +342,77 @@ _BIDGetJsonStringValue(
 }
 
 BIDError
+_BIDGetJsonStringValueArray(
+    BIDContext context,
+    json_t *json,
+    const char *szKey,
+    char ***prgszValues)
+{
+    BIDError err;
+    size_t i, j, cValues = 0;
+    char **rgszValues = NULL;
+
+    *prgszValues = NULL;
+
+    if (szKey != NULL)
+        json = json_object_get(json, szKey);
+    if (json == NULL) {
+        err = BID_S_UNKNOWN_JSON_KEY;
+        goto cleanup;
+    }
+
+    if (json_is_string(json))
+        cValues = 1;
+    else if (json_is_array(json))
+        cValues = json_array_size(json);
+    else {
+        err = BID_S_INVALID_JSON;
+        goto cleanup;
+    }
+
+    rgszValues = BIDCalloc(cValues + 1, sizeof(char *));
+    if (rgszValues == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (json_is_string(json)) {
+        err = _BIDDuplicateString(context, json_string_value(json), &rgszValues[0]);
+        BID_BAIL_ON_ERROR(err);
+
+        rgszValues[1] = NULL;
+    } else {
+        json_t *value;
+
+        for (i = 0, j = 0; i < cValues; i++) {
+            value = json_array_get(json, i);
+
+            if (!json_is_string(value))
+                continue;
+
+            err = _BIDDuplicateString(context, json_string_value(value), &rgszValues[j]);
+            BID_BAIL_ON_ERROR(err);
+
+            j++;
+        }
+
+        rgszValues[j] = NULL;
+    }
+
+    *prgszValues = rgszValues;
+    err = BID_S_OK;
+
+cleanup:
+    if (err != BID_S_OK && rgszValues != NULL) {
+        for (i = 0; rgszValues[i] != NULL; i++)
+            BIDFree(rgszValues[i]);
+        BIDFree(rgszValues);
+    }
+
+    return BID_S_OK;
+}
+
+BIDError
 _BIDGetJsonBinaryValue(
     BIDContext context BID_UNUSED,
     json_t *json,

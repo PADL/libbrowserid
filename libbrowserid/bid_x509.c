@@ -93,12 +93,12 @@ _BIDGetRPPrivateKey(
     if (pCertChain != NULL)
         *pCertChain = NULL;
 
-    if (context->RPConfig == NULL) {
+    if (context->Config == NULL) {
         err = BID_S_NO_KEY;
         goto cleanup;
     }
 
-    err = _BIDGetCacheObject(context, context->RPConfig,
+    err = _BIDGetCacheObject(context, context->Config,
                             "certificate", &certificatePath);
     BID_BAIL_ON_ERROR(err);
 
@@ -111,7 +111,7 @@ _BIDGetRPPrivateKey(
      * We allow these to fail; the crypto provider may be able to
      * determine the private key from the certificate.
      */
-    _BIDGetCacheObject(context, context->RPConfig,
+    _BIDGetCacheObject(context, context->Config,
                        "private-key", &privateKeyPath);
 
     if (pKey != NULL) {
@@ -172,14 +172,14 @@ _BIDValidateX509(
         goto cleanup;
     }
 
-    if (_BIDGetCacheObject(context, context->RPConfig,
+    if (_BIDGetCacheObject(context, context->Config,
                            "ca-certificate", &caCertificateFile) == BID_S_OK) {
         err = _BIDJsonObjectSet(context, certParams, "ca-certificate",
                                 caCertificateFile, 0);
         BID_BAIL_ON_ERROR(err);
     }
 
-    if (_BIDGetCacheObject(context, context->RPConfig,
+    if (_BIDGetCacheObject(context, context->Config,
                            "ca-directory", &caCertificateDir) == BID_S_OK) {
         err = _BIDJsonObjectSet(context, certParams, "ca-directory",
                                 caCertificateDir, 0);

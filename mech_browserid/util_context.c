@@ -36,33 +36,6 @@
 
 #include "gssapiP_bid.h"
 
-/*
- * Set the re-authentication ticket and renewable lifetimes. By
- * default these match typical Kerberos defaults of 10 hours and
- * 7 days, respectively.
- *
- * XXX make this configurable.
- */
-static OM_uint32
-gssBidSetDefaultReauthPolicy(OM_uint32 *minor, gss_ctx_id_t ctx)
-{
-    BIDError err;
-    uint32_t ulTicketLifetime = 60 * 60 * 10;       /* 10 hours */
-    uint32_t ulRenewLifetime = 60 * 60 * 24 * 7;    /* 7 days */
-
-    err = BIDSetContextParam(ctx->bidContext, BID_PARAM_TICKET_LIFETIME,
-                             &ulTicketLifetime);
-    if (err != BID_S_OK)
-        return gssBidMapError(minor, err);
-
-    err = BIDSetContextParam(ctx->bidContext, BID_PARAM_RENEW_LIFETIME,
-                             &ulRenewLifetime);
-    if (err != BID_S_OK)
-        return gssBidMapError(minor, err);
-
-    return GSS_S_COMPLETE;
-}
-
 OM_uint32
 gssBidAllocContext(OM_uint32 *minor,
                    int isInitiator,
@@ -123,7 +96,7 @@ gssBidAllocContext(OM_uint32 *minor,
     else
         contextParams |= BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE | BID_CONTEXT_REPLAY_CACHE;
 
-    err = BIDAcquireContext(contextParams, &ctx->bidContext);
+    err = BIDAcquireContext(GSSBID_CONFIG_FILE, contextParams, NULL, &ctx->bidContext);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         goto cleanup;
@@ -145,17 +118,6 @@ gssBidAllocContext(OM_uint32 *minor,
             goto cleanup;
         }
     }
-
-    /*
-     * If we are doing mutual authentication, this is whether we store the
-     * server certificate and private key.
-     */
-    BIDSetContextParam(ctx->bidContext, BID_PARAM_RP_CONFIG_NAME,
-                       GSSBID_CONFIG_FILE);
-
-    major = gssBidSetDefaultReauthPolicy(minor, ctx);
-    if (GSS_ERROR(major))
-        goto cleanup;
 
     /*
      * Integrity, confidentiality, sequencing and replay detection are

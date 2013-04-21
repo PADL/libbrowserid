@@ -57,7 +57,7 @@ gssBidAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         return GSS_S_FAILURE;
     }
 
-    err = BIDAcquireContext(0, &cred->bidContext);
+    err = BIDAcquireContext(GSSBID_CONFIG_FILE, BID_CONTEXT_GSS, NULL, &cred->bidContext);
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         gssBidReleaseCred(&tmpMinor, &cred);

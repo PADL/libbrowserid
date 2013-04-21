@@ -550,7 +550,7 @@ int main(int argc, char *argv[])
                 BID_CONTEXT_AUTHORITY_CACHE |
                 BID_CONTEXT_TICKET_CACHE;
 
-    err = BIDAcquireContext(ulOptions, &gContext);
+    err = BIDAcquireContext(NULL, ulOptions, NULL, &gContext);
     if (err != BID_S_OK)
         BIDAbortError("Failed to acquire context", err);
 

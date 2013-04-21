@@ -18,7 +18,10 @@ int main(int argc, const char *argv[])
         exit(BID_S_INVALID_PARAMETER);
     }
 
-    err = BIDAcquireContext(BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE, &context);
+    err = BIDAcquireContext(NULL, /* szConfigFile */
+                            BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE,
+                            NULL, /* pvReserved */
+                            &context);
     if (err != BID_S_OK)
         goto cleanup;
 

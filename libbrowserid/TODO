@@ -2,4 +2,3 @@
 - cache purging API needs to lock cache
 - validate serverAuth or browserIDServerAuth EKU in OpenSSL
 - parse to be specified service name/specific EKUs (???)
-- allow secondary authority list to be set and read from config

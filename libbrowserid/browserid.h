@@ -219,7 +219,11 @@ typedef struct BIDContextDesc *BIDContext;
  * Context management.
  */
 BIDError
-BIDAcquireContext(uint32_t ulContextOptions, BIDContext *pContext);
+BIDAcquireContext(
+    const char *szConfig,
+    uint32_t ulContextOptions,
+    void *pvReserved,
+    BIDContext *pContext);
 
 BIDError
 BIDReleaseContext(BIDContext context);
@@ -240,10 +244,11 @@ typedef enum {
     BID_PARAM_REPLAY_CACHE_NAME,
     BID_PARAM_AUTHORITY_CACHE_NAME,
     BID_PARAM_TICKET_CACHE_NAME,
-    BID_PARAM_RP_CONFIG_NAME,
+    BID_PARAM_CONFIG_NAME,
     BID_PARAM_REPLAY_CACHE,
     BID_PARAM_AUTHORITY_CACHE,
     BID_PARAM_TICKET_CACHE,
+    BID_PARAM_CONFIG_CACHE,
     BID_PARAM_PARENT_WINDOW,
     BID_PARAM_TICKET_LIFETIME, /* seconds */
     BID_PARAM_ECDH_CURVE,

@@ -324,7 +324,7 @@ struct BIDContextDesc {
     uint32_t DHKeySize;
     uint32_t TicketLifetime;
     uint32_t RenewLifetime;
-    BIDCache RPConfig;
+    BIDCache Config;
     void *ParentWindow;
 };
 
@@ -761,6 +761,13 @@ _BIDGetJsonStringValue(
     json_t *json,
     const char *key,
     char **pDst);
+
+BIDError
+_BIDGetJsonStringValueArray(
+    BIDContext context,
+    json_t *json,
+    const char *szKey, /* may be NULL */
+    char ***prgszValues);
 
 BIDError
 _BIDGetJsonBinaryValue(

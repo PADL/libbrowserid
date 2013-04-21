@@ -46,11 +46,123 @@ _BIDSecondaryAuthorities[] = {
     "dev.diresworb.org",
     "login.anosrep.org",
     "login.persona.org",
+    NULL
 };
+
+static BIDError
+_BIDGetConfigIntegerValue(
+    BIDContext context,
+    const char *szKey,
+    uint32_t ulDefaultValue,
+    uint32_t *pulValue)
+{
+    json_t *value;
+
+    *pulValue = 0;
+
+    if (_BIDGetCacheObject(context, context->Config, szKey, &value) == BID_S_OK) {
+        *pulValue = json_integer_value(value);
+        json_decref(value);
+    } else if (ulDefaultValue != 0) {
+        *pulValue = ulDefaultValue;
+    } else {
+        return BID_S_UNKNOWN_JSON_KEY;
+    }
+
+    return BID_S_OK;
+}
+
+#if 0
+static BIDError
+_BIDGetConfigStringValue(
+    BIDContext context,
+    const char *szKey,
+    const char *szDefaultValue,
+    char **pszValue)
+{
+    BIDError err;
+    json_t *value;
+    const char *szValue = NULL;
+
+    *pszValue = NULL;
+
+    if (_BIDGetCacheObject(context, context->Config, szKey, &value) == BID_S_OK)
+        szValue = json_string_value(value);
+
+    if (szValue == NULL)
+        szValue = szDefaultValue;
+    if (szValue == NULL)
+        return BID_S_UNKNOWN_JSON_KEY;
+
+    err = _BIDDuplicateString(context, szDefaultValue, pszValue);
+
+    json_decref(value);
+
+    return err;
+}
+#endif
+
+static BIDError
+_BIDGetConfigStringValueArray(
+    BIDContext context,
+    const char *szKey,
+    const char **rgszDefaultValues,
+    char ***prgszValues)
+{
+    BIDError err;
+    size_t i;
+    char **rgszValues = NULL;
+    json_t *value = NULL;
+
+    *prgszValues = NULL;
+
+    if (_BIDGetCacheObject(context, context->Config, szKey, &value) == BID_S_OK &&
+        _BIDGetJsonStringValueArray(context, value, NULL, prgszValues) == BID_S_OK) {
+        err = BID_S_OK;
+        goto cleanup;
+    }
+
+    if (rgszDefaultValues == NULL) {
+        err = BID_S_UNKNOWN_JSON_KEY;
+        goto cleanup;
+    }
+
+    for (i = 0; rgszDefaultValues[i] != NULL; i++)
+        ;
+
+    rgszValues = BIDCalloc(i, sizeof(char *));
+    if (rgszValues == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; rgszDefaultValues[i] != NULL; i++) {
+        err = _BIDDuplicateString(context, rgszDefaultValues[i], &rgszValues[i]);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    rgszValues[i] = NULL;
+
+    *prgszValues = rgszValues;
+    err = BID_S_OK;
+
+cleanup:
+    if (err != BID_S_OK && rgszValues != NULL) {
+        for (i = 0; rgszValues[i] != NULL; i++)
+            BIDFree(rgszValues[i]);
+        BIDFree(rgszValues);
+    }
+
+    json_decref(value);
+
+    return BID_S_OK;
+}
 
 BIDError
 BIDAcquireContext(
+    const char *szConfig,
     uint32_t ulContextOptions,
+    void *pvReserved BID_UNUSED,
     BIDContext *pContext)
 {
     BIDError err;
@@ -65,10 +177,32 @@ BIDAcquireContext(
     }
 
     context->ContextOptions = ulContextOptions;
-    context->Skew = 60 * 5; /* 5 minutes */
-    context->MaxDelegations = 6;
-    context->TicketLifetime = 0;
-    context->RenewLifetime = 0;
+
+    if (szConfig != NULL) {
+        err = BIDSetContextParam(context, BID_PARAM_CONFIG_NAME, (void *)szConfig);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    /* default clock skew is 5 minutes */
+    _BIDGetConfigIntegerValue(context, "maxclockskew",    60 * 5,
+                              &context->Skew);
+
+    if (ulContextOptions & BID_CONTEXT_RP) {
+        /* default delegations level is 6 */
+        _BIDGetConfigIntegerValue(context, "maxdelegations",  6,
+                                  &context->MaxDelegations);
+        /* default ticket lifetime is 10 hours */
+        _BIDGetConfigIntegerValue(context, "maxticketage",    60 * 60 * 10,
+                                  &context->TicketLifetime);
+        /* default renew lifetime is 7 days */
+        _BIDGetConfigIntegerValue(context, "maxrenewage",     60 * 60 * 24 * 7,
+                                  &context->RenewLifetime);
+
+        err = _BIDGetConfigStringValueArray(context, "secondaryauthorities",
+                                            _BIDSecondaryAuthorities,
+                                            &context->SecondaryAuthorities);
+        BID_BAIL_ON_ERROR(err);
+    }
 
     if (ulContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
         if ((ulContextOptions & BID_CONTEXT_RP) == 0) {
@@ -148,7 +282,7 @@ BIDReleaseContext(BIDContext context)
     _BIDReleaseCache(context, context->AuthorityCache);
     _BIDReleaseCache(context, context->ReplayCache);
     _BIDReleaseCache(context, context->TicketCache);
-    _BIDReleaseCache(context, context->RPConfig);
+    _BIDReleaseCache(context, context->Config);
 
     memset(context, 0, sizeof(*context));
     BIDFree(context);
@@ -189,7 +323,7 @@ BIDSetContextParam(
     case BID_PARAM_AUTHORITY_CACHE_NAME:
     case BID_PARAM_REPLAY_CACHE_NAME:
     case BID_PARAM_TICKET_CACHE_NAME:
-    case BID_PARAM_RP_CONFIG_NAME: {
+    case BID_PARAM_CONFIG_NAME: {
         const char *szCacheName;
         BIDCache cache, *pCache = NULL;
         uint32_t ulFlags = 0;
@@ -200,8 +334,8 @@ BIDSetContextParam(
             pCache = &context->ReplayCache;
         else if (ulParam == BID_PARAM_TICKET_CACHE_NAME)
             pCache = &context->TicketCache;
-        else if (ulParam == BID_PARAM_RP_CONFIG_NAME) {
-            pCache = &context->RPConfig;
+        else if (ulParam == BID_PARAM_CONFIG_NAME) {
+            pCache = &context->Config;
             ulFlags |= BID_CACHE_FLAG_UNVERSIONED;
         }
 
@@ -223,7 +357,8 @@ BIDSetContextParam(
     }
     case BID_PARAM_AUTHORITY_CACHE:
     case BID_PARAM_REPLAY_CACHE:
-    case BID_PARAM_TICKET_CACHE: {
+    case BID_PARAM_TICKET_CACHE:
+    case BID_PARAM_CONFIG_CACHE: {
         BIDCache *pCache = NULL;
 
         if (ulParam == BID_PARAM_AUTHORITY_CACHE)
@@ -232,6 +367,8 @@ BIDSetContextParam(
             pCache = &context->ReplayCache;
         else if (ulParam == BID_PARAM_TICKET_CACHE)
             pCache = &context->TicketCache;
+        else if (ulParam == BID_PARAM_CONFIG_CACHE)
+            pCache = &context->Config;
 
         BID_ASSERT(pCache != NULL);
 
@@ -311,8 +448,8 @@ BIDGetContextParam(
     case BID_PARAM_TICKET_CACHE_NAME:
         err = _BIDGetCacheName(context, context->TicketCache, (const char **)pValue);
         break;
-    case BID_PARAM_RP_CONFIG_NAME:
-        err = _BIDGetCacheName(context, context->RPConfig, (const char **)pValue);
+    case BID_PARAM_CONFIG_NAME:
+        err = _BIDGetCacheName(context, context->Config, (const char **)pValue);
         break;
     case BID_PARAM_REPLAY_CACHE:
         *pValue = context->ReplayCache;
@@ -322,6 +459,9 @@ BIDGetContextParam(
         break;
     case BID_PARAM_TICKET_CACHE:
         *pValue = context->TicketCache;
+        break;
+    case BID_PARAM_CONFIG_CACHE:
+        *pValue = context->Config;
         break;
     case BID_PARAM_DH_MODULUS_SIZE:
         if ((context->ContextOptions & BID_CONTEXT_DH_KEYEX) == 0)
