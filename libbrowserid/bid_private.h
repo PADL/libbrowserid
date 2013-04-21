@@ -319,6 +319,9 @@ struct BIDAcquireContextArgsDesc {
     uint32_t Version;
     uint16_t cbHeaderLength;
     uint32_t cbStructureLength;
+    BIDAuthorityCache AuthorityCache;
+    BIDReplayCache ReplayCache;
+    BIDTicketCache TicketCache;
 };
 
 typedef struct BIDAcquireContextArgsDesc *BIDAcquireContextArgs;

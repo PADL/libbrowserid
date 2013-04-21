@@ -174,7 +174,7 @@ BIDAcquireContext(
     if (args != NULL &&
         (args->Version != BID_ACQUIRE_CONTEXT_ARGS_VERSION ||
          args->cbHeaderLength != sizeof(*args) ||
-         args->cbStructureLength != sizeof(*args))) {
+         args->cbStructureLength < args->cbHeaderLength)) {
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
     }
@@ -219,8 +219,12 @@ BIDAcquireContext(
             goto cleanup;
         }
 
-        err = _BIDAcquireDefaultAuthorityCache(context);
-        BID_BAIL_ON_ERROR(err);
+        if (args != NULL && args->AuthorityCache != BID_C_NO_AUTHORITY_CACHE) {
+            context->AuthorityCache = args->AuthorityCache;
+        } else {
+            err = _BIDAcquireDefaultAuthorityCache(context);
+            BID_BAIL_ON_ERROR(err);
+        }
 
         BID_ASSERT(context->AuthorityCache != BID_C_NO_AUTHORITY_CACHE);
     }
@@ -231,8 +235,12 @@ BIDAcquireContext(
             goto cleanup;
         }
 
-        err = _BIDAcquireDefaultReplayCache(context);
-        BID_BAIL_ON_ERROR(err);
+        if (args != NULL && args->ReplayCache != BID_C_NO_REPLAY_CACHE) {
+            context->ReplayCache = args->ReplayCache;
+        } else {
+            err = _BIDAcquireDefaultReplayCache(context);
+            BID_BAIL_ON_ERROR(err);
+        }
 
         BID_ASSERT(context->ReplayCache != BID_C_NO_REPLAY_CACHE);
     }
@@ -244,8 +252,12 @@ BIDAcquireContext(
             goto cleanup;
         }
 
-        err = _BIDAcquireDefaultTicketCache(context);
-        BID_BAIL_ON_ERROR(err);
+        if (args != NULL && args->TicketCache != BID_C_NO_TICKET_CACHE) {
+            context->TicketCache = args->TicketCache;
+        } else {
+            err = _BIDAcquireDefaultTicketCache(context);
+            BID_BAIL_ON_ERROR(err);
+        }
 
         BID_ASSERT(context->TicketCache != BID_C_NO_TICKET_CACHE);
     }
