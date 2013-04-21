@@ -311,6 +311,20 @@ _BIDAcquireCacheForUser(
 /*
  * bid_context.c
  */
+
+/*
+ * pvReserved argument to BIDAcquireContext, for future use
+ */
+struct BIDAcquireContextArgsDesc {
+    uint32_t Version;
+    uint16_t cbHeaderLength;
+    uint32_t cbStructureLength;
+};
+
+typedef struct BIDAcquireContextArgsDesc *BIDAcquireContextArgs;
+
+#define BID_ACQUIRE_CONTEXT_ARGS_VERSION        1
+
 struct BIDContextDesc {
     uint32_t ContextOptions;
     char **SecondaryAuthorities;

@@ -162,13 +162,22 @@ BIDError
 BIDAcquireContext(
     const char *szConfig,
     uint32_t ulContextOptions,
-    void *pvReserved BID_UNUSED,
+    void *pvReserved,
     BIDContext *pContext)
 {
     BIDError err;
     BIDContext context = NULL;
+    BIDAcquireContextArgs args = (BIDAcquireContextArgs)pvReserved;
 
     *pContext = BID_C_NO_CONTEXT;
+
+    if (args != NULL &&
+        (args->Version != BID_ACQUIRE_CONTEXT_ARGS_VERSION ||
+         args->cbHeaderLength != sizeof(*args) ||
+         args->cbStructureLength != sizeof(*args))) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
 
     context = BIDCalloc(1, sizeof(*context));
     if (context == NULL) {
