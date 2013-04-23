@@ -81,11 +81,17 @@ the following keys:
     }
 
 You can use OpenSSL to create these files as you would when setting a server up
-for TLS. The subjectAltName or the CN must match the acceptor host name.
+for TLS. One of the following must be true:
 
-Multiple subjectAltName values are permitted and the subjectAltName can either
-contain a DNS name or a URI of the form urn:x-gss:spn where, spn is a BrowserID
-service principal name.
+* The certificate contains no EKUs and either the DNS subjectAltName or the
+  common name match the acceptor host name.
+
+* The certificate contains an EKU that maps to a GSS service name (for
+  example, serverAuth maps to "http") and either the DNS subjectAltName or
+  the common name match the acceptor host name.
+
+* The certificate contains a URI subjectAltName containing a GSS BrowserID
+  URN of the complete BrowserID SPN, e.g: urn:x-gss:imap/mail.lukktone.com.
 
 ## Other configuration
 
