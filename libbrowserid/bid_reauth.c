@@ -243,7 +243,7 @@ _BIDMakeAuthenticator(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     uint32_t ulReqFlags,
-    json_t *tkt,
+    json_t *jti,
     BIDJWT *pAuthenticator)
 {
     BIDError err;
@@ -254,12 +254,13 @@ _BIDMakeAuthenticator(
     json_t *aud = NULL;
     json_t *cb = NULL;
     json_t *opts = NULL;
+    json_t *tkt = NULL;
 
     *pAuthenticator = NULL;
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (tkt == NULL) {
+    if (jti == NULL) {
         err = BID_S_BAD_TICKET_CACHE;
         goto cleanup;
     }
@@ -308,6 +309,15 @@ _BIDMakeAuthenticator(
     err = _BIDJsonObjectSet(context, ap->Payload, "nonce", nonce, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
+    tkt = json_object();
+    if (tkt == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, tkt, "jti", jti, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
     err = _BIDJsonObjectSet(context, ap->Payload, "tkt", tkt, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
@@ -333,6 +343,7 @@ cleanup:
     json_decref(iat);
     json_decref(exp);
     json_decref(nonce);
+    json_decref(tkt);
     json_decref(aud);
     json_decref(cb);
     json_decref(opts);
@@ -619,6 +630,7 @@ _BIDVerifyReauthAssertion(
     const char *szTicket;
     json_t *cred = NULL;
     uint32_t ulTicketFlags = 0;
+    json_t *tkt = NULL;
 
     *pVerifiedIdentity = BID_C_NO_IDENTITY;
     *pVerifierCred = NULL;
@@ -629,7 +641,9 @@ _BIDVerifyReauthAssertion(
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_REAUTH);
     BID_ASSERT(assertion->cCertificates == 0);
 
-    szTicket = json_string_value(json_object_get(ap->Payload, "tkt"));
+    tkt = json_object_get(ap->Payload, "tkt");
+
+    szTicket = json_string_value(json_object_get(tkt, "jti"));
     if (szTicket == NULL) {
         err = BID_S_NOT_REAUTH_ASSERTION;
         goto cleanup;
