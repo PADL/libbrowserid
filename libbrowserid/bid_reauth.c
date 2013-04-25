@@ -243,7 +243,7 @@ _BIDMakeAuthenticator(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     uint32_t ulReqFlags,
-    json_t *jti,
+    json_t *tid,
     BIDJWT *pAuthenticator)
 {
     BIDError err;
@@ -260,7 +260,7 @@ _BIDMakeAuthenticator(
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (jti == NULL) {
+    if (tid == NULL) {
         err = BID_S_BAD_TICKET_CACHE;
         goto cleanup;
     }
@@ -315,7 +315,7 @@ _BIDMakeAuthenticator(
         goto cleanup;
     }
 
-    err = _BIDJsonObjectSet(context, tkt, "jti", jti, BID_JSON_FLAG_REQUIRED);
+    err = _BIDJsonObjectSet(context, tkt, "tid", tid, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, ap->Payload, "tkt", tkt, BID_JSON_FLAG_REQUIRED);
@@ -572,7 +572,7 @@ _BIDGetReauthAssertion(
     }
 
     err = _BIDMakeAuthenticator(context, szPackedAudience, pbChannelBindings, cbChannelBindings,
-                                ulReqFlags, json_object_get(tkt, "jti"), &ap);
+                                ulReqFlags, json_object_get(tkt, "tid"), &ap);
     BID_BAIL_ON_ERROR(err);
 
     _BIDGetJsonTimestampValue(context, ap->Payload, "iat", &now);
@@ -643,7 +643,7 @@ _BIDVerifyReauthAssertion(
 
     tkt = json_object_get(ap->Payload, "tkt");
 
-    szTicket = json_string_value(json_object_get(tkt, "jti"));
+    szTicket = json_string_value(json_object_get(tkt, "tid"));
     if (szTicket == NULL) {
         err = BID_S_NOT_REAUTH_ASSERTION;
         goto cleanup;

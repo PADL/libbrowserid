@@ -202,7 +202,7 @@ _BIDUpdateReplayCache(
             goto cleanup;
         }
 
-        err = _BIDJsonObjectSet(context, tkt, "jti", json_string(szHash),
+        err = _BIDJsonObjectSet(context, tkt, "tid", json_string(szHash),
                                 BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
 
