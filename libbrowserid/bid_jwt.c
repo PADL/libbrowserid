@@ -45,6 +45,31 @@
  * that the payload be valid JSON. It's enough to support BrowserID.
  */
 
+const char *
+_BIDValidJWTHeaderParameters[] = {
+    "alg",
+    "crit",
+    "cty",
+    "typ",
+    "x5c",
+    "x5t",
+};
+
+static int
+_BIDIsValidJWTHeaderParameterP(const char *szParam)
+{
+    size_t i;
+
+    for (i = 0;
+         i < sizeof(_BIDValidJWTHeaderParameters) / sizeof(_BIDValidJWTHeaderParameters[0]);
+         i++) {
+        if (strcmp(szParam, _BIDValidJWTHeaderParameters[i]) == 0)
+            return 1;
+    }
+
+    return 0;
+}
+
 BIDError
 _BIDValidateJWTHeader(
     BIDContext context BID_UNUSED,
@@ -65,21 +90,34 @@ _BIDValidateJWTHeader(
          iter = json_object_iter_next(header, iter)) {
         const char *key = json_object_iter_key(iter);
 
-        if (strcmp(key, "typ") == 0) {
+        if (strcmp(key, "cty") == 0) {
             const char *typ = json_string_value(json_object_iter_value(iter));
 
             if (typ == NULL)
                 return BID_S_INVALID_JSON_WEB_TOKEN;
 
-            if (strcmp(typ, "JWT") != 0 &&
-                strcmp(typ, "urn:ietf:params:oauth:token-type:jwt") != 0)
+            if (strcmp(typ, "JWT") != 0)
                 return BID_S_INVALID_JSON_WEB_TOKEN;
-        } else if (strcmp(key, "alg") == 0 ||
-                   strcmp(key, "x5c") == 0 ||
-                   strncmp(key, "x5t", 3) == 0)
-            continue;
-        else
-            return BID_S_INVALID_JSON_WEB_TOKEN;
+        } else if (strcmp(key, "typ") == 0) {
+            const char *typ = json_string_value(json_object_iter_value(iter));
+
+            if (typ == NULL)
+                return BID_S_INVALID_JSON_WEB_TOKEN;
+
+            if (strcmp(typ, "JWS") != 0)
+                return BID_S_INVALID_JSON_WEB_TOKEN;
+        } else if (strcmp(key, "crit") == 0) {
+            json_t *crit = json_object_iter_value(iter);
+            size_t i;
+
+            for (i = 0; i < json_array_size(crit); i++) {
+                json_t *claim = json_array_get(crit, i);
+
+                if (!json_is_string(claim) ||
+                    !_BIDIsValidJWTHeaderParameterP(json_string_value(claim)))
+                    return BID_S_INVALID_JSON_WEB_TOKEN;
+            }
+        }
     }
 
     return BID_S_OK;
