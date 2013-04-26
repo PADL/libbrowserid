@@ -1,7 +1,7 @@
 %global _moonshot_krb5 %{!?_moonshot_krb5:krb5-devel}%{?_moonshot_krb5}
 Name:		moonshot-gss-eap
 Version:	@VERSION@
-Release:	4%{?dist}
+Release:	5%{?dist}
 Summary:	Moonshot GSS-API Mechanism
 
 Group:		Security Tools
@@ -14,7 +14,7 @@ BuildRequires:	 %{_moonshot_krb5} >= 1.9.1
 BuildRequires:	 moonshot-ui-devel
 BuildRequires: jansson-devel
 Requires:	moonshot-ui
-BuildRequires: libradsec-devel
+BuildRequires: libradsec-devel >= 0.0.3
 BuildRequires: shibboleth-devel >= 2.5
 BuildRequires: libshibresolver-devel
 
@@ -29,8 +29,7 @@ Project Moonshot provides federated access management.
 
 
 %build
-	export LDFLAGS='-L/usr/%{_lib}/freeradius -Wl,--rpath=/usr/%{_lib}/freeradius'
-%configure  --with-libmoonshot=%{_prefix} --with-krb5=%{_prefix} --disable-reauth
+%configure  --with-libmoonshot=%{_prefix} --with-krb5=%{_prefix} --enable-reauth
 make %{?_smp_mflags}
 
 
@@ -51,7 +50,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/gss/mech_eap.so
 %exclude %{_libdir}/gss/mech_eap.la
 %{_includedir}/gssapi/*.h
-#%exclude %{_libdir}/krb5/plugins/authdata/*la
+%exclude %{_libdir}/krb5/plugins/authdata/*
 #%{_libdir}/krb5/plugins/authdata/*.so
 
 
