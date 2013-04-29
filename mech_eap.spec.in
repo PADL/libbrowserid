@@ -29,7 +29,7 @@ Project Moonshot provides federated access management.
 
 
 %build
-%configure  --with-libmoonshot=%{_prefix} --with-krb5=%{_prefix} --enable-reauth
+%configure  --with-libmoonshot=%{_prefix} --with-krb5=%{_prefix} --enable-reauth LDFLAGs="${LDFLAGS} -L/opt/shibboleth/%{_lib} -Wl,--rpath=/opt/shibboleth/%{_lib}" CPPFLAGS="${CPPFLAGS} -I/opt/shibboleth/include"
 make %{?_smp_mflags}
 
 
