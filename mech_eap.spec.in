@@ -15,7 +15,7 @@ BuildRequires:	 moonshot-ui-devel
 BuildRequires: jansson-devel
 Requires:	moonshot-ui
 BuildRequires: libradsec-devel >= 0.0.3
-BuildRequires: shibboleth-devel >= 2.5
+BuildRequires: shibboleth-sp-devel >= 2.5
 BuildRequires: libshibresolver-devel
 
 
