@@ -313,7 +313,7 @@ _BIDAcquireCacheForUser(
  */
 
 /*
- * pvReserved argument to BIDAcquireContext, for future use
+ * Argument to BIDAcquireContext, for future use
  */
 struct BIDAcquireContextArgsDesc {
     uint32_t Version;
@@ -323,8 +323,6 @@ struct BIDAcquireContextArgsDesc {
     BIDReplayCache ReplayCache;
     BIDTicketCache TicketCache;
 };
-
-typedef struct BIDAcquireContextArgsDesc *BIDAcquireContextArgs;
 
 #define BID_ACQUIRE_CONTEXT_ARGS_VERSION        1
 

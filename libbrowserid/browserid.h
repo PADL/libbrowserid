@@ -218,11 +218,14 @@ typedef struct BIDContextDesc *BIDContext;
 /*
  * Context management.
  */
+struct BIDAcquireContextArgsDesc;
+typedef struct BIDAcquireContextArgsDesc *BIDAcquireContextArgs;
+
 BIDError
 BIDAcquireContext(
     const char *szConfig,
     uint32_t ulContextOptions,
-    void *pvReserved,
+    BIDAcquireContextArgs contextArgs,
     BIDContext *pContext);
 
 BIDError

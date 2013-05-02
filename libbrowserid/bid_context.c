@@ -162,12 +162,11 @@ BIDError
 BIDAcquireContext(
     const char *szConfig,
     uint32_t ulContextOptions,
-    void *pvReserved,
+    BIDAcquireContextArgs args,
     BIDContext *pContext)
 {
     BIDError err;
     BIDContext context = NULL;
-    BIDAcquireContextArgs args = (BIDAcquireContextArgs)pvReserved;
 
     *pContext = BID_C_NO_CONTEXT;
 
