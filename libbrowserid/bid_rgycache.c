@@ -236,6 +236,54 @@ _BIDRegistryEnumKey(
     json_t *pJson);
 
 static BIDError
+_BIDRegistryMakeValueMultiSz(
+    BIDContext context,
+    PBYTE pbData,
+    DWORD cbData,
+    json_t **pJson)
+{
+    json_t *json = NULL;
+    LPWSTR p = (LPWSTR)pbData;
+
+    *pJson = NULL;
+
+    json = json_array();
+    if (json == NULL)
+        return BID_S_NO_MEMORY;
+
+    /* Make sure the entire array is NUL terminated, caller made room */
+    p[cbData / sizeof(WCHAR)] = 0;
+
+    while (*p != 0) {
+        char *szUtf8String;
+        DWORD cchValue;
+
+        err = _BIDUcs2ToUtf8(context, (PWSTR)p, &szUtf8String);
+        BID_BAIL_ON_ERROR(err);
+
+        if (json_array_append_new(json, json_string(szUtf8String)) < 0) {
+            BIDFree(szUtf8String);
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+
+        cchValue = wcslen(p);
+        p += (cchValue + 1) * sizeof(WCHAR);
+
+        BIDFree(szUtf8String);
+    }
+
+    err = BID_S_OK;
+    *pJson = json;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(json);
+
+    return err;
+}
+
+static BIDError
 _BIDRegistryMakeValue(
     BIDContext context,
     DWORD dwType,
@@ -270,6 +318,9 @@ _BIDRegistryMakeValue(
         }
         break;
     }
+    case REG_MULTI_SZ:
+        err = _BIDRegistryMakeValueMultiSz(context, pbData, cbData, &json);
+        break;
     case REG_NONE:
         json = json_null();
         break;
@@ -283,6 +334,7 @@ _BIDRegistryMakeValue(
         goto cleanup;
     }
 
+    err = BID_S_OK;
     *pJson = json;
 
 cleanup:
