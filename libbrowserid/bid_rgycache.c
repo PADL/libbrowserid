@@ -242,14 +242,17 @@ _BIDRegistryMakeValueMultiSz(
     DWORD cbData,
     json_t **pJson)
 {
+    BIDError err;
     json_t *json = NULL;
-    LPWSTR p = (LPWSTR)pbData;
+    PWSTR p = (PWSTR)pbData;
 
     *pJson = NULL;
 
     json = json_array();
-    if (json == NULL)
-        return BID_S_NO_MEMORY;
+    if (json == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     /* Make sure the entire array is NUL terminated, caller made room */
     p[cbData / sizeof(WCHAR)] = 0;
@@ -268,7 +271,7 @@ _BIDRegistryMakeValueMultiSz(
         }
 
         cchValue = wcslen(p);
-        p += (cchValue + 1) * sizeof(WCHAR);
+        p += cchValue + 1;
 
         BIDFree(szUtf8String);
     }
