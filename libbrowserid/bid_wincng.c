@@ -2670,7 +2670,7 @@ _BIDPopulateX509Identity(
                                    &pCertContext->pCertInfo->NotAfter);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDGetCertEKUs(context, x509, &eku);
+    err = _BIDGetCertEKUs(context, pCertContext, &eku);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, identity->Attributes, "eku", eku, 0);
