@@ -90,7 +90,7 @@ extern "C" {
     } while (0)
 
 #define BID_BAIL_ON_ERROR(status)       do {        \
-        if ((status) != BID_S_OK)                   \
+        if ((status))                               \
             goto cleanup;                           \
     } while (0)
 
