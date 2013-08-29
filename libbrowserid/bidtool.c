@@ -457,8 +457,8 @@ BIDVerifyAssertionFromString(int argc, char *argv[])
         BIDToolUsage();
 
     err = BIDVerifyAssertion(gContext, BID_C_NO_REPLAY_CACHE,
-                             argv[0], argv[1], NULL, 0, 0,
-                             gNow, &identity, &expiryTime, &ulFlags);
+                             argv[0], argv[1], NULL, 0, gNow,
+                             0, &identity, &expiryTime, &ulFlags);
     if (err != BID_S_OK) {
         BIDAbortError("Failed to verify assertion", err);
         goto cleanup;
