@@ -102,7 +102,7 @@ BIDVerifyAssertion(
         (context->ContextOptions & BID_CONTEXT_REPLAY_CACHE);
 
     /* If we are doing an extra round trip, we can avoid checking the replay cache */
-    if (bUseReplayCache) {
+    if (bUseReplayCache && (ulReqFlags & BID_VERIFY_FLAG_NO_REPLAY_CACHE) == 0) {
         err = _BIDCheckReplayCache(context, replayCache, szAssertion, verificationTime);
         BID_BAIL_ON_ERROR(err);
     }
@@ -113,7 +113,8 @@ BIDVerifyAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
-    if (bUseReplayCache || (context->ContextOptions & BID_CONTEXT_REAUTH)) {
+    if ((bUseReplayCache || (context->ContextOptions & BID_CONTEXT_REAUTH)) &&
+        (ulReqFlags & BID_VERIFY_FLAG_NO_REPLAY_CACHE) == 0) {
         err = _BIDUpdateReplayCache(context, replayCache, *pVerifiedIdentity, szAssertion,
                                     verificationTime, ulRetFlags);
         BID_BAIL_ON_ERROR(err);

@@ -982,6 +982,7 @@ struct BIDIdentityDesc {
 
 /* Private input flags (ulReqFlags) */
 #define BID_VERIFY_FLAG_RP                      0x00010000
+#define BID_VERIFY_FLAG_NO_REPLAY_CACHE         0x00020000 /* temporarily disable replay cache */
 
 /* Private output flags (ulRetFlags) */
 
