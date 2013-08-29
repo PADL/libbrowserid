@@ -130,7 +130,7 @@ _BIDGetConfigStringValueArray(
     for (i = 0; rgszDefaultValues[i] != NULL; i++)
         ;
 
-    rgszValues = BIDCalloc(i, sizeof(char *));
+    rgszValues = BIDCalloc(i + 1, sizeof(char *));
     if (rgszValues == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
