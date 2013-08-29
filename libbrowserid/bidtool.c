@@ -458,15 +458,16 @@ BIDVerifyAssertionFromString(int argc, char *argv[])
 
     err = BIDVerifyAssertion(gContext, BID_C_NO_REPLAY_CACHE,
                              argv[0], argv[1], NULL, 0, gNow,
-                             0, &identity, &expiryTime, &ulFlags);
+                             BID_VERIFY_FLAG_NO_REPLAY_CACHE,
+                             &identity, &expiryTime, &ulFlags);
     if (err != BID_S_OK) {
         BIDAbortError("Failed to verify assertion", err);
         goto cleanup;
     }
 
-    szExpiryTime = expiryTime < gNow ? ctime(&expiryTime) : ">>> Expired <<<";
+    szExpiryTime = expiryTime > gNow ? ctime(&expiryTime) : ">>> Expired <<<";
 
-    printf("Verified assertion for %s issued by %s (expiry %s)\n",
+    printf("Verified assertion for %s issued by %s expires %s",
            json_string_value(json_object_get(identity->Attributes, "sub")),
            json_string_value(json_object_get(identity->Attributes, "iss")),
            szExpiryTime);
