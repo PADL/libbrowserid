@@ -344,15 +344,21 @@
 {
     NSString *function = @"                                                                             \
         var controller = window.IdentityController;                                                     \
-        var jwcrypto = require('./lib/jwcrypto');                                                       \
-        var assertionSign = jwcrypto.assertion.sign;                                                    \
+        var oldLoad = BrowserID.CryptoLoader.load;                                                      \
                                                                                                         \
-        jwcrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {                   \
-            var gssPayload = JSON.parse(controller.claims.stringRepresentation());                      \
-            for (var k in payload) {                                                                    \
-                if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                              \
-            }                                                                                           \
-            assertionSign(gssPayload, assertionParams, secretKey, cb);                                  \
+        BrowserID.CryptoLoader.load = function(onSuccess, onFailure) {                                  \
+            oldLoad(function(jwCrypto) {                                                                \
+                var assertionSign = jwCrypto.assertion.sign;                                            \
+                                                                                                        \
+                jwCrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {           \
+                    var gssPayload = JSON.parse(controller.claims.stringRepresentation());              \
+                    for (var k in payload) {                                                            \
+                        if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                      \
+                    }                                                                                   \
+                    assertionSign(gssPayload, assertionParams, secretKey, cb);                          \
+                };                                                                                      \
+                onSuccess(jwCrypto);                                                                    \
+            }, onFailure);                                                                              \
         };                                                                                              \
     ";
 
