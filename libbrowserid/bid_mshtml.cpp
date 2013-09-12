@@ -76,15 +76,10 @@ static WCHAR _BIDHTMLInterposeAssertionSignScript[] = L"                        
 static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                                                  \
     var args = JSON.parse(window.dialogArguments);                                                  \
     var options = { siteName: args.siteName, silent: window.controller.silent,                      \
-                    requiredEmail: args.requiredEmail };                                            \
+                    experimental_emailHint: args.emailHint };                                       \
                                                                                                     \
     if (args.servicePrincipalName) {                                                                \
         BrowserID.User.getHostname = function() { return args.servicePrincipalName; };              \
-    }                                                                                               \
-                                                                                                    \
-    if (args.requiredEmail) {                                                                       \
-        var email = document.getElementById('authentication_email');                                \
-        email.value = args.requiredEmail;                                                           \
     }                                                                                               \
                                                                                                     \
     BrowserID.internal.setPersistent(                                                               \
@@ -569,7 +564,7 @@ CBIDIdentityController::_PackDialogArgs(
     }
 
     if (szIdentityName != NULL) {
-        err = _BIDJsonObjectSet(_context, _args, "requiredEmail",
+        err = _BIDJsonObjectSet(_context, _args, "emailHint",
                                 json_string(szIdentityName),
                                 BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);

@@ -89,7 +89,7 @@
     NSString *audience;
     NSDictionary *claims;
     NSString *servicePrincipalName;
-    NSString *requiredEmail;
+    NSString *emailHint;
     NSString *siteName;
     BOOL canInteract;
     BOOL silent;
@@ -110,8 +110,8 @@
 - (void)setServicePrincipalName:(NSString *)value;
 - (NSString *)servicePrincipalName;
 
-- (void)setRequiredEmail:(NSString *)value;
-- (NSString *)requiredEmail;
+- (void)setEmailHint:(NSString *)value;
+- (NSString *)emailHint;
 
 - (void)setAssertion:(NSString *)value;
 - (NSString *)assertion;
@@ -134,8 +134,6 @@
 - (void)interposeAssertionSign:(WebView *)sender;
 - (void)acquireAssertion:(WebView *)webView;
 - (WebView *)newWebView;
-
-- (void)fillFormWithDefaultEmail:(WebView *)sender;
 
 /* public interface */
 - (BIDError)getAssertion;
@@ -193,16 +191,16 @@
     }
 }
 
-- (NSString *)requiredEmail
+- (NSString *)emailHint
 {
-    return [[requiredEmail retain] autorelease];
+    return [[emailHint retain] autorelease];
 }
 
-- (void)setRequiredEmail:(NSString *)value
+- (void)setEmailHint:(NSString *)value
 {
-    if (value != requiredEmail) {
-        [requiredEmail release];
-        requiredEmail = [value retain];
+    if (value != emailHint) {
+        [emailHint release];
+        emailHint = [value retain];
     }
 }
 
@@ -320,7 +318,7 @@
         strcmp(property, "claims") == 0                 ||
         strcmp(property, "silent") == 0                 ||
         strcmp(property, "canInteract") == 0            ||
-        strcmp(property, "requiredEmail") == 0          ||
+        strcmp(property, "emailHint") == 0              ||
         strcmp(property, "audience") == 0)
         return NO;
 
@@ -365,20 +363,12 @@
     [sender stringByEvaluatingJavaScriptFromString:function];
 }
 
-- (void)fillFormWithDefaultEmail:(WebView *)sender
-{
-    if (requiredEmail != nil) {
-        DOMHTMLInputElement *email = (DOMHTMLInputElement *)[[[sender mainFrame] DOMDocument] getElementById:@"authentication_email"];
-        [email setValue:requiredEmail];
-    }
-}
-
 - (void)acquireAssertion:(WebView *)sender
 {
     NSString *function = @"                                                                             \
         var controller = window.IdentityController;                                                     \
         var options = { siteName: controller.siteName, silent: controller.silent,                       \
-                        requiredEmail: controller.requiredEmail };                                      \
+                        experimental_emailHint: controller.emailHint };                                 \
                                                                                                         \
         if (controller.servicePrincipalName) {                                                          \
             BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };        \
@@ -399,7 +389,6 @@
     [sender stringByEvaluatingJavaScriptFromString:function];
 
     if (![self silent]) {
-        [self fillFormWithDefaultEmail:sender];
         [identityDialog makeFirstResponder:sender];
         [identityDialog setContentView:sender];
         [identityDialog makeKeyAndOrderFront:sender];
@@ -477,7 +466,7 @@
 {
     audience = nil;
     servicePrincipalName = nil;
-    requiredEmail = nil;
+    emailHint = nil;
     siteName = nil;
     assertion = nil;
     identityDialog = nil;
@@ -504,7 +493,7 @@
 
     [audience release];
     [servicePrincipalName release];
-    [requiredEmail release];
+    [emailHint release];
     [siteName release];
     [assertion release];
     [identityDialog release];
@@ -579,7 +568,7 @@ _BIDBrowserGetAssertion(
         if (context->ContextOptions & BID_CONTEXT_GSS)
             [controller setServicePrincipalName:[NSString stringWithUTF8String:szAudienceOrSpn]];
         if (szIdentityName != NULL) {
-            [controller setRequiredEmail:[NSString stringWithUTF8String:szIdentityName]];
+            [controller setEmailHint:[NSString stringWithUTF8String:szIdentityName]];
             [controller setSilent:!!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT)];
         }
         if (context->ParentWindow != NULL)
