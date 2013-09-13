@@ -35,6 +35,10 @@
  */
 
 #include "gssapiP_eap.h"
+#include "util_radius.h"
+#include "utils/radius_utils.h"
+
+#ifdef GSSEAP_ENABLE_ACCEPTOR
 
 #define RS_MAP_ERROR(code)  (ERROR_TABLE_BASE_rse + (code))
 
@@ -933,4 +937,18 @@ fail:
     rs_context_destroy(radContext);
 
     return major;
+}
+
+#endif /* GSSEAP_ENABLE_ACCEPTOR */
+
+OM_uint32
+gssEapRadiusAddAttr(OM_uint32 *minor, struct wpabuf **buf, uint16_t attr,
+                    uint16_t vendor, gss_buffer_t buffer)
+{
+    if (radius_add_tlv(buf, attr, vendor, (u8 *)buffer->value,
+                       buffer->length) < 0) {
+        *minor = ENOMEM; /* could be length too long, though */
+        return GSS_S_FAILURE;
+    }
+    return GSS_S_COMPLETE;
 }

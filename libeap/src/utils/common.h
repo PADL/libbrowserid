@@ -76,7 +76,12 @@ static inline unsigned int bswap_32(unsigned int v)
 #endif /* __SYMBIAN32__ */
 
 #ifdef CONFIG_NATIVE_WINDOWS
+#ifdef CONFIG_IPV6
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <winsock.h>
+#endif
 
 typedef int socklen_t;
 

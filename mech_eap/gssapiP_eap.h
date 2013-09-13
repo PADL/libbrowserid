@@ -177,6 +177,7 @@ struct gss_cred_id_struct
 #define CTX_FLAG_EAP_PORT_ENABLED           0x00400000
 #define CTX_FLAG_EAP_ALT_ACCEPT             0x00800000
 #define CTX_FLAG_EAP_ALT_REJECT             0x01000000
+#define CTX_FLAG_EAP_CHBIND_ACCEPT          0x02000000
 #define CTX_FLAG_EAP_MASK                   0xFFFF0000
 
 struct gss_eap_initiator_ctx {
@@ -184,6 +185,8 @@ struct gss_eap_initiator_ctx {
     struct eap_peer_config eapPeerConfig;
     struct eap_sm *eap;
     struct wpabuf reqData;
+    struct wpabuf *chbindData;
+    unsigned int chbindReqFlags;
 };
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR

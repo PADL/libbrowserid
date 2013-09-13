@@ -71,6 +71,7 @@ error_code GSSEAP_BAD_INITIATOR_NAME,           "Initiator identity must be a va
 error_code GSSEAP_NO_HOSTNAME,                  "Could not determine local host name"
 error_code GSSEAP_NO_ACCEPTOR_NAME,             "Could not determine acceptor identity"
 error_code GSSEAP_WRONG_ACCEPTOR_NAME,          "Acceptor identity different than expected"
+error_code GSSEAP_BAD_ACCEPTOR_NAME,            "Acceptor name is too long or has too many components"
 error_code GSSEAP_BAD_NAME_TOKEN,               "Name token is malformed or corrupt"
 error_code GSSEAP_NO_LOCAL_MAPPING,             "Unable to map name to a local identity"
 

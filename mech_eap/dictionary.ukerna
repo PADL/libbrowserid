@@ -16,5 +16,6 @@ ATTRIBUTE	GSS-Acceptor-Realm-Name-VS		131	string
 ATTRIBUTE	SAML-AAA-Assertion			132	string
 ATTRIBUTE	MS-Windows-Auth-Data			133	octets
 ATTRIBUTE	MS-Windows-Group-Sid			134	string
+ATTRIBUTE	EAP-Channel-Binding-Message	135	octets
 
 END-VENDOR UKERNA

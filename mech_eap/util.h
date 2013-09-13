@@ -403,6 +403,8 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
 #define KRB_PRINC_TYPE(princ)   (krb5_princ_type(NULL, (princ)))
 #define KRB_PRINC_NAME(princ)   (krb5_princ_name(NULL, (princ)))
 #define KRB_PRINC_REALM(princ)  (krb5_princ_realm(NULL, (princ)))
+#define KRB_PRINC_COMPONENT(princ, component) \
+        (krb5_princ_component(NULL, (princ), (component)))
 
 #define KRB_KT_ENT_KEYBLOCK(e)  (&(e)->key)
 #define KRB_KT_ENT_FREE(c, e)   krb5_free_keytab_entry_contents((c), (e))
@@ -799,13 +801,20 @@ verifyTokenHeader(OM_uint32 *minor,
                   enum gss_eap_token_type *ret_tok_type);
 
 /* Helper macros */
-
 #ifndef GSSEAP_MALLOC
+#if _WIN32
+#include <gssapi/gssapi_alloc.h>
+#define GSSEAP_MALLOC                   gssalloc_malloc
+#define GSSEAP_CALLOC                   gssalloc_calloc
+#define GSSEAP_FREE                     gssalloc_free
+#define GSSEAP_REALLOC                  gssalloc_realloc
+#else
 #define GSSEAP_CALLOC                   calloc
 #define GSSEAP_MALLOC                   malloc
 #define GSSEAP_FREE                     free
 #define GSSEAP_REALLOC                  realloc
-#endif
+#endif /* _WIN32 */
+#endif /* !GSSEAP_MALLOC */
 
 #ifndef GSSAPI_CALLCONV
 #define GSSAPI_CALLCONV                 KRB5_CALLCONV
@@ -997,13 +1006,54 @@ static inline void
 krbPrincComponentToGssBuffer(krb5_principal krbPrinc,
                              int index, gss_buffer_t buffer)
 {
+    if (KRB_PRINC_LENGTH(krbPrinc) < index) {
+        buffer->value = NULL;
+        buffer->length = 0;
+    } else {
 #ifdef HAVE_HEIMDAL_VERSION
-    buffer->value = (void *)KRB_PRINC_NAME(krbPrinc)[index];
-    buffer->length = strlen((char *)buffer->value);
+        buffer->value = (void *)KRB_PRINC_NAME(krbPrinc)[index];
+        buffer->length = strlen((char *)buffer->value);
 #else
-    buffer->value = (void *)krb5_princ_component(NULL, krbPrinc, index)->data;
-    buffer->length = krb5_princ_component(NULL, krbPrinc, index)->length;
+        buffer->value = (void *)krb5_princ_component(NULL, krbPrinc, index)->data;
+        buffer->length = krb5_princ_component(NULL, krbPrinc, index)->length;
 #endif /* HAVE_HEIMDAL_VERSION */
+    }
+}
+
+static inline krb5_error_code
+krbPrincUnparseServiceSpecifics(krb5_context krbContext, krb5_principal krbPrinc,
+                                gss_buffer_t nameBuf)
+{
+    krb5_error_code result = 0;
+    if (KRB_PRINC_LENGTH(krbPrinc) > 2) {
+        /* Acceptor-Service-Specific */
+        krb5_principal_data ssiPrinc = *krbPrinc;
+        char *ssi;
+
+        KRB_PRINC_LENGTH(&ssiPrinc) -= 2;
+        KRB_PRINC_NAME(&ssiPrinc) += 2;
+
+        result = krb5_unparse_name_flags(krbContext, &ssiPrinc,
+                                         KRB5_PRINCIPAL_UNPARSE_NO_REALM, &ssi);
+        if (result != 0)
+            return result;
+
+        nameBuf->value = ssi;
+        nameBuf->length = strlen(ssi);
+    } else {
+        nameBuf->value = NULL;
+        nameBuf->length = 0;
+    }
+
+    return result;
+}
+
+static inline void
+krbFreeUnparsedName(krb5_context krbContext, gss_buffer_t nameBuf)
+{
+    krb5_free_unparsed_name(krbContext, (char *)(nameBuf->value));
+    nameBuf->value = NULL;
+    nameBuf->length = 0;
 }
 
 static inline void

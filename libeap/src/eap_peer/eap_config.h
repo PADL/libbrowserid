@@ -19,6 +19,30 @@
 extern "C" {
 #endif
 
+/* http://tools.ietf.org/html/draft-ietf-emu-chbind-13#section-5.3.1 */
+#define CHBIND_CODE_REQUEST 1
+#define CHBIND_CODE_SUCCESS 2
+#define CHBIND_CODE_FAILURE 3
+/* http://tools.ietf.org/html/draft-ietf-emu-chbind-13#section-5.3. */
+#define CHBIND_NSID_RADIUS 1
+
+struct eap_peer_chbind_config
+{
+    /* namespace id for this channel binding info */
+    int nsid;
+
+    /* data to be sent in channel binding request */
+    u8 *req_data;
+
+    size_t req_data_len;
+
+    /* lower level callback invoked when response is received */
+    void (*response_cb)(void *ctx, int code, int nsid, u8 *resp_data, size_t resp_data_len);
+
+    /* context for response callback */
+    void *ctx;
+};
+
 /**
  * struct eap_peer_config - EAP peer configuration/credentials
  */
@@ -627,6 +651,16 @@ struct eap_peer_config {
 	 * cases.
 	 */
 	int fragment_size;
+
+    /**
+     * chbind_config - eap channel binding config data
+     */
+    struct eap_peer_chbind_config *chbind_config;
+
+    /**
+     * chbind_config_len - channel binding config data count
+     */
+    size_t chbind_config_len;
 
 #define EAP_CONFIG_FLAGS_PASSWORD_NTHASH BIT(0)
 	/**
