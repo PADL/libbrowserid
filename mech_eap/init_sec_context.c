@@ -1068,6 +1068,11 @@ eapGssSmInitAcceptorMIC(OM_uint32 *minor,
     if (GSS_ERROR(major))
         return major;
 
+    /*
+     * As a temporary measure, force mutual authentication until channel binding is
+     * more widely deployed.
+     */
+    ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
     GSSEAP_SM_TRANSITION(ctx, GSSEAP_STATE_ESTABLISHED);
 
     *minor = 0;
