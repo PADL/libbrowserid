@@ -272,6 +272,12 @@ gssEapSetCredPassword(OM_uint32 *minor,
                       const gss_buffer_t password);
 
 OM_uint32
+gssEapSetCredClientCertificate(OM_uint32 *minor,
+                               gss_cred_id_t cred,
+                               const gss_buffer_t clientCert,
+                               const gss_buffer_t privateKey);
+
+OM_uint32
 gssEapSetCredService(OM_uint32 *minor,
                      gss_cred_id_t cred,
                      const gss_name_t target);

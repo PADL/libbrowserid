@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign
 
-AM_CPPFLAGS = -I$(srcdir)/src -I$(srcdir)/eap_example -I$(srcdir)/src/utils 
+AM_CPPFLAGS = -I$(srcdir)/src -I$(srcdir)/eap_example -I$(srcdir)/src/utils @OPENSSL_CFLAGS@
 noinst_HEADERS = \
 	src/common/defs.h \
 	src/common/eapol_common.h \
@@ -19,7 +19,7 @@ SOURCES_BOTH += src/eap_common/eap_pax_common.c
 SOURCES_BOTH += src/eap_common/eap_sake_common.c
 SOURCES_BOTH += src/eap_common/eap_gpsk_common.c
 SOURCES_BOTH += src/eap_common/chap.c \
-src/eap_common/chap.h \
+	src/eap_common/chap.h \
 	src/eap_common/eap_common.h \
 	src/eap_common/eap_defs.h \
 	src/eap_common/eap_fast_common.h \
@@ -93,8 +93,9 @@ AM_CFLAGS += -DIEEE8021X_EAPOL
 AM_CFLAGS += -DCONFIG_IPV6
 
 AM_CFLAGS += -DCONFIG_INTERNAL_LIBTOMMATH
-AM_CFLAGS += -DCONFIG_CRYPTO_INTERNAL
-AM_CFLAGS += -DCONFIG_TLS_INTERNAL_CLIENT
+AM_CFLAGS += -DCONFIG_INTERNAL_SHA1
+AM_CFLAGS += -DEAP_TLS_OPENSSL
+AM_CFLAGS += -DPKCS12_FUNCS
 
 UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
@@ -130,51 +131,30 @@ CRYPTO_SRCS = \
     src/crypto/aes-ctr.c \
     src/crypto/aes-eax.c \
     src/crypto/aes-encblock.c \
-    src/crypto/aes-internal.c \
-    src/crypto/aes-internal-dec.c \
-    src/crypto/aes-internal-enc.c \
     src/crypto/aes-omac1.c \
     src/crypto/aes-unwrap.c \
     src/crypto/aes-wrap.c \
-    src/crypto/des-internal.c \
-    src/crypto/dh_group5.c \
-    src/crypto/dh_groups.c \
-    src/crypto/md4-internal.c \
     src/crypto/md5.c \
-    src/crypto/md5-internal.c \
     src/crypto/md5-non-fips.c \
     src/crypto/milenage.c \
     src/crypto/ms_funcs.c \
-    src/crypto/rc4.c \
     src/crypto/sha1.c \
-    src/crypto/sha1-internal.c \
     src/crypto/sha1-pbkdf2.c \
     src/crypto/sha1-tlsprf.c \
     src/crypto/sha1-tprf.c \
     src/crypto/sha256.c \
-    src/crypto/sha256-internal.c \
-    src/crypto/crypto_internal.c \
-    src/crypto/crypto_internal-cipher.c \
-    src/crypto/crypto_internal-modexp.c \
-    src/crypto/crypto_internal-rsa.c \
-    src/crypto/tls_internal.c \
-    src/crypto/fips_prf_internal.c \
-	src/crypto/aes.h \
-	src/crypto/aes_i.h \
-	src/crypto/aes_wrap.h \
-	src/crypto/crypto.h \
-	src/crypto/des_i.h \
-	src/crypto/dh_group5.h \
-	src/crypto/dh_groups.h \
-	src/crypto/md5.h \
-	src/crypto/md5_i.h \
-	src/crypto/milenage.h \
-	src/crypto/ms_funcs.h \
-	src/crypto/sha1.h \
-	src/crypto/sha1_i.h \
-	src/crypto/sha256.h \
-	src/crypto/tls.h
-
+    src/crypto/crypto_openssl.c \
+    src/crypto/tls_openssl.c \
+    src/crypto/aes.h \
+    src/crypto/aes_i.h \
+    src/crypto/aes_wrap.h \
+    src/crypto/crypto.h \
+    src/crypto/md5.h \
+    src/crypto/milenage.h \
+    src/crypto/ms_funcs.h \
+    src/crypto/sha1.h \
+    src/crypto/sha256.h \
+    src/crypto/tls.h
 
 TLS_SRCS = \
     src/tls/asn1.c \
@@ -193,21 +173,21 @@ TLS_SRCS = \
     src/tls/tlsv1_server_read.c \
     src/tls/tlsv1_server_write.c \
     src/tls/x509v3.c \
-	src/tls/asn1.h \
-	src/tls/bignum.h \
-	src/tls/pkcs1.h \
-	src/tls/pkcs5.h \
-	src/tls/pkcs8.h \
-	src/tls/rsa.h \
-	src/tls/tlsv1_client.h \
-	src/tls/tlsv1_client_i.h \
-	src/tls/tlsv1_common.h \
-	src/tls/tlsv1_cred.h \
-	src/tls/tlsv1_record.h \
-	src/tls/tlsv1_server.h \
-	src/tls/tlsv1_server_i.h \
-	src/tls/x509v3.h 
+    src/tls/asn1.h \
+    src/tls/bignum.h \
+    src/tls/pkcs1.h \
+    src/tls/pkcs5.h \
+    src/tls/pkcs8.h \
+    src/tls/rsa.h \
+    src/tls/tlsv1_client.h \
+    src/tls/tlsv1_client_i.h \
+    src/tls/tlsv1_common.h \
+    src/tls/tlsv1_cred.h \
+    src/tls/tlsv1_record.h \
+    src/tls/tlsv1_server.h \
+    src/tls/tlsv1_server_i.h \
+    src/tls/x509v3.h 
 
-libeap_la_SOURCES = $(SOURCES_BOTH) $(SOURCES_peer) $(UTILS_SRCS) $(CRYPTO_SRCS) $(TLS_SRCS)
+libeap_la_SOURCES = $(SOURCES_BOTH) $(SOURCES_peer) $(UTILS_SRCS) $(CRYPTO_SRCS)
 
 noinst_LTLIBRARIES = libeap.la

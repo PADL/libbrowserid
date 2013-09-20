@@ -42,13 +42,15 @@ mech_eap_la_CXXFLAGS += \
 			@TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols $(GSSEAP_EXPORTS) -no-undefined \
-			@KRB5_LDFLAGS@ @RADSEC_LDFLAGS@ @TARGET_LDFLAGS@
+			@KRB5_LDFLAGS@ @RADSEC_LDFLAGS@ @TARGET_LDFLAGS@ @OPENSSL_LDFLAGS@
+
 if TARGET_WINDOWS
 mech_eap_la_LDFLAGS += -debug
 endif
 
 mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
-		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
+		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@ \
+		       @OPENSSL_LIBS@
 mech_eap_la_SOURCES =    			\
 	acquire_cred.c				\
 	acquire_cred_with_password.c		\

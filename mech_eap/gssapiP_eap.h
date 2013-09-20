@@ -133,6 +133,8 @@ struct gss_name_struct
 #define CRED_FLAG_DEFAULT_CCACHE            0x00080000
 #define CRED_FLAG_RESOLVED                  0x00100000
 #define CRED_FLAG_TARGET                    0x00200000
+#define CRED_FLAG_CERTIFICATE               0x00400000
+#define CRED_FLAG_CONFIG_BLOB               0x00800000
 #define CRED_FLAG_PUBLIC_MASK               0x0000FFFF
 
 #ifdef HAVE_HEIMDAL_VERSION
@@ -153,6 +155,8 @@ struct gss_cred_id_struct
     gss_buffer_desc caCertificate;
     gss_buffer_desc subjectNameConstraint;
     gss_buffer_desc subjectAltNameConstraint;
+    gss_buffer_desc clientCertificate;
+    gss_buffer_desc privateKey;
 #ifdef GSSEAP_ENABLE_REAUTH
     krb5_ccache krbCredCache;
     gss_cred_id_t reauthCred;
@@ -180,6 +184,10 @@ struct gss_cred_id_struct
 #define CTX_FLAG_EAP_CHBIND_ACCEPT          0x02000000
 #define CTX_FLAG_EAP_MASK                   0xFFFF0000
 
+#define CONFIG_BLOB_CLIENT_CERT             0
+#define CONFIG_BLOB_PRIVATE_KEY             1
+#define CONFIG_BLOB_MAX                     2
+
 struct gss_eap_initiator_ctx {
     unsigned int idleWhile;
     struct eap_peer_config eapPeerConfig;
@@ -187,6 +195,7 @@ struct gss_eap_initiator_ctx {
     struct wpabuf reqData;
     struct wpabuf *chbindData;
     unsigned int chbindReqFlags;
+    struct wpa_config_blob configBlobs[CONFIG_BLOB_MAX];
 };
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR

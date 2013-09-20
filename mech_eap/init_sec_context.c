@@ -170,10 +170,20 @@ peerSetConfigBlob(void *ctx GSSEAP_UNUSED,
 }
 
 static const struct wpa_config_blob *
-peerGetConfigBlob(void *ctx GSSEAP_UNUSED,
-                  const char *name GSSEAP_UNUSED)
+peerGetConfigBlob(void *ctx,
+                  const char *name)
 {
-    return NULL;
+    gss_ctx_id_t gssCtx = (gss_ctx_id_t)ctx;
+    size_t index;
+
+    if (strcmp(name, "client-cert") == 0)
+        index = CONFIG_BLOB_CLIENT_CERT;
+    else if (strcmp(name, "private-key") == 0)
+        index = CONFIG_BLOB_PRIVATE_KEY;
+    else
+        return NULL;
+
+    return &gssCtx->initiatorCtx.configBlobs[index];
 }
 
 static void
@@ -202,7 +212,7 @@ extern int wpa_debug_level;
 #define CHBIND_SERVICE_SPECIFIC_FLAG    0x04
 #define CHBIND_REALM_NAME_FLAG          0x08
 
-tatic OM_uint32
+static OM_uint32
 peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     struct wpabuf *buf = NULL;
@@ -340,6 +350,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     OM_uint32 major;
     krb5_context krbContext;
     struct eap_peer_config *eapPeerConfig = &ctx->initiatorCtx.eapPeerConfig;
+    struct wpa_config_blob *configBlobs = ctx->initiatorCtx.configBlobs;
     gss_buffer_desc identity = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc realm = GSS_C_EMPTY_BUFFER;
     gss_cred_id_t cred = ctx->cred;
@@ -390,8 +401,10 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     eapPeerConfig->anonymous_identity_len = 1 + realm.length;
 
     /* password */
-    eapPeerConfig->password = (unsigned char *)cred->password.value;
-    eapPeerConfig->password_len = cred->password.length;
+    if ((cred->flags & CRED_FLAG_CERTIFICATE) == 0) {
+        eapPeerConfig->password = (unsigned char *)cred->password.value;
+        eapPeerConfig->password_len = cred->password.length;
+    }
 
     /* certs */
     eapPeerConfig->ca_cert = (unsigned char *)cred->caCertificate.value;
@@ -417,6 +430,26 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     } else {
         eapPeerConfig->chbind_config = NULL;
         eapPeerConfig->chbind_config_len = 0;
+    }
+    if (cred->flags & CRED_FLAG_CERTIFICATE) {
+        /*
+         * CRED_FLAG_CONFIG_BLOB is an internal flag which will be used in the
+         * future to directly pass certificate and private key data to the
+         * EAP implementation, rather than an indirected string pointer.
+         */
+        if (cred->flags & CRED_FLAG_CONFIG_BLOB) {
+            eapPeerConfig->client_cert = (unsigned char *)"blob://client-cert";
+            configBlobs[CONFIG_BLOB_CLIENT_CERT].data = cred->clientCertificate.value;
+            configBlobs[CONFIG_BLOB_CLIENT_CERT].len  = cred->clientCertificate.length;
+
+            eapPeerConfig->client_cert = (unsigned char *)"blob://private-key";
+            configBlobs[CONFIG_BLOB_PRIVATE_KEY].data = cred->clientCertificate.value;
+            configBlobs[CONFIG_BLOB_PRIVATE_KEY].len  = cred->privateKey.length;
+        } else {
+            eapPeerConfig->client_cert = (unsigned char *)cred->clientCertificate.value;
+            eapPeerConfig->private_key = (unsigned char *)cred->privateKey.value;
+        }
+        eapPeerConfig->private_key_passwd = (unsigned char *)cred->password.value;
     }
 
     *minor = 0;

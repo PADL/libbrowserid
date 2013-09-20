@@ -104,6 +104,8 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     gss_release_buffer(&tmpMinor, &cred->caCertificate);
     gss_release_buffer(&tmpMinor, &cred->subjectNameConstraint);
     gss_release_buffer(&tmpMinor, &cred->subjectAltNameConstraint);
+    gss_release_buffer(&tmpMinor, &cred->clientCertificate);
+    gss_release_buffer(&tmpMinor, &cred->privateKey);
 
 #ifdef GSSEAP_ENABLE_REAUTH
     if (cred->krbCredCache != NULL) {
@@ -536,6 +538,68 @@ cleanup:
     return major;
 }
 
+/*
+ * Currently only the privateKey path is exposed to the application
+ * (via gss_set_cred_option() or the third line in ~/.gss_eap_id).
+ * At some point in the future we may add support for setting the
+ * client certificate separately.
+ */
+OM_uint32
+gssEapSetCredClientCertificate(OM_uint32 *minor,
+                              gss_cred_id_t cred,
+                              const gss_buffer_t clientCert,
+                              const gss_buffer_t privateKey)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc newClientCert = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc newPrivateKey = GSS_C_EMPTY_BUFFER;
+
+    if (cred->flags & CRED_FLAG_RESOLVED) {
+        major = GSS_S_FAILURE;
+        *minor = GSSEAP_CRED_RESOLVED;
+        goto cleanup;
+    }
+
+    if (clientCert == GSS_C_NO_BUFFER &&
+        privateKey == GSS_C_NO_BUFFER) {
+        cred->flags &= ~(CRED_FLAG_CERTIFICATE);
+        major = GSS_S_COMPLETE;
+        *minor = 0;
+        goto cleanup;
+    }
+
+    if (clientCert != GSS_C_NO_BUFFER) {
+        major = duplicateBuffer(minor, clientCert, &newClientCert);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    if (privateKey != GSS_C_NO_BUFFER) {
+        major = duplicateBuffer(minor, privateKey, &newPrivateKey);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    cred->flags |= CRED_FLAG_CERTIFICATE;
+
+    gss_release_buffer(&tmpMinor, &cred->clientCertificate);
+    cred->clientCertificate = newClientCert;
+
+    gss_release_buffer(&tmpMinor, &cred->privateKey);
+    cred->privateKey = newPrivateKey;
+
+    major = GSS_S_COMPLETE;
+    *minor = 0;
+
+cleanup:
+    if (GSS_ERROR(major)) {
+        gss_release_buffer(&tmpMinor, &newClientCert);
+        gss_release_buffer(&tmpMinor, &newPrivateKey);
+    }
+
+    return major;
+}
+
 OM_uint32
 gssEapSetCredService(OM_uint32 *minor,
                      gss_cred_id_t cred,
@@ -620,6 +684,10 @@ gssEapDuplicateCred(OM_uint32 *minor,
         duplicateBufferOrCleanup(&src->subjectNameConstraint, &dst->subjectNameConstraint);
     if (src->subjectAltNameConstraint.value != NULL)
         duplicateBufferOrCleanup(&src->subjectAltNameConstraint, &dst->subjectAltNameConstraint);
+    if (src->clientCertificate.value != NULL)
+        duplicateBufferOrCleanup(&src->clientCertificate, &dst->clientCertificate);
+    if (src->privateKey.value != NULL)
+        duplicateBufferOrCleanup(&src->privateKey, &dst->privateKey);
 
 #ifdef GSSEAP_ENABLE_REAUTH
     /* XXX krbCredCache, reauthCred */
@@ -736,7 +804,8 @@ gssEapResolveInitiatorCred(OM_uint32 *minor,
             goto cleanup;
 
         /* If we have a caller-supplied password, the credential is resolved. */
-        if ((resolvedCred->flags & CRED_FLAG_PASSWORD) == 0) {
+        if ((resolvedCred->flags &
+             (CRED_FLAG_PASSWORD | CRED_FLAG_CERTIFICATE)) == 0) {
             major = GSS_S_CRED_UNAVAIL;
             *minor = GSSEAP_NO_DEFAULT_CRED;
             goto cleanup;
