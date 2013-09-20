@@ -202,9 +202,7 @@ extern int wpa_debug_level;
 #define CHBIND_SERVICE_SPECIFIC_FLAG    0x04
 #define CHBIND_REALM_NAME_FLAG          0x08
 
-extern void TestFunc();
-
-static OM_uint32
+tatic OM_uint32
 peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 {
     struct wpabuf *buf = NULL;
