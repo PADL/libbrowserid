@@ -1051,7 +1051,11 @@ krbPrincUnparseServiceSpecifics(krb5_context krbContext, krb5_principal krbPrinc
 static inline void
 krbFreeUnparsedName(krb5_context krbContext, gss_buffer_t nameBuf)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_xfree((char *) nameBuf->value);
+#else
     krb5_free_unparsed_name(krbContext, (char *)(nameBuf->value));
+#endif
     nameBuf->value = NULL;
     nameBuf->length = 0;
 }

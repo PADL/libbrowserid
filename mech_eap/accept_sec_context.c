@@ -378,11 +378,7 @@ setAcceptorIdentity(OM_uint32 *minor,
                                    PW_GSS_ACCEPTOR_SERVICE_SPECIFICS,
                                    0,
                                    &nameBuf);
-#ifdef HAVE_HEIMDAL_VERSION
-        krb5_xfree(ssi);
-#else
-        krb5_free_unparsed_name(krbContext, ssi);
-#endif
+	krbFreeUnparsedName(krbContext, &nameBuf);
         if (GSS_ERROR(major))
             return major;
     }
