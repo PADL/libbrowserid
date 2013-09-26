@@ -1419,44 +1419,55 @@ static int eap_ttls_process_chbind(struct eap_sm *sm,
 	u16 len;
 	struct chbind_hdr *hdr;
 	struct eap_peer_config *config = eap_get_config(sm);
+	int i, found;
+
 
 	if (parse->chbind_data == NULL) {
 		wpa_printf(MSG_WARNING, "EAP-TTLS: No channel binding message "
 			   "in the packet - dropped");
 		return -1;
 	}
-	if (parse->chbind_len < 1 + sizeof(*hdr)) {
+	if (parse->chbind_len < 1 ) {
 		wpa_printf(MSG_WARNING, "EAP-TTLS: bad channel binding response "
-				"frame (len=%lu, expected %lu or more) - dropped",
-				(unsigned long) parse->chbind_len,
-				(unsigned long) sizeof(*hdr));
+			   "frame (len=%lu, expected %lu or more) - dropped",
+			   (unsigned long) parse->chbind_len,
+			   (unsigned long) 1);
 		return -1;
 	}
 	code = parse->chbind_data[pos++];
-	while (pos+sizeof(*hdr) < parse->chbind_len) {
-		hdr = (struct chbind_hdr *)(&parse->chbind_data[pos]);
-		pos += sizeof(*hdr);
-		len = be_to_host16(hdr->len);
-		if (pos + len <= parse->chbind_len) {
-			int i;
-			for (i=0; i<config->chbind_config_len; i++) {
-				struct eap_peer_chbind_config *chbind_config =
-					&config->chbind_config[i];
+	for (i=0; i<config->chbind_config_len; i++) {
+		struct eap_peer_chbind_config *chbind_config =
+			&config->chbind_config[i];
+		pos = 1;
+		found = 0;
+		while (pos+sizeof(*hdr) < parse->chbind_len) {
+			hdr = (struct chbind_hdr *)(&parse->chbind_data[pos]);
+			pos += sizeof(*hdr);
+			len = be_to_host16(hdr->len);
+			if (pos + len <= parse->chbind_len) {
 				if (chbind_config->nsid == hdr->nsid)
 					chbind_config->response_cb(
-					        chbind_config->ctx,
-						code, hdr->nsid,
-						&parse->chbind_data[pos], len);
+								   chbind_config->ctx,
+								   code, hdr->nsid,
+								   &parse->chbind_data[pos], len);
+				found  = 1;
 			}
+			pos += len;
 		}
-		pos += len;
-	}
-	if (pos != parse->chbind_len) {
-		wpa_printf(MSG_WARNING, "EAP-TTLS: bad channel binding response "
-				"frame (parsed len=%lu, expected %lu) - dropped",
-				(unsigned long) pos,
-				(unsigned long) parse->chbind_len);
-		return -1;
+		if (pos != parse->chbind_len) {
+			wpa_printf(MSG_WARNING, "EAP-TTLS: bad channel binding response "
+				   "frame (parsed len=%lu, expected %lu) - dropped",
+				   (unsigned long) pos,
+				   (unsigned long) parse->chbind_len);
+			return -1;
+		}
+		if (!found) {
+			chbind_config->response_cb(
+						   chbind_config->ctx,
+						   code, chbind_config->nsid,
+						   NULL, 0);
+		}
+
 	}
 	return 0;
 }
