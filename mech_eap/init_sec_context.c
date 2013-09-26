@@ -313,6 +313,8 @@ peerProcessChbindResponse(void *context, int code, int nsid,
     if (nsid != CHBIND_NSID_RADIUS)
         return;
 
+    if (data == NULL)
+        return;
     msg = radius_parser_start(data, len);
     if (msg == NULL)
         return;
