@@ -2484,6 +2484,77 @@ _BIDSetJsonCertNameString(
 }
 
 static BIDError
+_BIDGetCertOtherName(
+    BIDContext context,
+    PCERT_OTHER_NAME *pOtherName,
+    json_t **pJsonOtherName)
+{
+    BIDError err;
+    PCERT_NAME_VALUE pNameValue = NULL;
+    DWORD cbStructInfo;
+    json_t *jsonOtherName = NULL;
+
+    *pJsonOtherName = NULL;
+
+    jsonOtherName = json_object();
+    if (jsonOtherName == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, jsonOtherName, "oid",
+                            json_string(pOtherName->pszObjId),
+                            BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+                             X509_UNICODE_NAME_VALUE,
+                             pOtherName->Value.pbData,
+                             pOtherName->Value.cbData,
+                             CRYPT_DECODE_ALLOC_FLAG | CRYPT_DECODE_NOCOPY_FLAG,
+                             NULL,
+                             (PVOID)&pNameValue,
+                             &cbStructInfo)) {
+        err = BID_S_BAD_SUBJECT;
+        goto cleanup;
+    }
+
+    if (pNameValue->Value.pbData == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    switch (pNameValue->dwValueType) {
+    case CERT_RDN_IA5_STRING:
+    case CERT_RDN_UTF8_STRING:
+    case CERT_RDN_NUMERIC_STRING:
+    case CERT_RDN_PRINTABLE_STRING:
+    case CERT_RDN_T61_STRING:
+    case CERT_RDN_VISIBLE_STRING:
+        err = _BIDJsonObjectSet(context, jsonOtherName, "value",
+                                json_string(pNameValue->Value.pbData),
+                                BID_JSON_FLAG_CONSUME_REF);
+        BID_BAIL_ON_ERROR(err);
+        break;
+    default:
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+        break;
+    }
+
+    *pJsonOtherName = jsonOtherName;
+
+    err = BID_S_OK;
+
+cleanup:
+    LocalFree(pNameValue);
+    if (err != BID_S_OK)
+        json_decref(jsonOtherName);
+
+    return err;
+}
+
+static BIDError
 _BIDGetCertAltNames(
     BIDContext context,
     PCCERT_CONTEXT pCertContext,
@@ -2525,11 +2596,14 @@ _BIDGetCertAltNames(
 
     for (i = 0; i < pCertAltNameInfo->cAltEntry; i++) {
         PCERT_ALT_NAME_ENTRY pCertAltNameEntry = &pCertAltNameInfo->rgAltEntry[i];
-        char *szName = NULL;
         const char *szKey = NULL;
         json_t *values = NULL;
+        json_t *value = NULL;
 
         switch (pCertAltNameEntry->dwAltNameChoice) {
+        case CERT_ALT_NAME_OTHER_NAME:
+            szKey = "othername";
+            break;
         case CERT_ALT_NAME_RFC822_NAME:
             szKey = "email";
             break;
@@ -2552,12 +2626,22 @@ _BIDGetCertAltNames(
             BID_BAIL_ON_ERROR(err);
         }
 
-        err = _BIDUcs2ToUtf8(context, pCertAltNameEntry->pwszRfc822Name, &szName);
-        BID_BAIL_ON_ERROR(err);
+        if (strcmp(szKey, "othername") == 0) {
+            err = _BIDGetCertOtherName(context, pCertAltNameEntry->pOtherName, &value);
+            BID_BAIL_ON_ERROR(err);
+        } else {
+            char *szName = NULL;
 
-        json_array_append_new(values, json_string(szName));
+            err = _BIDUcs2ToUtf8(context, pCertAltNameEntry->pwszRfc822Name, &szName);
+            BID_BAIL_ON_ERROR(err);
 
-        BIDFree(szName);
+            value = json_string(szName);
+
+            BIDFree(szName);
+        }
+
+        json_array_append_new(values, value);
+        json_decref(value);
     }
 
     *pPrincipal = principal;

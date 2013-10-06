@@ -1660,6 +1660,73 @@ cleanup:
     return err;
 }
 
+static BIDError
+_BIDGetCertOtherName(
+    BIDContext context,
+    OTHERNAME *otherName,
+    json_t **pJsonOtherName)
+{
+    BIDError err;
+    json_t *jsonOtherName = NULL;
+    ASN1_STRING *stringValue;
+    char szOid[BUFSIZ];
+
+    *pJsonOtherName = NULL;
+
+    jsonOtherName = json_object();
+    if (jsonOtherName == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (OBJ_obj2txt(szOid, sizeof(szOid), otherName->type_id, 1) < 0) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, jsonOtherName, "oid",
+                            json_string(szOid), BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    switch (otherName->value->type) {
+    case V_ASN1_BMPSTRING:
+    case V_ASN1_PRINTABLESTRING:
+    case V_ASN1_IA5STRING:
+    case V_ASN1_T61STRING:
+    case V_ASN1_UTF8STRING:
+    case V_ASN1_VISIBLESTRING:
+    case V_ASN1_UNIVERSALSTRING:
+    case V_ASN1_GENERALSTRING:
+    case V_ASN1_NUMERICSTRING:
+        stringValue = otherName->value->value.asn1_string;
+
+        if (stringValue->data == NULL) {
+            err = BID_S_INVALID_PARAMETER;
+            goto cleanup;
+        }
+
+        err = _BIDJsonObjectSet(context, jsonOtherName, "value",
+                                json_string((char *)stringValue->data),
+                                BID_JSON_FLAG_CONSUME_REF);
+        BID_BAIL_ON_ERROR(err);
+        break;
+    default:
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+        break;
+    }
+
+    *pJsonOtherName = jsonOtherName;
+
+    err = BID_S_OK;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(jsonOtherName);
+
+    return err;
+}
+
 BIDError
 _BIDPopulateX509Identity(
     BIDContext context,
@@ -1684,8 +1751,12 @@ _BIDPopulateX509Identity(
             GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
             const char *key = NULL;
             json_t *values = NULL;
+            json_t *value = NULL;
 
             switch (gen->type) {
+            case GEN_OTHERNAME:
+                key = "othername";
+                break;
             case GEN_EMAIL:
                 key = "email";
                 break;
@@ -1696,6 +1767,7 @@ _BIDPopulateX509Identity(
                 key = "uri";
                 break;
             default:
+                continue;
                 break;
             }
 
@@ -1708,10 +1780,19 @@ _BIDPopulateX509Identity(
                 BID_BAIL_ON_ERROR(err);
             }
 
-            if (json_array_append_new(values, json_string((char *)gen->d.ia5->data)) < 0) {
-                err = BID_S_NO_MEMORY;
-                goto cleanup;
+            if (strcmp(key, "othername") == 0) {
+                err = _BIDGetCertOtherName(context, gen->d.otherName, &value);
+                BID_BAIL_ON_ERROR(err);
+            } else {
+                value = json_string((char *)gen->d.ia5->data);
+                if (value == NULL) {
+                    err = BID_S_NO_MEMORY;
+                    goto cleanup;
+                }
             }
+
+            json_array_append_new(values, value);
+            json_decref(value);
         }
     }
 

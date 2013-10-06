@@ -554,6 +554,81 @@ _BIDSubjectEqualP(
     return (cmp == 0);
 }
 
+/*
+ * XXX this transformation is incomplete as it does not handle
+ * differences between IANA Assigned Numbers and GSS/SASL service
+ * name registries.
+ */
+static int
+_BIDSRVNameEqualP(
+    const char *szSRVName,
+    const char *szSubjectName)
+{
+    const char *p, *q;
+    int cmp;
+    size_t n;
+
+    if (szSRVName == NULL || szSRVName[0] != '_')
+        return 0;
+
+    p = strchr(&szSRVName[1], '.');
+    q = strchr(szSubjectName, '/');
+
+    if (p == NULL || q == NULL)
+        return 0;
+
+    n = (p - szSRVName) - 1;
+
+    if (n != (q - szSubjectName))
+        return 0;
+
+#ifdef WIN32
+    cmp = _strnicmp(&szSRVName[1], szSubjectName, n);
+#else
+    cmp = strncasecmp(&szSRVName[1], szSubjectName, n);
+#endif
+
+    if (cmp == 0)
+        cmp = _BIDSubjectCompare(p + 1, q + 1, BID_VERIFY_FLAG_RP);
+
+    return (cmp == 0);
+}
+
+/*
+ * Match a RFC 4985 service name against a GSS service principal name.
+ */
+static int
+_BIDOtherNameEqualP(
+    json_t *assertedOtherName,
+    const char *szSubjectName)
+{
+    int bMatched = 0, i;
+
+    if (!json_is_array(assertedOtherName))
+        return 0;
+
+    for (i = 0; i < json_array_size(assertedOtherName); i++) {
+        json_t *otherName = json_array_get(assertedOtherName, i);
+        json_t *oid = json_object_get(otherName, "oid");
+        json_t *srv = json_object_get(otherName, "value");
+
+        /* Only the dnsSRV (RFC 4985) OtherName type is supported so far */
+        if (oid == NULL ||
+            strcmp(json_string_value(oid), BID_OID_PKIX_ON_DNSSRV) != 0)
+            continue;
+
+        if (!json_is_string(srv))
+            continue;
+
+        if (_BIDSRVNameEqualP(json_string_value(srv), szSubjectName)) {
+            bMatched++;
+            break;
+        }
+    }
+
+    return bMatched;
+}
+
 static struct {
     const char *szOid;
     const char *szServiceName;
@@ -658,7 +733,7 @@ _BIDValidateSubject(
      * (acceptor) rather than client certificate.
      */
     if (ulReqFlags & BID_VERIFY_FLAG_RP) {
-        json_t *assertedURI;
+        json_t *assertedOtherName;
 
         err = _BIDMakeAudience(context, szSubjectName, &szPackedAudience);
         BID_BAIL_ON_ERROR(err);
@@ -683,12 +758,12 @@ _BIDValidateSubject(
             }
         }
 
-        assertedURI = json_object_get(assertedPrincipal, "uri");
-        if (_BIDSubjectEqualP(assertedURI, szPackedAudience, ulReqFlags)) {
+        assertedOtherName = json_object_get(assertedPrincipal, "othername");
+        if (_BIDOtherNameEqualP(assertedOtherName, szSubjectName)) {
             bMatchedSubject++;
             bMatchedServiceName++;
-        } else if (assertedURI != NULL) {
-            /* If a URI SAN was present, we require a match. */
+        } else if (assertedOtherName != NULL) {
+            /* If an OtherName SAN was present, we require a match. */
             err = BID_S_BAD_SUBJECT;
             goto cleanup;
         }

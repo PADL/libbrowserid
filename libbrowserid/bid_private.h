@@ -113,7 +113,7 @@ extern "C" {
 #define BID_WELL_KNOWN_URL          "/.well-known/browserid"
 #define BID_WELL_KNOWN_URL_LEN      (sizeof(BID_WELL_KNOWN_URL) - 1)
 
-#define BID_GSS_AUDIENCE_PREFIX     "urn:x-gss:"
+#define BID_GSS_AUDIENCE_PREFIX     "urn:ietf:params:gss:spn:"
 #define BID_GSS_AUDIENCE_PREFIX_LEN (sizeof(BID_GSS_AUDIENCE_PREFIX) - 1)
 
 typedef json_t *BIDAuthority;
@@ -1085,6 +1085,7 @@ _BIDSetJsonFileTimeValue(
  */
 #define BID_OID_ANY_ENHANCED_KEY_USAGE      "2.5.29.37.0"
 #define BID_OID_PKIX_KP_SERVER_AUTH         "1.3.6.1.5.5.7.3.1"
+#define BID_OID_PKIX_ON_DNSSRV              "1.3.6.1.5.5.7.8.7"
 
 BIDError
 _BIDGetRPPrivateKey(
