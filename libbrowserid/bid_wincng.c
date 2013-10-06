@@ -2486,7 +2486,7 @@ _BIDSetJsonCertNameString(
 static BIDError
 _BIDGetCertOtherName(
     BIDContext context,
-    PCERT_OTHER_NAME *pOtherName,
+    PCERT_OTHER_NAME pOtherName,
     json_t **pJsonOtherName)
 {
     BIDError err;
@@ -2532,7 +2532,7 @@ _BIDGetCertOtherName(
     case CERT_RDN_T61_STRING:
     case CERT_RDN_VISIBLE_STRING:
         err = _BIDJsonObjectSet(context, jsonOtherName, "value",
-                                json_string(pNameValue->Value.pbData),
+                                json_string((LPSTR)pNameValue->Value.pbData),
                                 BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
         break;
