@@ -624,8 +624,9 @@ _BIDOtherNameEqualP(
 static struct {
     const char *szOid;
     const char *szServiceName;
+    size_t cchServiceName;
 } _BIDEKUMap[] = {
-    { BID_OID_PKIX_KP_SERVER_AUTH,          "http/" },
+    { BID_OID_PKIX_KP_SERVER_AUTH,          "http/",    sizeof("http/") - 1 },
 };
 
 static int
@@ -672,10 +673,18 @@ _BIDValidateEKUs(
     } else {
         if (context->ContextOptions & BID_CONTEXT_GSS) {
             size_t i;
+            int cmp;
 
             for (i = 0; i < sizeof(_BIDEKUMap) / sizeof(_BIDEKUMap[0]); i++) {
-                if (strncmp(szSubjectName, _BIDEKUMap[i].szServiceName,
-                            strlen(_BIDEKUMap[i].szServiceName)) == 0) {
+#ifdef WIN32
+                cmp = _strnicmp(szSubjectName,
+                                _BIDEKUMap[i].szServiceName, _BIDEKUMap[i].cchServiceName);
+#else
+                cmp = strncasecmp(szSubjectName,
+                                  _BIDEKUMap[i].szServiceName, _BIDEKUMap[i].cchServiceName);
+#endif /* WIN32 */
+
+                if (cmp == 0) {
                     valid++;
                     break;
                 }
