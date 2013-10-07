@@ -2641,7 +2641,6 @@ _BIDGetCertAltNames(
         }
 
         json_array_append_new(values, value);
-        json_decref(value);
     }
 
     *pPrincipal = principal;

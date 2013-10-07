@@ -1792,7 +1792,6 @@ _BIDPopulateX509Identity(
             }
 
             json_array_append_new(values, value);
-            json_decref(value);
         }
     }
 
