@@ -88,7 +88,6 @@
 @private
     NSString *audience;
     NSDictionary *claims;
-    NSString *servicePrincipalName;
     NSString *emailHint;
     NSString *siteName;
     BOOL canInteract;
@@ -106,9 +105,6 @@
 
 - (void)setClaims:(NSDictionary *)value;
 - (NSDictionary *)claims;
-
-- (void)setServicePrincipalName:(NSString *)value;
-- (NSString *)servicePrincipalName;
 
 - (void)setEmailHint:(NSString *)value;
 - (NSString *)emailHint;
@@ -152,8 +148,16 @@
 - (void)setAudience:(NSString *)value
 {
     if (value != audience) {
+        NSArray *princComponents;
+
         [audience release];
         audience = [value retain];
+
+        princComponents = [audience componentsSeparatedByString:@"/"];
+        if ([princComponents count] > 1)
+            siteName = [[princComponents objectAtIndex:1] retain];
+        else
+            siteName = [audience retain];
     }
 }
 
@@ -167,27 +171,6 @@
     if (value != claims) {
         [claims release];
         claims = [value retain];
-    }
-}
-
-- (NSString *)servicePrincipalName
-{
-    return [[servicePrincipalName retain] autorelease];
-}
-
-- (void)setServicePrincipalName:(NSString *)value
-{
-    if (value != servicePrincipalName) {
-        NSArray *princComponents;
-
-        [servicePrincipalName release];
-        servicePrincipalName = [value retain];
-
-        princComponents = [servicePrincipalName componentsSeparatedByString:@"/"];
-        if ([princComponents count] > 1)
-            siteName = [[princComponents objectAtIndex:1] retain];
-        else
-            siteName = [servicePrincipalName retain];
     }
 }
 
@@ -314,7 +297,6 @@
 + (BOOL)isKeyExcludedFromWebScript:(const char *)property
 {
     if (strcmp(property, "siteName") == 0               ||
-        strcmp(property, "servicePrincipalName") == 0   ||
         strcmp(property, "claims") == 0                 ||
         strcmp(property, "silent") == 0                 ||
         strcmp(property, "canInteract") == 0            ||
@@ -369,10 +351,6 @@
         var controller = window.IdentityController;                                                     \
         var options = { siteName: controller.siteName, silent: controller.silent,                       \
                         experimental_emailHint: controller.emailHint };                                 \
-                                                                                                        \
-        if (controller.servicePrincipalName) {                                                          \
-            BrowserID.User.getHostname = function() { return controller.servicePrincipalName; };        \
-        }                                                                                               \
                                                                                                         \
         BrowserID.internal.setPersistent(                                                               \
             controller.audience,                                                                        \
@@ -465,7 +443,6 @@
 - (id)init
 {
     audience = nil;
-    servicePrincipalName = nil;
     emailHint = nil;
     siteName = nil;
     assertion = nil;
@@ -492,7 +469,6 @@
     [super dealloc];
 
     [audience release];
-    [servicePrincipalName release];
     [emailHint release];
     [siteName release];
     [assertion release];
@@ -531,7 +507,6 @@
 BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
-    const char *szPackedAudience,
     const char *szAudienceOrSpn,
     json_t *claims,
     const char *szIdentityName,
@@ -564,9 +539,7 @@ _BIDBrowserGetAssertion(
     @autoreleasepool {
         NSDictionary *claimsDict = [[BIDJsonDictionary alloc] initWithJsonObject:claims];
 
-        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szPackedAudience] claims:claimsDict];
-        if (context->ContextOptions & BID_CONTEXT_GSS)
-            [controller setServicePrincipalName:[NSString stringWithUTF8String:szAudienceOrSpn]];
+        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szAudienceOrSpn] claims:claimsDict];
         if (szIdentityName != NULL) {
             [controller setEmailHint:[NSString stringWithUTF8String:szIdentityName]];
             [controller setSilent:!!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT)];

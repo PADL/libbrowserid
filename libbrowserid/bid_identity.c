@@ -56,7 +56,6 @@ BIDVerifyAssertion(
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
     uint32_t ulRetFlags = 0;
-    char *szPackedAudience = NULL;
     int bUseReplayCache;
 
     BID_CONTEXT_VALIDATE(context);
@@ -81,18 +80,12 @@ BIDVerifyAssertion(
     err = _BIDUnpackBackedAssertion(context, szAssertion, &backedAssertion);
     BID_BAIL_ON_ERROR(err);
 
-    /* If the caller does not pass in an audience, it means it does not care. */
-    if (szAudienceOrSpn != NULL) {
-        err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
-        BID_BAIL_ON_ERROR(err);
-    }
-
     if (context->ContextOptions & BID_CONTEXT_VERIFY_REMOTE)
-        err = _BIDVerifyRemote(context, replayCache, backedAssertion, szPackedAudience, NULL,
+        err = _BIDVerifyRemote(context, replayCache, backedAssertion, szAudienceOrSpn, NULL,
                                pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
                                pVerifiedIdentity, &ulRetFlags);
     else
-        err = _BIDVerifyLocal(context, replayCache, backedAssertion, szPackedAudience, NULL,
+        err = _BIDVerifyLocal(context, replayCache, backedAssertion, szAudienceOrSpn, NULL,
                               pbChannelBindings, cbChannelBindings, verificationTime, ulReqFlags,
                               NULL, NULL, pVerifiedIdentity, &ulRetFlags);
     BID_BAIL_ON_ERROR(err);
@@ -124,7 +117,6 @@ BIDVerifyAssertion(
 
 cleanup:
     _BIDReleaseBackedAssertion(context, backedAssertion);
-    BIDFree(szPackedAudience);
 
     *pulRetFlags = ulRetFlags;
     return err;
@@ -705,7 +697,6 @@ _BIDValidateSubject(
     uint32_t ulReqFlags)
 {
     BIDError err;
-    char *szPackedAudience = NULL;
     char *szHostnameAudience = NULL;
     const char *p = NULL;
     json_t *assertedPrincipal = NULL;
@@ -735,18 +726,13 @@ _BIDValidateSubject(
     if (ulReqFlags & BID_VERIFY_FLAG_RP) {
         json_t *assertedOtherName;
 
-        err = _BIDMakeAudience(context, szSubjectName, &szPackedAudience);
-        BID_BAIL_ON_ERROR(err);
-
         if (context->ContextOptions & BID_CONTEXT_GSS) {
-            err = _BIDHostifySpn(context, szPackedAudience, &szHostnameAudience);
+            err = _BIDHostifySpn(context, szSubjectName, &szHostnameAudience);
             BID_BAIL_ON_ERROR(err);
 
-            BID_ASSERT(strncmp(szHostnameAudience,
-                               BID_GSS_AUDIENCE_PREFIX "host/",
-                               BID_GSS_AUDIENCE_PREFIX_LEN + 5) == 0);
+            BID_ASSERT(strncmp(szHostnameAudience, "host/", 5) == 0);
 
-            p = &szHostnameAudience[BID_GSS_AUDIENCE_PREFIX_LEN + 5];
+            p = &szHostnameAudience[5];
         } else {
             if (strncmp(szSubjectName, "http://", 7) == 0)
                 p = &szSubjectName[7];
@@ -799,7 +785,6 @@ cleanup:
     if (err == BID_S_OK && bMatchedSubject == 0)
         err = BID_S_BAD_SUBJECT;
 
-    BIDFree(szPackedAudience);
     BIDFree(szHostnameAudience);
 
     return err;

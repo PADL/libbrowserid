@@ -117,10 +117,6 @@ BIDPrintTicketCacheEntry(
     json_t *tkt = json_object_get(j, "tkt");
     const char *aud = json_string_value(json_object_get(j, "aud"));
 
-    if (aud != NULL &&
-        strncmp(aud, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN) == 0)
-        aud += BID_GSS_AUDIENCE_PREFIX_LEN;
-
     _BIDGetJsonTimestampValue(gContext, tkt, "exp", &expiryTime);
 
     szExpiry = gNow < expiryTime ? ctime(&expiryTime) : ">>> Expired <<<";

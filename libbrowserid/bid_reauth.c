@@ -46,18 +46,18 @@
 static BIDError
 _BIDMakeTicketCacheKey(
     BIDContext context,
-    const char *szPackedAudience,
+    const char *szAudienceOrSpn,
     char **pszCacheKey)
 {
     BIDError err;
     char szCachePrefix[64];
     char *szCacheKey = NULL;
-    size_t cchCachePrefix, cchPackedAudience;
+    size_t cchCachePrefix, cchAudienceOrSpn;
     size_t cchCacheKey;
 
     *pszCacheKey = NULL;
 
-    if (szPackedAudience == NULL)
+    if (szAudienceOrSpn == NULL)
         return BID_S_INVALID_PARAMETER;
 
     /*
@@ -79,16 +79,16 @@ _BIDMakeTicketCacheKey(
     }
 
     cchCachePrefix = strlen(szCachePrefix);
-    cchPackedAudience = strlen(szPackedAudience);
-    cchCacheKey = cchCachePrefix + cchPackedAudience;
+    cchAudienceOrSpn = strlen(szAudienceOrSpn);
+    cchCacheKey = cchCachePrefix + cchAudienceOrSpn;
 
     szCacheKey = BIDMalloc(cchCacheKey + 1);
     if (szCacheKey == NULL)
         return BID_S_NO_MEMORY;
 
     memcpy(szCacheKey, szCachePrefix, cchCachePrefix);
-    memcpy(&szCacheKey[cchCachePrefix], szPackedAudience, cchPackedAudience);
-    szCacheKey[cchCachePrefix + cchPackedAudience] = '\0';
+    memcpy(&szCacheKey[cchCachePrefix], szAudienceOrSpn, cchAudienceOrSpn);
+    szCacheKey[cchCachePrefix + cchAudienceOrSpn] = '\0';
 
     *pszCacheKey = szCacheKey;
 
@@ -444,7 +444,7 @@ static BIDError
 _BIDFindTicketInCache(
     BIDContext context,
     BIDTicketCache ticketCache,
-    const char *szPackedAudience,
+    const char *szAudienceOrSpn,
     const char *szIdentityName,
     json_t **pCred)
 {
@@ -455,7 +455,7 @@ _BIDFindTicketInCache(
     args.szIdentityName = szIdentityName;
     args.cred = NULL;
 
-    err = _BIDMakeTicketCacheKey(context, szPackedAudience, &args.szCacheKey);
+    err = _BIDMakeTicketCacheKey(context, szAudienceOrSpn, &args.szCacheKey);
     BID_BAIL_ON_ERROR(err);
 
     if (szIdentityName != NULL) {
@@ -520,7 +520,7 @@ BIDError
 _BIDGetReauthAssertion(
     BIDContext context,
     BIDTicketCache ticketCache,
-    const char *szPackedAudience,
+    const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     const char *szIdentityName,
@@ -552,12 +552,12 @@ _BIDGetReauthAssertion(
     if (ticketCache == BID_C_NO_TICKET_CACHE)
         ticketCache = context->TicketCache;
 
-    err = _BIDFindTicketInCache(context, ticketCache, szPackedAudience, szIdentityName, &cred);
+    err = _BIDFindTicketInCache(context, ticketCache, szAudienceOrSpn, szIdentityName, &cred);
     if (err == BID_S_CACHE_KEY_NOT_FOUND &&
         (context->ContextOptions & BID_CONTEXT_HOST_SPN_ALIAS)) {
         char *szHostSpnAudience;
 
-        err = _BIDHostifySpn(context, szPackedAudience, &szHostSpnAudience);
+        err = _BIDHostifySpn(context, szAudienceOrSpn, &szHostSpnAudience);
         if (err == BID_S_OK) {
             err = _BIDFindTicketInCache(context, ticketCache, szHostSpnAudience, szIdentityName, &cred);
             BIDFree(szHostSpnAudience);
@@ -571,7 +571,7 @@ _BIDGetReauthAssertion(
         goto cleanup;
     }
 
-    err = _BIDMakeAuthenticator(context, szPackedAudience, pbChannelBindings, cbChannelBindings,
+    err = _BIDMakeAuthenticator(context, szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
                                 ulReqFlags, json_object_get(tkt, "tid"), &ap);
     BID_BAIL_ON_ERROR(err);
 

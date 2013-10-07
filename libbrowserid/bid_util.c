@@ -496,53 +496,6 @@ _BIDRootCert(
 }
 
 BIDError
-_BIDMakeAudience(
-    BIDContext context,
-    const char *szAudienceOrSpn,
-    char **pszPackedAudience)
-{
-    BIDError err;
-    char *szPackedAudience = NULL, *p;
-    size_t cchAudienceOrSpn;
-
-    if (context->ContextOptions & BID_CONTEXT_GSS) {
-        /*
-         * We need to support the GSS target name being NULL, so if we get no
-         * audience, just map it to the empty string for now.
-         */
-        if (szAudienceOrSpn == NULL)
-            szAudienceOrSpn = "";
-
-        cchAudienceOrSpn = strlen(szAudienceOrSpn);
-
-        szPackedAudience = BIDMalloc(BID_GSS_AUDIENCE_PREFIX_LEN + cchAudienceOrSpn + 1);
-        if (szPackedAudience == NULL)
-            return BID_S_NO_MEMORY;
-
-        p = szPackedAudience;
-        memcpy(p, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN);
-        p += BID_GSS_AUDIENCE_PREFIX_LEN;
-        memcpy(p, szAudienceOrSpn, cchAudienceOrSpn);
-        p += cchAudienceOrSpn;
-        *p = '\0';
-
-        err = BID_S_OK;
-    } else {
-        if (szAudienceOrSpn == NULL)
-            return BID_S_INVALID_PARAMETER;
-
-        err = _BIDDuplicateString(context, szAudienceOrSpn, &szPackedAudience);
-    }
-
-    if (err == BID_S_OK)
-        *pszPackedAudience = szPackedAudience;
-    else
-        BIDFree(szPackedAudience);
-
-    return err;
-}
-
-BIDError
 BIDFreeData(
     BIDContext context BID_UNUSED,
     char *s)
@@ -743,20 +696,16 @@ BIDError
 _BIDHostifySpn(
     BIDContext context BID_UNUSED,
     const char *szSpn,
-    char **pszPackedAudience)
+    char **pszAudienceOrSpn)
 {
     const char *q, *szSpnHost = NULL;
     size_t cchSpnHost = 0, i;
     int bEscape = 0;
     char *p;
 
-    *pszPackedAudience = NULL;
+    *pszAudienceOrSpn = NULL;
 
-    if (strncmp(szSpn, BID_GSS_AUDIENCE_PREFIX,
-        BID_GSS_AUDIENCE_PREFIX_LEN) != 0)
-        return BID_S_BAD_AUDIENCE;
-
-    for (q = szSpn + BID_GSS_AUDIENCE_PREFIX_LEN; *q != '\0'; q++) {
+    for (q = szSpn; *q != '\0'; q++) {
         if (*q == '\\') {
             bEscape++;
         } else if (bEscape) {
@@ -775,15 +724,11 @@ _BIDHostifySpn(
     if (szSpnHost == NULL)
         return BID_S_BAD_AUDIENCE;
 
-    *pszPackedAudience = BIDMalloc(BID_GSS_AUDIENCE_PREFIX_LEN + 5 +
-                                   cchSpnHost + 1);
-    if (*pszPackedAudience == NULL)
+    *pszAudienceOrSpn = BIDMalloc(5 + cchSpnHost + 1);
+    if (*pszAudienceOrSpn == NULL)
         return BID_S_NO_MEMORY;
 
-    p = *pszPackedAudience;
-
-    memcpy(p, BID_GSS_AUDIENCE_PREFIX, BID_GSS_AUDIENCE_PREFIX_LEN);
-    p += BID_GSS_AUDIENCE_PREFIX_LEN;
+    p = *pszAudienceOrSpn;
 
     memcpy(p, "host/", 5);
     p += 5;

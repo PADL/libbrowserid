@@ -97,9 +97,7 @@ _BIDValidateAudienceHostAlias(
      * If audience is a GSS SPN beginning with "host/", then just
      * match on the remainder of the SPN.
      */
-    if (strncmp(szAssertionSpn,
-                BID_GSS_AUDIENCE_PREFIX "host/",
-                BID_GSS_AUDIENCE_PREFIX_LEN + 5) == 0) {
+    if (strncmp(szAssertionSpn, "host/", 5) == 0) {
         char *szHostSpnAudience = NULL;
 
         err = _BIDHostifySpn(context, szAudienceOrSpn, &szHostSpnAudience);

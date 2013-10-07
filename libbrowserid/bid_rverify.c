@@ -89,7 +89,7 @@ _BIDVerifyRemote(
     BIDContext context,
     BIDReplayCache replayCache BID_UNUSED,
     BIDBackedAssertion backedAssertion,
-    const char *szPackedAudience,
+    const char *szAudienceOrSpn,
     const char *szSubjectName,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
@@ -103,7 +103,7 @@ _BIDVerifyRemote(
     char *szPostFields = NULL;
     json_t *claims = NULL;
     json_t *response = NULL;
-    size_t cchAssertion, cchPackedAudience;
+    size_t cchAssertion, cchAudienceOrSpn;
 
     *pVerifiedIdentity = NULL;
     *pulRetFlags = BID_VERIFY_FLAG_REMOTE;
@@ -113,31 +113,31 @@ _BIDVerifyRemote(
     err = BIDGetContextParam(context, BID_PARAM_VERIFIER_URL, (void **)&szVerifierUrl);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDValidateAudience(context, backedAssertion, szPackedAudience, pbChannelBindings, cbChannelBindings);
+    err = _BIDValidateAudience(context, backedAssertion, szAudienceOrSpn, pbChannelBindings, cbChannelBindings);
     BID_BAIL_ON_ERROR(err);
 
     BID_ASSERT(backedAssertion->Assertion != NULL);
     BID_ASSERT(backedAssertion->Assertion->Payload != NULL);
 
-    if (szPackedAudience == NULL) {
-        szPackedAudience = json_string_value(json_object_get(backedAssertion->Assertion->Payload, "aud"));
-        if (szPackedAudience == NULL) {
+    if (szAudienceOrSpn == NULL) {
+        szAudienceOrSpn = json_string_value(json_object_get(backedAssertion->Assertion->Payload, "aud"));
+        if (szAudienceOrSpn == NULL) {
             err = BID_S_MISSING_AUDIENCE;
             goto cleanup;
         }
     }
 
     cchAssertion = backedAssertion->EncDataLength;
-    cchPackedAudience = strlen(szPackedAudience);
+    cchAudienceOrSpn = strlen(szAudienceOrSpn);
 
-    szPostFields = BIDMalloc(sizeof("assertion=&audience=") + cchAssertion + cchPackedAudience);
+    szPostFields = BIDMalloc(sizeof("assertion=&audience=") + cchAssertion + cchAudienceOrSpn);
     if (szPostFields == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
-    snprintf(szPostFields, sizeof("assertion=&audience=") + cchAssertion + cchPackedAudience,
-             "assertion=%s&audience=%s", backedAssertion->EncData, szPackedAudience);
+    snprintf(szPostFields, sizeof("assertion=&audience=") + cchAssertion + cchAudienceOrSpn,
+             "assertion=%s&audience=%s", backedAssertion->EncData, szAudienceOrSpn);
 
     err = _BIDPostDocument(context, szVerifierUrl, szPostFields, &response);
     BID_BAIL_ON_ERROR(err);

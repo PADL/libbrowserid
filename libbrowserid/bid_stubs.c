@@ -46,7 +46,6 @@
 BIDError
 _BIDBrowserGetAssertion(
     BIDContext context BID_UNUSED,
-    const char *szPackedAudience BID_UNUSED,
     const char *szAudienceOrSpn BID_UNUSED,
     json_t *claims BID_UNUSED,
     const char *szIdentityName BID_UNUSED,

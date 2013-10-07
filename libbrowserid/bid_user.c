@@ -139,7 +139,6 @@ BIDAcquireAssertion(
     json_t *key = NULL;
     json_t *nonce = NULL;
     char *szAssertion = NULL;
-    char *szPackedAudience = NULL;
     uint32_t ulRetFlags = 0;
     uint32_t ulTicketFlags = 0;
 
@@ -153,12 +152,9 @@ BIDAcquireAssertion(
 
     BID_CONTEXT_VALIDATE(context);
 
-    err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
-    BID_BAIL_ON_ERROR(err);
-
     if ((context->ContextOptions & BID_CONTEXT_REAUTH) &&
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_CACHED) == 0) {
-        err = _BIDGetReauthAssertion(context, ticketCache, szPackedAudience,
+        err = _BIDGetReauthAssertion(context, ticketCache, szAudienceOrSpn,
                                      pbChannelBindings, cbChannelBindings, szIdentityName,
                                      ulReqFlags, pAssertion, pAssertedIdentity, ptExpiryTime,
                                      &ulTicketFlags);
@@ -189,7 +185,7 @@ BIDAcquireAssertion(
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDBrowserGetAssertion(context, szPackedAudience, szAudienceOrSpn, claims,
+    err = _BIDBrowserGetAssertion(context, szAudienceOrSpn, claims,
                                   szIdentityName, ulReqFlags, &szAssertion);
     BID_BAIL_ON_ERROR(err);
 
@@ -222,7 +218,6 @@ cleanup:
     json_decref(key);
     json_decref(nonce);
     _BIDReleaseBackedAssertion(context, backedAssertion);
-    BIDFree(szPackedAudience);
 
     return err;
 }

@@ -78,10 +78,6 @@ static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                              
     var options = { siteName: args.siteName, silent: window.controller.silent,                      \
                     experimental_emailHint: args.emailHint };                                       \
                                                                                                     \
-    if (args.servicePrincipalName) {                                                                \
-        BrowserID.User.getHostname = function() { return args.servicePrincipalName; };              \
-    }                                                                                               \
-                                                                                                    \
     BrowserID.internal.setPersistent(                                                               \
         args.audience,                                                                              \
         function() {                                                                                \
@@ -133,7 +129,6 @@ public:
                       UINT *puArgErr);
 
     BIDError Initialize(BIDContext context,
-                        const char *szPackedAudience,
                         const char *szAudienceOrSpn,
                         json_t *claims,
                         const char *szIdentityName,
@@ -143,8 +138,7 @@ public:
 
 private:
     HRESULT _LoadLibrary(void);
-    HRESULT _PackDialogArgs(const char *szPackedAudience,
-                            const char *szAudienceOrSpn,
+    HRESULT _PackDialogArgs(const char *szAudienceOrSpn,
                             json_t *claims,
                             const char *szIdentityName,
                             uint32_t ulReqFlags);
@@ -517,7 +511,6 @@ CBIDIdentityController::_GetArguments(VARIANT *varArgs)
 
 HRESULT
 CBIDIdentityController::_PackDialogArgs(
-    const char *szPackedAudience,
     const char *szAudienceOrSpn,
     json_t *claims,
     const char *szIdentityName,
@@ -541,16 +534,11 @@ CBIDIdentityController::_PackDialogArgs(
     }
 
     err = _BIDJsonObjectSet(_context, _args, "audience",
-                            json_string(szPackedAudience),
+                            json_string(szAudienceOrSpn),
                             BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
 
     if (_context->ContextOptions & BID_CONTEXT_GSS) {
-        err = _BIDJsonObjectSet(_context, _args, "servicePrincipalName",
-                                json_string(szAudienceOrSpn),
-                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-        BID_BAIL_ON_ERROR(err);
-
         hr = _SpnToSiteName(szAudienceOrSpn, &szSiteName);
         if (FAILED(hr)) {
             err = _MapError(hr);
@@ -581,7 +569,6 @@ cleanup:
 BIDError
 CBIDIdentityController::Initialize(
     BIDContext context,
-    const char *szPackedAudience,
     const char *szAudienceOrSpn,
     json_t *claims,
     const char *szIdentityName,
@@ -595,8 +582,7 @@ CBIDIdentityController::Initialize(
     hr = _LoadLibrary();
     BID_BAIL_ON_HERROR(hr);
 
-    hr = _PackDialogArgs(szPackedAudience, szAudienceOrSpn,
-                         claims, szIdentityName, ulReqFlags);
+    hr = _PackDialogArgs(szAudienceOrSpn, claims, szIdentityName, ulReqFlags);
     BID_BAIL_ON_HERROR(hr);
 
     bstrURL = SysAllocString(L"https://login.persona.org/sign_in#NATIVE");
@@ -982,7 +968,6 @@ CBIDIdentityController::_SpnToSiteName(
 BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
-    const char *szPackedAudience,
     const char *szAudienceOrSpn,
     json_t *claims,
     const char *szIdentityName,
@@ -1014,9 +999,8 @@ _BIDBrowserGetAssertion(
         goto cleanup;
     }
 
-    err = pController->Initialize(context, szPackedAudience,
-                                  szAudienceOrSpn, claims,
-                                  szIdentityName, ulReqFlags);
+    err = pController->Initialize(context, szAudienceOrSpn,
+                                  claims, szIdentityName, ulReqFlags);
     BID_BAIL_ON_ERROR(err);
 
     err = pController->GetAssertion(pAssertion);

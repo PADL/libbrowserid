@@ -113,9 +113,6 @@ extern "C" {
 #define BID_WELL_KNOWN_URL          "/.well-known/browserid"
 #define BID_WELL_KNOWN_URL_LEN      (sizeof(BID_WELL_KNOWN_URL) - 1)
 
-#define BID_GSS_AUDIENCE_PREFIX     "urn:ietf:params:gss:spn:"
-#define BID_GSS_AUDIENCE_PREFIX_LEN (sizeof(BID_GSS_AUDIENCE_PREFIX) - 1)
-
 typedef json_t *BIDAuthority;
 typedef json_t *BIDJWK;
 typedef json_t *BIDJWKSet;
@@ -697,7 +694,7 @@ BIDError
 _BIDGetReauthAssertion(
     BIDContext context,
     BIDTicketCache ticketCache,
-    const char *szPackedAudience,
+    const char *szAudienceOrSpn,
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     const char *szIdentityName, /* optional */
@@ -757,12 +754,6 @@ _BIDVerifyRemote(
 /*
  * bid_util.c
  */
-BIDError
-_BIDMakeAudience(
-    BIDContext context,
-    const char *szAudienceOrSpn,
-    char **pszPackedAudience);
-
 BIDError
 _BIDJsonBinaryValue(
     BIDContext context,
@@ -917,7 +908,7 @@ BIDError
 _BIDHostifySpn(
     BIDContext context BID_UNUSED,
     const char *szSpn,
-    char **pszPackedAudience);
+    char **pszAudienceOrSpn);
 
 /*
  * bid_rcache.c
@@ -1016,7 +1007,6 @@ _BIDValidateExpiry(
 BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
-    const char *szPackedAudience,
     const char *szAudienceOrSpn,
     json_t *claims,
     const char *szIdentityName, /* optional */
