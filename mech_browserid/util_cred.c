@@ -557,7 +557,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
             ulReqFlags |= BID_ACQUIRE_FLAG_IDENTIFY;
 
         err = BIDAcquireAssertion(ctx->bidContext,
-                                  (cred == GSS_C_NO_CREDENTIAL) ? NULL : cred->bidTicketCache,
+                                  (cred == GSS_C_NO_CREDENTIAL) ? BID_C_NO_TICKET_CACHE : cred->bidTicketCache,
                                   (targetName == GSS_C_NO_NAME) ? NULL : (const char *)bufAudienceOrSpn.value,
                                   pbChannelBindings,
                                   cbChannelBindings,
