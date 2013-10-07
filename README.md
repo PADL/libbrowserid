@@ -90,8 +90,8 @@ for TLS. One of the following must be true:
   example, serverAuth maps to "http") and either the DNS subjectAltName or
   the common name match the acceptor host name.
 
-* The certificate contains a URI subjectAltName containing a GSS BrowserID
-  URN of the complete BrowserID SPN, e.g: urn:x-gss:imap/mail.lukktone.com.
+* The certificate contains a SRVName subjectAltName containing a service name
+  of the complete BrowserID SPN, e.g: \_imap.mail.lukktone.com.
 
 ## Other configuration
 
