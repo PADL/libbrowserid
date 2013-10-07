@@ -549,7 +549,7 @@ _BIDSubjectEqualP(
 /*
  * XXX this transformation is incomplete as it does not handle
  * differences between IANA Assigned Numbers and GSS/SASL service
- * name registries.
+ * name registries, nor does it handle domain-based service names.
  */
 static int
 _BIDSRVNameEqualP(
@@ -580,6 +580,7 @@ _BIDSRVNameEqualP(
     cmp = strncasecmp(&szSRVName[1], szSubjectName, n);
 #endif
 
+    /* XXX this does terminate the comparison at service-specifics */
     if (cmp == 0)
         cmp = _BIDSubjectCompare(p + 1, q + 1, BID_VERIFY_FLAG_RP);
 
