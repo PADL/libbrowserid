@@ -82,7 +82,7 @@ BIDVerifyAssertion(
     BID_BAIL_ON_ERROR(err);
 
     /* If the caller does not pass in an audience, it means it does not care. */
-    if (szPackedAudience != NULL) {
+    if (szAudienceOrSpn != NULL) {
         err = _BIDMakeAudience(context, szAudienceOrSpn, &szPackedAudience);
         BID_BAIL_ON_ERROR(err);
     }
