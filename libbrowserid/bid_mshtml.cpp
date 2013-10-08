@@ -78,16 +78,12 @@ static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                              
     var options = { siteName: args.siteName, silent: window.controller.silent,                      \
                     experimental_emailHint: args.emailHint };                                       \
                                                                                                     \
-    BrowserID.internal.setPersistent(                                                               \
+    BrowserID.internal.get(                                                                         \
         args.audience,                                                                              \
-        function() {                                                                                \
-            BrowserID.internal.get(                                                                 \
-                args.audience,                                                                      \
-                function(assertion, params) {                                                       \
-                   window.controller.identityCallback(assertion, params);                           \
-                },                                                                                  \
-                options);                                                                           \
-    });                                                                                             \
+        function(assertion, params) {                                                               \
+           window.controller.identityCallback(assertion, params);                                   \
+        },                                                                                          \
+        options);                                                                                   \
 ";
 
 static WCHAR _BIDHTMLDialogOptions[] =

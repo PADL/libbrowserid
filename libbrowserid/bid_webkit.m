@@ -352,16 +352,12 @@
         var options = { siteName: controller.siteName, silent: controller.silent,                       \
                         experimental_emailHint: controller.emailHint };                                 \
                                                                                                         \
-        BrowserID.internal.setPersistent(                                                               \
+        BrowserID.internal.get(                                                                         \
             controller.audience,                                                                        \
-            function() {                                                                                \
-                BrowserID.internal.get(                                                                 \
-                    controller.audience,                                                                \
-                    function(assertion, params) {                                                       \
-                        controller.identityCallback_withParameters_(assertion, params);                 \
-                    },                                                                                  \
-                    options);                                                                           \
-        });                                                                                             \
+            function(assertion, params) {                                                               \
+                controller.identityCallback_withParameters_(assertion, params);                         \
+            },                                                                                          \
+            options);                                                                                   \
     ";
 
     [sender stringByEvaluatingJavaScriptFromString:function];
