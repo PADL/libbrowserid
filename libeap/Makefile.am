@@ -62,7 +62,9 @@ SOURCES_peer += src/eap_peer/eap_tls_common.c \
 	src/eap_peer/eap_tls_common.h \
 	src/eap_peer/ikev2.h \
 	src/eap_peer/mschapv2.h \
-	src/eap_peer/tncc.h
+	src/eap_peer/tncc.h \
+	src/radius/radius.h
+
 
 AM_CFLAGS = -DEAP_TLS
 AM_CFLAGS += -DEAP_PEAP
