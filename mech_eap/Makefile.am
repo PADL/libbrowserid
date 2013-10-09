@@ -12,9 +12,9 @@ EAP_CFLAGS = -I$(srcdir)/../libeap/src -I$(srcdir)/../libeap/src/common -I$(srcd
 	-I$(srcdir)/../libeap/src/utils
 
 if GSSEAP_ENABLE_ACCEPTOR
-GSSEAP_EXPORTS = mech_eap.exports
+GSSEAP_EXPORTS = $(srcdir)/mech_eap.exports
 else
-GSSEAP_EXPORTS = mech_eap-noacceptor.exports
+GSSEAP_EXPORTS = $(srcdir)/mech_eap-noacceptor.exports
 endif
 
 gssdir = $(libdir)/gss
@@ -173,7 +173,7 @@ krb5plugins_LTLIBRARIES = radius_ad.la
 radius_ad_la_CFLAGS  = -Werror -Wall -Wunused-parameter \
 			@KRB5_CFLAGS@ $(EAP_CFLAGS) @RADSEC_CFLAGS@ @TARGET_CFLAGS@
 radius_ad_la_LDFLAGS = -avoid-version -module \
-		       -export-symbols radius_ad.exports -no-undefined
+		       -export-symbols $(srcdir)/radius_ad.exports -no-undefined
 radius_ad_la_LIBADD  = @KRB5_LIBS@
 radius_ad_la_SOURCES = util_adshim.c authdata_plugin.h
 endif

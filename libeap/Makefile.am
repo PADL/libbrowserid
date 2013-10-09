@@ -151,6 +151,8 @@ CRYPTO_SRCS = \
     src/crypto/aes_i.h \
     src/crypto/aes_wrap.h \
     src/crypto/crypto.h \
+	src/crypto/dh_group5.h \
+	src/crypto/dh_groups.h \
     src/crypto/md5.h \
     src/crypto/milenage.h \
     src/crypto/ms_funcs.h \
