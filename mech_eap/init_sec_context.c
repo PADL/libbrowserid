@@ -292,7 +292,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
     *minor = 0;
 
 cleanup:
-    krbFreeUnparsedName(krbContext, &nameBuf);
+    /*namebuf is freed when used and may be left with a unowned pointer*/
     wpabuf_free(buf);
 
     return major;
