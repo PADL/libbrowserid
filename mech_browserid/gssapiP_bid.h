@@ -304,8 +304,8 @@ gssBidDisplayStatus(OM_uint32 *minor,
                     OM_uint32 status_value,
                     gss_buffer_t status_string);
 
-#define IS_BROWSERID_ERROR(err)         ((err) >= ERROR_TABLE_BASE_lbid && \
-                                         (err) <= ERROR_TABLE_BASE_lbid + BID_S_UNKNOWN_ERROR_CODE)
+#define IS_BROWSERID_ERROR(err)         (((int32_t)err) >= ERROR_TABLE_BASE_lbid && \
+                                         ((int32_t)err) <= ERROR_TABLE_BASE_lbid + BID_S_UNKNOWN_ERROR_CODE)
 
 /* exchange_meta_data.c */
 OM_uint32 GSSAPI_CALLCONV
