@@ -118,6 +118,10 @@ mech_browserid_la_SOURCES =    			\
 	util_saml.h				\
 	util_shib.h
 
+if HAVE_GSS_ACQUIRE_CRED_FROM
+mech_browserid_la_SOURCES += add_cred_from.c acquire_cred_from.c
+endif
+
 if GSSBID_ENABLE_ACCEPTOR
 
 mech_browserid_la_SOURCES +=			\
