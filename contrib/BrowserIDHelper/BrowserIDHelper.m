@@ -45,36 +45,29 @@
 #include <Foundation/Foundation.h>
 #include <objc/Runtime.h>
 
-#include "MailInternal.h"
-
 static NSString *kBrowserIDSASLMechanism = @"BROWSERID-AES128";
 static NSString *kGSSAPISASLMechanism = @"GSSAPI";
 
 static void
-BrowserIDInterpose(
-    Class class,
-    SEL originalSelector,
-    SEL newSelector,
-    BOOL isClassMethod)
+interposeMethod(void)
 {
-    Method originalMethod = isClassMethod ? class_getClassMethod(class, originalSelector) : class_getInstanceMethod(class, originalSelector);
-    Method categoryMethod = isClassMethod ? class_getClassMethod(class, newSelector) : class_getInstanceMethod(class, newSelector);
+    SEL originalSelector = NSSelectorFromString(@"newSASLClientWithMechanismName:account:externalSecurityLayer:");
+    SEL newSelector = NSSelectorFromString(@"BrowserID_newSASLClientWithMechanismName:account:externalSecurityLayer:");
+
+    Class originalClass = NSClassFromString(@"MCSaslClient");
+    Class newClass = NSClassFromString(@"BrowserIDHelper");
+
+    Method originalMethod = class_getClassMethod(originalClass, originalSelector);
+    Method categoryMethod = class_getClassMethod(newClass, newSelector);
+
     method_exchangeImplementations(originalMethod, categoryMethod);
 }
 
-@interface SASLClient (BrowserIDInterposing)
+@interface BrowserIDHelper : NSObject
 + BrowserID_newSASLClientWithMechanismName:mechName account:account externalSecurityLayer:(unsigned int)ssf;
 @end
 
-@implementation SASLClient (BrowserIDInterposing)
-+ (void)load
-{
-    BrowserIDInterpose([SASLClient class],
-                       @selector(newSASLClientWithMechanismName:account:externalSecurityLayer:),
-                       @selector(BrowserID_newSASLClientWithMechanismName:account:externalSecurityLayer:),
-                       YES);
-}
-
+@implementation BrowserIDHelper
 + BrowserID_newSASLClientWithMechanismName:mechName account:account externalSecurityLayer:(unsigned int)ssf
 {
     NSString *newMechName;
@@ -86,15 +79,11 @@ BrowserIDInterpose(
 
     NSLog(@"BrowserID_newSASLClientWithMechanismName:%@", newMechName);
 
-    return [SASLClient BrowserID_newSASLClientWithMechanismName:newMechName account:account externalSecurityLayer:ssf];
+    return [BrowserIDHelper BrowserID_newSASLClientWithMechanismName:newMechName account:account externalSecurityLayer:ssf];
 }
-@end
 
-@interface BrowserIDHelper : NSObject
-@end
-
-@implementation BrowserIDHelper
 + (void)load
 {
+    interposeMethod();
 }
 @end

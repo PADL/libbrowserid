@@ -1,4 +1,4 @@
-@interface SASLClient : NSObject
+@interface MCSASLClient : NSObject
 {
 }
 + (id)newSASLClientWithMechanismName:mechName account:arg2 externalSecurityLayer:(unsigned int)layer;
@@ -6,13 +6,8 @@
 
 @class NSSocket;
 
-@interface Connection : NSObject
+@interface MCConnection : NSObject
 {
 }
 - (id)authenticationMechanisms;
-@end
-
-@interface IMAPConnection : Connection
-{
-}
 @end
