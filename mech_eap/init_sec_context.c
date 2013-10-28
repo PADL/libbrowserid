@@ -964,6 +964,11 @@ eapGssSmInitGssFlags(OM_uint32 *minor,
     unsigned char wireFlags[4];
     gss_buffer_desc flagsBuf;
 
+    /*
+     * As a temporary measure, force mutual authentication until channel binding is
+     * more widely deployed.
+     */
+    ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
     store_uint32_be(ctx->gssFlags & GSSEAP_WIRE_FLAGS_MASK, wireFlags);
 
     flagsBuf.length = sizeof(wireFlags);
