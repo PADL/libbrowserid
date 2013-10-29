@@ -108,11 +108,7 @@ _BIDAuthorityEqual(
     const char *a1,
     const char *a2)
 {
-#ifdef WIN32
-    return (_strcmpi(a1, a2) == 0);
-#else
     return (strcasecmp(a1, a2) == 0);
-#endif
 }
 
 /*

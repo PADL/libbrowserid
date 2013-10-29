@@ -506,11 +506,7 @@ _BIDSubjectCompare(
     int cmp;
 
     if (ulReqFlags & BID_VERIFY_FLAG_RP) {
-#ifdef WIN32
-        cmp = _strcmpi(a1, a2);
-#else
         cmp = strcasecmp(a1, a2);
-#endif
     } else {
         cmp = strcmp(a1, a2);
     }
@@ -574,12 +570,7 @@ _BIDSRVNameEqualP(
     if (n != (q - szSubjectName))
         return 0;
 
-#ifdef WIN32
-    cmp = _strnicmp(&szSRVName[1], szSubjectName, n);
-#else
     cmp = strncasecmp(&szSRVName[1], szSubjectName, n);
-#endif
-
     /* XXX this does terminate the comparison at service-specifics */
     if (cmp == 0)
         cmp = _BIDSubjectCompare(p + 1, q + 1, BID_VERIFY_FLAG_RP);
@@ -677,14 +668,8 @@ _BIDValidateEKUs(
             int cmp;
 
             for (i = 0; i < sizeof(_BIDEKUMap) / sizeof(_BIDEKUMap[0]); i++) {
-#ifdef WIN32
-                cmp = _strnicmp(szSubjectName,
-                                _BIDEKUMap[i].szServiceName, _BIDEKUMap[i].cchServiceName);
-#else
                 cmp = strncasecmp(szSubjectName,
                                   _BIDEKUMap[i].szServiceName, _BIDEKUMap[i].cchServiceName);
-#endif /* WIN32 */
-
                 if (cmp == 0) {
                     valid++;
                     break;

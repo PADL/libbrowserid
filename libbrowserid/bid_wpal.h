@@ -59,4 +59,7 @@ typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 
+#define strncasecmp     _strnicmp
+#define strcasecmp      _strcmpi
+
 #endif /* _BID_WPAL_H_ */
