@@ -98,7 +98,6 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
         break;
     }
 
-
     return ret;
 }
 
@@ -216,7 +215,7 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (NSArray *)keys
 {
-    NSMutableArray *keys = [NSMutableArray array];
+    NSMutableArray *keys = [NSMutableArray arrayWithCapacity:json_object_size(jsonObject)];
     NSEnumerator *enumerator = [self keyEnumerator];
     NSString *key;
 
