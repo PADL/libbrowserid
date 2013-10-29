@@ -462,14 +462,14 @@
 
 - (void)dealloc
 {
-    [super dealloc];
-
     [audience release];
     [emailHint release];
     [siteName release];
     [assertion release];
     [identityDialog release];
     [webView release];
+
+    [super dealloc];
 }
 
 - (BIDError)getAssertion

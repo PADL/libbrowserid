@@ -114,8 +114,8 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (void)dealloc
 {
-    [super dealloc];
     json_decref(jsonObject);
+    [super dealloc];
 }
 
 - (id)nextObject
@@ -146,8 +146,8 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (void)dealloc
 {
-    [super dealloc];
     json_decref(jsonObject);
+    [super dealloc];
 }
 
 - (id)nextObject
@@ -186,8 +186,8 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (void)dealloc
 {
-    [super dealloc];
     json_decref(jsonObject);
+    [super dealloc];
 }
 
 - (NSUInteger)count
@@ -261,8 +261,8 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (void)dealloc
 {
-    [super dealloc];
     json_decref(jsonObject);
+    [super dealloc];
 }
 
 - (NSUInteger)count
