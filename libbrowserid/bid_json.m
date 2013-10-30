@@ -168,7 +168,7 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 + (BOOL)isSelectorExcludedFromWebScript:(SEL)selector
 {
     if (selector == @selector(keys) ||
-        selector == @selector(stringRepresentation))
+        selector == @selector(jsonRepresentation))
         return NO;
     return YES;
 }
@@ -230,19 +230,19 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
     return [self keys];
 }
 
-- (NSString *)stringRepresentation
+- (NSString *)jsonRepresentation
 {
-    NSString *stringRep;
+    NSString *jsonRep;
     char *szJson = json_dumps(jsonObject, JSON_COMPACT);
 
     if (szJson == NULL)
         return nil;
 
-    stringRep = [NSString stringWithCString:szJson];
+    jsonRep = [NSString stringWithCString:szJson];
 
     BIDFree(szJson);
 
-    return stringRep;
+    return jsonRep;
 }
 
 @end
@@ -283,19 +283,19 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
     return [self objectAtIndex:index];
 }
 
-- (NSString *)stringRepresentation
+- (NSString *)jsonRepresentation
 {
-    NSString *stringRep;
+    NSString *jsonRep;
     char *szJson = json_dumps(jsonObject, JSON_COMPACT);
 
     if (szJson == NULL)
         return nil;
 
-    stringRep = [NSString stringWithCString:szJson];
+    jsonRep = [NSString stringWithCString:szJson];
 
     BIDFree(szJson);
 
-    return stringRep;
+    return jsonRep;
 }
 @end
 
