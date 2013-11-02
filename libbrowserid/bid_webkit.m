@@ -356,13 +356,6 @@
 #pragma mark - public
 - (id)init
 {
-    audience = nil;
-    emailHint = nil;
-    siteName = nil;
-    assertion = nil;
-    identityDialog = nil;
-    webView = nil;
-    parentWindow = nil;
     bidError = BID_S_INTERACT_FAILURE;
 
     return [super init];
