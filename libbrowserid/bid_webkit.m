@@ -50,7 +50,7 @@
 @implementation BIDIdentityDialog
 + (BIDIdentityDialog *)identityDialog
 {
-    return [[[self alloc] init] autorelease];
+    return [[self alloc] init];
 }
 
 - (id)init
@@ -61,8 +61,8 @@
 
     self = [super initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:YES];
 
-    [self setHidesOnDeactivate:YES];
-    [self setWorksWhenModal:YES];
+    self.hidesOnDeactivate = YES;
+    self.worksWhenModal = YES;
 
     return self;
 }
@@ -84,44 +84,16 @@
 @end
 
 @interface BIDIdentityController : NSObject <NSWindowDelegate>
-{
-@private
-    NSString *audience;
-    NSDictionary *claims;
-    NSString *emailHint;
-    NSString *siteName;
-    BOOL canInteract;
-    BOOL silent;
-    NSString *assertion;
-    BIDIdentityDialog *identityDialog;
-    WebView *webView;
-    NSWindow *parentWindow;
-    BIDError bidError;
-}
 
-/* accessors */
-- (void)setAudience:(NSString *)value;
-- (NSString *)audience;
-
-- (void)setClaims:(NSDictionary *)value;
-- (NSDictionary *)claims;
-
-- (void)setEmailHint:(NSString *)value;
-- (NSString *)emailHint;
-
-- (void)setAssertion:(NSString *)value;
-- (NSString *)assertion;
-
-- (BOOL)canInteract;
-- (void)setCanInteract:(BOOL)value;
-
-- (BOOL)silent;
-- (void)setSilent:(BOOL)value;
-
-- (NSWindow *)parentWindow;
-- (void)setParentWindow:(NSWindow *)value;
-
-- (BIDError)bidError;
+@property(nonatomic) NSString *audience;
+@property(nonatomic) NSDictionary *claims;
+@property(nonatomic) NSString *emailHint;
+@property(nonatomic) NSString *siteName;
+@property(nonatomic, readonly) NSString *assertion;
+@property(nonatomic, assign) BOOL canInteract;
+@property(nonatomic, assign) BOOL silent;
+@property(nonatomic) NSWindow *parentWindow;
+@property(nonatomic, readonly) BIDError bidError;
 
 /* helpers */
 - (void)closeIdentityDialog;
@@ -137,12 +109,25 @@
 @end
 
 @implementation BIDIdentityController
+{
+    NSString *audience;
+    NSDictionary *claims;
+    NSString *emailHint;
+    NSString *siteName;
+    BOOL canInteract;
+    BOOL silent;
+    NSString *assertion;
+    BIDIdentityDialog *identityDialog;
+    WebView *webView;
+    NSWindow *parentWindow;
+    BIDError bidError;
+}
 
 #pragma mark - accessors
 
 - (NSString *)audience
 {
-    return [[audience retain] autorelease];
+    return audience;
 }
 
 - (void)setAudience:(NSString *)value
@@ -150,107 +135,40 @@
     if (value != audience) {
         NSArray *princComponents;
 
-        [audience release];
-        audience = [value retain];
+        audience = value;
 
         princComponents = [audience componentsSeparatedByString:@"/"];
         if ([princComponents count] > 1)
-            siteName = [[princComponents objectAtIndex:1] retain];
+            self.siteName = [princComponents objectAtIndex:1];
         else
-            siteName = [audience retain];
+            self.siteName = audience;
     }
 }
 
-- (NSDictionary *)claims
-{
-    return [[claims retain] autorelease];
-}
-
-- (void)setClaims:(NSDictionary *)value
-{
-    if (value != claims) {
-        [claims release];
-        claims = [value retain];
-    }
-}
-
-- (NSString *)emailHint
-{
-    return [[emailHint retain] autorelease];
-}
-
-- (void)setEmailHint:(NSString *)value
-{
-    if (value != emailHint) {
-        [emailHint release];
-        emailHint = [value retain];
-    }
-}
-
-- (BOOL)canInteract
-{
-    return canInteract;
-}
-
-- (void)setCanInteract:(BOOL)value
-{
-    canInteract = value;
-}
-
-- (BOOL)silent
-{
-    return silent;
-}
-
-- (void)setSilent:(BOOL)value
-{
-    silent = value;
-}
-
-- (NSString *)assertion
-{
-    return [[assertion retain] autorelease];
-}
-
-- (void)setAssertion:(NSString *)value
-{
-    if (value != assertion) {
-        [assertion release];
-        assertion = [value retain];
-    }
-}
-
-- (BIDError)bidError
-{
-    return bidError;
-}
-
-- (NSWindow *)parentWindow
-{
-    return parentWindow;
-}
-
-- (void)setParentWindow:(NSWindow *)value
-{
-    if (value != parentWindow) {
-        [parentWindow release];
-        parentWindow = [value retain];
-    }
-}
+@synthesize claims;
+@synthesize emailHint;
+@synthesize siteName;
+@synthesize canInteract;
+@synthesize silent;
+@synthesize assertion;
+@synthesize bidError;
+@synthesize parentWindow;
 
 #pragma mark - helpers
 
 - (WebView *)newWebView
 {
     NSRect frame = NSMakeRect(0, 0, 700, 375);
-    WebView *aWebView = [[[WebView alloc] initWithFrame:frame] autorelease];
+    WebView *aWebView = [[WebView alloc] initWithFrame:frame];
 
-    [aWebView setFrameLoadDelegate:self];
-    [aWebView setResourceLoadDelegate:self];
-    [aWebView setUIDelegate:self];
-    [aWebView setPolicyDelegate:self];
-    [aWebView setHostWindow:identityDialog];
-    [aWebView setShouldCloseWithWindow:YES];
+    if (aWebView != nil) {
+        aWebView.frameLoadDelegate = self;
+        aWebView.resourceLoadDelegate = self;
+        aWebView.UIDelegate = self;
+        aWebView.policyDelegate = self;
+        aWebView.hostWindow = identityDialog;
+        aWebView.shouldCloseWithWindow = YES;
+    }
 
     return aWebView;
 }
@@ -274,20 +192,20 @@
 
 #pragma mark - javascript methods
 
-- (void)identityCallback:(NSString *)anAssertion withParameters:(id)parameters
+- (void)identityCallback:(NSString *)anAssertion withParameters:(id)BID_UNUSED parameters
 {
     if (anAssertion != nil)
         bidError = BID_S_OK;
-    else if ([self silent])
+    else if (self.silent)
         bidError = BID_S_INTERACT_REQUIRED;
     else
         bidError = BID_S_INTERACT_FAILURE;
 
     if (bidError == BID_S_INTERACT_REQUIRED && canInteract) {
-        [self setSilent:NO];
+        self.silent = NO;
         [self acquireAssertion:webView];
     } else {
-        [self setAssertion:anAssertion];
+        assertion = anAssertion;
         [self closeIdentityDialog];
     }
 }
@@ -315,7 +233,7 @@
     return YES;
 }
 
-- (void)windowWillClose:(NSNotification *)notification
+- (void)windowWillClose:(NSNotification *)BID_UNUSED notification
 {
     [NSApp stopModal];
 }
@@ -362,15 +280,15 @@
 
     [sender stringByEvaluatingJavaScriptFromString:function];
 
-    if (![self silent]) {
+    if (!self.silent) {
         [identityDialog makeFirstResponder:sender];
-        [identityDialog setContentView:sender];
+        identityDialog.contentView = sender;
         [identityDialog makeKeyAndOrderFront:sender];
         [identityDialog center];
     }
 }
 
-- (void)webView:(WebView *)webView addMessageToConsole:(NSDictionary *)message
+- (void)webView:(WebView *)BID_UNUSED webView addMessageToConsole:(NSDictionary *)message
 {
     NSLog(@"%@", message);
 }
@@ -378,13 +296,13 @@
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
 {
     if ([sender isEqual:webView] && frame == [sender mainFrame]) {
-        if ([claims count])
+        if (claims.count)
             [self interposeAssertionSign:sender];
         [self acquireAssertion:sender];
     }
 }
 
-- (void)webView:(WebView *)sender windowScriptObjectAvailable:(WebScriptObject *)windowScriptObject
+- (void)webView:(WebView *)BID_UNUSED sender windowScriptObjectAvailable:(WebScriptObject *)windowScriptObject
 {
     [windowScriptObject setValue:self forKey:@"IdentityController"];
 }
@@ -392,7 +310,7 @@
 - (void)webView:(WebView *)sender didFailLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
 {
     NSLog(@"webView:%@ didFailLoadWithError:%@ forFrame:%@", [sender description], [error description], [frame name]);
-    if ([error code] == NSURLErrorCancelled)
+    if (error.code == NSURLErrorCancelled)
         return;
     else
         [self abortWithError:error];
@@ -404,7 +322,7 @@
     [self abortWithError:error];
 }
 
-- (void)webView:(WebView *)sender decidePolicyForNavigationAction:(NSDictionary *)actionInformation request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id<WebPolicyDecisionListener>)listener
+- (void)webView:(WebView *)BID_UNUSED sender decidePolicyForNavigationAction:(NSDictionary *)BID_UNUSED actionInformation request:(NSURLRequest *)BID_UNUSED request frame:(WebFrame *)BID_UNUSED frame decisionListener:(id<WebPolicyDecisionListener>)listener
 {
 #if 0
     NSLog(@"webView:%@ decidePolicyForNavigationAction:%@ request:%@ frame:%@ decisionListener:%@", sender, [actionInformation objectForKey:WebActionOriginalURLKey], request, [frame name], listener);
@@ -429,7 +347,7 @@
     WebView *aWebView = [self newWebView];
 
     NSLog(@"createWebViewWithRequest %@", request);
-    [identityDialog setContentView:aWebView];
+    identityDialog.contentView = aWebView;
 
     return aWebView;
 }
@@ -454,22 +372,10 @@
 {
     self = [self init];
 
-    [self setAudience:anAudience];
-    [self setClaims:someClaims];
+    self.audience = anAudience;
+    self.claims = someClaims;
 
     return self;
-}
-
-- (void)dealloc
-{
-    [audience release];
-    [emailHint release];
-    [siteName release];
-    [assertion release];
-    [identityDialog release];
-    [webView release];
-
-    [super dealloc];
 }
 
 - (BIDError)getAssertion
@@ -477,20 +383,20 @@
     NSApplication *app = [NSApplication sharedApplication];
     NSURL *personaURL = [NSURL URLWithString:@BID_SIGN_IN_URL];
 
-    if ([self audience] == nil)
+    if (self.audience == nil)
         return (bidError = BID_S_INVALID_AUDIENCE_URN);
 
-    if ([self canInteract] == NO && [self silent] == NO)
+    if (self.canInteract == NO && self.silent == NO)
         return (bidError = BID_S_INTERACT_REQUIRED);
 
-    identityDialog = [[BIDIdentityDialog identityDialog] retain];
-    [identityDialog setDelegate:self];
-    if ([self silent])
+    identityDialog = [BIDIdentityDialog identityDialog];
+    identityDialog.delegate = self;
+    if (self.silent)
         [identityDialog orderOut:nil];
-    if (parentWindow != nil)
-        [identityDialog setParentWindow:parentWindow];
+    if (self.parentWindow != nil)
+        identityDialog.parentWindow = self.parentWindow;
 
-    webView = [[self newWebView] retain];
+    webView = [self newWebView];
     [[webView mainFrame] loadRequest:[NSURLRequest requestWithURL:personaURL]];
 
     [app runModalForWindow:identityDialog];
@@ -533,19 +439,19 @@ _BIDBrowserGetAssertion(
         return BID_S_INTERACT_UNAVAILABLE;
 
     @autoreleasepool {
-        NSDictionary *claimsDict = [[[BIDJsonDictionary alloc] initWithJsonObject:claims] autorelease];
+        NSDictionary *claimsDict = [[BIDJsonDictionary alloc] initWithJsonObject:claims];
 
         controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szAudienceOrSpn] claims:claimsDict];
         if (szIdentityName != NULL) {
-            [controller setEmailHint:[NSString stringWithUTF8String:szIdentityName]];
-            [controller setSilent:!!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT)];
+            controller.emailHint = [NSString stringWithUTF8String:szIdentityName];
+            controller.silent = !!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT);
         }
         if (context->ParentWindow != NULL)
-            [controller setParentWindow:context->ParentWindow];
-        [controller setCanInteract:_BIDCanInteractP(context, ulReqFlags)];
+            controller.parentWindow = (__bridge NSWindow *)context->ParentWindow;
+        controller.canInteract = _BIDCanInteractP(context, ulReqFlags);
         [controller performSelectorOnMainThread:@selector(getAssertion) withObject:nil waitUntilDone:TRUE];
 
-        err = [controller bidError];
+        err = controller.bidError;
         if (err == BID_S_OK)
             err = _BIDDuplicateString(context, [[controller assertion] cString], pAssertion);
     }

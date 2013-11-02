@@ -47,15 +47,7 @@
 @end
 
 @interface BIDJsonDictionary : NSDictionary <BIDJsonInit>
-{
-@private
-    json_t *jsonObject;
-}
 @end
 
 @interface BIDJsonArray : NSArray <BIDJsonInit>
-{
-@private
-    json_t *jsonObject;
-}
 @end

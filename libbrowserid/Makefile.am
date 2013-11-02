@@ -43,6 +43,7 @@ libbrowserid_la_LDFLAGS  = -export-symbols $(libbrowserid_la_EXPORTS) -no-undefi
 			   @JANSSON_LDFLAGS@ @CURL_LDFLAGS@ @OPENSSL_LDFLAGS@ @TARGET_LDFLAGS@
 
 if TARGET_MACOSX
+libbrowserid_la_OBJCFLAGS = $(libbrowserid_la_CFLAGS) -fobjc-arc
 libbrowserid_la_LDFLAGS += -framework WebKit -framework AppKit
 libbrowserid_la_SOURCES += bid_json.m bid_webkit.m
 else

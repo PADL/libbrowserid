@@ -51,34 +51,24 @@
  * way, and this may be useful in a future iteration.
  */
 @interface BIDJsonDictionaryEnumerator : NSEnumerator <BIDJsonInit>
-{
-@private
-    json_t *jsonObject;
-    void *jsonIterator;
-}
 @end
 
 @interface BIDJsonArrayEnumerator : NSEnumerator <BIDJsonInit>
-{
-@private
-    json_t *jsonObject;
-    size_t i;
-}
 @end
 
-static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
+static NSObject *_BIDNSObjectFromJsonObject(json_t *jsonObject)
 {
-    id ret;
+    NSObject *ret;
 
     if (jsonObject == NULL)
         return nil;
 
     switch (json_typeof(jsonObject)) {
     case JSON_OBJECT:
-        ret = [[[BIDJsonDictionary alloc] initWithJsonObject:jsonObject] autorelease];
+        ret = [[BIDJsonDictionary alloc] initWithJsonObject:jsonObject];
         break;
     case JSON_ARRAY:
-        ret = [[[BIDJsonArray alloc] initWithJsonObject:jsonObject] autorelease];
+        ret = [[BIDJsonArray alloc] initWithJsonObject:jsonObject];
         break;
     case JSON_STRING:
         ret = [NSString stringWithCString:json_string_value(jsonObject)];
@@ -102,6 +92,11 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 }
 
 @implementation BIDJsonDictionaryEnumerator
+{
+    json_t *jsonObject;
+    void *jsonIterator;
+}
+
 - (id)initWithJsonObject:(json_t *)value
 {
     self = [super init];
@@ -115,7 +110,6 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 - (void)dealloc
 {
     json_decref(jsonObject);
-    [super dealloc];
 }
 
 - (id)nextObject
@@ -134,6 +128,11 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 @end
 
 @implementation BIDJsonArrayEnumerator
+{
+    json_t *jsonObject;
+    size_t i;
+}
+
 - (id)initWithJsonObject:(json_t *)value
 {
     self = [super init];
@@ -147,7 +146,6 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 - (void)dealloc
 {
     json_decref(jsonObject);
-    [super dealloc];
 }
 
 - (id)nextObject
@@ -160,7 +158,11 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 @end
 
 @implementation BIDJsonDictionary
-+ (BOOL)isKeyExcludedFromWebScript:(const char *)property
+{
+    json_t *jsonObject;
+}
+
++ (BOOL)isKeyExcludedFromWebScript:(const char *)BID_UNUSED property
 {
     return NO;
 }
@@ -187,7 +189,6 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 - (void)dealloc
 {
     json_decref(jsonObject);
-    [super dealloc];
 }
 
 - (NSUInteger)count
@@ -210,7 +211,7 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (NSEnumerator *)keyEnumerator
 {
-    return [[[BIDJsonDictionaryEnumerator alloc] initWithJsonObject:jsonObject] autorelease];
+    return [[BIDJsonDictionaryEnumerator alloc] initWithJsonObject:jsonObject];
 }
 
 - (NSArray *)keys
@@ -227,7 +228,7 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (NSArray *)attributeKeys
 {
-    return [self keys];
+    return self.keys;
 }
 
 - (NSString *)jsonRepresentation
@@ -248,6 +249,10 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 @end
 
 @implementation BIDJsonArray
+{
+    json_t *jsonObject;
+}
+
 - (id)initWithJsonObject:(json_t *)value
 {
     if (!json_is_array(value))
@@ -262,7 +267,6 @@ static id _BIDNSObjectFromJsonObject(json_t *jsonObject)
 - (void)dealloc
 {
     json_decref(jsonObject);
-    [super dealloc];
 }
 
 - (NSUInteger)count
