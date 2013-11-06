@@ -432,7 +432,7 @@ _BIDBrowserGetAssertion(
         return BID_S_INTERACT_UNAVAILABLE;
 
     @autoreleasepool {
-        NSDictionary *claimsDict = [[BIDJsonDictionary alloc] initWithJsonObject:claims];
+        BIDJsonDictionary *claimsDict = [[BIDJsonDictionary alloc] initWithJsonObject:claims];
 
         controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szAudienceOrSpn] claims:claimsDict];
         if (szIdentityName != NULL) {
