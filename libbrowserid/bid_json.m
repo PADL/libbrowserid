@@ -72,7 +72,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
         ret = [[BIDJsonArray alloc] initWithJsonObject:jsonObject];
         break;
     case JSON_STRING:
-        ret = [NSString stringWithCString:json_string_value(jsonObject)];
+        ret = [NSString stringWithUTF8String:json_string_value(jsonObject)];
         break;
     case JSON_INTEGER:
         ret = [NSNumber numberWithInteger:json_integer_value(jsonObject)];
@@ -120,7 +120,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
     if (jsonIterator == NULL)
         return nil;
 
-    key = [NSString stringWithCString:json_object_iter_key(jsonIterator)];
+    key = [NSString stringWithUTF8String:json_object_iter_key(jsonIterator)];
 
     jsonIterator = json_object_iter_next(jsonObject, jsonIterator);
 
@@ -240,7 +240,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
     if (szJson == NULL)
         return nil;
 
-    jsonRep = [NSString stringWithCString:szJson];
+    jsonRep = [NSString stringWithUTF8String:szJson];
 
     BIDFree(szJson);
 
@@ -296,7 +296,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
     if (szJson == NULL)
         return nil;
 
-    jsonRep = [NSString stringWithCString:szJson];
+    jsonRep = [NSString stringWithUTF8String:szJson];
 
     BIDFree(szJson);
 
