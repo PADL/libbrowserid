@@ -1,3 +1,2 @@
 - replay/reauth cache grows unbounded
 - cache purging API needs to lock cache
-- implement final SAN mapping for X.509 certificates
