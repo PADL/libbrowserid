@@ -56,7 +56,8 @@
 @interface BIDJsonArrayEnumerator : NSEnumerator <BIDJsonInit>
 @end
 
-static NSObject *_BIDNSObjectFromJsonObject(json_t *jsonObject)
+static NSObject *
+_BIDNSObjectFromJsonObject(json_t *jsonObject)
 {
     NSObject *ret;
 
