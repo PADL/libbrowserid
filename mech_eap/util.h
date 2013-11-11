@@ -1012,7 +1012,7 @@ static inline void
 krbPrincComponentToGssBuffer(krb5_principal krbPrinc,
                              int index, gss_buffer_t buffer)
 {
-    if (KRB_PRINC_LENGTH(krbPrinc) < index) {
+    if (KRB_PRINC_LENGTH(krbPrinc) <= index) {
         buffer->value = NULL;
         buffer->length = 0;
     } else {
