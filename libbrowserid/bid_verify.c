@@ -206,13 +206,12 @@ static BIDError
 _BIDValidateCertIssuer(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
-    time_t verificationTime)
+    time_t verificationTime,
+    uint32_t ulReqFlags)
 {
-    BIDError err;
     json_t *assertion;
     json_t *leafCert;
     json_t *principal;
-    const char *szEmail;
     const char *szAuthority;
     const char *szCertIssuer;
 
@@ -229,28 +228,29 @@ _BIDValidateCertIssuer(
     /*
      * For host certificates, the asserted authority is the hostname itself.
      */
-    szAuthority = json_string_value(json_object_get(principal, "hostname"));
-    if (szAuthority == NULL) {
+    if (ulReqFlags & BID_VERIFY_FLAG_RP) {
+        szAuthority = json_string_value(json_object_get(principal, "hostname"));
+    } else {
+        const char *szEmail;
+
         szEmail = json_string_value(json_object_get(principal, "email"));
         if (szEmail == NULL)
             return BID_S_UNKNOWN_PRINCIPAL_TYPE;
 
         szAuthority = strchr(szEmail, '@');
-
-        if (szAuthority == NULL)
-            return BID_S_INVALID_ISSUER;
-
-        szAuthority++;
+        if (szAuthority != NULL)
+            szAuthority++;
     }
+
+    if (szAuthority == NULL)
+        return BID_S_INVALID_ISSUER;
 
     szCertIssuer = json_string_value(json_object_get(leafCert, "iss"));
     if (szCertIssuer == NULL)
         return BID_S_MISSING_ISSUER;
 
-    err = _BIDIssuerIsAuthoritative(context, szAuthority, szCertIssuer,
-                                    verificationTime);
-
-    return err;
+    return _BIDIssuerIsAuthoritative(context, szAuthority, szCertIssuer,
+                                     verificationTime);
 }
 
 /*
@@ -415,7 +415,7 @@ _BIDVerifyLocal(
     }
 
     if (backedAssertion->cCertificates > 0) {
-        err = _BIDValidateCertIssuer(context, backedAssertion, verificationTime);
+        err = _BIDValidateCertIssuer(context, backedAssertion, verificationTime, ulReqFlags);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDValidateCertChain(context, backedAssertion, verificationTime);
