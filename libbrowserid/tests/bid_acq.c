@@ -41,6 +41,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __APPLE__
+#include <AppKit/AppKit.h>
+#endif
+
 #include <jansson.h>
 #include "browserid.h"
 #include "bid_private.h"
@@ -105,6 +109,14 @@ int main(int argc, const char *argv[])
         argv++;
     }
 #endif /* !BUILD_AS_DSO */
+
+#ifdef __APPLE__
+    /*
+     * As of OS X Mavericks, the workaround in bid_webkit.m for app-ifying console
+     * applications no longer works. So we need to initialize things here.
+     */
+    [NSApplication sharedApplication];
+#endif
 
     err = BIDAcquireContext(NULL, options, NULL, &context);
     BID_BAIL_ON_ERROR(err);
