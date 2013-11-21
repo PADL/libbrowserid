@@ -85,14 +85,14 @@
 
 @interface BIDIdentityController : NSObject <NSWindowDelegate>
 
-@property(nonatomic) NSString *audience;
-@property(nonatomic) NSDictionary *claims;
-@property(nonatomic) NSString *emailHint;
-@property(nonatomic) NSString *siteName;
+@property(nonatomic, copy) NSString *audience;
+@property(nonatomic, copy) NSDictionary *claims;
+@property(nonatomic, copy) NSString *emailHint;
+@property(nonatomic, copy) NSString *siteName;
 @property(nonatomic, readonly) NSString *assertion;
 @property(nonatomic, assign) BOOL canInteract;
 @property(nonatomic, assign) BOOL silent;
-@property(nonatomic) NSWindow *parentWindow;
+@property(nonatomic, retain) NSWindow *parentWindow;
 @property(nonatomic, readonly) BIDError bidError;
 
 /* helpers */
