@@ -213,7 +213,7 @@ _BIDValidateCertIssuer(
     json_t *leafCert;
     json_t *principal;
     const char *szEmail;
-    const char *szEmailIssuer;
+    const char *szAuthority;
     const char *szCertIssuer;
 
     if (backedAssertion->cCertificates == 0)
@@ -226,21 +226,28 @@ _BIDValidateCertIssuer(
     if (principal == NULL)
         return BID_S_MISSING_PRINCIPAL;
 
-    szEmail = json_string_value(json_object_get(principal, "email"));
-    if (szEmail == NULL)
-        return BID_S_UNKNOWN_PRINCIPAL_TYPE;
+    /*
+     * For host certificates, the asserted authority is the hostname itself.
+     */
+    szAuthority = json_string_value(json_object_get(principal, "hostname"));
+    if (szAuthority == NULL) {
+        szEmail = json_string_value(json_object_get(principal, "email"));
+        if (szEmail == NULL)
+            return BID_S_UNKNOWN_PRINCIPAL_TYPE;
 
-    szEmailIssuer = strchr(szEmail, '@');
-    if (szEmailIssuer == NULL)
-        return BID_S_INVALID_ISSUER;
+        szAuthority = strchr(szEmail, '@');
 
-    szEmailIssuer++;
+        if (szAuthority == NULL)
+            return BID_S_INVALID_ISSUER;
+
+        szAuthority++;
+    }
 
     szCertIssuer = json_string_value(json_object_get(leafCert, "iss"));
     if (szCertIssuer == NULL)
         return BID_S_MISSING_ISSUER;
 
-    err = _BIDIssuerIsAuthoritative(context, szEmailIssuer, szCertIssuer,
+    err = _BIDIssuerIsAuthoritative(context, szAuthority, szCertIssuer,
                                     verificationTime);
 
     return err;
