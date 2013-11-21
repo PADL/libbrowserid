@@ -138,9 +138,10 @@ krbPrincipalToName(OM_uint32 *minor,
     name->krbPrincipal = *principal;
     *principal = NULL;
 
-    if (KRB_PRINC_LENGTH(name->krbPrincipal) > 1) {
+    if (KRB_PRINC_LENGTH(name->krbPrincipal) >= 1) {
         name->flags |= NAME_FLAG_SERVICE;
-    } else {
+    }
+    if (KRB_PRINC_LENGTH(name->krbPrincipal) == 1) {
         name->flags |= NAME_FLAG_NAI;
     }
 

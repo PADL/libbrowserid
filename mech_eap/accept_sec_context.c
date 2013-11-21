@@ -345,7 +345,7 @@ setAcceptorIdentity(OM_uint32 *minor,
 
     krbPrinc = ctx->acceptorName->krbPrincipal;
     GSSEAP_ASSERT(krbPrinc != NULL);
-    GSSEAP_ASSERT(KRB_PRINC_LENGTH(krbPrinc) >= 2);
+    GSSEAP_ASSERT(KRB_PRINC_LENGTH(krbPrinc) >= 1);
 
     /* Acceptor-Service-Name */
     krbPrincComponentToGssBuffer(krbPrinc, 0, &nameBuf);
@@ -358,15 +358,16 @@ setAcceptorIdentity(OM_uint32 *minor,
         return major;
 
     /* Acceptor-Host-Name */
-    krbPrincComponentToGssBuffer(krbPrinc, 1, &nameBuf);
+    if (KRB_PRINC_LENGTH(krbPrinc) >= 2) {
+	krbPrincComponentToGssBuffer(krbPrinc, 1, &nameBuf);
 
-    major = gssEapRadiusAddAvp(minor, req,
-                               PW_GSS_ACCEPTOR_HOST_NAME,
-                               0,
-                               &nameBuf);
-    if (GSS_ERROR(major))
-        return major;
-
+	major = gssEapRadiusAddAvp(minor, req,
+				   PW_GSS_ACCEPTOR_HOST_NAME,
+				   0,
+				   &nameBuf);
+	if (GSS_ERROR(major))
+	    return major;
+    }
     if (KRB_PRINC_LENGTH(krbPrinc) > 2) {
         /* Acceptor-Service-Specific */
         *minor = krbPrincUnparseServiceSpecifics(krbContext,
