@@ -102,8 +102,10 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 {
     self = [super init];
 
-    jsonObject = json_incref(value);
-    jsonIterator = json_object_iter(jsonObject);
+    if (self != nil) {
+        jsonObject = json_incref(value);
+        jsonIterator = json_object_iter(jsonObject);
+    }
 
     return self;
 }
@@ -131,15 +133,17 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 @implementation BIDJsonArrayEnumerator
 {
     json_t *jsonObject;
-    size_t i;
+    size_t jsonIterator;
 }
 
 - (id)initWithJsonObject:(json_t *)value
 {
     self = [super init];
 
-    jsonObject = json_incref(value);
-    i = 0;
+    if (self != nil) {
+        jsonObject = json_incref(value);
+        jsonIterator = 0;
+    }
 
     return self;
 }
@@ -151,10 +155,10 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (id)nextObject
 {
-    if (i >= json_array_size(jsonObject))
+    if (jsonIterator >= json_array_size(jsonObject))
         return nil;
 
-    return _BIDNSObjectFromJsonObject(json_array_get(jsonObject, i++));
+    return _BIDNSObjectFromJsonObject(json_array_get(jsonObject, jsonIterator++));
 }
 @end
 
@@ -182,7 +186,8 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
         return nil;
 
     self = [super init];
-    jsonObject = json_incref(value);
+    if (self != nil)
+        jsonObject = json_incref(value);
 
     return self;
 }
@@ -260,7 +265,8 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
         return nil;
 
     self = [super init];
-    jsonObject = json_incref(value);
+    if (self != nil)
+        jsonObject = json_incref(value);
 
     return self;
 }
