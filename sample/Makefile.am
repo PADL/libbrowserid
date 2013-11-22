@@ -10,7 +10,9 @@ bidget_LDADD = ../libbrowserid/libbrowserid.la
 bidverify_SOURCES = bidverify.c
 bidverify_LDADD = ../libbrowserid/libbrowserid.la
 
-if TARGET_MACOSX
+if CFBROWSERID
+noinst_PROGRAMS += bidcfget bidcfverify
+
 bidcfget_SOURCES = bidcfget.m
 bidcfget_LDADD = ../libbrowserid/libbrowserid.la
 

@@ -16,25 +16,10 @@ AC_PROG_CXX
 AC_PROG_OBJC
 AC_CONFIG_HEADERS([config.h])
 AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h fcntl.h)
-AC_CHECK_HEADERS(CoreFoundation/CFRuntime.h)
 AC_REPLACE_FUNCS(vasprintf)
 
-dnl Check if we're on Solaris and set CFLAGS accordingly
-dnl AC_CANONICAL_TARGET
-dnl case "${target_os}" in
-dnl   solaris*)
-dnl     TARGET_CFLAGS="-DSYS_SOLARIS9 -D_POSIX_PTHREAD_SEMANTICS"
-dnl     if test "$GCC" != yes ; then
-dnl       TARGET_CFLAGS="$TARGET_CFLAGS -mt"
-dnl     else
-dnl       TARGET_CFLAGS="$TARGET_CFLAGS -pthreads"
-dnl     fi
-dnl     TARGET_LDFLAGS="-lpthread -lsocket -lnsl"
-dnl     ;;
-dnl   *)
-dnl     TARGET_CFLAGS="-Wall -pedantic -pthread"
-dnl     TARGET_LDFLAGS=""
-dnl   esac
+AC_CHECK_HEADERS(CoreFoundation/CFRuntime.h, [CFBrowserID=yes], [CFBrowserID=no])
+AM_CONDITIONAL(CFBROWSERID, test "x$CFBrowserID" = "xyes")
 
 build_mech=yes
 AC_ARG_ENABLE(gss-mech,
