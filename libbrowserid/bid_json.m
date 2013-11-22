@@ -317,6 +317,25 @@ BIDIdentityCopyAttribute(
     BIDIdentity identity,
     CFStringRef attribute)
 {
+    CFDictionaryRef dict;
+    CFTypeRef value;
+
+    dict = BIDIdentityCopyAttributeDictionary(context, identity);
+    if (dict == NULL)
+        return NULL;
+
+    value = CFDictionaryGetValue(dict, attribute);
+
+    CFRelease(dict);
+
+    return value;
+}
+
+CFDictionaryRef
+BIDIdentityCopyAttributeDictionary(
+    BIDContext context BID_UNUSED,
+    BIDIdentity identity)
+{
     BIDJsonDictionary *dict;
 
     if (identity == BID_C_NO_IDENTITY)
@@ -324,8 +343,9 @@ BIDIdentityCopyAttribute(
 
     dict = [[BIDJsonDictionary alloc] initWithJsonObject:identity->Attributes];
 
-    return CFBridgingRetain([dict valueForKey:(__bridge NSString *)attribute]);
+    return CFBridgingRetain(dict);
 }
+
 #endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
 
 #endif /* __APPLE__ */

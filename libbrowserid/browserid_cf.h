@@ -82,4 +82,9 @@ BIDIdentityCopyAttribute(
     BIDIdentity identity,
     CFStringRef attribute);
 
+CFDictionaryRef
+BIDIdentityCopyAttributeDictionary(
+    BIDContext context,
+    BIDIdentity identity);
+
 #endif /* _BROWSERID_CF_H_ */

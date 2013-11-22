@@ -61,8 +61,8 @@ int main(int argc, const char *argv[])
     BIDIdentity identity = NULL;
     CFStringRef audience = NULL;
     CFStringRef name = NULL;
+    CFDictionaryRef dict = NULL;
     time_t expires;
-    json_t *j = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
                        BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
@@ -126,19 +126,19 @@ int main(int argc, const char *argv[])
                              NULL, 0, time(NULL), 0, &identity, &expires, &flags);
     BID_BAIL_ON_ERROR(err);
 
-    err = BIDGetIdentityJsonObject(context, identity, NULL, &j);
-    BID_BAIL_ON_ERROR(err);
+    dict = BIDIdentityCopyAttributeDictionary(context, identity);
 
-    json_dumpf(j, stdout, 0);
-    printf("\n");
+    NSLog(@"Identity dictionary is %@", dict);
 
 cleanup:
-    if (context != BID_C_NO_CONTEXT) {
+    if (identity)
         CFRelease(identity);
+    if (context)
         CFRelease(context);
-    }
-    CFRelease(assertion);
-    json_decref(j);
+    if (assertion)
+        CFRelease(assertion);
+    if (dict)
+        CFRelease(dict);
 
     if (err != BID_S_OK) {
         BIDErrorToString(err, &s);
