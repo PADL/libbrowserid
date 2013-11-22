@@ -41,6 +41,7 @@
 #define _CFBROWSERID_H_ 1
 
 #include <CoreFoundation/CoreFoundation.h>
+#include <browserid.h>
 
 CFTypeID
 BIDIdentityGetTypeID(void);
