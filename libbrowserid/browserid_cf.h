@@ -65,7 +65,7 @@ BIDAssertionCreateUI(
     CFStringRef optionalIdentity,
     uint32_t ulFlags,
     BIDIdentity *pAssertedIdentity,
-    time_t *pExpiryTime,
+    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulFlags);
 
 BIDIdentity
@@ -73,7 +73,7 @@ BIDIdentityCreateFromString(
     BIDContext context,
     CFStringRef assertion,
     uint32_t ulFlags,
-    time_t *pExpiryTime,
+    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulFlags);
 
 CFTypeRef

@@ -282,12 +282,13 @@ BIDIdentityCreateFromString(
     BIDContext context,
     CFStringRef assertion,
     uint32_t ulReqFlags,
-    time_t *pExpiryTime,
+    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulRetFlags)
 {
     const char *szAssertion;
     BIDError err;
     BIDIdentity identity = BID_C_NO_IDENTITY;
+    time_t expiryTime;
 
     if (assertion == NULL)
         return NULL;
@@ -295,7 +296,10 @@ BIDIdentityCreateFromString(
     szAssertion = CFStringGetCStringPtr(assertion, kCFStringEncodingASCII);
 
     err = BIDAcquireAssertionFromString(context, szAssertion, ulReqFlags,
-                                        &identity, pExpiryTime, pulRetFlags);
+                                        &identity, &expiryTime, pulRetFlags);
+
+    if (pExpiryTime != NULL)
+        *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
 
     return (err == BID_S_OK) ? identity : NULL;
 }
@@ -309,7 +313,7 @@ BIDAssertionCreateUI(
     CFStringRef optionalIdentity,
     uint32_t ulFlags,
     BIDIdentity *pAssertedIdentity,
-    time_t *pExpiryTime,
+    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulFlags)
 {
     const char *szAudienceOrSpn = NULL;
@@ -318,6 +322,7 @@ BIDAssertionCreateUI(
     const char *szIdentity = NULL;
     char *szAssertion = NULL;
     CFStringRef assertion;
+    time_t expiryTime;
     BIDError err;
 
     if (audienceOrSpn != NULL)
@@ -331,14 +336,17 @@ BIDAssertionCreateUI(
 
     err = BIDAcquireAssertion(context, ticketCache, szAudienceOrSpn,
                               pbChannelBindings, cbChannelBindings, szIdentity,
-                              ulFlags, &szAssertion, pAssertedIdentity, pExpiryTime,
-                              pulFlags);
+                              ulFlags, &szAssertion, pAssertedIdentity,
+                              &expiryTime, pulFlags);
     if (err != BID_S_OK)
         return NULL;
 
     assertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
 
     BIDFree(szAssertion);
+
+    if (pExpiryTime != NULL)
+        *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
 
     return assertion;
 }
