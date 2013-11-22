@@ -140,7 +140,7 @@ BIDReleaseIdentity(
     if (identity == BID_C_NO_IDENTITY)
         return BID_S_INVALID_PARAMETER;
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     CFRelease(identity);
 #else
     _BIDFinalizeIdentity(identity);
@@ -377,7 +377,7 @@ _BIDAllocIdentity(
 
     *pIdentity = BID_C_NO_IDENTITY;
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     identity = (BIDIdentity)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDIdentityGetTypeID(),
                                                      sizeof(*identity) - sizeof(CFRuntimeBase), NULL);
 #else

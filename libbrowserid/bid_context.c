@@ -178,7 +178,7 @@ BIDAcquireContext(
         goto cleanup;
     }
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     context = (BIDContext)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDContextGetTypeID(),
                                                    sizeof(*context) - sizeof(CFRuntimeBase), NULL);
 #else
@@ -313,7 +313,7 @@ BIDReleaseContext(BIDContext context)
     if (context == BID_C_NO_CONTEXT)
         return BID_S_NO_CONTEXT;
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     CFRelease(context);
 #else
     memset(context, 0, sizeof(*context));

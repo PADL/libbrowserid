@@ -61,7 +61,7 @@
 
 #include <jansson.h>
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
 #endif
@@ -332,7 +332,7 @@ struct BIDAcquireContextArgsDesc {
 #define BID_ACQUIRE_CONTEXT_ARGS_VERSION        1
 
 struct BIDContextDesc {
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     CFRuntimeBase Base;
 #endif
     uint32_t ContextOptions;
@@ -984,7 +984,7 @@ struct BIDBackedAssertionDesc {
 };
 
 struct BIDIdentityDesc {
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     CFRuntimeBase Base;
 #endif
     json_t *Attributes;

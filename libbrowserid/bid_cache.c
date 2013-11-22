@@ -45,6 +45,9 @@
 #endif
 
 struct BIDCacheDesc {
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+    CFRuntimeBase Base;
+#endif
     struct BIDCacheOps *Ops;
     void *Data;
 };
@@ -93,7 +96,7 @@ _BIDAcquireCache(
         goto cleanup;
     }
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     cache = (BIDCache)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDCacheGetTypeID(),
                                                sizeof(*cache) - sizeof(CFRuntimeBase), NULL);
 #else
@@ -141,7 +144,7 @@ _BIDReleaseCache(
     if (cache->Ops->Release == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     CFRelease(cache);
 #else
     _BIDFinalizeCache(cache);

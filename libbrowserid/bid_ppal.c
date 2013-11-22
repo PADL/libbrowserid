@@ -41,7 +41,7 @@
 
 #include <sys/time.h>
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 static CFTypeID _BIDIdentityTypeID;
 static CFTypeID _BIDContextTypeID;
 static CFTypeID _BIDCacheTypeID;
@@ -50,7 +50,7 @@ static CFTypeID _BIDCacheTypeID;
 static void
 _BIDLibraryInit(void) __attribute__((__constructor__));
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 CFTypeID
 BIDIdentityGetTypeID(void)
 {
@@ -104,14 +104,14 @@ static const CFRuntimeClass _BIDCacheClass = {
     NULL, // copyFormattingDesc
     NULL, // copyDebugDesc
 };
-#endif /* __APPLE__ */
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
 
 static void
 _BIDLibraryInit(void)
 {
     json_set_alloc_funcs(BIDMalloc, BIDFree);
 
-#ifdef __APPLE__
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     _BIDIdentityTypeID = _CFRuntimeRegisterClass(&_BIDIdentityClass);
     _BIDContextTypeID = _CFRuntimeRegisterClass(&_BIDContextClass);
     _BIDCacheTypeID = _CFRuntimeRegisterClass(&_BIDCacheClass);
