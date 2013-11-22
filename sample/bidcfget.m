@@ -1,5 +1,5 @@
 #include <Cocoa/Cocoa.h>
-#include "../libbrowserid/CFBrowserID.h"
+#include <CFBrowserID.h>
 
 /*
  * Display a modal dialog acquiring an assertion for the given audience.
@@ -8,7 +8,7 @@ NSString *
 PersonaGetAssertion(
     NSString *audience,
     NSWindow *parentWindow,
-    NSError **error)
+    NSError * __autoreleasing *error)
 {
     BIDContext context = NULL;
     CFStringRef assertion = NULL;

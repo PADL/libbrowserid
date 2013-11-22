@@ -80,7 +80,7 @@ BIDIdentityCreateFromString(
     CFErrorRef *pError);
 
 BIDIdentity
-BIDIdentityFromVerifyingAssertion(
+BIDIdentityCreateFromVerifyingAssertion(
     BIDContext context,
     CFStringRef assertion,
     CFStringRef audienceOrSpn,
@@ -93,13 +93,11 @@ BIDIdentityFromVerifyingAssertion(
 
 CFTypeRef
 BIDIdentityCopyAttribute(
-    BIDContext context,
     BIDIdentity identity,
     CFStringRef attribute);
 
 CFDictionaryRef
 BIDIdentityCopyAttributeDictionary(
-    BIDContext context,
     BIDIdentity identity);
 
 #endif /* _CFBROWSERID_H_ */

@@ -104,12 +104,12 @@ int main(int argc, const char *argv[])
         
     NSLog(@"Assertion is %@", assertion);
 
-    identity = BIDIdentityFromVerifyingAssertion(context, assertion, audience, NULL,
-                                                 CFAbsoluteTimeGetCurrent(), 0, &expires, &flags, &err);
+    identity = BIDIdentityCreateFromVerifyingAssertion(context, assertion, audience, NULL,
+                                                       CFAbsoluteTimeGetCurrent(), 0, &expires, &flags, &err);
     if (identity == NULL) {
         NSLog(@"Failed to verify assertion: %@", err);
     } else {
-        dict = BIDIdentityCopyAttributeDictionary(context, identity);
+        dict = BIDIdentityCopyAttributeDictionary(identity);
         NSLog(@"Identity %@ dictionary is %@", identity, dict);
     }
 

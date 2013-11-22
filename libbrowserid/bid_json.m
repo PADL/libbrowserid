@@ -311,7 +311,6 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 CFDictionaryRef
 BIDIdentityCopyAttributeDictionary(
-    BIDContext context BID_UNUSED,
     BIDIdentity identity)
 {
     BIDJsonDictionary *dict;

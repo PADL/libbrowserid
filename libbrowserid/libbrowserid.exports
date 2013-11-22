@@ -23,7 +23,7 @@ BIDIdentityCopyAttribute
 BIDIdentityCopyAttributeDictionary
 BIDIdentityCreateFromString
 BIDIdentityDeriveKey
-BIDIdentityFromVerifyingAssertion
+BIDIdentityCreateFromVerifyingAssertion
 BIDIdentityGetTypeID
 BIDMakeRPResponseToken
 BIDMakeXRTToken

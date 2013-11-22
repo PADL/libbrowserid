@@ -164,7 +164,7 @@ BIDContextCreate(
 }
 
 BIDIdentity
-BIDIdentityFromVerifyingAssertion(
+BIDIdentityCreateFromVerifyingAssertion(
     BIDContext context,
     CFStringRef assertion,
     CFStringRef audienceOrSpn,
@@ -218,7 +218,7 @@ static CFStringRef
 _BIDIdentityCopyDebugDescription(
     CFTypeRef cf)
 {
-    return BIDIdentityCopyAttribute(BID_C_NO_CONTEXT, (BIDIdentity)cf, CFSTR("sub"));
+    return BIDIdentityCopyAttribute((BIDIdentity)cf, CFSTR("sub"));
 }
 
 BIDIdentity
@@ -261,14 +261,13 @@ BIDIdentityCreateFromString(
 
 CFTypeRef
 BIDIdentityCopyAttribute(
-    BIDContext context BID_UNUSED,
     BIDIdentity identity,
     CFStringRef attribute)
 {
     CFDictionaryRef dict;
     CFTypeRef value;
 
-    dict = BIDIdentityCopyAttributeDictionary(context, identity);
+    dict = BIDIdentityCopyAttributeDictionary(identity);
     if (dict == NULL)
         return NULL;
 

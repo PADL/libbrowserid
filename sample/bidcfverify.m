@@ -1,55 +1,63 @@
 #include <Cocoa/Cocoa.h>
-#include "../libbrowserid/CFBrowserID.h"
+#include <CFBrowserID.h>
 
-#define SAFE_CFRELEASE(x) do { if ((x)) { CFRelease((x)); (x) = NULL; } } while (0)
+id
+PersonaVerifyAssertion(
+    NSString *assertion,
+    NSString *audience,
+    NSError * __autoreleasing *error)
+{
+    BIDContext context = NULL;
+    CFErrorRef cfErr = NULL;
+    BIDIdentity identity = NULL;
+    CFAbsoluteTime expires;
+    uint32_t flags = 0;
+
+    context = BIDContextCreate(NULL, BID_CONTEXT_RP, &cfErr);
+    if (context == NULL) {
+        *error = CFBridgingRelease(cfErr);
+        return NULL;
+    }
+
+    identity = BIDIdentityCreateFromVerifyingAssertion(context,
+                                                       (__bridge CFStringRef)assertion,
+                                                       (__bridge CFStringRef)audience,
+                                                       NULL, // channel bindings
+                                                       CFAbsoluteTimeGetCurrent(),
+                                                       0, // flags
+                                                       &expires,
+                                                       &flags,
+                                                       &cfErr);
+
+    *error = CFBridgingRelease(cfErr);
+
+    CFRelease(context);
+
+    return CFBridgingRelease(identity);
+}
 
 int main(int argc, const char *argv[])
 {
-    BIDContext context = NULL;
-    CFStringRef audience = NULL;
-    CFStringRef assertion = NULL;
-    CFErrorRef err = NULL;
-    BIDIdentity identity = NULL;
-    CFDictionaryRef attrs = NULL;
-    CFAbsoluteTime expires;
-    uint32_t flags = 0;
+    int exitCode = BID_S_OK;
 
     if (argc != 3) {
         NSLog(@"Usage: %s audience assertion\n", argv[0]);
         exit(BID_S_INVALID_PARAMETER);
     }
 
-    context = BIDContextCreate(NULL, BID_CONTEXT_RP, &err);
-    if (context == NULL) {
-        NSLog(@"Failed to create BIDContext: %@", err);
-        goto cleanup;
-    }
+    @autoreleasepool {
+        NSString *audience = [NSString stringWithUTF8String:argv[1]];
+        NSString *assertion = [NSString stringWithUTF8String:argv[2]];
+        id identity;
+        NSError *error;
 
-    audience = CFStringCreateWithCString(kCFAllocatorDefault, argv[1], kCFStringEncodingASCII);
-    assertion = CFStringCreateWithCString(kCFAllocatorDefault, argv[2], kCFStringEncodingASCII);
-
-    identity = BIDIdentityFromVerifyingAssertion(context, assertion, audience, NULL,
-                                                 CFAbsoluteTimeGetCurrent(), 0, &expires, &flags, &err);
-    if (identity == NULL) {
-        NSLog(@"Failed to verify assertion: %@", err);
-        goto cleanup;
-    }
-
-    attrs = BIDIdentityCopyAttributeDictionary(context, identity);
-
-    NSLog(@"Verified assertion: %@", attrs);
-
-cleanup:
-    SAFE_CFRELEASE(attrs);
-    SAFE_CFRELEASE(audience);
-    SAFE_CFRELEASE(assertion);
-    SAFE_CFRELEASE(context);
-
-    int exitCode = 0;
-
-    if (err) {
-        exitCode = CFErrorGetCode(err);
-        CFRelease(err);
+        identity = PersonaVerifyAssertion(assertion, audience, &error);
+        if (identity) {
+            NSLog(@"Verified assertion: %@", identity);
+        } else {
+            NSLog(@"Failed to verify assertion: %@", error);
+            exitCode = [error code];
+        }
     }
 
     exit(exitCode);
