@@ -535,16 +535,23 @@ BIDContextCreate(
     CFStringRef configFile,
     uint32_t ulContextOptions);
 
-BIDError
-BIDCreateAssertion(
+CFStringRef
+BIDAssertionCreateUI(
     BIDContext context,
-    BIDTicketCache ticketCache, /* optional, uses context cache if absent */
+    BIDTicketCache ticketCache,
     CFStringRef audienceOrSpn,
     CFDataRef channelBindings,
     CFStringRef optionalIdentity,
     uint32_t ulFlags,
-    CFStringRef *pAssertion,
     BIDIdentity *pAssertedIdentity,
+    time_t *pExpiryTime,
+    uint32_t *pulFlags);
+
+BIDIdentity
+BIDIdentityCreateFromString(
+    BIDContext context,
+    CFStringRef assertion,
+    uint32_t ulFlags,
     time_t *pExpiryTime,
     uint32_t *pulFlags);
 

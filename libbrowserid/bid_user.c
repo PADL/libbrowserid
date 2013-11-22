@@ -277,15 +277,37 @@ BIDFreeAssertion(
 }
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-BIDError
-BIDCreateAssertion(
+BIDIdentity
+BIDIdentityCreateFromString(
     BIDContext context,
-    BIDTicketCache ticketCache, /* optional, uses context cache if absent */
+    CFStringRef assertion,
+    uint32_t ulReqFlags,
+    time_t *pExpiryTime,
+    uint32_t *pulRetFlags)
+{
+    const char *szAssertion;
+    BIDError err;
+    BIDIdentity identity = BID_C_NO_IDENTITY;
+
+    if (assertion == NULL)
+        return NULL;
+
+    szAssertion = CFStringGetCStringPtr(assertion, kCFStringEncodingASCII);
+
+    err = BIDAcquireAssertionFromString(context, szAssertion, ulReqFlags,
+                                        &identity, pExpiryTime, pulRetFlags);
+
+    return (err == BID_S_OK) ? identity : NULL;
+}
+
+CFStringRef
+BIDAssertionCreateUI(
+    BIDContext context,
+    BIDTicketCache ticketCache,
     CFStringRef audienceOrSpn,
     CFDataRef channelBindings,
     CFStringRef optionalIdentity,
     uint32_t ulFlags,
-    CFStringRef *pAssertion,
     BIDIdentity *pAssertedIdentity,
     time_t *pExpiryTime,
     uint32_t *pulFlags)
@@ -295,10 +317,8 @@ BIDCreateAssertion(
     size_t cbChannelBindings = 0;
     const char *szIdentity = NULL;
     char *szAssertion = NULL;
+    CFStringRef assertion;
     BIDError err;
-
-    if (pAssertion != NULL)
-        *pAssertion = NULL;
 
     if (audienceOrSpn != NULL)
         szAudienceOrSpn = CFStringGetCStringPtr(audienceOrSpn, kCFStringEncodingUTF8);
@@ -314,13 +334,12 @@ BIDCreateAssertion(
                               ulFlags, &szAssertion, pAssertedIdentity, pExpiryTime,
                               pulFlags);
     if (err != BID_S_OK)
-        return err;
+        return NULL;
 
-    if (pAssertion != NULL)
-        *pAssertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
+    assertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
 
     BIDFree(szAssertion);
 
-    return BID_S_OK;
+    return assertion;
 }
 #endif
