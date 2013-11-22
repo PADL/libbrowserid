@@ -48,12 +48,15 @@ int main(int argc, const char *argv[])
     @autoreleasepool {
         NSString *audience = [NSString stringWithUTF8String:argv[1]];
         NSString *assertion = [NSString stringWithUTF8String:argv[2]];
+        NSDictionary *attrs;
         id identity;
         NSError *error;
 
         identity = PersonaVerifyAssertion(assertion, audience, &error);
         if (identity) {
             NSLog(@"Verified assertion: %@", identity);
+            attrs = CFBridgingRelease(BIDIdentityCopyAttributeDictionary((__bridge BIDIdentity)identity));
+            NSLog(@"Attributes: %@", attrs);
         } else {
             NSLog(@"Failed to verify assertion: %@", error);
             exitCode = [error code];
