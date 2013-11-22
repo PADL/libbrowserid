@@ -1,50 +1,61 @@
 #include <Cocoa/Cocoa.h>
 #include "../libbrowserid/CFBrowserID.h"
 
-#define SAFE_CFRELEASE(x) do { if ((x)) { CFRelease((x)); (x) = NULL; } } while (0)
+// Display assertion dialog to get assertion for designated audience
+NSString *
+PersonaGetAssertion(NSString *audience, NSWindow *parentWindow, NSError **error)
+{
+    BIDContext context = NULL;
+    CFStringRef assertion = NULL;
+    CFErrorRef cfErr = NULL;
+    CFAbsoluteTime expires;
+    uint32_t flags = 0;
+
+    // create a BrowserID user agent context
+    context = BIDContextCreate(NULL, BID_CONTEXT_USER_AGENT, &cfErr);
+    if (context == NULL) {
+        *error = CFBridgingRelease(cfErr);
+        return NULL;
+    }
+
+    // set parent window handle for modal dialog
+    BIDSetContextParam(context, BID_PARAM_PARENT_WINDOW, (__bridge void *)parentWindow);
+
+
+    // display UI and acquire assertion
+    assertion = BIDAssertionCreateUI(context, (__bridge CFStringRef)audience,
+                                     NULL, NULL, 0, NULL, &expires, &flags, &cfErr);
+
+    if (cfErr)
+        *error = CFBridgingRelease(cfErr);
+
+    CFRelease(context);
+    return CFBridgingRelease(assertion);
+}
 
 int main(int argc, const char *argv[])
 {
-    BIDContext context = NULL;
-    CFStringRef audience = NULL;
-    CFStringRef assertion = NULL;
-    CFErrorRef err = NULL;
-    CFAbsoluteTime expires;
-    uint32_t flags = 0;
+    int exitCode = BID_S_OK;
 
     if (argc != 2) {
         NSLog(@"Usage: %s audience\n", argv[0]);
         exit(BID_S_INVALID_PARAMETER);
     }
 
-    audience = CFStringCreateWithCString(kCFAllocatorDefault, argv[1], kCFStringEncodingASCII);
+    @autoreleasepool {
+        NSString *audience = [NSString stringWithUTF8String:argv[1]];
+        NSString *assertion = NULL;
+        NSError *error = NULL;
 
-    [NSApplication sharedApplication];
+        [NSApplication sharedApplication];
 
-    context = BIDContextCreate(NULL, BID_CONTEXT_USER_AGENT, &err);
-    if (context == NULL) {
-        NSLog(@"Failed to create BIDContext: %@", err);
-        goto cleanup;
-    }
-
-    assertion = BIDAssertionCreateUI(context, audience, NULL, NULL, 0, NULL, &expires, &flags, &err);
-    if (assertion == NULL) {
-        NSLog(@"Failed to get assertion: %@", err);
-        goto cleanup;
-    }
-
-    NSLog(@"Assertion is %@", assertion);
-
-cleanup:
-    SAFE_CFRELEASE(assertion);
-    SAFE_CFRELEASE(audience);
-    SAFE_CFRELEASE(context);
-
-    int exitCode = 0;
-
-    if (err) {
-        exitCode = CFErrorGetCode(err);
-        CFRelease(err);
+        assertion = PersonaGetAssertion(audience, NULL, &error);
+        if (assertion) {
+            NSLog(@"Assertion is %@", assertion);
+        } else {
+            NSLog(@"Failed to get assertion: %@", error);
+            exitCode = [error code];
+        }
     }
 
     exit(exitCode);
