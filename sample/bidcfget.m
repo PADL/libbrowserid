@@ -1,9 +1,14 @@
 #include <Cocoa/Cocoa.h>
 #include "../libbrowserid/CFBrowserID.h"
 
-// Display assertion dialog to get assertion for designated audience
+/*
+ * Display a modal dialog acquiring an assertion for the given audience.
+ */
 NSString *
-PersonaGetAssertion(NSString *audience, NSWindow *parentWindow, NSError **error)
+PersonaGetAssertion(
+    NSString *audience,
+    NSWindow *parentWindow,
+    NSError **error)
 {
     BIDContext context = NULL;
     CFStringRef assertion = NULL;
@@ -11,18 +16,14 @@ PersonaGetAssertion(NSString *audience, NSWindow *parentWindow, NSError **error)
     CFAbsoluteTime expires;
     uint32_t flags = 0;
 
-    // create a BrowserID user agent context
     context = BIDContextCreate(NULL, BID_CONTEXT_USER_AGENT, &cfErr);
     if (context == NULL) {
         *error = CFBridgingRelease(cfErr);
         return NULL;
     }
 
-    // set parent window handle for modal dialog
     BIDSetContextParam(context, BID_PARAM_PARENT_WINDOW, (__bridge void *)parentWindow);
 
-
-    // display UI and acquire assertion
     assertion = BIDAssertionCreateUI(context, (__bridge CFStringRef)audience,
                                      NULL, NULL, 0, NULL, &expires, &flags, &cfErr);
 
@@ -30,6 +31,7 @@ PersonaGetAssertion(NSString *audience, NSWindow *parentWindow, NSError **error)
         *error = CFBridgingRelease(cfErr);
 
     CFRelease(context);
+
     return CFBridgingRelease(assertion);
 }
 
