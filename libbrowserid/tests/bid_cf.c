@@ -49,20 +49,18 @@
 #include "bid_private.h"
 
 /*
- * Test acquiring an assertion and verifying it.
+ * Test acquiring an assertion and verifying it using CoreFoundation API.
  */
 
 int main(int argc, const char *argv[])
 {
-    BIDError err;
     BIDContext context = NULL;
     CFStringRef assertion = NULL;
-    const char *s;
     BIDIdentity identity = NULL;
     CFStringRef audience = NULL;
     CFStringRef name = NULL;
     CFDictionaryRef dict = NULL;
-    time_t expires;
+    CFAbsoluteTime expires;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
                        BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
@@ -71,31 +69,6 @@ int main(int argc, const char *argv[])
         name = CFStringCreateWithCString(kCFAllocatorDefault, argv[2], kCFStringEncodingASCII);
         argc -= 2;
         argv += 2;
-    }
-    if (argc > 1 && !strcmp(argv[1], "-remote")) {
-        options |= BID_CONTEXT_VERIFY_REMOTE;
-        argc--;
-        argv++;
-    }
-    if (argc > 1 && !strcmp(argv[1], "-nogss")) {
-        options &= ~(BID_CONTEXT_GSS);
-        argc--;
-        argv++;
-    }
-    if (argc > 1 && !strcmp(argv[1], "-noauthoritycache")) {
-        options &= ~(BID_CONTEXT_AUTHORITY_CACHE);
-        argc--;
-        argv++;
-    }
-    if (argc > 1 && !strcmp(argv[1], "-dh")) {
-        options |= BID_CONTEXT_DH_KEYEX;
-        argc--;
-        argv++;
-    }
-    if (argc > 1 && !strcmp(argv[1], "-ecdh")) {
-        options |= BID_CONTEXT_ECDH_KEYEX;
-        argc--;
-        argv++;
     }
     if (argc > 1) {
         audience = CFStringCreateWithCString(kCFAllocatorDefault, argv[1], kCFStringEncodingASCII);
@@ -114,23 +87,17 @@ int main(int argc, const char *argv[])
     if (!audience)
         audience = CFSTR("host/www.persona.org");
 
-    assertion = BIDAssertionCreateUI(context, BID_C_NO_TICKET_CACHE,
-                                     audience, NULL, name, 0,
-                                     NULL, &expires, &flags);
+    assertion = BIDAssertionCreateUI(context, audience, NULL, name, 0, NULL, &expires, &flags);
 
     NSLog(@"Assertion is %@", assertion);
 
-    err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE,
-                             CFStringGetCStringPtr(assertion, kCFStringEncodingASCII),
-                             CFStringGetCStringPtr(audience, kCFStringEncodingUTF8),
-                             NULL, 0, time(NULL), 0, &identity, &expires, &flags);
-    BID_BAIL_ON_ERROR(err);
+    identity = BIDIdentityFromVerifyingAssertion(context, assertion, audience, NULL,
+                                                 CFAbsoluteTimeGetCurrent(), 0, &expires, &flags);
+    if (identity != BID_C_NO_IDENTITY) {
+        dict = BIDIdentityCopyAttributeDictionary(context, identity);
+        NSLog(@"Identity dictionary is %@", dict);
+    }
 
-    dict = BIDIdentityCopyAttributeDictionary(context, identity);
-
-    NSLog(@"Identity dictionary is %@", dict);
-
-cleanup:
     if (identity)
         CFRelease(identity);
     if (context)
@@ -140,10 +107,5 @@ cleanup:
     if (dict)
         CFRelease(dict);
 
-    if (err != BID_S_OK) {
-        BIDErrorToString(err, &s);
-        fprintf(stderr, "libbrowserid error %s[%d]\n", s, err);
-    }
-
-    exit(err);
+    exit(0);
 }

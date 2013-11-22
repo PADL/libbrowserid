@@ -307,7 +307,6 @@ BIDIdentityCreateFromString(
 CFStringRef
 BIDAssertionCreateUI(
     BIDContext context,
-    BIDTicketCache ticketCache,
     CFStringRef audienceOrSpn,
     CFDataRef channelBindings,
     CFStringRef optionalIdentity,
@@ -334,7 +333,7 @@ BIDAssertionCreateUI(
     if (optionalIdentity != NULL)
         szIdentity = CFStringGetCStringPtr(optionalIdentity, kCFStringEncodingUTF8);
 
-    err = BIDAcquireAssertion(context, ticketCache, szAudienceOrSpn,
+    err = BIDAcquireAssertion(context, BID_C_NO_TICKET_CACHE, szAudienceOrSpn,
                               pbChannelBindings, cbChannelBindings, szIdentity,
                               ulFlags, &szAssertion, pAssertedIdentity,
                               &expiryTime, pulFlags);
@@ -350,4 +349,4 @@ BIDAssertionCreateUI(
 
     return assertion;
 }
-#endif
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */

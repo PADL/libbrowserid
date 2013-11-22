@@ -800,3 +800,48 @@ cleanup:
     return err;
 }
 
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+BIDIdentity
+BIDIdentityFromVerifyingAssertion(
+    BIDContext context,
+    CFStringRef assertion,
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFAbsoluteTime verificationTime,
+    uint32_t ulReqFlags,
+    CFAbsoluteTime *pExpiryTime,
+    uint32_t *pulVerifyFlags)
+{
+    const char *szAssertion = NULL;
+    const char *szAudienceOrSpn = NULL;
+    const unsigned char *pbChannelBindings = NULL;
+    size_t cbChannelBindings = 0;
+    time_t expiryTime;
+    BIDIdentity identity = BID_C_NO_IDENTITY;
+    BIDError err;
+
+    if (assertion == NULL)
+        return NULL;
+
+    if (pExpiryTime != NULL)
+        *pExpiryTime = 0;
+
+    szAssertion = CFStringGetCStringPtr(assertion, kCFStringEncodingASCII);
+    if (audienceOrSpn != NULL)
+        szAudienceOrSpn = CFStringGetCStringPtr(audienceOrSpn, kCFStringEncodingUTF8);
+    if (channelBindings != NULL) {
+        pbChannelBindings = CFDataGetBytePtr(channelBindings);
+        cbChannelBindings = CFDataGetLength(channelBindings);
+    }
+
+    err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE, szAssertion,
+                             szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
+                             verificationTime + kCFAbsoluteTimeIntervalSince1970,
+                             ulReqFlags, &identity, &expiryTime, pulVerifyFlags);
+                             
+    if (pExpiryTime != NULL)
+        *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
+
+    return identity;
+}
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */

@@ -59,7 +59,6 @@ BIDContextCreate(
 CFStringRef
 BIDAssertionCreateUI(
     BIDContext context,
-    BIDTicketCache ticketCache,
     CFStringRef audienceOrSpn,
     CFDataRef channelBindings,
     CFStringRef optionalIdentity,
@@ -75,6 +74,17 @@ BIDIdentityCreateFromString(
     uint32_t ulFlags,
     CFAbsoluteTime *pExpiryTime,
     uint32_t *pulFlags);
+
+BIDIdentity
+BIDIdentityFromVerifyingAssertion(
+    BIDContext context,
+    CFStringRef assertion,
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFAbsoluteTime verificationTime,
+    uint32_t ulReqFlags,
+    CFAbsoluteTime *pExpiryTime,
+    uint32_t *pulVerifyFlags);
 
 CFTypeRef
 BIDIdentityCopyAttribute(
