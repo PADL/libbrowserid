@@ -518,50 +518,6 @@ BIDFreeData(
     BIDContext context,
     char *s);
 
-#ifdef __APPLE__
-#include <CoreFoundation/CoreFoundation.h>
-
-CFTypeID
-BIDIdentityGetTypeID(void);
-
-CFTypeID
-BIDContextGetTypeID(void);
-
-CFTypeID
-BIDCacheGetTypeID(void);
-
-BIDContext
-BIDContextCreate(
-    CFStringRef configFile,
-    uint32_t ulContextOptions);
-
-CFStringRef
-BIDAssertionCreateUI(
-    BIDContext context,
-    BIDTicketCache ticketCache,
-    CFStringRef audienceOrSpn,
-    CFDataRef channelBindings,
-    CFStringRef optionalIdentity,
-    uint32_t ulFlags,
-    BIDIdentity *pAssertedIdentity,
-    time_t *pExpiryTime,
-    uint32_t *pulFlags);
-
-BIDIdentity
-BIDIdentityCreateFromString(
-    BIDContext context,
-    CFStringRef assertion,
-    uint32_t ulFlags,
-    time_t *pExpiryTime,
-    uint32_t *pulFlags);
-
-CFTypeRef
-BIDIdentityCopyAttribute(
-    BIDContext context,
-    BIDIdentity identity,
-    CFStringRef attribute);
-#endif /* __APPLE__ */
-
 #ifdef __cplusplus
 }
 #endif

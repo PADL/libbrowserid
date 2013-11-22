@@ -61,15 +61,16 @@
 
 #include <jansson.h>
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-#include <CoreFoundation/CoreFoundation.h>
-#include <CoreFoundation/CFRuntime.h>
-#endif
-
 #ifdef WIN32
 #include "bid_wpal.h"
 #endif
 #include "browserid.h"
+
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreFoundation/CFRuntime.h>
+#include "browserid_cf.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
