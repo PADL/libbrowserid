@@ -37,8 +37,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef __APPLE__
-
 #include "bid_private.h"
 #include "bid_json.h"
 
@@ -327,5 +325,3 @@ BIDIdentityCopyAttributeDictionary(
 }
 
 #endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
-
-#endif /* __APPLE__ */

@@ -39,7 +39,6 @@
 
 #include "bid_private.h"
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 static CFTypeID _BIDIdentityTypeID = _kCFRuntimeNotATypeID;
 static CFTypeID _BIDContextTypeID = _kCFRuntimeNotATypeID;
 static CFTypeID _BIDCacheTypeID = _kCFRuntimeNotATypeID;
@@ -334,4 +333,3 @@ BIDAssertionCreateUI(
 
     return assertion;
 }
-#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
