@@ -45,7 +45,7 @@
 
 #include <jansson.h>
 #include "browserid.h"
-#include "browserid_cf.h"
+#include "CFBrowserID.h"
 #include "bid_private.h"
 
 /*

@@ -69,7 +69,7 @@
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
-#include "browserid_cf.h"
+#include "CFBrowserID.h"
 #endif
 
 #ifdef __cplusplus

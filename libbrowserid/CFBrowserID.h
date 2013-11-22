@@ -37,8 +37,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _BROWSERID_CF_H_
-#define _BROWSERID_CF_H_ 1
+#ifndef _CFBROWSERID_H_
+#define _CFBROWSERID_H_ 1
 
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -97,4 +97,4 @@ BIDIdentityCopyAttributeDictionary(
     BIDContext context,
     BIDIdentity identity);
 
-#endif /* _BROWSERID_CF_H_ */
+#endif /* _CFBROWSERID_H_ */
