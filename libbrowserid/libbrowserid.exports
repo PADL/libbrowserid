@@ -3,6 +3,10 @@ BIDAcquireAssertionFromString
 BIDAcquireContext
 BIDAcquireReplayCache
 BIDAcquireTicketCache
+BIDAssertionCreateUI
+BIDCacheGetTypeID
+BIDContextCreate
+BIDContextGetTypeID
 BIDErrorToString
 BIDFreeAssertion
 BIDFreeData
@@ -15,7 +19,10 @@ BIDGetIdentityIssuer
 BIDGetIdentityJsonObject
 BIDGetIdentityReauthTicket
 BIDGetIdentitySubject
+BIDIdentityCopyAttribute
+BIDIdentityCreateFromString
 BIDIdentityDeriveKey
+BIDIdentityGetTypeID
 BIDMakeRPResponseToken
 BIDMakeXRTToken
 BIDReleaseContext

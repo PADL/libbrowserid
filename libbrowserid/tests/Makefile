@@ -16,6 +16,9 @@ bid_doc: bid_doc.c ../libbrowserid.la
 bid_acq: bid_acq.c ../libbrowserid.la
 	clang -ObjC -I../.. -I.. -g -Wall -o bid_acq bid_acq.c -lcrypto -L../.libs -lbrowserid $(LIBS) -framework WebKit -framework AppKit
 
+bid_cf: bid_cf.c ../libbrowserid.la
+	clang -ObjC -I../.. -I.. -g -Wall -o bid_cf bid_cf.c -lcrypto -L../.libs -lbrowserid $(LIBS) -framework WebKit -framework AppKit
+
 bid_acq.so: bid_acq.c ../libbrowserid.la
 	clang -ObjC -DBUILD_AS_DSO -I../.. -I.. -g -Wall -bundle -o bid_acq.so bid_acq.c -lcrypto -L../.libs -lbrowserid $(LIBS) -framework WebKit -framework AppKit
 
