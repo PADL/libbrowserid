@@ -9,7 +9,6 @@ int main(int argc, const char *argv[])
     BIDError err;
     BIDContext context = NULL;
     char *assertion = NULL;
-    BIDIdentity identity = NULL;
     time_t expires;
     uint32_t flags = 0;
 
@@ -36,7 +35,6 @@ int main(int argc, const char *argv[])
 cleanup:
     if (context != BID_C_NO_CONTEXT) {
         BIDFreeAssertion(context, assertion);
-        BIDReleaseIdentity(context, identity);
         BIDReleaseContext(context);
     }
 

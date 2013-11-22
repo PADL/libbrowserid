@@ -55,7 +55,8 @@ BIDCacheGetTypeID(void);
 BIDContext
 BIDContextCreate(
     CFStringRef configFile,
-    uint32_t ulContextOptions);
+    uint32_t ulContextOptions,
+    CFErrorRef *pError);
 
 CFStringRef
 BIDAssertionCreateUI(
@@ -66,7 +67,8 @@ BIDAssertionCreateUI(
     uint32_t ulFlags,
     BIDIdentity *pAssertedIdentity,
     CFAbsoluteTime *pExpiryTime,
-    uint32_t *pulFlags);
+    uint32_t *pulFlags,
+    CFErrorRef *pError);
 
 BIDIdentity
 BIDIdentityCreateFromString(
@@ -74,7 +76,8 @@ BIDIdentityCreateFromString(
     CFStringRef assertion,
     uint32_t ulFlags,
     CFAbsoluteTime *pExpiryTime,
-    uint32_t *pulFlags);
+    uint32_t *pulFlags,
+    CFErrorRef *pError);
 
 BIDIdentity
 BIDIdentityFromVerifyingAssertion(
@@ -85,7 +88,8 @@ BIDIdentityFromVerifyingAssertion(
     CFAbsoluteTime verificationTime,
     uint32_t ulReqFlags,
     CFAbsoluteTime *pExpiryTime,
-    uint32_t *pulVerifyFlags);
+    uint32_t *pulVerifyFlags,
+    CFErrorRef *pError);
 
 CFTypeRef
 BIDIdentityCopyAttribute(

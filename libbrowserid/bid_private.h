@@ -461,6 +461,14 @@ _BIDGetFixedDHParams(
     json_t **pDhParams);
 
 /*
+ * bid_error.c
+ */
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+CFErrorRef
+_BIDCFMapError(BIDError err);
+#endif
+
+/*
  * bid_fcache.c
  */
 

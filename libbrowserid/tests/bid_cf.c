@@ -48,6 +48,8 @@
 #include "CFBrowserID.h"
 #include "bid_private.h"
 
+#define SAFE_CFRELEASE(x) do { if ((x)) { CFRelease((x)); (x) = NULL; } } while (0)
+
 /*
  * Test acquiring an assertion and verifying it using CoreFoundation API.
  */
@@ -61,6 +63,7 @@ int main(int argc, const char *argv[])
     CFStringRef name = NULL;
     CFDictionaryRef dict = NULL;
     CFAbsoluteTime expires;
+    CFErrorRef err = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
                        BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
@@ -82,30 +85,39 @@ int main(int argc, const char *argv[])
      */
     [NSApplication sharedApplication];
 
-    context = BIDContextCreate(NULL, options);
+    context = BIDContextCreate(NULL, options, &err);
+    if (context == NULL) {
+        NSLog(@"Failed to create context: %@", err);
+        SAFE_CFRELEASE(err);
+        exit(1);
+    }
 
-    if (!audience)
+    if (audience == NULL)
         audience = CFSTR("host/www.persona.org");
 
-    assertion = BIDAssertionCreateUI(context, audience, NULL, name, 0, NULL, &expires, &flags);
-
+    assertion = BIDAssertionCreateUI(context, audience, NULL, name, 0, NULL, &expires, &flags, &err);
+    if (assertion == NULL) {
+        NSLog(@"Failed to acquire assertion: %@", err);
+        SAFE_CFRELEASE(err);
+        exit(2);
+    }
+        
     NSLog(@"Assertion is %@", assertion);
 
     identity = BIDIdentityFromVerifyingAssertion(context, assertion, audience, NULL,
-                                                 CFAbsoluteTimeGetCurrent(), 0, &expires, &flags);
-    if (identity != BID_C_NO_IDENTITY) {
+                                                 CFAbsoluteTimeGetCurrent(), 0, &expires, &flags, &err);
+    if (identity == NULL) {
+        NSLog(@"Failed to verify assertion: %@", err);
+    } else {
         dict = BIDIdentityCopyAttributeDictionary(context, identity);
         NSLog(@"Identity dictionary is %@", dict);
     }
 
-    if (identity)
-        CFRelease(identity);
-    if (context)
-        CFRelease(context);
-    if (assertion)
-        CFRelease(assertion);
-    if (dict)
-        CFRelease(dict);
+    SAFE_CFRELEASE(identity);
+    SAFE_CFRELEASE(context);
+    SAFE_CFRELEASE(assertion);
+    SAFE_CFRELEASE(dict);
+    SAFE_CFRELEASE(err);
 
     exit(0);
 }

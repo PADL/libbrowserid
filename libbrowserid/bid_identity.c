@@ -810,7 +810,8 @@ BIDIdentityFromVerifyingAssertion(
     CFAbsoluteTime verificationTime,
     uint32_t ulReqFlags,
     CFAbsoluteTime *pExpiryTime,
-    uint32_t *pulVerifyFlags)
+    uint32_t *pulVerifyFlags,
+    CFErrorRef *pError)
 {
     const char *szAssertion = NULL;
     const char *szAudienceOrSpn = NULL;
@@ -820,11 +821,15 @@ BIDIdentityFromVerifyingAssertion(
     BIDIdentity identity = BID_C_NO_IDENTITY;
     BIDError err;
 
-    if (assertion == NULL)
-        return NULL;
-
     if (pExpiryTime != NULL)
         *pExpiryTime = 0;
+    if (pulVerifyFlags != NULL)
+        *pulVerifyFlags = 0;
+    if (pError != NULL)
+        *pError = NULL;
+
+    if (assertion == NULL)
+        return NULL;
 
     szAssertion = CFStringGetCStringPtr(assertion, kCFStringEncodingASCII);
     if (audienceOrSpn != NULL)
@@ -841,6 +846,8 @@ BIDIdentityFromVerifyingAssertion(
                              
     if (pExpiryTime != NULL)
         *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
+    if (err != BID_S_OK && pError != NULL)
+        *pError = _BIDCFMapError(err);
 
     return identity;
 }

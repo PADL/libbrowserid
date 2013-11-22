@@ -534,14 +534,18 @@ BIDGetContextParam(
 BIDContext
 BIDContextCreate(
     CFStringRef configFile,
-    uint32_t ulContextOptions)
+    uint32_t ulContextOptions,
+    CFErrorRef *pError)
 {
+    BIDError err;
     BIDContext context;
     const char *szConfigFile;
 
     szConfigFile = CFStringGetCStringPtr(configFile, kCFStringEncodingUTF8);
 
-    BIDAcquireContext(szConfigFile, ulContextOptions, NULL, &context);
+    err = BIDAcquireContext(szConfigFile, ulContextOptions, NULL, &context);
+    if (err != BID_S_OK && pError != NULL)
+        *pError = _BIDCFMapError(err);
 
     return context;
 }

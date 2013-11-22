@@ -283,12 +283,20 @@ BIDIdentityCreateFromString(
     CFStringRef assertion,
     uint32_t ulReqFlags,
     CFAbsoluteTime *pExpiryTime,
-    uint32_t *pulRetFlags)
+    uint32_t *pulRetFlags,
+    CFErrorRef *pError)
 {
     const char *szAssertion;
     BIDError err;
     BIDIdentity identity = BID_C_NO_IDENTITY;
     time_t expiryTime;
+
+    if (pExpiryTime != NULL)
+        *pExpiryTime = 0;
+    if (pulRetFlags != NULL)
+        *pulRetFlags = 0;
+    if (pError != NULL)
+        *pError = NULL;
 
     if (assertion == NULL)
         return NULL;
@@ -300,6 +308,9 @@ BIDIdentityCreateFromString(
 
     if (pExpiryTime != NULL)
         *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
+
+    if (err != BID_S_OK && pError != NULL)
+        *pError = _BIDCFMapError(err);
 
     return (err == BID_S_OK) ? identity : NULL;
 }
@@ -313,7 +324,8 @@ BIDAssertionCreateUI(
     uint32_t ulFlags,
     BIDIdentity *pAssertedIdentity,
     CFAbsoluteTime *pExpiryTime,
-    uint32_t *pulFlags)
+    uint32_t *pulFlags,
+    CFErrorRef *pError)
 {
     const char *szAudienceOrSpn = NULL;
     const unsigned char *pbChannelBindings = NULL;
@@ -323,6 +335,13 @@ BIDAssertionCreateUI(
     CFStringRef assertion;
     time_t expiryTime;
     BIDError err;
+
+    if (pExpiryTime != NULL)
+        *pExpiryTime = 0;
+    if (pulFlags != NULL)
+        *pulFlags = 0;
+    if (pError != NULL)
+        *pError = NULL;
 
     if (audienceOrSpn != NULL)
         szAudienceOrSpn = CFStringGetCStringPtr(audienceOrSpn, kCFStringEncodingUTF8);
@@ -337,11 +356,12 @@ BIDAssertionCreateUI(
                               pbChannelBindings, cbChannelBindings, szIdentity,
                               ulFlags, &szAssertion, pAssertedIdentity,
                               &expiryTime, pulFlags);
-    if (err != BID_S_OK)
+    if (err != BID_S_OK && pError != NULL) {
+        *pError = _BIDCFMapError(err);
         return NULL;
+    }
 
     assertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
-
     BIDFree(szAssertion);
 
     if (pExpiryTime != NULL)
