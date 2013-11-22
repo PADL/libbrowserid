@@ -461,14 +461,6 @@ _BIDGetFixedDHParams(
     json_t **pDhParams);
 
 /*
- * bid_error.c
- */
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-CFErrorRef
-_BIDCFMapError(BIDError err);
-#endif
-
-/*
  * bid_fcache.c
  */
 
@@ -505,12 +497,6 @@ _BIDValidateSubject(
     BIDIdentity identity,
     const char *szSubjectName,
     uint32_t ulFlags);
-
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-CFStringRef
-_BIDIdentityCopyDebugDescription(
-    CFTypeRef cf);
-#endif
 
 /*
  * bid_jwt.c

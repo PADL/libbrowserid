@@ -45,7 +45,7 @@ libbrowserid_la_LDFLAGS  = -export-symbols $(libbrowserid_la_EXPORTS) -no-undefi
 if TARGET_MACOSX
 libbrowserid_la_OBJCFLAGS = $(libbrowserid_la_CFLAGS) -fobjc-arc
 libbrowserid_la_LDFLAGS += -framework WebKit -framework AppKit
-libbrowserid_la_SOURCES += bid_json.m bid_webkit.m
+libbrowserid_la_SOURCES += bid_json.m bid_webkit.m bid_cf.c
 else
 libbrowserid_la_SOURCES += bid_stubs.c
 endif

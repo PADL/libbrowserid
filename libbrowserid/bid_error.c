@@ -139,35 +139,3 @@ BIDErrorToString(
     *pszErr = _BIDErrorTable[error];
     return BID_S_OK;
 }
-
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-CFErrorRef
-_BIDCFMapError(BIDError err)
-{
-    CFErrorRef cfError = NULL;
-    CFDictionaryRef cfDict = NULL;
-    const char *szErr = NULL;
-
-    BIDErrorToString(err, &szErr);
-
-    if (szErr != NULL) {
-        CFStringRef errDesc;
-
-        errDesc = CFStringCreateWithCString(kCFAllocatorDefault, szErr, kCFStringEncodingASCII);
-        cfDict = CFDictionaryCreate(kCFAllocatorDefault,
-                                    (const void **)&kCFErrorDescriptionKey,
-                                    (const void **)&errDesc,
-                                    1,
-                                    &kCFTypeDictionaryKeyCallBacks,
-                                    &kCFTypeDictionaryValueCallBacks);
-        CFRelease(errDesc);
-    }
-
-    cfError = CFErrorCreate(kCFAllocatorDefault, CFSTR("com.padl.BrowserID"), err, cfDict);
-
-    if (cfDict != NULL)
-        CFRelease(cfDict);
-
-    return cfError;
-}
-#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
