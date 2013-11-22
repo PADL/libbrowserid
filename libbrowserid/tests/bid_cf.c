@@ -110,7 +110,7 @@ int main(int argc, const char *argv[])
         NSLog(@"Failed to verify assertion: %@", err);
     } else {
         dict = BIDIdentityCopyAttributeDictionary(context, identity);
-        NSLog(@"Identity dictionary is %@", dict);
+        NSLog(@"Identity %@ dictionary is %@", identity, dict);
     }
 
     SAFE_CFRELEASE(identity);

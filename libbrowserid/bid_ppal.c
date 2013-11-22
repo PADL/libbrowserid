@@ -41,80 +41,20 @@
 
 #include <sys/time.h>
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-static CFTypeID _BIDIdentityTypeID;
-static CFTypeID _BIDContextTypeID;
-static CFTypeID _BIDCacheTypeID;
-#endif
-
 static void
 _BIDLibraryInit(void) __attribute__((__constructor__));
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-CFTypeID
-BIDIdentityGetTypeID(void)
-{
-    return _BIDIdentityTypeID;
-}
-
-CFTypeID
-BIDContextGetTypeID(void)
-{
-    return _BIDContextTypeID;
-}
-
-CFTypeID
-BIDCacheGetTypeID(void)
-{
-    return _BIDCacheTypeID;
-}
-
-static const CFRuntimeClass _BIDIdentityClass = {
-    0,
-    "BIDIdentity",
-    NULL, // init
-    NULL, // copy
-    (void (*)(CFTypeRef))_BIDFinalizeIdentity,
-    NULL, // equal
-    NULL, // hash
-    NULL, // copyFormattingDesc
-    NULL, // copyDebugDesc
-};
-
-static const CFRuntimeClass _BIDContextClass = {
-    0,
-    "BIDContext",
-    NULL, // init
-    NULL, // copy
-    (void (*)(CFTypeRef))_BIDFinalizeContext,
-    NULL, // equal
-    NULL, // hash
-    NULL, // copyFormattingDesc
-    NULL, // copyDebugDesc
-};
-
-static const CFRuntimeClass _BIDCacheClass = {
-    0,
-    "BIDCache",
-    NULL, // init
-    NULL, // copy
-    (void (*)(CFTypeRef))_BIDFinalizeCache,
-    NULL, // equal
-    NULL, // hash
-    NULL, // copyFormattingDesc
-    NULL, // copyDebugDesc
-};
-#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
+static void
+_BIDCFInit(void);
+#endif
 
 static void
 _BIDLibraryInit(void)
 {
     json_set_alloc_funcs(BIDMalloc, BIDFree);
-
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-    _BIDIdentityTypeID = _CFRuntimeRegisterClass(&_BIDIdentityClass);
-    _BIDContextTypeID = _CFRuntimeRegisterClass(&_BIDContextClass);
-    _BIDCacheTypeID = _CFRuntimeRegisterClass(&_BIDCacheClass);
+    _BIDCFInit();
 #endif
 }
 
@@ -147,3 +87,71 @@ _BIDOutputDebugJson(json_t *j)
     fprintf(stdout, "\n");
 }
 #endif
+
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+static CFTypeID _BIDIdentityTypeID;
+static CFTypeID _BIDContextTypeID;
+static CFTypeID _BIDCacheTypeID;
+
+CFTypeID
+BIDIdentityGetTypeID(void)
+{
+    return _BIDIdentityTypeID;
+}
+
+CFTypeID
+BIDContextGetTypeID(void)
+{
+    return _BIDContextTypeID;
+}
+
+CFTypeID
+BIDCacheGetTypeID(void)
+{
+    return _BIDCacheTypeID;
+}
+
+static const CFRuntimeClass _BIDIdentityClass = {
+    0,
+    "BIDIdentity",
+    NULL, // init
+    NULL, // copy
+    (void (*)(CFTypeRef))_BIDFinalizeIdentity,
+    NULL, // equal
+    NULL, // hash
+    NULL, // copyFormattingDesc
+    _BIDIdentityCopyDebugDescription, // copyDebugDesc
+};
+
+static const CFRuntimeClass _BIDContextClass = {
+    0,
+    "BIDContext",
+    NULL, // init
+    NULL, // copy
+    (void (*)(CFTypeRef))_BIDFinalizeContext,
+    NULL, // equal
+    NULL, // hash
+    NULL, // copyFormattingDesc
+    NULL, // copyDebugDesc
+};
+
+static const CFRuntimeClass _BIDCacheClass = {
+    0,
+    "BIDCache",
+    NULL, // init
+    NULL, // copy
+    (void (*)(CFTypeRef))_BIDFinalizeCache,
+    NULL, // equal
+    NULL, // hash
+    NULL, // copyFormattingDesc
+    NULL, // copyDebugDesc
+};
+
+static void
+_BIDCFInit(void)
+{
+    _BIDIdentityTypeID = _CFRuntimeRegisterClass(&_BIDIdentityClass);
+    _BIDContextTypeID = _CFRuntimeRegisterClass(&_BIDContextClass);
+    _BIDCacheTypeID = _CFRuntimeRegisterClass(&_BIDCacheClass);
+}
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */

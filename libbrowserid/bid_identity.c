@@ -851,4 +851,11 @@ BIDIdentityFromVerifyingAssertion(
 
     return identity;
 }
+
+CFStringRef
+_BIDIdentityCopyDebugDescription(
+    CFTypeRef cf)
+{
+    return BIDIdentityCopyAttribute(BID_C_NO_CONTEXT, (BIDIdentity)cf, CFSTR("sub"));
+}
 #endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */

@@ -506,6 +506,12 @@ _BIDValidateSubject(
     const char *szSubjectName,
     uint32_t ulFlags);
 
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+CFStringRef
+_BIDIdentityCopyDebugDescription(
+    CFTypeRef cf);
+#endif
+
 /*
  * bid_jwt.c
  */
