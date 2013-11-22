@@ -310,4 +310,22 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 }
 @end
 
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+CFTypeRef
+BIDIdentityCopyAttribute(
+    BIDContext context BID_UNUSED,
+    BIDIdentity identity,
+    CFStringRef attribute)
+{
+    BIDJsonDictionary *dict;
+
+    if (identity == BID_C_NO_IDENTITY)
+        return NULL;
+
+    dict = [[BIDJsonDictionary alloc] initWithJsonObject:identity->Attributes];
+
+    return CFBridgingRetain([dict valueForKey:(__bridge NSString *)attribute]);
+}
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
+
 #endif /* __APPLE__ */

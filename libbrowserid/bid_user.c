@@ -275,3 +275,52 @@ BIDFreeAssertion(
     BIDFree(assertion);
     return BID_S_OK;
 }
+
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+BIDError
+BIDCreateAssertion(
+    BIDContext context,
+    BIDTicketCache ticketCache, /* optional, uses context cache if absent */
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFStringRef optionalIdentity,
+    uint32_t ulFlags,
+    CFStringRef *pAssertion,
+    BIDIdentity *pAssertedIdentity,
+    time_t *pExpiryTime,
+    uint32_t *pulFlags)
+{
+    const char *szAudienceOrSpn = NULL;
+    const unsigned char *pbChannelBindings = NULL;
+    size_t cbChannelBindings = 0;
+    const char *szIdentity = NULL;
+    char *szAssertion = NULL;
+    BIDError err;
+
+    if (pAssertion != NULL)
+        *pAssertion = NULL;
+
+    if (audienceOrSpn != NULL)
+        szAudienceOrSpn = CFStringGetCStringPtr(audienceOrSpn, kCFStringEncodingUTF8);
+    if (channelBindings != NULL) {
+        pbChannelBindings = CFDataGetBytePtr(channelBindings);
+        cbChannelBindings = CFDataGetLength(channelBindings);
+    }
+    if (optionalIdentity != NULL)
+        szIdentity = CFStringGetCStringPtr(optionalIdentity, kCFStringEncodingUTF8);
+
+    err = BIDAcquireAssertion(context, ticketCache, szAudienceOrSpn,
+                              pbChannelBindings, cbChannelBindings, szIdentity,
+                              ulFlags, &szAssertion, pAssertedIdentity, pExpiryTime,
+                              pulFlags);
+    if (err != BID_S_OK)
+        return err;
+
+    if (pAssertion != NULL)
+        *pAssertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
+
+    BIDFree(szAssertion);
+
+    return BID_S_OK;
+}
+#endif

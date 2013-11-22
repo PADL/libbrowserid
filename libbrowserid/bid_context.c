@@ -529,3 +529,20 @@ BIDGetContextParam(
 
     return err;
 }
+
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+BIDContext
+BIDContextCreate(
+    CFStringRef configFile,
+    uint32_t ulContextOptions)
+{
+    BIDContext context;
+    const char *szConfigFile;
+
+    szConfigFile = CFStringGetCStringPtr(configFile, kCFStringEncodingUTF8);
+
+    BIDAcquireContext(szConfigFile, ulContextOptions, NULL, &context);
+
+    return context;
+}
+#endif

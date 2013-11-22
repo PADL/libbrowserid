@@ -529,7 +529,31 @@ BIDContextGetTypeID(void);
 
 CFTypeID
 BIDCacheGetTypeID(void);
-#endif
+
+BIDContext
+BIDContextCreate(
+    CFStringRef configFile,
+    uint32_t ulContextOptions);
+
+BIDError
+BIDCreateAssertion(
+    BIDContext context,
+    BIDTicketCache ticketCache, /* optional, uses context cache if absent */
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFStringRef optionalIdentity,
+    uint32_t ulFlags,
+    CFStringRef *pAssertion,
+    BIDIdentity *pAssertedIdentity,
+    time_t *pExpiryTime,
+    uint32_t *pulFlags);
+
+CFTypeRef
+BIDIdentityCopyAttribute(
+    BIDContext context,
+    BIDIdentity identity,
+    CFStringRef attribute);
+#endif /* __APPLE__ */
 
 #ifdef __cplusplus
 }
