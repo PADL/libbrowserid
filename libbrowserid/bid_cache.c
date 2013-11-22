@@ -93,7 +93,12 @@ _BIDAcquireCache(
         goto cleanup;
     }
 
+#ifdef __APPLE__
+    cache = (BIDCache)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDCacheGetTypeID(),
+                                               sizeof(*cache) - sizeof(CFRuntimeBase), NULL);
+#else
     cache = BIDCalloc(1, sizeof(*cache));
+#endif
     if (cache == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -110,9 +115,17 @@ _BIDAcquireCache(
 
 cleanup:
     if (err != BID_S_OK)
-        BIDFree(cache);
+        _BIDReleaseCache(context, cache);
 
     return err;
+}
+
+void
+_BIDFinalizeCache(
+    BIDCache cache)
+{
+    if (cache->Ops->Release != NULL)
+        cache->Ops->Release(cache->Ops, BID_C_NO_CONTEXT, cache->Data);
 }
 
 BIDError
@@ -120,8 +133,6 @@ _BIDReleaseCache(
     BIDContext context,
     BIDCache cache)
 {
-    BIDError err;
-
     BID_CONTEXT_VALIDATE(context);
 
     if (cache == NULL)
@@ -130,11 +141,14 @@ _BIDReleaseCache(
     if (cache->Ops->Release == NULL)
         return BID_S_NOT_IMPLEMENTED;
 
-    err = cache->Ops->Release(cache->Ops, context, cache->Data);
-    if (err == BID_S_OK)
-        BIDFree(cache);
+#ifdef __APPLE__
+    CFRelease(cache);
+#else
+    _BIDFinalizeCache(cache);
+    BIDFree(cache);
+#endif
 
-    return err;
+    return BID_S_OK;
 }
 
 BIDError

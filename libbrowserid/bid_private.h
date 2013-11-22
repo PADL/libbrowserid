@@ -61,6 +61,11 @@
 
 #include <jansson.h>
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreFoundation/CFRuntime.h>
+#endif
+
 #ifdef WIN32
 #include "bid_wpal.h"
 #endif
@@ -194,6 +199,9 @@ struct BIDCacheOps {
     BIDError (*NextObject)(struct BIDCacheOps *, BIDContext, void *, void **, const char **, json_t **val);
 };
 
+void
+_BIDFinalizeCache(BIDCache cache);
+
 BIDError
 _BIDAcquireCache(
     BIDContext context,
@@ -324,6 +332,9 @@ struct BIDAcquireContextArgsDesc {
 #define BID_ACQUIRE_CONTEXT_ARGS_VERSION        1
 
 struct BIDContextDesc {
+#ifdef __APPLE__
+    CFRuntimeBase Base;
+#endif
     uint32_t ContextOptions;
     char **SecondaryAuthorities;
     json_error_t JsonError;
@@ -339,6 +350,10 @@ struct BIDContextDesc {
     BIDCache Config;
     void *ParentWindow;
 };
+
+void
+_BIDFinalizeContext(
+    BIDContext context);
 
 /*
  * bid_crypto.c
@@ -453,6 +468,9 @@ extern struct BIDCacheOps _BIDFileCache;
 /*
  * bid_identity.c
  */
+void
+_BIDFinalizeIdentity(BIDIdentity identity);
+
 BIDError
 _BIDAllocIdentity(
     BIDContext context,
@@ -966,6 +984,9 @@ struct BIDBackedAssertionDesc {
 };
 
 struct BIDIdentityDesc {
+#ifdef __APPLE__
+    CFRuntimeBase Base;
+#endif
     json_t *Attributes;
     json_t *PrivateAttributes;
     BIDSecretHandle SecretHandle;

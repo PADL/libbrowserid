@@ -122,6 +122,14 @@ cleanup:
     return err;
 }
 
+void
+_BIDFinalizeIdentity(BIDIdentity identity)
+{
+    json_decref(identity->Attributes);
+    json_decref(identity->PrivateAttributes);
+    _BIDDestroySecret(BID_C_NO_CONTEXT /* XXX */, identity->SecretHandle);
+}
+
 BIDError
 BIDReleaseIdentity(
     BIDContext context,
@@ -132,10 +140,12 @@ BIDReleaseIdentity(
     if (identity == BID_C_NO_IDENTITY)
         return BID_S_INVALID_PARAMETER;
 
-    json_decref(identity->Attributes);
-    json_decref(identity->PrivateAttributes);
-    _BIDDestroySecret(context, identity->SecretHandle);
+#ifdef __APPLE__
+    CFRelease(identity);
+#else
+    _BIDFinalizeIdentity(identity);
     BIDFree(identity);
+#endif
 
     return BID_S_OK;
 }
@@ -367,7 +377,12 @@ _BIDAllocIdentity(
 
     *pIdentity = BID_C_NO_IDENTITY;
 
+#ifdef __APPLE__
+    identity = (BIDIdentity)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDIdentityGetTypeID(),
+                                                     sizeof(*identity) - sizeof(CFRuntimeBase), NULL);
+#else
     identity = BIDCalloc(1, sizeof(*identity));
+#endif
     if (identity == BID_C_NO_IDENTITY) {
         err = BID_S_NO_MEMORY;
         goto cleanup;

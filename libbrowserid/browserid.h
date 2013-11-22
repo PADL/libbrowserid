@@ -518,6 +518,19 @@ BIDFreeData(
     BIDContext context,
     char *s);
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+
+CFTypeID
+BIDIdentityGetTypeID(void);
+
+CFTypeID
+BIDContextGetTypeID(void);
+
+CFTypeID
+BIDCacheGetTypeID(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -178,7 +178,12 @@ BIDAcquireContext(
         goto cleanup;
     }
 
+#ifdef __APPLE__
+    context = (BIDContext)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDContextGetTypeID(),
+                                                   sizeof(*context) - sizeof(CFRuntimeBase), NULL);
+#else
     context = BIDCalloc(1, sizeof(*context));
+#endif
     if (context == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -284,12 +289,9 @@ cleanup:
     return err;
 }
 
-BIDError
-BIDReleaseContext(BIDContext context)
+void
+_BIDFinalizeContext(BIDContext context)
 {
-    if (context == BID_C_NO_CONTEXT)
-        return BID_S_NO_CONTEXT;
-
     if (context->SecondaryAuthorities) {
         char **p;
 
@@ -303,9 +305,20 @@ BIDReleaseContext(BIDContext context)
     _BIDReleaseCache(context, context->ReplayCache);
     _BIDReleaseCache(context, context->TicketCache);
     _BIDReleaseCache(context, context->Config);
+}
 
+BIDError
+BIDReleaseContext(BIDContext context)
+{
+    if (context == BID_C_NO_CONTEXT)
+        return BID_S_NO_CONTEXT;
+
+#ifdef __APPLE__
+    CFRelease(context);
+#else
     memset(context, 0, sizeof(*context));
     BIDFree(context);
+#endif
 
     return BID_S_OK;
 }

@@ -41,13 +41,81 @@
 
 #include <sys/time.h>
 
+#ifdef __APPLE__
+static CFTypeID _BIDIdentityTypeID;
+static CFTypeID _BIDContextTypeID;
+static CFTypeID _BIDCacheTypeID;
+#endif
+
 static void
 _BIDLibraryInit(void) __attribute__((__constructor__));
+
+#ifdef __APPLE__
+CFTypeID
+BIDIdentityGetTypeID(void)
+{
+    return _BIDIdentityTypeID;
+}
+
+CFTypeID
+BIDContextGetTypeID(void)
+{
+    return _BIDContextTypeID;
+}
+
+CFTypeID
+BIDCacheGetTypeID(void)
+{
+    return _BIDCacheTypeID;
+}
+
+static const CFRuntimeClass _BIDIdentityClass = {
+    0,
+    "BIDIdentity",
+    NULL, // init
+    NULL, // copy
+    (void (*)(CFTypeRef))_BIDFinalizeIdentity,
+    NULL, // equal
+    NULL, // hash
+    NULL, // copyFormattingDesc
+    NULL, // copyDebugDesc
+};
+
+static const CFRuntimeClass _BIDContextClass = {
+    0,
+    "BIDContext",
+    NULL, // init
+    NULL, // copy
+    (void (*)(CFTypeRef))_BIDFinalizeContext,
+    NULL, // equal
+    NULL, // hash
+    NULL, // copyFormattingDesc
+    NULL, // copyDebugDesc
+};
+
+static const CFRuntimeClass _BIDCacheClass = {
+    0,
+    "BIDCache",
+    NULL, // init
+    NULL, // copy
+    (void (*)(CFTypeRef))_BIDFinalizeCache,
+    NULL, // equal
+    NULL, // hash
+    NULL, // copyFormattingDesc
+    NULL, // copyDebugDesc
+};
+#endif /* __APPLE__ */
 
 static void
 _BIDLibraryInit(void)
 {
     json_set_alloc_funcs(BIDMalloc, BIDFree);
+
+#ifdef __APPLE__
+    _BIDIdentityTypeID = _CFRuntimeRegisterClass(&_BIDIdentityClass);
+    _BIDContextTypeID = _CFRuntimeRegisterClass(&_BIDContextClass);
+    _BIDCacheTypeID = _CFRuntimeRegisterClass(&_BIDCacheClass);
+#endif
 }
 
 BIDError
