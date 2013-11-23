@@ -209,7 +209,6 @@ _BIDValidateCertIssuer(
     time_t verificationTime,
     uint32_t ulReqFlags)
 {
-    json_t *assertion;
     json_t *leafCert;
     json_t *principal;
     const char *szAuthority;
@@ -219,7 +218,6 @@ _BIDValidateCertIssuer(
         return BID_S_MISSING_CERT;
 
     leafCert = _BIDLeafCert(context, backedAssertion);
-    assertion = backedAssertion->Assertion->Payload;
 
     principal = json_object_get(leafCert, "principal");
     if (principal == NULL)
