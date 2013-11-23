@@ -21,5 +21,6 @@ instructions in mech\_browserid/README.md.
 
 ## Sample code
 
-Sample code can be found in the sample directory. See sample/README.md for more
+Sample code can be found in the sample directory. See doc/sample.md for more
 information.
+
