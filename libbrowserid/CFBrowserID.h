@@ -91,6 +91,14 @@ BIDIdentityCreateFromVerifyingAssertion(
     uint32_t *pulVerifyFlags,
     CFErrorRef *pError);
 
+extern const CFStringRef kBIDIdentityAudienceKey;
+extern const CFStringRef kBIDIdentitySubjectKey;
+extern const CFStringRef kBIDIdentityIssuerKey;
+extern const CFStringRef kBIDIdentityExpiryKey;
+extern const CFStringRef kBIDIdentityIssuedAtKey;
+extern const CFStringRef kBIDIdentityPublicKeyKey;
+extern const CFStringRef kBIDIdentityPrincipalKey;
+
 CFTypeRef
 BIDIdentityCopyAttribute(
     BIDIdentity identity,
@@ -99,5 +107,17 @@ BIDIdentityCopyAttribute(
 CFDictionaryRef
 BIDIdentityCopyAttributeDictionary(
     BIDIdentity identity);
+
+BIDReplayCache
+BIDReplayCacheCreate(
+    BIDContext context,
+    CFStringRef cacheName,
+    CFErrorRef *pError);
+
+BIDTicketCache
+BIDTicketCacheCreate(
+    BIDContext context,
+    CFStringRef cacheName,
+    CFErrorRef *pError);
 
 #endif /* _CFBROWSERID_H_ */

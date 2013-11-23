@@ -39,6 +39,14 @@
 
 #include "bid_private.h"
 
+const CFStringRef kBIDIdentityAudienceKey   = CFSTR("aud");
+const CFStringRef kBIDIdentitySubjectKey    = CFSTR("sub");
+const CFStringRef kBIDIdentityIssuerKey     = CFSTR("iss");
+const CFStringRef kBIDIdentityExpiryKey     = CFSTR("exp");
+const CFStringRef kBIDIdentityIssuedAtKey   = CFSTR("iat");
+const CFStringRef kBIDIdentityPublicKeyKey  = CFSTR("public-key");
+const CFStringRef kBIDIdentityPrincipalKey  = CFSTR("principal");
+
 static CFTypeID _BIDIdentityTypeID = _kCFRuntimeNotATypeID;
 static CFTypeID _BIDContextTypeID = _kCFRuntimeNotATypeID;
 static CFTypeID _BIDCacheTypeID = _kCFRuntimeNotATypeID;
@@ -331,4 +339,52 @@ BIDAssertionCreateUI(
         *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
 
     return assertion;
+}
+
+BIDTicketCache
+BIDTicketCacheCreate(
+    BIDContext context,
+    CFStringRef cacheName,
+    CFErrorRef *pError)
+{
+    BIDError err;
+    const char *szCacheName;
+    BIDTicketCache ticketCache = BID_C_NO_TICKET_CACHE;
+
+    if (pError != NULL)
+        *pError = NULL;
+
+    szCacheName = CFStringGetCStringPtr(cacheName, kCFStringEncodingUTF8);
+
+    err = BIDAcquireTicketCache(context, szCacheName, &ticketCache);
+    if (err != BID_S_OK && pError != NULL) {
+        *pError = _BIDCFMapError(err);
+        return BID_C_NO_TICKET_CACHE;
+    }
+
+    return ticketCache;
+}
+
+BIDReplayCache
+BIDReplayCacheCreate(
+    BIDContext context,
+    CFStringRef cacheName,
+    CFErrorRef *pError)
+{
+    BIDError err;
+    const char *szCacheName;
+    BIDReplayCache replayCache = BID_C_NO_REPLAY_CACHE;
+
+    if (pError != NULL)
+        *pError = NULL;
+
+    szCacheName = CFStringGetCStringPtr(cacheName, kCFStringEncodingUTF8);
+
+    err = BIDAcquireReplayCache(context, szCacheName, &replayCache);
+    if (err != BID_S_OK && pError != NULL) {
+        *pError = _BIDCFMapError(err);
+        return BID_C_NO_REPLAY_CACHE;
+    }
+
+    return replayCache;
 }

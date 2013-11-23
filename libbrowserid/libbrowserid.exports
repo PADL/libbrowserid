@@ -31,8 +31,10 @@ BIDReleaseContext
 BIDReleaseIdentity
 BIDReleaseReplayCache
 BIDReleaseTicketCache
+BIDReplayCacheCreate
 BIDSetContextParam
 BIDStoreTicketInCache
+BIDTicketCacheCreate
 BIDVerifyAssertion
 BIDVerifyRPResponseToken
 BIDVerifyXRTToken
@@ -56,3 +58,10 @@ _BIDReleaseCache
 _BIDSetJsonTimestampValue
 _BIDStoreTicketInCache
 _BIDUnpackBackedAssertion
+kBIDIdentityAudienceKey
+kBIDIdentitySubjectKey
+kBIDIdentityIssuerKey
+kBIDIdentityExpiryKey
+kBIDIdentityIssuedAtKey
+kBIDIdentityPublicKeyKey
+kBIDIdentityPrincipalKey

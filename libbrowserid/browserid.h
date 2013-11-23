@@ -340,7 +340,6 @@ BIDFreeAssertion(
     BIDContext context,
     char *assertion);
 
-
 /*
  * Verifier.
  */
