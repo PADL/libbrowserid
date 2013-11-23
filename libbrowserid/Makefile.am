@@ -2,7 +2,6 @@ AUTOMAKE_OPTIONS = foreign
 
 EXTRA_DIST = libbrowserid.exports
 
-bin_PROGRAMS = bidtool
 include_HEADERS = browserid.h
 
 libbrowserid_la_EXPORTS = libbrowserid.exports
@@ -66,5 +65,3 @@ vers.c: $(top_srcdir)/CVSVersionInfo.txt
 clean-generic:
 	$(RM) vers.c
 
-bidtool_SOURCES = bidtool.c
-bidtool_LDADD = $(lib_LTLIBRARIES)

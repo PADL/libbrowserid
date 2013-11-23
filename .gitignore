@@ -39,4 +39,3 @@ Makefile
 .dSYM
 
 vers.c
-bidtool

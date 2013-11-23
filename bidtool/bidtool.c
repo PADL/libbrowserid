@@ -234,7 +234,7 @@ BIDPrintVerboseReplayCacheEntry(
         printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
         printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
         if (ulDHKeySize)
-            printf("DH key length:    %zd bits\n", ulDHKeySize);
+            printf("DH key length:    %u bits\n", ulDHKeySize);
         else if (szECDHCurve != NULL)
             printf("ECDH curve:       %s\n", szECDHCurve);
     }
