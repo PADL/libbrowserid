@@ -36,6 +36,7 @@ BIDSetContextParam
 BIDStoreTicketInCache
 BIDTicketCacheCreate
 BIDVerifyAssertion
+BIDVerifyAssertionWithHandler
 BIDVerifyRPResponseToken
 BIDVerifyXRTToken
 _BIDAcquireCache

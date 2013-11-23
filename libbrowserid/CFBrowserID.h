@@ -91,6 +91,19 @@ BIDIdentityCreateByVerifyingAssertion(
     uint32_t *pulVerifyFlags,
     CFErrorRef *pError);
 
+#if __BLOCKS__
+void
+BIDVerifyAssertionWithHandler(
+    BIDContext context,
+    CFStringRef assertion,
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFAbsoluteTime verificationTime,
+    uint32_t ulReqFlags,
+    dispatch_queue_t queue,
+    void (^handler)(BIDIdentity, CFAbsoluteTime, uint32_t, CFErrorRef));
+#endif
+
 extern const CFStringRef kBIDIdentityAudienceKey;
 extern const CFStringRef kBIDIdentitySubjectKey;
 extern const CFStringRef kBIDIdentityIssuerKey;

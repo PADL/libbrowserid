@@ -222,6 +222,43 @@ BIDIdentityCreateByVerifyingAssertion(
     return identity;
 }
 
+#if __BLOCKS__
+void
+BIDVerifyAssertionWithHandler(
+    BIDContext context,
+    CFStringRef assertion,
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFAbsoluteTime verificationTime,
+    uint32_t ulReqFlags,
+    dispatch_queue_t queue,
+    void (^handler)(BIDIdentity, CFAbsoluteTime, uint32_t, CFErrorRef))
+{
+    dispatch_async(queue, ^{
+        BIDIdentity identity = BID_C_NO_IDENTITY;
+        CFAbsoluteTime expiryTime = 0;
+        uint32_t ulVerifyFlags = 0;
+        CFErrorRef error = NULL;
+
+        identity = BIDIdentityCreateByVerifyingAssertion(context,
+                                                         assertion,
+                                                         audienceOrSpn,
+                                                         channelBindings,
+                                                         verificationTime,
+                                                         ulReqFlags,
+                                                         &expiryTime,
+                                                         &ulVerifyFlags,
+                                                         &error);
+        handler(identity, expiryTime, ulVerifyFlags, error);
+
+        if (identity != BID_C_NO_IDENTITY)
+            CFRelease(identity);
+        if (error != NULL)
+            CFRelease(error);
+    });
+}
+#endif /* __BLOCKS __ */
+
 static CFStringRef
 _BIDIdentityCopyDebugDescription(
     CFTypeRef cf)
