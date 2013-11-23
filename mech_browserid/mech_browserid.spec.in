@@ -11,8 +11,8 @@ BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires:%{krb5-devel} >= 1.9.1
 BuildRequires: curl-devel
 BuildRequires: jansson-devel
-BuildRequires: shibboleth-devel >= 2.5
-BuildRequires: libshibresolver-devel
+#BuildRequires: shibboleth-devel >= 2.5
+#BuildRequires: libshibresolver-devel
 
 %description
 GSS-API mechanism for the BrowserID authentication protocol.
@@ -37,6 +37,8 @@ rm -rf $RPM_BUILD_ROOT
 %doc mech_browserid/README
 %doc mech_browserid/LICENSE
 %doc mech_browserid/AUTHORS
+%{_libdir}/libbrowserid.so
+%exclude %{_libdir}/libbrowserid.la
 %{_libdir}/gss/gss_browserid.so
 %exclude %{_libdir}/gss/gss_browserid.la
 %{_includedir}/gssapi/*.h

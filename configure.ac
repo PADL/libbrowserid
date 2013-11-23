@@ -1,5 +1,5 @@
 AC_PREREQ([2.61])
-AC_INIT([mech_browserid], [1.0], [lukeh@padl.com])
+AC_INIT([libbrowserid], [1.0], [lukeh@padl.com])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 
@@ -21,9 +21,9 @@ AC_REPLACE_FUNCS(vasprintf)
 AC_CHECK_HEADERS(CoreFoundation/CFRuntime.h, [CFBrowserID=yes], [CFBrowserID=no])
 AM_CONDITIONAL(CFBROWSERID, test "x$CFBrowserID" = "xyes")
 
-build_mech=yes
+build_mech=no
 AC_ARG_ENABLE(gss-mech,
-  [  --enable-gss-mech whether to build GSS BrowserID mechanism: yes/no; default yes ],
+  [  --enable-gss-mech whether to build GSS BrowserID mechanism: yes/no; default no ],
   [ if test "x$enableval" = "xyes" -o "x$enableval" = "xno" ; then
       build_mech=$enableval
     else
@@ -69,5 +69,5 @@ AX_CHECK_OPENSSL
 AM_CONDITIONAL(OPENSSL, test "x$found_openssl" = "xyes")
 
 AC_CONFIG_FILES([Makefile libbrowserid/Makefile sample/Makefile mech_browserid/Makefile
-		 mech_browserid.spec])
+		 mech_browserid/mech_browserid.spec])
 AC_OUTPUT
