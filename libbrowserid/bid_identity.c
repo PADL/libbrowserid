@@ -347,8 +347,10 @@ BIDFreeIdentityDerivedKey(
     memset(pbSessionKey, 0, cbSessionKey);
     BIDFree(pbSessionKey);
 
+    err = BID_S_OK;
+
 cleanup:
-    return BID_S_OK;
+    return err;
 }
 
 BIDError
