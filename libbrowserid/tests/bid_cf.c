@@ -104,8 +104,8 @@ int main(int argc, const char *argv[])
         
     NSLog(@"Assertion is %@", assertion);
 
-    identity = BIDIdentityCreateFromVerifyingAssertion(context, assertion, audience, NULL,
-                                                       CFAbsoluteTimeGetCurrent(), 0, &expires, &flags, &err);
+    identity = BIDIdentityCreateByVerifyingAssertion(context, assertion, audience, NULL,
+                                                     CFAbsoluteTimeGetCurrent(), 0, &expires, &flags, &err);
     if (identity == NULL) {
         NSLog(@"Failed to verify assertion: %@", err);
     } else {

@@ -19,15 +19,15 @@ PersonaVerifyAssertion(
         return NULL;
     }
 
-    identity = BIDIdentityCreateFromVerifyingAssertion(context,
-                                                       (__bridge CFStringRef)assertion,
-                                                       (__bridge CFStringRef)audience,
-                                                       NULL, // channel bindings
-                                                       CFAbsoluteTimeGetCurrent(),
-                                                       0, // flags
-                                                       &expires,
-                                                       &flags,
-                                                       &cfErr);
+    identity = BIDIdentityCreateByVerifyingAssertion(context,
+                                                     (__bridge CFStringRef)assertion,
+                                                     (__bridge CFStringRef)audience,
+                                                     NULL, // channel bindings
+                                                     CFAbsoluteTimeGetCurrent(),
+                                                     0, // flags
+                                                     &expires,
+                                                     &flags,
+                                                     &cfErr);
 
     *error = CFBridgingRelease(cfErr);
 

@@ -172,7 +172,7 @@ BIDContextCreate(
 }
 
 BIDIdentity
-BIDIdentityCreateFromVerifyingAssertion(
+BIDIdentityCreateByVerifyingAssertion(
     BIDContext context,
     CFStringRef assertion,
     CFStringRef audienceOrSpn,
