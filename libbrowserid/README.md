@@ -18,6 +18,15 @@ remote rather than a local verifier; BID\_CONTEXT\_AUTHORITY\_CACHE will cache
 IdP certificates in a persistent database; BID\_CONTEXT\_REPLAY\_CACHE will use
 a replay cache when verifying assertions. These are documented in browserid.h.
 
+Example:
+
+    err = BIDAcquireContext(NULL, /* szConfigFile */
+                            BID_CONTEXT_USER_AGENT,
+                            NULL, /* pvReserved */
+                            &context);
+    ...
+    BIDReleaseContext(context);
+
 ## Identity object
 
 TBC
@@ -26,7 +35,28 @@ TBC
 
 TBC
 
+Example:
+
+    err = BIDAcquireAssertion(context, BID_C_NO_TICKET_CACHE, argv[1],
+                              NULL, 0, NULL, 0,
+                              &assertion, NULL, &expires, &flags);
+    ...
+    BIDFreeAssertion(context, assertion);
+
 ## Verifying an assertion
 
 TBC
+
+Example:
+
+    err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE,
+                             argv[2], argv[1],
+                             NULL, 0, time(NULL), 0, &identity,
+                             &expires, &flags);
+    ...
+    if (BIDGetIdentitySubject(context, identity, &sub) == BID_S_OK)
+        printf("Subject: %s\n", sub);
+    if (BIDGetIdentityIssuer(context, identity, &iss) == BID_S_OK)
+        printf("Issuer:  %s\n", sub);
+    BIDReleaseIdentity(context, identity);
 
