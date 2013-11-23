@@ -1,6 +1,6 @@
 # libbrowserid sample code
 
-This directory contains sample code.
+The sample directory contains some example code.
 
 ## bidget
 
