@@ -17,10 +17,6 @@
 /missing
 /m4
 
-/gssbrowserid_err.[ch]
-/libbrowserid_err.[ch]
-/mech_browserid.spec
-
 .DS_Store
 diffs
 
@@ -31,6 +27,7 @@ Makefile
 *.patch
 *.la
 *.lo
+*.o
 *~
 
 .deps
