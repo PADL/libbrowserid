@@ -92,16 +92,7 @@ for dir in $check_shibsp_dir $prefix /usr /usr/local ; do
    fi
 done
 AC_MSG_RESULT($found_shibsp)
-if test x_$found_shibsp != x_yes; then
-   AC_MSG_ERROR([
-----------------------------------------------------------------------
-  Cannot find Shibboleth libraries.
-
-  Please install Shibboleth or specify installation directory with
-  --with-shibsp=(dir).
-----------------------------------------------------------------------
-])
-else
+if test x_$found_shibsp = x_yes; then
 	printf "Shibboleth found in $shibspdir\n";
 	SHIBSP_LIBS="-lshibsp -lsaml -lxml-security-c -lxmltooling -lxerces-c";
 	SHIBSP_LDFLAGS="-L$shibspdir/lib";
@@ -134,17 +125,7 @@ done
 fi
 AC_MSG_RESULT($found_shibresolver)
 if test x_$check_shibresolver_dir != x_no; then
-if test x_$found_shibresolver != x_yes; then
-   AC_MSG_WARN([
-----------------------------------------------------------------------
-  Cannot find Shibboleth resolver libraries, building without
-  Shibboleth support.
-
-  Please install Shibboleth or specify installation directory with
-  --with-shibresolver=(dir).
-----------------------------------------------------------------------
-])
-else
+if test x_$found_shibresolver = x_yes; then
 	printf "Shibboleth resolver found in $shibresolverdir\n";
 	SHIBRESOLVER_LIBS="-lshibresolver";
 	SHIBRESOLVER_LDFLAGS="-L$shibresolverdir/lib";
@@ -178,16 +159,7 @@ done
 fi
 AC_MSG_RESULT($found_opensaml)
 if test x_$check_opensaml_dir != x_no; then
-if test x_$found_opensaml != x_yes; then
-   AC_MSG_WARN([
-----------------------------------------------------------------------
-  Cannot find OpenSAML libraries, building without OpenSAML support.
-
-  Please install OpenSAML or specify installation directory with
-  --with-opensaml=(dir).
-----------------------------------------------------------------------
-])
-else
+if test x_$found_opensaml = x_yes; then
 	printf "OpenSAML found in $opensamldir\n";
 	OPENSAML_LIBS="-lsaml -lxml-security-c -lxmltooling -lxerces-c";
 	OPENSAML_LDFLAGS="-L$opensamldir/lib";
