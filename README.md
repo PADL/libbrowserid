@@ -212,6 +212,12 @@ Verbose mode:
     ------------------------------------------------------------
     login.persona.org              RSA  Tue Jan  8 19:16:29 
 
+## CoreFoundation support
+
+If you have the CoreFoundation internal headers installed (CFRuntime.h), then
+you can build libbrowserid such that it exposes its types as first-class
+CoreFoundation objects. You can also use the helper APIs in CFBrowserID.h.
+
 ## Windows port
 
 The Windows port comes with some fairly significant limitations. First, the
