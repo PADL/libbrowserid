@@ -46,15 +46,13 @@ int main(int argc, const char *argv[])
     @autoreleasepool {
         NSString *audience = [NSString stringWithUTF8String:argv[1]];
         NSString *assertion = [NSString stringWithUTF8String:argv[2]];
+        __block NSDictionary *attrs;
 
         PersonaVerifyAssertion(assertion, audience, q,
                                ^(id identity, NSError *error) {
-            NSDictionary *attrs;
-
             if (identity) {
                 NSLog(@"Verified assertion: %@", identity);
                 attrs = CFBridgingRelease(BIDIdentityCopyAttributeDictionary((__bridge BIDIdentity)identity));
-                NSLog(@"Attributes: %@", attrs);
             } else {
                 NSLog(@"Failed to verify assertion: %@", error);
                 exitCode = [error code];
@@ -62,6 +60,9 @@ int main(int argc, const char *argv[])
             dispatch_semaphore_signal(sema);
         });
         dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+
+        if (attrs)
+            NSLog(@"Attributes: %@", attrs);
     }
 
     exit(exitCode);
