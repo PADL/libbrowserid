@@ -86,7 +86,7 @@
 @interface BIDIdentityController : NSObject <NSWindowDelegate>
 
 @property(nonatomic, copy) NSString *audience;
-@property(nonatomic, copy) NSDictionary *claims;
+@property(nonatomic, retain) BIDJsonDictionary *claims;
 @property(nonatomic, copy) NSString *emailHint;
 @property(nonatomic, copy) NSString *siteName;
 @property(nonatomic, readonly) NSString *assertion;
@@ -105,13 +105,13 @@
 
 /* public interface */
 - (BIDError)getAssertion;
-- (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims;
+- (id)initWithAudience:(NSString *)anAudience claims:(BIDJsonDictionary *)someClaims;
 @end
 
 @implementation BIDIdentityController
 {
     NSString *audience;
-    NSDictionary *claims;
+    BIDJsonDictionary *claims;
     NSString *emailHint;
     NSString *siteName;
     BOOL canInteract;
@@ -135,7 +135,7 @@
     if (value != audience) {
         NSArray *princComponents;
 
-        audience = value;
+        audience = [value copy];
 
         princComponents = [audience componentsSeparatedByString:@"/"];
         if ([princComponents count] > 1)
@@ -361,7 +361,7 @@
     return [super init];
 }
 
-- (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims
+- (id)initWithAudience:(NSString *)anAudience claims:(BIDJsonDictionary *)someClaims
 {
     self = [self init];
 

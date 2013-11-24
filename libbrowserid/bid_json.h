@@ -47,7 +47,9 @@
 @end
 
 @interface BIDJsonDictionary : NSDictionary <BIDJsonInit>
+- (NSString *)jsonRepresentation;
 @end
 
 @interface BIDJsonArray : NSArray <BIDJsonInit>
+- (NSString *)jsonRepresentation;
 @end
