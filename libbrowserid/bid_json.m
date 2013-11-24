@@ -322,5 +322,4 @@ BIDIdentityCopyAttributeDictionary(
 
     return CFBridgingRetain(dict);
 }
-
 #endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
