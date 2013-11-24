@@ -487,7 +487,7 @@ BIDError
 _BIDPerformCacheObjects(
     BIDContext context,
     BIDCache cache,
-    BIDError (*selector)(BIDContext, BIDCache, const char *, json_t *, void *data),
+    BIDError (*callback)(BIDContext, BIDCache, const char *, json_t *, void *data),
     void *data)
 {
     BIDError err, err2 = BID_S_OK;
@@ -502,7 +502,7 @@ _BIDPerformCacheObjects(
          err == BID_S_OK;
          err = _BIDGetNextCacheObject(context, cache, &cookie, &k, &j)) {
         if (err2 == BID_S_OK)
-            err2 = selector(context, cache, k, j, data);
+            err2 = callback(context, cache, k, j, data);
         /* can't break as we need to release cookie XXX */
         json_decref(j);
     }
@@ -514,12 +514,12 @@ _BIDPerformCacheObjects(
 }
 
 struct BIDPurgeCacheArgsDesc {
-    int (*Selector)(BIDContext, BIDCache, const char *, json_t *, void *);
+    int (*Predicate)(BIDContext, BIDCache, const char *, json_t *, void *);
     void *Data;
 };
 
 static BIDError
-_BIDRemoveCacheObjectIfSelectorTrue(
+_BIDRemoveCacheObjectIfPredicateTrue(
     BIDContext context,
     BIDCache cache,
     const char *szKey,
@@ -528,7 +528,7 @@ _BIDRemoveCacheObjectIfSelectorTrue(
 {
     struct BIDPurgeCacheArgsDesc *args = data;
 
-    if (args->Selector(context, cache, szKey, jsonValue, args->Data))
+    if (args->Predicate(context, cache, szKey, jsonValue, args->Data))
         _BIDRemoveCacheObject(context, cache, szKey);
 
     return BID_S_OK;
@@ -538,15 +538,15 @@ BIDError
 _BIDPurgeCache(
     BIDContext context,
     BIDCache cache,
-    int (*selector)(BIDContext, BIDCache, const char *, json_t *, void *),
+    int (*predicate)(BIDContext, BIDCache, const char *, json_t *, void *),
     void *data)
 {
     struct BIDPurgeCacheArgsDesc args;
 
-    args.Selector = selector;
+    args.Predicate = predicate;
     args.Data = data;
 
-    return _BIDPerformCacheObjects(context, cache, _BIDRemoveCacheObjectIfSelectorTrue, &args);
+    return _BIDPerformCacheObjects(context, cache, _BIDRemoveCacheObjectIfPredicateTrue, &args);
 }
 
 BIDError
