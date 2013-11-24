@@ -496,6 +496,8 @@ BIDTicketCacheCreate(
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
+    BIDFree(szCacheName);
+
     if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
 
@@ -525,6 +527,8 @@ BIDReplayCacheCreate(
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
+    BIDFree(szCacheName);
+
     if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
 
