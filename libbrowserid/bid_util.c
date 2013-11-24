@@ -53,6 +53,8 @@ _BIDDuplicateString(
 {
     size_t cbSrc;
 
+    *szDst = NULL;
+
     if (szSrc == NULL)
         return BID_S_INVALID_PARAMETER;
 

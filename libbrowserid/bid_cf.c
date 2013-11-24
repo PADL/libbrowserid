@@ -122,6 +122,31 @@ BIDCacheGetTypeID(void)
     return _BIDCacheTypeID;
 }
 
+static char *
+_BIDCFCopyCString(CFStringRef string)
+{
+    const char *ptr;
+    char *s = NULL;
+
+    ptr = CFStringGetCStringPtr(string, kCFStringEncodingUTF8);
+    if (ptr != NULL) {
+        _BIDDuplicateString(BID_C_NO_CONTEXT, ptr, &s);
+    } else {
+        CFIndex len = CFStringGetLength(string);
+        len = 1 + CFStringGetMaximumSizeForEncoding(len, kCFStringEncodingUTF8);
+        s = BIDMalloc(len);
+        if (s == NULL)
+            return NULL;
+
+        if (!CFStringGetCString(string, s, len, kCFStringEncodingUTF8)) {
+            BIDFree(s);
+            s = NULL;
+        }
+    }
+
+    return s;
+}
+
 static CFErrorRef
 _BIDCFMapError(BIDError err)
 {
@@ -159,14 +184,25 @@ BIDContextCreate(
     CFErrorRef *pError)
 {
     BIDError err;
-    BIDContext context;
-    const char *szConfigFile;
+    BIDContext context = BID_C_NO_CONTEXT;
+    char *szConfigFile = NULL;
 
-    szConfigFile = CFStringGetCStringPtr(configFile, kCFStringEncodingUTF8);
+    if (configFile != NULL) {
+        szConfigFile = _BIDCFCopyCString(configFile);
+        if (szConfigFile == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+    }
 
     err = BIDAcquireContext(szConfigFile, ulContextOptions, NULL, &context);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
     if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
+
+    BIDFree(szConfigFile);
 
     return context;
 }
@@ -182,8 +218,8 @@ BIDIdentityCreateByVerifyingAssertion(
     uint32_t *pulVerifyFlags,
     CFErrorRef *pError)
 {
-    const char *szAssertion = NULL;
-    const char *szAudienceOrSpn = NULL;
+    char *szAssertion = NULL;
+    char *szAudienceOrSpn = NULL;
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
     time_t expiryTime;
@@ -198,9 +234,20 @@ BIDIdentityCreateByVerifyingAssertion(
     if (assertion == NULL)
         return NULL;
 
-    szAssertion = CFStringGetCStringPtr(assertion, kCFStringEncodingASCII);
-    if (audienceOrSpn != NULL)
-        szAudienceOrSpn = CFStringGetCStringPtr(audienceOrSpn, kCFStringEncodingUTF8);
+    szAssertion = _BIDCFCopyCString(assertion);
+    if (szAssertion == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    if (audienceOrSpn != NULL) {
+        szAudienceOrSpn = _BIDCFCopyCString(audienceOrSpn);
+        if (szAudienceOrSpn == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+    }
+
     if (channelBindings != NULL) {
         pbChannelBindings = CFDataGetBytePtr(channelBindings);
         cbChannelBindings = CFDataGetLength(channelBindings);
@@ -210,9 +257,14 @@ BIDIdentityCreateByVerifyingAssertion(
                              szAudienceOrSpn, pbChannelBindings, cbChannelBindings,
                              verificationTime + kCFAbsoluteTimeIntervalSince1970,
                              ulReqFlags, &identity, &expiryTime, pulVerifyFlags);
-                             
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:                             
     if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
+
+    BIDFree(szAssertion);
+    BIDFree(szAudienceOrSpn);
 
     return identity;
 }
@@ -280,7 +332,7 @@ BIDIdentityCreateFromString(
     uint32_t *pulRetFlags,
     CFErrorRef *pError)
 {
-    const char *szAssertion;
+    char *szAssertion = NULL;
     time_t expiryTime;
     BIDError err;
     BIDIdentity identity = BID_C_NO_IDENTITY;
@@ -290,16 +342,26 @@ BIDIdentityCreateFromString(
     if (pError != NULL)
         *pError = NULL;
 
-    if (assertion == NULL)
-        return NULL;
+    if (assertion == NULL) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
 
-    szAssertion = CFStringGetCStringPtr(assertion, kCFStringEncodingASCII);
+    szAssertion = _BIDCFCopyCString(assertion);
+    if (szAssertion == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     err = BIDAcquireAssertionFromString(context, szAssertion, ulReqFlags,
                                         &identity, &expiryTime, pulRetFlags);
+    BID_BAIL_ON_ERROR(err);
 
+cleanup:
     if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
+
+    BIDFree(szAssertion);
 
     return (err == BID_S_OK) ? identity : NULL;
 }
@@ -334,12 +396,12 @@ BIDAssertionCreateUI(
     uint32_t *pulFlags,
     CFErrorRef *pError)
 {
-    const char *szAudienceOrSpn = NULL;
+    char *szAudienceOrSpn = NULL;
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
-    const char *szIdentity = NULL;
+    char *szIdentity = NULL;
     char *szAssertion = NULL;
-    CFStringRef assertion;
+    CFStringRef assertion = NULL;
     time_t expiryTime;
     BIDError err;
 
@@ -348,26 +410,46 @@ BIDAssertionCreateUI(
     if (pError != NULL)
         *pError = NULL;
 
-    if (audienceOrSpn != NULL)
-        szAudienceOrSpn = CFStringGetCStringPtr(audienceOrSpn, kCFStringEncodingUTF8);
+    if (audienceOrSpn != NULL) {
+        szAudienceOrSpn = _BIDCFCopyCString(audienceOrSpn);
+        if (szAudienceOrSpn == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+    }
+
     if (channelBindings != NULL) {
         pbChannelBindings = CFDataGetBytePtr(channelBindings);
         cbChannelBindings = CFDataGetLength(channelBindings);
     }
-    if (optionalIdentity != NULL)
-        szIdentity = CFStringGetCStringPtr(optionalIdentity, kCFStringEncodingUTF8);
+
+    if (optionalIdentity != NULL) {
+        szIdentity = _BIDCFCopyCString(optionalIdentity);
+        if (szIdentity == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+    }
 
     err = BIDAcquireAssertion(context, BID_C_NO_TICKET_CACHE, szAudienceOrSpn,
                               pbChannelBindings, cbChannelBindings, szIdentity,
                               ulFlags, &szAssertion, pAssertedIdentity,
                               &expiryTime, pulFlags);
-    if (err != BID_S_OK && pError != NULL) {
-        *pError = _BIDCFMapError(err);
-        return NULL;
-    }
+    BID_BAIL_ON_ERROR(err);
 
     assertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
+    if (assertion == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+cleanup:
+    BIDFree(szAudienceOrSpn);
+    BIDFree(szIdentity);
     BIDFree(szAssertion);
+
+    if (err != BID_S_OK && pError != NULL)
+        *pError = _BIDCFMapError(err);
 
     return assertion;
 }
@@ -379,19 +461,24 @@ BIDTicketCacheCreate(
     CFErrorRef *pError)
 {
     BIDError err;
-    const char *szCacheName;
+    char *szCacheName;
     BIDTicketCache ticketCache = BID_C_NO_TICKET_CACHE;
 
     if (pError != NULL)
         *pError = NULL;
 
-    szCacheName = CFStringGetCStringPtr(cacheName, kCFStringEncodingUTF8);
+    szCacheName = _BIDCFCopyCString(cacheName);
+    if (szCacheName == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     err = BIDAcquireTicketCache(context, szCacheName, &ticketCache);
-    if (err != BID_S_OK && pError != NULL) {
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
-        return BID_C_NO_TICKET_CACHE;
-    }
 
     return ticketCache;
 }
@@ -403,19 +490,24 @@ BIDReplayCacheCreate(
     CFErrorRef *pError)
 {
     BIDError err;
-    const char *szCacheName;
+    char *szCacheName;
     BIDReplayCache replayCache = BID_C_NO_REPLAY_CACHE;
 
     if (pError != NULL)
         *pError = NULL;
 
-    szCacheName = CFStringGetCStringPtr(cacheName, kCFStringEncodingUTF8);
+    szCacheName = _BIDCFCopyCString(cacheName);
+    if (szCacheName == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     err = BIDAcquireReplayCache(context, szCacheName, &replayCache);
-    if (err != BID_S_OK && pError != NULL) {
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
-        return BID_C_NO_REPLAY_CACHE;
-    }
 
     return replayCache;
 }
