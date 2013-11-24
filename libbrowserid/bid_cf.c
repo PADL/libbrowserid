@@ -118,18 +118,21 @@ _BIDCFInit(void)
 CFTypeID
 BIDIdentityGetTypeID(void)
 {
+    BID_ASSERT(_BIDIdentityTypeID != _kCFRuntimeNotATypeID);
     return _BIDIdentityTypeID;
 }
 
 CFTypeID
 BIDContextGetTypeID(void)
 {
+    BID_ASSERT(_BIDContextTypeID != _kCFRuntimeNotATypeID);
     return _BIDContextTypeID;
 }
 
 CFTypeID
 BIDCacheGetTypeID(void)
 {
+    BID_ASSERT(_BIDCacheTypeID != _kCFRuntimeNotATypeID);
     return _BIDCacheTypeID;
 }
 
