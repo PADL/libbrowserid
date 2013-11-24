@@ -97,7 +97,7 @@ the maxticketage and maxrenewage properties in browserid.json, respectively
 Otherwise, the GSS BrowserID mechanism sets the ticket lifetime to 10 hours
 and the renewable lifetime to 7 days.
 
-Clock skew is not currently configurable but may be in a future release.
+Clock skew is configurable using the maxclockskew property.
 
 ## Testing
 
