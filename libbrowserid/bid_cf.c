@@ -592,6 +592,9 @@ _BIDCachePerformBlock(
         CFStringRef key = CFStringCreateWithCString(kCFAllocatorDefault, szKey, kCFStringEncodingASCII);
         CFDictionaryRef obj = _BIDCreateDictionaryFromJsonObject(jsonObject);
 
+        if (key == NULL || obj == NULL)
+            return BID_S_NO_MEMORY;
+
         err2 = block(context, cache, key, obj);
 
         CFRelease(key);
