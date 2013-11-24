@@ -134,4 +134,12 @@ BIDTicketCacheCreate(
     CFStringRef cacheName,
     CFErrorRef *pError);
 
+#if 0
+BIDError
+_BIDCachePerformBlock(
+    BIDContext context,
+    BIDCache cache,
+    BIDError (^block)(BIDContext, BIDCache, CFStringRef, CFTypeRef));
+#endif
+
 #endif /* _CFBROWSERID_H_ */

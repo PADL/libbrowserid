@@ -284,59 +284,6 @@ cleanup:
     return identity;
 }
 
-#if __BLOCKS__
-void
-BIDVerifyAssertionWithHandler(
-    BIDContext context,
-    CFStringRef assertion,
-    CFStringRef audienceOrSpn,
-    CFDataRef channelBindings,
-    CFAbsoluteTime verificationTime,
-    uint32_t ulReqFlags,
-    dispatch_queue_t queue,
-    void (^handler)(BIDIdentity, uint32_t, CFErrorRef))
-{
-    dispatch_queue_t bgqueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-
-    dispatch_retain(queue);
-    CFRetain(context);
-    CFRetain(assertion);
-    CFRetain(audienceOrSpn);
-    if (channelBindings != NULL)
-        CFRetain(channelBindings);
-
-    dispatch_async(bgqueue, ^{
-        BIDIdentity identity = BID_C_NO_IDENTITY;
-        uint32_t ulVerifyFlags = 0;
-        CFErrorRef error = NULL;
-
-        identity = BIDIdentityCreateByVerifyingAssertion(context,
-                                                         assertion,
-                                                         audienceOrSpn,
-                                                         channelBindings,
-                                                         verificationTime,
-                                                         ulReqFlags,
-                                                         &ulVerifyFlags,
-                                                         &error);
-
-        dispatch_async(queue, ^{
-            handler(identity, ulVerifyFlags, error);
-
-            dispatch_release(queue);
-            CFRelease(context);
-            CFRelease(assertion);
-            CFRelease(audienceOrSpn);
-            if (channelBindings != NULL)
-                CFRelease(channelBindings);
-            if (identity != BID_C_NO_IDENTITY)
-                CFRelease(identity);
-            if (error != NULL)
-                CFRelease(error);
-        });
-    });
-}
-#endif /* __BLOCKS __ */
-
 static CFStringRef
 _BIDIdentityCopyDebugDescription(
     CFTypeRef cf)
@@ -578,3 +525,81 @@ BIDIdentityGetExpiryTime(
 
     return expiryTime - kCFAbsoluteTimeIntervalSince1970;
 }
+
+#if __BLOCKS__
+void
+BIDVerifyAssertionWithHandler(
+    BIDContext context,
+    CFStringRef assertion,
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFAbsoluteTime verificationTime,
+    uint32_t ulReqFlags,
+    dispatch_queue_t queue,
+    void (^handler)(BIDIdentity, uint32_t, CFErrorRef))
+{
+    dispatch_queue_t bgqueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
+    dispatch_retain(queue);
+    CFRetain(context);
+    CFRetain(assertion);
+    CFRetain(audienceOrSpn);
+    if (channelBindings != NULL)
+        CFRetain(channelBindings);
+
+    dispatch_async(bgqueue, ^{
+        BIDIdentity identity = BID_C_NO_IDENTITY;
+        uint32_t ulVerifyFlags = 0;
+        CFErrorRef error = NULL;
+
+        identity = BIDIdentityCreateByVerifyingAssertion(context,
+                                                         assertion,
+                                                         audienceOrSpn,
+                                                         channelBindings,
+                                                         verificationTime,
+                                                         ulReqFlags,
+                                                         &ulVerifyFlags,
+                                                         &error);
+
+        dispatch_async(queue, ^{
+            handler(identity, ulVerifyFlags, error);
+
+            dispatch_release(queue);
+            CFRelease(context);
+            CFRelease(assertion);
+            CFRelease(audienceOrSpn);
+            if (channelBindings != NULL)
+                CFRelease(channelBindings);
+            if (identity != BID_C_NO_IDENTITY)
+                CFRelease(identity);
+            if (error != NULL)
+                CFRelease(error);
+        });
+    });
+}
+
+BIDError
+_BIDCachePerformBlock(
+    BIDContext context,
+    BIDCache cache,
+    BIDError (^block)(BIDContext, BIDCache, CFStringRef, CFTypeRef))
+{
+    BIDError err;
+
+    err = _BIDPerformCacheObjectsWithBlock(context, cache,
+        ^(BIDContext context, BIDCache cache, const char *szKey, json_t *jsonObject) {
+        BIDError err2;
+        CFStringRef key = CFStringCreateWithCString(kCFAllocatorDefault, szKey, kCFStringEncodingASCII);
+        CFDictionaryRef obj = _BIDCreateDictionaryFromJsonObject(jsonObject);
+
+        err2 = block(context, cache, key, obj);
+
+        CFRelease(key);
+        CFRelease(obj);
+
+        return err2;
+    });
+
+    return err;
+}
+#endif /* __BLOCKS__ */
