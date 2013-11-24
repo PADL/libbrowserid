@@ -340,7 +340,27 @@ static CFStringRef
 _BIDIdentityCopyDebugDescription(
     CFTypeRef cf)
 {
-    return BIDIdentityCopyAttribute((BIDIdentity)cf, CFSTR("sub"));
+    CFStringRef desc;
+    CFDictionaryRef dict = BIDIdentityCopyAttributeDictionary((BIDIdentity)cf);
+    CFStringRef sub = NULL, iss = NULL;
+
+    if (dict != NULL) {
+        sub = CFDictionaryGetValue(dict, kBIDIdentitySubjectKey);
+        iss = CFDictionaryGetValue(dict, kBIDIdentityIssuerKey);
+    }
+    if (sub == NULL)
+        sub = CFSTR("?");
+    if (iss == NULL)
+        iss = CFSTR("?");
+
+    desc = CFStringCreateWithFormat(kCFAllocatorDefault, NULL,
+                                    CFSTR("<BIDIdentity %p>{subject = \"%@\", issuer = \"%@\"}"),
+                                    cf, sub, iss);
+
+    if (dict != NULL)
+        CFRelease(dict);
+
+    return desc;
 }
 
 BIDIdentity
