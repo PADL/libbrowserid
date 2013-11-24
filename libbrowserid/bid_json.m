@@ -310,15 +310,10 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 CFDictionaryRef
-BIDIdentityCopyAttributeDictionary(
-    BIDIdentity identity)
+_BIDCreateDictionaryFromJsonObject(
+    json_t *jsonObject)
 {
-    BIDJsonDictionary *dict;
-
-    if (identity == BID_C_NO_IDENTITY)
-        return NULL;
-
-    dict = [[BIDJsonDictionary alloc] initWithJsonObject:identity->Attributes];
+    NSDictionary *dict = [[BIDJsonDictionary alloc] initWithJsonObject:jsonObject];
 
     return CFBridgingRetain(dict);
 }

@@ -37,10 +37,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <jansson.h>
+
+#if __OBJC__
+
 #include <Foundation/NSDictionary.h>
 #include <Foundation/NSArray.h>
-
-#include <jansson.h>
 
 @protocol BIDJsonInit
 - (id)initWithJsonObject:(json_t *)value;
@@ -53,3 +55,11 @@
 @interface BIDJsonArray : NSArray <BIDJsonInit>
 - (NSString *)jsonRepresentation;
 @end
+
+#endif
+
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+CFDictionaryRef
+_BIDCreateDictionaryFromJsonObject(
+    json_t *jsonObject);
+#endif

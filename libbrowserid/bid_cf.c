@@ -38,6 +38,7 @@
  */
 
 #include "bid_private.h"
+#include "bid_json.h"
 
 /*
  * This is a CoreFoundation wrapper for libbrowserid. It only builds if the
@@ -403,6 +404,16 @@ cleanup:
     BIDFree(szAssertion);
 
     return (err == BID_S_OK) ? identity : NULL;
+}
+
+CFDictionaryRef
+BIDIdentityCopyAttributeDictionary(
+    BIDIdentity identity)
+{
+    if (identity == BID_C_NO_IDENTITY)
+        return NULL;
+
+    return _BIDCreateDictionaryFromJsonObject(identity->Attributes);
 }
 
 CFTypeRef
