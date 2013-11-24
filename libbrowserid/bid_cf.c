@@ -231,6 +231,7 @@ BIDVerifyAssertionWithHandler(
 {
     void (^callback)(BIDIdentity, uint32_t, CFErrorRef);
 
+    dispatch_retain(queue);
     callback = Block_copy(func);
     CFRetain(context);
     CFRetain(assertion);
@@ -253,6 +254,7 @@ BIDVerifyAssertionWithHandler(
                                                          &error);
         callback(identity, ulVerifyFlags, error);
 
+        dispatch_release(queue);
         _Block_release(callback);
         CFRelease(context);
         CFRelease(assertion);
