@@ -308,6 +308,14 @@ _BIDPerformCacheObjects(
     BIDError (*selector)(BIDContext, BIDCache, const char *, json_t *, void *data),
     void *data);
 
+#if __BLOCKS__
+BIDError
+_BIDPerformCacheObjectsWithBlock(
+    BIDContext context,
+    BIDCache cache,
+    BIDError (^block)(BIDContext, BIDCache, const char *, json_t *));
+#endif
+
 BIDError
 _BIDAcquireCacheForUser(
     BIDContext context,

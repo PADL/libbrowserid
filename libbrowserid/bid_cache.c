@@ -487,7 +487,7 @@ BIDError
 _BIDPerformCacheObjects(
     BIDContext context,
     BIDCache cache,
-    BIDError (*callback)(BIDContext, BIDCache, const char *, json_t *, void *data),
+    BIDError (*callback)(BIDContext, BIDCache, const char *, json_t *, void *),
     void *data)
 {
     BIDError err, err2 = BID_S_OK;
@@ -608,3 +608,27 @@ cleanup:
 
     return err;
 }
+
+#if __BLOCKS__
+static BIDError
+_BIDPerformCallbackBlock(
+    BIDContext context,
+    BIDCache cache,
+    const char *key,
+    json_t *value,
+    void *data)
+{
+    BIDError (^block)(BIDContext, BIDCache, const char *, json_t *) = data;
+
+    return block(context, cache, key, value);
+}
+
+BIDError
+_BIDPerformCacheObjectsWithBlock(
+    BIDContext context,
+    BIDCache cache,
+    BIDError (^block)(BIDContext, BIDCache, const char *, json_t *))
+{
+    return _BIDPerformCacheObjects(context, cache, _BIDPerformCallbackBlock, block);
+}
+#endif /* __BLOCKS__ */
