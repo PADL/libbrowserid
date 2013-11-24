@@ -295,6 +295,8 @@ BIDVerifyAssertionWithHandler(
     dispatch_queue_t queue,
     void (^handler)(BIDIdentity, uint32_t, CFErrorRef))
 {
+    dispatch_queue_t bgqueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
     dispatch_retain(queue);
     CFRetain(context);
     CFRetain(assertion);
@@ -302,7 +304,7 @@ BIDVerifyAssertionWithHandler(
     if (channelBindings != NULL)
         CFRetain(channelBindings);
 
-    dispatch_async(queue, ^{
+    dispatch_async(bgqueue, ^{
         BIDIdentity identity = BID_C_NO_IDENTITY;
         uint32_t ulVerifyFlags = 0;
         CFErrorRef error = NULL;
@@ -315,18 +317,21 @@ BIDVerifyAssertionWithHandler(
                                                          ulReqFlags,
                                                          &ulVerifyFlags,
                                                          &error);
-        handler(identity, ulVerifyFlags, error);
 
-        dispatch_release(queue);
-        CFRelease(context);
-        CFRelease(assertion);
-        CFRelease(audienceOrSpn);
-        if (channelBindings != NULL)
-            CFRelease(channelBindings);
-        if (identity != BID_C_NO_IDENTITY)
-            CFRelease(identity);
-        if (error != NULL)
-            CFRelease(error);
+        dispatch_async(queue, ^{
+            handler(identity, ulVerifyFlags, error);
+
+            dispatch_release(queue);
+            CFRelease(context);
+            CFRelease(assertion);
+            CFRelease(audienceOrSpn);
+            if (channelBindings != NULL)
+                CFRelease(channelBindings);
+            if (identity != BID_C_NO_IDENTITY)
+                CFRelease(identity);
+            if (error != NULL)
+                CFRelease(error);
+        });
     });
 }
 #endif /* __BLOCKS __ */
