@@ -6,14 +6,14 @@ PersonaVerifyAssertion(
     NSString *assertion,
     NSString *audience,
     dispatch_queue_t q,
-    void (^handler)(id identity, NSError *error))
+    void (^handler)(id identity, NSDictionary *attrs, NSError *error))
 {
     BIDContext context = NULL;
     CFErrorRef cfErr;
 
-    context = BIDContextCreate(NULL, BID_CONTEXT_RP, &cfErr);
+    context = BIDContextCreate(NULL, BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE, &cfErr);
     if (context == NULL) {
-        handler(NULL, (__bridge NSError *)cfErr);
+        handler(NULL, NULL, (__bridge NSError *)cfErr);
         CFRelease(cfErr);
         return;
     }
@@ -26,7 +26,8 @@ PersonaVerifyAssertion(
                                   0, // flags
                                   q,
                                   ^(BIDIdentity identity, uint32_t flags, CFErrorRef error) {
-        handler((__bridge id)identity, (__bridge NSError *)error);
+        NSDictionary *attrs = CFBridgingRelease(BIDIdentityCopyAttributeDictionary(identity));
+        handler((__bridge id)identity, attrs, (__bridge NSError *)error);
         });
 
     CFRelease(context);
@@ -46,13 +47,13 @@ int main(int argc, const char *argv[])
     @autoreleasepool {
         NSString *audience = [NSString stringWithUTF8String:argv[1]];
         NSString *assertion = [NSString stringWithUTF8String:argv[2]];
-        __block NSDictionary *attrs;
+        __block NSDictionary *identityAttrs;
 
         PersonaVerifyAssertion(assertion, audience, q,
-                               ^(id identity, NSError *error) {
+                               ^(id identity, NSDictionary *attrs, NSError *error) {
             if (identity) {
                 NSLog(@"Verified assertion: %@", identity);
-                attrs = CFBridgingRelease(BIDIdentityCopyAttributeDictionary((__bridge BIDIdentity)identity));
+                identityAttrs = attrs;
             } else {
                 NSLog(@"Failed to verify assertion: %@", error);
                 exitCode = [error code];
@@ -61,8 +62,8 @@ int main(int argc, const char *argv[])
         });
         dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
 
-        if (attrs)
-            NSLog(@"Attributes: %@", attrs);
+        if (identityAttrs)
+            NSLog(@"Attributes: %@", identityAttrs);
     }
 
     exit(exitCode);
