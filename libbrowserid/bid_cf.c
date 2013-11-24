@@ -227,12 +227,9 @@ BIDVerifyAssertionWithHandler(
     CFAbsoluteTime verificationTime,
     uint32_t ulReqFlags,
     dispatch_queue_t queue,
-    void (^func)(BIDIdentity, uint32_t, CFErrorRef))
+    void (^handler)(BIDIdentity, uint32_t, CFErrorRef))
 {
-    void (^callback)(BIDIdentity, uint32_t, CFErrorRef);
-
     dispatch_retain(queue);
-    callback = Block_copy(func);
     CFRetain(context);
     CFRetain(assertion);
     CFRetain(audienceOrSpn);
@@ -252,10 +249,9 @@ BIDVerifyAssertionWithHandler(
                                                          ulReqFlags,
                                                          &ulVerifyFlags,
                                                          &error);
-        callback(identity, ulVerifyFlags, error);
+        handler(identity, ulVerifyFlags, error);
 
         dispatch_release(queue);
-        _Block_release(callback);
         CFRelease(context);
         CFRelease(assertion);
         CFRelease(audienceOrSpn);
