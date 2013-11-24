@@ -360,8 +360,6 @@ BIDGetIdentityExpiryTime(
     time_t *value)
 {
 
-    BID_CONTEXT_VALIDATE(context);
-
     if (identity == BID_C_NO_IDENTITY)
         return BID_S_INVALID_PARAMETER;
 

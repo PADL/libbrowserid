@@ -114,6 +114,10 @@ BIDIdentityCopyAttribute(
     BIDIdentity identity,
     CFStringRef attribute);
 
+CFAbsoluteTime
+BIDIdentityGetExpiryTime(
+    BIDIdentity identity);
+
 CFDictionaryRef
 BIDIdentityCopyAttributeDictionary(
     BIDIdentity identity);

@@ -418,3 +418,14 @@ BIDReplayCacheCreate(
 
     return replayCache;
 }
+
+CFAbsoluteTime
+BIDIdentityGetExpiryTime(
+    BIDIdentity identity)
+{
+    time_t expiryTime;
+
+    BIDGetIdentityExpiryTime(BID_C_NO_CONTEXT, identity, &expiryTime);
+
+    return expiryTime - kCFAbsoluteTimeIntervalSince1970;
+}

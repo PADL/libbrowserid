@@ -24,6 +24,7 @@ BIDIdentityCopyAttributeDictionary
 BIDIdentityCreateFromString
 BIDIdentityDeriveKey
 BIDIdentityCreateByVerifyingAssertion
+BIDIdentityGetExpiryTime
 BIDIdentityGetTypeID
 BIDMakeRPResponseToken
 BIDMakeXRTToken
