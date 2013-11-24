@@ -253,6 +253,7 @@ BIDVerifyAssertionWithHandler(
                                                          &error);
         callback(identity, ulVerifyFlags, error);
 
+        _Block_release(callback);
         CFRelease(context);
         CFRelease(assertion);
         CFRelease(audienceOrSpn);
