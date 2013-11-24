@@ -179,7 +179,6 @@ BIDIdentityCreateByVerifyingAssertion(
     CFDataRef channelBindings,
     CFAbsoluteTime verificationTime,
     uint32_t ulReqFlags,
-    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulVerifyFlags,
     CFErrorRef *pError)
 {
@@ -191,8 +190,6 @@ BIDIdentityCreateByVerifyingAssertion(
     BIDIdentity identity = BID_C_NO_IDENTITY;
     BIDError err;
 
-    if (pExpiryTime != NULL)
-        *pExpiryTime = 0;
     if (pulVerifyFlags != NULL)
         *pulVerifyFlags = 0;
     if (pError != NULL)
@@ -214,8 +211,6 @@ BIDIdentityCreateByVerifyingAssertion(
                              verificationTime + kCFAbsoluteTimeIntervalSince1970,
                              ulReqFlags, &identity, &expiryTime, pulVerifyFlags);
                              
-    if (pExpiryTime != NULL)
-        *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
     if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
 
@@ -232,11 +227,18 @@ BIDVerifyAssertionWithHandler(
     CFAbsoluteTime verificationTime,
     uint32_t ulReqFlags,
     dispatch_queue_t queue,
-    void (^handler)(BIDIdentity, CFAbsoluteTime, uint32_t, CFErrorRef))
+    void (^func)(BIDIdentity, uint32_t, CFErrorRef))
 {
+    void (^callback)(BIDIdentity, uint32_t, CFErrorRef);
+
+    callback = Block_copy(func);
+    CFRetain(context);
+    CFRetain(assertion);
+    if (channelBindings != NULL)
+        CFRetain(channelBindings);
+
     dispatch_async(queue, ^{
         BIDIdentity identity = BID_C_NO_IDENTITY;
-        CFAbsoluteTime expiryTime = 0;
         uint32_t ulVerifyFlags = 0;
         CFErrorRef error = NULL;
 
@@ -246,12 +248,15 @@ BIDVerifyAssertionWithHandler(
                                                          channelBindings,
                                                          verificationTime,
                                                          ulReqFlags,
-                                                         &expiryTime,
                                                          &ulVerifyFlags,
                                                          &error);
-        handler(identity, expiryTime, ulVerifyFlags, error);
+        callback(identity, ulVerifyFlags, error);
 
-        if (identity != BID_C_NO_IDENTITY)
+        CFRelease(assertion);
+        CFRelease(context);
+        if (channelBindings != NULL)
+            CFRelease(channelBindings);
+        if (identity != NULL)
             CFRelease(identity);
         if (error != NULL)
             CFRelease(error);
@@ -271,17 +276,14 @@ BIDIdentityCreateFromString(
     BIDContext context,
     CFStringRef assertion,
     uint32_t ulReqFlags,
-    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulRetFlags,
     CFErrorRef *pError)
 {
     const char *szAssertion;
+    time_t expiryTime;
     BIDError err;
     BIDIdentity identity = BID_C_NO_IDENTITY;
-    time_t expiryTime;
 
-    if (pExpiryTime != NULL)
-        *pExpiryTime = 0;
     if (pulRetFlags != NULL)
         *pulRetFlags = 0;
     if (pError != NULL)
@@ -294,9 +296,6 @@ BIDIdentityCreateFromString(
 
     err = BIDAcquireAssertionFromString(context, szAssertion, ulReqFlags,
                                         &identity, &expiryTime, pulRetFlags);
-
-    if (pExpiryTime != NULL)
-        *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
 
     if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(err);
@@ -331,7 +330,6 @@ BIDAssertionCreateUI(
     CFStringRef optionalIdentity,
     uint32_t ulFlags,
     BIDIdentity *pAssertedIdentity,
-    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulFlags,
     CFErrorRef *pError)
 {
@@ -344,8 +342,6 @@ BIDAssertionCreateUI(
     time_t expiryTime;
     BIDError err;
 
-    if (pExpiryTime != NULL)
-        *pExpiryTime = 0;
     if (pulFlags != NULL)
         *pulFlags = 0;
     if (pError != NULL)
@@ -371,9 +367,6 @@ BIDAssertionCreateUI(
 
     assertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
     BIDFree(szAssertion);
-
-    if (pExpiryTime != NULL)
-        *pExpiryTime = expiryTime - kCFAbsoluteTimeIntervalSince1970;
 
     return assertion;
 }

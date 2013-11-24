@@ -66,7 +66,6 @@ BIDAssertionCreateUI(
     CFStringRef optionalIdentity,
     uint32_t ulFlags,
     BIDIdentity *pAssertedIdentity,
-    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulFlags,
     CFErrorRef *pError);
 
@@ -75,7 +74,6 @@ BIDIdentityCreateFromString(
     BIDContext context,
     CFStringRef assertion,
     uint32_t ulFlags,
-    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulFlags,
     CFErrorRef *pError);
 
@@ -87,7 +85,6 @@ BIDIdentityCreateByVerifyingAssertion(
     CFDataRef channelBindings,
     CFAbsoluteTime verificationTime,
     uint32_t ulReqFlags,
-    CFAbsoluteTime *pExpiryTime,
     uint32_t *pulVerifyFlags,
     CFErrorRef *pError);
 
@@ -101,7 +98,7 @@ BIDVerifyAssertionWithHandler(
     CFAbsoluteTime verificationTime,
     uint32_t ulReqFlags,
     dispatch_queue_t queue,
-    void (^handler)(BIDIdentity, CFAbsoluteTime, uint32_t, CFErrorRef));
+    void (^handler)(BIDIdentity, uint32_t, CFErrorRef));
 #endif
 
 extern const CFStringRef kBIDIdentityAudienceKey;

@@ -13,7 +13,6 @@ PersonaGetAssertion(
     BIDContext context = NULL;
     CFStringRef assertion = NULL;
     CFErrorRef cfErr = NULL;
-    CFAbsoluteTime expires;
     uint32_t flags = 0;
 
     context = BIDContextCreate(NULL, BID_CONTEXT_USER_AGENT, &cfErr);
@@ -25,7 +24,7 @@ PersonaGetAssertion(
     BIDSetContextParam(context, BID_PARAM_PARENT_WINDOW, (__bridge void *)parentWindow);
 
     assertion = BIDAssertionCreateUI(context, (__bridge CFStringRef)audience,
-                                     NULL, NULL, 0, NULL, &expires, &flags, &cfErr);
+                                     NULL, NULL, 0, NULL, &flags, &cfErr);
 
     if (cfErr)
         *error = CFBridgingRelease(cfErr);

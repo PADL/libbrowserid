@@ -1,44 +1,42 @@
 #include <Cocoa/Cocoa.h>
 #include <CFBrowserID.h>
 
-id
+void
 PersonaVerifyAssertion(
     NSString *assertion,
     NSString *audience,
-    NSError * __autoreleasing *error)
+    dispatch_queue_t q,
+    void (^handler)(id identity, NSError *error))
 {
     BIDContext context = NULL;
-    CFErrorRef cfErr = NULL;
-    BIDIdentity identity = NULL;
-    CFAbsoluteTime expires;
-    uint32_t flags = 0;
+    CFErrorRef cfErr;
 
     context = BIDContextCreate(NULL, BID_CONTEXT_RP, &cfErr);
     if (context == NULL) {
-        *error = CFBridgingRelease(cfErr);
-        return NULL;
+        handler(NULL, (__bridge NSError *)cfErr);
+        CFRelease(cfErr);
+        return;
     }
 
-    identity = BIDIdentityCreateByVerifyingAssertion(context,
-                                                     (__bridge CFStringRef)assertion,
-                                                     (__bridge CFStringRef)audience,
-                                                     NULL, // channel bindings
-                                                     CFAbsoluteTimeGetCurrent(),
-                                                     0, // flags
-                                                     &expires,
-                                                     &flags,
-                                                     &cfErr);
-
-    *error = CFBridgingRelease(cfErr);
+    BIDVerifyAssertionWithHandler(context,
+                                  (__bridge CFStringRef)assertion,
+                                  (__bridge CFStringRef)audience,
+                                  NULL, // channel bindings
+                                  CFAbsoluteTimeGetCurrent(),
+                                  0, // flags
+                                  q,
+                                  ^(BIDIdentity identity, uint32_t flags, CFErrorRef error) {
+        handler((__bridge id)identity, (__bridge NSError *)error);
+        });
 
     CFRelease(context);
-
-    return CFBridgingRelease(identity);
 }
 
 int main(int argc, const char *argv[])
 {
-    int exitCode = BID_S_OK;
+    __block int exitCode = BID_S_OK;
+    dispatch_queue_t q = dispatch_queue_create("com.padl.BrowserID.example", NULL);
+    dispatch_semaphore_t sema = dispatch_semaphore_create(0);
 
     if (argc != 3) {
         NSLog(@"Usage: %s audience assertion\n", argv[0]);
@@ -48,19 +46,22 @@ int main(int argc, const char *argv[])
     @autoreleasepool {
         NSString *audience = [NSString stringWithUTF8String:argv[1]];
         NSString *assertion = [NSString stringWithUTF8String:argv[2]];
-        NSDictionary *attrs;
-        id identity;
-        NSError *error;
 
-        identity = PersonaVerifyAssertion(assertion, audience, &error);
-        if (identity) {
-            NSLog(@"Verified assertion: %@", identity);
-            attrs = CFBridgingRelease(BIDIdentityCopyAttributeDictionary((__bridge BIDIdentity)identity));
-            NSLog(@"Attributes: %@", attrs);
-        } else {
-            NSLog(@"Failed to verify assertion: %@", error);
-            exitCode = [error code];
-        }
+        PersonaVerifyAssertion(assertion, audience, q,
+                               ^(id identity, NSError *error) {
+            NSDictionary *attrs;
+
+            if (identity) {
+                NSLog(@"Verified assertion: %@", identity);
+                attrs = CFBridgingRelease(BIDIdentityCopyAttributeDictionary((__bridge BIDIdentity)identity));
+                NSLog(@"Attributes: %@", attrs);
+            } else {
+                NSLog(@"Failed to verify assertion: %@", error);
+                exitCode = [error code];
+            }
+            dispatch_semaphore_signal(sema);
+        });
+        dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
     }
 
     exit(exitCode);

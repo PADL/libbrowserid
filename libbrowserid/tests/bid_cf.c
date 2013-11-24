@@ -62,7 +62,6 @@ int main(int argc, const char *argv[])
     CFStringRef audience = NULL;
     CFStringRef name = NULL;
     CFDictionaryRef dict = NULL;
-    CFAbsoluteTime expires;
     CFErrorRef err = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
@@ -95,7 +94,7 @@ int main(int argc, const char *argv[])
     if (audience == NULL)
         audience = CFSTR("host/www.persona.org");
 
-    assertion = BIDAssertionCreateUI(context, audience, NULL, name, 0, NULL, &expires, &flags, &err);
+    assertion = BIDAssertionCreateUI(context, audience, NULL, name, 0, NULL, &flags, &err);
     if (assertion == NULL) {
         NSLog(@"Failed to acquire assertion: %@", err);
         SAFE_CFRELEASE(err);
@@ -105,7 +104,7 @@ int main(int argc, const char *argv[])
     NSLog(@"Assertion is %@", assertion);
 
     identity = BIDIdentityCreateByVerifyingAssertion(context, assertion, audience, NULL,
-                                                     CFAbsoluteTimeGetCurrent(), 0, &expires, &flags, &err);
+                                                     CFAbsoluteTimeGetCurrent(), 0, &flags, &err);
     if (identity == NULL) {
         NSLog(@"Failed to verify assertion: %@", err);
     } else {
