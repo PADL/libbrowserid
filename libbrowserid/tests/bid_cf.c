@@ -58,14 +58,14 @@ int main(int argc, const char *argv[])
 {
     BIDContext context = NULL;
     CFStringRef assertion = NULL;
-    BIDIdentity identity = NULL;
     CFStringRef audience = NULL;
     CFStringRef name = NULL;
-    CFDictionaryRef dict = NULL;
     CFErrorRef err = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
                        BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
+    dispatch_queue_t q = dispatch_queue_create("com.padl.BrowserID.tests.bid_cf", NULL);
+    dispatch_semaphore_t sema = dispatch_semaphore_create(0);
 
     if (argc > 2 && !strcmp(argv[1], "-identity")) {
         name = CFStringCreateWithCString(kCFAllocatorDefault, argv[2], kCFStringEncodingASCII);
@@ -103,19 +103,31 @@ int main(int argc, const char *argv[])
         
     NSLog(@"Assertion is %@", assertion);
 
-    identity = BIDIdentityCreateByVerifyingAssertion(context, assertion, audience, NULL,
-                                                     CFAbsoluteTimeGetCurrent(), 0, &flags, &err);
-    if (identity == NULL) {
-        NSLog(@"Failed to verify assertion: %@", err);
-    } else {
-        dict = BIDIdentityCopyAttributeDictionary(identity);
-        NSLog(@"Identity %@ dictionary is %@", identity, dict);
-    }
+    BIDVerifyAssertionWithHandler(context,
+                                  (__bridge CFStringRef)assertion,
+                                  (__bridge CFStringRef)audience,
+                                  NULL, // channel bindings
+                                  CFAbsoluteTimeGetCurrent(),
+                                  0, // flags
+                                  q,
+                                  ^(BIDIdentity identity, uint32_t flags, CFErrorRef err) {
+        if (identity == NULL) {
+            NSLog(@"Failed to verify assertion: %@", err);
+        } else {
+            CFDictionaryRef dict;
 
-    SAFE_CFRELEASE(identity);
+            NSLog(@"Verified assertion for identity %@!", identity);
+
+            dict = BIDIdentityCopyAttributeDictionary(identity);
+            NSLog(@"Identity %@ dictionary is %@", identity, dict);
+            SAFE_CFRELEASE(dict);
+        }
+        dispatch_semaphore_signal(sema);
+    });
+    dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+
     SAFE_CFRELEASE(context);
     SAFE_CFRELEASE(assertion);
-    SAFE_CFRELEASE(dict);
     SAFE_CFRELEASE(err);
 
     exit(0);
