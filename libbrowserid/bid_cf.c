@@ -234,6 +234,7 @@ BIDVerifyAssertionWithHandler(
     callback = Block_copy(func);
     CFRetain(context);
     CFRetain(assertion);
+    CFRetain(audienceOrSpn);
     if (channelBindings != NULL)
         CFRetain(channelBindings);
 
@@ -252,11 +253,12 @@ BIDVerifyAssertionWithHandler(
                                                          &error);
         callback(identity, ulVerifyFlags, error);
 
-        CFRelease(assertion);
         CFRelease(context);
+        CFRelease(assertion);
+        CFRelease(audienceOrSpn);
         if (channelBindings != NULL)
             CFRelease(channelBindings);
-        if (identity != NULL)
+        if (identity != BID_C_NO_IDENTITY)
             CFRelease(identity);
         if (error != NULL)
             CFRelease(error);
