@@ -42,7 +42,7 @@
 const CFStringRef kBIDIdentityAudienceKey   = CFSTR("aud");
 const CFStringRef kBIDIdentitySubjectKey    = CFSTR("sub");
 const CFStringRef kBIDIdentityIssuerKey     = CFSTR("iss");
-const CFStringRef kBIDIdentityExpiryKey     = CFSTR("exp");
+const CFStringRef kBIDIdentityExpiryTimeKey = CFSTR("exp");
 const CFStringRef kBIDIdentityIssuedAtKey   = CFSTR("iat");
 const CFStringRef kBIDIdentityPublicKeyKey  = CFSTR("public-key");
 const CFStringRef kBIDIdentityPrincipalKey  = CFSTR("principal");

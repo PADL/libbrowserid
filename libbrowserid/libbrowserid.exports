@@ -63,7 +63,7 @@ _BIDUnpackBackedAssertion
 kBIDIdentityAudienceKey
 kBIDIdentitySubjectKey
 kBIDIdentityIssuerKey
-kBIDIdentityExpiryKey
+kBIDIdentityExpiryTimeKey
 kBIDIdentityIssuedAtKey
 kBIDIdentityPublicKeyKey
 kBIDIdentityPrincipalKey

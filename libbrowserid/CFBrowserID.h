@@ -104,7 +104,7 @@ BIDVerifyAssertionWithHandler(
 extern const CFStringRef kBIDIdentityAudienceKey;
 extern const CFStringRef kBIDIdentitySubjectKey;
 extern const CFStringRef kBIDIdentityIssuerKey;
-extern const CFStringRef kBIDIdentityExpiryKey;
+extern const CFStringRef kBIDIdentityExpiryTimeKey;
 extern const CFStringRef kBIDIdentityIssuedAtKey;
 extern const CFStringRef kBIDIdentityPublicKeyKey;
 extern const CFStringRef kBIDIdentityPrincipalKey;
