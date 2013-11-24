@@ -39,6 +39,17 @@
 
 #include "bid_private.h"
 
+/*
+ * This is a CoreFoundation wrapper for libbrowserid. It only builds if the
+ * CoreFoundation/CFRuntime.h private header is available (which may change
+ * between OS releases). It makes the libbrowserid context, identity and
+ * cache types first-class CoreFoundation (and thus Objective-C) objects,
+ * and provides accessor functions that take and return CF types.
+ *
+ * There are examples in ../sample/bidcf{get,verify}.m that show how to use
+ * these APIs from an Objective-C program.
+ */
+
 const CFStringRef kBIDIdentityAudienceKey   = CFSTR("aud");
 const CFStringRef kBIDIdentitySubjectKey    = CFSTR("sub");
 const CFStringRef kBIDIdentityIssuerKey     = CFSTR("iss");
