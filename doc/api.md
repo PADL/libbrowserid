@@ -3,8 +3,8 @@
 ## Overview
 
 The libbrowserid API is defined in browserid.h (which will be installed in
-/usr/local/include unless you've specified otherwise). The easiest way to learn
-the API is to look at the example code in sample/, but here's a brief overview.
+/usr/local/include unless you''ve specified otherwise). The easiest way to learn
+the API is to look at the example code in sample/, but here''s a brief overview.
 
 ## Context object
 
@@ -20,6 +20,8 @@ a replay cache when verifying assertions. These are documented in browserid.h.
 
 Example:
 
+    BIDContext = BID_C_NO_CONTEXT;
+    ...
     err = BIDAcquireContext(NULL, /* szConfigFile */
                             BID_CONTEXT_USER_AGENT,
                             NULL, /* pvReserved */
@@ -27,17 +29,21 @@ Example:
     ...
     BIDReleaseContext(context);
 
-## Identity object
-
-TBC
-
 ## Acquiring an assertion
 
-TBC
+You can acquire an assertion using BIDAcquireAssertion() or
+BIDAcquireAssertionFromString(). The former API will display UI on platforms
+that support it. The latter will simply parse an existing assertion. Not that
+neither of these APIs verify the assertion; call BIDVerifyAssertion() to do
+that.
 
 Example:
 
-    err = BIDAcquireAssertion(context, BID_C_NO_TICKET_CACHE, argv[1],
+    BIDContext context; // see above
+    const char *audience = "http://example.com"; // audience URL
+    char *assertion;
+    ...
+    err = BIDAcquireAssertion(context, BID_C_NO_TICKET_CACHE, audience,
                               NULL, 0, NULL, 0,
                               &assertion, NULL, &expires, &flags);
     ...
@@ -45,12 +51,17 @@ Example:
 
 ## Verifying an assertion
 
-TBC
+You can verify an assertion and its certificate chain with the
+BIDVerifyAssertion() API. You''ll get a result code and an identity object that
+you can use to retrieve certificate attributes such as the subject and issuer.
 
 Example:
 
+    const char *assertion = "..."; // from client
+    const char *audience = "http://example.com"; // audience URL
+    ...
     err = BIDVerifyAssertion(context, BID_C_NO_REPLAY_CACHE,
-                             argv[2], argv[1],
+                             assertion, audience,
                              NULL, 0, time(NULL), 0, &identity,
                              &expires, &flags);
     ...
@@ -65,6 +76,17 @@ Example:
 If you have the CoreFoundation internal headers installed (CFRuntime.h), then
 you can build libbrowserid such that it exposes its types as first-class
 CoreFoundation objects. You can also use the helper APIs in CFBrowserID.h.
+
+    BIDContext context;
+    CFStringRef audience = CFSTR("http://example.com");
+    CFStringRef assertion;
+    CFErrorRef cfErr;
+    uint32_t flags;
+
+    context = BIDContextCreate(NULL, BID_CONTEXT_USER_AGENT, &cfErr);
+    assertion = BIDAssertionCreateUI(context, audience,
+                                     NULL, NULL, 0, NULL, &flags, &cfErr);
+    CFRelease(context);
 
 ## Windows port
 
