@@ -47,9 +47,9 @@ const CFStringRef kBIDIdentityIssuedAtKey   = CFSTR("iat");
 const CFStringRef kBIDIdentityPublicKeyKey  = CFSTR("public-key");
 const CFStringRef kBIDIdentityPrincipalKey  = CFSTR("principal");
 
-static CFTypeID _BIDIdentityTypeID = _kCFRuntimeNotATypeID;
-static CFTypeID _BIDContextTypeID = _kCFRuntimeNotATypeID;
-static CFTypeID _BIDCacheTypeID = _kCFRuntimeNotATypeID;
+static CFTypeID _BIDIdentityTypeID          = _kCFRuntimeNotATypeID;
+static CFTypeID _BIDContextTypeID           = _kCFRuntimeNotATypeID;
+static CFTypeID _BIDCacheTypeID             = _kCFRuntimeNotATypeID;
 
 static void
 _BIDCFInit(void) __attribute__((__constructor__));
