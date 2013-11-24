@@ -43,7 +43,6 @@
 
 #include <AppKit/AppKit.h>
 
-#include <jansson.h>
 #include "browserid.h"
 #include "CFBrowserID.h"
 #include "bid_private.h"
@@ -61,6 +60,7 @@ int main(int argc, const char *argv[])
     CFStringRef audience = NULL;
     CFStringRef name = NULL;
     CFErrorRef err = NULL;
+    CFDataRef cb = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
                        BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
@@ -94,19 +94,21 @@ int main(int argc, const char *argv[])
     if (audience == NULL)
         audience = CFSTR("host/www.persona.org");
 
-    assertion = BIDAssertionCreateUI(context, audience, NULL, name, 0, NULL, &flags, &err);
+    cb = CFDataCreate(kCFAllocatorDefault, (UInt8 *)"foo", 3);
+
+    assertion = BIDAssertionCreateUI(context, audience, cb, name, 0, NULL, &flags, &err);
     if (assertion == NULL) {
         NSLog(@"Failed to acquire assertion: %@", err);
         SAFE_CFRELEASE(err);
         exit(2);
     }
-        
+
     NSLog(@"Assertion is %@", assertion);
 
     BIDVerifyAssertionWithHandler(context,
-                                  (__bridge CFStringRef)assertion,
-                                  (__bridge CFStringRef)audience,
-                                  NULL, // channel bindings
+                                  assertion,
+                                  audience,
+                                  cb,
                                   CFAbsoluteTimeGetCurrent(),
                                   0, // flags
                                   q,
@@ -128,6 +130,7 @@ int main(int argc, const char *argv[])
 
     SAFE_CFRELEASE(context);
     SAFE_CFRELEASE(assertion);
+    SAFE_CFRELEASE(cb);
     SAFE_CFRELEASE(err);
 
     exit(0);
