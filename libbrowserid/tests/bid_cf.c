@@ -55,11 +55,12 @@
 
 int main(int argc, const char *argv[])
 {
+    int exitCode = 0;
     BIDContext context = NULL;
     CFStringRef assertion = NULL;
     CFStringRef audience = NULL;
     CFStringRef name = NULL;
-    CFErrorRef err = NULL;
+    __block CFErrorRef err = NULL;
     CFDataRef cb = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
@@ -87,8 +88,7 @@ int main(int argc, const char *argv[])
     context = BIDContextCreate(NULL, options, &err);
     if (context == NULL) {
         NSLog(@"Failed to create context: %@", err);
-        SAFE_CFRELEASE(err);
-        exit(1);
+        goto cleanup;
     }
 
     if (audience == NULL)
@@ -99,8 +99,7 @@ int main(int argc, const char *argv[])
     assertion = BIDAssertionCreateUI(context, audience, cb, name, 0, NULL, &flags, &err);
     if (assertion == NULL) {
         NSLog(@"Failed to acquire assertion: %@", err);
-        SAFE_CFRELEASE(err);
-        exit(2);
+        goto cleanup;
     }
 
     NSLog(@"Assertion is %@", assertion);
@@ -112,13 +111,14 @@ int main(int argc, const char *argv[])
                                   CFAbsoluteTimeGetCurrent(),
                                   0, // flags
                                   q,
-                                  ^(BIDIdentity identity, uint32_t flags, CFErrorRef err) {
+                                  ^(BIDIdentity identity, uint32_t flags, CFErrorRef verifyErr) {
         if (identity == NULL) {
+            err = (CFErrorRef)CFRetain(verifyErr);
             NSLog(@"Failed to verify assertion: %@", err);
         } else {
             CFDictionaryRef dict;
 
-            NSLog(@"Verified assertion for identity %@!", identity);
+            NSLog(@"Verified assertion for identity %@ / flags %08x!", identity, flags);
 
             dict = BIDIdentityCopyAttributeDictionary(identity);
             NSLog(@"Identity %@ dictionary is %@", identity, dict);
@@ -128,10 +128,14 @@ int main(int argc, const char *argv[])
     });
     dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
 
+cleanup:
+    if (err)
+        exitCode = CFErrorGetCode(err);
+
     SAFE_CFRELEASE(context);
     SAFE_CFRELEASE(assertion);
     SAFE_CFRELEASE(cb);
     SAFE_CFRELEASE(err);
 
-    exit(0);
+    exit(exitCode);
 }
