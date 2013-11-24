@@ -418,6 +418,8 @@ BIDIdentityCopyAttribute(
         return NULL;
 
     value = CFDictionaryGetValue(dict, attribute);
+    if (value != NULL)
+        CFRetain(value);
 
     CFRelease(dict);
 
