@@ -10,10 +10,10 @@ PersonaGetAssertion(
     NSWindow *parentWindow,
     NSError * __autoreleasing *error)
 {
-    BIDContext context = NULL;
-    CFStringRef assertion = NULL;
-    CFErrorRef cfErr = NULL;
-    uint32_t flags = 0;
+    BIDContext context;
+    CFStringRef assertion;
+    CFErrorRef cfErr;
+    uint32_t flags;
 
     context = BIDContextCreate(NULL, BID_CONTEXT_USER_AGENT, &cfErr);
     if (context == NULL) {
@@ -45,8 +45,8 @@ int main(int argc, const char *argv[])
 
     @autoreleasepool {
         NSString *audience = [NSString stringWithUTF8String:argv[1]];
-        NSString *assertion = NULL;
-        NSError *error = NULL;
+        NSString *assertion;
+        NSError *error;
 
         [NSApplication sharedApplication];
 
