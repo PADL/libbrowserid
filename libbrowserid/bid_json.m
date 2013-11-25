@@ -92,8 +92,8 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 @implementation BIDJsonDictionaryEnumerator
 {
-    json_t *jsonObject;
-    void *jsonIterator;
+    json_t *_jsonObject;
+    void *_jsonIterator;
 }
 
 - (id)initWithJsonObject:(json_t *)value
@@ -101,8 +101,8 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
     self = [super init];
 
     if (self != nil) {
-        jsonObject = json_incref(value);
-        jsonIterator = json_object_iter(jsonObject);
+        _jsonObject = json_incref(value);
+        _jsonIterator = json_object_iter(_jsonObject);
     }
 
     return self;
@@ -110,19 +110,19 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (void)dealloc
 {
-    json_decref(jsonObject);
+    json_decref(_jsonObject);
 }
 
 - (id)nextObject
 {
     NSString *key;
 
-    if (jsonIterator == NULL)
+    if (_jsonIterator == NULL)
         return nil;
 
-    key = [NSString stringWithUTF8String:json_object_iter_key(jsonIterator)];
+    key = [NSString stringWithUTF8String:json_object_iter_key(_jsonIterator)];
 
-    jsonIterator = json_object_iter_next(jsonObject, jsonIterator);
+    _jsonIterator = json_object_iter_next(_jsonObject, _jsonIterator);
 
     return key;
 }
@@ -130,8 +130,8 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 @implementation BIDJsonArrayEnumerator
 {
-    json_t *jsonObject;
-    size_t jsonIterator;
+    json_t *_jsonObject;
+    size_t _jsonIterator;
 }
 
 - (id)initWithJsonObject:(json_t *)value
@@ -139,8 +139,8 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
     self = [super init];
 
     if (self != nil) {
-        jsonObject = json_incref(value);
-        jsonIterator = 0;
+        _jsonObject = json_incref(value);
+        _jsonIterator = 0;
     }
 
     return self;
@@ -148,21 +148,21 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (void)dealloc
 {
-    json_decref(jsonObject);
+    json_decref(_jsonObject);
 }
 
 - (id)nextObject
 {
-    if (jsonIterator >= json_array_size(jsonObject))
+    if (_jsonIterator >= json_array_size(_jsonObject))
         return nil;
 
-    return _BIDNSObjectFromJsonObject(json_array_get(jsonObject, jsonIterator++));
+    return _BIDNSObjectFromJsonObject(json_array_get(_jsonObject, _jsonIterator++));
 }
 @end
 
 @implementation BIDJsonDictionary
 {
-    json_t *jsonObject;
+    json_t *_jsonObject;
 }
 
 + (BOOL)isKeyExcludedFromWebScript:(const char *)BID_UNUSED property
@@ -185,19 +185,19 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
     self = [super init];
     if (self != nil)
-        jsonObject = json_incref(value);
+        _jsonObject = json_incref(value);
 
     return self;
 }
 
 - (void)dealloc
 {
-    json_decref(jsonObject);
+    json_decref(_jsonObject);
 }
 
 - (NSUInteger)count
 {
-    return json_object_size(jsonObject);
+    return json_object_size(_jsonObject);
 }
 
 - (id)objectForKey:(id)aKey
@@ -205,7 +205,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
     if (aKey == nil)
         return nil;
 
-    return _BIDNSObjectFromJsonObject(json_object_get(jsonObject, [aKey cString]));
+    return _BIDNSObjectFromJsonObject(json_object_get(_jsonObject, [aKey cString]));
 }
 
 - (id)valueForKey:(NSString *)key
@@ -215,12 +215,12 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (NSEnumerator *)keyEnumerator
 {
-    return [[BIDJsonDictionaryEnumerator alloc] initWithJsonObject:jsonObject];
+    return [[BIDJsonDictionaryEnumerator alloc] initWithJsonObject:_jsonObject];
 }
 
 - (NSArray *)keys
 {
-    NSMutableArray *keys = [NSMutableArray arrayWithCapacity:json_object_size(jsonObject)];
+    NSMutableArray *keys = [NSMutableArray arrayWithCapacity:json_object_size(_jsonObject)];
     NSEnumerator *enumerator = [self keyEnumerator];
     NSString *key;
 
@@ -238,7 +238,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 - (NSString *)jsonRepresentation
 {
     NSString *jsonRep;
-    char *szJson = json_dumps(jsonObject, JSON_COMPACT);
+    char *szJson = json_dumps(_jsonObject, JSON_COMPACT);
 
     if (szJson == NULL)
         return nil;
@@ -254,7 +254,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 @implementation BIDJsonArray
 {
-    json_t *jsonObject;
+    json_t *_jsonObject;
 }
 
 - (id)initWithJsonObject:(json_t *)value
@@ -264,27 +264,27 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
     self = [super init];
     if (self != nil)
-        jsonObject = json_incref(value);
+        _jsonObject = json_incref(value);
 
     return self;
 }
 
 - (void)dealloc
 {
-    json_decref(jsonObject);
+    json_decref(_jsonObject);
 }
 
 - (NSUInteger)count
 {
-    return json_array_size(jsonObject);
+    return json_array_size(_jsonObject);
 }
 
 - (id)objectAtIndex:(NSUInteger)index
 {
-    if (index >= json_array_size(jsonObject))
+    if (index >= json_array_size(_jsonObject))
         [[NSException exceptionWithName:NSRangeException reason:nil userInfo:nil] raise];
 
-    return _BIDNSObjectFromJsonObject(json_array_get(jsonObject, index));
+    return _BIDNSObjectFromJsonObject(json_array_get(_jsonObject, index));
 }
 
 - (id)webScriptValueAtIndex:(unsigned)index
@@ -295,7 +295,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 - (NSString *)jsonRepresentation
 {
     NSString *jsonRep;
-    char *szJson = json_dumps(jsonObject, JSON_COMPACT);
+    char *szJson = json_dumps(_jsonObject, JSON_COMPACT);
 
     if (szJson == NULL)
         return nil;
