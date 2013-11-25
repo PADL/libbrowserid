@@ -89,11 +89,12 @@
 @property(nonatomic, retain) BIDJsonDictionary *claims;
 @property(nonatomic, copy) NSString *emailHint;
 @property(nonatomic, copy) NSString *siteName;
-@property(nonatomic, readonly) NSString *assertion;
+@property(nonatomic, retain, readonly) NSString *assertion;
 @property(nonatomic, assign) BOOL canInteract;
 @property(nonatomic, assign) BOOL silent;
-@property(nonatomic, retain) NSWindow *parentWindow;
+@property(nonatomic, retain, readonly) NSWindow *parentWindow;
 @property(nonatomic, readonly) BIDError bidError;
+@property(nonatomic, retain, readonly) BIDIdentityDialog *identityDialog;
 
 /* helpers */
 - (void)closeIdentityDialog;
@@ -108,51 +109,40 @@
 - (id)initWithAudience:(NSString *)anAudience claims:(BIDJsonDictionary *)someClaims;
 @end
 
+@interface BIDIdentityController ()
+@property(nonatomic, retain, readwrite) NSString *assertion;
+@property(nonatomic, retain, readwrite) NSWindow *parentWindow;
+@property(nonatomic, readwrite) BIDError bidError;
+@property(nonatomic, retain, readwrite) BIDIdentityDialog *identityDialog;
+@property(nonatomic, retain, readwrite) WebView *webView;
+@end
+
 @implementation BIDIdentityController
 {
-    NSString *audience;
-    BIDJsonDictionary *claims;
-    NSString *emailHint;
-    NSString *siteName;
-    BOOL canInteract;
-    BOOL silent;
-    NSString *assertion;
-    BIDIdentityDialog *identityDialog;
-    WebView *webView;
-    NSWindow *parentWindow;
-    BIDError bidError;
+    NSString *_audience;
 }
 
 #pragma mark - accessors
 
 - (NSString *)audience
 {
-    return audience;
+    return _audience;
 }
 
 - (void)setAudience:(NSString *)value
 {
-    if (value != audience) {
+    if (value != _audience) {
         NSArray *princComponents;
 
-        audience = [value copy];
+        _audience = [value copy];
 
-        princComponents = [audience componentsSeparatedByString:@"/"];
+        princComponents = [_audience componentsSeparatedByString:@"/"];
         if ([princComponents count] > 1)
             self.siteName = [princComponents objectAtIndex:1];
         else
-            self.siteName = audience;
+            self.siteName = _audience;
     }
 }
-
-@synthesize claims;
-@synthesize emailHint;
-@synthesize siteName;
-@synthesize canInteract;
-@synthesize silent;
-@synthesize assertion;
-@synthesize bidError;
-@synthesize parentWindow;
 
 #pragma mark - helpers
 
@@ -166,7 +156,7 @@
         aWebView.resourceLoadDelegate = self;
         aWebView.UIDelegate = self;
         aWebView.policyDelegate = self;
-        aWebView.hostWindow = identityDialog;
+        aWebView.hostWindow = self.identityDialog;
         aWebView.shouldCloseWithWindow = YES;
     }
 
@@ -175,7 +165,7 @@
 
 - (void)closeIdentityDialog
 {
-    [identityDialog close];
+    [self.identityDialog close];
 }
 
 - (void)abortWithError:(NSError *)error
@@ -183,9 +173,9 @@
     if (error != nil &&
         ([[error domain] isEqualToString:NSURLErrorDomain] ||
          [[error domain] isEqualToString:WebKitErrorDomain]))
-        bidError = BID_S_HTTP_ERROR;
+        self.bidError = BID_S_HTTP_ERROR;
     else
-        bidError = BID_S_INTERACT_FAILURE;
+        self.bidError = BID_S_INTERACT_FAILURE;
 
     [self closeIdentityDialog];
 }
@@ -195,17 +185,17 @@
 - (void)identityCallback:(NSString *)anAssertion withParameters:(id)BID_UNUSED parameters
 {
     if (anAssertion != nil)
-        bidError = BID_S_OK;
+        self.bidError = BID_S_OK;
     else if (self.silent)
-        bidError = BID_S_INTERACT_REQUIRED;
+        self.bidError = BID_S_INTERACT_REQUIRED;
     else
-        bidError = BID_S_INTERACT_FAILURE;
+        self.bidError = BID_S_INTERACT_FAILURE;
 
-    if (bidError == BID_S_INTERACT_REQUIRED && canInteract) {
+    if (self.bidError == BID_S_INTERACT_REQUIRED && self.canInteract) {
         self.silent = NO;
-        [self acquireAssertion:webView];
+        [self acquireAssertion:self.webView];
     } else {
-        assertion = anAssertion;
+        self.assertion = anAssertion;
         [self closeIdentityDialog];
     }
 }
@@ -214,12 +204,11 @@
 
 + (BOOL)isKeyExcludedFromWebScript:(const char *)property
 {
-    if (strcmp(property, "siteName") == 0               ||
-        strcmp(property, "claims") == 0                 ||
-        strcmp(property, "silent") == 0                 ||
-        strcmp(property, "canInteract") == 0            ||
-        strcmp(property, "emailHint") == 0              ||
-        strcmp(property, "audience") == 0)
+    if (strcmp(property, "_siteName") == 0              ||
+        strcmp(property, "_claims") == 0                ||
+        strcmp(property, "_silent") == 0                ||
+        strcmp(property, "_emailHint") == 0             ||
+        strcmp(property, "_audience") == 0)
         return NO;
 
     return YES;
@@ -249,7 +238,7 @@
                 var assertionSign = jwCrypto.assertion.sign;                                            \
                                                                                                         \
                 jwCrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {           \
-                    var gssPayload = JSON.parse(controller.claims.jsonRepresentation());                \
+                    var gssPayload = JSON.parse(controller._claims.jsonRepresentation());               \
                     for (var k in payload) {                                                            \
                         if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                      \
                     }                                                                                   \
@@ -267,11 +256,11 @@
 {
     NSString *function = @"                                                                             \
         var controller = window.IdentityController;                                                     \
-        var options = { siteName: controller.siteName, silent: controller.silent,                       \
-                        experimental_emailHint: controller.emailHint };                                 \
+        var options = { siteName: controller._siteName, silent: controller._silent,                     \
+                        experimental_emailHint: controller._emailHint };                                \
                                                                                                         \
         BrowserID.internal.get(                                                                         \
-            controller.audience,                                                                        \
+            controller._audience,                                                                       \
             function(assertion, params) {                                                               \
                 controller.identityCallback_withParameters_(assertion, params);                         \
             },                                                                                          \
@@ -281,10 +270,10 @@
     [sender stringByEvaluatingJavaScriptFromString:function];
 
     if (!self.silent) {
-        [identityDialog makeFirstResponder:sender];
-        identityDialog.contentView = sender;
-        [identityDialog makeKeyAndOrderFront:sender];
-        [identityDialog center];
+        [self.identityDialog makeFirstResponder:sender];
+        self.identityDialog.contentView = sender;
+        [self.identityDialog makeKeyAndOrderFront:sender];
+        [self.identityDialog center];
     }
 }
 
@@ -295,8 +284,8 @@
 
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
 {
-    if ([sender isEqual:webView] && frame == [sender mainFrame]) {
-        if (claims.count)
+    if ([sender isEqual:self.webView] && frame == [sender mainFrame]) {
+        if (self.claims.count)
             [self interposeAssertionSign:sender];
         [self acquireAssertion:sender];
     }
@@ -347,7 +336,7 @@
     WebView *aWebView = [self newWebView];
 
     NSLog(@"createWebViewWithRequest %@", request);
-    identityDialog.contentView = aWebView;
+    self.identityDialog.contentView = aWebView;
 
     return aWebView;
 }
@@ -356,7 +345,7 @@
 #pragma mark - public
 - (id)init
 {
-    bidError = BID_S_INTERACT_FAILURE;
+    self.bidError = BID_S_INTERACT_FAILURE;
 
     return [super init];
 }
@@ -365,8 +354,10 @@
 {
     self = [self init];
 
-    self.audience = anAudience;
-    self.claims = someClaims;
+    if (self != nil) {
+        self.audience = anAudience;
+        self.claims = someClaims;
+    }
 
     return self;
 }
@@ -377,24 +368,24 @@
     NSURL *personaURL = [NSURL URLWithString:@BID_SIGN_IN_URL];
 
     if (self.audience == nil)
-        return (bidError = BID_S_INVALID_AUDIENCE_URN);
+        return (self.bidError = BID_S_INVALID_AUDIENCE_URN);
 
     if (self.canInteract == NO && self.silent == NO)
-        return (bidError = BID_S_INTERACT_REQUIRED);
+        return (self.bidError = BID_S_INTERACT_REQUIRED);
 
-    identityDialog = [BIDIdentityDialog identityDialog];
-    identityDialog.delegate = self;
+    self.identityDialog = [BIDIdentityDialog identityDialog];
+    self.identityDialog.delegate = self;
     if (self.silent)
-        [identityDialog orderOut:nil];
+        [self.identityDialog orderOut:nil];
     if (self.parentWindow != nil)
-        identityDialog.parentWindow = self.parentWindow;
+        self.identityDialog.parentWindow = self.parentWindow;
 
-    webView = [self newWebView];
-    [[webView mainFrame] loadRequest:[NSURLRequest requestWithURL:personaURL]];
+    self.webView = [self newWebView];
+    [[self.webView mainFrame] loadRequest:[NSURLRequest requestWithURL:personaURL]];
 
-    [app runModalForWindow:identityDialog];
+    [app runModalForWindow:self.identityDialog];
 
-    return bidError;
+    return self.bidError;
 }
 
 @end
