@@ -20,7 +20,6 @@ libbrowserid_la_SOURCES =   \
     bid_base64.c            \
     bid_cache.c             \
     bid_crypto.c            \
-    bid_curlhttp.c          \
     bid_dhparams.c          \
     bid_error.c             \
     bid_fcache.c            \
@@ -41,9 +40,18 @@ libbrowserid_la_SOURCES =   \
     bid_xrt.c               \
     vers.c
 
-libbrowserid_la_LIBADD   = @JANSSON_LIBS@ @CURL_LIBS@ @OPENSSL_LIBS@
+libbrowserid_la_LIBADD   = @JANSSON_LIBS@ @OPENSSL_LIBS@
 libbrowserid_la_LDFLAGS  = -export-symbols $(libbrowserid_la_EXPORTS) -no-undefined \
-			   @JANSSON_LDFLAGS@ @CURL_LDFLAGS@ @OPENSSL_LDFLAGS@ @TARGET_LDFLAGS@
+			   @JANSSON_LDFLAGS@ @OPENSSL_LDFLAGS@ @TARGET_LDFLAGS@
+
+if CFNETWORK
+libbrowserid_la_SOURCES += bid_cfhttp.c
+libbrowserid_la_LIBADD  += -framework CFNetwork
+else
+libbrowserid_la_SOURCES += bid_curlhttp.c
+libbrowserid_la_LIBADD  += @CURL_LIBS@
+libbrowserid_la_LDFLAGS += @CURL_LDFLAGS@
+endif
 
 if TARGET_MACOSX
 libbrowserid_la_OBJCFLAGS = $(libbrowserid_la_CFLAGS) -fobjc-arc

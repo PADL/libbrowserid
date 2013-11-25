@@ -21,6 +21,9 @@ AC_REPLACE_FUNCS(vasprintf)
 AC_CHECK_HEADERS(CoreFoundation/CFRuntime.h, [CFBrowserID=yes], [CFBrowserID=no])
 AM_CONDITIONAL(CFBROWSERID, test "x$CFBrowserID" = "xyes")
 
+AC_CHECK_HEADERS(CFNetwork/CFNetwork.h, [CFNetwork=yes], [CFNetwork=no])
+AM_CONDITIONAL(CFNETWORK, test "x$CFNetwork" = "xyes")
+
 build_mech=no
 AC_ARG_ENABLE(gss-mech,
   [  --enable-gss-mech whether to build GSS BrowserID mechanism: yes/no; default no ],
