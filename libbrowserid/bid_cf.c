@@ -137,31 +137,6 @@ BIDCacheGetTypeID(void)
     return _BIDCacheTypeID;
 }
 
-static char *
-_BIDCFCopyCString(CFStringRef string)
-{
-    const char *ptr;
-    char *s = NULL;
-
-    ptr = CFStringGetCStringPtr(string, kCFStringEncodingUTF8);
-    if (ptr != NULL) {
-        _BIDDuplicateString(BID_C_NO_CONTEXT, ptr, &s);
-    } else {
-        CFIndex len = CFStringGetLength(string);
-        len = 1 + CFStringGetMaximumSizeForEncoding(len, kCFStringEncodingUTF8);
-        s = BIDMalloc(len);
-        if (s == NULL)
-            return NULL;
-
-        if (!CFStringGetCString(string, s, len, kCFStringEncodingUTF8)) {
-            BIDFree(s);
-            s = NULL;
-        }
-    }
-
-    return s;
-}
-
 static CFErrorRef
 _BIDCFMapError(BIDError err)
 {
@@ -203,7 +178,7 @@ BIDContextCreate(
     char *szConfigFile = NULL;
 
     if (configFile != NULL) {
-        szConfigFile = _BIDCFCopyCString(configFile);
+        szConfigFile = _BIDCFCopyUTF8String(configFile);
         if (szConfigFile == NULL) {
             err = BID_S_NO_MEMORY;
             goto cleanup;
@@ -249,14 +224,14 @@ BIDIdentityCreateByVerifyingAssertion(
     if (assertion == NULL)
         return NULL;
 
-    szAssertion = _BIDCFCopyCString(assertion);
+    szAssertion = _BIDCFCopyUTF8String(assertion);
     if (szAssertion == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
     if (audienceOrSpn != NULL) {
-        szAudienceOrSpn = _BIDCFCopyCString(audienceOrSpn);
+        szAudienceOrSpn = _BIDCFCopyUTF8String(audienceOrSpn);
         if (szAudienceOrSpn == NULL) {
             err = BID_S_NO_MEMORY;
             goto cleanup;
@@ -334,7 +309,7 @@ BIDIdentityCreateFromString(
         goto cleanup;
     }
 
-    szAssertion = _BIDCFCopyCString(assertion);
+    szAssertion = _BIDCFCopyUTF8String(assertion);
     if (szAssertion == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -410,7 +385,7 @@ BIDAssertionCreateUI(
         *pError = NULL;
 
     if (audienceOrSpn != NULL) {
-        szAudienceOrSpn = _BIDCFCopyCString(audienceOrSpn);
+        szAudienceOrSpn = _BIDCFCopyUTF8String(audienceOrSpn);
         if (szAudienceOrSpn == NULL) {
             err = BID_S_NO_MEMORY;
             goto cleanup;
@@ -423,7 +398,7 @@ BIDAssertionCreateUI(
     }
 
     if (optionalIdentity != NULL) {
-        szIdentity = _BIDCFCopyCString(optionalIdentity);
+        szIdentity = _BIDCFCopyUTF8String(optionalIdentity);
         if (szIdentity == NULL) {
             err = BID_S_NO_MEMORY;
             goto cleanup;
@@ -466,7 +441,7 @@ BIDTicketCacheCreate(
     if (pError != NULL)
         *pError = NULL;
 
-    szCacheName = _BIDCFCopyCString(cacheName);
+    szCacheName = _BIDCFCopyUTF8String(cacheName);
     if (szCacheName == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -497,7 +472,7 @@ BIDReplayCacheCreate(
     if (pError != NULL)
         *pError = NULL;
 
-    szCacheName = _BIDCFCopyCString(cacheName);
+    szCacheName = _BIDCFCopyUTF8String(cacheName);
     if (szCacheName == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;

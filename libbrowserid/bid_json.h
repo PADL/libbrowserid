@@ -58,6 +58,11 @@
 
 #endif
 
+#include <CoreFoundation/CFString.h>
+
+char *
+_BIDCFCopyUTF8String(CFStringRef string);
+
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 CFDictionaryRef
 _BIDCreateDictionaryFromJsonObject(

@@ -54,6 +54,31 @@
 @interface BIDJsonArrayEnumerator : NSEnumerator <BIDJsonInit>
 @end
 
+char *
+_BIDCFCopyUTF8String(CFStringRef string)
+{
+    const char *ptr;
+    char *s = NULL;
+
+    ptr = CFStringGetCStringPtr(string, kCFStringEncodingUTF8);
+    if (ptr != NULL) {
+        _BIDDuplicateString(BID_C_NO_CONTEXT, ptr, &s);
+    } else {
+        CFIndex len = CFStringGetLength(string);
+        len = 1 + CFStringGetMaximumSizeForEncoding(len, kCFStringEncodingUTF8);
+        s = BIDMalloc(len);
+        if (s == NULL)
+            return NULL;
+
+        if (!CFStringGetCString(string, s, len, kCFStringEncodingUTF8)) {
+            BIDFree(s);
+            s = NULL;
+        }
+    }
+
+    return s;
+}
+
 static NSObject *
 _BIDNSObjectFromJsonObject(json_t *jsonObject)
 {
@@ -202,10 +227,21 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
 
 - (id)objectForKey:(id)aKey
 {
+    char *szKey;
+    id ret;
+
     if (aKey == nil)
         return nil;
 
-    return _BIDNSObjectFromJsonObject(json_object_get(_jsonObject, [aKey cString]));
+    szKey = _BIDCFCopyUTF8String((__bridge CFStringRef)[aKey description]);
+    if (szKey == NULL)
+        return nil;
+
+    ret = _BIDNSObjectFromJsonObject(json_object_get(_jsonObject, szKey));
+
+    BIDFree(szKey);
+
+    return ret;
 }
 
 - (id)valueForKey:(NSString *)key
