@@ -88,6 +88,10 @@ CoreFoundation objects. You can also use the helper APIs in CFBrowserID.h.
                                      NULL, NULL, 0, NULL, &flags, &cfErr);
     CFRelease(context);
 
+Regardless of whether you have CFRuntime.h installed, libbrowserid will use
+CFNetwork instead of libcurl if available. This is not necessarily OS
+X-specific, although it''s unlikely other platforms will have this.
+
 ## Windows port
 
 The Windows port comes with some fairly significant limitations. First, the

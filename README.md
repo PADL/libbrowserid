@@ -12,7 +12,7 @@ More information on BrowserID is available at the URL
 The following packages are required:
 
 * Jansson <http://www.digip.org/jansson/>
-* Curl <http://curl.haxx.se/> (not required for Windows)
+* Curl <http://curl.haxx.se/> (not required for Windows or OS X)
 * OpenSSL <http://www.openssl.org/> (not required for Windows)
 
 Building is similar to other autotools-based projects; run ./autogen.sh,
