@@ -271,7 +271,7 @@ _BIDSetCurlIfModifiedSince(
     cc = curl_easy_setopt(curlHandle, CURLOPT_TIMECONDITION, timeCond);
     BID_BAIL_ON_ERROR(cc);
 
-    cc = curl_easy_setopt(curlHandle, CURLOPT_TIMECONDITION, lIfModifiedSince);
+    cc = curl_easy_setopt(curlHandle, CURLOPT_TIMEVALUE, lIfModifiedSince);
     BID_BAIL_ON_ERROR(cc);
 
 cleanup:
