@@ -40,6 +40,8 @@
 #include "bid_private.h"
 #include "bid_json.h"
 
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+
 /*
  * This is a CoreFoundation wrapper for libbrowserid. It only builds if the
  * CoreFoundation/CFRuntime.h private header is available (which may change
@@ -581,3 +583,5 @@ _BIDCachePerformBlock(
     return err;
 }
 #endif /* __BLOCKS__ */
+
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */

@@ -4,7 +4,11 @@ EXTRA_DIST = libbrowserid.exports
 
 include_HEADERS = browserid.h
 
+if CFBROWSERID
+libbrowserid_la_EXPORTS = libbrowserid-cf.exports
+else
 libbrowserid_la_EXPORTS = libbrowserid.exports
+endif
 
 libbrowserid_la_CFLAGS   = -Werror -Wall -Wunused-parameter
 libbrowserid_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
