@@ -1,4 +1,9 @@
+#include <TargetConditionals.h>
+#if TARGET_OS_IPHONE
+#include <UIKit/UIKit.h>
+#else
 #include <Cocoa/Cocoa.h>
+#endif
 #include <CFBrowserID.h>
 
 /*
@@ -7,7 +12,11 @@
 NSString *
 PersonaGetAssertion(
     NSString *audience,
+#if TARGET_OS_IPHONE
+    UIWindow *parentWindow,
+#else
     NSWindow *parentWindow,
+#endif
     NSError * __autoreleasing *error)
 {
     BIDContext context;
@@ -48,7 +57,11 @@ int main(int argc, const char *argv[])
         NSString *assertion;
         NSError *error;
 
+#if TARGET_OS_IPHONE
+        [UIApplication sharedApplication];
+#else
         [NSApplication sharedApplication];
+#endif
 
         assertion = PersonaGetAssertion(audience, NULL, &error);
         if (assertion) {

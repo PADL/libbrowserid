@@ -16,6 +16,19 @@ AC_MSG_RESULT($target_macosx)
 AM_CONDITIONAL(TARGET_MACOSX,test "x$target_macosx" = "xyes")
 ])dnl
 
+AC_DEFUN([AX_CHECK_IOS],
+[AC_MSG_CHECKING(for iOS)
+target_ios="no"
+AC_TRY_COMPILE([#include <TargetConditionals.h>],
+    [#if !TARGET_OS_IPHONE
+     #error not compiling for iPhone OS
+     #endif],
+    [target_ios=yes],
+    [target_ios=no])
+AC_MSG_RESULT($target_ios)
+AM_CONDITIONAL(TARGET_IOS,test "x$target_ios" = "xyes")
+])dnl
+
 AC_DEFUN([AX_CHECK_KRB5],
 [AC_MSG_CHECKING(for GSS-API and Kerberos implementation)
 KRB5_DIR=

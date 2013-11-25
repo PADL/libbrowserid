@@ -40,7 +40,11 @@
 #include "bid_private.h"
 #include "bid_json.h"
 
+#if TARGET_OS_IPHONE
+#include <Foundation/Foundation.h>
+#else
 #include <WebKit/WebKit.h>
+#endif
 
 /*
  * This is fairly useless right now as dictionaries can't cross the
@@ -190,6 +194,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
     json_t *_jsonObject;
 }
 
+#if !TARGET_OS_IPHONE
 + (BOOL)isKeyExcludedFromWebScript:(const char *)BID_UNUSED property
 {
     return NO;
@@ -202,6 +207,7 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
         return NO;
     return YES;
 }
+#endif
 
 - (id)initWithJsonObject:(json_t *)value
 {

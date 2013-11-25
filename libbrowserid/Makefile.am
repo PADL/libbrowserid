@@ -46,7 +46,7 @@ libbrowserid_la_LDFLAGS  = -export-symbols $(libbrowserid_la_EXPORTS) -no-undefi
 
 if CFNETWORK
 libbrowserid_la_SOURCES += bid_cfhttp.c
-libbrowserid_la_LIBADD  += -framework CFNetwork
+libbrowserid_la_LDFLAGS += -framework CFNetwork
 else
 libbrowserid_la_SOURCES += bid_curlhttp.c
 libbrowserid_la_LIBADD  += @CURL_LIBS@
@@ -55,8 +55,16 @@ endif
 
 if TARGET_MACOSX
 libbrowserid_la_OBJCFLAGS = $(libbrowserid_la_CFLAGS) -fobjc-arc
+libbrowserid_la_LDFLAGS += -framework CoreFoundation
+libbrowserid_la_SOURCES += bid_wk.m bid_json.m
+
+if TARGET_IOS
+libbrowserid_la_LDFLAGS += -framework UIKit -framework Foundation
+libbrowserid_la_SOURCES += bid_wkios.m
+else
 libbrowserid_la_LDFLAGS += -framework WebKit -framework AppKit
-libbrowserid_la_SOURCES += bid_json.m bid_webkit.m
+libbrowserid_la_SOURCES += bid_wkmac.m
+endif
 
 if CFBROWSERID
 include_HEADERS += CFBrowserID.h
