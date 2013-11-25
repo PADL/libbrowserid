@@ -64,7 +64,7 @@ int main(int argc, const char *argv[])
     CFDataRef cb = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
-                       BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
+                       BID_CONTEXT_GSS;
     dispatch_queue_t q = dispatch_queue_create("com.padl.BrowserID.tests.bid_cf", NULL);
     dispatch_semaphore_t sema = dispatch_semaphore_create(0);
 
