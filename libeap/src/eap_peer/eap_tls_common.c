@@ -747,12 +747,8 @@ const u8 * eap_peer_tls_process_init(struct eap_sm *sm,
 	size_t left;
 	unsigned int tls_msg_len;
 
-	if (tls_get_errors(sm->ssl_ctx)) {
-		wpa_printf(MSG_INFO, "SSL: TLS errors detected");
-		ret->ignore = TRUE;
-		return NULL;
-	}
-
+	/* Ignore errors before we do anything*/
+	(void) tls_get_errors(sm->ssl_ctx);
 	pos = eap_hdr_validate(EAP_VENDOR_IETF, eap_type, reqData, &left);
 	if (pos == NULL) {
 		ret->ignore = TRUE;
