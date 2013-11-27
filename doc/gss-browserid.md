@@ -39,8 +39,6 @@ mechanism:
 
 * Kerberos 5 <http://web.mit.edu/kerberos/> or <http://www.h5l.org/>
   (This can be omitted if you are only building libbrowserid.)
-* For client-side support, a recent Mac OS X or Windows system. (See end
-  of this document for limitations of the Windows port.)
 
 Optional:
 

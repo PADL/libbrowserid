@@ -14,6 +14,7 @@ The following packages are required:
 * Jansson <http://www.digip.org/jansson/>
 * Curl <http://curl.haxx.se/> (not required for Windows or OS X)
 * OpenSSL <http://www.openssl.org/> (not required for Windows)
+* For client-side support, a recent Mac OS X or Windows system
 
 Building is similar to other autotools-based projects; run ./autogen.sh,
 ./configure and make. If you wish to also build the GSS/SASL mechanism, see the
