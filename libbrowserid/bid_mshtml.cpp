@@ -52,30 +52,12 @@
  * Internet Explorer implementation of the browser shim.
  */
 
-static WCHAR _BIDHTMLInterposeAssertionSignScript[] = L"                                            \
-    var args = JSON.parse(window.dialogArguments);                                                  \
-    var oldLoad = BrowserID.CryptoLoader.load;                                                      \
-                                                                                                    \
-    BrowserID.CryptoLoader.load = function(onSuccess, onFailure) {                                  \
-        oldLoad(function(jwCrypto) {                                                                \
-            var assertionSign = jwCrypto.assertion.sign;                                            \
-                                                                                                    \
-            jwCrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {           \
-                var gssPayload = args.claims;                                                       \
-                for (var k in payload) {                                                            \
-                    if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                      \
-                }                                                                                   \
-                assertionSign(gssPayload, assertionParams, secretKey, cb);                          \
-            };                                                                                      \
-            onSuccess(jwCrypto);                                                                    \
-        }, onFailure);                                                                              \
-    };                                                                                              \
-";
-
 static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                                                  \
     var args = JSON.parse(window.dialogArguments);                                                  \
     var options = { siteName: args.siteName,                                                        \
-                    experimental_emailHint: args.emailHint };                                       \
+                    experimental_emailHint: args.emailHint,                                         \
+                    experimental_userAssertedClaims: args.claims                                    \
+    };                                                                                              \
                                                                                                     \
     BrowserID.internal.get(                                                                         \
         args.audience,                                                                              \
@@ -143,7 +125,6 @@ private:
     HRESULT _JsonToVariant(json_t *jsonObject,
                            VARIANT *pVar);
 
-    HRESULT _InterposeAssertionSign(void);
     HRESULT _AcquireAssertion(void);
     HRESULT _IdentityCallback(DISPPARAMS *pDispParams);
     HRESULT _GetArguments(VARIANT *vArgs);
@@ -381,11 +362,6 @@ CBIDIdentityController::Invoke(
 
         hr = _PublishController();
         BID_BAIL_ON_HERROR(hr);
-
-        if (json_object_get(_args, "claims") != NULL) {
-            hr = _InterposeAssertionSign();
-            BID_BAIL_ON_HERROR(hr);
-        }
 
         hr = _AcquireAssertion();
         BID_BAIL_ON_HERROR(hr);
@@ -655,33 +631,6 @@ CBIDIdentityController::_GetBrowserWindow(void)
 cleanup:
     if (pOleWindow != NULL)
         pOleWindow->Release();
-
-    return hr;
-}
-
-HRESULT
-CBIDIdentityController::_InterposeAssertionSign(void)
-{
-    HRESULT hr;
-    VARIANT varArgOut;
-    BSTR bstrScript = NULL;
-
-    VariantInit(&varArgOut);
-
-    BID_ASSERT(_pHTMLWindow2 != NULL);
-
-    bstrScript = SysAllocString(_BIDHTMLInterposeAssertionSignScript);
-    if (bstrScript == NULL) {
-        hr = E_OUTOFMEMORY;
-        goto cleanup;
-    }
-
-    hr = _pHTMLWindow2->execScript(bstrScript, L"JavaScript", &varArgOut);
-    BID_BAIL_ON_HERROR(hr);
-
-cleanup:
-    VariantClear(&varArgOut);
-    SysFreeString(bstrScript);
 
     return hr;
 }
