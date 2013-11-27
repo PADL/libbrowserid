@@ -41,6 +41,12 @@
 #include "bid_json.h"
 #include "bid_wk.h"
 
+#if TARGET_OS_IPHONE
+
+/*
+ * UIKit (iOS) specific WebKit interface
+ */
+
 static void
 _BIDDismissIdentityDialogAndStopModal(void *obj);
 
@@ -134,3 +140,5 @@ _BIDDismissIdentityDialogAndStopModal(void *obj)
 {
     [(__bridge BIDIdentityController *)obj dismissIdentityDialogAndStopModal];
 }
+
+#endif /* TARGET_OS_IPHONE */

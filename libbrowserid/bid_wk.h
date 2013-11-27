@@ -40,6 +40,10 @@
 #ifndef _BID_WK_H_
 #define _BID_WK_H_ 1
 
+/*
+ * Apple WebKit implementation behind _BIDBrowserGetAssertion
+ */
+
 #include "bid_private.h"
 
 #include <TargetConditionals.h>

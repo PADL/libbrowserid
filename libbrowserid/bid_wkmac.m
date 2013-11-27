@@ -41,6 +41,12 @@
 #include "bid_json.h"
 #include "bid_wk.h"
 
+#if !TARGET_OS_IPHONE
+
+/*
+ * AppKit (Mac OS X) specific WebKit interface
+ */
+
 @interface BIDIdentityDialog : NSPanel
 + (BIDIdentityDialog *)identityDialog;
 @end
@@ -207,3 +213,5 @@
     return YES;
 }
 @end
+
+#endif /* !TARGET_OS_IPHONE */

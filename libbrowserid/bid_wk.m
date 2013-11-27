@@ -41,6 +41,10 @@
 #include "bid_json.h"
 #include "bid_wk.h"
 
+/*
+ * AppKit/UIKit common code
+ */
+
 @interface BIDIdentityController ()
 @property(nonatomic, retain, readwrite) NSString *assertion;
 @property(nonatomic, readwrite) BIDError bidError;
