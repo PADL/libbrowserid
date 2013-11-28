@@ -202,10 +202,4 @@ void json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
 char *
 _BIDCFCopyUTF8String(CFStringRef string);
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-CFDictionaryRef
-_BIDCreateDictionaryFromJsonObject(
-    json_t *jsonObject);
-#endif
-
 #endif /* _BID_CFJSON_H_ */
