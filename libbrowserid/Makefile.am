@@ -80,7 +80,7 @@ lib_LTLIBRARIES = libbrowserid.la
 BUILT_SOURCES = vers.c
 
 vers.c: $(top_srcdir)/CVSVersionInfo.txt
-	CVSVERSIONDIR=$(top_srcdir) $(top_srcdir)/build/vers_string -v
+	CVSVERSIONDIR=$(top_srcdir) /usr/bin/perl -I$(top_srcdir)/build $(top_srcdir)/build/vers_string -v
 
 clean-generic:
 	$(RM) vers.c

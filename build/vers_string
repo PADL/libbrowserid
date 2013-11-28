@@ -4,9 +4,13 @@
 #
 # Implementation of SGS vers_string which uses CVSVersionInfo.txt.
 
-require "../build/cvslib.pl";
+require "cvslib.pl";
 
-$OUTFILE = (-f "version.h") ? "version.h" : "vers.c";
+if (defined($ENV{"VERS_STRING_OUTPUT"})) {
+    $OUTFILE = $ENV{"VERS_STRING_OUTPUT"};
+} else {
+    $OUTFILE = (-f "version.h") ? "version.h" : "vers.c";
+}
 $AUTHOR = `whoami`;
 $HEADER = '$Id: vers_string,v 1.10 1999/04/05 01:38:26 lukeh Exp $';
 
