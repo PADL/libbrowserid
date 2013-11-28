@@ -246,9 +246,11 @@ _BIDBrowserGetAssertion(
         }
         if (context->ParentWindow != NULL)
             controller.parentWindow = (__bridge id)context->ParentWindow;
-#if TARGET_OS_IPHONE
         else
+#if TARGET_OS_IPHONE
             controller.parentWindow = [UIApplication sharedApplication].keyWindow;
+#else
+            controller.parentWindow = [NSApplication sharedApplication].mainWindow;
 #endif
 
         controller.canInteract = _BIDCanInteractP(context, ulReqFlags);
