@@ -611,7 +611,7 @@ _json_loadd(NSData *data, size_t flags BID_UNUSED, json_error_t *error)
         memset(error, 0, sizeof(*error));
 
     object = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&nsError];
-    if (error != NULL)
+    if (nsError != NULL)
         strlcpy(error->text, [nsError.description UTF8String], sizeof(error->text));
 
     return (json_t *)CFBridgingRetain(object);
