@@ -106,8 +106,15 @@ void json_decref(json_t *json)
         CFRelease(json);
 }
 
+#define JSON_ERROR_TEXT_LENGTH    160
+#define JSON_ERROR_SOURCE_LENGTH   80
+
 typedef struct {
-    CFErrorRef error;
+    int line;
+    int column;
+    int position;
+    char source[JSON_ERROR_SOURCE_LENGTH];
+    char text[JSON_ERROR_TEXT_LENGTH];
 } json_error_t;
 
 size_t json_object_size(const json_t *object);
