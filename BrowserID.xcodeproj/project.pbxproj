@@ -1,0 +1,615 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D345699B18477D4F009B8DC9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698418477D4F009B8DC9 /* Cocoa.framework */; };
+		D345699E18477D4F009B8DC9 /* BrowserID.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* BrowserID.framework */; };
+		D394957118477E5B00C7D85B /* bid_authority.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954A18477E5B00C7D85B /* bid_authority.c */; };
+		D394957218477E5B00C7D85B /* bid_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954B18477E5B00C7D85B /* bid_base64.c */; };
+		D394957318477E5B00C7D85B /* bid_cache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954C18477E5B00C7D85B /* bid_cache.c */; };
+		D394957418477E5B00C7D85B /* bid_cf.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954D18477E5B00C7D85B /* bid_cf.c */; };
+		D394957518477E5B00C7D85B /* bid_cfhttp.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954E18477E5B00C7D85B /* bid_cfhttp.c */; };
+		D394957618477E5B00C7D85B /* bid_cfjson.h in Headers */ = {isa = PBXBuildFile; fileRef = D394954F18477E5B00C7D85B /* bid_cfjson.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		D394957718477E5B00C7D85B /* bid_cfjson.m in Sources */ = {isa = PBXBuildFile; fileRef = D394955018477E5B00C7D85B /* bid_cfjson.m */; };
+		D394957818477E5B00C7D85B /* bid_context.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955118477E5B00C7D85B /* bid_context.c */; };
+		D394957918477E5B00C7D85B /* bid_crypto.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955218477E5B00C7D85B /* bid_crypto.c */; };
+		D394957B18477E5B00C7D85B /* bid_dhparams.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955418477E5B00C7D85B /* bid_dhparams.c */; };
+		D394957C18477E5B00C7D85B /* bid_error.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955518477E5B00C7D85B /* bid_error.c */; };
+		D394957D18477E5B00C7D85B /* bid_fcache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955618477E5B00C7D85B /* bid_fcache.c */; };
+		D394957E18477E5B00C7D85B /* bid_identity.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955718477E5B00C7D85B /* bid_identity.c */; };
+		D394957F18477E5B00C7D85B /* bid_jwt.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955818477E5B00C7D85B /* bid_jwt.c */; };
+		D394958018477E5B00C7D85B /* bid_mcache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955918477E5B00C7D85B /* bid_mcache.c */; };
+		D394958218477E5B00C7D85B /* bid_openssl.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955B18477E5B00C7D85B /* bid_openssl.c */; };
+		D394958318477E5B00C7D85B /* bid_ppal.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955C18477E5B00C7D85B /* bid_ppal.c */; };
+		D394958418477E5B00C7D85B /* bid_private.h in Headers */ = {isa = PBXBuildFile; fileRef = D394955D18477E5B00C7D85B /* bid_private.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		D394958518477E5B00C7D85B /* bid_rcache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955E18477E5B00C7D85B /* bid_rcache.c */; };
+		D394958618477E5B00C7D85B /* bid_reauth.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955F18477E5B00C7D85B /* bid_reauth.c */; };
+		D394958818477E5B00C7D85B /* bid_rp.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956118477E5B00C7D85B /* bid_rp.c */; };
+		D394958918477E5B00C7D85B /* bid_rverify.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956218477E5B00C7D85B /* bid_rverify.c */; };
+		D394958B18477E5B00C7D85B /* bid_user.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956418477E5B00C7D85B /* bid_user.c */; };
+		D394958C18477E5B00C7D85B /* bid_util.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956518477E5B00C7D85B /* bid_util.c */; };
+		D394958D18477E5B00C7D85B /* bid_verify.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956618477E5B00C7D85B /* bid_verify.c */; };
+		D394958E18477E5B00C7D85B /* bid_wk.h in Headers */ = {isa = PBXBuildFile; fileRef = D394956718477E5B00C7D85B /* bid_wk.h */; };
+		D394958F18477E5B00C7D85B /* bid_wk.m in Sources */ = {isa = PBXBuildFile; fileRef = D394956818477E5B00C7D85B /* bid_wk.m */; };
+		D394959018477E5B00C7D85B /* bid_wkios.m in Sources */ = {isa = PBXBuildFile; fileRef = D394956918477E5B00C7D85B /* bid_wkios.m */; };
+		D394959118477E5B00C7D85B /* bid_wkmac.m in Sources */ = {isa = PBXBuildFile; fileRef = D394956A18477E5B00C7D85B /* bid_wkmac.m */; };
+		D394959418477E5B00C7D85B /* bid_x509.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956D18477E5B00C7D85B /* bid_x509.c */; };
+		D394959518477E5B00C7D85B /* bid_xrt.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956E18477E5B00C7D85B /* bid_xrt.c */; };
+		D394959618477E5B00C7D85B /* browserid.h in Headers */ = {isa = PBXBuildFile; fileRef = D394956F18477E5B00C7D85B /* browserid.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		D394959718477E5B00C7D85B /* CFBrowserID.h in Headers */ = {isa = PBXBuildFile; fileRef = D394957018477E5B00C7D85B /* CFBrowserID.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		D394959A18477F9100C7D85B /* BrowserID-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D394959818477F9100C7D85B /* BrowserID-Info.plist */; };
+		D394959B18477F9100C7D85B /* BrowserID-Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = D394959918477F9100C7D85B /* BrowserID-Prefix.pch */; };
+		D394959C1847829900C7D85B /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698918477D4F009B8DC9 /* AppKit.framework */; };
+		D394959E184782A700C7D85B /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959D184782A700C7D85B /* WebKit.framework */; };
+		D39495A0184782AC00C7D85B /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959F184782AC00C7D85B /* CoreFoundation.framework */; };
+		D39495A2184782B600C7D85B /* libcrypto.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D39495A1184782B600C7D85B /* libcrypto.dylib */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D345699C18477D4F009B8DC9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D345697818477D4F009B8DC9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D345698018477D4F009B8DC9;
+			remoteInfo = BrowserID;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		D345698118477D4F009B8DC9 /* BrowserID.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = BrowserID.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D345698418477D4F009B8DC9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		D345698718477D4F009B8DC9 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		D345698818477D4F009B8DC9 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		D345698918477D4F009B8DC9 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		D345699818477D4F009B8DC9 /* BrowserIDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BrowserIDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D394954A18477E5B00C7D85B /* bid_authority.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_authority.c; path = libbrowserid/bid_authority.c; sourceTree = SOURCE_ROOT; };
+		D394954B18477E5B00C7D85B /* bid_base64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_base64.c; path = libbrowserid/bid_base64.c; sourceTree = SOURCE_ROOT; };
+		D394954C18477E5B00C7D85B /* bid_cache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cache.c; path = libbrowserid/bid_cache.c; sourceTree = SOURCE_ROOT; };
+		D394954D18477E5B00C7D85B /* bid_cf.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cf.c; path = libbrowserid/bid_cf.c; sourceTree = SOURCE_ROOT; };
+		D394954E18477E5B00C7D85B /* bid_cfhttp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cfhttp.c; path = libbrowserid/bid_cfhttp.c; sourceTree = SOURCE_ROOT; };
+		D394954F18477E5B00C7D85B /* bid_cfjson.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bid_cfjson.h; path = libbrowserid/bid_cfjson.h; sourceTree = SOURCE_ROOT; };
+		D394955018477E5B00C7D85B /* bid_cfjson.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = bid_cfjson.m; path = libbrowserid/bid_cfjson.m; sourceTree = SOURCE_ROOT; };
+		D394955118477E5B00C7D85B /* bid_context.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_context.c; path = libbrowserid/bid_context.c; sourceTree = SOURCE_ROOT; };
+		D394955218477E5B00C7D85B /* bid_crypto.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_crypto.c; path = libbrowserid/bid_crypto.c; sourceTree = SOURCE_ROOT; };
+		D394955418477E5B00C7D85B /* bid_dhparams.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_dhparams.c; path = libbrowserid/bid_dhparams.c; sourceTree = SOURCE_ROOT; };
+		D394955518477E5B00C7D85B /* bid_error.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_error.c; path = libbrowserid/bid_error.c; sourceTree = SOURCE_ROOT; };
+		D394955618477E5B00C7D85B /* bid_fcache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_fcache.c; path = libbrowserid/bid_fcache.c; sourceTree = SOURCE_ROOT; };
+		D394955718477E5B00C7D85B /* bid_identity.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_identity.c; path = libbrowserid/bid_identity.c; sourceTree = SOURCE_ROOT; };
+		D394955818477E5B00C7D85B /* bid_jwt.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_jwt.c; path = libbrowserid/bid_jwt.c; sourceTree = SOURCE_ROOT; };
+		D394955918477E5B00C7D85B /* bid_mcache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_mcache.c; path = libbrowserid/bid_mcache.c; sourceTree = SOURCE_ROOT; };
+		D394955B18477E5B00C7D85B /* bid_openssl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_openssl.c; path = libbrowserid/bid_openssl.c; sourceTree = SOURCE_ROOT; };
+		D394955C18477E5B00C7D85B /* bid_ppal.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_ppal.c; path = libbrowserid/bid_ppal.c; sourceTree = SOURCE_ROOT; };
+		D394955D18477E5B00C7D85B /* bid_private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bid_private.h; path = libbrowserid/bid_private.h; sourceTree = SOURCE_ROOT; };
+		D394955E18477E5B00C7D85B /* bid_rcache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_rcache.c; path = libbrowserid/bid_rcache.c; sourceTree = SOURCE_ROOT; };
+		D394955F18477E5B00C7D85B /* bid_reauth.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_reauth.c; path = libbrowserid/bid_reauth.c; sourceTree = SOURCE_ROOT; };
+		D394956118477E5B00C7D85B /* bid_rp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_rp.c; path = libbrowserid/bid_rp.c; sourceTree = SOURCE_ROOT; };
+		D394956218477E5B00C7D85B /* bid_rverify.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_rverify.c; path = libbrowserid/bid_rverify.c; sourceTree = SOURCE_ROOT; };
+		D394956418477E5B00C7D85B /* bid_user.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_user.c; path = libbrowserid/bid_user.c; sourceTree = SOURCE_ROOT; };
+		D394956518477E5B00C7D85B /* bid_util.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_util.c; path = libbrowserid/bid_util.c; sourceTree = SOURCE_ROOT; };
+		D394956618477E5B00C7D85B /* bid_verify.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_verify.c; path = libbrowserid/bid_verify.c; sourceTree = SOURCE_ROOT; };
+		D394956718477E5B00C7D85B /* bid_wk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bid_wk.h; path = libbrowserid/bid_wk.h; sourceTree = SOURCE_ROOT; };
+		D394956818477E5B00C7D85B /* bid_wk.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = bid_wk.m; path = libbrowserid/bid_wk.m; sourceTree = SOURCE_ROOT; };
+		D394956918477E5B00C7D85B /* bid_wkios.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = bid_wkios.m; path = libbrowserid/bid_wkios.m; sourceTree = SOURCE_ROOT; };
+		D394956A18477E5B00C7D85B /* bid_wkmac.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = bid_wkmac.m; path = libbrowserid/bid_wkmac.m; sourceTree = SOURCE_ROOT; };
+		D394956D18477E5B00C7D85B /* bid_x509.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_x509.c; path = libbrowserid/bid_x509.c; sourceTree = SOURCE_ROOT; };
+		D394956E18477E5B00C7D85B /* bid_xrt.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_xrt.c; path = libbrowserid/bid_xrt.c; sourceTree = SOURCE_ROOT; };
+		D394956F18477E5B00C7D85B /* browserid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = browserid.h; path = libbrowserid/browserid.h; sourceTree = SOURCE_ROOT; };
+		D394957018477E5B00C7D85B /* CFBrowserID.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CFBrowserID.h; path = libbrowserid/CFBrowserID.h; sourceTree = SOURCE_ROOT; };
+		D394959818477F9100C7D85B /* BrowserID-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "BrowserID-Info.plist"; path = "libbrowserid/BrowserID-Info.plist"; sourceTree = SOURCE_ROOT; };
+		D394959918477F9100C7D85B /* BrowserID-Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "BrowserID-Prefix.pch"; path = "libbrowserid/BrowserID-Prefix.pch"; sourceTree = SOURCE_ROOT; };
+		D394959D184782A700C7D85B /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		D394959F184782AC00C7D85B /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		D39495A1184782B600C7D85B /* libcrypto.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.dylib; path = usr/lib/libcrypto.dylib; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D345697D18477D4F009B8DC9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D39495A2184782B600C7D85B /* libcrypto.dylib in Frameworks */,
+				D39495A0184782AC00C7D85B /* CoreFoundation.framework in Frameworks */,
+				D394959E184782A700C7D85B /* WebKit.framework in Frameworks */,
+				D394959C1847829900C7D85B /* AppKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D345699518477D4F009B8DC9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D345699B18477D4F009B8DC9 /* Cocoa.framework in Frameworks */,
+				D345699E18477D4F009B8DC9 /* BrowserID.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D345697718477D4F009B8DC9 = {
+			isa = PBXGroup;
+			children = (
+				D345698A18477D4F009B8DC9 /* BrowserID */,
+				D345698318477D4F009B8DC9 /* Frameworks */,
+				D345698218477D4F009B8DC9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D345698218477D4F009B8DC9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D345698118477D4F009B8DC9 /* BrowserID.framework */,
+				D345699818477D4F009B8DC9 /* BrowserIDTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D345698318477D4F009B8DC9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D39495A1184782B600C7D85B /* libcrypto.dylib */,
+				D394959F184782AC00C7D85B /* CoreFoundation.framework */,
+				D394959D184782A700C7D85B /* WebKit.framework */,
+				D345698418477D4F009B8DC9 /* Cocoa.framework */,
+				D345698618477D4F009B8DC9 /* Other Frameworks */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D345698618477D4F009B8DC9 /* Other Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D345698718477D4F009B8DC9 /* Foundation.framework */,
+				D345698818477D4F009B8DC9 /* CoreData.framework */,
+				D345698918477D4F009B8DC9 /* AppKit.framework */,
+			);
+			name = "Other Frameworks";
+			sourceTree = "<group>";
+		};
+		D345698A18477D4F009B8DC9 /* BrowserID */ = {
+			isa = PBXGroup;
+			children = (
+				D394954A18477E5B00C7D85B /* bid_authority.c */,
+				D394954B18477E5B00C7D85B /* bid_base64.c */,
+				D394954C18477E5B00C7D85B /* bid_cache.c */,
+				D394954D18477E5B00C7D85B /* bid_cf.c */,
+				D394954E18477E5B00C7D85B /* bid_cfhttp.c */,
+				D394954F18477E5B00C7D85B /* bid_cfjson.h */,
+				D394955018477E5B00C7D85B /* bid_cfjson.m */,
+				D394955118477E5B00C7D85B /* bid_context.c */,
+				D394955218477E5B00C7D85B /* bid_crypto.c */,
+				D394955418477E5B00C7D85B /* bid_dhparams.c */,
+				D394955518477E5B00C7D85B /* bid_error.c */,
+				D394955618477E5B00C7D85B /* bid_fcache.c */,
+				D394955718477E5B00C7D85B /* bid_identity.c */,
+				D394955818477E5B00C7D85B /* bid_jwt.c */,
+				D394955918477E5B00C7D85B /* bid_mcache.c */,
+				D394955B18477E5B00C7D85B /* bid_openssl.c */,
+				D394955C18477E5B00C7D85B /* bid_ppal.c */,
+				D394955D18477E5B00C7D85B /* bid_private.h */,
+				D394955E18477E5B00C7D85B /* bid_rcache.c */,
+				D394955F18477E5B00C7D85B /* bid_reauth.c */,
+				D394956118477E5B00C7D85B /* bid_rp.c */,
+				D394956218477E5B00C7D85B /* bid_rverify.c */,
+				D394956418477E5B00C7D85B /* bid_user.c */,
+				D394956518477E5B00C7D85B /* bid_util.c */,
+				D394956618477E5B00C7D85B /* bid_verify.c */,
+				D394956718477E5B00C7D85B /* bid_wk.h */,
+				D394956818477E5B00C7D85B /* bid_wk.m */,
+				D394956918477E5B00C7D85B /* bid_wkios.m */,
+				D394956A18477E5B00C7D85B /* bid_wkmac.m */,
+				D394956D18477E5B00C7D85B /* bid_x509.c */,
+				D394956E18477E5B00C7D85B /* bid_xrt.c */,
+				D394956F18477E5B00C7D85B /* browserid.h */,
+				D394957018477E5B00C7D85B /* CFBrowserID.h */,
+				D345698B18477D4F009B8DC9 /* Supporting Files */,
+			);
+			path = BrowserID;
+			sourceTree = "<group>";
+		};
+		D345698B18477D4F009B8DC9 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				D394959818477F9100C7D85B /* BrowserID-Info.plist */,
+				D394959918477F9100C7D85B /* BrowserID-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		D345697E18477D4F009B8DC9 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D394959618477E5B00C7D85B /* browserid.h in Headers */,
+				D394959B18477F9100C7D85B /* BrowserID-Prefix.pch in Headers */,
+				D394958E18477E5B00C7D85B /* bid_wk.h in Headers */,
+				D394958418477E5B00C7D85B /* bid_private.h in Headers */,
+				D394959718477E5B00C7D85B /* CFBrowserID.h in Headers */,
+				D394957618477E5B00C7D85B /* bid_cfjson.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		D345698018477D4F009B8DC9 /* BrowserID */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D34569A918477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserID" */;
+			buildPhases = (
+				D345697C18477D4F009B8DC9 /* Sources */,
+				D3B5F98C1847964D0019E284 /* Tag library with version information */,
+				D39495A41847858600C7D85B /* Generate exports file */,
+				D39495A51847864900C7D85B /* Tag plist with version information */,
+				D345697D18477D4F009B8DC9 /* Frameworks */,
+				D345697E18477D4F009B8DC9 /* Headers */,
+				D345697F18477D4F009B8DC9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BrowserID;
+			productName = BrowserID;
+			productReference = D345698118477D4F009B8DC9 /* BrowserID.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		D345699718477D4F009B8DC9 /* BrowserIDTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D34569AC18477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserIDTests" */;
+			buildPhases = (
+				D345699418477D4F009B8DC9 /* Sources */,
+				D345699518477D4F009B8DC9 /* Frameworks */,
+				D345699618477D4F009B8DC9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D345699D18477D4F009B8DC9 /* PBXTargetDependency */,
+			);
+			name = BrowserIDTests;
+			productName = BrowserIDTests;
+			productReference = D345699818477D4F009B8DC9 /* BrowserIDTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D345697818477D4F009B8DC9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0500;
+				ORGANIZATIONNAME = "PADL Software Pty Ltd";
+				TargetAttributes = {
+					D345699718477D4F009B8DC9 = {
+						TestTargetID = D345698018477D4F009B8DC9;
+					};
+				};
+			};
+			buildConfigurationList = D345697B18477D4F009B8DC9 /* Build configuration list for PBXProject "BrowserID" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = D345697718477D4F009B8DC9;
+			productRefGroup = D345698218477D4F009B8DC9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D345698018477D4F009B8DC9 /* BrowserID */,
+				D345699718477D4F009B8DC9 /* BrowserIDTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D345697F18477D4F009B8DC9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D394959A18477F9100C7D85B /* BrowserID-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D345699618477D4F009B8DC9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D39495A41847858600C7D85B /* Generate exports file */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/libbrowserid/libbrowserid-cf.exports",
+			);
+			name = "Generate exports file";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/_libbrowserid-cf.exports",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd $DERIVED_FILE_DIR\ncat $SRCROOT/libbrowserid/libbrowserid-cf.exports | sed -e 's/^/_/' > _libbrowserid-cf.exports";
+			showEnvVarsInLog = 0;
+		};
+		D39495A51847864900C7D85B /* Tag plist with version information */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Tag plist with version information";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd $SRCROOT/build\nVERS=`vers_string -n`\necho -n $TARGET_BUILD_DIR/$INFOPLIST_PATH | xargs -0 /usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $VERS\"";
+			showEnvVarsInLog = 0;
+		};
+		D3B5F98C1847964D0019E284 /* Tag library with version information */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/CVSVersionInfo.txt",
+			);
+			name = "Tag library with version information";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/vers.o",
+				"$(DERIVED_FILE_DIR)/vers.c",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "VERS_STRING_OUTPUT=$DERIVED_FILE_DIR/vers.c\nexport VERS_STRING_OUTPUT\n\ncd $SRCROOT/build\n/usr/bin/perl -I$SRCROOT/build $SRCROOT/build/vers_string -v\n\nOBJ=OBJECT_FILE_DIR_$CURRENT_VARIANT\n\neval clang -c -o \\$$OBJ/$CURRENT_ARCH/vers.o $VERS_STRING_OUTPUT\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D345697C18477D4F009B8DC9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D394957518477E5B00C7D85B /* bid_cfhttp.c in Sources */,
+				D394957C18477E5B00C7D85B /* bid_error.c in Sources */,
+				D394957B18477E5B00C7D85B /* bid_dhparams.c in Sources */,
+				D394958518477E5B00C7D85B /* bid_rcache.c in Sources */,
+				D394958018477E5B00C7D85B /* bid_mcache.c in Sources */,
+				D394957818477E5B00C7D85B /* bid_context.c in Sources */,
+				D394958318477E5B00C7D85B /* bid_ppal.c in Sources */,
+				D394957418477E5B00C7D85B /* bid_cf.c in Sources */,
+				D394957D18477E5B00C7D85B /* bid_fcache.c in Sources */,
+				D394959118477E5B00C7D85B /* bid_wkmac.m in Sources */,
+				D394958D18477E5B00C7D85B /* bid_verify.c in Sources */,
+				D394958818477E5B00C7D85B /* bid_rp.c in Sources */,
+				D394957E18477E5B00C7D85B /* bid_identity.c in Sources */,
+				D394958F18477E5B00C7D85B /* bid_wk.m in Sources */,
+				D394959018477E5B00C7D85B /* bid_wkios.m in Sources */,
+				D394958618477E5B00C7D85B /* bid_reauth.c in Sources */,
+				D394957718477E5B00C7D85B /* bid_cfjson.m in Sources */,
+				D394958918477E5B00C7D85B /* bid_rverify.c in Sources */,
+				D394959518477E5B00C7D85B /* bid_xrt.c in Sources */,
+				D394957918477E5B00C7D85B /* bid_crypto.c in Sources */,
+				D394957218477E5B00C7D85B /* bid_base64.c in Sources */,
+				D394958218477E5B00C7D85B /* bid_openssl.c in Sources */,
+				D394958C18477E5B00C7D85B /* bid_util.c in Sources */,
+				D394957F18477E5B00C7D85B /* bid_jwt.c in Sources */,
+				D394957118477E5B00C7D85B /* bid_authority.c in Sources */,
+				D394958B18477E5B00C7D85B /* bid_user.c in Sources */,
+				D394957318477E5B00C7D85B /* bid_cache.c in Sources */,
+				D394959418477E5B00C7D85B /* bid_x509.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D345699418477D4F009B8DC9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D345699D18477D4F009B8DC9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D345698018477D4F009B8DC9 /* BrowserID */;
+			targetProxy = D345699C18477D4F009B8DC9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D34569A718477D4F009B8DC9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		D34569A818477D4F009B8DC9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		D34569AA18477D4F009B8DC9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				EXPORTED_SYMBOLS_FILE = "$(DERIVED_FILE_DIR)/_libbrowserid-cf.exports";
+				FRAMEWORK_VERSION = A;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "libbrowserid/BrowserID-Prefix.pch";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INFOPLIST_FILE = "libbrowserid/BrowserID-Info.plist";
+				OTHER_LDFLAGS = "$(OBJECT_FILE_DIR)-$(CURRENT_VARIANT)/$(CURRENT_ARCH)/vers.o";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = framework;
+			};
+			name = Debug;
+		};
+		D34569AB18477D4F009B8DC9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				EXPORTED_SYMBOLS_FILE = "$(DERIVED_FILE_DIR)/_libbrowserid-cf.exports";
+				FRAMEWORK_VERSION = A;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "libbrowserid/BrowserID-Prefix.pch";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INFOPLIST_FILE = "libbrowserid/BrowserID-Info.plist";
+				OTHER_LDFLAGS = "$(OBJECT_FILE_DIR)_$(CURRENT_VARIANT)/$(CURRENT_ARCH)/vers.o";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = framework;
+			};
+			name = Release;
+		};
+		D34569AD18477D4F009B8DC9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/BrowserID.framework/Versions/A/BrowserID";
+				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "BrowserID/BrowserID-Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "BrowserIDTests/BrowserIDTests-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Debug;
+		};
+		D34569AE18477D4F009B8DC9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/BrowserID.framework/Versions/A/BrowserID";
+				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "BrowserID/BrowserID-Prefix.pch";
+				INFOPLIST_FILE = "BrowserIDTests/BrowserIDTests-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D345697B18477D4F009B8DC9 /* Build configuration list for PBXProject "BrowserID" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D34569A718477D4F009B8DC9 /* Debug */,
+				D34569A818477D4F009B8DC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D34569A918477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserID" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D34569AA18477D4F009B8DC9 /* Debug */,
+				D34569AB18477D4F009B8DC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D34569AC18477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserIDTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D34569AD18477D4F009B8DC9 /* Debug */,
+				D34569AE18477D4F009B8DC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D345697818477D4F009B8DC9 /* Project object */;
+}
