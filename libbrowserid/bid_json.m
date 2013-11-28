@@ -329,10 +329,12 @@ _BIDNSObjectFromJsonObject(json_t *jsonObject)
     return _BIDNSObjectFromJsonObject(json_array_get(_jsonObject, index));
 }
 
+#if !TARGET_OS_IPHONE
 - (id)webScriptValueAtIndex:(unsigned)index
 {
     return [self objectAtIndex:index];
 }
+#endif
 
 - (NSString *)jsonRepresentation
 {
