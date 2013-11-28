@@ -41,7 +41,6 @@
 #define _CFBROWSERID_H_ 1
 
 #include <CoreFoundation/CoreFoundation.h>
-#include <browserid.h>
 
 #ifdef __cplusplus
 extern "C" {
