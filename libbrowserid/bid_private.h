@@ -941,6 +941,19 @@ _BIDHostifySpn(
     const char *szSpn,
     char **pszAudienceOrSpn);
 
+json_t *
+_BIDJsonObjectGet(
+    BIDContext context BID_UNUSED,
+    json_t *object,
+    const char *key);
+
+json_int_t
+_BIDJsonIntegerValue(json_t *object);
+
+const char *
+_BIDJsonStringValue(json_t *object);
+
+
 /*
  * bid_rcache.c
  */

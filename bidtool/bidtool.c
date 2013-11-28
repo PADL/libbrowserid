@@ -73,7 +73,7 @@ BIDPrintTicketFlags(uint32_t ulTicketFlags)
 
 static BIDError
 BIDPrintVerboseTicketCacheEntry(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     BIDCache cache BID_UNUSED,
     const char *k,
     json_t *j,
@@ -82,19 +82,19 @@ BIDPrintVerboseTicketCacheEntry(
     size_t ulDHKeySize = 0;
     const char *szECDHCurve = NULL;
     time_t issueTime, certExpiryTime, tktExpiryTime;
-    json_t *tkt = json_object_get(j, "tkt");
-    uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
+    json_t *tkt = _BIDJsonObjectGet(context, j, "tkt");
+    uint32_t ulTicketFlags = _BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "flags"));
 
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
     _BIDGetJsonTimestampValue(gContext, j, "exp", &certExpiryTime);
     _BIDGetJsonTimestampValue(gContext, tkt, "exp", &tktExpiryTime);
 
-    ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
-    szECDHCurve = json_string_value(json_object_get(j, "crv"));
+    ulDHKeySize = _BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "dh-key-size"));
+    szECDHCurve = _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "crv"));
 
-    printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
-    printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
-    printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
+    printf("Audience:         %s\n", _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "aud")));
+    printf("Subject:          %s\n", _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "sub")));
+    printf("Issuer:           %s\n", _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "iss")));
     if (ulDHKeySize)
         printf("DH key length:    %zd bits\n", ulDHKeySize);
     else if (szECDHCurve != NULL)
@@ -110,7 +110,7 @@ BIDPrintVerboseTicketCacheEntry(
 
 static BIDError
 BIDPrintTicketCacheEntry(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     BIDCache cache BID_UNUSED,
     const char *k,
     json_t *j,
@@ -118,17 +118,17 @@ BIDPrintTicketCacheEntry(
 {
     const char *szExpiry;
     time_t expiryTime;
-    json_t *tkt = json_object_get(j, "tkt");
-    const char *aud = json_string_value(json_object_get(j, "aud"));
+    json_t *tkt = _BIDJsonObjectGet(context, j, "tkt");
+    const char *aud = _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "aud"));
 
     _BIDGetJsonTimestampValue(gContext, tkt, "exp", &expiryTime);
 
     szExpiry = gNow < expiryTime ? ctime(&expiryTime) : ">>> Expired <<<";
 
     printf("%-15.15s %-25.25s %-13.13s %-24.24s\n",
-           json_string_value(json_object_get(j, "sub")),
+           _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "sub")),
            aud,
-           json_string_value(json_object_get(j, "iss")),
+           _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "iss")),
            szExpiry);
 
     return BID_S_OK;
@@ -136,14 +136,14 @@ BIDPrintTicketCacheEntry(
 
 static int
 BIDShouldPurgeTicketCacheEntryP(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     BIDCache cache BID_UNUSED,
     const char *szKey BID_UNUSED,
     json_t *j,
     void *data BID_UNUSED)
 {
     time_t expiryTime;
-    json_t *tkt = json_object_get(j, "tkt");
+    json_t *tkt = _BIDJsonObjectGet(context, j, "tkt");
 
     _BIDGetJsonTimestampValue(gContext, tkt, "exp", &expiryTime);
 
@@ -204,7 +204,7 @@ BIDDestroyTicketCache(int argc BID_UNUSED, char *argv[] BID_UNUSED)
 
 static BIDError
 BIDPrintVerboseReplayCacheEntry(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     BIDCache cache BID_UNUSED,
     const char *k,
     json_t *j,
@@ -213,9 +213,9 @@ BIDPrintVerboseReplayCacheEntry(
     unsigned char *pbHash = NULL;
     size_t cbHash = 0, i;
     time_t issueTime, certExpiryTime, assertionExpiryTime, renewExpiryTime;
-    uint32_t ulTicketFlags = json_integer_value(json_object_get(j, "flags"));
-    uint32_t ulDHKeySize = json_integer_value(json_object_get(j, "dh-key-size"));
-    const char *szECDHCurve = json_string_value(json_object_get(j, "crv"));
+    uint32_t ulTicketFlags = _BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "flags"));
+    uint32_t ulDHKeySize = _BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "dh-key-size"));
+    const char *szECDHCurve = _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "crv"));
 
     _BIDBase64UrlDecode(k, &pbHash, &cbHash);
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
@@ -234,9 +234,9 @@ BIDPrintVerboseReplayCacheEntry(
     if (ulDHKeySize != 0 || szECDHCurve != NULL) {
         printf("Ticket expiry:    %s", ctime(&certExpiryTime));
         printf("Renewable until:  %s", ctime(&renewExpiryTime));
-        printf("Audience:         %s\n", json_string_value(json_object_get(j, "aud")));
-        printf("Subject:          %s\n", json_string_value(json_object_get(j, "sub")));
-        printf("Issuer:           %s\n", json_string_value(json_object_get(j, "iss")));
+        printf("Audience:         %s\n", _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "aud")));
+        printf("Subject:          %s\n", _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "sub")));
+        printf("Issuer:           %s\n", _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "iss")));
         if (ulDHKeySize)
             printf("DH key length:    %u bits\n", ulDHKeySize);
         else if (szECDHCurve != NULL)
@@ -253,7 +253,7 @@ BIDPrintVerboseReplayCacheEntry(
 
 static BIDError
 BIDPrintReplayCacheEntry(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     BIDCache cache BID_UNUSED,
     const char *k,
     json_t *j,
@@ -354,7 +354,7 @@ BIDShouldPurgeAuthorityP(
 
 static BIDError
 BIDPrintAuthorityCacheEntry(
-    BIDContext context BID_UNUSED,
+    BIDContext context,
     BIDCache cache BID_UNUSED,
     const char *k,
     json_t *j,
@@ -372,11 +372,11 @@ BIDPrintAuthorityCacheEntry(
 
     err = _BIDGetAuthorityPublicKey(gContext, j, &publicKey);
     if (err == BID_S_OK) {
-        json_t *p = json_object_get(publicKey, "public-key");
+        json_t *p = _BIDJsonObjectGet(context, publicKey, "public-key");
 
-        szAlgorithm = json_string_value(json_object_get(p, "algorithm"));
+        szAlgorithm = _BIDJsonStringValue(_BIDJsonObjectGet(context, p, "algorithm"));
         if (szAlgorithm == NULL)
-            szAlgorithm = json_string_value(json_object_get(p, "alg"));
+            szAlgorithm = _BIDJsonStringValue(_BIDJsonObjectGet(context, p, "alg"));
 
         if (strcmp(szAlgorithm, "RS") == 0)
             szAlgorithm = "RSA";
@@ -468,8 +468,8 @@ BIDVerifyAssertionFromString(int argc, char *argv[])
     szExpiryTime = expiryTime > gNow ? ctime(&expiryTime) : ">>> Expired <<<";
 
     printf("Verified assertion for %s issued by %s expires %s",
-           json_string_value(json_object_get(identity->Attributes, "sub")),
-           json_string_value(json_object_get(identity->Attributes, "iss")),
+           _BIDJsonStringValue(_BIDJsonObjectGet(gContext, identity->Attributes, "sub")),
+           _BIDJsonStringValue(_BIDJsonObjectGet(gContext, identity->Attributes, "iss")),
            szExpiryTime);
 
 cleanup:

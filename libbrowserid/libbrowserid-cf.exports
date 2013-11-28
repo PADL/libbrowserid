@@ -49,6 +49,9 @@ _BIDGetCacheName
 _BIDGetCacheObject
 _BIDGetCurrentJsonTimestamp
 _BIDGetJsonTimestampValue
+_BIDJsonIntegerValue
+_BIDJsonObjectGet
+_BIDJsonStringValue
 _BIDOutputDebugJson
 _BIDOutputDebugJson
 _BIDOutputDebugJson
@@ -67,6 +70,3 @@ kBIDIdentityIssuerKey
 kBIDIdentityPrincipalKey
 kBIDIdentityPublicKeyKey
 kBIDIdentitySubjectKey
-_BID_json_integer_value
-_BID_json_string_value
-_BID_json_object_get

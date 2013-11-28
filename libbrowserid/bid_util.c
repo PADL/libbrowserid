@@ -743,3 +743,24 @@ _BIDHostifySpn(
 
     return BID_S_OK;
 }
+
+json_t *
+_BIDJsonObjectGet(
+    BIDContext context BID_UNUSED,
+    json_t *object,
+    const char *key)
+{
+    return json_object_get(object, key);
+}
+
+json_int_t
+_BIDJsonIntegerValue(json_t *object)
+{
+    return json_integer_value(object);
+}
+
+const char *
+_BIDJsonStringValue(json_t *object)
+{
+    return json_string_value(object);
+}
