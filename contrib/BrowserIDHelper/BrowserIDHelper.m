@@ -14,8 +14,8 @@
  *    documentation and/or other materials provided with the distribution.
  *
  * 3. Redistributions in any form must be accompanied by information on
- *    how to obtain complete source code for the gss_browserid software
- *    and any accompanying software that uses the gss_browserid software.
+ *    how to obtain complete source code for the libbrowserid software
+ *    and any accompanying software that uses the libbrowserid software.
  *    The source code must either be included in the distribution or be
  *    available for no more than the cost of distribution plus a nominal
  *    fee, and must be freely redistributable under reasonable conditions.
