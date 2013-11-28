@@ -337,7 +337,7 @@ BIDIdentityCopyAttributeDictionary(
 }
 
 CFTypeRef
-BIDIdentityCopyAttribute(
+BIDIdentityCopyAttributeValue(
     BIDIdentity identity,
     CFStringRef attribute)
 {

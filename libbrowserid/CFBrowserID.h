@@ -110,7 +110,7 @@ extern const CFStringRef kBIDIdentityPublicKeyKey;
 extern const CFStringRef kBIDIdentityPrincipalKey;
 
 CFTypeRef
-BIDIdentityCopyAttribute(
+BIDIdentityCopyAttributeValue(
     BIDIdentity identity,
     CFStringRef attribute);
 

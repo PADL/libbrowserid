@@ -19,8 +19,8 @@ BIDGetIdentityIssuer
 BIDGetIdentityJsonObject
 BIDGetIdentityReauthTicket
 BIDGetIdentitySubject
-BIDIdentityCopyAttribute
 BIDIdentityCopyAttributeDictionary
+BIDIdentityCopyAttributeValue
 BIDIdentityCreateByVerifyingAssertion
 BIDIdentityCreateFromString
 BIDIdentityDeriveKey
