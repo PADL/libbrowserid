@@ -265,12 +265,12 @@ _BIDIdentityCopyDebugDescription(
     CFTypeRef cf)
 {
     CFStringRef desc;
-    CFDictionaryRef dict = BIDIdentityCopyAttributeDictionary((BIDIdentity)cf);
+    BIDIdentity identity = (BIDIdentity)cf;
     CFStringRef sub = NULL, iss = NULL;
 
-    if (dict != NULL) {
-        sub = CFDictionaryGetValue(dict, kBIDIdentitySubjectKey);
-        iss = CFDictionaryGetValue(dict, kBIDIdentityIssuerKey);
+    if (identity->Attributes != NULL) {
+        sub = CFDictionaryGetValue(identity->Attributes, kBIDIdentitySubjectKey);
+        iss = CFDictionaryGetValue(identity->Attributes, kBIDIdentityIssuerKey);
     }
     if (sub == NULL)
         sub = CFSTR("?");
@@ -280,9 +280,6 @@ _BIDIdentityCopyDebugDescription(
     desc = CFStringCreateWithFormat(kCFAllocatorDefault, NULL,
                                     CFSTR("<BIDIdentity %p>{subject = \"%@\", issuer = \"%@\"}"),
                                     cf, sub, iss);
-
-    if (dict != NULL)
-        CFRelease(dict);
 
     return desc;
 }
@@ -344,18 +341,14 @@ BIDIdentityCopyAttribute(
     BIDIdentity identity,
     CFStringRef attribute)
 {
-    CFDictionaryRef dict;
     CFTypeRef value;
 
-    dict = BIDIdentityCopyAttributeDictionary(identity);
-    if (dict == NULL)
+    if (identity == NULL || identity->Attributes == NULL)
         return NULL;
 
-    value = CFDictionaryGetValue(dict, attribute);
+    value = CFDictionaryGetValue(identity->Attributes, attribute);
     if (value != NULL)
         CFRetain(value);
-
-    CFRelease(dict);
 
     return value;
 }
