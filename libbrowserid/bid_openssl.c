@@ -60,6 +60,11 @@
 #define BID_CRYPTO_PRINT_ERRORS()
 #endif
 
+#ifdef __APPLE__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 /*
  * Secret key agreement handle.
  */
@@ -122,7 +127,7 @@ _BIDGetJsonBNValue(
 
         err2 = _BIDBase64UrlDecode(szValue, &pBuf, &len);
         if (err2 == BID_S_OK) {
-            *bn = BN_bin2bn(buf, len, NULL);
+            *bn = BN_bin2bn(buf, (int)len, NULL);
             if (*bn != NULL)
                 err = BID_S_OK;
             memset(buf, 0, sizeof(buf));
@@ -483,7 +488,7 @@ _RSAMakeSignature(
         goto cleanup;
     }
 
-    signatureLength = RSA_private_encrypt(digestLength,
+    signatureLength = RSA_private_encrypt((int)digestLength,
                                           digest,
                                           jwt->Signature,
                                           rsa,
@@ -540,7 +545,7 @@ _RSAVerifySignature(
         goto cleanup;
     }
 
-    signatureLength = RSA_public_decrypt(jwt->SignatureLength,
+    signatureLength = RSA_public_decrypt((int)jwt->SignatureLength,
                                          jwt->Signature,
                                          signature,
                                          rsa,
@@ -702,7 +707,7 @@ _DSAMakeSignature(
     err = _BIDMakeDsaKey(context, jwk, 0, &dsa);
     BID_BAIL_ON_ERROR(err);
 
-    dsaSig = DSA_do_sign(digest, digestLength, dsa);
+    dsaSig = DSA_do_sign(digest, (int)digestLength, dsa);
     if (dsaSig == NULL) {
         BID_CRYPTO_PRINT_ERRORS();
         err = BID_S_CRYPTO_ERROR;
@@ -771,10 +776,10 @@ _DSAVerifySignature(
         goto cleanup;
     }
 
-    dsaSig->r = BN_bin2bn(&jwt->Signature[0],            digestLength, NULL);
-    dsaSig->s = BN_bin2bn(&jwt->Signature[digestLength], digestLength, NULL);
+    dsaSig->r = BN_bin2bn(&jwt->Signature[0],            (int)digestLength, NULL);
+    dsaSig->s = BN_bin2bn(&jwt->Signature[digestLength], (int)digestLength, NULL);
 
-    *valid = DSA_do_verify(digest, digestLength, dsaSig, dsa);
+    *valid = DSA_do_verify(digest, (int)digestLength, dsaSig, dsa);
     if (*valid < 0) {
         BID_CRYPTO_PRINT_ERRORS();
         err = BID_S_CRYPTO_ERROR;
@@ -804,7 +809,7 @@ _BIDHMACSHA(
     const EVP_MD *md;
     unsigned char *pbKey = NULL;
     size_t cbKey = 0;
-    unsigned int mdLen = *hmacLength;
+    unsigned int mdLen = (unsigned int)*hmacLength;
 
     BID_ASSERT(jwt->EncData != NULL);
 
@@ -814,7 +819,7 @@ _BIDHMACSHA(
     err = _BIDGetJsonBinaryValue(context, jwk, "secret-key", &pbKey, &cbKey);
     BID_BAIL_ON_ERROR(err);
 
-    HMAC_Init(&h, pbKey, cbKey, md);
+    HMAC_Init(&h, pbKey, (int)cbKey, md);
     HMAC_Update(&h, (const unsigned char *)jwt->EncData, jwt->EncDataLength);
     HMAC_Final(&h, hmac, &mdLen);
 
@@ -893,7 +898,7 @@ _BIDDigestAssertion(
 {
     const EVP_MD *md = EVP_sha256();
     EVP_MD_CTX mdCtx;
-    unsigned int mdLength = *digestLength;
+    unsigned int mdLength = (unsigned int)*digestLength;
 
     if (*digestLength < EVP_MD_size(md))
         return BID_S_BUFFER_TOO_SMALL;
@@ -1320,7 +1325,7 @@ _BIDDeriveKey(
     if (*ppbDerivedKey == NULL)
         return BID_S_NO_MEMORY;
 
-    HMAC_Init(&h, secretHandle->pbSecret, secretHandle->cbSecret, EVP_sha256());
+    HMAC_Init(&h, secretHandle->pbSecret, (int)secretHandle->cbSecret, EVP_sha256());
     HMAC_Update(&h, _BIDSalt, sizeof(_BIDSalt));
     HMAC_Update(&h, secretHandle->pbSecret, secretHandle->cbSecret);
     if (pbSalt != NULL)
@@ -1539,7 +1544,7 @@ _BIDSetJsonX509DN(
 {
     char szValue[BUFSIZ], *s;
     BIO *bio;
-    int n;
+    long n;
 
     bio = BIO_new(BIO_s_mem());
     if (bio == NULL)
@@ -1838,7 +1843,7 @@ _BIDValidateX509CertChain(
     X509_STORE_CTX *storeCtx = NULL;
     X509 *leafCert = NULL;
     STACK_OF(X509) *chain = NULL;
-    size_t i;
+    int i;
     json_t *caCertificateFile = NULL;
     json_t *caCertificateDir = NULL;
 
@@ -2196,3 +2201,7 @@ cleanup:
 
     return err;
 }
+
+#ifdef __APPLE__
+#pragma clang diagnostic pop
+#endif
