@@ -38,7 +38,6 @@
  */
 
 #include "bid_private.h"
-#include "bid_json.h"
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 
@@ -337,7 +336,7 @@ BIDIdentityCopyAttributeDictionary(
     if (identity == BID_C_NO_IDENTITY)
         return NULL;
 
-    return _BIDCreateDictionaryFromJsonObject(identity->Attributes);
+    return CFRetain(identity->Attributes);
 }
 
 CFTypeRef
@@ -567,15 +566,13 @@ _BIDCachePerformBlock(
         ^(BIDContext context, BIDCache cache, const char *szKey, json_t *jsonObject) {
         BIDError err2;
         CFStringRef key = CFStringCreateWithCString(kCFAllocatorDefault, szKey, kCFStringEncodingASCII);
-        CFDictionaryRef obj = _BIDCreateDictionaryFromJsonObject(jsonObject);
 
-        if (key == NULL || obj == NULL)
+        if (key == NULL)
             return BID_S_NO_MEMORY;
 
-        err2 = block(context, cache, key, obj);
+        err2 = block(context, cache, key, jsonObject);
 
         CFRelease(key);
-        CFRelease(obj);
 
         return err2;
     });

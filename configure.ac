@@ -58,19 +58,27 @@ AC_SUBST(TARGET_LDFLAGS)
 AX_CHECK_WINDOWS
 AX_CHECK_MACOSX
 AX_CHECK_IOS
-AX_CHECK_KRB5
-AX_CHECK_OPENSAML
-AM_CONDITIONAL(OPENSAML, test "x$found_opensaml" = "xyes")
-AX_CHECK_SHIBRESOLVER
-AM_CONDITIONAL(SHIBRESOLVER, test "x$found_shibresolver" = "xyes")
-if test x$found_shibresolver = xyes; then
-  AX_CHECK_SHIBSP
-fi
-AM_CONDITIONAL(SHIBSP, test "x$found_shibsp" = "xyes")
-AX_CHECK_CURL
-AX_CHECK_JANSSON
 AX_CHECK_OPENSSL
 AM_CONDITIONAL(OPENSSL, test "x$found_openssl" = "xyes")
+
+if test x_$target_macosx != x_yes; then
+  AX_CHECK_CURL
+  AX_CHECK_JANSSON
+fi
+
+if test x_$build_mech != x_no; then
+  AX_CHECK_KRB5
+  AX_CHECK_OPENSAML
+  AX_CHECK_SHIBRESOLVER
+  if test x$found_shibresolver = xyes; then
+    AX_CHECK_SHIBSP
+  fi
+fi
+AM_CONDITIONAL(SHIBRESOLVER, test "x$found_shibresolver" = "xyes")
+AM_CONDITIONAL(SHIBSP, test "x$found_shibsp" = "xyes")
+AM_CONDITIONAL(OPENSAML, test "x$found_opensaml" = "xyes")
+AM_CONDITIONAL(HAVE_GSS_ACQUIRE_CRED_FROM, test "x$gss_acquire_cred_from" != "xno")
+AM_CONDITIONAL(HEIMDAL, test "x$heimdal" != "xno")
 
 AC_CONFIG_FILES([Makefile libbrowserid/Makefile bidtool/Makefile
 		 sample/Makefile mech_browserid/Makefile

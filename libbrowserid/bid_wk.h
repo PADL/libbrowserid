@@ -56,15 +56,13 @@
 #include <WebKit/WebKit.h>
 #endif
 
-@class BIDJsonDictionary;
-
 #if TARGET_OS_IPHONE
 @protocol BIDIdentityControllerJS <JSExport>
 JSExportAs(identityCallback,
 - (void)identityCallback:(NSString *)assertion withParams:(id)params
 );
 - (NSString *)siteName;
-- (BIDJsonDictionary *)claims;
+- (NSDictionary *)claims;
 - (BOOL)silent;
 - (NSString *)emailHint;
 - (NSString *)audience;
@@ -85,7 +83,7 @@ JSExportAs(identityCallback,
 }
 
 @property(nonatomic, copy) NSString *audience;
-@property(nonatomic, retain) BIDJsonDictionary *claims;
+@property(nonatomic, retain) NSDictionary *claims;
 @property(nonatomic, copy) NSString *emailHint;
 @property(nonatomic, copy) NSString *siteName;
 @property(nonatomic, retain, readonly) NSString *assertion;
@@ -105,7 +103,7 @@ JSExportAs(identityCallback,
 
 /* public interface */
 - (BIDError)getAssertion;
-- (id)initWithAudience:(NSString *)anAudience claims:(BIDJsonDictionary *)someClaims;
+- (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims;
 
 /* private interface */
 - (void)abortWithError:(NSError *)error;
@@ -122,6 +120,9 @@ JSExportAs(identityCallback,
 - (void)closeIdentityDialog;
 - (void)loadIdentityDialog;
 - (void)showIdentityDialog;
+#if !TARGET_OS_IPHONE
+- (NSString *)claimsString;
+#endif
 @end
 
 #endif /* _BID_WK_H_ */

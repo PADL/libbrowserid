@@ -56,7 +56,7 @@ endif
 if TARGET_MACOSX
 libbrowserid_la_OBJCFLAGS = $(libbrowserid_la_CFLAGS) -fobjc-arc
 libbrowserid_la_LDFLAGS += -framework CoreFoundation
-libbrowserid_la_SOURCES += bid_wk.m bid_json.m
+libbrowserid_la_SOURCES += bid_wk.m bid_cfjson.m
 
 if TARGET_IOS
 libbrowserid_la_LDFLAGS += -framework UIKit -framework Foundation

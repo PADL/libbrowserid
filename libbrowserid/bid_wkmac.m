@@ -38,7 +38,6 @@
  */
 
 #include "bid_private.h"
-#include "bid_json.h"
 #include "bid_wk.h"
 
 #if !TARGET_OS_IPHONE
@@ -60,11 +59,17 @@
         return nil;
 }
 
+- (NSString *)claimsString
+{
+    NSData *data = [NSJSONSerialization dataWithJSONObject:self.claims options:0 error:NULL];
+    return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+}
+
 + (BOOL)isSelectorExcludedFromWebScript:(SEL)selector
 {
     if (selector == @selector(identityCallback:withParams:) ||
         selector == @selector(siteName) ||
-        selector == @selector(claims) ||
+        selector == @selector(claimsString) ||
         selector == @selector(silent) ||
         selector == @selector(emailHint) ||
         selector == @selector(audience))

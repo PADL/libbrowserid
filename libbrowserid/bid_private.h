@@ -59,7 +59,11 @@
 #include <sys/param.h>
 #endif
 
+#ifdef __APPLE__
+#include "bid_cfjson.h"
+#else
 #include <jansson.h>
+#endif
 
 #ifdef WIN32
 #include "bid_wpal.h"

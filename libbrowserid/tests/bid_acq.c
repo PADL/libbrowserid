@@ -45,9 +45,8 @@
 #include <AppKit/AppKit.h>
 #endif
 
-#include <jansson.h>
-#include "browserid.h"
 #include "bid_private.h"
+#include "browserid.h"
 
 /*
  * Test acquiring an assertion and verifying it.

@@ -38,7 +38,6 @@
  */
 
 #include "bid_private.h"
-#include "bid_json.h"
 #include "bid_wk.h"
 
 /*
@@ -118,7 +117,7 @@
 #if TARGET_OS_IPHONE
 #define CONTROLLER_CLAIMS               "controller.claims()"
 #else
-#define CONTROLLER_CLAIMS               "JSON.parse(controller.claims().jsonRepresentation())"
+#define CONTROLLER_CLAIMS               "JSON.parse(controller.claimsString())"
 #endif
 
     NSString *function = @"                                                                             \
@@ -173,7 +172,7 @@
     return [super init];
 }
 
-- (id)initWithAudience:(NSString *)anAudience claims:(BIDJsonDictionary *)someClaims
+- (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims
 {
     self = [self init];
 
@@ -237,9 +236,7 @@ _BIDBrowserGetAssertion(
 #endif /* !TARGET_OS_IPHONE */
 
     @autoreleasepool {
-        BIDJsonDictionary *claimsDict = [[BIDJsonDictionary alloc] initWithJsonObject:claims];
-
-        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szAudienceOrSpn] claims:claimsDict];
+        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szAudienceOrSpn] claims:(__bridge NSDictionary *)claims];
         if (szIdentityName != NULL) {
             controller.emailHint = [NSString stringWithUTF8String:szIdentityName];
             controller.silent = !!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT);

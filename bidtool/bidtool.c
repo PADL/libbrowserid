@@ -41,7 +41,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if __APPLE__
+#include "bid_cfjson.h"
+#else
 #include <jansson.h>
+#endif
 #include "browserid.h"
 #include "bid_private.h"
 

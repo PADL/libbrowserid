@@ -38,7 +38,6 @@
  */
 
 #include "bid_private.h"
-#include "bid_json.h"
 #include "bid_wk.h"
 
 #if TARGET_OS_IPHONE

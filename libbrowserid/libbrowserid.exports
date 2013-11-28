@@ -47,3 +47,6 @@ _BIDReleaseCache
 _BIDSetJsonTimestampValue
 _BIDStoreTicketInCache
 _BIDUnpackBackedAssertion
+_BID_json_integer_value
+_BID_json_string_value
+_BID_json_object_get

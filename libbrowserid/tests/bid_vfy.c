@@ -41,8 +41,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <jansson.h>
-
 #include "browserid.h"
 #include "bid_private.h"
 
