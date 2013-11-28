@@ -504,7 +504,7 @@ _BIDValidateReauthCredStrength(
         if (szCredCurve == NULL || strcmp(szCredCurve, szContextCurve) != 0)
             return BID_S_INVALID_EC_CURVE;
     } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        uint32_t ulDHKeySize = json_integer_value(json_object_get(cred, "dh-key-size"));
+        uint32_t ulDHKeySize = _BIDJsonUInt32Value(json_object_get(cred, "dh-key-size"));
 
         if (ulDHKeySize < context->DHKeySize)
             return BID_S_KEY_TOO_SHORT;
@@ -606,7 +606,7 @@ _BIDGetReauthAssertion(
         _BIDGetJsonTimestampValue(context, tkt, "exp", ptExpiryTime);
 
     if (pulTicketFlags != NULL)
-        *pulTicketFlags = json_integer_value(json_object_get(cred, "flags"));
+        *pulTicketFlags = _BIDJsonUInt32Value(json_object_get(cred, "flags"));
 
 cleanup:
     json_decref(cred);
@@ -659,7 +659,7 @@ _BIDVerifyReauthAssertion(
         err = BID_S_INVALID_ASSERTION;
     BID_BAIL_ON_ERROR(err);
 
-    ulTicketFlags = json_integer_value(json_object_get(cred, "flags"));
+    ulTicketFlags = _BIDJsonUInt32Value(json_object_get(cred, "flags"));
 
     err = _BIDValidateReauthCredStrength(context, cred);
     BID_BAIL_ON_ERROR(err);

@@ -61,7 +61,7 @@ _BIDGetConfigIntegerValue(
     *pulValue = 0;
 
     if (_BIDGetCacheObject(context, context->Config, szKey, &value) == BID_S_OK) {
-        *pulValue = json_integer_value(value);
+        *pulValue = _BIDJsonUInt32Value(value);
         json_decref(value);
     } else if (ulDefaultValue != 0) {
         *pulValue = ulDefaultValue;

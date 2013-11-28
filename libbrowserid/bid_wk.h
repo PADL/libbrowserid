@@ -104,6 +104,7 @@ JSExportAs(identityCallback,
 /* public interface */
 - (BIDError)getAssertion;
 - (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims;
+- (void)identityCallback:(NSString *)anAssertion withParams:(id)params;
 
 /* private interface */
 - (void)abortWithError:(NSError *)error;

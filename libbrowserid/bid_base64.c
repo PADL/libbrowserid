@@ -174,8 +174,8 @@ static ssize_t
 _BIDBase64UrlTokenDecode(const char *token)
 {
     size_t i, toklen;
-    unsigned int val = 0;
-    unsigned int marker = 0;
+    size_t val = 0;
+    size_t marker = 0;
 
     toklen = strlen(token);
     if (toklen < 2)
@@ -186,7 +186,7 @@ _BIDBase64UrlTokenDecode(const char *token)
     for (i = 0; i < 4; i++) {
 	val *= 64;
         if (i < toklen) {
-            int tmp = 0;
+            ssize_t tmp = 0;
 
             if (token[i] == '=') {
                 marker++;

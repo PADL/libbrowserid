@@ -759,6 +759,12 @@ _BIDJsonIntegerValue(json_t *object)
     return json_integer_value(object);
 }
 
+uint32_t
+_BIDJsonUInt32Value(json_t *object)
+{
+    return (uint32_t)json_integer_value(object);
+}
+
 const char *
 _BIDJsonStringValue(json_t *object)
 {

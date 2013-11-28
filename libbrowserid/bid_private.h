@@ -40,7 +40,9 @@
 #ifndef _BID_PRIVATE_H_
 #define _BID_PRIVATE_H_ 1
 
-#include "config.h"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
@@ -949,6 +951,9 @@ _BIDJsonObjectGet(
 
 json_int_t
 _BIDJsonIntegerValue(json_t *object);
+
+uint32_t
+_BIDJsonUInt32Value(json_t *object);
 
 const char *
 _BIDJsonStringValue(json_t *object);
