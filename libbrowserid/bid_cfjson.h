@@ -64,9 +64,11 @@ typedef void json_t;
 
 #if __LP64__
 typedef long long json_int_t;
+#define JSON_INTEGER_TYPE kCFNumberLongLongType
 #else
 typedef long json_int_t;
-#endif /* JSON_INTEGER_IS_LONG_LONG */
+#define JSON_INTEGER_TYPE kCFNumberLongType
+#endif
 
 json_t *json_object(void);
 json_t *json_array(void);
@@ -81,7 +83,7 @@ json_t *json_null(void);
 #define json_is_object(json)   (json && CFGetTypeID(json) == CFDictionaryGetTypeID())
 #define json_is_array(json)    (json && CFGetTypeID(json) == CFArrayGetTypeID())
 #define json_is_string(json)   (json && CFGetTypeID(json) == CFStringGetTypeID())
-#define json_is_integer(json)  (json && CFGetTypeID(json) == CFNumberGetTypeID() && CFNumberGetType(json) == kCFLongLongGetType)
+#define json_is_integer(json)  (json && CFGetTypeID(json) == CFNumberGetTypeID() && CFNumberGetType(json) == JSON_INTEGER_TYPE)
 #define json_is_real(json)     (json && CFGetTypeID(json) == CFNumberGEtTypeID() && CFNumberGetType(json) == kCFNumberDoubleType)
 #define json_is_number(json)   (json && CFGEtTypeID(json) == CFNumberGetTypeID())
 #define json_is_true(json)     (json && CFGetTypeID(json) == CFBooleanGetTypeID() && CFBooleanGetValue(json))

@@ -99,7 +99,7 @@ json_string_nocheck(const char *value)
 json_t *
 json_integer(json_int_t value)
 {
-    return (json_t *)CFNumberCreate(kCFAllocatorDefault, kCFNumberLongLongType, &value);
+    return (json_t *)CFNumberCreate(kCFAllocatorDefault, JSON_INTEGER_TYPE, &value);
 }
 
 json_t *
@@ -499,7 +499,7 @@ json_integer_value(const json_t *integer)
     json_int_t value = 0;
 
     if (integer != NULL && CFGetTypeID(integer) == CFNumberGetTypeID())
-        CFNumberGetValue(integer, kCFNumberLongLongType, &value);
+        CFNumberGetValue(integer, JSON_INTEGER_TYPE, &value);
 
     return value;
 }
@@ -526,7 +526,7 @@ json_number_value(const json_t *json)
 
     if (CFNumberGetValue(json, kCFNumberDoubleType, &dValue))
         return dValue;
-    else if (CFNumberGetValue(json, kCFNumberLongLongType, &iValue))
+    else if (CFNumberGetValue(json, JSON_INTEGER_TYPE, &iValue))
         return iValue;
     else
         return 0.0;
