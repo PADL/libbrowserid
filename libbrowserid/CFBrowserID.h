@@ -43,6 +43,10 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <browserid.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 CFTypeID
 BIDIdentityGetTypeID(void);
 
@@ -140,6 +144,10 @@ _BIDCachePerformBlock(
     BIDContext context,
     BIDCache cache,
     BIDError (^block)(BIDContext, BIDCache, CFStringRef, CFTypeRef));
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* _CFBROWSERID_H_ */

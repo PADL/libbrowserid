@@ -140,6 +140,7 @@ BIDErrorToString(
     BIDError error,
     const char **pString);
 
+struct BIDContextDesc;
 typedef struct BIDContextDesc *BIDContext;
 
 #define BID_C_NO_CONTEXT                    ((BIDContext)0)

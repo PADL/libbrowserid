@@ -4,6 +4,8 @@
 #else
 #include <Cocoa/Cocoa.h>
 #endif
+
+#include <browserid.h>
 #include <CFBrowserID.h>
 
 void
