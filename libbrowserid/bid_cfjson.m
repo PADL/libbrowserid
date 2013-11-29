@@ -280,7 +280,7 @@ json_object_update(json_t *object, json_t *other)
     return (__bridge const void *)self.object == obj;
 }
 
-- (id)nextObject
+- (NSString *)nextObject
 {
     if ((self.key = [self.enumerator nextObject]) != nil)
         self.value = self.object[self.key];
@@ -302,12 +302,20 @@ json_object_iter(json_t *object)
     return (void *)CFBridgingRetain([_BIDJsonObjectIterator iteratorWithObject:object]);
 }
 
-#if 0
 void *
 json_object_iter_at(json_t *object, const char *szKey)
 {
+    NSString *key = [NSString stringWithUTF8String:szKey];
+    _BIDJsonObjectIterator *iterator = [_BIDJsonObjectIterator iteratorWithObject:object];
+    NSString *iteratorKey;
+
+    while ((iteratorKey = [iterator nextObject]) != nil) {
+        if ([iteratorKey isEqualToString:key])
+            return (void *)CFBridgingRetain(iterator);
+    }
+
+    return NULL;
 }
-#endif
 
 void *
 json_object_iter_next(json_t *object, void *iter)
