@@ -685,12 +685,18 @@ json_dumps(const json_t *json, size_t flags)
 {
     NSData *data;
     NSString *string;
+    NSStringEncoding encoding;
 
     data = _json_dumpd(json, flags);
     if (data == NULL)
         return NULL;
 
-    string = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    if (flags & JSON_ENSURE_ASCII)
+        encoding = NSASCIIStringEncoding;
+    else
+        encoding = NSUTF8StringEncoding;
+
+    string = [[NSString alloc] initWithData:data encoding:encoding];
     return _BIDCFCopyUTF8String((__bridge CFStringRef)string);
 }
 
