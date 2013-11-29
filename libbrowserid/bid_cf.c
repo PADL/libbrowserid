@@ -64,6 +64,8 @@ static CFTypeID _BIDIdentityTypeID          = _kCFRuntimeNotATypeID;
 static CFTypeID _BIDContextTypeID           = _kCFRuntimeNotATypeID;
 static CFTypeID _BIDCacheTypeID             = _kCFRuntimeNotATypeID;
 
+static dispatch_queue_t _BIDBackgroundQueue = NULL;
+
 static void
 _BIDCFInit(void) __attribute__((__constructor__));
 
@@ -113,8 +115,16 @@ static void
 _BIDCFInit(void)
 {
     _BIDIdentityTypeID = _CFRuntimeRegisterClass(&_BIDIdentityClass);
+    BID_ASSERT(_BIDIdentityTypeID != _kCFRuntimeNotATypeID);
+
     _BIDContextTypeID = _CFRuntimeRegisterClass(&_BIDContextClass);
+    BID_ASSERT(_BIDContextTypeID != _kCFRuntimeNotATypeID);
+
     _BIDCacheTypeID = _CFRuntimeRegisterClass(&_BIDCacheClass);
+    BID_ASSERT(_BIDCacheTypeID != _kCFRuntimeNotATypeID);
+
+    _BIDBackgroundQueue = dispatch_queue_create("com.padl.BrowserID.queue", DISPATCH_QUEUE_CONCURRENT);
+    BID_ASSERT(_BIDBackgroundQueue != NULL);
 }
 
 CFTypeID
@@ -507,8 +517,6 @@ BIDVerifyAssertionWithHandler(
     dispatch_queue_t queue,
     void (^handler)(BIDIdentity, uint32_t, CFErrorRef))
 {
-    dispatch_queue_t bgqueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-
     dispatch_retain(queue);
     CFRetain(context);
     CFRetain(assertion);
@@ -516,7 +524,7 @@ BIDVerifyAssertionWithHandler(
     if (channelBindings != NULL)
         CFRetain(channelBindings);
 
-    dispatch_async(bgqueue, ^{
+    dispatch_async(_BIDBackgroundQueue, ^{
         BIDIdentity identity = BID_C_NO_IDENTITY;
         uint32_t ulVerifyFlags = 0;
         CFErrorRef error = NULL;
