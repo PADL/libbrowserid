@@ -9,12 +9,16 @@ More information on BrowserID is available at the URL
 
 ## Building
 
-The following packages are required:
+For building on Mac OS X, no additional packages are required.
+
+On Windows you will additionally need:
 
 * Jansson <http://www.digip.org/jansson/>
-* Curl <http://curl.haxx.se/> (not required for Windows or OS X)
+
+On all other platforms, you will need, in addition to Jansson:
+
+* Curl <http://curl.haxx.se/> (not required for Windows)
 * OpenSSL <http://www.openssl.org/> (not required for Windows)
-* For client-side support, a recent Mac OS X or Windows system
 
 Building is similar to other autotools-based projects; run ./autogen.sh,
 ./configure and make. If you wish to also build the GSS/SASL mechanism, see the
