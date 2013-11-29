@@ -89,8 +89,10 @@ CoreFoundation objects. You can also use the helper APIs in CFBrowserID.h.
     CFRelease(context);
 
 Regardless of whether you have CFRuntime.h installed, libbrowserid will use
-CFNetwork instead of libcurl if available. This is not necessarily OS
-X-specific, although it''s unlikely other platforms will have this.
+CFNetwork instead of libcurl if available, and CoreFoundation instead of
+libjansson.. This is not necessarily OS X-specific, although it''s unlikely
+other platforms will have this. (So, on OS X and iOS, you can treat any json_t
+objects returned by libbrowserid APIs as CoreFoundation types.)
 
 ## Windows port
 
