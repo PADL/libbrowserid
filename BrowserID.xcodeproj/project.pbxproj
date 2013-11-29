@@ -66,7 +66,6 @@
 		D345698718477D4F009B8DC9 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		D345698818477D4F009B8DC9 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
 		D345698918477D4F009B8DC9 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
-		D345699818477D4F009B8DC9 /* BrowserIDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BrowserIDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D394954A18477E5B00C7D85B /* bid_authority.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_authority.c; path = libbrowserid/bid_authority.c; sourceTree = SOURCE_ROOT; };
 		D394954B18477E5B00C7D85B /* bid_base64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_base64.c; path = libbrowserid/bid_base64.c; sourceTree = SOURCE_ROOT; };
 		D394954C18477E5B00C7D85B /* bid_cache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cache.c; path = libbrowserid/bid_cache.c; sourceTree = SOURCE_ROOT; };
@@ -143,8 +142,7 @@
 		D345698218477D4F009B8DC9 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D345698118477D4F009B8DC9 /* BrowserID.framework */,
-				D345699818477D4F009B8DC9 /* BrowserIDTests.xctest */,
+				D345698118477D4F009B8DC9 /* BrowserID.framework */
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -261,24 +259,6 @@
 			productReference = D345698118477D4F009B8DC9 /* BrowserID.framework */;
 			productType = "com.apple.product-type.framework";
 		};
-		D345699718477D4F009B8DC9 /* BrowserIDTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = D34569AC18477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserIDTests" */;
-			buildPhases = (
-				D345699418477D4F009B8DC9 /* Sources */,
-				D345699518477D4F009B8DC9 /* Frameworks */,
-				D345699618477D4F009B8DC9 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				D345699D18477D4F009B8DC9 /* PBXTargetDependency */,
-			);
-			name = BrowserIDTests;
-			productName = BrowserIDTests;
-			productReference = D345699818477D4F009B8DC9 /* BrowserIDTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -306,7 +286,6 @@
 			projectRoot = "";
 			targets = (
 				D345698018477D4F009B8DC9 /* BrowserID */,
-				D345699718477D4F009B8DC9 /* BrowserIDTests */,
 			);
 		};
 /* End PBXProject section */
@@ -377,7 +356,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "VERS_STRING_OUTPUT=$DERIVED_FILE_DIR/vers.c\nexport VERS_STRING_OUTPUT\n\ncd $SRCROOT/build\n/usr/bin/perl -I$SRCROOT/build $SRCROOT/build/vers_string -v\n\nOBJ=OBJECT_FILE_DIR_$CURRENT_VARIANT\n\neval clang -c -o \\$$OBJ/$CURRENT_ARCH/vers.o $VERS_STRING_OUTPUT\n";
+			shellScript = "VERS_STRING_OUTPUT=$DERIVED_FILE_DIR/vers.c\nexport VERS_STRING_OUTPUT\n\ncd $SRCROOT/build\n/usr/bin/perl -I$SRCROOT/build $SRCROOT/build/vers_string -v\n\nOBJ=OBJECT_FILE_DIR-$CURRENT_VARIANT\n\neval clang -c -o \\$$OBJ/$CURRENT_ARCH/vers.o $VERS_STRING_OUTPUT\n";
+			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -533,49 +513,9 @@
 				GCC_PREFIX_HEADER = "libbrowserid/BrowserID-Prefix.pch";
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				INFOPLIST_FILE = "libbrowserid/BrowserID-Info.plist";
-				OTHER_LDFLAGS = "$(OBJECT_FILE_DIR)_$(CURRENT_VARIANT)/$(CURRENT_ARCH)/vers.o";
+				OTHER_LDFLAGS = "$(OBJECT_FILE_DIR)-$(CURRENT_VARIANT)/$(CURRENT_ARCH)/vers.o";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = framework;
-			};
-			name = Release;
-		};
-		D34569AD18477D4F009B8DC9 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/BrowserID.framework/Versions/A/BrowserID";
-				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(DEVELOPER_FRAMEWORKS_DIR)",
-					"$(inherited)",
-				);
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "BrowserID/BrowserID-Prefix.pch";
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				INFOPLIST_FILE = "BrowserIDTests/BrowserIDTests-Info.plist";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_HOST = "$(BUNDLE_LOADER)";
-				WRAPPER_EXTENSION = xctest;
-			};
-			name = Debug;
-		};
-		D34569AE18477D4F009B8DC9 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/BrowserID.framework/Versions/A/BrowserID";
-				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(DEVELOPER_FRAMEWORKS_DIR)",
-					"$(inherited)",
-				);
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "BrowserID/BrowserID-Prefix.pch";
-				INFOPLIST_FILE = "BrowserIDTests/BrowserIDTests-Info.plist";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_HOST = "$(BUNDLE_LOADER)";
-				WRAPPER_EXTENSION = xctest;
 			};
 			name = Release;
 		};
@@ -596,15 +536,6 @@
 			buildConfigurations = (
 				D34569AA18477D4F009B8DC9 /* Debug */,
 				D34569AB18477D4F009B8DC9 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		D34569AC18477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserIDTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				D34569AD18477D4F009B8DC9 /* Debug */,
-				D34569AE18477D4F009B8DC9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
