@@ -118,9 +118,8 @@ typedef const gss_OID_desc *gss_const_OID;
 /* Kerberos headers */
 #include <krb5.h>
 
-#include <jansson.h>
-#include <browserid.h>
 #include <bid_private.h> /* XXX */
+#include <browserid.h>
 
 #include "gssbrowserid_err.h"
 #include "libbrowserid_err.h"

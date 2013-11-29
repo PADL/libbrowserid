@@ -41,7 +41,7 @@
 #include <string>
 #include <new>
 
-#include <jansson.h>
+#include "gssapiP_bid.h"
 
 #ifdef HAVE_SHIBRESOLVER
 #include <shibsp/remoting/ddf.h>
