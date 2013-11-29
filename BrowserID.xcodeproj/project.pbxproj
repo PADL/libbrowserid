@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D345699B18477D4F009B8DC9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698418477D4F009B8DC9 /* Cocoa.framework */; };
-		D345699E18477D4F009B8DC9 /* BrowserID.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* BrowserID.framework */; };
 		D394957118477E5B00C7D85B /* bid_authority.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954A18477E5B00C7D85B /* bid_authority.c */; };
 		D394957218477E5B00C7D85B /* bid_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954B18477E5B00C7D85B /* bid_base64.c */; };
 		D394957318477E5B00C7D85B /* bid_cache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954C18477E5B00C7D85B /* bid_cache.c */; };
@@ -42,23 +40,12 @@
 		D394959518477E5B00C7D85B /* bid_xrt.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956E18477E5B00C7D85B /* bid_xrt.c */; };
 		D394959618477E5B00C7D85B /* browserid.h in Headers */ = {isa = PBXBuildFile; fileRef = D394956F18477E5B00C7D85B /* browserid.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D394959718477E5B00C7D85B /* CFBrowserID.h in Headers */ = {isa = PBXBuildFile; fileRef = D394957018477E5B00C7D85B /* CFBrowserID.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		D394959A18477F9100C7D85B /* BrowserID-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D394959818477F9100C7D85B /* BrowserID-Info.plist */; };
 		D394959B18477F9100C7D85B /* BrowserID-Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = D394959918477F9100C7D85B /* BrowserID-Prefix.pch */; };
 		D394959C1847829900C7D85B /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698918477D4F009B8DC9 /* AppKit.framework */; };
 		D394959E184782A700C7D85B /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959D184782A700C7D85B /* WebKit.framework */; };
 		D39495A0184782AC00C7D85B /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959F184782AC00C7D85B /* CoreFoundation.framework */; };
 		D39495A2184782B600C7D85B /* libcrypto.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D39495A1184782B600C7D85B /* libcrypto.dylib */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		D345699C18477D4F009B8DC9 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = D345697818477D4F009B8DC9 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = D345698018477D4F009B8DC9;
-			remoteInfo = BrowserID;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		D345698118477D4F009B8DC9 /* BrowserID.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = BrowserID.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -118,15 +105,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D345699518477D4F009B8DC9 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D345699B18477D4F009B8DC9 /* Cocoa.framework in Frameworks */,
-				D345699E18477D4F009B8DC9 /* BrowserID.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -142,7 +120,7 @@
 		D345698218477D4F009B8DC9 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D345698118477D4F009B8DC9 /* BrowserID.framework */
+				D345698118477D4F009B8DC9 /* BrowserID.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -267,11 +245,6 @@
 			attributes = {
 				LastUpgradeCheck = 0500;
 				ORGANIZATIONNAME = "PADL Software Pty Ltd";
-				TargetAttributes = {
-					D345699718477D4F009B8DC9 = {
-						TestTargetID = D345698018477D4F009B8DC9;
-					};
-				};
 			};
 			buildConfigurationList = D345697B18477D4F009B8DC9 /* Build configuration list for PBXProject "BrowserID" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -292,14 +265,6 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		D345697F18477D4F009B8DC9 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D394959A18477F9100C7D85B /* BrowserID-Info.plist in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D345699618477D4F009B8DC9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -397,22 +362,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D345699418477D4F009B8DC9 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		D345699D18477D4F009B8DC9 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = D345698018477D4F009B8DC9 /* BrowserID */;
-			targetProxy = D345699C18477D4F009B8DC9 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		D34569A718477D4F009B8DC9 /* Debug */ = {
