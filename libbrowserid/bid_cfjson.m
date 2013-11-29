@@ -722,3 +722,4 @@ void
 json_set_alloc_funcs(json_malloc_t malloc_fn BID_UNUSED, json_free_t free_fn BID_UNUSED)
 {
 }
+

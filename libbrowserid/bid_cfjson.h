@@ -54,21 +54,28 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 
-/* because we export these, rename them */
-#define json_integer_value  _BID_json_integer_value
-#define json_string_value   _BID_json_string_value
-#define json_object_get     _BID_json_object_get
-
+typedef enum {
+    JSON_OBJECT,
+    JSON_ARRAY,
+    JSON_STRING,
+    JSON_INTEGER,
+    JSON_REAL,
+    JSON_TRUE,
+    JSON_FALSE,
+    JSON_NULL
+} json_type;
 
 typedef void json_t;
 
 #if __LP64__
 typedef long long json_int_t;
 #define JSON_INTEGER_TYPE kCFNumberLongLongType
+#define JSON_INTEGER_FORMAT "lld"
 #else
 typedef long json_int_t;
 #define JSON_INTEGER_TYPE kCFNumberLongType
-#endif
+#define JSON_INTEGER_FORMAT "ld"
+#endif /* __LP64__ */
 
 json_t *json_object(void);
 json_t *json_array(void);
@@ -80,16 +87,42 @@ json_t *json_true(void);
 json_t *json_false(void);
 json_t *json_null(void);
 
-#define json_is_object(json)   (json && CFGetTypeID(json) == CFDictionaryGetTypeID())
-#define json_is_array(json)    (json && CFGetTypeID(json) == CFArrayGetTypeID())
-#define json_is_string(json)   (json && CFGetTypeID(json) == CFStringGetTypeID())
-#define json_is_integer(json)  (json && CFGetTypeID(json) == CFNumberGetTypeID() && CFNumberGetType(json) == JSON_INTEGER_TYPE)
-#define json_is_real(json)     (json && CFGetTypeID(json) == CFNumberGEtTypeID() && CFNumberGetType(json) == kCFNumberDoubleType)
-#define json_is_number(json)   (json && CFGEtTypeID(json) == CFNumberGetTypeID())
-#define json_is_true(json)     (json && CFGetTypeID(json) == CFBooleanGetTypeID() && CFBooleanGetValue(json))
-#define json_is_false(json)    (json && CFGetTypeID(json) == CFBooleanGetTypeID() && !CFBooleanGetValue(json))
-#define json_is_boolean(json)  (json && CFGetTypeID(json) == CFBooleanGetTypeID())
-#define json_is_null(json)     (json && CFGetTypeID(json) == CFNullGetTypeID())
+static inline json_type
+json_typeof(json_t *json)
+{
+    CFTypeID cfTypeID = CFGetTypeID(json);
+    json_type jsonType = JSON_OBJECT;
+
+    if (cfTypeID == CFDictionaryGetTypeID()) {
+        jsonType = JSON_OBJECT;
+    } else if (cfTypeID == CFArrayGetTypeID()) {
+        jsonType = JSON_ARRAY;
+    } else if (cfTypeID == CFStringGetTypeID()) {
+        jsonType = JSON_STRING;
+    } else if (cfTypeID == CFNumberGetTypeID()) {
+        if (CFNumberGetType((CFNumberRef)json) == kCFNumberDoubleType)
+            jsonType = JSON_REAL;
+        else
+            jsonType = JSON_INTEGER;
+    } else if (cfTypeID == CFBooleanGetTypeID()) {
+        jsonType = CFBooleanGetValue((CFBooleanRef)json) ? JSON_TRUE : JSON_FALSE;
+    } else if (cfTypeID == CFNullGetTypeID()) {
+        jsonType = JSON_NULL;
+    }
+
+    return jsonType;
+}
+
+#define json_is_object(json)   (json && json_typeof(json) == JSON_OBJECT)
+#define json_is_array(json)    (json && json_typeof(json) == JSON_ARRAY)
+#define json_is_string(json)   (json && json_typeof(json) == JSON_STRING)
+#define json_is_integer(json)  (json && json_typeof(json) == JSON_INTEGER)
+#define json_is_real(json)     (json && json_typeof(json) == JSON_REAL)
+#define json_is_number(json)   (json_is_integer(json) || json_is_real(json))
+#define json_is_true(json)     (json && json_typeof(json) == JSON_TRUE)
+#define json_is_false(json)    (json && json_typeof(json) == JSON_FALSE)
+#define json_is_boolean(json)  (json_is_true(json) || json_is_false(json))
+#define json_is_null(json)     (json && json_typeof(json) == JSON_NULL)
 
 static inline
 json_t *json_incref(json_t *json)
