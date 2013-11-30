@@ -584,14 +584,14 @@ json_equal(json_t *value1, json_t *value2)
 json_t *
 json_copy(json_t *value)
 {
-    json_t *newObj;
+    json_t *newObj = NULL;
 
-    if (CFGetTypeID(value) == CFDictionaryGetTypeID()) {
-        newObj = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, value);
-    } else if (CFGetTypeID(value) == CFArrayGetTypeID()) {
-        newObj = CFArrayCreateMutableCopy(kCFAllocatorDefault, 0, value);
-    } else {
-        newObj = NULL;
+    if (newObj != NULL) {
+        if (CFGetTypeID(value) == CFDictionaryGetTypeID()) {
+            newObj = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, value);
+        } else if (CFGetTypeID(value) == CFArrayGetTypeID()) {
+            newObj = CFArrayCreateMutableCopy(kCFAllocatorDefault, 0, value);
+        }
     }
 
     return newObj;
