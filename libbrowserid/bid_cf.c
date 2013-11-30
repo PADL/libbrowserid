@@ -64,7 +64,9 @@ static CFTypeID _BIDIdentityTypeID          = _kCFRuntimeNotATypeID;
 static CFTypeID _BIDContextTypeID           = _kCFRuntimeNotATypeID;
 static CFTypeID _BIDCacheTypeID             = _kCFRuntimeNotATypeID;
 
+#if __BLOCKS__
 static dispatch_queue_t _BIDBackgroundQueue = NULL;
+#endif
 
 static void
 _BIDCFInit(void) __attribute__((__constructor__));
@@ -123,8 +125,10 @@ _BIDCFInit(void)
     _BIDCacheTypeID = _CFRuntimeRegisterClass(&_BIDCacheClass);
     BID_ASSERT(_BIDCacheTypeID != _kCFRuntimeNotATypeID);
 
+#if __BLOCKS__
     _BIDBackgroundQueue = dispatch_queue_create("com.padl.BrowserID.queue", DISPATCH_QUEUE_CONCURRENT);
     BID_ASSERT(_BIDBackgroundQueue != NULL);
+#endif
 }
 
 CFTypeID
