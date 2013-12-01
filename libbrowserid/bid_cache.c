@@ -549,6 +549,10 @@ _BIDPurgeCache(
     return _BIDPerformCacheObjects(context, cache, _BIDRemoveCacheObjectIfPredicateTrue, &args);
 }
 
+#ifdef __APPLE__
+CF_EXPORT CFURLRef CFCopyHomeDirectoryURLForUser(CFStringRef uName);
+#endif
+
 BIDError
 _BIDAcquireCacheForUser(
     BIDContext context,
@@ -562,29 +566,46 @@ _BIDAcquireCacheForUser(
     char szFileName[PATH_MAX];
 
 #ifdef __APPLE__
-    struct passwd *pw, pwd;
-    char pwbuf[BUFSIZ];
-    struct stat sb;
-    const char *szPrefix;
+    CFURLRef homeDirURL = NULL;
+    CFURLRef cacheURL = NULL;
+    CFStringRef cacheName = NULL;
+    CFURLRef jsonCacheURL = NULL;
+    CFErrorRef error = NULL;
 
-    if (getpwuid_r(getuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) < 0 ||
-        pw == NULL ||
-        pw->pw_dir == NULL) {
-        err = BID_S_CACHE_OPEN_ERROR;
+    err = BID_S_CACHE_OPEN_ERROR;
+
+    homeDirURL = CFCopyHomeDirectoryURLForUser(NULL);
+    if (homeDirURL == NULL)
         goto cleanup;
+
+    cacheURL = CFURLCreateCopyAppendingPathComponent(NULL, homeDirURL,
+                                                     CFSTR("Library/Caches/com.padl.gss.BrowserID"),
+                                                     TRUE);
+    if (cacheURL == NULL)
+        goto cleanup;
+
+    if (!CFURLResourceIsReachable(cacheURL, &error)) {
+        if (!CFURLGetFileSystemRepresentation(cacheURL, TRUE,
+                                              (uint8_t *)szFileName, sizeof(szFileName)))
+            goto cleanup;
+        mkdir(szFileName, 0700);
     }
 
-    szPrefix = (pw->pw_uid == 0) ? "" : pw->pw_dir;
+    cacheName = CFStringCreateWithFormat(kCFAllocatorDefault, NULL,
+                                         CFSTR("%s.json"), szTemplate);
+    if (cacheName == NULL)
+        goto cleanup;
 
-    snprintf(szFileName, sizeof(szFileName),
-             "%s/Library/Caches/com.padl.gss.BrowserID", szPrefix);
+    jsonCacheURL = CFURLCreateCopyAppendingPathComponent(NULL, cacheURL,
+                                                         cacheName, FALSE);
+    if (jsonCacheURL == NULL)
+        goto cleanup;
 
-    if (stat(szFileName, &sb) < 0)
-        mkdir(szFileName, 0700);
+    if (!CFURLGetFileSystemRepresentation(jsonCacheURL, TRUE,
+                                          (uint8_t *)szFileName, sizeof(szFileName)))
+        goto cleanup;
 
-    snprintf(szFileName, sizeof(szFileName),
-             "file:%s/Library/Caches/com.padl.gss.BrowserID/%s.json",
-             szPrefix, szTemplate);
+    err = BID_S_OK;
 #else
     char *szRuntimeDir;
 
@@ -602,6 +623,18 @@ _BIDAcquireCacheForUser(
 
 cleanup:
 #endif /* WIN32 */
+#ifdef __APPLE__
+    if (homeDirURL != NULL)
+        CFRelease(homeDirURL);
+    if (cacheURL != NULL)
+        CFRelease(cacheURL);
+    if (cacheName != NULL)
+        CFRelease(cacheName);
+    if (jsonCacheURL != NULL)
+        CFRelease(jsonCacheURL);
+    if (error != NULL)
+        CFRelease(error);
+#endif
 
     if (err != BID_S_OK)
         *pCache = NULL;
