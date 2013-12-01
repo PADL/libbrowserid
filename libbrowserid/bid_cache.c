@@ -574,11 +574,16 @@ _BIDAcquireCacheForUser(
 
     err = BID_S_CACHE_OPEN_ERROR;
 
-    homeDirURL = CFCopyHomeDirectoryURLForUser(NULL);
+    if (geteuid() == 0) {
+        homeDirURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, CFSTR("/"),
+                                                   kCFURLPOSIXPathStyle, TRUE);
+    } else {
+        homeDirURL = CFCopyHomeDirectoryURLForUser(NULL);
+    }
     if (homeDirURL == NULL)
         goto cleanup;
 
-    cacheURL = CFURLCreateCopyAppendingPathComponent(NULL, homeDirURL,
+    cacheURL = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, homeDirURL,
                                                      CFSTR("Library/Caches/com.padl.gss.BrowserID"),
                                                      TRUE);
     if (cacheURL == NULL)
@@ -596,7 +601,7 @@ _BIDAcquireCacheForUser(
     if (cacheName == NULL)
         goto cleanup;
 
-    jsonCacheURL = CFURLCreateCopyAppendingPathComponent(NULL, cacheURL,
+    jsonCacheURL = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, cacheURL,
                                                          cacheName, FALSE);
     if (jsonCacheURL == NULL)
         goto cleanup;
