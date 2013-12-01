@@ -540,6 +540,7 @@ json_number_value(const json_t *json)
         return 0.0;
 }
 
+#if 0
 int
 json_string_set(json_t *string, const char *value)
 {
@@ -559,6 +560,7 @@ json_string_set_nocheck(json_t *string, const char *szValue)
 
     return 0;
 }
+#endif
 
 #if 0
 int
@@ -584,17 +586,19 @@ json_equal(json_t *value1, json_t *value2)
 json_t *
 json_copy(json_t *value)
 {
-    json_t *newObj = NULL;
+    CFTypeRef newObj = NULL;
 
     if (newObj != NULL) {
         if (CFGetTypeID(value) == CFDictionaryGetTypeID()) {
             newObj = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, value);
         } else if (CFGetTypeID(value) == CFArrayGetTypeID()) {
             newObj = CFArrayCreateMutableCopy(kCFAllocatorDefault, 0, value);
+        } else if (CFGetTypeID(value) == CFStringGetTypeID()) {
+            newObj = CFStringCreateCopy(kCFAllocatorDefault, value);
         }
     }
 
-    return newObj;
+    return (json_t *)newObj;
 }
 
 #if 0
