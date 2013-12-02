@@ -121,7 +121,7 @@ gssBidWrapIovLength(OM_uint32 *minor,
     if (conf_req_flag && gssBidIsIntegrityOnly(iov, iov_count))
         conf_req_flag = FALSE;
 
-    gssHeaderLen = gssPadLen = gssTrailerLen = 0;
+    gssPadLen = gssTrailerLen = 0;
 
 #ifdef HAVE_HEIMDAL_VERSION
     code = krb5_crypto_init(krbContext, &ctx->rfc3961Key, ETYPE_NULL, &krbCrypto);

@@ -427,9 +427,13 @@ gssBidDuplicateCred(OM_uint32 *minor,
 
     *pDst = GSS_C_NO_CREDENTIAL;
 
+    GSSBID_ASSERT(src != GSS_C_NO_CREDENTIAL);
+
     major = gssBidAllocCred(minor, &dst);
     if (GSS_ERROR(major))
         goto cleanup;
+
+    GSSBID_ASSERT(dst != GSS_C_NO_CREDENTIAL);
 
     dst->flags = src->flags;
 

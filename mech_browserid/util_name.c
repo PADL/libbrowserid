@@ -521,6 +521,7 @@ gssBidImportName(OM_uint32 *minor,
     if (major == GSS_S_COMPLETE &&
         mechType != GSS_C_NO_OID) {
         GSSBID_ASSERT(gssBidIsConcreteMechanismOid(mechType));
+        GSSBID_ASSERT(name != GSS_C_NO_NAME);
         GSSBID_ASSERT(name->mechanismUsed == GSS_C_NO_OID);
 
         major = gssBidCanonicalizeOid(minor, mechType, 0, &name->mechanismUsed);

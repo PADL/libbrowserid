@@ -140,7 +140,6 @@ mapIov(krb5_context context, int dce_style, size_t ec, size_t rrc,
             return KRB5_BAD_MSIZE;
 
         gss_headerlen += gss_trailerlen;
-        gss_trailerlen = 0;
     } else {
         if (trailer->buffer.length != gss_trailerlen)
             return KRB5_BAD_MSIZE;
