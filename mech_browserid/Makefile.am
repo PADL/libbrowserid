@@ -45,7 +45,8 @@ mech_browserid_la_LIBADD   = @KRB5_LIBS@ ../libbrowserid/libbrowserid.la \
 		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@
 
 if TARGET_MACOSX
-mech_browserid_la_LIBADD += ../libbrowserid/libcfjson.la
+mech_browserid_la_LDFLAGS += -Wl,-sectcreate,__TEXT,__info_plist,Info.plist
+mech_browserid_la_LIBADD  += ../libbrowserid/libcfjson.la
 endif
 
 mech_browserid_la_SOURCES =    			\
