@@ -51,6 +51,10 @@
 
 #include "gssapiP_bid.h"
 
+#ifdef __APPLE__
+#undef nil
+#endif
+
 #include <xmltooling/XMLObject.h>
 #ifndef HAVE_OPENSAML
 #include <xmltooling/XMLToolingConfig.h>

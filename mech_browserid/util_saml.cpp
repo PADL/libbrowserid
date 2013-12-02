@@ -38,6 +38,10 @@
 
 #include <sstream>
 
+#ifdef __APPLE__
+#undef nil
+#endif
+
 #include <xercesc/util/XMLUniDefs.hpp>
 #include <xmltooling/unicode.h>
 #include <xmltooling/XMLToolingConfig.h>
