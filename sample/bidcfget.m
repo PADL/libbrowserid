@@ -28,7 +28,10 @@ PersonaGetAssertion(
 
     context = BIDContextCreate(NULL, BID_CONTEXT_USER_AGENT, &cfErr);
     if (context == NULL) {
-        *error = CFBridgingRelease(cfErr);
+        if (error)
+            *error = CFBridgingRelease(cfErr);
+        else
+            CFRelease(cfErr);
         return NULL;
     }
 
@@ -37,8 +40,12 @@ PersonaGetAssertion(
     assertion = BIDAssertionCreateUI(context, (__bridge CFStringRef)audience,
                                      NULL, NULL, 0, NULL, &flags, &cfErr);
 
-    if (cfErr)
-        *error = CFBridgingRelease(cfErr);
+    if (cfErr) {
+        if (error)
+            *error = CFBridgingRelease(cfErr);
+        else
+            CFRelease(cfErr);
+    }
 
     CFRelease(context);
 
