@@ -698,7 +698,7 @@ BIDGSSSAMLAttributeProvider::getAttribute(const gss_buffer_t attr,
         }
         if (display_value != NULL && base64Encoded == false) {
             display_value->value = toUTF8(av->getTextContent(), true);
-            display_value->length = strlen((char *)value->value);
+            display_value->length = strlen((char *)display_value->value);
         }
     }
 
