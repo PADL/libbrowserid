@@ -250,117 +250,132 @@ json_object_update(json_t *object, json_t *other)
     return 0;
 }
 
-@interface _BIDJsonObjectIterator : NSObject
-@property(nonatomic, retain) NSDictionary *object;
-@property(nonatomic, retain) NSEnumerator *enumerator;
-@property(nonatomic, assign) NSString *key;
-@property(nonatomic, assign) NSObject *value;
+typedef struct BIDJsonObjectIteratorDesc {
+    CFDictionaryRef object;
+    CFTypeRef enumerator;
+    CFStringRef key; // weak
+    CFTypeRef value; // weak
+} *BIDJsonObjectIterator;
 
-+ (instancetype)iteratorWithObject:(json_t *)object;
-@end
-
-@implementation _BIDJsonObjectIterator
-+ (instancetype)iteratorWithObject:(json_t *)object
+static int
+_json_object_iter_validate(
+    BIDJsonObjectIterator iter,
+    json_t *obj)
 {
-    _BIDJsonObjectIterator *iterator = [[_BIDJsonObjectIterator alloc] init];
+    return (iter != NULL && iter->object == obj);
+}
+
+CF_RETURNS_NOT_RETAINED
+static CFStringRef
+_json_object_iter_next_object(BIDJsonObjectIterator iter)
+{
+    if (iter == NULL)
+        return NULL;
+
+    if ((iter->key = (__bridge CFStringRef)[(__bridge NSEnumerator *)iter->enumerator nextObject]) != NULL)
+        iter->value = CFDictionaryGetValue(iter->object, iter->key);
+    else
+        iter->value = NULL;
+
+    return iter->key;
+}
+
+static void
+_json_object_iter_release(BIDJsonObjectIterator iter CF_CONSUMED)
+{
+    if (iter != NULL) {
+        if (iter->object)
+            CFRelease(iter->object);
+        if (iter->enumerator)
+            CFRelease(iter->enumerator);
+        BIDFree(iter);
+    }
+}
+
+static BIDJsonObjectIterator
+_json_object_iter_create(json_t *object)
+{
+    BIDJsonObjectIterator iter;
 
     if (object == NULL || CFGetTypeID(object) != CFDictionaryGetTypeID())
-        return nil;
+        return NULL;
 
-    iterator.object = (__bridge NSDictionary *)object;
-    iterator.enumerator = [iterator.object keyEnumerator];
-    iterator.key = nil;
-    iterator.value = nil;
+    iter = BIDCalloc(1, sizeof(*iter));
+    if (iter == NULL)
+        return NULL;
 
-    if ([iterator nextObject] == nil)
-        return nil;
+    iter->object = CFRetain(object);
+    iter->enumerator = CFBridgingRetain([(__bridge NSDictionary *)iter->object keyEnumerator]);
+    iter->key = NULL;
+    iter->value = NULL;
 
-    return iterator;
-}
-
-- (BOOL)validate:(const void *)obj
-{
-    return (__bridge const void *)self.object == obj;
-}
-
-- (NSString *)nextObject
-{
-    if ((self.key = [self.enumerator nextObject]) != nil)
-        self.value = self.object[self.key];
-    else
-        self.value = nil;
-
-    return self.key;
-}
-
-- (const char *)keyString
-{
-    return [self.key UTF8String];
-}
-@end
-
-void *
-json_object_iter(json_t *object)
-{
-    return (void *)CFBridgingRetain([_BIDJsonObjectIterator iteratorWithObject:object]);
-}
-
-void *
-json_object_iter_at(json_t *object, const char *szKey)
-{
-    NSString *key = [NSString stringWithUTF8String:szKey];
-    _BIDJsonObjectIterator *iterator = [_BIDJsonObjectIterator iteratorWithObject:object];
-    NSString *iteratorKey;
-
-    while ((iteratorKey = [iterator nextObject]) != nil) {
-        if ([iteratorKey isEqualToString:key])
-            return (void *)CFBridgingRetain(iterator);
-    }
-
-    return NULL;
-}
-
-void *
-json_object_iter_next(json_t *object, void *iter)
-{
-    _BIDJsonObjectIterator *iterator = (__bridge _BIDJsonObjectIterator *)iter;
-
-    if (![iterator validate:object] ||
-        [iterator nextObject] == nil) {
-        CFRelease(iter);
+    if (_json_object_iter_next_object(iter) == NULL) {
+        _json_object_iter_release(iter);
         return NULL;
     }
 
     return iter;
 }
 
+void *
+json_object_iter(json_t *object)
+{
+    return _json_object_iter_create(object);
+}
+
+void *
+json_object_iter_at(json_t *object, const char *szKey)
+{
+    NSString *key = [NSString stringWithUTF8String:szKey];
+    BIDJsonObjectIterator iterator = json_object_iter(object);
+    NSString *iteratorKey;
+
+    while ((iteratorKey = (__bridge NSString *)_json_object_iter_next_object(iterator))) {
+        if ([iteratorKey isEqualToString:key])
+            return iterator;
+    }
+
+    _json_object_iter_release(iterator);
+    return NULL;
+}
+
+void *
+json_object_iter_next(json_t *object, void *iter)
+{
+    BIDJsonObjectIterator iterator = iter;
+
+    if (!_json_object_iter_validate(iterator, object) ||
+        !_json_object_iter_next_object(iterator)) {
+        _json_object_iter_release(iterator);
+        return NULL;
+    }
+
+    return iterator;
+}
+
 const char *
 json_object_iter_key(void *iter)
 {
-    _BIDJsonObjectIterator *iterator = (__bridge _BIDJsonObjectIterator *)iter;
+    BIDJsonObjectIterator iterator = iter;
 
-    return [iterator keyString];
+    if (iterator != NULL && iterator->key != NULL)
+        return CFStringGetCStringPtr(iterator->key, kCFStringEncodingUTF8);
+
+    return NULL;
 }
 
 json_t *
 json_object_iter_value(void *iter)
 {
-    _BIDJsonObjectIterator *iterator = (__bridge _BIDJsonObjectIterator *)iter;
+    BIDJsonObjectIterator iterator = iter;
 
-    return (__bridge json_t *)[iterator value];
+    return (iterator != NULL) ? (json_t *)iterator->value : NULL;
 }
 
+#if 0
 int
 json_object_iter_set(json_t *object, void *iter, json_t *value)
 {
-    _BIDJsonObjectIterator *iterator = (__bridge _BIDJsonObjectIterator *)iter;
-
-    if (![iterator validate:object] || !iterator.key || value == NULL)
-        return -1;
-
-    [iterator.object setValue:(__bridge NSObject *)value forKey:iterator.key];
-
-    return 0;
 }
 
 int
@@ -375,6 +390,7 @@ json_object_iter_set_new(json_t *object, void *iter, json_t *value)
 
     return ret;
 }
+#endif
 
 size_t
 json_array_size(const json_t *array)
