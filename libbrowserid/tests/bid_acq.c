@@ -68,7 +68,7 @@ int main(int argc, const char *argv[])
     time_t expires;
     json_t *j = NULL;
     uint32_t flags = 0;
-    uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT | BID_CONTEXT_BROWSER_SILENT |
+    uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT |
                        BID_CONTEXT_GSS | BID_CONTEXT_AUTHORITY_CACHE;
 
 #ifndef BUILD_AS_DSO

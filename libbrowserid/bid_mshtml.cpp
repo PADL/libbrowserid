@@ -47,7 +47,6 @@
 #include <MsHtmdid.h>
 
 #define DISPID_BIDIDENTITYCONTROLLER_CALLBACK       0x40000001
-#define DISPID_BIDIDENTITYCONTROLLER_SILENT         0x40000002
 
 /*
  * Internet Explorer implementation of the browser shim.
@@ -75,7 +74,7 @@ static WCHAR _BIDHTMLInterposeAssertionSignScript[] = L"                        
 
 static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                                                  \
     var args = JSON.parse(window.dialogArguments);                                                  \
-    var options = { siteName: args.siteName, silent: window.controller.silent,                      \
+    var options = { siteName: args.siteName,                                                        \
                     experimental_emailHint: args.emailHint };                                       \
                                                                                                     \
     BrowserID.internal.get(                                                                         \
@@ -156,8 +155,6 @@ private:
     HRESULT _PublishController(void);
     HRESULT _CloseIdentityDialog(void);
     HRESULT _SetAssertion(BSTR bstrAssertion);
-    void _SetSilent(BOOLEAN bValue);
-    BOOLEAN _GetSilent(void);
 
     BIDError _MapError(HRESULT hr);
 
@@ -173,7 +170,6 @@ private:
 
     json_t *_args;
     char *_szAssertion;
-    BOOLEAN _bSilent;
 
     IMoniker *_pURLMoniker;
     IHTMLWindow2 *_pHTMLWindow2;
@@ -195,7 +191,6 @@ CBIDIdentityController::CBIDIdentityController()
 
     _args = NULL;
     _szAssertion = NULL;
-    _bSilent = FALSE;
 
     _pURLMoniker = NULL;
     _pHTMLWindow2 = NULL;
@@ -285,8 +280,6 @@ CBIDIdentityController::GetIDsOfNames(
     for (i = 0; i < cNames; i++) {
         if (wcscmp(rgszNames[i], L"identityCallback") == 0) {
             rgDispId[i] = DISPID_BIDIDENTITYCONTROLLER_CALLBACK;
-        } else if (wcscmp(rgszNames[i], L"silent") == 0) {
-            rgDispId[i] = DISPID_BIDIDENTITYCONTROLLER_SILENT;
         } else {
             rgDispId[i] = DISPID_UNKNOWN;
             bUnknown = TRUE;
@@ -372,19 +365,6 @@ CBIDIdentityController::Invoke(
 
         hr = _IdentityCallback(pDispParams);
         BID_BAIL_ON_HERROR(hr);
-
-        break;
-
-    case DISPID_BIDIDENTITYCONTROLLER_SILENT:
-        OutputDebugString("CBIDIdentityController::Invoke SILENT\r\n");
-
-        if ((wFlags & DISPATCH_PROPERTYGET) == 0) {
-            hr = DISP_E_MEMBERNOTFOUND;
-            goto cleanup;
-        }
-
-        V_VT(pVarResult)    = VT_BOOL;
-        V_BOOL(pVarResult)  = _GetSilent();
 
         break;
 
@@ -552,8 +532,6 @@ CBIDIdentityController::_PackDialogArgs(
                                 json_string(szIdentityName),
                                 BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
-
-        _SetSilent(!!(_context->ContextOptions & BID_CONTEXT_BROWSER_SILENT));
     }
 
 cleanup:
@@ -614,9 +592,6 @@ CBIDIdentityController::_ShowDialog(void)
 
     dwFlags = HTMLDLG_MODELESS | HTMLDLG_VERIFY |
               HTMLDLG_ALLOW_UNKNOWN_THREAD;
-
-    if (_GetSilent())
-        dwFlags |= HTMLDLG_NOUI;
 
     hr = (*_pfnShowHTMLDialogEx)((HWND)_context->ParentWindow,
                                  _pURLMoniker,
@@ -731,10 +706,8 @@ CBIDIdentityController::_AcquireAssertion(void)
     hr = _pHTMLWindow2->execScript(bstrScript, L"JavaScript", &varArgOut);
     BID_BAIL_ON_HERROR(hr);
 
-    if (!_GetSilent()) {
-        EnableWindow(_hBrowserWindow, TRUE);
-        ShowWindow(_hBrowserWindow, SW_SHOW);
-    }
+    EnableWindow(_hBrowserWindow, TRUE);
+    ShowWindow(_hBrowserWindow, SW_SHOW);
 
 cleanup:
     VariantClear(&varArgOut);
@@ -752,18 +725,6 @@ CBIDIdentityController::_CloseIdentityDialog(void)
         hr = _pHTMLWindow2->close();
 
     return hr;
-}
-
-BOOLEAN
-CBIDIdentityController::_GetSilent(void)
-{
-    return _bSilent;
-}
-
-void
-CBIDIdentityController::_SetSilent(BOOLEAN bValue)
-{
-    _bSilent = bValue;
 }
 
 HRESULT
@@ -811,24 +772,14 @@ CBIDIdentityController::_IdentityCallback(DISPPARAMS *pDispParams)
 
     if (SysStringLen(bstrAssertion) != 0)
         _bidError = BID_S_OK;
-    else if (_GetSilent())
-        _bidError = BID_S_INTERACT_REQUIRED;
     else
         _bidError = BID_S_INTERACT_FAILURE;
 
-    if (_bidError == BID_S_INTERACT_REQUIRED &&
-        _BIDCanInteractP(_context, _ulReqFlags)) {
-        _SetSilent(FALSE);
+    hr = _SetAssertion(bstrAssertion);
+    BID_BAIL_ON_ERROR(hr);
 
-        hr = _AcquireAssertion();
-        BID_BAIL_ON_ERROR(hr);
-    } else {
-        hr = _SetAssertion(bstrAssertion);
-        BID_BAIL_ON_ERROR(hr);
-
-        hr = _CloseIdentityDialog();
-        BID_BAIL_ON_ERROR(hr);
-    }
+    hr = _CloseIdentityDialog();
+    BID_BAIL_ON_ERROR(hr);
 
     hr = S_OK;
 
@@ -974,20 +925,6 @@ _BIDBrowserGetAssertion(
     CBIDIdentityController *pController = NULL;
 
     *pAssertion = NULL;
-
-    /*
-     * Unlike on OS X, we're going to make setting the context option
-     * for no interaction a hard error, in order to support the case
-     * where a non-UI process acting on behalf of the user wishes to
-     * acquire a re-auth assertion without calling into any UI code.
-     *
-     * If you wish to acquire an assertion silently on Windows, then
-     * just set BID_ACQUIRE_FLAG_NO_INTERACT on ulReqFlags.
-     */
-    if (context->ContextOptions & BID_CONTEXT_INTERACTION_DISABLED) {
-        err = BID_S_INTERACT_REQUIRED;
-        goto cleanup;
-    }
 
     pController = new CBIDIdentityController();
     if (pController == NULL) {

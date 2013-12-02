@@ -184,12 +184,14 @@ typedef struct BIDContextDesc *BIDContext;
  */
 #define BID_CONTEXT_INTERACTION_DISABLED    0x00000040
 
+#if 0
 /*
  * Do not prompt user if the browser already has a key
  * for the user. Note that this is independent of reauth
  * credentials.
  */
 #define BID_CONTEXT_BROWSER_SILENT          0x00000080
+#endif
 
 /*
  * DH key exchange

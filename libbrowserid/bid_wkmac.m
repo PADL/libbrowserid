@@ -70,7 +70,6 @@
     if (selector == @selector(identityCallback:withParams:) ||
         selector == @selector(siteName) ||
         selector == @selector(claimsString) ||
-        selector == @selector(silent) ||
         selector == @selector(emailHint) ||
         selector == @selector(audience))
         return NO;
@@ -106,7 +105,7 @@
 
 - (void)windowWillClose:(NSNotification *)BID_UNUSED notification
 {
-    [NSApp stopModal];
+    [NSApp stopModalWithCode:self.bidError];
 }
 
 - (void)webView:(WebView *)sender didFailProvisionalLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
@@ -165,8 +164,6 @@
 
     self.identityDialog = [BIDIdentityDialog identityDialog];
     self.identityDialog.delegate = self;
-    if (self.silent)
-        [self.identityDialog orderOut:nil];
     if (self.parentWindow != nil)
         self.identityDialog.parentWindow = self.parentWindow;
 

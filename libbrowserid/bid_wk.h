@@ -63,7 +63,6 @@ JSExportAs(identityCallback,
 );
 - (NSString *)siteName;
 - (NSDictionary *)claims;
-- (BOOL)silent;
 - (NSString *)emailHint;
 - (NSString *)audience;
 - (void)setAssertion:(NSString *)assertion;
@@ -87,8 +86,6 @@ JSExportAs(identityCallback,
 @property(nonatomic, copy) NSString *emailHint;
 @property(nonatomic, copy) NSString *siteName;
 @property(nonatomic, retain, readonly) NSString *assertion;
-@property(nonatomic, assign) BOOL canInteract;
-@property(nonatomic, assign) BOOL silent;
 @property(nonatomic, readonly) BIDError bidError;
 
 /* platform properties */

@@ -514,7 +514,7 @@ _BIDCanInteractP(
     BIDContext context,
     uint32_t ulReqFlags)
 {
-    if (context->ContextOptions & BID_CONTEXT_INTERACTION_DISABLED ||
+    if ((context->ContextOptions & BID_CONTEXT_INTERACTION_DISABLED) ||
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_INTERACT))
         return 0;
     else

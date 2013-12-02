@@ -152,6 +152,11 @@ BIDAcquireAssertion(
 
     BID_CONTEXT_VALIDATE(context);
 
+    if (szAudienceOrSpn == NULL) {
+        err = BID_S_INVALID_AUDIENCE_URN;
+        goto cleanup;
+    }
+
     if ((context->ContextOptions & BID_CONTEXT_REAUTH) &&
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_CACHED) == 0) {
         err = _BIDGetReauthAssertion(context, ticketCache, szAudienceOrSpn,
@@ -166,13 +171,10 @@ BIDAcquireAssertion(
         }
     }
 
-#if 0
     if (!_BIDCanInteractP(context, ulReqFlags)) {
-        (ulReqFlags & BID_ACQUIRE_FLAG_NO_INTERACT)) {
-        err = BID_S_INTERACT_UNAVAILABLE;
+        err = BID_S_INTERACT_REQUIRED;
         goto cleanup;
     }
-#endif
 
     err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings, ulReqFlags, &claims, &key);
     BID_BAIL_ON_ERROR(err);

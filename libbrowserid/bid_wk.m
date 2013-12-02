@@ -94,20 +94,13 @@
 - (void)identityCallback:(NSString *)anAssertion
               withParams:(id)BID_UNUSED params
 {
-    if (anAssertion != nil)
+    if ([anAssertion length])
         self.bidError = BID_S_OK;
-    else if (self.silent)
-        self.bidError = BID_S_INTERACT_REQUIRED;
     else
         self.bidError = BID_S_INTERACT_FAILURE;
 
-    if (self.bidError == BID_S_INTERACT_REQUIRED && self.canInteract) {
-        self.silent = NO;
-        [self acquireAssertion:self.webView];
-    } else {
-        self.assertion = anAssertion;
-        [self closeIdentityDialog];
-    }
+    self.assertion = anAssertion;
+    [self closeIdentityDialog];
 }
 
 #pragma mark - delegates
@@ -147,7 +140,7 @@
 {
     NSString *function = @"                                                                             \
         var controller = window.IdentityController;                                                     \
-        var options = { siteName: controller.siteName(), silent: controller.silent(),                   \
+        var options = { siteName: controller.siteName(),                                                \
                         experimental_emailHint: controller.emailHint() };                               \
                                                                                                         \
         BrowserID.internal.get(                                                                         \
@@ -158,8 +151,7 @@
             options);                                                                                   \
     ";
 
-    if (!self.silent)
-        [self showIdentityDialog];
+    [self showIdentityDialog];
 
     [sender stringByEvaluatingJavaScriptFromString:function];
 }
@@ -186,12 +178,6 @@
 
 - (BIDError)getAssertion
 {
-    if (self.audience == nil)
-        return (self.bidError = BID_S_INVALID_AUDIENCE_URN);
-
-    if (self.canInteract == NO && self.silent == NO)
-        return (self.bidError = BID_S_INTERACT_REQUIRED);
-
     self.webView = [self newWebView];
 
     [self loadIdentityDialog];
@@ -207,7 +193,7 @@ _BIDBrowserGetAssertion(
     const char *szAudienceOrSpn,
     json_t *claims,
     const char *szIdentityName,
-    uint32_t ulReqFlags,
+    uint32_t ulReqFlags BID_UNUSED,
     char **pAssertion)
 {
     BIDError err = BID_S_INTERACT_FAILURE;
@@ -237,10 +223,8 @@ _BIDBrowserGetAssertion(
 
     @autoreleasepool {
         controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szAudienceOrSpn] claims:(__bridge NSDictionary *)claims];
-        if (szIdentityName != NULL) {
+        if (szIdentityName != NULL)
             controller.emailHint = [NSString stringWithUTF8String:szIdentityName];
-            controller.silent = !!(context->ContextOptions & BID_CONTEXT_BROWSER_SILENT);
-        }
         if (context->ParentWindow != NULL)
             controller.parentWindow = (__bridge id)context->ParentWindow;
         else
@@ -250,7 +234,6 @@ _BIDBrowserGetAssertion(
             controller.parentWindow = [NSApplication sharedApplication].mainWindow;
 #endif
 
-        controller.canInteract = _BIDCanInteractP(context, ulReqFlags);
         [controller performSelectorOnMainThread:@selector(getAssertion) withObject:nil waitUntilDone:TRUE];
 
         err = controller.bidError;
