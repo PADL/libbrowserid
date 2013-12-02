@@ -860,7 +860,7 @@ _BIDJsonObjectSetOld(
     uint32_t ulFlags);
 
 #define _BIDJsonObjectSet(__context, __dst, __key, __src, __ulFlags)            \
-    ((__ulFlags & BID_JSON_FLAG_CONSUME_REF)                                    \
+    (((__ulFlags) & BID_JSON_FLAG_CONSUME_REF)                                  \
   ? _BIDJsonObjectSetNew((__context), (__dst), (__key), (__src), (__ulFlags))   \
   : _BIDJsonObjectSetOld((__context), (__dst), (__key), (__src), (__ulFlags)))
 
