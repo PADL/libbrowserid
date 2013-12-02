@@ -334,7 +334,7 @@ makeTokenHeader(
     enum gss_eap_token_type tok_type)
 {
     *(*buf)++ = 0x60;
-    der_write_length(buf, (tok_type == -1) ?2:4 + mech->length + body_size);
+    der_write_length(buf, 4 + mech->length + body_size);
     *(*buf)++ = 0x06;
     *(*buf)++ = (unsigned char)mech->length;
     memcpy(*buf, mech->elements, mech->length);
