@@ -224,6 +224,7 @@ json_t *json_deep_copy(json_t *value) CF_RETURNS_RETAINED;
 /* loading, printing */
 
 json_t *json_loads(const char *input, size_t flags, json_error_t *error) CF_RETURNS_RETAINED;
+json_t *json_loadcf(CFTypeRef input, size_t flags, json_error_t *error) CF_RETURNS_RETAINED;
 json_t *json_loadf(FILE *input, size_t flags, json_error_t *error) CF_RETURNS_RETAINED;
 json_t *json_load_file(const char *path, size_t flags, json_error_t *error) CF_RETURNS_RETAINED;
 

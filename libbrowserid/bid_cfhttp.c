@@ -151,22 +151,6 @@ cleanup:
     return err;
 }
 
-static json_t *
-_BIDJsonFromCFString(
-    BIDContext context,
-    CFStringRef cf)
-{
-    json_t *jsonObject;
-
-    if (cf == NULL)
-        return NULL;
-
-    jsonObject = json_loads(CFStringGetCStringPtr(cf, kCFStringEncodingUTF8),
-                            0, &context->JsonError);
-
-    return jsonObject;
-}
-
 static BIDError
 _BIDAllocHttpMessage(
     BIDContext context BID_UNUSED,
@@ -281,7 +265,7 @@ _BIDMakeHttpRequest(
     responseBody = CFHTTPMessageCopyBody(response);
     responseString = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault,
                                                               responseBody, kCFStringEncodingUTF8);
-    *pJsonDoc = _BIDJsonFromCFString(context, responseString);
+    *pJsonDoc = json_loadcf(responseString, 0, &context->JsonError);
     if (*pJsonDoc == NULL) {
         err = BID_S_INVALID_JSON;
         goto cleanup;

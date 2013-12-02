@@ -360,11 +360,14 @@ const char *
 json_object_iter_key(void *iter)
 {
     BIDJsonObjectIterator iterator = iter;
+    const char *s = NULL;
 
-    if (iterator != NULL && iterator->key != NULL)
-        return CFStringGetCStringPtr(iterator->key, kCFStringEncodingUTF8);
+    if (iterator != NULL && iterator->key != NULL) {
+        s = [(__bridge NSString *)iterator->key UTF8String];
+        BID_ASSERT(s != NULL);
+    }
 
-    return NULL;
+    return s;
 }
 
 json_t *
@@ -526,7 +529,7 @@ json_array_extend(json_t *array, json_t *other)
 const char *
 json_string_value(const json_t *string)
 {
-    return CFStringGetCStringPtr(string, kCFStringEncodingUTF8);
+    return [(__bridge NSString *)string UTF8String];
 }
 
 json_int_t
@@ -616,7 +619,7 @@ json_copy(json_t *value)
 {
     CFTypeRef newObj = NULL;
 
-    if (newObj != NULL) {
+    if (value != NULL) {
         if (CFGetTypeID(value) == CFDictionaryGetTypeID()) {
             newObj = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, value);
         } else if (CFGetTypeID(value) == CFArrayGetTypeID()) {
@@ -667,6 +670,24 @@ json_loads(const char *input, size_t flags, json_error_t *error)
 
     data = [NSData dataWithBytes:input length:strlen(input)];
     return _json_loadd(data, flags, error);
+}
+
+json_t *
+json_loadcf(CFTypeRef input, size_t flags, json_error_t *error)
+{
+    json_t *object = NULL;
+
+    if (input == NULL)
+        return NULL;
+
+    if (CFGetTypeID(input) == CFDataGetTypeID()) {
+        object = _json_loadd((__bridge NSData *)input, flags, error);
+    } else if (CFGetTypeID(input) == CFStringGetTypeID()) {
+        NSData *data = [(__bridge NSString *)input dataUsingEncoding:NSUTF8StringEncoding];
+        object = _json_loadd(data, flags, error);
+    }
+
+    return object;
 }
 
 json_t *
