@@ -186,10 +186,11 @@ _BIDParseJWT(
     jwt->EncDataLength = strlen(jwt->EncData);
 
     err = BID_S_OK;
-    *pJwt = jwt;
 
 cleanup:
-    if (err != BID_S_OK)
+    if (err == BID_S_OK)
+        *pJwt = jwt;
+    else
         _BIDReleaseJWT(context, jwt);
 
     return err;
