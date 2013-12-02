@@ -285,6 +285,7 @@ _BIDMemoryCacheFirstObject(
 {
     struct BIDMemoryCache *mc = (struct BIDMemoryCache *)cache;
     BIDError err;
+    json_t *dataCopy = NULL;
 
     *cookie = NULL;
     *key = NULL;
@@ -296,15 +297,18 @@ _BIDMemoryCacheFirstObject(
     }
 
     BIDMemoryCacheLock(mc);
-    err = _BIDCacheIteratorAlloc(json_copy(mc->Data), cookie);
+    dataCopy = json_copy(mc->Data);
     BIDMemoryCacheUnlock(mc);
 
+    err = _BIDCacheIteratorAlloc(dataCopy, cookie);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDCacheIteratorNext(cookie, key, val);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
+    json_decref(dataCopy);
+
     return err;
 }
 
