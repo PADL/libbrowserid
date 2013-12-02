@@ -517,6 +517,7 @@ gssEapImportName(OM_uint32 *minor,
     if (major == GSS_S_COMPLETE &&
         mechType != GSS_C_NO_OID) {
         GSSEAP_ASSERT(gssEapIsConcreteMechanismOid(mechType));
+        GSSEAP_ASSERT(name != GSS_C_NO_NAME);
         GSSEAP_ASSERT(name->mechanismUsed == GSS_C_NO_OID);
 
         major = gssEapCanonicalizeOid(minor, mechType, 0, &name->mechanismUsed);
