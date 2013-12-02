@@ -138,9 +138,12 @@ json_object_size(const json_t *object)
 json_t *
 json_object_get(const json_t *object, const char *szKey)
 {
-    json_t *key = json_string_nocheck(szKey);
-    json_t *value = NULL;
+    json_t *key, *value;
 
+    if (object == NULL)
+        return NULL;
+
+    key = json_string(szKey);
     if (key == NULL)
         return NULL;
 
