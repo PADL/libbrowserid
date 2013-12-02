@@ -44,7 +44,7 @@
 #include <Foundation/Foundation.h>
 
 char *
-json_string_copy(json_t * string)
+json_string_copy(json_t *string)
 {
     const char *ptr;
     char *s = NULL;
