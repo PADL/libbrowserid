@@ -822,6 +822,7 @@ _BIDHMACSHA(
     HMAC_Init(&h, pbKey, (int)cbKey, md);
     HMAC_Update(&h, (const unsigned char *)jwt->EncData, jwt->EncDataLength);
     HMAC_Final(&h, hmac, &mdLen);
+    HMAC_cleanup(&h);
 
     *hmacLength = mdLen;
 
@@ -1333,6 +1334,8 @@ _BIDDeriveKey(
     HMAC_Update(&h, &T1, 1);
 
     HMAC_Final(&h, *ppbDerivedKey, &mdLength);
+    HMAC_cleanup(&h);
+
     *pcbDerivedKey = mdLength;
 
     return BID_S_OK;
@@ -1757,6 +1760,7 @@ _BIDPopulateX509Identity(
             const char *key = NULL;
             json_t *values = NULL;
             json_t *value = NULL;
+            int bAttrExists = 0;
 
             switch (gen->type) {
             case GEN_OTHERNAME:
@@ -1776,15 +1780,6 @@ _BIDPopulateX509Identity(
                 break;
             }
 
-            values = json_object_get(principal, key);
-            if (values == NULL) {
-                values = json_array();
-
-                err = _BIDJsonObjectSet(context, principal, key, values,
-                                        BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
-                BID_BAIL_ON_ERROR(err);
-            }
-
             if (strcmp(key, "othername") == 0) {
                 err = _BIDGetCertOtherName(context, gen->d.otherName, &value);
                 BID_BAIL_ON_ERROR(err);
@@ -1796,7 +1791,19 @@ _BIDPopulateX509Identity(
                 }
             }
 
+            values = json_object_get(principal, key);
+            if (values == NULL)
+                values = json_array();
+            else
+                bAttrExists = 1;
+
             json_array_append_new(values, value);
+
+            if (!bAttrExists) {
+                err = _BIDJsonObjectSet(context, principal, key, values,
+                                        BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+                BID_BAIL_ON_ERROR(err);
+            }
         }
     }
 
