@@ -72,6 +72,8 @@ gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 static void
 zeroAndReleasePassword(gss_buffer_t password)
 {
+    GSSEAP_ASSERT(password != GSS_C_NO_BUFFER);
+
     if (password->value != NULL) {
         memset(password->value, 0, password->length);
         GSSEAP_FREE(password->value);
