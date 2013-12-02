@@ -37,11 +37,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bid_private.h"
-#include "bid_cfjson.h"
-
 #include <CoreFoundation/CoreFoundation.h>
 #include <Foundation/Foundation.h>
+
+#include <bid_private.h>
+
+#include "bid_cfjson.h"
 
 char *
 json_string_copy(json_t *string)

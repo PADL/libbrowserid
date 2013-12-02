@@ -80,7 +80,7 @@ AM_CONDITIONAL(OPENSAML, test "x$found_opensaml" = "xyes")
 AM_CONDITIONAL(HAVE_GSS_ACQUIRE_CRED_FROM, test "x$gss_acquire_cred_from" != "xno")
 AM_CONDITIONAL(HEIMDAL, test "x$heimdal" != "xno")
 
-AC_CONFIG_FILES([Makefile libbrowserid/Makefile bidtool/Makefile
+AC_CONFIG_FILES([Makefile libcfjson/Makefile libbrowserid/Makefile bidtool/Makefile
 		 sample/Makefile mech_browserid/Makefile
 		 mech_browserid/mech_browserid.spec])
 AC_OUTPUT
