@@ -274,6 +274,9 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
         major = gssEapRadiusAddAttr(minor, &buf,
                                     PW_GSS_ACCEPTOR_REALM_NAME,
                                     0, &nameBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
         chbindReqFlags |= CHBIND_REALM_NAME_FLAG;
     }
 
