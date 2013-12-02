@@ -251,7 +251,7 @@ json_object_update(json_t *object, json_t *other)
 }
 
 typedef struct BIDJsonObjectIteratorDesc {
-    CFDictionaryRef object;
+    CFMutableDictionaryRef object;
     CFTypeRef enumerator;
     CFStringRef key; // weak
     CFTypeRef value; // weak
@@ -304,7 +304,7 @@ _json_object_iter_create(json_t *object)
     if (iter == NULL)
         return NULL;
 
-    iter->object = CFRetain(object);
+    iter->object = (CFMutableDictionaryRef)CFRetain(object);
     iter->enumerator = CFBridgingRetain([(__bridge NSDictionary *)iter->object keyEnumerator]);
     iter->key = NULL;
     iter->value = NULL;
@@ -328,10 +328,13 @@ json_object_iter_at(json_t *object, const char *szKey)
 {
     NSString *key = [NSString stringWithUTF8String:szKey];
     BIDJsonObjectIterator iterator = json_object_iter(object);
-    NSString *iteratorKey;
+    CFStringRef iteratorKey;
 
-    while ((iteratorKey = (__bridge NSString *)_json_object_iter_next_object(iterator))) {
-        if ([iteratorKey isEqualToString:key])
+    if (iterator == NULL)
+        return NULL;
+
+    while ((iteratorKey = _json_object_iter_next_object(iterator))) {
+        if ([(__bridge NSString *)iteratorKey isEqualToString:key])
             return iterator;
     }
 
@@ -372,10 +375,17 @@ json_object_iter_value(void *iter)
     return (iterator != NULL) ? (json_t *)iterator->value : NULL;
 }
 
-#if 0
 int
 json_object_iter_set(json_t *object, void *iter, json_t *value)
 {
+    BIDJsonObjectIterator iterator = iter;
+
+    if (!_json_object_iter_validate(iterator, object))
+        return -1;
+
+    CFDictionarySetValue(iterator->object, iterator->key, value);
+
+    return 0;
 }
 
 int
@@ -384,13 +394,12 @@ json_object_iter_set_new(json_t *object, void *iter, json_t *value)
     int ret;
 
     ret = json_object_iter_set(object, iter, value);
-   
+
     if (value)
         CFRelease(value);
 
     return ret;
 }
-#endif
 
 size_t
 json_array_size(const json_t *array)
