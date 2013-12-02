@@ -282,7 +282,6 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
 
     kiov = GSSEAP_CALLOC(kiovCount, sizeof(*kiov));
     if (kiov == NULL) {
-        major = GSS_S_FAILURE;
         *minor = ENOMEM;
         goto cleanup;
     }
@@ -290,13 +289,11 @@ gssEapMakeOrVerifyTokenMIC(OM_uint32 *minor,
     innerTokTypes = GSSEAP_MALLOC(4 * tokens->buffers.count);
     if (innerTokTypes == NULL) {
         *minor = ENOMEM;
-        major = GSS_S_FAILURE;
         goto cleanup;
     }
 
     innerTokLengths = GSSEAP_MALLOC(4 * tokens->buffers.count);
     if (innerTokLengths == NULL) {
-        major = GSS_S_FAILURE;
         *minor = ENOMEM;
         goto cleanup;
     }
