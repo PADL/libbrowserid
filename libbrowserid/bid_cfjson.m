@@ -44,7 +44,7 @@
 #include <Foundation/Foundation.h>
 
 char *
-_BIDCFCopyUTF8String(CFStringRef string)
+json_string_copy(json_t * string)
 {
     const char *ptr;
     char *s = NULL;
@@ -197,7 +197,7 @@ json_object_set_nocheck(json_t *object, const char *szKey, json_t *value)
     if (key == NULL)
         return -1;
 
-    CFDictionarySetValue(object, key, value);
+    CFDictionarySetValue((CFMutableDictionaryRef)object, key, value);
     CFRelease(key);
 
     return 0;
@@ -216,7 +216,7 @@ json_object_del(json_t *object, const char *szKey)
     if (key == NULL)
         return -1;
 
-    CFDictionaryRemoveValue(object, key);
+    CFDictionaryRemoveValue((CFMutableDictionaryRef)object, key);
     CFRelease(key);
 
     return 0;
@@ -229,7 +229,7 @@ json_object_clear(json_t *object)
         CFGetTypeID(object) != CFDictionaryGetTypeID())
         return -1;
 
-    CFDictionaryRemoveAllValues(object);
+    CFDictionaryRemoveAllValues((CFMutableDictionaryRef)object);
     return 0;
 }
 
@@ -239,7 +239,7 @@ _json_object_copy_callback(
     const void *value,
     void *context)
 {
-    CFDictionarySetValue(context, key, value);
+    CFDictionarySetValue((CFMutableDictionaryRef)context, key, value);
 }
 
 int
@@ -249,7 +249,9 @@ json_object_update(json_t *object, json_t *other)
         other == NULL || CFGetTypeID(other) != CFDictionaryGetTypeID())
         return -1;
 
-    CFDictionaryApplyFunction(other, _json_object_copy_callback, object);
+    CFDictionaryApplyFunction((CFMutableDictionaryRef)other,
+                              _json_object_copy_callback,
+                              (CFMutableDictionaryRef)object);
     return 0;
 }
 
@@ -434,7 +436,7 @@ json_array_set(json_t *array, size_t index, json_t *value)
         CFGetTypeID(array) != CFArrayGetTypeID())
         return -1;
 
-    CFArraySetValueAtIndex(array, index, value);
+    CFArraySetValueAtIndex((CFMutableArrayRef)array, index, value);
 
     return 0;
 }
@@ -457,7 +459,7 @@ json_array_append(json_t *array, json_t *value)
         CFGetTypeID(array) != CFArrayGetTypeID())
         return -1;
 
-    CFArrayAppendValue(array, value);
+    CFArrayAppendValue((CFMutableArrayRef)array, value);
     return 0;
 }
 
@@ -479,7 +481,7 @@ json_array_insert(json_t *array, size_t index, json_t *value)
         CFGetTypeID(array) != CFArrayGetTypeID())
         return -1;
 
-    CFArrayInsertValueAtIndex(array, index, value);
+    CFArrayInsertValueAtIndex((CFMutableArrayRef)array, index, value);
     return 0;
 }
 
@@ -501,7 +503,7 @@ json_array_remove(json_t *array, size_t index)
         CFGetTypeID(array) != CFArrayGetTypeID())
         return -1;
 
-    CFArrayRemoveValueAtIndex(array, index);
+    CFArrayRemoveValueAtIndex((CFMutableArrayRef)array, index);
     return 0;
 }
 
@@ -512,7 +514,7 @@ json_array_clear(json_t *array)
         CFGetTypeID(array) != CFArrayGetTypeID())
         return -1;
 
-    CFArrayRemoveAllValues(array);
+    CFArrayRemoveAllValues((CFMutableArrayRef)array);
     return 0;
 }
 
@@ -525,7 +527,8 @@ json_array_extend(json_t *array, json_t *other)
         CFGetTypeID(other) != CFArrayGetTypeID())
         return -1;
 
-    CFArrayAppendArray(array, other, CFRangeMake(0, CFArrayGetCount(other)));
+    CFArrayAppendArray((CFMutableArrayRef)array, other,
+                       CFRangeMake(0, CFArrayGetCount(other)));
     return 0;
 }
 
@@ -753,7 +756,7 @@ json_dumps(const json_t *json, size_t flags)
         encoding = NSUTF8StringEncoding;
 
     string = [[NSString alloc] initWithData:data encoding:encoding];
-    return _BIDCFCopyUTF8String((__bridge CFStringRef)string);
+    return json_string_copy((__bridge CFStringRef)string);
 }
 
 int

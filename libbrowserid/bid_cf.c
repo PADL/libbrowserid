@@ -193,7 +193,7 @@ BIDContextCreate(
     char *szConfigFile = NULL;
 
     if (configFile != NULL) {
-        szConfigFile = _BIDCFCopyUTF8String(configFile);
+        szConfigFile = json_string_copy(configFile);
         if (szConfigFile == NULL) {
             err = BID_S_NO_MEMORY;
             goto cleanup;
@@ -239,14 +239,14 @@ BIDIdentityCreateByVerifyingAssertion(
     if (assertion == NULL)
         return NULL;
 
-    szAssertion = _BIDCFCopyUTF8String(assertion);
+    szAssertion = json_string_copy(assertion);
     if (szAssertion == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
     if (audienceOrSpn != NULL) {
-        szAudienceOrSpn = _BIDCFCopyUTF8String(audienceOrSpn);
+        szAudienceOrSpn = json_string_copy(audienceOrSpn);
         if (szAudienceOrSpn == NULL) {
             err = BID_S_NO_MEMORY;
             goto cleanup;
@@ -321,7 +321,7 @@ BIDIdentityCreateFromString(
         goto cleanup;
     }
 
-    szAssertion = _BIDCFCopyUTF8String(assertion);
+    szAssertion = json_string_copy(assertion);
     if (szAssertion == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -393,7 +393,7 @@ BIDAssertionCreateUI(
         *pError = NULL;
 
     if (audienceOrSpn != NULL) {
-        szAudienceOrSpn = _BIDCFCopyUTF8String(audienceOrSpn);
+        szAudienceOrSpn = json_string_copy(audienceOrSpn);
         if (szAudienceOrSpn == NULL) {
             err = BID_S_NO_MEMORY;
             goto cleanup;
@@ -406,7 +406,7 @@ BIDAssertionCreateUI(
     }
 
     if (optionalIdentity != NULL) {
-        szIdentity = _BIDCFCopyUTF8String(optionalIdentity);
+        szIdentity = json_string_copy(optionalIdentity);
         if (szIdentity == NULL) {
             err = BID_S_NO_MEMORY;
             goto cleanup;
@@ -449,7 +449,7 @@ BIDTicketCacheCreate(
     if (pError != NULL)
         *pError = NULL;
 
-    szCacheName = _BIDCFCopyUTF8String(cacheName);
+    szCacheName = json_string_copy(cacheName);
     if (szCacheName == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -480,7 +480,7 @@ BIDReplayCacheCreate(
     if (pError != NULL)
         *pError = NULL;
 
-    szCacheName = _BIDCFCopyUTF8String(cacheName);
+    szCacheName = json_string_copy(cacheName);
     if (szCacheName == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;

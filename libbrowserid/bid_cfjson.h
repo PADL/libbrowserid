@@ -69,7 +69,7 @@ typedef enum {
     JSON_NULL
 } json_type;
 
-typedef void json_t;
+typedef const void json_t;
 
 #if __LP64__
 typedef long long json_int_t;
@@ -245,7 +245,7 @@ typedef void (*json_free_t)(void *);
 
 void json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
 
-char *_BIDCFCopyUTF8String(CFStringRef string);
+char *json_string_copy(json_t *string);
 
 #ifdef __cplusplus
 }

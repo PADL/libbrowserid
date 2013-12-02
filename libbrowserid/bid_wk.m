@@ -238,7 +238,7 @@ _BIDBrowserGetAssertion(
 
         err = controller.bidError;
         if (err == BID_S_OK) {
-            *pAssertion = _BIDCFCopyUTF8String((__bridge CFStringRef)controller.assertion);
+            *pAssertion = json_string_copy((__bridge json_t *)controller.assertion);
             if (*pAssertion == NULL)
                 err = BID_S_NO_MEMORY;
         }
