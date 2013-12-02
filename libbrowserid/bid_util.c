@@ -522,7 +522,7 @@ _BIDCanInteractP(
 }
 
 BIDError
-_BIDJsonObjectSet(
+_BIDJsonObjectSetOld(
     BIDContext context BID_UNUSED,
     json_t *dst,
     const char *key,
@@ -530,6 +530,8 @@ _BIDJsonObjectSet(
     uint32_t ulFlags)
 {
     BIDError err;
+
+    BID_ASSERT((ulFlags & BID_JSON_FLAG_CONSUME_REF) == 0);
 
     if (key == NULL)
         return BID_S_INVALID_PARAMETER;
@@ -546,7 +548,26 @@ _BIDJsonObjectSet(
             err = BID_S_OK;
     }
 
-    if (ulFlags & BID_JSON_FLAG_CONSUME_REF)
+    return err;
+}
+
+BIDError
+_BIDJsonObjectSetNew(
+    BIDContext context BID_UNUSED,
+    json_t *dst,
+    const char *key,
+    json_t *src,
+    uint32_t ulFlags)
+{
+    BIDError err;
+
+    BID_ASSERT(ulFlags & BID_JSON_FLAG_CONSUME_REF);
+
+    ulFlags &= ~(BID_JSON_FLAG_CONSUME_REF);
+
+    err = _BIDJsonObjectSetOld(context, dst, key, src, ulFlags);
+
+    if (src != NULL)
         json_decref(src);
 
     return err;

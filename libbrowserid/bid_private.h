@@ -840,12 +840,29 @@ _BIDDuplicateString(
 #define BID_JSON_FLAG_CONSUME_REF   2
 
 BIDError
-_BIDJsonObjectSet(
+_BIDJsonObjectSetNew(
+    BIDContext context BID_UNUSED,
+    json_t *dst,
+    const char *key,
+    json_t *src
+#ifdef CF_CONSUMED
+    CF_CONSUMED /* for clang static analyzer */
+#endif
+    ,
+    uint32_t ulFlags);
+
+BIDError
+_BIDJsonObjectSetOld(
     BIDContext context BID_UNUSED,
     json_t *dst,
     const char *key,
     json_t *src,
     uint32_t ulFlags);
+
+#define _BIDJsonObjectSet(__context, __dst, __key, __src, __ulFlags)            \
+    ((__ulFlags & BID_JSON_FLAG_CONSUME_REF)                                    \
+  ? _BIDJsonObjectSetNew((__context), (__dst), (__key), (__src), (__ulFlags))   \
+  : _BIDJsonObjectSetOld((__context), (__dst), (__key), (__src), (__ulFlags)))
 
 BIDError
 _BIDJsonObjectSetBinaryValue(
