@@ -54,9 +54,16 @@ libbrowserid_la_LDFLAGS += @CURL_LDFLAGS@
 endif
 
 if TARGET_MACOSX
+noinst_LTLIBRARIES = libcfjson.la
+
 libbrowserid_la_OBJCFLAGS = $(libbrowserid_la_CFLAGS) -fobjc-arc
 libbrowserid_la_LDFLAGS += -framework CoreFoundation
-libbrowserid_la_SOURCES += bid_wk.m bid_cfjson.m
+libbrowserid_la_SOURCES += bid_wk.m
+libbrowserid_la_LIBADD  += libcfjson.la
+
+libcfjson_la_CPPFLAGS  = $(libbrowserid_la_CPPFLAGS)
+libcfjson_la_OBJCFLAGS = $(libbrowserid_la_OBJCFLAGS)
+libcfjson_la_SOURCES   = bid_cfjson.m
 
 if TARGET_IOS
 libbrowserid_la_LDFLAGS += -framework UIKit -framework Foundation

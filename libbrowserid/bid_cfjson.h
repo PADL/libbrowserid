@@ -54,6 +54,10 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
     JSON_OBJECT,
     JSON_ARRAY,
@@ -241,5 +245,9 @@ typedef void (*json_free_t)(void *);
 void json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
 
 char *_BIDCFCopyUTF8String(CFStringRef string);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _BID_CFJSON_H_ */

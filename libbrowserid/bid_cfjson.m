@@ -51,7 +51,10 @@ _BIDCFCopyUTF8String(CFStringRef string)
 
     ptr = CFStringGetCStringPtr(string, kCFStringEncodingUTF8);
     if (ptr != NULL) {
-        _BIDDuplicateString(BID_C_NO_CONTEXT, ptr, &s);
+        size_t cbPtr = strlen(ptr) + 1;
+        s = BIDMalloc(cbPtr);
+        if (s != NULL)
+            memcpy(s, ptr, cbPtr);
     } else {
         CFIndex len = CFStringGetLength(string);
         len = 1 + CFStringGetMaximumSizeForEncoding(len, kCFStringEncodingUTF8);
