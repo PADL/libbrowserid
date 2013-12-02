@@ -268,14 +268,15 @@ _BIDMakeHttpRequest(
     switch (CFHTTPMessageGetResponseStatusCode(response)) {
     case 304:
         err = BID_S_DOCUMENT_NOT_MODIFIED;
-        goto cleanup;
+        break;
     case 200:
         err = BID_S_OK;
         break;
     default:
         err = BID_S_HTTP_ERROR;
-        goto cleanup;
+        break;
     }
+    BID_BAIL_ON_ERROR(err);
 
     responseBody = CFHTTPMessageCopyBody(response);
     responseString = CFStringCreateFromExternalRepresentation(kCFAllocatorDefault,

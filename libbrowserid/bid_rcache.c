@@ -217,6 +217,7 @@ cleanup:
     BIDFree(szHash);
     json_decref(ark);
     json_decref(rdata);
+    json_decref(tkt);
 
     return err;
 }

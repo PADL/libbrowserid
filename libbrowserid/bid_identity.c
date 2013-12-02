@@ -426,6 +426,7 @@ _BIDPopulateIdentity(
     json_t *assertion = backedAssertion->Assertion->Payload;
     json_t *leafCert = _BIDLeafCert(context, backedAssertion);
     json_t *principal;
+    json_t *dh = NULL;
 
     *pIdentity = BID_C_NO_IDENTITY;
 
@@ -464,7 +465,7 @@ _BIDPopulateIdentity(
 
         err = _BIDGetKeyAgreementObject(context, backedAssertion->Assertion->Payload, &params);
         if (err == BID_S_OK) {
-            json_t *dh = json_object();
+            dh = json_object();
 
             if (dh == NULL) {
                 err = BID_S_NO_MEMORY;
@@ -501,6 +502,8 @@ cleanup:
         *pIdentity = identity;
     else
         BIDReleaseIdentity(context, identity);
+
+    json_decref(dh);
 
     return err;
 }

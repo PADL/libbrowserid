@@ -144,17 +144,16 @@ _BIDValidateAudience(
     if (szAudienceOrSpn != NULL) {
         const char *szAssertionSpn = json_string_value(json_object_get(claims, "aud"));
 
-        err = BID_S_BAD_AUDIENCE;
-
         if (szAssertionSpn == NULL) {
             err = BID_S_MISSING_AUDIENCE;
-            goto cleanup;
         } else if (strcmp(szAudienceOrSpn, szAssertionSpn) == 0) {
             err = BID_S_OK;
         } else if (context->ContextOptions & BID_CONTEXT_HOST_SPN_ALIAS) {
             err = _BIDValidateAudienceHostAlias(context, szAudienceOrSpn, szAssertionSpn);
-            BID_BAIL_ON_ERROR(err);
+        } else {
+            err = BID_S_BAD_AUDIENCE;
         }
+        BID_BAIL_ON_ERROR(err);
     }
 
     if (pbChannelBindings != NULL) {
