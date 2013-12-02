@@ -136,14 +136,14 @@ _BIDParseJWT(
 
     *pJwt = NULL;
 
-    jwt = BIDCalloc(1, sizeof(*jwt));
-    if (jwt == NULL) {
-        err = BID_S_NO_MEMORY;
+    if (strlen(szJwt) == 0) {
+        err = BID_S_OK;
         goto cleanup;
     }
 
-    if (strlen(szJwt) == 0) {
-        err = BID_S_OK;
+    jwt = BIDCalloc(1, sizeof(*jwt));
+    if (jwt == NULL) {
+        err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
@@ -186,11 +186,10 @@ _BIDParseJWT(
     jwt->EncDataLength = strlen(jwt->EncData);
 
     err = BID_S_OK;
+    *pJwt = jwt;
 
 cleanup:
-    if (err == BID_S_OK)
-        *pJwt = jwt;
-    else
+    if (err != BID_S_OK)
         _BIDReleaseJWT(context, jwt);
 
     return err;
