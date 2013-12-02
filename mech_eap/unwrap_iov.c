@@ -233,7 +233,9 @@ unwrapToken(OM_uint32 *minor,
             }
         }
 
-        code = sequenceCheck(minor, &ctx->seqState, seqnum);
+        major = sequenceCheck(&code, &ctx->seqState, seqnum);
+        if (GSS_ERROR(major))
+            goto cleanup;
     } else if (toktype == TOK_TYPE_MIC) {
         if (load_uint16_be(ptr) != toktype)
             goto defective;
@@ -257,7 +259,9 @@ unwrapToken(OM_uint32 *minor,
             major = GSS_S_BAD_SIG;
             goto cleanup;
         }
-        code = sequenceCheck(minor, &ctx->seqState, seqnum);
+        major = sequenceCheck(&code, &ctx->seqState, seqnum);
+        if (GSS_ERROR(major))
+            goto cleanup;
     } else if (toktype == TOK_TYPE_DELETE_CONTEXT) {
         if (load_uint16_be(ptr) != TOK_TYPE_DELETE_CONTEXT)
             goto defective;
