@@ -137,7 +137,7 @@ json_t *json_incref(json_t *json)
 }
 
 static inline
-void json_decref(json_t *json)
+void json_decref(json_t *json CF_CONSUMED)
 {
     if (json)
         CFRelease(json);

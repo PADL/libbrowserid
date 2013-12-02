@@ -59,7 +59,7 @@ BIDContext
 BIDContextCreate(
     CFStringRef configFile,
     uint32_t ulContextOptions,
-    CFErrorRef *pError);
+    CFErrorRef *pError) CF_RETURNS_RETAINED;
 
 CFStringRef
 BIDAssertionCreateUI(
@@ -70,7 +70,7 @@ BIDAssertionCreateUI(
     uint32_t ulFlags,
     BIDIdentity *pAssertedIdentity,
     uint32_t *pulFlags,
-    CFErrorRef *pError);
+    CFErrorRef *pError) CF_RETURNS_RETAINED;
 
 BIDIdentity
 BIDIdentityCreateFromString(
@@ -78,7 +78,7 @@ BIDIdentityCreateFromString(
     CFStringRef assertion,
     uint32_t ulFlags,
     uint32_t *pulFlags,
-    CFErrorRef *pError);
+    CFErrorRef *pError) CF_RETURNS_RETAINED;
 
 BIDIdentity
 BIDIdentityCreateByVerifyingAssertion(
@@ -89,7 +89,7 @@ BIDIdentityCreateByVerifyingAssertion(
     CFAbsoluteTime verificationTime,
     uint32_t ulReqFlags,
     uint32_t *pulVerifyFlags,
-    CFErrorRef *pError);
+    CFErrorRef *pError) CF_RETURNS_RETAINED;
 
 #if __BLOCKS__
 void
@@ -115,7 +115,7 @@ extern const CFStringRef kBIDIdentityPrincipalKey;
 CFTypeRef
 BIDIdentityCopyAttributeValue(
     BIDIdentity identity,
-    CFStringRef attribute);
+    CFStringRef attribute) CF_RETURNS_RETAINED;
 
 CFAbsoluteTime
 BIDIdentityGetExpiryTime(
@@ -123,19 +123,19 @@ BIDIdentityGetExpiryTime(
 
 CFDictionaryRef
 BIDIdentityCopyAttributeDictionary(
-    BIDIdentity identity);
+    BIDIdentity identity) CF_RETURNS_RETAINED;
 
 BIDReplayCache
 BIDReplayCacheCreate(
     BIDContext context,
     CFStringRef cacheName,
-    CFErrorRef *pError);
+    CFErrorRef *pError) CF_RETURNS_RETAINED;
 
 BIDTicketCache
 BIDTicketCacheCreate(
     BIDContext context,
     CFStringRef cacheName,
-    CFErrorRef *pError);
+    CFErrorRef *pError) CF_RETURNS_RETAINED;
 
 #if 0
 BIDError
