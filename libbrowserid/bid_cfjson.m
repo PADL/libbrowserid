@@ -250,16 +250,16 @@ json_object_update(json_t *object, json_t *other)
     return 0;
 }
 
-typedef struct BIDJsonObjectIteratorDesc {
+typedef struct json_object_iterator {
     CFMutableDictionaryRef object;
     CFTypeRef enumerator;
     CFStringRef key; // weak
     CFTypeRef value; // weak
-} *BIDJsonObjectIterator;
+} json_object_iterator_t;
 
 static int
 _json_object_iter_validate(
-    BIDJsonObjectIterator iter,
+    json_object_iterator_t *iter,
     json_t *obj)
 {
     return (iter != NULL && iter->object == obj);
@@ -267,7 +267,7 @@ _json_object_iter_validate(
 
 CF_RETURNS_NOT_RETAINED
 static CFStringRef
-_json_object_iter_next_object(BIDJsonObjectIterator iter)
+_json_object_iter_next_object(json_object_iterator_t *iter)
 {
     if (iter == NULL)
         return NULL;
@@ -281,7 +281,7 @@ _json_object_iter_next_object(BIDJsonObjectIterator iter)
 }
 
 static void
-_json_object_iter_release(BIDJsonObjectIterator iter CF_CONSUMED)
+_json_object_iter_release(json_object_iterator_t *iter CF_CONSUMED)
 {
     if (iter != NULL) {
         if (iter->object)
@@ -292,10 +292,10 @@ _json_object_iter_release(BIDJsonObjectIterator iter CF_CONSUMED)
     }
 }
 
-static BIDJsonObjectIterator
+static json_object_iterator_t *
 _json_object_iter_create(json_t *object)
 {
-    BIDJsonObjectIterator iter;
+    json_object_iterator_t *iter;
 
     if (object == NULL || CFGetTypeID(object) != CFDictionaryGetTypeID())
         return NULL;
@@ -327,7 +327,7 @@ void *
 json_object_iter_at(json_t *object, const char *szKey)
 {
     NSString *key = [NSString stringWithUTF8String:szKey];
-    BIDJsonObjectIterator iterator = json_object_iter(object);
+    json_object_iterator_t *iterator = json_object_iter(object);
     CFStringRef iteratorKey;
 
     if (iterator == NULL)
@@ -345,7 +345,7 @@ json_object_iter_at(json_t *object, const char *szKey)
 void *
 json_object_iter_next(json_t *object, void *iter)
 {
-    BIDJsonObjectIterator iterator = iter;
+    json_object_iterator_t *iterator = iter;
 
     if (!_json_object_iter_validate(iterator, object) ||
         !_json_object_iter_next_object(iterator)) {
@@ -359,7 +359,7 @@ json_object_iter_next(json_t *object, void *iter)
 const char *
 json_object_iter_key(void *iter)
 {
-    BIDJsonObjectIterator iterator = iter;
+    json_object_iterator_t *iterator = iter;
     const char *s = NULL;
 
     if (iterator != NULL && iterator->key != NULL) {
@@ -373,7 +373,7 @@ json_object_iter_key(void *iter)
 json_t *
 json_object_iter_value(void *iter)
 {
-    BIDJsonObjectIterator iterator = iter;
+    json_object_iterator_t *iterator = iter;
 
     return (iterator != NULL) ? (json_t *)iterator->value : NULL;
 }
@@ -381,7 +381,7 @@ json_object_iter_value(void *iter)
 int
 json_object_iter_set(json_t *object, void *iter, json_t *value)
 {
-    BIDJsonObjectIterator iterator = iter;
+    json_object_iterator_t *iterator = iter;
 
     if (!_json_object_iter_validate(iterator, object))
         return -1;
