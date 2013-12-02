@@ -610,7 +610,6 @@ _BIDAcquireCacheForUser(
                                           (uint8_t *)szFileName, sizeof(szFileName)))
         goto cleanup;
 
-    err = BID_S_OK;
 #else
     char *szRuntimeDir;
 

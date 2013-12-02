@@ -274,7 +274,7 @@ _BIDMakeHttpRequest(
         break;
     default:
         err = BID_S_HTTP_ERROR;
-        break;
+        goto cleanup;
     }
 
     responseBody = CFHTTPMessageCopyBody(response);
