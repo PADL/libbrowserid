@@ -114,7 +114,7 @@ JSExportAs(identityCallback,
 #else
 @interface BIDIdentityController (PlatformUI) <NSWindowDelegate>
 #endif
-- (id)newWebView;
+- (id)dispenseWebView;
 - (void)closeIdentityDialog;
 - (void)loadIdentityDialog;
 - (void)showIdentityDialog;

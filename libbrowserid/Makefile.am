@@ -54,7 +54,7 @@ libbrowserid_la_LDFLAGS += @CURL_LDFLAGS@
 endif
 
 if TARGET_MACOSX
-libbrowserid_la_OBJCFLAGS = $(libbrowserid_la_CFLAGS) -fobjc-arc
+libbrowserid_la_OBJCFLAGS = $(libbrowserid_la_CFLAGS)
 libbrowserid_la_CPPFLAGS += -I$(top_srcdir)/libcfjson
 libbrowserid_la_LDFLAGS += -Wl,-sectcreate,__TEXT,__info_plist,BrowserID-Info.plist -framework CoreFoundation
 libbrowserid_la_SOURCES += bid_wk.m

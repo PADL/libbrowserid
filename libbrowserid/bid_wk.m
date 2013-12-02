@@ -178,7 +178,7 @@
 
 - (BIDError)getAssertion
 {
-    self.webView = [self newWebView];
+    self.webView = [self dispenseWebView];
 
     [self loadIdentityDialog];
 
@@ -201,27 +201,27 @@ _BIDBrowserGetAssertion(
 
     *pAssertion = NULL;
 
+    @autoreleasepool {
 #if !TARGET_OS_IPHONE
 #ifdef GSSBID_DEBUG
-    /*
-     * Only applications that are NSApplicationActivationPolicyRegular or
-     * NSApplicationActivationPolicyAccessory can interact with the user.
-     * Don't try to show UI if this is not the case, unless building with
-     * compile time debugging.
-     */
-    if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited ||
-        ![NSApp isRunning]) {
-        ProcessSerialNumber psn = { 0, kCurrentProcess };
-        TransformProcessType(&psn, kProcessTransformToUIElementApplication);
-    }
+        /*
+         * Only applications that are NSApplicationActivationPolicyRegular or
+         * NSApplicationActivationPolicyAccessory can interact with the user.
+         * Don't try to show UI if this is not the case, unless building with
+         * compile time debugging.
+         */
+        if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited ||
+            ![NSApp isRunning]) {
+            ProcessSerialNumber psn = { 0, kCurrentProcess };
+            TransformProcessType(&psn, kProcessTransformToUIElementApplication);
+        }
 #endif /* GSSBID_DEBUG */
 
-    if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited ||
-        !NSApplicationLoad())
-        return BID_S_INTERACT_UNAVAILABLE;
+        if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited ||
+            !NSApplicationLoad())
+            return BID_S_INTERACT_UNAVAILABLE;
 #endif /* !TARGET_OS_IPHONE */
 
-    @autoreleasepool {
         controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szAudienceOrSpn] claims:(__bridge NSDictionary *)claims];
         if (szIdentityName != NULL)
             controller.emailHint = [NSString stringWithUTF8String:szIdentityName];
@@ -240,7 +240,7 @@ _BIDBrowserGetAssertion(
         if (err == BID_S_OK) {
             *pAssertion = json_string_copy((__bridge json_t *)controller.assertion);
             if (*pAssertion == NULL)
-                err = BID_S_NO_MEMORY;
+            err = BID_S_NO_MEMORY;
         }
     }
 

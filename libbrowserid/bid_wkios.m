@@ -50,9 +50,13 @@ static void
 _BIDDismissIdentityDialogAndStopModal(void *obj);
 
 @implementation BIDIdentityController (PlatformUI)
-- (UIWebView *)newWebView
+- (UIWebView *)dispenseWebView
 {
     UIWebView *aWebView = [[UIWebView alloc] initWithFrame:self.parentWindow.bounds];
+
+#if !__has_feature(objc_arc)
+    [aWebView autorelease];
+#endif
 
     aWebView.delegate = self;
     aWebView.suppressesIncrementalRendering = YES;

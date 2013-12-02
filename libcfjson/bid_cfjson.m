@@ -652,7 +652,7 @@ static json_t *
 _json_loadd(NSData *data, size_t flags BID_UNUSED, json_error_t *error)
 {
     id object;
-    NSError *nsError;
+    NSError *nsError = NULL;
 
     if (data == NULL)
         return NULL;
@@ -671,12 +671,17 @@ json_t *
 json_loads(const char *input, size_t flags, json_error_t *error)
 {
     NSData *data;
+    json_t *object;
 
     if (input == NULL)
         return NULL;
 
-    data = [NSData dataWithBytes:input length:strlen(input)];
-    return _json_loadd(data, flags, error);
+    @autoreleasepool {
+        data = [NSData dataWithBytes:input length:strlen(input)];
+        object = _json_loadd(data, flags, error);
+    }
+
+    return object;
 }
 
 json_t *
@@ -687,11 +692,13 @@ json_loadcf(CFTypeRef input, size_t flags, json_error_t *error)
     if (input == NULL)
         return NULL;
 
-    if (CFGetTypeID(input) == CFDataGetTypeID()) {
-        object = _json_loadd((__bridge NSData *)input, flags, error);
-    } else if (CFGetTypeID(input) == CFStringGetTypeID()) {
-        NSData *data = [(__bridge NSString *)input dataUsingEncoding:NSUTF8StringEncoding];
-        object = _json_loadd(data, flags, error);
+    @autoreleasepool {
+        if (CFGetTypeID(input) == CFDataGetTypeID()) {
+            object = _json_loadd((__bridge NSData *)input, flags, error);
+        } else if (CFGetTypeID(input) == CFStringGetTypeID()) {
+            NSData *data = [(__bridge NSString *)input dataUsingEncoding:NSUTF8StringEncoding];
+            object = _json_loadd(data, flags, error);
+        }
     }
 
     return object;
@@ -700,31 +707,42 @@ json_loadcf(CFTypeRef input, size_t flags, json_error_t *error)
 json_t *
 json_loadf(FILE *input, size_t flags, json_error_t *error)
 {
-    NSMutableData *data = [[NSMutableData alloc] init];
+    NSMutableData *data;
     char buf[BUFSIZ];
     size_t nread;
+    json_t *object;
 
-    while ((nread = fread(buf, 1, sizeof(buf), input)) != 0) {
-        [data appendBytes:buf length:nread];
+    @autoreleasepool {
+        data = [NSMutableData data];
+
+        while ((nread = fread(buf, 1, sizeof(buf), input)) != 0) {
+            [data appendBytes:buf length:nread];
+        }
+
+        if ([data length] == 0 || ferror(input))
+            return NULL;
+
+        object = _json_loadd(data, flags, error);
     }
 
-    if ([data length] == 0 || ferror(input))
-        return NULL;
-
-    return _json_loadd(data, flags, error);
+    return object;
 }
 
 json_t *
 json_load_file(const char *path, size_t flags, json_error_t *error)
 {
     NSData *data;
+    json_t *object;
 
     if (path == NULL)
         return NULL;
 
-    data = [NSData dataWithContentsOfFile:[NSString stringWithUTF8String:path]];
-    return _json_loadd(data, flags, error);
+    @autoreleasepool {
+        data = [NSData dataWithContentsOfFile:[NSString stringWithUTF8String:path]];
+        object = _json_loadd(data, flags, error);
+    }
 
+    return object;
 }
 
 static NSData *
@@ -746,18 +764,27 @@ json_dumps(const json_t *json, size_t flags)
     NSData *data;
     NSString *string;
     NSStringEncoding encoding;
+    char *s;
 
-    data = _json_dumpd(json, flags);
-    if (data == NULL)
-        return NULL;
+    @autoreleasepool {
+        data = _json_dumpd(json, flags);
+        if (data == NULL)
+            return NULL;
 
-    if (flags & JSON_ENSURE_ASCII)
-        encoding = NSASCIIStringEncoding;
-    else
-        encoding = NSUTF8StringEncoding;
+        if (flags & JSON_ENSURE_ASCII)
+            encoding = NSASCIIStringEncoding;
+        else
+            encoding = NSUTF8StringEncoding;
 
-    string = [[NSString alloc] initWithData:data encoding:encoding];
-    return json_string_copy((__bridge CFStringRef)string);
+        string = [[NSString alloc] initWithData:data encoding:encoding];
+        s = json_string_copy((__bridge CFStringRef)string);
+
+#if !__has_feature(objc_arc)
+        [string release];
+#endif
+    }
+
+    return s;
 }
 
 int
@@ -765,12 +792,14 @@ json_dumpf(const json_t *json, FILE *output, size_t flags)
 {
     NSData *data;
 
-    data = _json_dumpd(json, flags);
-    if (data == NULL)
-        return -1;
+    @autoreleasepool {
+        data = _json_dumpd(json, flags);
+        if (data == NULL)
+            return -1;
 
-    if (fwrite([data bytes], [data length], 1, output) != 1)
-        return -1;
+        if (fwrite([data bytes], [data length], 1, output) != 1)
+            return -1;
+    }
 
     return 0;
 }
@@ -781,13 +810,15 @@ json_dump_file(const json_t *json, const char *path, size_t flags)
     FILE *fp;
     int ret;
 
-    fp = fopen(path, "w");
-    if (fp == NULL)
-        return -1;
+    @autoreleasepool {
+        fp = fopen(path, "w");
+        if (fp == NULL)
+            return -1;
 
-    ret = json_dumpf(json, fp, flags);
+        ret = json_dumpf(json, fp, flags);
 
-    fclose(fp);
+        fclose(fp);
+    }
 
     return ret;
 }

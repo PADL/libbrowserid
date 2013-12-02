@@ -54,7 +54,7 @@ int main(int argc, const char *argv[])
     @autoreleasepool {
         NSString *audience = [NSString stringWithUTF8String:argv[1]];
         NSString *assertion = [NSString stringWithUTF8String:argv[2]];
-        __block NSDictionary *identityAttrs;
+        __block NSDictionary *identityAttrs = NULL;
 
         PersonaVerifyAssertion(assertion, audience, q,
                                ^(id identity, NSDictionary *attrs, NSError *error) {

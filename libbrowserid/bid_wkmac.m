@@ -62,7 +62,14 @@
 - (NSString *)claimsString
 {
     NSData *data = [NSJSONSerialization dataWithJSONObject:self.claims options:0 error:NULL];
-    return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    NSString *claimsString;
+
+    claimsString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+#if !__has_feature(objc_arc)
+    [claimsString autorelease];
+#endif
+
+    return claimsString;
 }
 
 + (BOOL)isSelectorExcludedFromWebScript:(SEL)selector
@@ -77,7 +84,7 @@
     return YES;
 }
 
-- (WebView *)newWebView
+- (WebView *)dispenseWebView
 {
     NSRect frame = NSMakeRect(0, 0, 700, 375);
     WebView *aWebView = [[WebView alloc] initWithFrame:frame];
@@ -91,7 +98,11 @@
         aWebView.shouldCloseWithWindow = YES;
     }
 
+#if __has_feature(objc_arc)
     return aWebView;
+#else
+    return [aWebView autorelease];
+#endif
 }
 
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
@@ -183,7 +194,15 @@
 @implementation BIDIdentityDialog
 + (BIDIdentityDialog *)identityDialog
 {
-    return [[self alloc] init];
+    BIDIdentityDialog *identityDialog;
+
+    identityDialog = [[self alloc] init];
+
+#if __has_feature(objc_arc)
+    return identityDialog;
+#else
+    return [identityDialog autorelease];
+#endif
 }
 
 - (id)init

@@ -64,7 +64,7 @@ int main(int argc, const char *argv[])
     @autoreleasepool {
         NSString *audience = [NSString stringWithUTF8String:argv[1]];
         NSString *assertion;
-        NSError *error;
+        NSError *error = NULL;
 
 #if TARGET_OS_IPHONE
         [UIApplication sharedApplication];
