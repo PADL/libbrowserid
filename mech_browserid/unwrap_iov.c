@@ -259,7 +259,7 @@ unwrapToken(OM_uint32 *minor,
             major = GSS_S_BAD_SIG;
             goto cleanup;
         }
-        major = sequenceCheck(minor, &ctx->seqState, seqnum);
+        major = sequenceCheck(&code, &ctx->seqState, seqnum);
         if (GSS_ERROR(major))
             goto cleanup;
     } else if (toktype == TOK_TYPE_DELETE_CONTEXT) {
