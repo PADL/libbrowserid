@@ -152,6 +152,7 @@ _BIDStoreTicketInCache(
 {
     BIDError err;
     json_t *cred = NULL;
+    json_t *aud;
     BIDJWK ark = NULL;
     const char *szAudienceOrSpn = NULL;
     const char *szSubject = NULL;
@@ -169,7 +170,9 @@ _BIDStoreTicketInCache(
         goto cleanup;
     }
 
-    szAudienceOrSpn = json_string_value(json_object_get(identity->PrivateAttributes, "aud"));
+    aud = json_object_get(identity->PrivateAttributes, "aud");
+
+    szAudienceOrSpn = json_string_value(aud);
     if (szAudienceOrSpn == NULL) {
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;
@@ -185,6 +188,9 @@ _BIDStoreTicketInCache(
     }
 
     err = _BIDJsonObjectSet(context, cred, "tkt", ticket, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, cred, "aud", aud, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, cred, "ark", ark, BID_JSON_FLAG_REQUIRED);
@@ -386,6 +392,10 @@ _BIDMakeReauthIdentity(
     /* copy over the assertion expiry time */
     err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "a-exp",
                             json_object_get(cred, "a-exp"), 0);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "aud",
+                            json_object_get(cred, "aud"), 0);
     BID_BAIL_ON_ERROR(err);
 
     /* Save protocol options, internal use only */
