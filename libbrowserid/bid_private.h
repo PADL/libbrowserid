@@ -62,7 +62,7 @@
 #endif
 
 #ifdef __APPLE__
-#include "bid_cfjson.h"
+#include "cfjson.h"
 #else
 #include <jansson.h>
 #endif

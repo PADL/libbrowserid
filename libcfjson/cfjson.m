@@ -42,7 +42,7 @@
 
 #include <bid_private.h>
 
-#include "bid_cfjson.h"
+#include "cfjson.h"
 
 char *
 json_string_copy(json_t *string)

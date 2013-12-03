@@ -43,11 +43,11 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#ifndef _BID_CFJSON_H_
-#define _BID_CFJSON_H_ 1
+#ifndef _CFJSON_H_
+#define _CFJSON_H_ 1
 
 #ifdef JANSSON_H
-#error <jansson.h> cannot be included at the same time as <bid_cfjson.h>
+#error <jansson.h> cannot be included at the same time as <cfjson.h>
 #endif
 
 #define JANSSON_H 1
@@ -251,4 +251,4 @@ char *json_string_copy(json_t *string);
 }
 #endif
 
-#endif /* _BID_CFJSON_H_ */
+#endif /* _CFJSON_H_ */
