@@ -389,6 +389,9 @@ _BIDMakeReauthIdentity(
     err = _BIDJsonObjectDel(context, identity->Attributes, "flags", 0);
     BID_BAIL_ON_ERROR(err);
 
+    err = _BIDJsonObjectDel(context, identity->Attributes, "aud", 0);
+    BID_BAIL_ON_ERROR(err);
+
     /* copy over the assertion expiry time */
     err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "a-exp",
                             json_object_get(cred, "a-exp"), 0);
