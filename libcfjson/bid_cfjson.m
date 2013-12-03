@@ -50,7 +50,7 @@ json_string_copy(json_t *string)
     const char *ptr;
     char *s = NULL;
 
-    ptr = CFStringGetCStringPtr(string, kCFStringEncodingUTF8);
+    ptr = [(__bridge NSString *)string UTF8String];
     if (ptr != NULL) {
         size_t cbPtr = strlen(ptr) + 1;
         s = BIDMalloc(cbPtr);
