@@ -1035,9 +1035,9 @@ struct BIDIdentityDesc {
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     CFRuntimeBase Base;
 #endif
-    json_t *Attributes;
-    json_t *PrivateAttributes;
-    BIDSecretHandle SecretHandle;
+    json_t *Attributes;                         /* attributes from leaf certificate */
+    json_t *PrivateAttributes;                  /* key negotiation, audience, etc */
+    BIDSecretHandle SecretHandle;               /* shared secret */
 };
 
 /* Private input flags (ulReqFlags) */
