@@ -1,9 +1,5 @@
 #include <TargetConditionals.h>
-#if TARGET_OS_IPHONE
-#include <UIKit/UIKit.h>
-#else
-#include <Cocoa/Cocoa.h>
-#endif
+#include <Foundation/Foundation.h>
 
 #include <browserid.h>
 #include <CFBrowserID.h>
