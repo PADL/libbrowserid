@@ -310,10 +310,12 @@ _json_object_iter_create(json_t *object)
     if (iter == NULL)
         return NULL;
 
-    iter->object = (CFMutableDictionaryRef)CFRetain(object);
-    iter->enumerator = CFBridgingRetain([(__bridge NSDictionary *)iter->object keyEnumerator]);
-    iter->key = NULL;
-    iter->value = NULL;
+    @autoreleasepool {
+        iter->object = (CFMutableDictionaryRef)CFRetain(object);
+        iter->enumerator = CFBridgingRetain([(__bridge NSDictionary *)iter->object keyEnumerator]);
+        iter->key = NULL;
+        iter->value = NULL;
+    }
 
     if (_json_object_iter_next_object(iter) == NULL) {
         _json_object_iter_release(iter);
@@ -827,4 +829,3 @@ void
 json_set_alloc_funcs(json_malloc_t malloc_fn BID_UNUSED, json_free_t free_fn BID_UNUSED)
 {
 }
-
