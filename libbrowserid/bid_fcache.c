@@ -287,7 +287,7 @@ _BIDFileCacheScrub(int fd)
         return BID_S_CACHE_DESTROY_ERROR;
     memset(buf, 0, sizeof(buf));
     while (pos > 0) {
-        size_t n = pos > sizeof(buf) ? sizeof(buf) : pos;
+        size_t n = pos > sizeof(buf) ? sizeof(buf) : (size_t)pos;
         ssize_t tmp = write(fd, buf, n);
         if (tmp < 0)
             return BID_S_CACHE_DESTROY_ERROR;

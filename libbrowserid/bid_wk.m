@@ -52,6 +52,17 @@
 @implementation BIDIdentityController
 #pragma mark - accessors
 
+@synthesize claims = _claims;
+@synthesize emailHint = _emailHint;
+@synthesize siteName = _siteName;
+@synthesize assertion = _assertion;
+@synthesize bidError = _bidError;
+#if !TARGET_OS_IPHONE
+@synthesize identityDialog = _identityDialog;
+#endif
+@synthesize parentWindow = _parentWindow;
+@synthesize webView = _webView;
+
 - (NSString *)audience
 {
     return _audience;

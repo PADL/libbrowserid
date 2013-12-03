@@ -76,6 +76,19 @@ JSExportAs(identityCallback,
 #endif
 {
     NSString *_audience;
+    NSDictionary *_claims;
+    NSString *_emailHint;
+    NSString *_siteName;
+    NSString *_assertion;
+    BIDError _bidError;
+#if TARGET_OS_IPHONE
+    UIWindow *_parentWindow;
+    UIWebView *_webView;
+#else
+    BIDIdentityDialog *_identityDialog;
+    NSWindow *_parentWindow;
+    WebView *_webView;
+#endif
 #if TARGET_OS_IPHONE
     id _rls;
 #endif
