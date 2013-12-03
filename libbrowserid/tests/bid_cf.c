@@ -67,6 +67,7 @@ int main(int argc, const char *argv[])
                        BID_CONTEXT_GSS | BID_CONTEXT_REPLAY_CACHE | BID_CONTEXT_AUTHORITY_CACHE;
     dispatch_queue_t q = dispatch_queue_create("com.padl.BrowserID.tests.bid_cf", NULL);
     dispatch_semaphore_t sema = dispatch_semaphore_create(0);
+    NSDictionary *moreClaims = @{ @"foo" : @"bar", @"baz" : @"123" };
 
     if (argc > 2 && !strcmp(argv[1], "-identity")) {
         name = CFStringCreateWithCString(kCFAllocatorDefault, argv[2], kCFStringEncodingASCII);
@@ -96,7 +97,9 @@ int main(int argc, const char *argv[])
 
     cb = CFDataCreate(kCFAllocatorDefault, (UInt8 *)"foo", 3);
 
-    assertion = BIDAssertionCreateUI(context, audience, cb, name, 0, NULL, &flags, &err);
+    assertion = BIDAssertionCreateUIWithClaims(context, audience, cb, name,
+                                               0, (__bridge CFDictionaryRef)moreClaims,
+                                               NULL, &flags, &err);
     if (assertion == NULL) {
         NSLog(@"Failed to acquire assertion: %@", err);
         goto cleanup;

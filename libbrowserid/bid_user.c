@@ -45,6 +45,7 @@ _BIDMakeClaims(
     const unsigned char *pbChannelBindings,
     size_t cbChannelBindings,
     uint32_t ulReqFlags,
+    json_t *userClaims,
     json_t **pClaims,
     json_t **pKey)
 {
@@ -58,7 +59,7 @@ _BIDMakeClaims(
     *pClaims = NULL;
     *pKey = NULL;
 
-    claims = json_object();
+    claims = (userClaims != NULL) ? json_copy(userClaims) : json_object();
     if (claims == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -133,6 +134,35 @@ BIDAcquireAssertion(
     time_t *ptExpiryTime,
     uint32_t *pulRetFlags)
 {
+    return BIDAcquireAssertionEx(context,
+                                 ticketCache,
+                                 szAudienceOrSpn,
+                                 pbChannelBindings,
+                                 cbChannelBindings,
+                                 szIdentityName,
+                                 ulReqFlags,
+                                 NULL,
+                                 pAssertion,
+                                 pAssertedIdentity,
+                                 ptExpiryTime,
+                                 pulRetFlags);
+}
+
+BIDError
+BIDAcquireAssertionEx(
+    BIDContext context,
+    BIDTicketCache ticketCache,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    const char *szIdentityName,
+    uint32_t ulReqFlags,
+    json_t *userClaims,
+    char **pAssertion,
+    BIDIdentity *pAssertedIdentity,
+    time_t *ptExpiryTime,
+    uint32_t *pulRetFlags)
+{
     BIDError err;
     BIDBackedAssertion backedAssertion = NULL;
     json_t *claims = NULL;
@@ -176,7 +206,8 @@ BIDAcquireAssertion(
         goto cleanup;
     }
 
-    err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings, ulReqFlags, &claims, &key);
+    err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings,
+                         ulReqFlags, userClaims, &claims, &key);
     BID_BAIL_ON_ERROR(err);
 
     if (ulReqFlags & BID_ACQUIRE_FLAG_MUTUAL_AUTH) {

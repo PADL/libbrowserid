@@ -4,6 +4,7 @@ BIDAcquireContext
 BIDAcquireReplayCache
 BIDAcquireTicketCache
 BIDAssertionCreateUI
+BIDAssertionCreateUIWithClaims
 BIDCacheGetTypeID
 BIDContextCreate
 BIDContextGetTypeID

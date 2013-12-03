@@ -476,6 +476,21 @@ BIDStoreTicketInCache(
 
 #ifdef JANSSON_H
 BIDError
+BIDAcquireAssertionEx(
+    BIDContext context,
+    BIDTicketCache ticketCache, /* optional, uses context cache if absent */
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    const char *szIdentityName, /* optional */
+    uint32_t ulFlags,
+    json_t *userClaims, /* optional */
+    char **pAssertion,
+    BIDIdentity *pAssertedIdentity,
+    time_t *pExpiryTime,
+    uint32_t *pulFlags);
+
+BIDError
 BIDMakeRPResponseToken(
     BIDContext context,
     BIDIdentity identity,

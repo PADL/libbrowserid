@@ -377,6 +377,29 @@ BIDAssertionCreateUI(
     uint32_t *pulFlags,
     CFErrorRef *pError)
 {
+    return BIDAssertionCreateUIWithClaims(context,
+                                          audienceOrSpn,
+                                          channelBindings,
+                                          optionalIdentity,
+                                          ulFlags,
+                                          NULL,
+                                          pAssertedIdentity,
+                                          pulFlags,
+                                          pError);
+}
+
+CFStringRef
+BIDAssertionCreateUIWithClaims(
+    BIDContext context,
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFStringRef optionalIdentity,
+    uint32_t ulFlags,
+    CFDictionaryRef userClaims,
+    BIDIdentity *pAssertedIdentity,
+    uint32_t *pulFlags,
+    CFErrorRef *pError)
+{
     char *szAudienceOrSpn = NULL;
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
@@ -412,10 +435,10 @@ BIDAssertionCreateUI(
         }
     }
 
-    err = BIDAcquireAssertion(context, BID_C_NO_TICKET_CACHE, szAudienceOrSpn,
-                              pbChannelBindings, cbChannelBindings, szIdentity,
-                              ulFlags, &szAssertion, pAssertedIdentity,
-                              &expiryTime, pulFlags);
+    err = BIDAcquireAssertionEx(context, BID_C_NO_TICKET_CACHE, szAudienceOrSpn,
+                                pbChannelBindings, cbChannelBindings, szIdentity,
+                                ulFlags, userClaims, &szAssertion, pAssertedIdentity,
+                                &expiryTime, pulFlags);
     BID_BAIL_ON_ERROR(err);
 
     assertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
