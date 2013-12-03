@@ -52,7 +52,6 @@
  * these APIs from an Objective-C program.
  */
 
-const CFStringRef kBIDIdentityAudienceKey   = CFSTR("aud");
 const CFStringRef kBIDIdentitySubjectKey    = CFSTR("sub");
 const CFStringRef kBIDIdentityIssuerKey     = CFSTR("iss");
 const CFStringRef kBIDIdentityExpiryTimeKey = CFSTR("exp");

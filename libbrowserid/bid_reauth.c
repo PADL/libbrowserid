@@ -169,7 +169,7 @@ _BIDStoreTicketInCache(
         goto cleanup;
     }
 
-    szAudienceOrSpn = json_string_value(json_object_get(identity->Attributes, "aud"));
+    szAudienceOrSpn = json_string_value(json_object_get(identity->PrivateAttributes, "aud"));
     if (szAudienceOrSpn == NULL) {
         err = BID_S_INVALID_PARAMETER;
         goto cleanup;

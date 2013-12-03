@@ -151,12 +151,46 @@ BIDReleaseIdentity(
 }
 
 BIDError
+_BIDGetIdentityAttribute(
+    BIDContext context,
+    BIDIdentity identity,
+    const char *attribute,
+    int bPrivateAttribute,
+    const char **pValue)
+{
+    BIDError err;
+    json_t *value, *attrs;
+
+    *pValue = NULL;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    attrs = bPrivateAttribute ? identity->PrivateAttributes : identity->Attributes;
+
+    value = json_object_get(attrs, attribute);
+    if (value == NULL) {
+        err = BID_S_UNKNOWN_ATTRIBUTE;
+        goto cleanup;
+    }
+
+    *pValue = json_string_value(value);
+    if (*pValue == NULL) {
+        err = BID_S_UNKNOWN_ATTRIBUTE;
+        goto cleanup;
+    }
+
+    err = BID_S_OK;
+
+cleanup:
+    return err;
+}
+BIDError
 BIDGetIdentityAudience(
     BIDContext context,
     BIDIdentity identity,
     const char **pValue)
 {
-    return BIDGetIdentityAttribute(context, identity, "aud", pValue);
+    return _BIDGetIdentityAttribute(context, identity, "aud", TRUE, pValue);
 }
 
 BIDError
@@ -184,29 +218,7 @@ BIDGetIdentityAttribute(
     const char *attribute,
     const char **pValue)
 {
-    BIDError err;
-    json_t *value;
-
-    *pValue = NULL;
-
-    BID_CONTEXT_VALIDATE(context);
-
-    value = json_object_get(identity->Attributes, attribute);
-    if (value == NULL) {
-        err = BID_S_UNKNOWN_ATTRIBUTE;
-        goto cleanup;
-    }
-
-    *pValue = json_string_value(value);
-    if (*pValue == NULL) {
-        err = BID_S_UNKNOWN_ATTRIBUTE;
-        goto cleanup;
-    }
-
-    err = BID_S_OK;
-
-cleanup:
-    return err;
+    return _BIDGetIdentityAttribute(context, identity, attribute, FALSE, pValue);
 }
 
 BIDError
@@ -456,7 +468,7 @@ _BIDPopulateIdentity(
                             json_object_get(principal, "email"), 0);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDJsonObjectSet(context, identity->Attributes, "aud",
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "aud",
                             json_object_get(assertion, "aud"), 0);
     BID_BAIL_ON_ERROR(err);
 

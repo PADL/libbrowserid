@@ -65,7 +65,7 @@ _BIDRemoteVerifierResponseToIdentity(
     err = _BIDJsonObjectSet(context, identity->Attributes, "sub", json_object_get(response, "email"), 0);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDJsonObjectSet(context, identity->Attributes, "aud", json_object_get(response, "audience"), 0);
+    err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "aud", json_object_get(response, "audience"), 0);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, identity->Attributes, "iss", json_object_get(response, "issuer"), 0);

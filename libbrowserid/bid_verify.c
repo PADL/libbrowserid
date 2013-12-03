@@ -136,13 +136,13 @@ _BIDValidateAudience(
     BIDError err;
     unsigned char *pbAssertionCB = NULL;
     size_t cbAssertionCB = 0;
-    json_t *claims = backedAssertion->Assertion->Payload;
+    json_t *userClaims = backedAssertion->Assertion->Payload;
 
-    if (claims == NULL)
+    if (userClaims == NULL)
         return BID_S_MISSING_AUDIENCE;
 
     if (szAudienceOrSpn != NULL) {
-        const char *szAssertionSpn = json_string_value(json_object_get(claims, "aud"));
+        const char *szAssertionSpn = json_string_value(json_object_get(userClaims, "aud"));
 
         if (szAssertionSpn == NULL) {
             err = BID_S_MISSING_AUDIENCE;
@@ -157,7 +157,7 @@ _BIDValidateAudience(
     }
 
     if (pbChannelBindings != NULL) {
-        err = _BIDGetJsonBinaryValue(context, claims, "cb", &pbAssertionCB, &cbAssertionCB);
+        err = _BIDGetJsonBinaryValue(context, userClaims, "cb", &pbAssertionCB, &cbAssertionCB);
         if (err == BID_S_UNKNOWN_JSON_KEY)
             err = BID_S_MISSING_CHANNEL_BINDINGS;
         BID_BAIL_ON_ERROR(err);

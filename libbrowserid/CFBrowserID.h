@@ -104,7 +104,6 @@ BIDVerifyAssertionWithHandler(
     void (^handler)(BIDIdentity, uint32_t, CFErrorRef));
 #endif
 
-extern const CFStringRef kBIDIdentityAudienceKey;
 extern const CFStringRef kBIDIdentitySubjectKey;
 extern const CFStringRef kBIDIdentityIssuerKey;
 extern const CFStringRef kBIDIdentityExpiryTimeKey;
