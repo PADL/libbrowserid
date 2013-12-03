@@ -321,7 +321,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "VERS_STRING_OUTPUT=$DERIVED_FILE_DIR/vers.c\nexport VERS_STRING_OUTPUT\n\ncd $SRCROOT/build\n/usr/bin/perl -I$SRCROOT/build $SRCROOT/build/vers_string -v\n\nOBJ=OBJECT_FILE_DIR-$CURRENT_VARIANT\n\neval clang -c -o \\$$OBJ/$CURRENT_ARCH/vers.o $VERS_STRING_OUTPUT\n";
+			shellScript = "VERS_STRING_OUTPUT=$DERIVED_FILE_DIR/vers.c\nexport VERS_STRING_OUTPUT\n\ncd $SRCROOT/build\n/usr/bin/perl -I$SRCROOT/build $SRCROOT/build/vers_string -v\n\nOBJ=OBJECT_FILE_DIR-$CURRENT_VARIANT\n\neval clang -arch $CURRENT_ARCH -c -o \\$$OBJ/$CURRENT_ARCH/vers.o $VERS_STRING_OUTPUT\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -369,6 +369,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -397,7 +398,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
-				ONLY_ACTIVE_ARCH = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -406,6 +407,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -429,6 +431,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -436,6 +439,8 @@
 		D34569AA18477D4F009B8DC9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				CLANG_ENABLE_OBJC_ARC = NO;
 				COMBINE_HIDPI_IMAGES = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -454,6 +459,8 @@
 		D34569AB18477D4F009B8DC9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				CLANG_ENABLE_OBJC_ARC = NO;
 				COMBINE_HIDPI_IMAGES = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
