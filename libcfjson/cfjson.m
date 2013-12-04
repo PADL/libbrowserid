@@ -13,6 +13,11 @@
 
 #include "cfjson.h"
 
+/*
+ * jansson API-compatible wrapper around CoreFoundation. CoreFoundation and JSON
+ * objects can be used interchangeably.
+ */
+
 char *
 json_string_copy(json_t *string)
 {
