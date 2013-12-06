@@ -132,7 +132,7 @@ _BIDValidateSupplementaryClaims(
 
     *pSuppClaims = NULL;
 
-    suppCerts = json_object_get(backedAssertion->Assertion->Payload, "pac");
+    suppCerts = json_object_get(backedAssertion->Assertion->Payload, "udc");
     if (suppCerts == NULL) {
         err = BID_S_OK;
         goto cleanup;
