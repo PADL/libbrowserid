@@ -1,4 +1,4 @@
-LIBS=-L/usr/local/lib -ljansson -lcurl
+LIBS=-framework CoreFoundation -framework Foundation
 
 # most of these tests will require libbrowserid to be built as a static library
 
@@ -8,7 +8,7 @@ bid_sig: bid_sig.c ../libbrowserid.la
 	clang -I../.. -I../../libcfjson -I.. -g -Wall -o bid_sig bid_sig.c -lcrypto -L../.libs -lbrowserid $(LIBS)
 
 bid_vfy: bid_vfy.c ../libbrowserid.la
-	clang -I../.. -I../../libcfjson -I.. -g -Wall -o bid_vfy bid_vfy.c -lcrypto -L../.libs -lbrowserid $(LIBS)
+	clang -ObjC -I../.. -I../../libcfjson -I.. -g -Wall -o bid_vfy bid_vfy.c -lcrypto -L../.libs -lbrowserid $(LIBS)
 
 bid_doc: bid_doc.c ../libbrowserid.la
 	clang -I../.. -I../../libcfjson -I.. -g -Wall -o bid_doc bid_doc.c -lcrypto -L../.libs -lbrowserid $(LIBS)
