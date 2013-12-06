@@ -1006,6 +1006,17 @@ _BIDPurgeReplayCache(
     time_t currentTime);
 
 /*
+ * bid_supp.c
+ */
+BIDError
+_BIDValidateSupplementaryClaims(
+    BIDContext context,
+    BIDBackedAssertion backedAssertion,
+    time_t verificationTime,
+    BIDJWKSet certSigningKey,
+    json_t **pSuppClaims);
+
+/*
  * bid_user.c
  */
 

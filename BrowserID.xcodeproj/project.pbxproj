@@ -43,6 +43,7 @@
 		D394959E184782A700C7D85B /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959D184782A700C7D85B /* WebKit.framework */; };
 		D39495A0184782AC00C7D85B /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959F184782AC00C7D85B /* CoreFoundation.framework */; };
 		D39495A2184782B600C7D85B /* libcrypto.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D39495A1184782B600C7D85B /* libcrypto.dylib */; };
+		D3CF4BC718515B4500F22C87 /* bid_supp.c in Sources */ = {isa = PBXBuildFile; fileRef = D3CF4BC618515B4500F22C87 /* bid_supp.c */; };
 		D3D39A70184D3E3100331007 /* cfjson.h in Headers */ = {isa = PBXBuildFile; fileRef = D3D39A6E184D3E3100331007 /* cfjson.h */; };
 		D3D39A71184D3E3100331007 /* cfjson.m in Sources */ = {isa = PBXBuildFile; fileRef = D3D39A6F184D3E3100331007 /* cfjson.m */; };
 /* End PBXBuildFile section */
@@ -89,6 +90,7 @@
 		D394959D184782A700C7D85B /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		D394959F184782AC00C7D85B /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		D39495A1184782B600C7D85B /* libcrypto.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.dylib; path = usr/lib/libcrypto.dylib; sourceTree = SDKROOT; };
+		D3CF4BC618515B4500F22C87 /* bid_supp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_supp.c; path = libbrowserid/bid_supp.c; sourceTree = SOURCE_ROOT; };
 		D3D39A6E184D3E3100331007 /* cfjson.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cfjson.h; path = libcfjson/cfjson.h; sourceTree = SOURCE_ROOT; };
 		D3D39A6F184D3E3100331007 /* cfjson.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = cfjson.m; path = libcfjson/cfjson.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -151,6 +153,7 @@
 			isa = PBXGroup;
 			children = (
 				D3D39A6E184D3E3100331007 /* cfjson.h */,
+				D3CF4BC618515B4500F22C87 /* bid_supp.c */,
 				D3D39A6F184D3E3100331007 /* cfjson.m */,
 				D394954A18477E5B00C7D85B /* bid_authority.c */,
 				D394954B18477E5B00C7D85B /* bid_base64.c */,
@@ -351,6 +354,7 @@
 				D394959518477E5B00C7D85B /* bid_xrt.c in Sources */,
 				D394957918477E5B00C7D85B /* bid_crypto.c in Sources */,
 				D394957218477E5B00C7D85B /* bid_base64.c in Sources */,
+				D3CF4BC718515B4500F22C87 /* bid_supp.c in Sources */,
 				D3D39A71184D3E3100331007 /* cfjson.m in Sources */,
 				D394958218477E5B00C7D85B /* bid_openssl.c in Sources */,
 				D394958C18477E5B00C7D85B /* bid_util.c in Sources */,

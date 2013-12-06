@@ -360,6 +360,7 @@ BIDFreeAssertion(
 #define BID_VERIFY_FLAG_DCE                     0x00200000 /* requested DCE option */
 #define BID_VERIFY_FLAG_IDENTIFY                0x00400000 /* requested identify option */
 #define BID_VERIFY_FLAG_MUTUAL_AUTH             0x00800000 /* requested MA option */
+#define BID_VERIFY_FLAG_SUPPLEMENTARY_CLAIMS    0x01000000 /* included supp claims */
 
 BIDError
 BIDVerifyAssertion(

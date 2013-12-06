@@ -33,6 +33,7 @@ libbrowserid_la_SOURCES =   \
     bid_rp.c                \
     bid_rcache.c            \
     bid_rverify.c           \
+    bid_supp.c              \
     bid_user.c              \
     bid_util.c              \
     bid_verify.c            \
