@@ -41,8 +41,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "browserid.h"
+#ifdef __APPLE__
+#include <Foundation/Foundation.h>
+#endif
+
 #include "bid_private.h"
+#include "browserid.h"
 
 /*
  * Test verification
@@ -94,8 +98,12 @@ int main(int argc, char *argv[])
     err = BIDGetIdentityJsonObject(context, id, NULL, &j);
     BID_BAIL_ON_ERROR(err);
 
+#ifdef __APPLE__
+    printf("%s\n", [[(__bridge NSObject *)j description] UTF8String]);
+#else
     json_dumpf(j, stdout, 0);
     printf("\n");
+#endif
 
 cleanup:
     json_decref(j);
