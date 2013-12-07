@@ -117,7 +117,7 @@
 
 #pragma mark - delegates
 
-- (void)interposeAssertionSign:(id)sender
+- (void)acquireAssertion:(id)sender
 {
 #if TARGET_OS_IPHONE
 #define CONTROLLER_CLAIMS               "controller.claims()"
@@ -127,34 +127,11 @@
 
     NSString *function = @"                                                                             \
         var controller = window.IdentityController;                                                     \
-        var oldLoad = BrowserID.CryptoLoader.load;                                                      \
-                                                                                                        \
-        BrowserID.CryptoLoader.load = function(onSuccess, onFailure) {                                  \
-            oldLoad(function(jwCrypto) {                                                                \
-                var assertionSign = jwCrypto.assertion.sign;                                            \
-                                                                                                        \
-                jwCrypto.assertion.sign = function(payload, assertionParams, secretKey, cb) {           \
-                    var gssPayload = " CONTROLLER_CLAIMS ";                                             \
-                    for (var k in payload) {                                                            \
-                        if (payload.hasOwnProperty(k)) gssPayload[k] = payload[k];                      \
-                    }                                                                                   \
-                    assertionSign(gssPayload, assertionParams, secretKey, cb);                          \
-                };                                                                                      \
-                onSuccess(jwCrypto);                                                                    \
-            }, onFailure);                                                                              \
-        };                                                                                              \
-    ";
-
-    [sender stringByEvaluatingJavaScriptFromString:function];
-}
-
-- (void)acquireAssertion:(id)sender
-{
-    NSString *function = @"                                                                             \
-        var controller = window.IdentityController;                                                     \
         var options = { siteName: controller.siteName(),                                                \
                         experimental_forceAuthentication: !!controller.forceAuthentication(),           \
-                        experimental_emailHint: controller.emailHint() };                               \
+                        experimental_emailHint: controller.emailHint(),                                 \
+                        experimental_userAssertedClaims: " CONTROLLER_CLAIMS "                          \
+        };                                                                                              \
                                                                                                         \
         BrowserID.internal.get(                                                                         \
             controller.audience(),                                                                      \

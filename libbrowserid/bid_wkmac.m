@@ -108,11 +108,8 @@
 
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
 {
-    if ([sender isEqual:self.webView] && frame == [sender mainFrame]) {
-        if (self.claims.count)
-            [self interposeAssertionSign:sender];
+    if ([sender isEqual:self.webView] && frame == [sender mainFrame])
         [self acquireAssertion:sender];
-    }
 }
 
 - (void)windowWillClose:(NSNotification *)BID_UNUSED notification
