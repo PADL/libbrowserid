@@ -79,12 +79,12 @@ _BIDValidateSupplementaryClaim(
 
     certBinding = json_object_get(suppCertJWT->Payload, "cb");
     if (certBinding == NULL) {
-        err = BID_S_MISSING_CHANNEL_BINDINGS;
+        err = BID_S_MISSING_CERT_BINDING;
         goto cleanup;
     }
 
     if (!json_equal(certHash, certBinding)) {
-        err = BID_S_CHANNEL_BINDINGS_MISMATCH;
+        err = BID_S_CERT_BINDING_MISMATCH;
         goto cleanup;
     }
 
