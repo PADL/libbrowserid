@@ -59,12 +59,12 @@ int main(int argc, const char *argv[])
     BIDContext context = NULL;
     CFStringRef assertion = NULL;
     CFStringRef audience = NULL;
-    CFStringRef name = NULL;
+    CFStringRef name = CFSTR("lukeh@rand.mit.de.padl.com");
     __block CFErrorRef err = NULL;
     CFDataRef cb = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT |
-                       BID_CONTEXT_GSS | BID_CONTEXT_REPLAY_CACHE | BID_CONTEXT_AUTHORITY_CACHE;
+                       BID_CONTEXT_GSS | BID_CONTEXT_REPLAY_CACHE;
     dispatch_queue_t q = dispatch_queue_create("com.padl.BrowserID.tests.bid_cf", NULL);
     dispatch_semaphore_t sema = dispatch_semaphore_create(0);
     NSDictionary *moreClaims = @{ @"foo" : @"bar", @"baz" : @"123" };
