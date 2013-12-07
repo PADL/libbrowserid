@@ -75,6 +75,7 @@ static WCHAR _BIDHTMLInterposeAssertionSignScript[] = L"                        
 static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                                                  \
     var args = JSON.parse(window.dialogArguments);                                                  \
     var options = { siteName: args.siteName,                                                        \
+                    experimental_forceAuthentication: args.forceAuthentication,                     \
                     experimental_emailHint: args.emailHint };                                       \
                                                                                                     \
     BrowserID.internal.get(                                                                         \
@@ -533,6 +534,11 @@ CBIDIdentityController::_PackDialogArgs(
                                 BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
     }
+
+    err = _BIDJsonObjectSet(_context, _args, "forceAuthentication",
+                            (ulReqFlags & BID_ACQUIRE_FLAG_FORCE_AUTH) ? json_true() : json_false(),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
 
 cleanup:
     BIDFree(szSiteName);
