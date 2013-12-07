@@ -57,6 +57,7 @@
 @synthesize siteName = _siteName;
 @synthesize assertion = _assertion;
 @synthesize bidError = _bidError;
+@synthesize forceAuthentication = _forceAuthentication;
 #if !TARGET_OS_IPHONE
 @synthesize identityDialog = _identityDialog;
 #endif
@@ -152,6 +153,7 @@
     NSString *function = @"                                                                             \
         var controller = window.IdentityController;                                                     \
         var options = { siteName: controller.siteName(),                                                \
+                        experimental_forceAuthentication: !!controller.forceAuthentication(),           \
                         experimental_emailHint: controller.emailHint() };                               \
                                                                                                         \
         BrowserID.internal.get(                                                                         \
@@ -244,6 +246,7 @@ _BIDBrowserGetAssertion(
 #else
             controller.parentWindow = [NSApplication sharedApplication].mainWindow;
 #endif
+        controller.forceAuthentication = !!(ulReqFlags & BID_ACQUIRE_FLAG_FORCE_AUTH);
 
         [controller performSelectorOnMainThread:@selector(getAssertion) withObject:nil waitUntilDone:TRUE];
 

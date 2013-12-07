@@ -310,6 +310,7 @@ BIDReleaseReplayCache(
 #define BID_ACQUIRE_FLAG_EXTRA_ROUND_TRIP   0x00000008 /* request XRT option */
 #define BID_ACQUIRE_FLAG_DCE                0x00000010 /* request DCE option */
 #define BID_ACQUIRE_FLAG_IDENTIFY           0x00000020 /* request identify option */
+#define BID_ACQUIRE_FLAG_FORCE_AUTH         0x00000040 /* forceAuthentication: true */
 
 /* Output flags (ulRetFlags) */
 #define BID_ACQUIRE_FLAG_REAUTH             0x00010000

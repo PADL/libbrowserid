@@ -78,6 +78,7 @@
         selector == @selector(siteName) ||
         selector == @selector(claimsString) ||
         selector == @selector(emailHint) ||
+        selector == @selector(forceAuthentication) ||
         selector == @selector(audience))
         return NO;
 

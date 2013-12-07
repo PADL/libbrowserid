@@ -81,6 +81,7 @@ JSExportAs(identityCallback,
     NSString *_siteName;
     NSString *_assertion;
     BIDError _bidError;
+    BOOL _forceAuthentication;
 #if TARGET_OS_IPHONE
     UIWindow *_parentWindow;
     UIWebView *_webView;
@@ -100,6 +101,7 @@ JSExportAs(identityCallback,
 @property(nonatomic, copy) NSString *siteName;
 @property(nonatomic, retain, readonly) NSString *assertion;
 @property(nonatomic, readonly) BIDError bidError;
+@property(nonatomic, assign) BOOL forceAuthentication;
 
 /* platform properties */
 #if TARGET_OS_IPHONE
