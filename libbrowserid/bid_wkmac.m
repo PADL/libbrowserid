@@ -149,9 +149,14 @@
     [windowScriptObject setValue:self forKey:@"IdentityController"];
 }
 
-- (void)webView:(WebView *)BID_UNUSED webView addMessageToConsole:(NSDictionary *)message
+- (void)webView:(WebView *)webView addMessageToConsole:(NSDictionary *)message
 {
-    NSLog(@"%@", message);
+    [self webView:webView addMessageToConsole:message withSource:nil];
+}
+
+- (void)webView:(WebView *)BID_UNUSED webView addMessageToConsole:(NSDictionary *)message withSource:(NSString *)BID_UNUSED source
+{
+    NSLog(@"%@", message[@"message"]);
 }
 
 - (void)webView:(WebView *)sender didFailLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
