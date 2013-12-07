@@ -185,6 +185,8 @@ _BIDParseJWT(
     jwt->SignatureLength = (size_t)cbSignature;
     jwt->EncDataLength = strlen(jwt->EncData);
 
+    *(--szSignature) = '.'; /* Restore Header.Signature for certificate hashing */
+
     err = BID_S_OK;
     *pJwt = jwt;
 
