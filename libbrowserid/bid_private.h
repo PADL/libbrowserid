@@ -1009,7 +1009,7 @@ _BIDPurgeReplayCache(
  * bid_supp.c
  */
 BIDError
-_BIDValidateSupplementaryClaims(
+_BIDValidateAttributeCertificates(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
     time_t verificationTime,
@@ -1082,7 +1082,10 @@ _BIDValidateExpiry(
 /*
  * bid_webkit.c
  */
+#ifndef BID_SIGN_IN_URL
+/* Allow this to be overriden for testing */
 #define BID_SIGN_IN_URL              "https://login.persona.org/sign_in#NATIVE"
+#endif
 
 BIDError
 _BIDBrowserGetAssertion(

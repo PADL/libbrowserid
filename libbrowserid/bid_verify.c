@@ -363,7 +363,7 @@ _BIDVerifyLocal(
     BIDIdentity verifiedIdentity = BID_C_NO_IDENTITY;
     json_t *x509Certificate = NULL;
     BIDJWKSet certSigningKey = NULL;
-    json_t *suppClaims = NULL;
+    json_t *attrCertClaims = NULL;
 
     if (pVerifiedIdentity != NULL)
         *pVerifiedIdentity = BID_C_NO_IDENTITY;
@@ -430,8 +430,8 @@ _BIDVerifyLocal(
         verifyCred = backedAssertion->rCertificates[backedAssertion->cCertificates - 1]->Payload;
         *pulRetFlags |= BID_VERIFY_FLAG_VALIDATED_CERTS;
 
-        err = _BIDValidateSupplementaryClaims(context, backedAssertion, verificationTime,
-                                              certSigningKey, &suppClaims);
+        err = _BIDValidateAttributeCertificates(context, backedAssertion, verificationTime,
+                                                certSigningKey, &attrCertClaims);
         BID_BAIL_ON_ERROR(err);
    }
 
@@ -444,9 +444,9 @@ _BIDVerifyLocal(
         err = _BIDPopulateIdentity(context, backedAssertion, *pulRetFlags, &verifiedIdentity);
         BID_BAIL_ON_ERROR(err);
 
-        if (suppClaims != NULL) {
-            json_object_update(verifiedIdentity->Attributes, suppClaims);
-            *pulRetFlags |= BID_VERIFY_FLAG_SUPPLEMENTARY_CLAIMS;
+        if (attrCertClaims != NULL) {
+            json_object_update(verifiedIdentity->Attributes, attrCertClaims);
+            *pulRetFlags |= BID_VERIFY_FLAG_ATTRIBUTE_CERTS;
         }
     }
 
@@ -471,7 +471,7 @@ cleanup:
         BIDReleaseIdentity(context, verifiedIdentity);
     json_decref(verifyCred);
     json_decref(certSigningKey);
-    json_decref(suppClaims);
+    json_decref(attrCertClaims);
 
     return err;
 }

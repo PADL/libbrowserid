@@ -40,45 +40,45 @@
 #include "bid_private.h"
 
 /*
- * Support for selectively disclosed supplementary claims. These are encoded
+ * Support for selectively disclosed attribute certificates. These are encoded
  * as IdP-signed JWTs in the submitted assertion.
  */
 
 static BIDError
-_BIDValidateSupplementaryClaim(
+_BIDValidateAttributeCertificate(
     BIDContext context,
-    json_t *suppCert,
+    json_t *attrCert,
     time_t verificationTime,
     BIDJWKSet certSigningKey,
     json_t *certHash,
     json_t **pClaims)
 {
     BIDError err;
-    BIDJWT suppCertJWT = NULL;
+    BIDJWT attrCertJWT = NULL;
     json_t *metaData = NULL;
     json_t *certBinding = NULL;
     json_t *claims = NULL;
 
     *pClaims = NULL;
 
-    if (!json_is_string(suppCert)) {
+    if (!json_is_string(attrCert)) {
         err = BID_S_INVALID_ASSERTION;
         goto cleanup;
     }
 
-    err = _BIDParseJWT(context, json_string_value(suppCert), &suppCertJWT);
+    err = _BIDParseJWT(context, json_string_value(attrCert), &attrCertJWT);
     BID_BAIL_ON_ERROR(err);
 
-    if (json_object_get(suppCertJWT->Payload, "exp") != NULL) {
+    if (json_object_get(attrCertJWT->Payload, "exp") != NULL) {
         /* Inherit certificate expirty time unless explicitly specified */
-        err = _BIDValidateExpiry(context, verificationTime, suppCertJWT->Payload);
+        err = _BIDValidateExpiry(context, verificationTime, attrCertJWT->Payload);
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDVerifySignature(context, suppCertJWT, certSigningKey);
+    err = _BIDVerifySignature(context, attrCertJWT, certSigningKey);
     BID_BAIL_ON_ERROR(err);
 
-    metaData = json_object_get(suppCertJWT->Payload, "md");
+    metaData = json_object_get(attrCertJWT->Payload, "md");
     if (metaData == NULL) {
         err = BID_S_UNKNOWN_ATTRIBUTE;
         goto cleanup;
@@ -95,7 +95,7 @@ _BIDValidateSupplementaryClaim(
         goto cleanup;
     }
 
-    claims = json_copy(suppCertJWT->Payload);
+    claims = json_copy(attrCertJWT->Payload);
 
     err = _BIDJsonObjectDel(context, claims, "md", 0);
     BID_BAIL_ON_ERROR(err);
@@ -115,46 +115,46 @@ cleanup:
         break;
     }
 
-    _BIDReleaseJWT(context, suppCertJWT);
+    _BIDReleaseJWT(context, attrCertJWT);
     json_decref(claims);
 
     return err;
 }
 
 BIDError
-_BIDValidateSupplementaryClaims(
+_BIDValidateAttributeCertificates(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
     time_t verificationTime,
     BIDJWKSet certSigningKey,
-    json_t **pSuppClaims)
+    json_t **pAttrCertClaims)
 {
     BIDError err;
-    json_t *suppCerts, *suppClaims = NULL;
+    json_t *attrCerts, *attrCertClaims = NULL;
     BIDJWT leafCert;
     unsigned char hash[32];
     size_t cbHash = sizeof(hash);
     json_t *certHash = NULL;
-    size_t i, cSuppCerts;
+    size_t i, cAttrCerts;
 
-    *pSuppClaims = NULL;
+    *pAttrCertClaims = NULL;
 
-    suppCerts = json_object_get(backedAssertion->Assertion->Payload, "attr-certs");
-    if (suppCerts == NULL) {
+    attrCerts = json_object_get(backedAssertion->Assertion->Payload, "attr-certs");
+    if (attrCerts == NULL) {
         err = BID_S_OK;
         goto cleanup;
     }
 
     /*
-     * suppCerts is an array of string JWTs signed in the IdP's public key.
+     * attrCerts is an array of string JWTs signed in the IdP's public key.
      */
-    if (!json_is_array(suppCerts)) {
+    if (!json_is_array(attrCerts)) {
         err = BID_S_INVALID_ASSERTION;
         goto cleanup;
     }
 
-    cSuppCerts = json_array_size(suppCerts);
-    if (cSuppCerts == 0) {
+    cAttrCerts = json_array_size(attrCerts);
+    if (cAttrCerts == 0) {
         err = BID_S_OK;;
         goto cleanup;
     }
@@ -167,30 +167,30 @@ _BIDValidateSupplementaryClaims(
     err = _BIDJsonBinaryValue(context, hash, cbHash, &certHash);
     BID_BAIL_ON_ERROR(err);
 
-    suppClaims = json_object();
-    if (suppClaims == NULL) {
+    attrCertClaims = json_object();
+    if (attrCertClaims == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
 
-    for (i = 0; i < cSuppCerts; i++) {
-        json_t *suppCert = json_array_get(suppCerts, i);
-        json_t *suppCertClaims = NULL;
+    for (i = 0; i < cAttrCerts; i++) {
+        json_t *attrCert = json_array_get(attrCerts, i);
+        json_t *attrCertClaims = NULL;
 
-        err = _BIDValidateSupplementaryClaim(context, suppCert, verificationTime,
-                                             certSigningKey, certHash, &suppCertClaims);
+        err = _BIDValidateAttributeCertificate(context, attrCert, verificationTime,
+                                               certSigningKey, certHash, &attrCertClaims);
         BID_BAIL_ON_ERROR(err);
 
-        json_object_update(suppClaims, suppCertClaims);
-        json_decref(suppCertClaims);
+        json_object_update(attrCertClaims, attrCertClaims);
+        json_decref(attrCertClaims);
     }
 
     err = BID_S_OK;
-    *pSuppClaims = json_incref(suppClaims);
+    *pAttrCertClaims = json_incref(attrCertClaims);
 
 cleanup:
     json_decref(certHash);
-    json_decref(suppClaims);
+    json_decref(attrCertClaims);
 
     return err;
 }
