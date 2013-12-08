@@ -78,7 +78,7 @@ _BIDValidateAttributeCertificate(
     }
 
     iss = json_object_get(attrCertJWT->Payload, "iss");
-    if (iss != NULL && json_equal(iss, certIssuer)) {
+    if (iss != NULL && !json_equal(iss, certIssuer)) {
         /* Attribute certificate must be issued by same party at present */
         err = BID_S_INVALID_ISSUER;
         goto cleanup;
