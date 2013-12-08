@@ -56,7 +56,6 @@ _BIDValidateAttributeCertificate(
 {
     BIDError err;
     BIDJWT attrCertJWT = NULL;
-    json_t *metaData = NULL;
     json_t *certBinding = NULL;
     json_t *claims = NULL;
     json_t *iss = NULL;
@@ -87,13 +86,7 @@ _BIDValidateAttributeCertificate(
     err = _BIDVerifySignature(context, attrCertJWT, certSigningKey);
     BID_BAIL_ON_ERROR(err);
 
-    metaData = json_object_get(attrCertJWT->Payload, "md");
-    if (metaData == NULL) {
-        err = BID_S_UNKNOWN_ATTRIBUTE;
-        goto cleanup;
-    }
-
-    certBinding = json_object_get(metaData, "cb");
+    certBinding = json_object_get(attrCertJWT->Header, "cb");
     if (certBinding == NULL) {
         err = BID_S_MISSING_CERT_BINDING;
         goto cleanup;
@@ -106,8 +99,17 @@ _BIDValidateAttributeCertificate(
 
     claims = json_copy(attrCertJWT->Payload);
 
-    err = _BIDJsonObjectDel(context, claims, "md", 0);
-    BID_BAIL_ON_ERROR(err);
+    /*
+     * Because we flatten the attributes in the top-level certificate, avoid
+     * stomping on any well known names. We should probably revisit this...
+     */
+    _BIDJsonObjectDel(context, claims, "exp", 0);
+    _BIDJsonObjectDel(context, claims, "iat", 0);
+    _BIDJsonObjectDel(context, claims, "iss", 0);
+    _BIDJsonObjectDel(context, claims, "nbf", 0);
+    _BIDJsonObjectDel(context, claims, "public-key", 0);
+    _BIDJsonObjectDel(context, claims, "principal", 0);
+    _BIDJsonObjectDel(context, claims, "sub", 0);
 
     err = BID_S_OK;
     *pClaims = json_incref(claims);
@@ -197,7 +199,6 @@ _BIDValidateAttributeCertificates(
         if (err != BID_S_OK)
             continue;
 
-        /* XXX flattening claims may not be the best approach */
         json_object_update(allAttrCertClaims, attrCertClaims);
         json_decref(attrCertClaims);
     }
