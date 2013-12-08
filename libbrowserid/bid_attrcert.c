@@ -44,6 +44,19 @@
  * as IdP-signed JWTs in the submitted assertion.
  */
 
+static const char *
+_BIDReservedClaims[] = {
+    "aud",
+    "exp",
+    "iat",
+    "iss",
+    "jti",
+    "nbf",
+    "principal",
+    "public-key",
+    "sub"
+};
+
 static BIDError
 _BIDValidateAttributeCertificate(
     BIDContext context,
@@ -59,6 +72,7 @@ _BIDValidateAttributeCertificate(
     json_t *certBinding = NULL;
     json_t *claims = NULL;
     json_t *iss = NULL;
+    size_t i;
 
     *pClaims = NULL;
 
@@ -101,15 +115,11 @@ _BIDValidateAttributeCertificate(
 
     /*
      * Because we flatten the attributes in the top-level certificate, avoid
-     * stomping on any well known names. We should probably revisit this...
+     * stomping on any well known names. We should probably revisit this, it
+     * is pretty ugly.
      */
-    _BIDJsonObjectDel(context, claims, "exp", 0);
-    _BIDJsonObjectDel(context, claims, "iat", 0);
-    _BIDJsonObjectDel(context, claims, "iss", 0);
-    _BIDJsonObjectDel(context, claims, "nbf", 0);
-    _BIDJsonObjectDel(context, claims, "public-key", 0);
-    _BIDJsonObjectDel(context, claims, "principal", 0);
-    _BIDJsonObjectDel(context, claims, "sub", 0);
+    for (i = 0; i < sizeof(_BIDReservedClaims) / sizeof(_BIDReservedClaims[0]); i++)
+        _BIDJsonObjectDel(context, claims, _BIDReservedClaims[i], 0);
 
     err = BID_S_OK;
     *pClaims = json_incref(claims);
