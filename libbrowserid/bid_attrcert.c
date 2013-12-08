@@ -51,6 +51,7 @@ _BIDValidateAttributeCertificate(
     time_t verificationTime,
     BIDJWKSet certSigningKey,
     json_t *certHash,
+    json_t *certIssuer,
     json_t **pClaims)
 {
     BIDError err;
@@ -58,6 +59,7 @@ _BIDValidateAttributeCertificate(
     json_t *metaData = NULL;
     json_t *certBinding = NULL;
     json_t *claims = NULL;
+    json_t *iss = NULL;
 
     *pClaims = NULL;
 
@@ -73,6 +75,13 @@ _BIDValidateAttributeCertificate(
         /* Inherit certificate expirty time unless explicitly specified */
         err = _BIDValidateExpiry(context, verificationTime, attrCertJWT->Payload);
         BID_BAIL_ON_ERROR(err);
+    }
+
+    iss = json_object_get(attrCertJWT->Payload, "iss");
+    if (iss != NULL && json_equal(iss, certIssuer)) {
+        /* Attribute certificate must be issued by same party at present */
+        err = BID_S_INVALID_ISSUER;
+        goto cleanup;
     }
 
     err = _BIDVerifySignature(context, attrCertJWT, certSigningKey);
@@ -135,6 +144,7 @@ _BIDValidateAttributeCertificates(
     unsigned char hash[32];
     size_t cbHash = sizeof(hash);
     json_t *certHash = NULL;
+    json_t *iss = NULL;
     size_t i, cAttrCerts;
 
     *pAllAttrCertClaims = NULL;
@@ -161,6 +171,9 @@ _BIDValidateAttributeCertificates(
 
     leafCert = backedAssertion->rCertificates[backedAssertion->cCertificates - 1];
 
+    iss = json_object_get(leafCert->Payload, "iss");
+    BID_ASSERT(iss != NULL);
+
     err = _BIDDigestAssertion(context, leafCert->EncData, hash, &cbHash);
     BID_BAIL_ON_ERROR(err);
 
@@ -177,10 +190,14 @@ _BIDValidateAttributeCertificates(
         json_t *attrCert = json_array_get(attrCerts, i);
         json_t *attrCertClaims = NULL;
 
+        /* Currently, we just ignore attributes we cannot validate */
         err = _BIDValidateAttributeCertificate(context, attrCert, verificationTime,
-                                               certSigningKey, certHash, &attrCertClaims);
-        BID_BAIL_ON_ERROR(err);
+                                               certSigningKey, certHash, iss,
+                                               &attrCertClaims);
+        if (err != BID_S_OK)
+            continue;
 
+        /* XXX flattening claims may not be the best approach */
         json_object_update(allAttrCertClaims, attrCertClaims);
         json_decref(attrCertClaims);
     }
