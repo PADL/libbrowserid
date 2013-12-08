@@ -127,17 +127,17 @@ _BIDValidateAttributeCertificates(
     BIDBackedAssertion backedAssertion,
     time_t verificationTime,
     BIDJWKSet certSigningKey,
-    json_t **pAttrCertClaims)
+    json_t **pAllAttrCertClaims)
 {
     BIDError err;
-    json_t *attrCerts, *attrCertClaims = NULL;
+    json_t *attrCerts, *allAttrCertClaims = NULL;
     BIDJWT leafCert;
     unsigned char hash[32];
     size_t cbHash = sizeof(hash);
     json_t *certHash = NULL;
     size_t i, cAttrCerts;
 
-    *pAttrCertClaims = NULL;
+    *pAllAttrCertClaims = NULL;
 
     attrCerts = json_object_get(backedAssertion->Assertion->Payload, "attr-certs");
     if (attrCerts == NULL) {
@@ -167,8 +167,8 @@ _BIDValidateAttributeCertificates(
     err = _BIDJsonBinaryValue(context, hash, cbHash, &certHash);
     BID_BAIL_ON_ERROR(err);
 
-    attrCertClaims = json_object();
-    if (attrCertClaims == NULL) {
+    allAttrCertClaims = json_object();
+    if (allAttrCertClaims == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
@@ -181,16 +181,16 @@ _BIDValidateAttributeCertificates(
                                                certSigningKey, certHash, &attrCertClaims);
         BID_BAIL_ON_ERROR(err);
 
-        json_object_update(attrCertClaims, attrCertClaims);
+        json_object_update(allAttrCertClaims, attrCertClaims);
         json_decref(attrCertClaims);
     }
 
     err = BID_S_OK;
-    *pAttrCertClaims = json_incref(attrCertClaims);
+    *pAllAttrCertClaims = json_incref(allAttrCertClaims);
 
 cleanup:
     json_decref(certHash);
-    json_decref(attrCertClaims);
+    json_decref(allAttrCertClaims);
 
     return err;
 }
