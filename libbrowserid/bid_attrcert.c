@@ -47,8 +47,11 @@
 static const char *
 _BIDReservedClaims[] = {
     "aud",
+    "cb",
+    "dn",
     "exp",
     "iat",
+    "id",
     "iss",
     "jti",
     "nbf",
@@ -62,7 +65,7 @@ _BIDValidateAttributeCertificate(
     BIDContext context,
     json_t *attrCert,
     time_t verificationTime,
-    BIDJWKSet certSigningKey,
+    BIDJWKSet certVerifyKey,
     json_t *certHash,
     json_t *certIssuer,
     json_t **pClaims)
@@ -97,10 +100,10 @@ _BIDValidateAttributeCertificate(
         goto cleanup;
     }
 
-    err = _BIDVerifySignature(context, attrCertJWT, certSigningKey);
+    err = _BIDVerifySignature(context, attrCertJWT, certVerifyKey);
     BID_BAIL_ON_ERROR(err);
 
-    certBinding = json_object_get(attrCertJWT->Header, "cb");
+    certBinding = json_object_get(attrCertJWT->Payload, "cb");
     if (certBinding == NULL) {
         err = BID_S_MISSING_CERT_BINDING;
         goto cleanup;
@@ -147,7 +150,7 @@ _BIDValidateAttributeCertificates(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
     time_t verificationTime,
-    BIDJWKSet certSigningKey,
+    BIDJWKSet certVerifyKey,
     json_t **pAllAttrCertClaims)
 {
     BIDError err;
@@ -204,7 +207,7 @@ _BIDValidateAttributeCertificates(
 
         /* Currently, we just ignore attributes we cannot validate */
         err = _BIDValidateAttributeCertificate(context, attrCert, verificationTime,
-                                               certSigningKey, certHash, iss,
+                                               certVerifyKey, certHash, iss,
                                                &attrCertClaims);
         if (err != BID_S_OK)
             continue;
