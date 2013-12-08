@@ -55,6 +55,7 @@ _BIDValidateSupplementaryClaim(
 {
     BIDError err;
     BIDJWT suppCertJWT = NULL;
+    json_t *metaData = NULL;
     json_t *certBinding = NULL;
     json_t *claims = NULL;
 
@@ -77,7 +78,13 @@ _BIDValidateSupplementaryClaim(
     err = _BIDVerifySignature(context, suppCertJWT, certSigningKey);
     BID_BAIL_ON_ERROR(err);
 
-    certBinding = json_object_get(suppCertJWT->Payload, "cb");
+    metaData = json_object_get(suppCertJWT->Payload, "md");
+    if (metaData == NULL) {
+        err = BID_S_UNKNOWN_ATTRIBUTE;
+        goto cleanup;
+    }
+
+    certBinding = json_object_get(metaData, "cb");
     if (certBinding == NULL) {
         err = BID_S_MISSING_CERT_BINDING;
         goto cleanup;
@@ -90,7 +97,7 @@ _BIDValidateSupplementaryClaim(
 
     claims = json_copy(suppCertJWT->Payload);
 
-    err = _BIDJsonObjectDel(context, claims, "cb", 0);
+    err = _BIDJsonObjectDel(context, claims, "md", 0);
     BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
