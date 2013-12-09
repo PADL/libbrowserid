@@ -154,7 +154,7 @@
 
 - (void)webView:(WebView *)BID_UNUSED webView addMessageToConsole:(NSDictionary *)message withSource:(NSString *)BID_UNUSED source
 {
-    NSLog(@"%@", message[@"message"]);
+    NSLog(@"%@", [message objectForKey:@"message"]);
 }
 
 - (void)webView:(WebView *)sender didFailLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
