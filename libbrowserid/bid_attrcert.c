@@ -98,8 +98,6 @@ _BIDValidateAttributeCertificate(
         goto cleanup;
     }
 
-    _BIDOutputDebugJson(attrCert->Payload);
-
     err = _BIDFilterReservedClaims(context, attrCert->Payload, pClaims);
     BID_BAIL_ON_ERROR(err);
 
