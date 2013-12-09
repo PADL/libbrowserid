@@ -44,22 +44,6 @@
  * as IdP-signed JWTs in the submitted assertion.
  */
 
-static const char *
-_BIDReservedClaims[] = {
-    "aud",
-    "cb",
-    "dn",
-    "exp",
-    "iat",
-    "id",
-    "iss",
-    "jti",
-    "nbf",
-    "principal",
-    "public-key",
-    "sub"
-};
-
 static BIDError
 _BIDValidateAttributeCertificate(
     BIDContext context,
@@ -74,9 +58,7 @@ _BIDValidateAttributeCertificate(
     BIDError err;
     BIDJWT attrCertJWT = NULL;
     json_t *certBinding = NULL;
-    json_t *claims = NULL;
     json_t *iss = NULL;
-    size_t i;
 
     *pId = NULL;
     *pClaims = NULL;
@@ -116,16 +98,10 @@ _BIDValidateAttributeCertificate(
         goto cleanup;
     }
 
-    claims = json_copy(attrCertJWT->Payload);
+    err = _BIDFilterReservedClaims(context, attrCertJWT->Payload, pClaims);
+    BID_BAIL_ON_ERROR(err);
 
-    *pId = json_incref(json_object_get(claims, "id"));
-
-    /* Avoid stomping on any reserved names */
-    for (i = 0; i < sizeof(_BIDReservedClaims) / sizeof(_BIDReservedClaims[0]); i++)
-        _BIDJsonObjectDel(context, claims, _BIDReservedClaims[i], 0);
-
-    err = BID_S_OK;
-    *pClaims = json_incref(claims);
+    *pId = json_incref(json_object_get(attrCertJWT->Payload, "id"));
 
 cleanup:
     switch (err) {
@@ -140,7 +116,6 @@ cleanup:
     }
 
     _BIDReleaseJWT(context, attrCertJWT);
-    json_decref(claims);
 
     return err;
 }

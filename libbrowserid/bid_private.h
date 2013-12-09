@@ -543,6 +543,12 @@ _BIDParseJWT(
     const char *szJwt,
     BIDJWT *pJwt);
 
+BIDError
+_BIDFilterReservedClaims(
+    BIDContext context,
+    json_t *inClaims,
+    json_t **pOutClaims);
+
 /*
  * bid_fcache.c
  */
