@@ -1013,6 +1013,7 @@ _BIDValidateAttributeCertificates(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
     time_t verificationTime,
+    uint32_t ulReqFlags,
     BIDJWKSet certSigningKey,
     json_t **pSuppClaims);
 
@@ -1048,6 +1049,7 @@ struct BIDIdentityDesc {
 #endif
     json_t *Attributes;                         /* attributes from leaf certificate */
     json_t *PrivateAttributes;                  /* key negotiation, audience, etc */
+    json_t *AttributeCertificates;              /* attribute certificates */
     BIDSecretHandle SecretHandle;               /* shared secret */
 };
 

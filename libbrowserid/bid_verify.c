@@ -431,7 +431,7 @@ _BIDVerifyLocal(
         *pulRetFlags |= BID_VERIFY_FLAG_VALIDATED_CERTS;
 
         err = _BIDValidateAttributeCertificates(context, backedAssertion, verificationTime,
-                                                certSigningKey, &attrCertClaims);
+                                                ulReqFlags, certSigningKey, &attrCertClaims);
         BID_BAIL_ON_ERROR(err);
    }
 
@@ -445,7 +445,10 @@ _BIDVerifyLocal(
         BID_BAIL_ON_ERROR(err);
 
         if (attrCertClaims != NULL) {
-            json_object_update(verifiedIdentity->Attributes, attrCertClaims);
+            if (ulReqFlags & BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS)
+                json_object_update(verifiedIdentity->Attributes, attrCertClaims);
+            else
+                verifiedIdentity->AttributeCertificates = json_incref(attrCertClaims);
             *pulRetFlags |= BID_VERIFY_FLAG_ATTRIBUTE_CERTS;
         }
     }

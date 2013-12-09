@@ -352,6 +352,7 @@ BIDFreeAssertion(
 
 /* Input flags (ulReqFlags) */
 #define BID_VERIFY_FLAG_REAUTH                  0x00000001
+#define BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS      0x00000002
 
 /* Output flags (ulRetFlags) */
 #define BID_VERIFY_FLAG_REMOTE                  0x00010000

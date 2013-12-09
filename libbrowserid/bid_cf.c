@@ -366,6 +366,23 @@ BIDIdentityCopyAttributeValue(
     return value;
 }
 
+CFDictionaryRef
+BIDIdentityCopyAttributeCertificateWithId(
+    BIDIdentity identity,
+    CFStringRef key)
+{
+    CFTypeRef value;
+
+    if (identity == NULL || identity->AttributeCertificates == NULL)
+        return NULL;
+
+    value = CFDictionaryGetValue(identity->AttributeCertificates, key);
+    if (value != NULL)
+        CFRetain(value);
+
+    return value;
+}
+
 CFStringRef
 BIDAssertionCreateUI(
     BIDContext context,

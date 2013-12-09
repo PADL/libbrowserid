@@ -68,6 +68,7 @@ _BIDValidateAttributeCertificate(
     BIDJWKSet certVerifyKey,
     json_t *certHash,
     json_t *certIssuer,
+    json_t **pId,
     json_t **pClaims)
 {
     BIDError err;
@@ -77,6 +78,7 @@ _BIDValidateAttributeCertificate(
     json_t *iss = NULL;
     size_t i;
 
+    *pId = NULL;
     *pClaims = NULL;
 
     if (!json_is_string(attrCert)) {
@@ -116,11 +118,9 @@ _BIDValidateAttributeCertificate(
 
     claims = json_copy(attrCertJWT->Payload);
 
-    /*
-     * Because we flatten the attributes in the top-level certificate, avoid
-     * stomping on any well known names. We should probably revisit this, it
-     * is pretty ugly.
-     */
+    *pId = json_incref(json_object_get(claims, "id"));
+
+    /* Avoid stomping on any reserved names */
     for (i = 0; i < sizeof(_BIDReservedClaims) / sizeof(_BIDReservedClaims[0]); i++)
         _BIDJsonObjectDel(context, claims, _BIDReservedClaims[i], 0);
 
@@ -150,6 +150,7 @@ _BIDValidateAttributeCertificates(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
     time_t verificationTime,
+    uint32_t ulReqFlags,
     BIDJWKSet certVerifyKey,
     json_t **pAllAttrCertClaims)
 {
@@ -204,16 +205,22 @@ _BIDValidateAttributeCertificates(
     for (i = 0; i < cAttrCerts; i++) {
         json_t *attrCert = json_array_get(attrCerts, i);
         json_t *attrCertClaims = NULL;
+        json_t *attrCertId = NULL;
 
         /* Currently, we just ignore attributes we cannot validate */
         err = _BIDValidateAttributeCertificate(context, attrCert, verificationTime,
                                                certVerifyKey, certHash, iss,
-                                               &attrCertClaims);
+                                               &attrCertId, &attrCertClaims);
         if (err != BID_S_OK)
             continue;
 
-        json_object_update(allAttrCertClaims, attrCertClaims);
+        if (ulReqFlags & BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS) {
+            json_object_update(allAttrCertClaims, attrCertClaims);
+        } else if (json_is_string(attrCertId)) {
+            json_object_set(allAttrCertClaims, json_string_value(attrCertId), attrCertClaims);
+        }
         json_decref(attrCertClaims);
+        json_decref(attrCertId);
     }
 
     err = BID_S_OK;
