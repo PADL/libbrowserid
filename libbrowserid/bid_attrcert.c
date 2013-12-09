@@ -47,7 +47,7 @@
 static BIDError
 _BIDValidateAttributeCertificate(
     BIDContext context,
-    json_t *attrCert,
+    json_t *encodedAttrCert,
     time_t verificationTime,
     BIDJWKSet certVerifyKey,
     json_t *certHash,
@@ -56,38 +56,38 @@ _BIDValidateAttributeCertificate(
     json_t **pClaims)
 {
     BIDError err;
-    BIDJWT attrCertJWT = NULL;
+    BIDJWT attrCert = NULL;
     json_t *certBinding = NULL;
     json_t *iss = NULL;
 
     *pId = NULL;
     *pClaims = NULL;
 
-    if (!json_is_string(attrCert)) {
+    if (!json_is_string(encodedAttrCert)) {
         err = BID_S_INVALID_ASSERTION;
         goto cleanup;
     }
 
-    err = _BIDParseJWT(context, json_string_value(attrCert), &attrCertJWT);
+    err = _BIDParseJWT(context, json_string_value(encodedAttrCert), &attrCert);
     BID_BAIL_ON_ERROR(err);
 
-    if (json_object_get(attrCertJWT->Payload, "exp") != NULL) {
+    if (json_object_get(attrCert->Payload, "exp") != NULL) {
         /* Inherit certificate expirty time unless explicitly specified */
-        err = _BIDValidateExpiry(context, verificationTime, attrCertJWT->Payload);
+        err = _BIDValidateExpiry(context, verificationTime, attrCert->Payload);
         BID_BAIL_ON_ERROR(err);
     }
 
-    iss = json_object_get(attrCertJWT->Payload, "iss");
+    iss = json_object_get(attrCert->Payload, "iss");
     if (iss != NULL && !json_equal(iss, certIssuer)) {
         /* Attribute certificate must be issued by same party at present */
         err = BID_S_INVALID_ISSUER;
         goto cleanup;
     }
 
-    err = _BIDVerifySignature(context, attrCertJWT, certVerifyKey);
+    err = _BIDVerifySignature(context, attrCert, certVerifyKey);
     BID_BAIL_ON_ERROR(err);
 
-    certBinding = json_object_get(attrCertJWT->Payload, "cb");
+    certBinding = json_object_get(attrCert->Payload, "cb");
     if (certBinding == NULL) {
         err = BID_S_MISSING_CERT_BINDING;
         goto cleanup;
@@ -98,10 +98,10 @@ _BIDValidateAttributeCertificate(
         goto cleanup;
     }
 
-    err = _BIDFilterReservedClaims(context, attrCertJWT->Payload, pClaims);
+    err = _BIDFilterReservedClaims(context, attrCert->Payload, pClaims);
     BID_BAIL_ON_ERROR(err);
 
-    *pId = json_incref(json_object_get(attrCertJWT->Payload, "id"));
+    *pId = json_incref(json_object_get(attrCert->Payload, "id"));
 
 cleanup:
     switch (err) {
@@ -115,7 +115,7 @@ cleanup:
         break;
     }
 
-    _BIDReleaseJWT(context, attrCertJWT);
+    _BIDReleaseJWT(context, attrCert);
 
     return err;
 }
