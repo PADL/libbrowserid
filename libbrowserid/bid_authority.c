@@ -164,7 +164,7 @@ _BIDIssuerIsAuthoritative(
         err = BIDGetContextParam(context, BID_PARAM_MAX_DELEGATIONS, (void **)&maxDelegs);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDAcquireAuthority(context, szHostname, verificationTime, TRUE, &authority);
+        err = _BIDAcquireAuthority(context, szHostname, verificationTime, 1, &authority);
         BID_BAIL_ON_ERROR(err);
 
         for (i = 0, bIsAuthoritative = -1; i < maxDelegs; i++) {
@@ -175,7 +175,7 @@ _BIDIssuerIsAuthoritative(
                 } else {
                     BIDAuthority tmp;
 
-                    err = _BIDAcquireAuthority(context, szAuthority, verificationTime, TRUE, &tmp);
+                    err = _BIDAcquireAuthority(context, szAuthority, verificationTime, 1, &tmp);
                     BID_BAIL_ON_ERROR(err);
 
                     json_decref(authority);
