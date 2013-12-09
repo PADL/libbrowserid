@@ -131,6 +131,7 @@ _BIDAcquireAuthority(
     BIDContext context,
     const char *hostname,
     time_t verificationTime,
+    int bUseCacheIfAvailable,
     BIDAuthority *pAuthority);
 
 BIDError

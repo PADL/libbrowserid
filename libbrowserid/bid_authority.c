@@ -50,6 +50,7 @@ _BIDAcquireAuthority(
     BIDContext context,
     const char *szHostname,
     time_t verificationTime,
+    int bUseCacheIfAvailable,
     BIDAuthority *pAuthority)
 {
     BIDError err = BID_S_CACHE_NOT_FOUND;
@@ -60,7 +61,7 @@ _BIDAcquireAuthority(
 
     BID_CONTEXT_VALIDATE(context);
 
-    if (context->ContextOptions & BID_CONTEXT_AUTHORITY_CACHE) {
+    if ((context->ContextOptions & BID_CONTEXT_AUTHORITY_CACHE) && bUseCacheIfAvailable) {
         err = _BIDGetCacheObject(context, context->AuthorityCache, szHostname, &authority);
         if (err == BID_S_OK) {
             err = _BIDValidateExpiry(context, verificationTime, authority);
@@ -163,7 +164,7 @@ _BIDIssuerIsAuthoritative(
         err = BIDGetContextParam(context, BID_PARAM_MAX_DELEGATIONS, (void **)&maxDelegs);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDAcquireAuthority(context, szHostname, verificationTime, &authority);
+        err = _BIDAcquireAuthority(context, szHostname, verificationTime, TRUE, &authority);
         BID_BAIL_ON_ERROR(err);
 
         for (i = 0, bIsAuthoritative = -1; i < maxDelegs; i++) {
@@ -174,7 +175,7 @@ _BIDIssuerIsAuthoritative(
                 } else {
                     BIDAuthority tmp;
 
-                    err = _BIDAcquireAuthority(context, szAuthority, verificationTime, &tmp);
+                    err = _BIDAcquireAuthority(context, szAuthority, verificationTime, TRUE, &tmp);
                     BID_BAIL_ON_ERROR(err);
 
                     json_decref(authority);
