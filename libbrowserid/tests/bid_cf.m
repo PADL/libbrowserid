@@ -124,7 +124,7 @@ int main(int argc, const char *argv[])
             NSLog(@"Verified assertion for identity %@ / flags %08x!", identity, flags);
 
             dict = BIDIdentityCopyAttributeDictionary(identity);
-            NSLog(@"Identity %@ dictionary is %@", identity, dict);
+            _BIDOutputDebugJson(dict);
             SAFE_CFRELEASE(dict);
         }
         dispatch_semaphore_signal(sema);

@@ -41,8 +41,6 @@ _BIDJsonIntegerValue
 _BIDJsonObjectGet
 _BIDJsonStringValue
 _BIDOutputDebugJson
-_BIDOutputDebugJson
-_BIDOutputDebugJson
 _BIDPerformCacheObjects
 _BIDPurgeCache
 _BIDPurgeReplayCache
