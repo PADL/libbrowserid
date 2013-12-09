@@ -14,7 +14,6 @@
 		D394957518477E5B00C7D85B /* bid_cfhttp.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954E18477E5B00C7D85B /* bid_cfhttp.c */; };
 		D394957818477E5B00C7D85B /* bid_context.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955118477E5B00C7D85B /* bid_context.c */; };
 		D394957918477E5B00C7D85B /* bid_crypto.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955218477E5B00C7D85B /* bid_crypto.c */; };
-		D394957B18477E5B00C7D85B /* bid_dhparams.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955418477E5B00C7D85B /* bid_dhparams.c */; };
 		D394957C18477E5B00C7D85B /* bid_error.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955518477E5B00C7D85B /* bid_error.c */; };
 		D394957D18477E5B00C7D85B /* bid_fcache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955618477E5B00C7D85B /* bid_fcache.c */; };
 		D394957E18477E5B00C7D85B /* bid_identity.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955718477E5B00C7D85B /* bid_identity.c */; };
@@ -60,7 +59,6 @@
 		D394954E18477E5B00C7D85B /* bid_cfhttp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cfhttp.c; path = libbrowserid/bid_cfhttp.c; sourceTree = SOURCE_ROOT; };
 		D394955118477E5B00C7D85B /* bid_context.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_context.c; path = libbrowserid/bid_context.c; sourceTree = SOURCE_ROOT; };
 		D394955218477E5B00C7D85B /* bid_crypto.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_crypto.c; path = libbrowserid/bid_crypto.c; sourceTree = SOURCE_ROOT; };
-		D394955418477E5B00C7D85B /* bid_dhparams.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_dhparams.c; path = libbrowserid/bid_dhparams.c; sourceTree = SOURCE_ROOT; };
 		D394955518477E5B00C7D85B /* bid_error.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_error.c; path = libbrowserid/bid_error.c; sourceTree = SOURCE_ROOT; };
 		D394955618477E5B00C7D85B /* bid_fcache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_fcache.c; path = libbrowserid/bid_fcache.c; sourceTree = SOURCE_ROOT; };
 		D394955718477E5B00C7D85B /* bid_identity.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_identity.c; path = libbrowserid/bid_identity.c; sourceTree = SOURCE_ROOT; };
@@ -159,7 +157,6 @@
 				D394954E18477E5B00C7D85B /* bid_cfhttp.c */,
 				D394955118477E5B00C7D85B /* bid_context.c */,
 				D394955218477E5B00C7D85B /* bid_crypto.c */,
-				D394955418477E5B00C7D85B /* bid_dhparams.c */,
 				D394955518477E5B00C7D85B /* bid_error.c */,
 				D394955618477E5B00C7D85B /* bid_fcache.c */,
 				D394955718477E5B00C7D85B /* bid_identity.c */,
@@ -333,7 +330,6 @@
 			files = (
 				D394957518477E5B00C7D85B /* bid_cfhttp.c in Sources */,
 				D394957C18477E5B00C7D85B /* bid_error.c in Sources */,
-				D394957B18477E5B00C7D85B /* bid_dhparams.c in Sources */,
 				D394958518477E5B00C7D85B /* bid_rcache.c in Sources */,
 				D394958018477E5B00C7D85B /* bid_mcache.c in Sources */,
 				D394957818477E5B00C7D85B /* bid_context.c in Sources */,
