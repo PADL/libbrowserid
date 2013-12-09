@@ -550,11 +550,6 @@ _RSAVerifySignature(
                                          signature,
                                          rsa,
                                          RSA_PKCS1_PADDING);
-    if (signatureLength < 0) {
-        BID_CRYPTO_PRINT_ERRORS();
-        err = BID_S_CRYPTO_ERROR;
-        goto cleanup;
-    }
 
     *valid = (signatureLength == digestLength &&
               memcmp(signature, digest, signatureLength) == 0);
