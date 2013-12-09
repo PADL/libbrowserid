@@ -112,7 +112,7 @@ int main(int argc, const char *argv[])
                                   audience,
                                   cb,
                                   CFAbsoluteTimeGetCurrent(),
-                                  BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS,
+                                  0, // flags
                                   q,
                                   ^(BIDIdentity identity, uint32_t flags, CFErrorRef verifyErr) {
         if (identity == NULL) {

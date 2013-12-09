@@ -127,7 +127,6 @@ _BIDFinalizeIdentity(BIDIdentity identity)
 {
     json_decref(identity->Attributes);
     json_decref(identity->PrivateAttributes);
-    json_decref(identity->AttributeCertificates);
     _BIDDestroySecret(BID_C_NO_CONTEXT /* XXX */, identity->SecretHandle);
 }
 

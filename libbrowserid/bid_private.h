@@ -1049,7 +1049,6 @@ struct BIDIdentityDesc {
 #endif
     json_t *Attributes;                         /* attributes from leaf certificate */
     json_t *PrivateAttributes;                  /* key negotiation, audience, etc */
-    json_t *AttributeCertificates;              /* attribute certificates */
     BIDSecretHandle SecretHandle;               /* shared secret */
 };
 

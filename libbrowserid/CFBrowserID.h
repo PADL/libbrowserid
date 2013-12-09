@@ -136,11 +136,6 @@ CFDictionaryRef
 BIDIdentityCopyAttributeDictionary(
     BIDIdentity identity) CF_RETURNS_RETAINED;
 
-CFDictionaryRef
-BIDIdentityCopyAttributeCertificateWithId(
-    BIDIdentity identity,
-    CFStringRef key) CF_RETURNS_RETAINED;
-
 BIDReplayCache
 BIDReplayCacheCreate(
     BIDContext context,
