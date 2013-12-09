@@ -297,7 +297,7 @@ acquire_authority:
 
         err = _BIDVerifySignature(context, cert, pKey);
         if (err == BID_S_INVALID_SIGNATURE && bUseCache) {
-            bUseCache = FALSE;
+            bUseCache = 0;
             goto acquire_authority;
         }
         BID_BAIL_ON_ERROR(err);

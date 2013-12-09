@@ -190,7 +190,7 @@ BIDGetIdentityAudience(
     BIDIdentity identity,
     const char **pValue)
 {
-    return _BIDGetIdentityAttribute(context, identity, "aud", TRUE, pValue);
+    return _BIDGetIdentityAttribute(context, identity, "aud", 1, pValue);
 }
 
 BIDError
@@ -218,7 +218,7 @@ BIDGetIdentityAttribute(
     const char *attribute,
     const char **pValue)
 {
-    return _BIDGetIdentityAttribute(context, identity, attribute, FALSE, pValue);
+    return _BIDGetIdentityAttribute(context, identity, attribute, 0, pValue);
 }
 
 BIDError
