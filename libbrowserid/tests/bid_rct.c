@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
     err = _BIDGetCacheObject(context, cache, "1", &z);
     if (err == BID_S_OK) {
-        json_dumpf(z, stdout, JSON_INDENT(8));
+        _BIDOutputDebugJson(z);
         printf("\n");
     }
     BID_BAIL_ON_ERROR(err);
