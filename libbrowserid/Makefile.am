@@ -17,6 +17,7 @@ libbrowserid_la_DEPENDENCIES = $(libbrowserid_la_EXPORTS)
 libbrowserid_la_CPPFLAGS = -DBUILD_GSSBID_LIB -I$(top_srcdir) -I$(top_srcdir)/libbrowserid
 libbrowserid_la_SOURCES =   \
     bid_authority.c         \
+    bid_attrcert.c          \
     bid_base64.c            \
     bid_cache.c             \
     bid_crypto.c            \

@@ -85,8 +85,6 @@ _BIDDismissIdentityDialogAndStopModal(void *obj);
     jsContext = [self.webView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
     jsContext[@"IdentityController"] = self;
 
-    if (self.claims.count)
-        [self interposeAssertionSign:sender];
     [self acquireAssertion:sender];
 }
 

@@ -132,6 +132,8 @@ typedef enum {
     BID_S_UNKNOWN_EC_CURVE,
     BID_S_INVALID_EC_CURVE,
     BID_S_MISSING_NONCE,
+    BID_S_MISSING_CERT_BINDING,
+    BID_S_CERT_BINDING_MISMATCH,
     BID_S_UNKNOWN_ERROR_CODE,
 } BIDError;
 
@@ -350,6 +352,7 @@ BIDFreeAssertion(
 
 /* Input flags (ulReqFlags) */
 #define BID_VERIFY_FLAG_REAUTH                  0x00000001
+#define BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS      0x00000002
 
 /* Output flags (ulRetFlags) */
 #define BID_VERIFY_FLAG_REMOTE                  0x00010000
@@ -360,6 +363,7 @@ BIDFreeAssertion(
 #define BID_VERIFY_FLAG_DCE                     0x00200000 /* requested DCE option */
 #define BID_VERIFY_FLAG_IDENTIFY                0x00400000 /* requested identify option */
 #define BID_VERIFY_FLAG_MUTUAL_AUTH             0x00800000 /* requested MA option */
+#define BID_VERIFY_FLAG_ATTRIBUTE_CERTS         0x01000000 /* included attribute certs */
 
 BIDError
 BIDVerifyAssertion(

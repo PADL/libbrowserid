@@ -98,7 +98,7 @@ int main(int argc, const char *argv[])
     cb = CFDataCreate(kCFAllocatorDefault, (UInt8 *)"foo", 3);
 
     assertion = BIDAssertionCreateUIWithClaims(context, audience, cb, name,
-                                               BID_ACQUIRE_FLAG_FORCE_AUTH, (__bridge CFDictionaryRef)moreClaims,
+                                               0/*BID_ACQUIRE_FLAG_FORCE_AUTH*/, (__bridge CFDictionaryRef)moreClaims,
                                                NULL, &flags, &err);
     if (assertion == NULL) {
         NSLog(@"Failed to acquire assertion: %@", err);

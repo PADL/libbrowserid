@@ -543,6 +543,12 @@ _BIDParseJWT(
     const char *szJwt,
     BIDJWT *pJwt);
 
+BIDError
+_BIDFilterReservedClaims(
+    BIDContext context,
+    json_t *inClaims,
+    json_t **pOutClaims);
+
 /*
  * bid_fcache.c
  */
@@ -983,6 +989,18 @@ _BIDPurgeReplayCache(
     time_t currentTime);
 
 /*
+ * bid_supp.c
+ */
+BIDError
+_BIDValidateAttributeCertificates(
+    BIDContext context,
+    BIDBackedAssertion backedAssertion,
+    time_t verificationTime,
+    uint32_t ulReqFlags,
+    BIDJWKSet certSigningKey,
+    json_t **pSuppClaims);
+
+/*
  * bid_user.c
  */
 
@@ -1048,7 +1066,10 @@ _BIDValidateExpiry(
 /*
  * bid_webkit.c
  */
+#ifndef BID_SIGN_IN_URL
+/* Allow this to be overriden for testing */
 #define BID_SIGN_IN_URL              "https://login.persona.org/sign_in#NATIVE"
+#endif
 
 BIDError
 _BIDBrowserGetAssertion(

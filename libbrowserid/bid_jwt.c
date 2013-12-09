@@ -429,3 +429,50 @@ _BIDReleaseJWT(
     return _BIDReleaseJWTInternal(context, jwt, 1);
 }
 
+static const char *
+_BIDReservedClaims[] = {
+    "aud",
+    "cb",
+    "cdi",
+    "dn",
+    "exp",
+    "iat",
+    "id",
+    "iss",
+    "jti",
+    "nbf",
+    "principal",
+    "public-key",
+    "sub"
+};
+
+BIDError
+_BIDFilterReservedClaims(
+    BIDContext context,
+    json_t *inClaims,
+    json_t **pOutClaims)
+{
+    BIDError err;
+    size_t i;
+    json_t *outClaims = json_copy(inClaims);
+
+    *pOutClaims = NULL;
+
+    if (outClaims == NULL)
+        return BID_S_NO_MEMORY;
+
+    /* Avoid stomping on any reserved names */
+    for (i = 0; i < sizeof(_BIDReservedClaims) / sizeof(_BIDReservedClaims[0]); i++) {
+        err = _BIDJsonObjectDel(context, outClaims, _BIDReservedClaims[i], 0);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    *pOutClaims = outClaims;
+    err = BID_S_OK;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(outClaims);
+
+    return err;
+}

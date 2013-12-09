@@ -120,6 +120,8 @@ const char *_BIDErrorTable[] = {
     "Unknown Elliptic Curve",
     "Invalid Elliptic Curve for context",
     "Missing nonce",
+    "Missing primary certificate binding",
+    "Primary certificate binding mismatch",
     "Unknown error code"
 };
 

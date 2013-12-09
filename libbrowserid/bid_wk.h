@@ -121,7 +121,6 @@ JSExportAs(identityCallback,
 
 /* private interface */
 - (void)abortWithError:(NSError *)error;
-- (void)interposeAssertionSign:(id)sender;
 - (void)acquireAssertion:(id)sender;
 @end
 

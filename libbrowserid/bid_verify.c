@@ -261,7 +261,8 @@ static BIDError
 _BIDValidateCertChain(
     BIDContext context,
     BIDBackedAssertion backedAssertion,
-    time_t verificationTime)
+    time_t verificationTime,
+    BIDJWKSet *pCertSigningKey)
 {
     BIDError err;
     BIDAuthority authority = NULL;
@@ -269,6 +270,8 @@ _BIDValidateCertChain(
     json_t *rootCert = _BIDRootCert(context, backedAssertion);
     const char *szCertIssuer;
     size_t i;
+
+    *pCertSigningKey = NULL;
 
     if (backedAssertion->cCertificates == 0)
         return BID_S_MISSING_CERT;
@@ -289,11 +292,15 @@ _BIDValidateCertChain(
 
     for (i = 0; i < backedAssertion->cCertificates; i++) {
         BIDJWT cert = backedAssertion->rCertificates[i];
+
         err = _BIDValidateExpiry(context, verificationTime, cert->Payload);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDVerifySignature(context, cert, pKey);
         BID_BAIL_ON_ERROR(err);
+
+        if (i == backedAssertion->cCertificates - 1)
+            *pCertSigningKey = json_incref(pKey);
 
         json_decref(pKey);
         pKey = json_incref(cert->Payload);
@@ -355,6 +362,8 @@ _BIDVerifyLocal(
     BIDError err;
     BIDIdentity verifiedIdentity = BID_C_NO_IDENTITY;
     json_t *x509Certificate = NULL;
+    BIDJWKSet certSigningKey = NULL;
+    json_t *attrCertClaims = NULL;
 
     if (pVerifiedIdentity != NULL)
         *pVerifiedIdentity = BID_C_NO_IDENTITY;
@@ -415,12 +424,16 @@ _BIDVerifyLocal(
         err = _BIDValidateCertIssuer(context, backedAssertion, verificationTime, ulReqFlags);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDValidateCertChain(context, backedAssertion, verificationTime);
+        err = _BIDValidateCertChain(context, backedAssertion, verificationTime, &certSigningKey);
         BID_BAIL_ON_ERROR(err);
 
         verifyCred = backedAssertion->rCertificates[backedAssertion->cCertificates - 1]->Payload;
         *pulRetFlags |= BID_VERIFY_FLAG_VALIDATED_CERTS;
-    }
+
+        err = _BIDValidateAttributeCertificates(context, backedAssertion, verificationTime,
+                                                ulReqFlags, certSigningKey, &attrCertClaims);
+        BID_BAIL_ON_ERROR(err);
+   }
 
     BID_ASSERT(verifyCred != NULL);
 
@@ -430,6 +443,14 @@ _BIDVerifyLocal(
     if (verifiedIdentity == BID_C_NO_IDENTITY) {
         err = _BIDPopulateIdentity(context, backedAssertion, *pulRetFlags, &verifiedIdentity);
         BID_BAIL_ON_ERROR(err);
+
+        if (attrCertClaims != NULL) {
+            if (ulReqFlags & BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS)
+                json_object_update(verifiedIdentity->Attributes, attrCertClaims);
+            else
+                json_object_set(verifiedIdentity->Attributes, "attr-certs", attrCertClaims);
+            *pulRetFlags |= BID_VERIFY_FLAG_ATTRIBUTE_CERTS;
+        }
     }
 
     if (*pulRetFlags & BID_VERIFY_FLAG_VALIDATED_CERTS) {
@@ -452,6 +473,8 @@ cleanup:
     if (err != BID_S_OK || pVerifiedIdentity == NULL)
         BIDReleaseIdentity(context, verifiedIdentity);
     json_decref(verifyCred);
+    json_decref(certSigningKey);
+    json_decref(attrCertClaims);
 
     return err;
 }
