@@ -269,7 +269,6 @@ _BIDValidateCertChain(
     json_t *rootCert = _BIDRootCert(context, backedAssertion);
     const char *szCertIssuer;
     size_t i;
-    int bUseCache = !!(context->ContextOptions & BID_CONTEXT_AUTHORITY_CACHE);
 
     if (backedAssertion->cCertificates == 0)
         return BID_S_MISSING_CERT;
@@ -280,9 +279,7 @@ _BIDValidateCertChain(
         goto cleanup;
     }
 
-acquire_authority:
-    err = _BIDAcquireAuthority(context, szCertIssuer, verificationTime,
-                               bUseCache, &authority);
+    err = _BIDAcquireAuthority(context, szCertIssuer, verificationTime, &authority);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDGetAuthorityPublicKey(context, authority, &rootKey);
@@ -296,10 +293,6 @@ acquire_authority:
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDVerifySignature(context, cert, pKey);
-        if (err == BID_S_INVALID_SIGNATURE && bUseCache) {
-            bUseCache = FALSE;
-            goto acquire_authority;
-        }
         BID_BAIL_ON_ERROR(err);
 
         json_decref(pKey);
