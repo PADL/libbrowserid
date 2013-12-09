@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D330AD3C1855700900911227 /* bid_attrcert.c in Sources */ = {isa = PBXBuildFile; fileRef = D330AD3B1855700900911227 /* bid_attrcert.c */; };
 		D394957118477E5B00C7D85B /* bid_authority.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954A18477E5B00C7D85B /* bid_authority.c */; };
 		D394957218477E5B00C7D85B /* bid_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954B18477E5B00C7D85B /* bid_base64.c */; };
 		D394957318477E5B00C7D85B /* bid_cache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954C18477E5B00C7D85B /* bid_cache.c */; };
@@ -14,7 +15,6 @@
 		D394957518477E5B00C7D85B /* bid_cfhttp.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954E18477E5B00C7D85B /* bid_cfhttp.c */; };
 		D394957818477E5B00C7D85B /* bid_context.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955118477E5B00C7D85B /* bid_context.c */; };
 		D394957918477E5B00C7D85B /* bid_crypto.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955218477E5B00C7D85B /* bid_crypto.c */; };
-		D394957B18477E5B00C7D85B /* bid_dhparams.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955418477E5B00C7D85B /* bid_dhparams.c */; };
 		D394957C18477E5B00C7D85B /* bid_error.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955518477E5B00C7D85B /* bid_error.c */; };
 		D394957D18477E5B00C7D85B /* bid_fcache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955618477E5B00C7D85B /* bid_fcache.c */; };
 		D394957E18477E5B00C7D85B /* bid_identity.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955718477E5B00C7D85B /* bid_identity.c */; };
@@ -43,12 +43,12 @@
 		D394959E184782A700C7D85B /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959D184782A700C7D85B /* WebKit.framework */; };
 		D39495A0184782AC00C7D85B /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959F184782AC00C7D85B /* CoreFoundation.framework */; };
 		D39495A2184782B600C7D85B /* libcrypto.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D39495A1184782B600C7D85B /* libcrypto.dylib */; };
-		D3CF4BC718515B4500F22C87 /* bid_supp.c in Sources */ = {isa = PBXBuildFile; fileRef = D3CF4BC618515B4500F22C87 /* bid_supp.c */; };
 		D3D39A70184D3E3100331007 /* cfjson.h in Headers */ = {isa = PBXBuildFile; fileRef = D3D39A6E184D3E3100331007 /* cfjson.h */; };
 		D3D39A71184D3E3100331007 /* cfjson.m in Sources */ = {isa = PBXBuildFile; fileRef = D3D39A6F184D3E3100331007 /* cfjson.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D330AD3B1855700900911227 /* bid_attrcert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_attrcert.c; path = libbrowserid/bid_attrcert.c; sourceTree = SOURCE_ROOT; };
 		D345698118477D4F009B8DC9 /* BrowserID.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = BrowserID.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D345698418477D4F009B8DC9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		D345698718477D4F009B8DC9 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -61,7 +61,6 @@
 		D394954E18477E5B00C7D85B /* bid_cfhttp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cfhttp.c; path = libbrowserid/bid_cfhttp.c; sourceTree = SOURCE_ROOT; };
 		D394955118477E5B00C7D85B /* bid_context.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_context.c; path = libbrowserid/bid_context.c; sourceTree = SOURCE_ROOT; };
 		D394955218477E5B00C7D85B /* bid_crypto.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_crypto.c; path = libbrowserid/bid_crypto.c; sourceTree = SOURCE_ROOT; };
-		D394955418477E5B00C7D85B /* bid_dhparams.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_dhparams.c; path = libbrowserid/bid_dhparams.c; sourceTree = SOURCE_ROOT; };
 		D394955518477E5B00C7D85B /* bid_error.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_error.c; path = libbrowserid/bid_error.c; sourceTree = SOURCE_ROOT; };
 		D394955618477E5B00C7D85B /* bid_fcache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_fcache.c; path = libbrowserid/bid_fcache.c; sourceTree = SOURCE_ROOT; };
 		D394955718477E5B00C7D85B /* bid_identity.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_identity.c; path = libbrowserid/bid_identity.c; sourceTree = SOURCE_ROOT; };
@@ -90,7 +89,6 @@
 		D394959D184782A700C7D85B /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		D394959F184782AC00C7D85B /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		D39495A1184782B600C7D85B /* libcrypto.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.dylib; path = usr/lib/libcrypto.dylib; sourceTree = SDKROOT; };
-		D3CF4BC618515B4500F22C87 /* bid_supp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_supp.c; path = libbrowserid/bid_supp.c; sourceTree = SOURCE_ROOT; };
 		D3D39A6E184D3E3100331007 /* cfjson.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cfjson.h; path = libcfjson/cfjson.h; sourceTree = SOURCE_ROOT; };
 		D3D39A6F184D3E3100331007 /* cfjson.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = cfjson.m; path = libcfjson/cfjson.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -153,8 +151,8 @@
 			isa = PBXGroup;
 			children = (
 				D3D39A6E184D3E3100331007 /* cfjson.h */,
-				D3CF4BC618515B4500F22C87 /* bid_supp.c */,
 				D3D39A6F184D3E3100331007 /* cfjson.m */,
+				D330AD3B1855700900911227 /* bid_attrcert.c */,
 				D394954A18477E5B00C7D85B /* bid_authority.c */,
 				D394954B18477E5B00C7D85B /* bid_base64.c */,
 				D394954C18477E5B00C7D85B /* bid_cache.c */,
@@ -162,7 +160,6 @@
 				D394954E18477E5B00C7D85B /* bid_cfhttp.c */,
 				D394955118477E5B00C7D85B /* bid_context.c */,
 				D394955218477E5B00C7D85B /* bid_crypto.c */,
-				D394955418477E5B00C7D85B /* bid_dhparams.c */,
 				D394955518477E5B00C7D85B /* bid_error.c */,
 				D394955618477E5B00C7D85B /* bid_fcache.c */,
 				D394955718477E5B00C7D85B /* bid_identity.c */,
@@ -336,7 +333,6 @@
 			files = (
 				D394957518477E5B00C7D85B /* bid_cfhttp.c in Sources */,
 				D394957C18477E5B00C7D85B /* bid_error.c in Sources */,
-				D394957B18477E5B00C7D85B /* bid_dhparams.c in Sources */,
 				D394958518477E5B00C7D85B /* bid_rcache.c in Sources */,
 				D394958018477E5B00C7D85B /* bid_mcache.c in Sources */,
 				D394957818477E5B00C7D85B /* bid_context.c in Sources */,
@@ -354,7 +350,6 @@
 				D394959518477E5B00C7D85B /* bid_xrt.c in Sources */,
 				D394957918477E5B00C7D85B /* bid_crypto.c in Sources */,
 				D394957218477E5B00C7D85B /* bid_base64.c in Sources */,
-				D3CF4BC718515B4500F22C87 /* bid_supp.c in Sources */,
 				D3D39A71184D3E3100331007 /* cfjson.m in Sources */,
 				D394958218477E5B00C7D85B /* bid_openssl.c in Sources */,
 				D394958C18477E5B00C7D85B /* bid_util.c in Sources */,
@@ -362,6 +357,7 @@
 				D394957118477E5B00C7D85B /* bid_authority.c in Sources */,
 				D394958B18477E5B00C7D85B /* bid_user.c in Sources */,
 				D394957318477E5B00C7D85B /* bid_cache.c in Sources */,
+				D330AD3C1855700900911227 /* bid_attrcert.c in Sources */,
 				D394959418477E5B00C7D85B /* bid_x509.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
