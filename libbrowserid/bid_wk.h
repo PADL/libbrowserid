@@ -65,6 +65,7 @@ JSExportAs(identityCallback,
 - (NSDictionary *)claims;
 - (NSString *)emailHint;
 - (NSString *)audience;
+- (BOOL)forceAuthentication;
 - (void)setAssertion:(NSString *)assertion;
 @end
 
