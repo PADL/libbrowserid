@@ -64,7 +64,7 @@ int main(int argc, const char *argv[])
     CFDataRef cb = NULL;
     uint32_t flags = 0;
     uint32_t options = BID_CONTEXT_RP | BID_CONTEXT_USER_AGENT |
-                       BID_CONTEXT_GSS | BID_CONTEXT_REPLAY_CACHE;
+                       BID_CONTEXT_GSS | BID_CONTEXT_REPLAY_CACHE | BID_CONTEXT_AUTHORITY_CACHE;
     dispatch_queue_t q = dispatch_queue_create("com.padl.BrowserID.tests.bid_cf", NULL);
     dispatch_semaphore_t sema = dispatch_semaphore_create(0);
     NSDictionary *moreClaims = @{ @"foo" : @"bar", @"baz" : @"123" };
@@ -93,7 +93,7 @@ int main(int argc, const char *argv[])
     }
 
     if (audience == NULL)
-        audience = CFSTR("host/www.persona.org");
+        audience = CFSTR("https://www.padl.com");
 
     cb = CFDataCreate(kCFAllocatorDefault, (UInt8 *)"foo", 3);
 
