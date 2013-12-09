@@ -433,6 +433,7 @@ static const char *
 _BIDReservedClaims[] = {
     "aud",
     "cb",
+    "cdi",
     "dn",
     "exp",
     "iat",
