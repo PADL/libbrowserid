@@ -92,11 +92,6 @@ int main(int argc, const char *argv[])
         argc--;
         argv++;
     }
-    if (argc > 1 && !strcmp(argv[1], "-dh")) {
-        options |= BID_CONTEXT_DH_KEYEX;
-        argc--;
-        argv++;
-    }
     if (argc > 1 && !strcmp(argv[1], "-ecdh")) {
         options |= BID_CONTEXT_ECDH_KEYEX;
         argc--;
@@ -141,8 +136,12 @@ int main(int argc, const char *argv[])
     err = BIDGetIdentityJsonObject(context, identity, NULL, &j);
     BID_BAIL_ON_ERROR(err);
 
+#ifdef __APPLE__
+    printf("%s\n", [[(__bridge NSObject *)j description] UTF8String]);
+#else
     json_dumpf(j, stdout, 0);
     printf("\n");
+#endif
 
 cleanup:
     if (context != BID_C_NO_CONTEXT) {

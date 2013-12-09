@@ -193,12 +193,12 @@ typedef struct BIDContextDesc *BIDContext;
  * credentials.
  */
 #define BID_CONTEXT_BROWSER_SILENT          0x00000080
-#endif
 
 /*
  * DH key exchange
  */
 #define BID_CONTEXT_DH_KEYEX                0x00000100
+#endif
 
 /*
  * Fast reauthentication support (requires replay cache on RP).

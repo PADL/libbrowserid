@@ -49,7 +49,7 @@ _BIDGenerateECDHParams(
     char *szCurve;
 
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
-    BID_ASSERT(context->DHKeySize != 0);
+    BID_ASSERT(context->ECDHCurve != 0);
 
     ecDhParams = json_object();
     if (ecDhParams == NULL) {
@@ -58,6 +58,10 @@ _BIDGenerateECDHParams(
     }
 
     err = BIDGetContextParam(context, BID_PARAM_ECDH_CURVE, (void **)&szCurve);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, ecDhParams, "kty", json_string("EC"),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, ecDhParams, "crv", json_string(szCurve),
@@ -82,31 +86,29 @@ _BIDIdentitySecretAgreement(
     BIDError err;
     json_t *dh;
     json_t *params;
+    ssize_t cbKey;
 
     if (identity->SecretHandle == NULL) {
         err = _BIDGetKeyAgreementObject(context, identity->PrivateAttributes, &dh);
         if (err != BID_S_OK)
             return err;
 
+        if ((context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) == 0)
+            return BID_S_NO_KEY;
+
         params = json_object_get(dh, "params");
 
-        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
-            ssize_t cbKey;
+        err = _BIDGetECDHCurve(context, params, &cbKey);
+        if (err != BID_S_OK)
+            return err;
 
-            err = _BIDGetECDHCurve(context, params, &cbKey);
-            if (err != BID_S_OK)
-                return err;
+        if (cbKey < context->ECDHCurve)
+            return BID_S_INVALID_EC_CURVE;
 
-            if (cbKey < context->DHKeySize)
-                return BID_S_INVALID_EC_CURVE;
-
-            err = _BIDECDHSecretAgreement(context, dh, params, &identity->SecretHandle);
-        } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
-            err = _BIDDHSecretAgreement(context, dh, params, &identity->SecretHandle);
-        else
-            err = BID_S_NO_KEY;
-    } else
+        err = _BIDECDHSecretAgreement(context, dh, params, &identity->SecretHandle);
+    } else {
         err = BID_S_OK;
+    }
 
     return err;
 }
@@ -292,7 +294,7 @@ _BIDVerifierKeyAgreement(
     json_t *params;
     json_t *key = NULL;
 
-    BID_ASSERT(context->ContextOptions & BID_CONTEXT_KEYEX_MASK);
+    BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
     BID_ASSERT(identity != BID_C_NO_IDENTITY);
 
     err = _BIDGetKeyAgreementObject(context, identity->PrivateAttributes, &dh);
@@ -300,10 +302,7 @@ _BIDVerifierKeyAgreement(
 
     params = json_object_get(dh, "params");
 
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
-        err = _BIDGenerateECDHKey(context, params, &key);
-    else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
-        err = _BIDGenerateDHKey(context, params, &key);
+    err = _BIDGenerateECDHKey(context, params, &key);
     BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, dh, "x", json_object_get(key, "x"), BID_JSON_FLAG_REQUIRED);
@@ -312,10 +311,8 @@ _BIDVerifierKeyAgreement(
     err = _BIDJsonObjectSet(context, dh, "y", json_object_get(key, "y"), BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
-        err = _BIDJsonObjectSet(context, dh, "d", json_object_get(key, "d"), BID_JSON_FLAG_REQUIRED);
-        BID_BAIL_ON_ERROR(err);
-    }
+    err = _BIDJsonObjectSet(context, dh, "d", json_object_get(key, "d"), BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
 cleanup:
     json_decref(key);
@@ -341,12 +338,10 @@ _BIDGetKeyAgreementPublicValue(
     err = _BIDGetKeyAgreementObject(context, identity->PrivateAttributes, &dh);
     BID_BAIL_ON_ERROR(err);
 
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
-        x = json_object_get(dh, "x");
-        if (x == NULL) {
-            err = BID_S_NO_KEY;
-            goto cleanup;
-        }
+    x = json_object_get(dh, "x");
+    if (x == NULL) {
+        err = BID_S_NO_KEY;
+        goto cleanup;
     }
 
     y = json_object_get(dh, "y");
@@ -361,10 +356,8 @@ _BIDGetKeyAgreementPublicValue(
         goto cleanup;
     }
 
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
-        err = _BIDJsonObjectSet(context, *pPublicValue, "x", x, BID_JSON_FLAG_REQUIRED);
-        BID_BAIL_ON_ERROR(err);
-    }
+    err = _BIDJsonObjectSet(context, *pPublicValue, "x", x, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, *pPublicValue, "y", y, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
@@ -401,10 +394,8 @@ _BIDSetKeyAgreementPublicValue(
         goto cleanup;
     }
 
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
-        err = _BIDJsonObjectSet(context, params, "x", json_object_get(peerDh, "x"), BID_JSON_FLAG_REQUIRED);
-        BID_BAIL_ON_ERROR(err);
-    }
+    err = _BIDJsonObjectSet(context, params, "x", json_object_get(peerDh, "x"), BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, params, "y", json_object_get(peerDh, "y"), BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
@@ -418,34 +409,18 @@ _BIDGetKeyAgreementParams(
     BIDContext context,
     json_t **pDhParams)
 {
-    BIDError err;
-
     *pDhParams = NULL;
 
-    BID_ASSERT(context->ContextOptions & BID_CONTEXT_KEYEX_MASK);
+    BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
 
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
-        err = _BIDGenerateECDHParams(context, pDhParams);
-    } else {
-        /*
-        * For common key sizes, use RFC 5114 fixed parameters.
-        */
-        if ((context->ContextOptions & BID_CONTEXT_DH_ALWAYS_GENERATE) == 0) {
-            err = _BIDGetFixedDHParams(context, pDhParams);
-            if (err == BID_S_OK || err != BID_S_DH_PARAM_GENERATION_FAILURE)
-                return err;
-        }
-        err = _BIDGenerateDHParams(context, pDhParams);
-    }
-
-    return err;
+    return _BIDGenerateECDHParams(context, pDhParams);
 }
 
 BIDError
 _BIDSaveKeyAgreementStrength(
     BIDContext context,
     BIDIdentity identity,
-    int publicKey,
+    int publicKey BID_UNUSED,
     json_t *cred)
 {
     BIDError err;
@@ -456,8 +431,7 @@ _BIDSaveKeyAgreementStrength(
     /*
      * If the key strength has already been saved, don't stomp on it.
      */
-    if (json_object_get(cred, "crv") != NULL ||
-        json_object_get(cred, "dh-key-size") != NULL) {
+    if (json_object_get(cred, "crv") != NULL) {
         err = BID_S_OK;
         goto cleanup;
     }
@@ -465,28 +439,15 @@ _BIDSaveKeyAgreementStrength(
     err = _BIDGetKeyAgreementObject(context, identity->PrivateAttributes, &dh);
     if (err == BID_S_NO_KEY) {
         /*
-         * If it's a re-authentication context, then propagate EC curve or DH key size
+         * If it's a re-authentication context, then propagate EC curve
          */
         err = _BIDJsonObjectSet(context, cred, "crv",
                                 json_object_get(identity->PrivateAttributes, "crv"), 0);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDJsonObjectSet(context, cred, "dh-key-size",
-                                json_object_get(identity->PrivateAttributes, "dh-key-size"), 0);
         BID_BAIL_ON_ERROR(err);
     } else if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
         err = _BIDJsonObjectSet(context, cred, "crv",
                                 json_object_get(json_object_get(dh, "params"), "crv"),
                                 BID_JSON_FLAG_REQUIRED);
-        BID_BAIL_ON_ERROR(err);
-    } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        err = _BIDGetJsonBinaryValue(context, dh,
-                                     publicKey ? "y" : "x", &pbDHKey, &cbDHKey);
-        BID_BAIL_ON_ERROR(err);
-
-        err = _BIDJsonObjectSet(context, cred, "dh-key-size",
-                                json_integer(cbDHKey * 8),
-                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -499,34 +460,15 @@ cleanup:
     return err;
 }
 
-static const char *
-_BIDKeyAgreementObject(BIDContext context)
-{
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
-        return "ecdh";
-    else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
-        return "dh";
-    else
-        return NULL;
-}
-
 BIDError
 _BIDGetKeyAgreementObject(
-    BIDContext context,
+    BIDContext context BID_UNUSED,
     json_t *json,
     json_t **pObject)
 {
-    const char *key = _BIDKeyAgreementObject(context);
+    *pObject = json_object_get(json, "epk");
 
-    if (key == NULL)
-        return BID_S_NO_KEY;
-
-    *pObject = json_object_get(json, key);
-
-    if (*pObject == NULL)
-        return BID_S_NO_KEY;
-    else
-        return BID_S_OK;
+    return (*pObject != NULL) ? BID_S_OK : BID_S_NO_KEY;
 }
 
 BIDError
@@ -535,12 +477,7 @@ _BIDSetKeyAgreementObject(
     json_t *json,
     json_t *object)
 {
-    const char *key = _BIDKeyAgreementObject(context);
-
-    if (key == NULL)
-        return BID_S_NO_KEY;
-
-    return _BIDJsonObjectSet(context, json, key, object, BID_JSON_FLAG_REQUIRED);
+    return _BIDJsonObjectSet(context, json, "epk", object, BID_JSON_FLAG_REQUIRED);
 }
 
 BIDError
@@ -549,8 +486,13 @@ _BIDGetECDHCurve(
     json_t *ecDhParams,
     ssize_t *pcbKey)
 {
+    const char *szKeyType;
     const char *szCurve;
     ssize_t cbKey = 0;
+
+    szKeyType = json_string_value(json_object_get(ecDhParams, "kty"));
+    if (szKeyType == NULL || strcmp(szKeyType, "EC") != 0)
+        return BID_S_UNKNOWN_ALGORITHM;
 
     szCurve = json_string_value(json_object_get(ecDhParams, "crv"));
     if (szCurve != NULL) {

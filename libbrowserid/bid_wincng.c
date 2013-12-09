@@ -347,12 +347,7 @@ _BIDMapECDHAlgorithmID(
 
     *pAlgID = NULL;
 
-    BID_ASSERT(context->ContextOptions & BID_CONTEXT_KEYEX_MASK);
-
-    if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        *pAlgID = BCRYPT_DH_ALGORITHM;
-        return BID_S_OK;
-    }
+    BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
 
     err = _BIDGetECDHCurve(context, ecDhParams, &curve);
     if (err != BID_S_OK)
@@ -1288,110 +1283,6 @@ _BIDDigestAssertion(
 }
 
 static BIDError
-_BIDMakeDHKey(
-    BIDContext context,
-    BCRYPT_ALG_HANDLE hAlgorithm,
-    json_t *dhParams,
-    json_t *dhKey,
-    BOOLEAN bPublic,
-    BCRYPT_KEY_HANDLE *phKey)
-{
-    BIDError err;
-    NTSTATUS nts;
-    BCryptBuffer p = { 0 };
-    BCryptBuffer g = { 0 };
-    BCryptBuffer x = { 0 };
-    BCryptBuffer y = { 0 };
-    BCRYPT_DH_KEY_BLOB *dhKeyBlob = NULL;
-    DWORD cbDhKeyBlob = 0;
-    PUCHAR pbDhKeyBlob;
-    DWORD cbPad = 0;
-
-    *phKey = NULL;
-
-    if (dhParams == NULL) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
-    if (!bPublic) {
-        err = _BIDGetJsonBufferValue(context, dhKey, "x",
-                                     BID_ENCODING_BASE64_URL, 0, &x);
-        BID_BAIL_ON_ERROR(err);
-
-        cbPad = x.cbBuffer;
-    }
-
-    err = _BIDGetJsonBufferValue(context, dhKey, "y",
-                                 BID_ENCODING_BASE64_URL, cbPad, &y);
-    BID_BAIL_ON_ERROR(err);
-
-    if (!cbPad)
-        cbPad = y.cbBuffer;
-
-    err = _BIDGetJsonBufferValue(context, dhParams, "p",
-                                 BID_ENCODING_BASE64_URL, cbPad, &p);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDGetJsonBufferValue(context, dhParams, "g",
-                                 BID_ENCODING_BASE64_URL, cbPad, &g);
-    BID_BAIL_ON_ERROR(err);
-
-    BID_ASSERT(y.cbBuffer == p.cbBuffer);
-    BID_ASSERT(g.cbBuffer == p.cbBuffer);
-    BID_ASSERT(bPublic || (x.cbBuffer == p.cbBuffer));
-
-    cbDhKeyBlob = sizeof(*dhKey);
-    cbDhKeyBlob += p.cbBuffer + g.cbBuffer + y.cbBuffer + x.cbBuffer;
-
-    dhKeyBlob = BIDCalloc(1, cbDhKeyBlob);
-    if (dhKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    dhKeyBlob->dwMagic = bPublic ? BCRYPT_DH_PUBLIC_MAGIC : BCRYPT_DH_PRIVATE_MAGIC;
-    dhKeyBlob->cbKey   = cbPad;
-
-    pbDhKeyBlob = (PUCHAR)(dhKeyBlob + 1);
-
-    CopyMemory(pbDhKeyBlob, p.pvBuffer, p.cbBuffer);
-    pbDhKeyBlob += p.cbBuffer;
-
-    CopyMemory(pbDhKeyBlob, g.pvBuffer, g.cbBuffer);
-    pbDhKeyBlob += g.cbBuffer;
-
-    CopyMemory(pbDhKeyBlob, y.pvBuffer, y.cbBuffer);
-    pbDhKeyBlob += y.cbBuffer;
-
-    if (!bPublic) {
-        CopyMemory(pbDhKeyBlob, x.pvBuffer, x.cbBuffer);
-        pbDhKeyBlob += x.cbBuffer;
-    }
-
-    nts = BCryptImportKeyPair(hAlgorithm,
-                              NULL, /* hImportKey */
-                              bPublic ? BCRYPT_DH_PUBLIC_BLOB : BCRYPT_DH_PRIVATE_BLOB,
-                              phKey,
-                              (PUCHAR)dhKeyBlob,
-                              pbDhKeyBlob - (PUCHAR)dhKeyBlob,
-                              BCRYPT_NO_KEY_VALIDATION);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-cleanup:
-    if (dhKey != NULL) {
-        SecureZeroMemory(dhKeyBlob, cbDhKeyBlob);
-        BIDFree(dhKeyBlob);
-    }
-    _BIDFreeBuffer(&p);
-    _BIDFreeBuffer(&g);
-    _BIDFreeBuffer(&x);
-    _BIDFreeBuffer(&y);
-
-    return err;
-}
-
-static BIDError
 _BIDMakeECDHKey(
     BIDContext context,
     BCRYPT_ALG_HANDLE hAlgorithm,
@@ -1543,235 +1434,7 @@ _BIDCryptGetKeyParam(
 }
 
 BIDError
-_BIDGenerateDHParams(
-    BIDContext context,
-    json_t **pDhParams)
-{
-    BIDError err;
-    json_t *dhParams = NULL;
-    HCRYPTPROV hProv = (HCRYPTPROV)0;
-    HCRYPTKEY hKey = (HCRYPTKEY)0;
-    DWORD dwFlags;
-
-    *pDhParams = NULL;
-
-    BID_ASSERT(context->DHKeySize != 0);
-
-    dhParams = json_object();
-    if (dhParams == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    /*
-     * Can't find a way to generate ephereral DH parameters using
-     * BCrypt (parameters must be set before a key can be generated),
-     * so fall back to the old WinCrypt. XXX
-     */
-
-    if (!CryptAcquireContext(&hProv, NULL, MS_ENH_DSS_DH_PROV, PROV_DSS_DH,
-                             CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
-        err = BID_S_CRYPTO_ERROR;
-        goto cleanup;
-    }
-
-    /*
-     * We're just going to generate a key, throw away the private part
-     * and keep the parameters. According to the documentation, the key
-     * size in bits, is set in the upper 16 bits of the parameter.
-     */
-    dwFlags = CRYPT_EXPORTABLE;
-    dwFlags |= context->DHKeySize << 16;
-
-    if (!CryptGenKey(hProv, CALG_DH_EPHEM, dwFlags, &hKey)) {
-        err = BID_S_CRYPTO_ERROR;
-        goto cleanup;
-    }
-
-    err = _BIDCryptGetKeyParam(context, hKey, KP_P, dhParams, "p");
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDCryptGetKeyParam(context, hKey, KP_G, dhParams, "g");
-    BID_BAIL_ON_ERROR(err);
-
-    err = BID_S_OK;
-    *pDhParams = dhParams;
-
-cleanup:
-    if (err != BID_S_OK)
-        json_decref(dhParams);
-    if (hKey)
-        CryptDestroyKey(hKey);
-    if (hProv)
-        CryptReleaseContext(hProv, 0);
-
-    return err;
-}
-
-static BIDError
-_BIDMakeDHParams(
-    BIDContext context,
-    json_t *dhParams,
-    BCRYPT_DH_PARAMETER_HEADER **ppDhParamsHeader)
-{
-    BIDError err;
-    BCRYPT_DH_PARAMETER_HEADER *pDhParamsHeader = NULL;
-    DWORD cbDhParamsHeader = 0;
-    PUCHAR pbDhParamsHeader;
-    BCryptBuffer p = { 0 };
-    BCryptBuffer g = { 0 };
-    DWORD cbPad = context->DHKeySize / 8;
-
-    *ppDhParamsHeader = NULL;
-
-    err = _BIDGetJsonBufferValue(context, dhParams, "p", BID_ENCODING_BASE64_URL, cbPad, &p);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDGetJsonBufferValue(context, dhParams, "g", BID_ENCODING_BASE64_URL, cbPad, &g);
-    BID_BAIL_ON_ERROR(err);
-
-    if (p.cbBuffer != g.cbBuffer) {
-        err = BID_S_INVALID_KEY;
-        goto cleanup;
-    }
-
-    cbDhParamsHeader = sizeof(*pDhParamsHeader) + p.cbBuffer + g.cbBuffer;
-    pDhParamsHeader = BIDCalloc(1, cbDhParamsHeader);
-    if (pDhParamsHeader == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    pDhParamsHeader->cbLength    = cbDhParamsHeader;
-    pDhParamsHeader->dwMagic     = BCRYPT_DH_PARAMETERS_MAGIC;
-    pDhParamsHeader->cbKeyLength = p.cbBuffer;
-
-    pbDhParamsHeader = (PUCHAR)(pDhParamsHeader + 1);
-
-    CopyMemory(pbDhParamsHeader, p.pvBuffer, p.cbBuffer);
-    pbDhParamsHeader += p.cbBuffer;
-
-    CopyMemory(pbDhParamsHeader, g.pvBuffer, g.cbBuffer);
-    pbDhParamsHeader += g.cbBuffer;
-
-    BID_ASSERT(pbDhParamsHeader == (PUCHAR)pDhParamsHeader + cbDhParamsHeader);
-
-    err = BID_S_OK;
-
-    *ppDhParamsHeader  = pDhParamsHeader;
-
-cleanup:
-    if (err != BID_S_OK)
-        BIDFree(pDhParamsHeader);
-    _BIDFreeBuffer(&p);
-    _BIDFreeBuffer(&g);
-
-    return err;
-}
-
-BIDError
-_BIDGenerateDHKey(
-    BIDContext context,
-    json_t *dhParams,
-    BIDJWK *pDhKey)
-{
-    BIDError err;
-    NTSTATUS nts;
-    json_t *dhKey = NULL;
-    BCRYPT_ALG_HANDLE hAlgorithm = NULL;
-    BCRYPT_KEY_HANDLE hKey = NULL;
-    BCRYPT_DH_PARAMETER_HEADER *dhParamsHeader = NULL;
-    BCRYPT_DH_KEY_BLOB *dhKeyBlob = NULL;
-    DWORD cbDhKeyBlob = 0;
-    PUCHAR pbDhKeyBlob;
-
-    nts = BCryptOpenAlgorithmProvider(&hAlgorithm,
-                                      BCRYPT_DH_ALGORITHM,
-                                      NULL,
-                                      0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    nts = BCryptGenerateKeyPair(hAlgorithm, &hKey, context->DHKeySize, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    err = _BIDMakeDHParams(context, dhParams, &dhParamsHeader);
-    BID_BAIL_ON_ERROR(err);
-
-    nts = BCryptSetProperty(hKey, BCRYPT_DH_PARAMETERS,
-                            (PUCHAR)dhParamsHeader, dhParamsHeader->cbLength, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    nts = BCryptFinalizeKeyPair(hKey, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    nts = BCryptExportKey(hKey, NULL, BCRYPT_DH_PRIVATE_BLOB,
-                          NULL, 0, &cbDhKeyBlob, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    dhKeyBlob = BIDMalloc(cbDhKeyBlob);
-    if (dhKeyBlob == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    nts = BCryptExportKey(hKey, NULL, BCRYPT_DH_PRIVATE_BLOB,
-                          (PUCHAR)dhKeyBlob, cbDhKeyBlob, &cbDhKeyBlob, 0);
-    BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
-
-    if (cbDhKeyBlob < sizeof(*dhKeyBlob) + 4 * dhKeyBlob->cbKey) {
-        err = BID_S_INVALID_KEY;
-        goto cleanup;
-    }
-
-    dhKey = json_object();
-    if (dhKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
-
-    err = _BIDJsonObjectSet(context, dhKey, "params", dhParams,
-                            BID_JSON_FLAG_REQUIRED);
-    BID_BAIL_ON_ERROR(err);
-
-    pbDhKeyBlob = (PUCHAR)(dhKeyBlob + 1);
-
-    /* Layout is DH_KEY_BLOB || p || g || y || x */
-    /*                          0    1    2    3 */
-    err = _BIDJsonObjectSetBinaryValue(context,
-                                       dhKey,
-                                       "y",
-                                       &pbDhKeyBlob[2 * dhKeyBlob->cbKey],
-                                       dhKeyBlob->cbKey);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDJsonObjectSetBinaryValue(context,
-                                       dhKey,
-                                       "x",
-                                       &pbDhKeyBlob[3 * dhKeyBlob->cbKey],
-                                       dhKeyBlob->cbKey);
-    BID_BAIL_ON_ERROR(err);
-
-    err = BID_S_OK;
-    *pDhKey = dhKey;
-
-cleanup:
-    if (err != BID_S_OK)
-        json_decref(dhKey);
-    if (hAlgorithm != NULL)
-        BCryptCloseAlgorithmProvider(hAlgorithm, 0);
-    if (hKey != NULL)
-        BCryptDestroyKey(hKey);
-    if (dhKeyBlob != NULL) {
-        SecureZeroMemory(dhKeyBlob, cbDhKeyBlob);
-        BIDFree(dhKeyBlob);
-    }
-    BIDFree(dhParamsHeader);
-
-    return err;
-}
-
-BIDError
-_BIDDHSecretAgreement(
+_BIDECDHSecretAgreement(
     BIDContext context,
     BIDJWK dhKey,
     json_t *pubValue,
@@ -1788,8 +1451,6 @@ _BIDDHSecretAgreement(
     DWORD cbKey = 0, cbResult;
     BCryptBuffer pub = { 0 };
     struct BIDSecretHandleDesc keyInput = { 0 };
-    BIDError (*fnMakeKey)(BIDContext, BCRYPT_ALG_HANDLE, json_t *,
-                          json_t *, BOOLEAN, BCRYPT_KEY_HANDLE *);
 
     *pSecretHandle = NULL;
 
@@ -1804,39 +1465,30 @@ _BIDDHSecretAgreement(
         goto cleanup;
     }
 
-    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
-        fnMakeKey = _BIDMakeECDHKey;
-    else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
-        fnMakeKey = _BIDMakeDHKey;
-    else {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
     err = _BIDMapECDHAlgorithmID(context, dhParams, &wszAlgID);
     BID_BAIL_ON_ERROR(err);
 
     nts = BCryptOpenAlgorithmProvider(&hAlgorithm, wszAlgID, NULL, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    err = fnMakeKey(context, hAlgorithm, dhParams, dhKey,
-                    FALSE /* bPublic */, &hPrivateKey);
+    err = _BIDMakeECDHKey(context, hAlgorithm, dhParams, dhKey,
+                          FALSE /* bPublic */, &hPrivateKey);
     BID_BAIL_ON_ERROR(err);
 
-    err = fnMakeKey(context, hAlgorithm, dhParams, pubValue,
-                    TRUE /* bPublic */, &hPublicKey);
+    err = _BIDMakeECDHKey(context, hAlgorithm, dhParams, pubValue,
+                          TRUE /* bPublic */, &hPublicKey);
     BID_BAIL_ON_ERROR(err);
 
     /*
      * Check the strength of the public key to prevent a downgrade
      * attack. Note that cbKey is in bits and can be directly compared
-     * to context->DHKeySize.
+     * to context->ECDHCurve.
      */
     nts = BCryptGetProperty(hPublicKey, BCRYPT_KEY_STRENGTH, (PUCHAR)&cbKey,
                             sizeof(cbKey), &cbResult, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    if (cbKey < context->DHKeySize) {
+    if (cbKey < context->ECDHCurve) {
         err = BID_S_KEY_TOO_SHORT;
         goto cleanup;
     }
@@ -3206,7 +2858,7 @@ _BIDGenerateECDHKey(
     nts = BCryptOpenAlgorithmProvider(&hAlgorithm, wszAlgID, NULL, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
-    nts = BCryptGenerateKeyPair(hAlgorithm, &hKey, context->DHKeySize, 0);
+    nts = BCryptGenerateKeyPair(hAlgorithm, &hKey, context->ECDHCurve, 0);
     BID_BAIL_ON_ERROR((err = _BIDNtStatusToBIDError(nts)));
 
     nts = BCryptFinalizeKeyPair(hKey, 0);
@@ -3282,16 +2934,4 @@ cleanup:
     }
 
     return err;
-}
-
-BIDError
-_BIDECDHSecretAgreement(
-    BIDContext context,
-    BIDJWK ecDhKey,
-    json_t *pubValue,
-    BIDSecretHandle *pSecretHandle)
-{
-    BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
-
-    return _BIDDHSecretAgreement(context, ecDhKey, pubValue, pSecretHandle);
 }

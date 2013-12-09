@@ -266,18 +266,10 @@ BIDAcquireContext(
         BID_ASSERT(context->TicketCache != BID_C_NO_TICKET_CACHE);
     }
 
-    /* Can only select one of DH and ECDH */
-    if ((ulContextOptions & BID_CONTEXT_KEYEX_MASK) == BID_CONTEXT_KEYEX_MASK) {
-        err = BID_S_INVALID_PARAMETER;
-        goto cleanup;
-    }
-
     if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
-        context->DHKeySize = BID_CONTEXT_ECDH_CURVE_P256;
-    else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
-        context->DHKeySize = 1024;
+        context->ECDHCurve = BID_CONTEXT_ECDH_CURVE_P256;
     else
-        context->DHKeySize = 0;
+        context->ECDHCurve = 0;
 
     err = BID_S_OK;
     *pContext = context;
@@ -345,13 +337,6 @@ BIDSetContextParam(
         break;
     case BID_PARAM_SKEW:
         context->Skew = *(uint32_t *)value;
-        break;
-    case BID_PARAM_DH_MODULUS_SIZE:
-        /* Zero values permitted only if DH_KEYEX is unset */
-        if ((*(uint32_t *)value == 0) != !(context->ContextOptions & BID_CONTEXT_DH_KEYEX))
-            err = BID_S_INVALID_PARAMETER;
-        else
-            context->DHKeySize = *(uint32_t *)value;
         break;
     case BID_PARAM_AUTHORITY_CACHE_NAME:
     case BID_PARAM_REPLAY_CACHE_NAME:
@@ -422,11 +407,11 @@ BIDSetContextParam(
             return BID_S_INVALID_PARAMETER;
 
         if (strcmp(value, BID_ECDH_CURVE_P256) == 0)
-            context->DHKeySize = BID_CONTEXT_ECDH_CURVE_P256;
+            context->ECDHCurve = BID_CONTEXT_ECDH_CURVE_P256;
         else if (strcmp(value, BID_ECDH_CURVE_P384) == 0)
-            context->DHKeySize = BID_CONTEXT_ECDH_CURVE_P384;
+            context->ECDHCurve = BID_CONTEXT_ECDH_CURVE_P384;
         else if (strcmp(value, BID_ECDH_CURVE_P521) == 0)
-            context->DHKeySize = BID_CONTEXT_ECDH_CURVE_P521;
+            context->ECDHCurve = BID_CONTEXT_ECDH_CURVE_P521;
         else
             return BID_S_INVALID_PARAMETER;
         break;
@@ -494,12 +479,6 @@ BIDGetContextParam(
     case BID_PARAM_CONFIG_CACHE:
         *pValue = context->Config;
         break;
-    case BID_PARAM_DH_MODULUS_SIZE:
-        if ((context->ContextOptions & BID_CONTEXT_DH_KEYEX) == 0)
-            return BID_S_INVALID_PARAMETER;
-
-        *((uint32_t *)pValue) = context->DHKeySize;
-        break;
     case BID_PARAM_PARENT_WINDOW:
         *((void **)pValue) = context->ParentWindow;
         break;
@@ -513,11 +492,11 @@ BIDGetContextParam(
         if ((context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) == 0)
             return BID_S_INVALID_PARAMETER;
 
-        if (context->DHKeySize == BID_CONTEXT_ECDH_CURVE_P256)
+        if (context->ECDHCurve == BID_CONTEXT_ECDH_CURVE_P256)
             *pValue = BID_ECDH_CURVE_P256;
-        else if (context->DHKeySize == BID_CONTEXT_ECDH_CURVE_P384)
+        else if (context->ECDHCurve == BID_CONTEXT_ECDH_CURVE_P384)
             *pValue = BID_ECDH_CURVE_P384;
-        else if (context->DHKeySize == BID_CONTEXT_ECDH_CURVE_P521)
+        else if (context->ECDHCurve == BID_CONTEXT_ECDH_CURVE_P521)
             *pValue = BID_ECDH_CURVE_P521;
         else
             return BID_S_INVALID_PARAMETER;

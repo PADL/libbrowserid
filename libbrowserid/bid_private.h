@@ -106,19 +106,6 @@ extern "C" {
             goto cleanup;                           \
     } while (0)
 
-#define BID_CONTEXT_KEYEX_MASK              ( BID_CONTEXT_DH_KEYEX | BID_CONTEXT_ECDH_KEYEX )
-
-/*
- * Generate safe DH primes. Should never be necessary as we
- * always generate a new key.
- */
-#define BID_CONTEXT_DH_SAFE_PRIMES          0x00010000
-
-/*
- * Always generate DH parameters.
- */
-#define BID_CONTEXT_DH_ALWAYS_GENERATE      0x00020000
-
 /*
  * bid_authority.c
  */
@@ -359,7 +346,7 @@ struct BIDContextDesc {
     BIDAuthorityCache AuthorityCache;
     BIDReplayCache ReplayCache;
     BIDTicketCache TicketCache;
-    uint32_t DHKeySize;
+    uint32_t ECDHCurve;
     uint32_t TicketLifetime;
     uint32_t RenewLifetime;
     BIDCache Config;
@@ -425,6 +412,12 @@ _BIDVerifierKeyAgreement(
     BIDIdentity identity);
 
 BIDError
+_BIDGetKeyAgreementObject(
+    BIDContext context,
+    json_t *json,
+    json_t **object);
+
+BIDError
 _BIDSetKeyAgreementPublicValue(
     BIDContext context,
     BIDIdentity identity,
@@ -447,12 +440,6 @@ _BIDSaveKeyAgreementStrength(
     BIDIdentity identity,
     int publicKey,
     json_t *cred);
-
-BIDError
-_BIDGetKeyAgreementObject(
-    BIDContext context,
-    json_t *json,
-    json_t **object);
 
 BIDError
 _BIDSetKeyAgreementObject(
@@ -610,16 +597,6 @@ BIDError
 _BIDGenerateDHParams(
     BIDContext context,
     json_t **pDhParams);
-
-/*
- * Derive a Diffie-Hellman shared secret.
- */
-BIDError
-_BIDDHSecretAgreement(
-    BIDContext context,
-    BIDJWK dhKey,
-    json_t *pubValue,
-    BIDSecretHandle *pSecretHandle);
 
 /*
  * Generate a random base64 URL encoded nonce of at least 64 bits.
