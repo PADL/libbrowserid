@@ -129,7 +129,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
     gss_buffer_desc bufAudienceOrSpn = GSS_C_EMPTY_BUFFER;
     const unsigned char *pbChannelBindings = NULL;
     size_t cbChannelBindings = 0;
-    uint32_t ulBidFlags = 0;
+    uint32_t ulReqFlags, ulRetFlags = 0;
 
     if (cred == GSS_C_NO_CREDENTIAL) {
         if (ctx->cred == GSS_C_NO_CREDENTIAL) {
@@ -175,8 +175,11 @@ gssBidAcceptSecContext(OM_uint32 *minor,
         cbChannelBindings = input_chan_bindings->application_data.length;
     }
 
+    ulReqFlags = BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS;
+
     switch (GSSBID_SM_STATE(ctx)) {
     case GSSBID_STATE_INITIAL:
+        ulReqFlags |= BID_VERIFY_FLAG_REAUTH;
     case GSSBID_STATE_RETRY_INITIAL:
         err = BIDVerifyAssertion(ctx->bidContext,
                                  cred->bidReplayCache,
@@ -185,12 +188,12 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                                  pbChannelBindings,
                                  cbChannelBindings,
                                  time(NULL),
-                                 GSSBID_SM_STATE(ctx) == GSSBID_STATE_RETRY_INITIAL ? 0 : BID_VERIFY_FLAG_REAUTH,
+                                 ulReqFlags,
                                  &ctx->bidIdentity,
                                  &ctx->expiryTime,
-                                 &ulBidFlags);
+                                 &ulRetFlags);
          major = gssBidMapError(minor, err);
-         if (ulBidFlags & BID_VERIFY_FLAG_REAUTH) {
+         if (ulRetFlags & BID_VERIFY_FLAG_REAUTH) {
             uint32_t ulContextOptions = 0;
 
             BIDGetContextParam(ctx->bidContext, BID_PARAM_CONTEXT_OPTIONS, (void **)&ulContextOptions);
@@ -211,16 +214,16 @@ gssBidAcceptSecContext(OM_uint32 *minor,
             } else
                 ctx->flags |= CTX_FLAG_REAUTH;
         }
-        if ((ulBidFlags & BID_VERIFY_FLAG_REAUTH_MUTUAL) &&     /* master (transitive) context */
-            (ulBidFlags & BID_VERIFY_FLAG_MUTUAL_AUTH))         /* initiator context opts */
+        if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH_MUTUAL) &&     /* master (transitive) context */
+            (ulRetFlags & BID_VERIFY_FLAG_MUTUAL_AUTH))         /* initiator context opts */
             ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
-        if (ulBidFlags & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
+        if (ulRetFlags & BID_VERIFY_FLAG_EXTRA_ROUND_TRIP) {
             major = GSS_S_CONTINUE_NEEDED;
             ctx->flags |= CTX_FLAG_EXTRA_ROUND_TRIP;
         }
-        if (ulBidFlags & BID_VERIFY_FLAG_DCE)
+        if (ulRetFlags & BID_VERIFY_FLAG_DCE)
             ctx->gssFlags |= GSS_C_DCE_STYLE;
-        if (ulBidFlags & BID_VERIFY_FLAG_IDENTIFY)
+        if (ulRetFlags & BID_VERIFY_FLAG_IDENTIFY)
             ctx->gssFlags |= GSS_C_IDENTIFY_FLAG;
         break;
     case GSSBID_STATE_EXTRA_ROUND_TRIP:
@@ -229,7 +232,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
                                 szAssertion,
                                 0,
                                 NULL,
-                                &ulBidFlags);
+                                &ulRetFlags);
         major = gssBidMapError(minor, err);
         break;
     default:
