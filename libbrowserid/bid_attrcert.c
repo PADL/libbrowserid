@@ -87,7 +87,7 @@ _BIDValidateAttributeCertificate(
     err = _BIDVerifySignature(context, attrCert, certVerifyKey);
     BID_BAIL_ON_ERROR(err);
 
-    certBinding = json_object_get(attrCert->Payload, "cb");
+    certBinding = json_object_get(attrCert->Payload, "cdi");
     if (certBinding == NULL) {
         err = BID_S_MISSING_CERT_BINDING;
         goto cleanup;
@@ -97,6 +97,8 @@ _BIDValidateAttributeCertificate(
         err = BID_S_CERT_BINDING_MISMATCH;
         goto cleanup;
     }
+
+    _BIDOutputDebugJson(attrCert->Payload);
 
     err = _BIDFilterReservedClaims(context, attrCert->Payload, pClaims);
     BID_BAIL_ON_ERROR(err);
