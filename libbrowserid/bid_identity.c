@@ -101,7 +101,7 @@ BIDVerifyAssertion(
     }
 
     if ((ulRetFlags & BID_VERIFY_FLAG_REAUTH) == 0 &&
-        (context->ContextOptions & BID_CONTEXT_KEYEX_MASK)) {
+        (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)) {
         err = _BIDVerifierKeyAgreement(context, *pVerifiedIdentity);
         BID_BAIL_ON_ERROR(err);
     }
@@ -472,7 +472,7 @@ _BIDPopulateIdentity(
                             json_object_get(assertion, "aud"), 0);
     BID_BAIL_ON_ERROR(err);
 
-    if (context->ContextOptions & BID_CONTEXT_KEYEX_MASK) {
+    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
         json_t *params;
 
         err = _BIDGetKeyAgreementObject(context, backedAssertion->Assertion->Payload, &params);

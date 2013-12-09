@@ -72,8 +72,6 @@ _BIDMakeTicketCacheKey(
             return err;
 
         snprintf(szCachePrefix, sizeof(szCachePrefix), "%s$", szCurve);
-    } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        snprintf(szCachePrefix, sizeof(szCachePrefix), "%u$", context->DHKeySize);
     } else {
         return BID_S_CACHE_KEY_NOT_FOUND;
     }
@@ -516,11 +514,6 @@ _BIDValidateReauthCredStrength(
 
         if (szCredCurve == NULL || strcmp(szCredCurve, szContextCurve) != 0)
             return BID_S_INVALID_EC_CURVE;
-    } else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX) {
-        uint32_t ulDHKeySize = _BIDJsonUInt32Value(json_object_get(cred, "dh-key-size"));
-
-        if (ulDHKeySize < context->DHKeySize)
-            return BID_S_KEY_TOO_SHORT;
     }
 
     return BID_S_OK;
@@ -699,9 +692,8 @@ _BIDVerifyReauthAssertion(
     BID_BAIL_ON_ERROR(err);
 
     /*
-     * Propagate the renew-exp, crv and/or dh-key-size attributes from the
-     * original ticket into the identity so that any additional tickets
-     * also have this same value.
+     * Propagate the renew-exp and crv attributes from the original ticket into
+     * the identity so that any additional tickets also have this same value.
      */
     err = _BIDJsonObjectSet(context, (*pVerifiedIdentity)->PrivateAttributes,
                             "renew-exp", json_object_get(cred, "renew-exp"), 0);
@@ -709,10 +701,6 @@ _BIDVerifyReauthAssertion(
 
     err = _BIDJsonObjectSet(context, (*pVerifiedIdentity)->PrivateAttributes,
                             "crv", json_object_get(cred, "crv"), 0);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDJsonObjectSet(context, (*pVerifiedIdentity)->PrivateAttributes,
-                            "dh-key-size", json_object_get(cred, "dh-key-size"), 0);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:

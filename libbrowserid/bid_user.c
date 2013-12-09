@@ -73,24 +73,19 @@ _BIDMakeClaims(
         BID_BAIL_ON_ERROR(err);
     }
 
-    if (context->ContextOptions & BID_CONTEXT_KEYEX_MASK) {
+    if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
         err = _BIDGetKeyAgreementParams(context, &dh);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDSetKeyAgreementObject(context, claims, dh);
         BID_BAIL_ON_ERROR(err);
 
-        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX)
-            err = _BIDGenerateECDHKey(context, dh, &key);
-        else if (context->ContextOptions & BID_CONTEXT_DH_KEYEX)
-            err = _BIDGenerateDHKey(context, dh, &key);
+        err = _BIDGenerateECDHKey(context, dh, &key);
         BID_BAIL_ON_ERROR(err);
 
         /* Copy public value to parameters so we can send them. */
-        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
-            err = _BIDJsonObjectSet(context, dh, "x", json_object_get(key, "x"), BID_JSON_FLAG_REQUIRED);
-            BID_BAIL_ON_ERROR(err);
-        }
+        err = _BIDJsonObjectSet(context, dh, "x", json_object_get(key, "x"), BID_JSON_FLAG_REQUIRED);
+        BID_BAIL_ON_ERROR(err);
 
         err = _BIDJsonObjectSet(context, dh, "y", json_object_get(key, "y"), BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);
@@ -229,7 +224,7 @@ BIDAcquireAssertionEx(
     if (pAssertedIdentity != NULL) {
         BIDIdentity assertedIdentity = *pAssertedIdentity;
 
-        if (context->ContextOptions & BID_CONTEXT_KEYEX_MASK) {
+        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
             err = _BIDSetKeyAgreementObject(context, assertedIdentity->PrivateAttributes, key);
             BID_BAIL_ON_ERROR(err);
         }
