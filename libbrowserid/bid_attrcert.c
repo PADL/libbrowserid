@@ -99,7 +99,7 @@ _BIDValidateAttributeCertificate(
     err = _BIDFilterReservedClaims(context, attrCert->Payload, pClaims);
     BID_BAIL_ON_ERROR(err);
 
-    *pId = json_incref(json_object_get(attrCert->Payload, "id"));
+    *pId = json_incref(json_object_get(attrCert->Payload, "cid"));
 
 cleanup:
     switch (err) {
