@@ -59,6 +59,8 @@ _BIDValidateAttributeCertificate(
     BIDJWT attrCert = NULL;
     json_t *certBinding = NULL;
     json_t *iss = NULL;
+    json_t *scope = NULL;
+    json_t *claims = NULL;
 
     *pScope = NULL;
     *pClaims = NULL;
@@ -84,6 +86,12 @@ _BIDValidateAttributeCertificate(
         goto cleanup;
     }
 
+    scope = json_object_get(attrCert->Payload, "scope");
+    if (!json_is_string(scope)) {
+        err = BID_S_MISSING_SCOPE;
+        goto cleanup;
+    }
+
     err = _BIDVerifySignature(context, attrCert, certVerifyKey);
     BID_BAIL_ON_ERROR(err);
 
@@ -96,10 +104,11 @@ _BIDValidateAttributeCertificate(
     err = _BIDVerifyDigest(context, certData, certBinding);
     BID_BAIL_ON_ERROR(err);
 
-    err = _BIDFilterReservedClaims(context, attrCert->Payload, pClaims);
+    err = _BIDFilterReservedClaims(context, attrCert->Payload, &claims);
     BID_BAIL_ON_ERROR(err);
 
-    *pScope = json_incref(json_object_get(attrCert->Payload, "scope"));
+    *pScope = json_incref(scope);
+    *pClaims = claims;
 
 cleanup:
     switch (err) {
@@ -112,6 +121,9 @@ cleanup:
     default:
         break;
     }
+
+    if (err != BID_S_OK)
+        json_decref(claims);
 
     _BIDReleaseJWT(context, attrCert);
 
@@ -187,7 +199,7 @@ _BIDValidateAttributeCertificates(
 
         if (ulReqFlags & BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS) {
             json_object_update(allAttrCertClaims, attrCertClaims);
-        } else if (json_is_string(attrCertScope)) {
+        } else {
             json_object_set(allAttrCertClaims, json_string_value(attrCertScope), attrCertClaims);
         }
         json_decref(attrCertClaims);

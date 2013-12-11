@@ -122,6 +122,7 @@ const char *_BIDErrorTable[] = {
     "Missing nonce",
     "Missing primary certificate binding",
     "Primary certificate binding mismatch",
+    "Attribute certificate missing scope claim",
     "Unknown error code"
 };
 
