@@ -52,7 +52,7 @@ _BIDValidateAttributeCertificate(
     BIDJWKSet certVerifyKey,
     json_t *certData,
     json_t *certIssuer,
-    json_t **pId,
+    json_t **pScope,
     json_t **pClaims)
 {
     BIDError err;
@@ -60,7 +60,7 @@ _BIDValidateAttributeCertificate(
     json_t *certBinding = NULL;
     json_t *iss = NULL;
 
-    *pId = NULL;
+    *pScope = NULL;
     *pClaims = NULL;
 
     if (!json_is_string(encodedAttrCert)) {
@@ -99,7 +99,7 @@ _BIDValidateAttributeCertificate(
     err = _BIDFilterReservedClaims(context, attrCert->Payload, pClaims);
     BID_BAIL_ON_ERROR(err);
 
-    *pId = json_incref(json_object_get(attrCert->Payload, "scope"));
+    *pScope = json_incref(json_object_get(attrCert->Payload, "scope"));
 
 cleanup:
     switch (err) {
@@ -176,22 +176,22 @@ _BIDValidateAttributeCertificates(
     for (i = 0; i < cAttrCerts; i++) {
         json_t *attrCert = json_array_get(attrCerts, i);
         json_t *attrCertClaims = NULL;
-        json_t *attrCertId = NULL;
+        json_t *attrCertScope = NULL;
 
         /* Currently, we just ignore attributes we cannot validate */
         err = _BIDValidateAttributeCertificate(context, attrCert, verificationTime,
                                                certVerifyKey, leafCertData, iss,
-                                               &attrCertId, &attrCertClaims);
+                                               &attrCertScope, &attrCertClaims);
         if (err != BID_S_OK)
             continue;
 
         if (ulReqFlags & BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS) {
             json_object_update(allAttrCertClaims, attrCertClaims);
-        } else if (json_is_string(attrCertId)) {
-            json_object_set(allAttrCertClaims, json_string_value(attrCertId), attrCertClaims);
+        } else if (json_is_string(attrCertScope)) {
+            json_object_set(allAttrCertClaims, json_string_value(attrCertScope), attrCertClaims);
         }
         json_decref(attrCertClaims);
-        json_decref(attrCertId);
+        json_decref(attrCertScope);
     }
 
     err = BID_S_OK;
