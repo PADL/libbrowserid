@@ -55,9 +55,11 @@
 static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                                                  \
     var args = JSON.parse(window.dialogArguments);                                                  \
     var options = { siteName: args.siteName,                                                        \
+                    experimental_forceAuthentication: args.forceAuthentication,                     \
                     experimental_emailHint: args.emailHint,                                         \
+                    experimental_optionalScopes: [ '*' ],                                           \
                     experimental_userAssertedClaims: args.claims                                    \
-                    experimental_forceAuthentication: args.forceAuthentication };                   \
+    };                                                                                              \
                                                                                                     \
     BrowserID.internal.get(                                                                         \
         args.audience,                                                                              \
