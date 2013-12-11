@@ -246,33 +246,46 @@ _BIDSetJsonBNValue(
 }
 
 static BIDError
-_BIDEvpForAlgorithm(
-    struct BIDJWTAlgorithmDesc *algorithm,
+_BIDEvpForAlgorithmName(
+    const char *szAlgID,
     const EVP_MD **pMd)
 {
     const EVP_MD *md;
 
     *pMd = NULL;
 
-    if (strlen(algorithm->szAlgID) != 5)
-        return BID_S_CRYPTO_ERROR;
+    if (szAlgID == NULL || strlen(szAlgID) != 4)
+        return BID_S_UNKNOWN_ALGORITHM;
 
-    if (strcmp(algorithm->szAlgID, "DS128") == 0) {
+    if (strcmp(szAlgID, "S128") == 0) {
         md = EVP_sha1();
-    } else if (strcmp(&algorithm->szAlgID[1], "S512") == 0) {
+    } else if (strcmp(szAlgID, "S512") == 0) {
         md = EVP_sha512();
-    } else if (strcmp(&algorithm->szAlgID[1], "S384") == 0) {
+    } else if (strcmp(szAlgID, "S384") == 0) {
         md = EVP_sha384();
-    } else if (strcmp(&algorithm->szAlgID[1], "S256") == 0) {
+    } else if (strcmp(szAlgID, "S256") == 0) {
         md = EVP_sha256();
-    } else if (strcmp(&algorithm->szAlgID[1], "S224") == 0) {
+    } else if (strcmp(szAlgID, "S224") == 0) {
         md = EVP_sha224();
     } else {
-        return BID_S_CRYPTO_ERROR;
+        return BID_S_UNKNOWN_ALGORITHM;
     }
 
     *pMd = md;
     return BID_S_OK;
+}
+
+static BIDError
+_BIDEvpForAlgorithm(
+    struct BIDJWTAlgorithmDesc *algorithm,
+    const EVP_MD **pMd)
+{
+    *pMd = NULL;
+
+    if (strlen(algorithm->szAlgID) != 5)
+        return BID_S_CRYPTO_ERROR;
+
+    return _BIDEvpForAlgorithmName(&algorithm->szAlgID[1], pMd);
 }
 
 static BIDError
@@ -886,26 +899,44 @@ _HMACSHAVerifySignature(
 }
 
 BIDError
-_BIDDigestAssertion(
-    BIDContext context BID_UNUSED,
-    const char *szAssertion,
-    unsigned char *digest,
-    size_t *digestLength)
+_BIDMakeDigestInternal(
+    BIDContext context,
+    json_t *value,
+    json_t *digestInfo)
 {
-    const EVP_MD *md = EVP_sha256();
+    BIDError err;
+    const char *szAlgID;
+    const EVP_MD *md;
     EVP_MD_CTX mdCtx;
-    unsigned int mdLength = (unsigned int)*digestLength;
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int mdLength = sizeof(digest);
+    json_t *dig = NULL;
 
-    if (*digestLength < EVP_MD_size(md))
-        return BID_S_BUFFER_TOO_SMALL;
+    szAlgID = json_string_value(json_object_get(digestInfo, "alg"));
+    if (szAlgID == NULL) {
+        err = BID_S_UNKNOWN_ALGORITHM;
+        goto cleanup;
+    }
+
+    err = _BIDEvpForAlgorithmName(szAlgID, &md);
+    BID_BAIL_ON_ERROR(err);
+
+    BID_ASSERT(json_is_string(value));
 
     EVP_DigestInit(&mdCtx, md);
-    EVP_DigestUpdate(&mdCtx, szAssertion, strlen(szAssertion));
+    EVP_DigestUpdate(&mdCtx, json_string_value(value), strlen(json_string_value(value)));
     EVP_DigestFinal(&mdCtx, digest, &mdLength);
 
-    *digestLength = mdLength;
+    err = _BIDJsonBinaryValue(context, digest, mdLength, &dig);
+    BID_BAIL_ON_ERROR(err);
 
-    return BID_S_OK;
+    err = _BIDJsonObjectSet(context, digestInfo, "dig", dig, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    json_decref(dig);
+
+    return err;
 }
 
 struct BIDJWTAlgorithmDesc

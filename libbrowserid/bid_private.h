@@ -454,12 +454,26 @@ _BIDGetECDHCurve(
     ssize_t *pcbKey);
 
 /*
- * bid_dhparams.c
+ * Hash the assertion in an implementation-defined manner that may be used
+ * as a key into the replay cache as well as a ticket identifier.
  */
 BIDError
-_BIDGetFixedDHParams(
+_BIDDigestAssertion(
     BIDContext context,
-    json_t **pDhParams);
+    const char *szAssertion,
+    json_t **pDigest);
+
+BIDError
+_BIDMakeDigest(
+    BIDContext context,
+    json_t *value,
+    json_t **pDigestInfo);
+
+BIDError
+_BIDVerifyDigest(
+    BIDContext context,
+    json_t *value,
+    json_t *assertedDigestInfo);
 
 /*
  * bid_fcache.c
@@ -576,16 +590,11 @@ _BIDImportSecretKeyData(
  */
 extern struct BIDJWTAlgorithmDesc _BIDJWTAlgorithms[];
 
-/*
- * Hash the assertion in an implementation-defined manner that may be used
- * as a key into the replay cache as well as a ticket identifier.
- */
 BIDError
-_BIDDigestAssertion(
+_BIDMakeDigestInternal(
     BIDContext context,
-    const char *szAssertion,
-    unsigned char *digest,
-    size_t *digestLength);
+    json_t *value,
+    json_t *digestInfo);
 
 /*
  * Generate a Diffie-Hellman key with the specified parameters.

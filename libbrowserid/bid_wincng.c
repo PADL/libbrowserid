@@ -284,24 +284,24 @@ _BIDGetJsonBufferValue(
 }
 
 static BIDError
-_BIDMapHashAlgorithmID(
-    struct BIDJWTAlgorithmDesc *algorithm,
+_BIDMapHashAlgorithmIDByName(
+    LPCSTR szAlgID,
     LPCWSTR *pAlgID)
 {
     LPCWSTR algID = NULL;
 
     *pAlgID = NULL;
 
-    if (strlen(algorithm->szAlgID) != 5)
-        return BID_S_CRYPTO_ERROR;
+    if (szAlgID == NULL || strlen(szAlgID) != 4)
+        return BID_S_UNKNOWN_ALGORITHM;
 
-    if (strcmp(algorithm->szAlgID, "DS128") == 0) {
+    if (strcmp(szAlgID, "S128") == 0) {
         algID = BCRYPT_SHA1_ALGORITHM;
-    } else if (strcmp(&algorithm->szAlgID[1], "S512") == 0) {
+    } else if (strcmp(szAlgID, "S512") == 0) {
         algID = BCRYPT_SHA512_ALGORITHM;
-    } else if (strcmp(&algorithm->szAlgID[1], "S384") == 0) {
+    } else if (strcmp(szAlgID, "S384") == 0) {
         algID = BCRYPT_SHA384_ALGORITHM;
-    } else if (strcmp(&algorithm->szAlgID[1], "S256") == 0) {
+    } else if (strcmp(szAlgID, "S256") == 0) {
         algID = BCRYPT_SHA256_ALGORITHM;
     } else {
         return BID_S_UNKNOWN_ALGORITHM;
@@ -309,6 +309,19 @@ _BIDMapHashAlgorithmID(
 
     *pAlgID = algID;
     return BID_S_OK;
+}
+
+static BIDError
+_BIDMapHashAlgorithmID(
+    struct BIDJWTAlgorithmDesc *algorithm,
+    LPCWSTR *pAlgID)
+{
+    *pAlgID = NULL;
+
+    if (strlen(algorithm->szAlgID) != 5)
+        return BID_S_CRYPTO_ERROR;
+
+    return _BIDMapHashAlgorithmIDByName(&algorithm->szAlgID[1], pAlgID);
 }
 
 static BIDError
@@ -373,8 +386,8 @@ _BIDMapECDHAlgorithmID(
 }
 
 static BIDError
-_BIDMakeShaDigest(
-    struct BIDJWTAlgorithmDesc *algorithm,
+_BIDMakeShaDigestInternal(
+    LPCWSTR wszAlgID,
     BIDContext context BID_UNUSED,
     BIDJWT jwt,
     BIDJWK jwk,
@@ -385,7 +398,6 @@ _BIDMakeShaDigest(
     BCRYPT_ALG_HANDLE hAlg = NULL;
     BCRYPT_HASH_HANDLE hHash = NULL;
     NTSTATUS nts;
-    LPCWSTR wszAlgID;
     PUCHAR pbHashObject = NULL;
     DWORD cbHashObject, cbHash, cbData;
     PBYTE pbKey = NULL;
@@ -396,9 +408,6 @@ _BIDMakeShaDigest(
                                      &pbKey, &cbKey);
         BID_BAIL_ON_ERROR(err);
     }
-
-    err = _BIDMapHashAlgorithmID(algorithm, &wszAlgID);
-    BID_BAIL_ON_ERROR(err);
 
     nts = BCryptOpenAlgorithmProvider(&hAlg,
                                       wszAlgID,
@@ -468,6 +477,28 @@ cleanup:
     }
     BIDFree(pbHashObject);
 
+    return err;
+}
+
+static BIDError
+_BIDMakeShaDigest(
+    struct BIDJWTAlgorithmDesc *algorithm,
+    BIDContext context,
+    BIDJWT jwt,
+    BIDJWK jwk,
+    unsigned char *digest,
+    size_t *digestLength)
+{
+    BIDError err;
+    LPCWSTR wszAlgID;
+
+    err = _BIDMapHashAlgorithmID(algorithm, &wszAlgID);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDMakeShaDigestInternal(wszAlgID, context, jwt, jwk, digest, digestLength);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
     return err;
 }
 
@@ -1264,20 +1295,45 @@ _BIDJWTAlgorithms[] = {
 };
 
 BIDError
-_BIDDigestAssertion(
+_BIDMakeDigestInternal(
     BIDContext context,
-    const char *szAssertion,
-    unsigned char *digest,
-    size_t *digestLength)
+    json_t *value,
+    json_t *digestInfo)
 {
     BIDError err;
+    LPCSTR szAlgID;
+    LPCWSTR wszAlgID;
     struct BIDJWTDesc jwt = { 0 };
+    UCHAR pbDigest[64]; /* longest known hash is SHA-512 */
+    size_t cbDigest;
+    json_t *dig = NULL;
 
-    jwt.EncData = (PCHAR)szAssertion;
-    jwt.EncDataLength = strlen(szAssertion);
+    szAlgID = json_string_value(json_object_get(digestInfo, "alg"));
+    if (szAlgID == NULL) {
+        err = BID_S_UNKNOWN_ALGORITHM;
+        goto cleanup;
+    }
 
-    err = _BIDMakeShaDigest(&_BIDJWTAlgorithms[0], context, &jwt, NULL,
-                            digest, digestLength);
+    err = _BIDMapHashAlgorithmIDByName(szAlgID, &wszAlgID);
+    BID_BAIL_ON_ERROR(err);
+
+    jwt.EncData = (LPSTR)json_string_value(value);
+    jwt.EncDataLength = strlen(jwt.EncData);
+
+    cbDigest = sizeof(pbDigest);
+
+    err = _BIDMakeShaDigestInternal(wszAlgID, context, &jwt, NULL,
+                                    pbDigest, &cbDigest);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonBinaryValue(context, pbDigest, cbDigest, &dig);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDJsonObjectSet(context, digestInfo, "dig", dig, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    json_decref(dig);
 
     return err;
 }

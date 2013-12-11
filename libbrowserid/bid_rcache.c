@@ -54,21 +54,16 @@ _BIDCheckReplayCache(
 {
     BIDError err;
     json_t *rdata = NULL;
-    unsigned char hash[32];
-    char *szHash = NULL;
-    size_t cbHash = sizeof(hash), cchHash;
+    json_t *digest = NULL;
     time_t tsHash, expHash;
 
-    err = _BIDDigestAssertion(context, szAssertion, hash, &cbHash);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDBase64UrlEncode(hash, cbHash, &szHash, &cchHash);
+    err = _BIDDigestAssertion(context, szAssertion, &digest);
     BID_BAIL_ON_ERROR(err);
 
     if (replayCache == BID_C_NO_REPLAY_CACHE)
         replayCache = context->ReplayCache;
 
-    err = _BIDGetCacheObject(context, replayCache, szHash, &rdata);
+    err = _BIDGetCacheObject(context, replayCache, json_string_value(digest), &rdata);
     if (err == BID_S_OK) {
         _BIDGetJsonTimestampValue(context, rdata, "iat", &tsHash);
         _BIDGetJsonTimestampValue(context, rdata, "exp", &expHash);
@@ -79,8 +74,8 @@ _BIDCheckReplayCache(
         err = BID_S_OK;
 
 cleanup:
-    BIDFree(szHash);
     json_decref(rdata);
+    json_decref(digest);
 
     return err;
 }
@@ -96,19 +91,14 @@ _BIDUpdateReplayCache(
 {
     BIDError err;
     json_t *rdata = NULL;
-    unsigned char hash[32];
-    char *szHash = NULL;
-    size_t cbHash = sizeof(hash), cchHash;
     json_t *ark = NULL;
     json_t *tkt = NULL;
+    json_t *digest = NULL;
     int bStoreReauthCreds = 0;
     uint32_t ticketLifetime = 0, renewLifetime = 0;
     time_t ticketExpiry = 0, renewExpiry = 0;
 
-    err = _BIDDigestAssertion(context, szAssertion, hash, &cbHash);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDBase64UrlEncode(hash, cbHash, &szHash, &cchHash);
+    err = _BIDDigestAssertion(context, szAssertion, &digest);
     BID_BAIL_ON_ERROR(err);
 
     _BIDGetJsonTimestampValue(context, identity->PrivateAttributes, "renew-exp", &renewExpiry);
@@ -190,7 +180,7 @@ _BIDUpdateReplayCache(
     if (replayCache == BID_C_NO_REPLAY_CACHE)
         replayCache = context->ReplayCache;
 
-    err = _BIDSetCacheObject(context, replayCache, szHash, rdata);
+    err = _BIDSetCacheObject(context, replayCache, json_string_value(digest), rdata);
     BID_BAIL_ON_ERROR(err);
 
     if (bStoreReauthCreds) {
@@ -202,8 +192,7 @@ _BIDUpdateReplayCache(
             goto cleanup;
         }
 
-        err = _BIDJsonObjectSet(context, tkt, "tid", json_string(szHash),
-                                BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+        err = _BIDJsonObjectSet(context, tkt, "tid", digest, BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);
 
         err = _BIDJsonObjectSet(context, tkt, "exp", json_object_get(rdata, "exp"), 0);
@@ -214,7 +203,7 @@ _BIDUpdateReplayCache(
     }
 
 cleanup:
-    BIDFree(szHash);
+    json_decref(digest);
     json_decref(ark);
     json_decref(rdata);
     json_decref(tkt);
