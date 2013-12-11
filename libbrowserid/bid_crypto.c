@@ -509,3 +509,117 @@ _BIDGetECDHCurve(
 
     return (cbKey == 0) ? BID_S_UNKNOWN_EC_CURVE : BID_S_OK;
 }
+
+BIDError
+_BIDMakeDigest(
+    BIDContext context,
+    json_t *value,
+    json_t **pDigestInfo)
+{
+    BIDError err;
+    json_t *digestInfo = NULL;
+
+    *pDigestInfo = NULL;
+
+    if (!json_is_string(value)) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    digestInfo = json_object();
+    if (digestInfo == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, digestInfo, "alg", json_string("S256"),
+                            BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDMakeDigestInternal(context, value, digestInfo);
+    BID_BAIL_ON_ERROR(err);
+
+    *pDigestInfo = digestInfo;
+
+cleanup:
+    if (err != BID_S_OK)
+        json_decref(digestInfo);
+
+    return err;
+}
+
+BIDError
+_BIDVerifyDigest(
+    BIDContext context,
+    json_t *value,
+    json_t *assertedDigestInfo)
+{
+    BIDError err;
+    json_t *digestInfo = NULL;
+
+    if (!json_is_string(value)) {
+        err = BID_S_INVALID_PARAMETER;
+        goto cleanup;
+    }
+
+    digestInfo = json_object();
+    if (digestInfo == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDJsonObjectSet(context, digestInfo, "alg",
+                            json_object_get(assertedDigestInfo, "alg"),
+                            BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDMakeDigestInternal(context, value, digestInfo);
+    BID_BAIL_ON_ERROR(err);
+
+    BID_ASSERT(json_string_value(json_object_get(digestInfo, "dig")) != NULL);
+
+    if (json_equal(json_object_get(digestInfo, "dig"),
+                   json_object_get(assertedDigestInfo, "dig"))) {
+        err = BID_S_OK;
+    } else {
+        err = BID_S_INVALID_SIGNATURE;
+    }
+
+cleanup:
+    json_decref(digestInfo);
+
+    return err;
+}
+
+BIDError
+_BIDDigestAssertion(
+    BIDContext context,
+    const char *szAssertion,
+    json_t **pDigest)
+{
+    BIDError err;
+    json_t *digestInfo = NULL;
+    json_t *assertion = json_string(szAssertion);
+
+    *pDigest = NULL;
+
+    if (assertion == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
+
+    err = _BIDMakeDigest(context, assertion, &digestInfo);
+    BID_BAIL_ON_ERROR(err);
+
+    *pDigest = json_incref(json_object_get(digestInfo, "dig"));
+    if (*pDigest == NULL) {
+        err = BID_S_CRYPTO_ERROR;
+        goto cleanup;
+    }
+
+cleanup:
+    json_decref(digestInfo);
+    json_decref(assertion);
+
+    return err;
+}
