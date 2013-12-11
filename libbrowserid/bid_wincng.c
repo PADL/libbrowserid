@@ -285,7 +285,7 @@ _BIDGetJsonBufferValue(
 
 static BIDError
 _BIDMapHashAlgorithmIDByName(
-    LPCSTR szAlgId,
+    LPCSTR szAlgID,
     LPCWSTR *pAlgID)
 {
     LPCWSTR algID = NULL;
@@ -295,7 +295,7 @@ _BIDMapHashAlgorithmIDByName(
     if (szAlgID == NULL || strlen(szAlgID) != 4)
         return BID_S_UNKNOWN_ALGORITHM;
 
-    if (strcmp(szAlgID, "DS128") == 0) {
+    if (strcmp(szAlgID, "S128") == 0) {
         algID = BCRYPT_SHA1_ALGORITHM;
     } else if (strcmp(szAlgID, "S512") == 0) {
         algID = BCRYPT_SHA512_ALGORITHM;
@@ -409,9 +409,6 @@ _BIDMakeShaDigestInternal(
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDMapHashAlgorithmID(algorithm, &wszAlgID);
-    BID_BAIL_ON_ERROR(err);
-
     nts = BCryptOpenAlgorithmProvider(&hAlg,
                                       wszAlgID,
                                       NULL,
@@ -501,7 +498,7 @@ _BIDMakeShaDigest(
     err = _BIDMakeShaDigestInternal(wszAlgID, context, jwt, jwk, digest, digestLength);
     BID_BAIL_ON_ERROR(err);
 
-out:
+cleanup:
     return err;
 }
 
@@ -1320,7 +1317,7 @@ _BIDMakeDigestInternal(
     err = _BIDMapHashAlgorithmIDByName(szAlgID, &wszAlgID);
     BID_BAIL_ON_ERROR(err);
 
-    jwt.EncData = json_string_value(value);
+    jwt.EncData = (LPSTR)json_string_value(value);
     jwt.EncDataLength = strlen(jwt.EncData);
 
     cbDigest = sizeof(pbDigest);
