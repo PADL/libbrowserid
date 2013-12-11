@@ -434,7 +434,6 @@ _BIDReservedClaims[] = {
     "aud",
     "cb",
     "cdi",
-    "cdn",
     "exp",
     "iat",
     "iss",
@@ -443,6 +442,7 @@ _BIDReservedClaims[] = {
     "principal",
     "public-key",
     "scope",
+    "sdn",
     "sub"
 };
 
