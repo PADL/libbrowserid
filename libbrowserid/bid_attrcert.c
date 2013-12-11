@@ -50,7 +50,7 @@ _BIDValidateAttributeCertificate(
     json_t *encodedAttrCert,
     time_t verificationTime,
     BIDJWKSet certVerifyKey,
-    json_t *certHash,
+    json_t *certData,
     json_t *certIssuer,
     json_t **pId,
     json_t **pClaims)
@@ -93,10 +93,8 @@ _BIDValidateAttributeCertificate(
         goto cleanup;
     }
 
-    if (!json_equal(certHash, certBinding)) {
-        err = BID_S_CERT_BINDING_MISMATCH;
-        goto cleanup;
-    }
+    err = _BIDVerifyDigest(context, certData, certBinding);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDFilterReservedClaims(context, attrCert->Payload, pClaims);
     BID_BAIL_ON_ERROR(err);
@@ -132,10 +130,8 @@ _BIDValidateAttributeCertificates(
     BIDError err;
     json_t *attrCerts, *allAttrCertClaims = NULL;
     BIDJWT leafCert;
-    unsigned char hash[32];
-    size_t cbHash = sizeof(hash);
-    json_t *certHash = NULL;
     json_t *iss = NULL;
+    json_t *leafCertData = NULL;
     size_t i, cAttrCerts;
 
     *pAllAttrCertClaims = NULL;
@@ -165,11 +161,11 @@ _BIDValidateAttributeCertificates(
     iss = json_object_get(leafCert->Payload, "iss");
     BID_ASSERT(iss != NULL);
 
-    err = _BIDDigestAssertion(context, leafCert->EncData, hash, &cbHash);
-    BID_BAIL_ON_ERROR(err);
-
-    err = _BIDJsonBinaryValue(context, hash, cbHash, &certHash);
-    BID_BAIL_ON_ERROR(err);
+    leafCertData = json_string(leafCert->EncData);
+    if (leafCertData == NULL) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     allAttrCertClaims = json_object();
     if (allAttrCertClaims == NULL) {
@@ -184,7 +180,7 @@ _BIDValidateAttributeCertificates(
 
         /* Currently, we just ignore attributes we cannot validate */
         err = _BIDValidateAttributeCertificate(context, attrCert, verificationTime,
-                                               certVerifyKey, certHash, iss,
+                                               certVerifyKey, leafCertData, iss,
                                                &attrCertId, &attrCertClaims);
         if (err != BID_S_OK)
             continue;
@@ -202,7 +198,7 @@ _BIDValidateAttributeCertificates(
     *pAllAttrCertClaims = json_incref(allAttrCertClaims);
 
 cleanup:
-    json_decref(certHash);
+    json_decref(leafCertData);
     json_decref(allAttrCertClaims);
 
     return err;
