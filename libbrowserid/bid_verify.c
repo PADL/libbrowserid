@@ -448,7 +448,7 @@ _BIDVerifyLocal(
             if (ulReqFlags & BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS)
                 json_object_update(verifiedIdentity->Attributes, attrCertClaims);
             else
-                json_object_set(verifiedIdentity->Attributes, "attr-certs", attrCertClaims);
+                json_object_set(verifiedIdentity->Attributes, "attribute_certs", attrCertClaims);
             *pulRetFlags |= BID_VERIFY_FLAG_ATTRIBUTE_CERTS;
         }
     }
