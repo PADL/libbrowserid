@@ -442,7 +442,7 @@ _BIDReservedClaims[] = {
     "principal",
     "public-key",
     "scope",
-    "sdn",
+    "scope_description",
     "sub"
 };
 
