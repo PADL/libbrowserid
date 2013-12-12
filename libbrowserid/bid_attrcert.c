@@ -258,16 +258,16 @@ _BIDValidateAttributeCertificates(
         if (ulReqFlags & BID_VERIFY_FLAG_AGGREGATE_ATTR_CERTS) {
             err = _BIDAggregateAttributeCertificateClaims(context, allAttrCertClaims,
                                                           attrCertScope, attrCert, attrCertClaims);
-            BID_BAIL_ON_ERROR(err);
         } else {
-            if (json_object_get(allAttrCertClaims, json_string_value(attrCertScope)) != NULL) {
+            if (json_object_get(allAttrCertClaims, json_string_value(attrCertScope)) != NULL)
                 err = BID_S_DUPLICATE_SCOPE;
-                goto cleanup;
-            }
-            json_object_set(allAttrCertClaims, json_string_value(attrCertScope), attrCertClaims);
+            else
+                json_object_set(allAttrCertClaims, json_string_value(attrCertScope), attrCertClaims);
         }
         json_decref(attrCertClaims);
         json_decref(attrCertScope);
+
+        BID_BAIL_ON_ERROR(err);
     }
 
     err = BID_S_OK;
