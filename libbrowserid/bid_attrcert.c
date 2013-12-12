@@ -144,13 +144,18 @@ _BIDAggregateAttributeCertificateClaims(
     json_t *claimSource = NULL;
     void *iter = NULL;
 
-    json_object_update(aggregateClaims, attrCertClaims);
+    if (json_object_update(aggregateClaims, attrCertClaims) != 0) {
+        err = BID_S_NO_MEMORY;
+        goto cleanup;
+    }
 
     claimNames = json_incref(json_object_get(aggregateClaims, "_claim_names"));
     if (claimNames == NULL) {
-        claimNames = json_object();
+        err = _BIDAllocJsonObject(context, &claimNames);
+        BID_BAIL_ON_ERROR(err);
 
-        err = _BIDJsonObjectSet(context, aggregateClaims, "_claim_names", claimNames, BID_JSON_FLAG_REQUIRED);
+        err = _BIDJsonObjectSet(context, aggregateClaims, "_claim_names",
+                                claimNames, BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);
     }
 
@@ -161,16 +166,21 @@ _BIDAggregateAttributeCertificateClaims(
 
     claimSources = json_incref(json_object_get(aggregateClaims, "_claim_sources"));
     if (claimSources == NULL) {
-        claimSources = json_object();
+        err = _BIDAllocJsonObject(context, &claimSources);
+        BID_BAIL_ON_ERROR(err);
 
-        err = _BIDJsonObjectSet(context, aggregateClaims, "_claim_sources", claimSources, BID_JSON_FLAG_REQUIRED);
+        err = _BIDJsonObjectSet(context, aggregateClaims, "_claim_sources",
+                                claimSources, BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);
     }
 
-    claimSource = json_object();
+    err = _BIDAllocJsonObject(context, &claimSource);
+    BID_BAIL_ON_ERROR(err);
+
     json_object_set(claimSource, "JWT", attrCert);
 
-    err = _BIDJsonObjectSet(context, claimSources, json_string_value(attrCertScope), claimSource, BID_JSON_FLAG_REQUIRED);
+    err = _BIDJsonObjectSet(context, claimSources, json_string_value(attrCertScope),
+                             claimSource, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
@@ -230,11 +240,8 @@ _BIDValidateAttributeCertificates(
         goto cleanup;
     }
 
-    allAttrCertClaims = json_object();
-    if (allAttrCertClaims == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &allAttrCertClaims);
+    BID_BAIL_ON_ERROR(err);
 
     for (i = 0; i < cAttrCerts; i++) {
         json_t *attrCert = json_array_get(attrCerts, i);
