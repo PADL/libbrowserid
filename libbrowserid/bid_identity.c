@@ -403,18 +403,12 @@ _BIDAllocIdentity(
     if (attributes != NULL)
         identity->Attributes = json_incref(attributes);
     else {
-        identity->Attributes = json_object();
-        if (identity->Attributes == NULL) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        err = _BIDAllocJsonObject(context, &identity->Attributes);
+        BID_BAIL_ON_ERROR(err);
     }
 
-    identity->PrivateAttributes = json_object();
-    if (identity->PrivateAttributes == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &identity->PrivateAttributes);
+    BID_BAIL_ON_ERROR(err);
 
     err = BID_S_OK;
     *pIdentity = identity;
@@ -477,12 +471,8 @@ _BIDPopulateIdentity(
 
         err = _BIDGetKeyAgreementObject(context, backedAssertion->Assertion->Payload, &params);
         if (err == BID_S_OK) {
-            dh = json_object();
-
-            if (dh == NULL) {
-                err = BID_S_NO_MEMORY;
-                goto cleanup;
-            }
+            err = _BIDAllocJsonObject(context, &dh);
+            BID_BAIL_ON_ERROR(err);
 
             err = _BIDJsonObjectSet(context, dh, "params", params, 0);
             BID_BAIL_ON_ERROR(err);

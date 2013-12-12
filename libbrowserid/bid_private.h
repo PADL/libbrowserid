@@ -866,6 +866,11 @@ _BIDJsonObjectDel(
     uint32_t ulFlags);
 
 BIDError
+_BIDAllocJsonObject(
+    BIDContext context BID_UNUSED,
+    json_t **pDst);
+
+BIDError
 _BIDEncodeJson(
     BIDContext context,
     json_t *jData,

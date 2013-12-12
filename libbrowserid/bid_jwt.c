@@ -279,11 +279,8 @@ _BIDMakeSignature(
     }
 
     if (jwt->Header == NULL) {
-        jwt->Header = json_object();
-        if (jwt->Header == NULL) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        err = _BIDAllocJsonObject(context, &jwt->Header);
+        BID_BAIL_ON_ERROR(err);
     }
 
     err = _BIDJsonObjectSet(context, jwt->Header, "alg",

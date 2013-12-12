@@ -71,8 +71,8 @@ _BIDMemoryCacheAcquire(
     if (mc == NULL)
         return BID_S_NO_MEMORY;
 
-    mc->Data = json_object();
-    if (mc == NULL) {
+    err = _BIDAllocJsonObject(context, &mc->Data);
+    if (err != BID_S_OK) {
         ops->Release(ops, context, mc);
         return BID_S_NO_MEMORY;
     }
@@ -127,14 +127,15 @@ _BIDMemoryCacheDestroy(
     void *cache)
 {
     struct BIDMemoryCache *mc = (struct BIDMemoryCache *)cache;
+    BIDError err;
     json_t *j;
 
     if (mc == NULL)
         return BID_S_INVALID_PARAMETER;
 
-    j = json_object();
-    if (j == NULL)
-        return BID_S_NO_MEMORY;
+    err = _BIDAllocJsonObject(context, &j);
+    if (err != BID_S_OK)
+        return err;
 
     BIDMemoryCacheLock(mc);
 

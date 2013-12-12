@@ -499,11 +499,8 @@ CBIDIdentityController::_PackDialogArgs(
 
     _ulReqFlags = ulReqFlags;
 
-    _args = json_object();
-    if (_args == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &_args);
+    BID_BAIL_ON_ERROR(err);
 
     if (claims != NULL && json_object_size(claims)) {
         err = _BIDJsonObjectSet(_context, _args, "claims", claims, 0);

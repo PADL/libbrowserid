@@ -444,11 +444,8 @@ _BIDRegistryEnumKey(
                                 rc->AccessMask, &hSubKey);
         BID_BAIL_ON_ERROR((err = _BIDRegistryCacheMapError(lResult)));
 
-        jsonSubKey = json_object();
-        if (jsonSubKey == NULL) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        err = _BIDAllocJsonObject(context, &jsonSubKey);
+        BID_BAIL_ON_ERROR(err);
 
         err = _BIDRegistryEnumKey(ops, context, rc, hSubKey, jsonSubKey);
         BID_BAIL_ON_ERROR(err);
@@ -528,11 +525,8 @@ _BIDRegistryCacheGetObject(
         err = _BIDRegistryMakeValue(context, dwType, pbData, cbData, &json);
         BID_BAIL_ON_ERROR(err);
     } else if (lResult == ERROR_SUCCESS) {
-        json = json_object();
-        if (json == NULL) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        err = _BIDAllocJsonObject(context, &json);
+        BID_BAIL_ON_ERROR(err);
 
         err = _BIDRegistryEnumKey(ops, context, rc, hKey, json);
         BID_BAIL_ON_ERROR(err);
@@ -597,11 +591,8 @@ _BIDRegistryCacheFirstObject(
         goto cleanup;
     }
 
-    jsonKeys = json_object();
-    if (jsonKeys == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &jsonKeys);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDRegistryEnumKey(ops, context, rc, rc->Key, jsonKeys);
     BID_BAIL_ON_ERROR(err);

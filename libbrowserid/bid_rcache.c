@@ -186,11 +186,8 @@ _BIDUpdateReplayCache(
     if (bStoreReauthCreds) {
         BID_ASSERT(identity->PrivateAttributes != NULL);
 
-        tkt = json_object();
-        if (tkt == NULL) {
-            err = BID_S_NO_MEMORY;
-            goto cleanup;
-        }
+        err = _BIDAllocJsonObject(context, &tkt);
+        BID_BAIL_ON_ERROR(err);
 
         err = _BIDJsonObjectSet(context, tkt, "tid", digest, BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);

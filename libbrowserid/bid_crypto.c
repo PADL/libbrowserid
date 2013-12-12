@@ -51,11 +51,8 @@ _BIDGenerateECDHParams(
     BID_ASSERT(context->ContextOptions & BID_CONTEXT_ECDH_KEYEX);
     BID_ASSERT(context->ECDHCurve != 0);
 
-    ecDhParams = json_object();
-    if (ecDhParams == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &ecDhParams);
+    BID_BAIL_ON_ERROR(err);
 
     err = BIDGetContextParam(context, BID_PARAM_ECDH_CURVE, (void **)&szCurve);
     BID_BAIL_ON_ERROR(err);
@@ -137,11 +134,8 @@ _BIDDeriveSessionSubkey(
                         (unsigned char *)szSalt, strlen(szSalt), &pbSubkey, &cbSubkey);
     BID_BAIL_ON_ERROR(err);
 
-    derivedKey = json_object();
-    if (derivedKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &derivedKey);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonBinaryValue(context, pbSubkey, cbSubkey, &sk);
     BID_BAIL_ON_ERROR(err);
@@ -350,11 +344,8 @@ _BIDGetKeyAgreementPublicValue(
         goto cleanup;
     }
 
-    *pPublicValue = json_object();
-    if (*pPublicValue == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, pPublicValue);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, *pPublicValue, "x", x, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
@@ -526,11 +517,8 @@ _BIDMakeDigest(
         goto cleanup;
     }
 
-    digestInfo = json_object();
-    if (digestInfo == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &digestInfo);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, digestInfo, "alg", json_string("S256"),
                             BID_JSON_FLAG_REQUIRED | BID_JSON_FLAG_CONSUME_REF);
@@ -562,11 +550,8 @@ _BIDVerifyDigest(
         goto cleanup;
     }
 
-    digestInfo = json_object();
-    if (digestInfo == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &digestInfo);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, digestInfo, "alg",
                             json_object_get(assertedDigestInfo, "alg"),
