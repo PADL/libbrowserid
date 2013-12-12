@@ -2026,11 +2026,8 @@ _BIDLoadX509PrivateKey(
                          dwFlags);
     BID_BAIL_ON_ERROR((err = _BIDSecStatusToBIDError(ss)));
 
-    privateKey = json_object();
-    if (privateKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &privateKey);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, privateKey, "version",
                             json_string("2012.08.15"),
@@ -2204,11 +2201,8 @@ _BIDGetCertOtherName(
 
     *pJsonOtherName = NULL;
 
-    jsonOtherName = json_object();
-    if (jsonOtherName == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &jsonOtherName);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, jsonOtherName, "oid",
                             json_string(pOtherName->pszObjId),
@@ -2276,11 +2270,8 @@ _BIDGetCertAltNames(
 
     *pPrincipal = NULL;
 
-    principal = json_object();
-    if (principal == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &principal);
+    BID_BAIL_ON_ERROR(err);
 
     pCertExtension = CertFindExtension(szOID_SUBJECT_ALT_NAME2,
                                        pCertContext->pCertInfo->cExtension,
@@ -2939,11 +2930,8 @@ _BIDGenerateECDHKey(
         goto cleanup;
     }
 
-    ecDhKey = json_object();
-    if (ecDhKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &ecDhKey);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, ecDhKey, "params", ecDhParams,
                             BID_JSON_FLAG_REQUIRED);

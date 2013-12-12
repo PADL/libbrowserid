@@ -1123,11 +1123,8 @@ _BIDLoadX509PrivateKey(
         goto cleanup;
     }
 
-    privateKey = json_object();
-    if (privateKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &privateKey);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, privateKey, "version", json_string("2012.08.15"), BID_JSON_FLAG_CONSUME_REF);
     BID_BAIL_ON_ERROR(err);
@@ -1431,11 +1428,8 @@ _BIDGetCertOtherName(
 
     *pJsonOtherName = NULL;
 
-    jsonOtherName = json_object();
-    if (jsonOtherName == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &jsonOtherName);
+    BID_BAIL_ON_ERROR(err);
 
     if (OBJ_obj2txt(szOid, sizeof(szOid), otherName->type_id, 1) < 0) {
         err = BID_S_INVALID_PARAMETER;
@@ -1494,11 +1488,14 @@ _BIDPopulateX509Identity(
 {
     BIDError err;
     json_t *certChain = json_object_get(backedAssertion->Assertion->Header, "x5c");
-    json_t *principal = json_object();
+    json_t *principal;
     json_t *eku = NULL;
     X509 *x509 = NULL;
     STACK_OF(GENERAL_NAME) *gens = NULL;
     int i;
+
+    err = _BIDAllocJsonObject(context, &principal);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDCertDataToX509(context, certChain, 0, &x509);
     BID_BAIL_ON_ERROR(err);
@@ -1790,11 +1787,8 @@ _BIDGenerateECDHKey(
     const EC_GROUP *group = NULL;
     const EC_POINT *publicKey = NULL;
 
-    ecDhKey = json_object();
-    if (ecDhKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &ecDhKey);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDMakeECKeyByCurve(context, ecDhParams, &ec);
     BID_BAIL_ON_ERROR(err);

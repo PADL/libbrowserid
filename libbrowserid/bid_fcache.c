@@ -416,11 +416,8 @@ _BIDFileCacheNew(
     *pData = NULL;
     *pUserData = NULL;
 
-    data = json_object();
-    if (data == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &data);
+    BID_BAIL_ON_ERROR(err);
 
     if ((fc->Flags & BID_CACHE_FLAG_UNVERSIONED) == 0) {
         err = _BIDJsonObjectSet(context, data, "v", json_string("2013.01.01"), BID_JSON_FLAG_CONSUME_REF);

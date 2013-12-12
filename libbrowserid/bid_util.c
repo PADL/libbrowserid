@@ -588,6 +588,19 @@ _BIDJsonObjectDel(
 }
 
 BIDError
+_BIDAllocJsonObject(
+    BIDContext context BID_UNUSED,
+    json_t **pDst)
+{
+    *pDst = json_object();
+
+    if (*pDst == NULL)
+        return BID_S_NO_MEMORY;
+
+    return BID_S_OK;
+}
+
+BIDError
 _BIDJsonObjectSetBinaryValue(
     BIDContext context,
     json_t *dst,
