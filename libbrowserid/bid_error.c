@@ -123,6 +123,7 @@ const char *_BIDErrorTable[] = {
     "Missing primary certificate binding",
     "Primary certificate binding mismatch",
     "Attribute certificate missing scope claim",
+    "Duplicate attribute certificate for scope",
     "Unknown error code"
 };
 

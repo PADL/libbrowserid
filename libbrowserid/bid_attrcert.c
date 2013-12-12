@@ -130,6 +130,57 @@ cleanup:
     return err;
 }
 
+static BIDError
+_BIDAggregateAttributeCertificateClaims(
+    BIDContext context,
+    json_t *aggregateClaims,
+    json_t *attrCertScope,
+    json_t *attrCert,
+    json_t *attrCertClaims)
+{
+    BIDError err;
+    json_t *claimNames = NULL;
+    json_t *claimSources = NULL;
+    json_t *claimSource = NULL;
+    void *iter = NULL;
+
+    json_object_update(aggregateClaims, attrCertClaims);
+
+    claimNames = json_incref(json_object_get(aggregateClaims, "_claim_names"));
+    if (claimNames == NULL) {
+        claimNames = json_object();
+
+        err = _BIDJsonObjectSet(context, aggregateClaims, "_claim_names", claimNames, BID_JSON_FLAG_REQUIRED);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    for (iter = json_object_iter(attrCertClaims);
+         iter != NULL;
+         iter = json_object_iter_next(attrCertClaims, iter))
+        json_object_set(claimNames, json_object_iter_key(iter), attrCertScope);
+
+    claimSources = json_incref(json_object_get(aggregateClaims, "_claim_sources"));
+    if (claimSources == NULL) {
+        claimSources = json_object();
+
+        err = _BIDJsonObjectSet(context, aggregateClaims, "_claim_sources", claimSources, BID_JSON_FLAG_REQUIRED);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    claimSource = json_object();
+    json_object_set(claimSource, "JWT", attrCert);
+
+    err = _BIDJsonObjectSet(context, claimSources, json_string_value(attrCertScope), claimSource, BID_JSON_FLAG_REQUIRED);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    json_decref(claimNames);
+    json_decref(claimSources);
+    json_decref(claimSource);
+
+    return err;
+}
+
 BIDError
 _BIDValidateAttributeCertificates(
     BIDContext context,
@@ -197,9 +248,15 @@ _BIDValidateAttributeCertificates(
         if (err != BID_S_OK)
             continue;
 
-        if (ulReqFlags & BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS) {
-            json_object_update(allAttrCertClaims, attrCertClaims);
+        if (ulReqFlags & BID_VERIFY_FLAG_AGGREGATE_ATTR_CERTS) {
+            err = _BIDAggregateAttributeCertificateClaims(context, allAttrCertClaims,
+                                                          attrCertScope, attrCert, attrCertClaims);
+            BID_BAIL_ON_ERROR(err);
         } else {
+            if (json_object_get(allAttrCertClaims, json_string_value(attrCertScope)) != NULL) {
+                err = BID_S_DUPLICATE_SCOPE;
+                goto cleanup;
+            }
             json_object_set(allAttrCertClaims, json_string_value(attrCertScope), attrCertClaims);
         }
         json_decref(attrCertClaims);

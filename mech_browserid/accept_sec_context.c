@@ -175,7 +175,7 @@ gssBidAcceptSecContext(OM_uint32 *minor,
         cbChannelBindings = input_chan_bindings->application_data.length;
     }
 
-    ulReqFlags = BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS;
+    ulReqFlags = BID_VERIFY_FLAG_AGGREGATE_ATTR_CERTS;
 
     switch (GSSBID_SM_STATE(ctx)) {
     case GSSBID_STATE_INITIAL:

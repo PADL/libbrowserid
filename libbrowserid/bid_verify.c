@@ -445,7 +445,7 @@ _BIDVerifyLocal(
         BID_BAIL_ON_ERROR(err);
 
         if (attrCertClaims != NULL) {
-            if (ulReqFlags & BID_VERIFY_FLAG_FLATTEN_ATTR_CERTS)
+            if (ulReqFlags & BID_VERIFY_FLAG_AGGREGATE_ATTR_CERTS)
                 json_object_update(verifiedIdentity->Attributes, attrCertClaims);
             else
                 json_object_set(verifiedIdentity->Attributes, "attribute_certs", attrCertClaims);
