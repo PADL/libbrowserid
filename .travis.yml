@@ -1,0 +1,10 @@
+language: c
+
+compiler: clang
+
+before_install:
+ - sudo apt-get install libssl-dev libjansson-dev libcurl4-openssl-dev
+
+notifications:
+  email:
+    - lukeh@padl.com
