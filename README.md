@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/PADL/libbrowserid.png?branch=browserid)](https://travis-ci.org/PADL/libbrowserid)
+
 # libbrowserid
 
 libbrowserid is a C library for generating and verifying Mozilla Persona
