@@ -1,10 +1,10 @@
 language: c
 
-compiler: clang
+#compiler: clang
 
 before_install:
- - sudo apt-get install libssl-dev libjansson-dev libcurl4-openssl-dev
- - ./autogen.sh
+ - sudo apt-get install libssl-dev libjansson-dev libcurl4-openssl-dev autoconf automake
+ - autoreconf
 
 notifications:
   email:
