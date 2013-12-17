@@ -4,7 +4,7 @@ language: c
 
 before_install:
  - sudo apt-get install libkrb5-dev libssl-dev libjansson-dev libcurl4-openssl-dev autoconf automake
- - autoreconf
+ - sh autogen.sh
 
 script: ./configure && make --enable-gss-mech
 
