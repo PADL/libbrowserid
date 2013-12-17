@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/PADL/libbrowserid.png?branch=browserid)](https://travis-ci.org/PADL/libbrowserid)
+[![Build Status](https://travis-ci.org/PADL/libbrowserid.png?branch=browserid-sad)](https://travis-ci.org/PADL/libbrowserid)
 
 # libbrowserid
 
