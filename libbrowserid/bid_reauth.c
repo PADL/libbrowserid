@@ -298,11 +298,8 @@ _BIDMakeAuthenticator(
         goto cleanup;
     }
 
-    ap->Payload = json_object();
-    if (ap->Payload == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &ap->Payload);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, ap->Payload, "iat", iat, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
@@ -313,11 +310,8 @@ _BIDMakeAuthenticator(
     err = _BIDJsonObjectSet(context, ap->Payload, "nonce", nonce, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);
 
-    tkt = json_object();
-    if (tkt == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &tkt);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonObjectSet(context, tkt, "tid", tid, BID_JSON_FLAG_REQUIRED);
     BID_BAIL_ON_ERROR(err);

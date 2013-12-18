@@ -66,11 +66,8 @@ _BIDDeriveXRTKey(
     err = _BIDImportSecretKeyData(context, pbXRTK, cbXRTK, &newCMK);
     BID_BAIL_ON_ERROR(err);
 
-    signKey = json_object();
-    if (signKey == NULL) {
-        err = BID_S_NO_MEMORY;
-        goto cleanup;
-    }
+    err = _BIDAllocJsonObject(context, &signKey);
+    BID_BAIL_ON_ERROR(err);
 
     err = _BIDJsonBinaryValue(context, pbXRTK, cbXRTK, &sk);
     BID_BAIL_ON_ERROR(err);
