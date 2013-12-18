@@ -182,7 +182,7 @@ BIDAcquireContext(
     context = (BIDContext)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDContextGetTypeID(),
                                                    sizeof(*context) - sizeof(CFRuntimeBase), NULL);
 #else
-    context = BIDCalloc(1, sizeof(*context));
+    context = BIDMalloc(sizeof(*context));
 #endif
     if (context == NULL) {
         err = BID_S_NO_MEMORY;
