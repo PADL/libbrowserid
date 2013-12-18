@@ -100,7 +100,7 @@ _BIDAcquireCache(
     cache = (BIDCache)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDCacheGetTypeID(),
                                                sizeof(*cache) - sizeof(CFRuntimeBase), NULL);
 #else
-    cache = BIDCalloc(1, sizeof(*cache));
+    cache = BIDMalloc(sizeof(*cache));
 #endif
     if (cache == NULL) {
         err = BID_S_NO_MEMORY;
