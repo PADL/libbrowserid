@@ -12,6 +12,7 @@ cdefines = $(cdefines) -DBUILD_LIBBROWSERID -DSYSCONFDIR=\"c:/windows/system32/d
 
 libbrowserid_OBJS =					\
 	$(OBJ)\bid_authority.obj			\
+	$(OBJ)\bid_attrcert.obj				\
 	$(OBJ)\bid_base64.obj				\
 	$(OBJ)\bid_cache.obj				\
 	$(OBJ)\bid_context.obj				\
