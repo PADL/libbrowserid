@@ -308,7 +308,7 @@ BIDReleaseContext(BIDContext context)
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
     CFRelease(context);
 #else
-    memset(context, 0, sizeof(*context));
+    _BIDFinalizeContext(context);
     BIDFree(context);
 #endif
 
