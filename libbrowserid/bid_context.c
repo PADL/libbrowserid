@@ -189,7 +189,20 @@ BIDAcquireContext(
         goto cleanup;
     }
 
-    context->ContextOptions = ulContextOptions;
+    context->ContextOptions         = ulContextOptions;
+    context->SecondaryAuthorities   = NULL;
+    memset(&context->JsonError, 0, sizeof(context->JsonError));
+    context->VerifierUrl            = NULL;
+    context->MaxDelegations         = 0;
+    context->Skew                   = 0;
+    context->AuthorityCache         = BID_C_NO_AUTHORITY_CACHE;
+    context->ReplayCache            = BID_C_NO_REPLAY_CACHE;
+    context->TicketCache            = BID_C_NO_TICKET_CACHE;
+    context->ECDHCurve              = 0;
+    context->TicketLifetime         = 0;
+    context->RenewLifetime          = 0;
+    context->Config                 = NULL;
+    context->ParentWindow           = NULL;
 
     if (szConfig != NULL) {
         err = BIDSetContextParam(context, BID_PARAM_CONFIG_NAME, (void *)szConfig);

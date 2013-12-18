@@ -393,12 +393,16 @@ _BIDAllocIdentity(
     identity = (BIDIdentity)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDIdentityGetTypeID(),
                                                      sizeof(*identity) - sizeof(CFRuntimeBase), NULL);
 #else
-    identity = BIDCalloc(1, sizeof(*identity));
+    identity = BIDMalloc(sizeof(*identity));
 #endif
     if (identity == BID_C_NO_IDENTITY) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
     }
+
+    identity->Attributes        = NULL;
+    identity->PrivateAttributes = NULL;
+    identity->SecretHandle      = NULL;
 
     if (attributes != NULL)
         identity->Attributes = json_incref(attributes);
