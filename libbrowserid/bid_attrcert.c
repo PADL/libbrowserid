@@ -209,7 +209,7 @@ _BIDValidateAttributeCertificates(
 
     *pAllAttrCertClaims = NULL;
 
-    attrCerts = json_object_get(backedAssertion->Assertion->Payload, "attribute_certs");
+    attrCerts = json_object_get(backedAssertion->Assertion->Payload, "jac");
     if (attrCerts == NULL) {
         err = BID_S_OK;
         goto cleanup;
