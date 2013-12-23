@@ -130,7 +130,7 @@
         var options = { siteName: controller.siteName(),                                                \
                         experimental_forceAuthentication: !!controller.forceAuthentication(),           \
                         experimental_emailHint: controller.emailHint(),                                 \
-                        experimental_optionalScopes: [ '*' ],                                           \
+                        experimental_voluntaryScopes: [ '*' ],                                          \
                         experimental_userAssertedClaims: " CONTROLLER_CLAIMS "                          \
         };                                                                                              \
                                                                                                         \

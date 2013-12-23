@@ -57,7 +57,7 @@ static WCHAR _BIDHTMLAcquireAssertionScript[] = L"                              
     var options = { siteName: args.siteName,                                                        \
                     experimental_forceAuthentication: args.forceAuthentication,                     \
                     experimental_emailHint: args.emailHint,                                         \
-                    experimental_optionalScopes: [ '*' ],                                           \
+                    experimental_voluntaryScopes: [ '*' ],                                          \
                     experimental_userAssertedClaims: args.claims                                    \
     };                                                                                              \
                                                                                                     \
