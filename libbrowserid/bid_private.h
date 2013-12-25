@@ -475,6 +475,9 @@ _BIDVerifyDigest(
     json_t *value,
     json_t *assertedDigestInfo);
 
+int
+_BIDTimingSafeCompare(const void *b1, const void *b2, size_t n);
+
 /*
  * bid_fcache.c
  */
