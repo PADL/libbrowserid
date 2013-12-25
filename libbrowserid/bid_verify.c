@@ -163,7 +163,7 @@ _BIDValidateAudience(
         BID_BAIL_ON_ERROR(err);
 
         if (cbChannelBindings != cbAssertionCB ||
-            memcmp(pbChannelBindings, pbAssertionCB, cbAssertionCB) != 0) {
+            _BIDTimingSafeCompare(pbChannelBindings, pbAssertionCB, cbAssertionCB) != 0) {
             err = BID_S_CHANNEL_BINDINGS_MISMATCH;
             goto cleanup;
         }

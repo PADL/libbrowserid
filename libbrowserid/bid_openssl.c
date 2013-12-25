@@ -565,7 +565,7 @@ _RSAVerifySignature(
                                          RSA_PKCS1_PADDING);
 
     *valid = (signatureLength == digestLength &&
-              memcmp(signature, digest, signatureLength) == 0);
+              _BIDTimingSafeCompare(signature, digest, signatureLength) == 0);
 
 cleanup:
     RSA_free(rsa);
@@ -893,7 +893,7 @@ _HMACSHAVerifySignature(
         return err;
 
     *valid = (jwt->SignatureLength == digestLength) &&
-             (memcmp(jwt->Signature, digest, digestLength) == 0);
+             (_BIDTimingSafeCompare(jwt->Signature, digest, digestLength) == 0);
 
     return BID_S_OK;
 }

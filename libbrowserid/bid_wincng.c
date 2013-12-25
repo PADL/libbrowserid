@@ -1200,7 +1200,7 @@ _HMACSHAVerifySignature(
         return err;
 
     *valid = (jwt->SignatureLength == cbDigest) &&
-             (memcmp(jwt->Signature, pbDigest, cbDigest) == 0);
+             (_BIDTimingSafeCompare(jwt->Signature, pbDigest, cbDigest) == 0);
 
     return BID_S_OK;
 }
@@ -2495,7 +2495,7 @@ _BIDValidateX509CertHash(
     }
 
     if (cbAssertedHash != cbServerHash ||
-        memcmp(pbAssertedHash, pbServerHash, cbServerHash) != 0) {
+        _BIDTimingSafeCompare(pbAssertedHash, pbServerHash, cbServerHash) != 0) {
         err = BID_S_UNTRUSTED_X509_CERT;
         goto cleanup;
     }
