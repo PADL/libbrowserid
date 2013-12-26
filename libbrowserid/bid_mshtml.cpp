@@ -499,7 +499,7 @@ CBIDIdentityController::_PackDialogArgs(
 
     _ulReqFlags = ulReqFlags;
 
-    err = _BIDAllocJsonObject(context, &_args);
+    err = _BIDAllocJsonObject(_context, &_args);
     BID_BAIL_ON_ERROR(err);
 
     if (claims != NULL && json_object_size(claims)) {
