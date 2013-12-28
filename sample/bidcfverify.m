@@ -14,7 +14,7 @@ PersonaVerifyAssertion(
     BIDContext context = NULL;
     CFErrorRef cfErr;
 
-    context = BIDContextCreate(NULL, BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE, &cfErr);
+    context = BIDContextCreate(kCFAllocatorDefault, NULL, BID_CONTEXT_RP | BID_CONTEXT_AUTHORITY_CACHE, &cfErr);
     if (context == NULL) {
         handler(NULL, NULL, (__bridge NSError *)cfErr);
         CFRelease(cfErr);

@@ -390,7 +390,7 @@ _BIDAllocIdentity(
     *pIdentity = BID_C_NO_IDENTITY;
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-    identity = (BIDIdentity)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDIdentityGetTypeID(),
+    identity = (BIDIdentity)_CFRuntimeCreateInstance(CFGetAllocator(context), BIDIdentityGetTypeID(),
                                                      sizeof(*identity) - sizeof(CFRuntimeBase), NULL);
 #else
     identity = BIDMalloc(sizeof(*identity));

@@ -179,7 +179,8 @@ BIDAcquireContext(
     }
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-    context = (BIDContext)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDContextGetTypeID(),
+    context = (BIDContext)_CFRuntimeCreateInstance(args->CFAllocator ? args->CFAllocator : kCFAllocatorDefault,
+                                                   BIDContextGetTypeID(),
                                                    sizeof(*context) - sizeof(CFRuntimeBase), NULL);
 #else
     context = BIDMalloc(sizeof(*context));

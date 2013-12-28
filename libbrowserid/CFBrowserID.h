@@ -57,6 +57,7 @@ BIDCacheGetTypeID(void);
 
 BIDContext
 BIDContextCreate(
+    CFAllocatorRef allocator,
     CFStringRef configFile,
     uint32_t ulContextOptions,
     CFErrorRef *pError) CF_RETURNS_RETAINED;
