@@ -74,7 +74,7 @@ static CFStringRef
 _BIDIdentityCopyDebugDescription(CFTypeRef cf);
 
 static CFErrorRef
-_BIDCFMapError(BIDError err);
+_BIDCFMapError(BIDContext context, BIDError err);
 
 static const CFRuntimeClass _BIDIdentityClass = {
     0,
@@ -152,19 +152,20 @@ BIDCacheGetTypeID(void)
 }
 
 static CFErrorRef
-_BIDCFMapError(BIDError err)
+_BIDCFMapError(BIDContext context, BIDError err)
 {
     CFErrorRef cfError = NULL;
     CFDictionaryRef cfDict = NULL;
     const char *szErr = NULL;
+    CFAllocatorRef allocator = (context == BID_C_NO_CONTEXT) ? kCFAllocatorDefault : CFGetAllocator(context);
 
     BIDErrorToString(err, &szErr);
 
     if (szErr != NULL) {
         CFStringRef errDesc;
 
-        errDesc = CFStringCreateWithCString(kCFAllocatorDefault, szErr, kCFStringEncodingASCII);
-        cfDict = CFDictionaryCreate(kCFAllocatorDefault,
+        errDesc = CFStringCreateWithCString(allocator, szErr, kCFStringEncodingASCII);
+        cfDict = CFDictionaryCreate(allocator,
                                     (const void **)&kCFErrorDescriptionKey,
                                     (const void **)&errDesc,
                                     1,
@@ -173,7 +174,7 @@ _BIDCFMapError(BIDError err)
         CFRelease(errDesc);
     }
 
-    cfError = CFErrorCreate(kCFAllocatorDefault, CFSTR("com.padl.BrowserID"), err, cfDict);
+    cfError = CFErrorCreate(allocator, CFSTR("com.padl.BrowserID"), err, cfDict);
 
     if (cfDict != NULL)
         CFRelease(cfDict);
@@ -204,7 +205,7 @@ BIDContextCreate(
 
 cleanup:
     if (err != BID_S_OK && pError != NULL)
-        *pError = _BIDCFMapError(err);
+        *pError = _BIDCFMapError(context, err);
 
     BIDFree(szConfigFile);
 
@@ -265,7 +266,7 @@ BIDIdentityCreateByVerifyingAssertion(
 
 cleanup:                             
     if (err != BID_S_OK && pError != NULL)
-        *pError = _BIDCFMapError(err);
+        *pError = _BIDCFMapError(context, err);
 
     BIDFree(szAssertion);
     BIDFree(szAudienceOrSpn);
@@ -290,7 +291,7 @@ _BIDIdentityCopyDebugDescription(
     if (iss == NULL)
         iss = CFSTR("?");
 
-    desc = CFStringCreateWithFormat(kCFAllocatorDefault, NULL,
+    desc = CFStringCreateWithFormat(CFGetAllocator(cf), NULL,
                                     CFSTR("<BIDIdentity %p>{subject = \"%@\", issuer = \"%@\"}"),
                                     cf, sub, iss);
 
@@ -332,7 +333,7 @@ BIDIdentityCreateFromString(
 
 cleanup:
     if (err != BID_S_OK && pError != NULL)
-        *pError = _BIDCFMapError(err);
+        *pError = _BIDCFMapError(context, err);
 
     BIDFree(szAssertion);
 
@@ -441,7 +442,7 @@ BIDAssertionCreateUIWithClaims(
                                 &expiryTime, pulFlags);
     BID_BAIL_ON_ERROR(err);
 
-    assertion = CFStringCreateWithCString(kCFAllocatorDefault, szAssertion, kCFStringEncodingASCII);
+    assertion = CFStringCreateWithCString(CFGetAllocator(context), szAssertion, kCFStringEncodingASCII);
     if (assertion == NULL) {
         err = BID_S_NO_MEMORY;
         goto cleanup;
@@ -453,7 +454,7 @@ cleanup:
     BIDFree(szAssertion);
 
     if (err != BID_S_OK && pError != NULL)
-        *pError = _BIDCFMapError(err);
+        *pError = _BIDCFMapError(context, err);
 
     return assertion;
 }
@@ -484,7 +485,7 @@ cleanup:
     BIDFree(szCacheName);
 
     if (err != BID_S_OK && pError != NULL)
-        *pError = _BIDCFMapError(err);
+        *pError = _BIDCFMapError(context, err);
 
     return ticketCache;
 }
@@ -515,7 +516,7 @@ cleanup:
     BIDFree(szCacheName);
 
     if (err != BID_S_OK && pError != NULL)
-        *pError = _BIDCFMapError(err);
+        *pError = _BIDCFMapError(context, err);
 
     return replayCache;
 }
@@ -592,7 +593,7 @@ _BIDCachePerformBlock(
     err = _BIDPerformCacheObjectsWithBlock(context, cache,
         ^(BIDContext context, BIDCache cache, const char *szKey, json_t *jsonObject) {
         BIDError err2;
-        CFStringRef key = CFStringCreateWithCString(kCFAllocatorDefault, szKey, kCFStringEncodingASCII);
+        CFStringRef key = CFStringCreateWithCString(CFGetAllocator(cache), szKey, kCFStringEncodingASCII);
 
         if (key == NULL)
             return BID_S_NO_MEMORY;
