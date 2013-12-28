@@ -231,29 +231,22 @@ json_object_update(json_t *object, json_t *other)
 }
 
 typedef struct json_object_iterator {
-    CFMutableDictionaryRef object;
     CFTypeRef enumerator;
-    CFStringRef key; // weak
-    CFTypeRef value; // weak
+    CFStringRef key;
+    CFTypeRef value;
 } json_object_iterator_t;
-
-static int
-_json_object_iter_validate(
-    json_object_iterator_t *iter,
-    json_t *obj)
-{
-    return (iter != NULL && iter->object == obj);
-}
 
 CF_RETURNS_NOT_RETAINED
 static CFStringRef
-_json_object_iter_next_object(json_object_iterator_t *iter)
+_json_object_iter_next_object(
+    json_t *object,
+    json_object_iterator_t *iter)
 {
     if (iter == NULL)
         return NULL;
 
     if ((iter->key = (__bridge CFStringRef)[(__bridge NSEnumerator *)iter->enumerator nextObject]) != NULL)
-        iter->value = CFDictionaryGetValue(iter->object, iter->key);
+        iter->value = CFDictionaryGetValue(object, iter->key);
     else
         iter->value = NULL;
 
@@ -264,8 +257,6 @@ static void
 _json_object_iter_release(json_object_iterator_t *iter CF_CONSUMED)
 {
     if (iter != NULL) {
-        if (iter->object)
-            CFRelease(iter->object);
         if (iter->enumerator)
             CFRelease(iter->enumerator);
         BIDFree(iter);
@@ -285,13 +276,12 @@ _json_object_iter_create(json_t *object)
         return NULL;
 
     @autoreleasepool {
-        iter->object = (CFMutableDictionaryRef)CFRetain(object);
-        iter->enumerator = CFBridgingRetain([(__bridge NSDictionary *)iter->object keyEnumerator]);
+        iter->enumerator = CFBridgingRetain([(__bridge NSDictionary *)object keyEnumerator]);
         iter->key = NULL;
         iter->value = NULL;
     }
 
-    if (_json_object_iter_next_object(iter) == NULL) {
+    if (_json_object_iter_next_object(object, iter) == NULL) {
         _json_object_iter_release(iter);
         return NULL;
     }
@@ -315,7 +305,7 @@ json_object_iter_at(json_t *object, const char *szKey)
     if (iterator == NULL)
         return NULL;
 
-    while ((iteratorKey = _json_object_iter_next_object(iterator))) {
+    while ((iteratorKey = _json_object_iter_next_object(object, iterator))) {
         if ([(__bridge NSString *)iteratorKey isEqualToString:key])
             return iterator;
     }
@@ -329,8 +319,7 @@ json_object_iter_next(json_t *object, void *iter)
 {
     json_object_iterator_t *iterator = iter;
 
-    if (!_json_object_iter_validate(iterator, object) ||
-        !_json_object_iter_next_object(iterator)) {
+    if (!_json_object_iter_next_object(object, iterator)) {
         _json_object_iter_release(iterator);
         return NULL;
     }
@@ -365,10 +354,7 @@ json_object_iter_set(json_t *object, void *iter, json_t *value)
 {
     json_object_iterator_t *iterator = iter;
 
-    if (!_json_object_iter_validate(iterator, object))
-        return -1;
-
-    CFDictionarySetValue(iterator->object, iterator->key, value);
+    CFDictionarySetValue((CFMutableDictionaryRef)object, iterator->key, value);
 
     return 0;
 }
