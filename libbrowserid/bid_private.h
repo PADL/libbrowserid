@@ -329,6 +329,9 @@ struct BIDAcquireContextArgsDesc {
     BIDAuthorityCache AuthorityCache;
     BIDReplayCache ReplayCache;
     BIDTicketCache TicketCache;
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+    CFAllocatorRef CFAllocator;
+#endif
 };
 
 #define BID_ACQUIRE_CONTEXT_ARGS_VERSION        1

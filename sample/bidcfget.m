@@ -26,7 +26,7 @@ PersonaGetAssertion(
     CFErrorRef cfErr;
     uint32_t flags;
 
-    context = BIDContextCreate(NULL, BID_CONTEXT_USER_AGENT, &cfErr);
+    context = BIDContextCreate(kCFAllocatorDefault, NULL, BID_CONTEXT_USER_AGENT, &cfErr);
     if (context == NULL) {
         if (error)
             *error = CFBridgingRelease(cfErr);

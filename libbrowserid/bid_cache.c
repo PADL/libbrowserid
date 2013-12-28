@@ -97,7 +97,7 @@ _BIDAcquireCache(
     }
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-    cache = (BIDCache)_CFRuntimeCreateInstance(kCFAllocatorDefault, BIDCacheGetTypeID(),
+    cache = (BIDCache)_CFRuntimeCreateInstance(CFGetAllocator(context), BIDCacheGetTypeID(),
                                                sizeof(*cache) - sizeof(CFRuntimeBase), NULL);
 #else
     cache = BIDMalloc(sizeof(*cache));

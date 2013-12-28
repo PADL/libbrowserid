@@ -86,7 +86,7 @@ int main(int argc, const char *argv[])
      */
     [NSApplication sharedApplication];
 
-    context = BIDContextCreate(NULL, options, &err);
+    context = BIDContextCreate(kCFAllocatorDefault, NULL, options, &err);
     if (context == NULL) {
         NSLog(@"Failed to create context: %@", err);
         goto cleanup;

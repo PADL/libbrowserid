@@ -184,6 +184,7 @@ _BIDCFMapError(BIDContext context, BIDError err)
 
 BIDContext
 BIDContextCreate(
+    CFAllocatorRef allocator,
     CFStringRef configFile,
     uint32_t ulContextOptions,
     CFErrorRef *pError)
@@ -191,6 +192,7 @@ BIDContextCreate(
     BIDError err;
     BIDContext context = BID_C_NO_CONTEXT;
     char *szConfigFile = NULL;
+    struct BIDAcquireContextArgsDesc args;
 
     if (configFile != NULL) {
         szConfigFile = json_string_copy(configFile);
@@ -200,7 +202,13 @@ BIDContextCreate(
         }
     }
 
-    err = BIDAcquireContext(szConfigFile, ulContextOptions, NULL, &context);
+    memset(&args, 0, sizeof(args));
+    args.Version = BID_ACQUIRE_CONTEXT_ARGS_VERSION;
+    args.cbHeaderLength = sizeof(args);
+    args.cbStructureLength = args.cbHeaderLength;
+    args.CFAllocator = allocator;
+
+    err = BIDAcquireContext(szConfigFile, ulContextOptions, &args, &context);
     BID_BAIL_ON_ERROR(err);
 
 cleanup:
