@@ -302,7 +302,7 @@ gssBidSetCredAssertion(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        cred->flags |= CRED_FLAG_ASSERTION;
+        cred->flags |= CRED_FLAG_ASSERTION | CRED_FLAG_RESOLVED;
     } else {
         cred->flags &= ~(CRED_FLAG_ASSERTION);
     }
