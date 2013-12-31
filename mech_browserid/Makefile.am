@@ -129,7 +129,7 @@ mech_browserid_la_SOURCES += add_cred_from.c acquire_cred_from.c
 endif
 
 if CFBROWSERID
-mech_browserid_la_SOURCES += acquire_cred_from_ext.c
+mech_browserid_la_SOURCES += acquire_cred_ext.c
 endif
 
 if GSSBID_ENABLE_ACCEPTOR
