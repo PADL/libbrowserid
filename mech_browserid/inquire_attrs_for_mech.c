@@ -54,7 +54,9 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
     OM_uint32 major, tmpMinor;
     BIDContext bidContext = BID_C_NO_CONTEXT;
     BIDCache bidConfig = NULL;
+#ifdef HAVE_GSS_INQUIRE_ATTRS_FOR_MECH
     BIDError err;
+#endif
 
     if (mech_attrs != NULL)
         *mech_attrs = GSS_C_NO_OID_SET;
@@ -92,6 +94,7 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
 #endif
     }
 
+#ifdef HAVE_GSS_INQUIRE_ATTRS_FOR_MECH
     /*
      * XXX hack to advertise whether we can do mutual authentication.
      * needs a better solution
@@ -107,6 +110,7 @@ gss_inquire_attrs_for_mech(OM_uint32 *minor,
              _BIDGetCacheObject(bidContext, bidContext->Config, "ca-directory", NULL)   == BID_S_OK))
             MA_SUPPORTED(GSS_C_MA_AUTH_TARG_INIT);
     }
+#endif
 
     if (known_mech_attrs != NULL) {
         major = gss_create_empty_oid_set(minor, known_mech_attrs);
