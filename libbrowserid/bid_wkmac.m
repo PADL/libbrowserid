@@ -176,16 +176,28 @@
 
 - (void)loadIdentityDialog
 {
-    NSApplication *app = [NSApplication sharedApplication];
     NSURL *personaURL = [NSURL URLWithString:@BID_SIGN_IN_URL];
+    NSModalSession modalSession;
+    NSModalResponse modalResponse;
 
     self.identityDialog = [BIDIdentityDialog identityDialog];
     self.identityDialog.delegate = self;
-    if (self.parentWindow != nil)
-        self.identityDialog.parentWindow = self.parentWindow;
 
     [[self.webView mainFrame] loadRequest:[NSURLRequest requestWithURL:personaURL]];
-    [app runModalForWindow:self.identityDialog];
+    [self.identityDialog orderOut:self.webView];
+
+    if (self.parentWindow != nil) {
+        [self.parentWindow beginSheet:self.identityDialog completionHandler:^(NSModalResponse returnCode BID_UNUSED) {
+        }];
+    }
+
+    modalSession = [NSApp beginModalSessionForWindow:self.identityDialog];
+    do {
+        modalResponse = [NSApp runModalSession:modalSession];
+        [[NSRunLoop currentRunLoop] limitDateForMode:NSDefaultRunLoopMode];
+    } while (modalResponse == NSModalResponseContinue);
+
+    [NSApp endModalSession:modalSession];
 }
 
 - (void)showIdentityDialog
