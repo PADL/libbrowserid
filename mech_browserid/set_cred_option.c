@@ -95,6 +95,17 @@ setCredReplayCache(OM_uint32 *minor,
     return gssBidSetCredReplayCacheName(minor, cred, buffer);
 }
 
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+static OM_uint32
+setCredCFDictionary(OM_uint32 *minor,
+                    gss_cred_id_t cred,
+                   const gss_OID oid GSSBID_UNUSED,
+                   const gss_buffer_t buffer)
+{
+    return gssBidSetCredWithCFDictionary(minor, cred, (CFDictionaryRef)buffer->value);
+}
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
+
 static struct {
     gss_OID_desc oid;
     OM_uint32 (*setOption)(OM_uint32 *, gss_cred_id_t cred,
@@ -120,6 +131,13 @@ static struct {
         { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x18\x03\x03\x03" },
         setCredReplayCache,
     },
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+    /* GSSSetCredCFDictionary - 1.3.6.1.4.1.5322.25.4.1 */
+    {
+        { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x19\x04\x01" },
+        setCredCFDictionary,
+    },
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
 };
 
 gss_OID GSS_BROWSERID_CRED_SET_CRED_FLAG            = &setCredOps[0].oid;
@@ -138,8 +156,9 @@ gssspi_set_cred_option(OM_uint32 *minor,
     int i;
 
     if (cred == GSS_C_NO_CREDENTIAL) {
-        *minor = EINVAL;
-        return GSS_S_UNAVAILABLE;
+        major = gssBidAcquireCred(minor, GSS_C_NO_NAME, GSS_C_INDEFINITE,
+                                  GSS_C_NO_OID_SET, GSS_C_INITIATE,
+                                  &cred, NULL, NULL);
     }
 
     GSSBID_MUTEX_LOCK(&cred->mutex);
@@ -156,6 +175,9 @@ gssspi_set_cred_option(OM_uint32 *minor,
     }
 
     GSSBID_MUTEX_UNLOCK(&cred->mutex);
+
+    if (*pCred == GSS_C_NO_CREDENTIAL)
+        *pCred = cred;
 
     return major;
 }

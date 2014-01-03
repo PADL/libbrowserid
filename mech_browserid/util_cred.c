@@ -641,3 +641,173 @@ cleanup:
 
     return major;
 }
+
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+
+static const CFStringRef
+kGSSICBrowserIDAssertion = CFSTR("kGSSICBrowserIDAssertion");
+
+static const CFStringRef
+kCUIAttrName = CFSTR("kCUIAttrName");
+
+static const CFStringRef
+kCUIAttrClass = CFSTR("kCUIAttrClass");
+
+extern int
+der_parse_heim_oid (const char *str, const char *sep, heim_oid *data);
+
+extern int
+der_put_oid (unsigned char *p, size_t len,
+             const heim_oid *data, size_t *size);
+
+extern void
+der_free_oid (heim_oid *k);
+
+static OM_uint32
+cfStringToGssBuffer(OM_uint32 *minor,
+                   CFStringRef cfString,
+                   gss_buffer_t buffer)
+{
+    if (cfString == NULL)
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_FAILURE;
+
+    if (CFStringGetLength(cfString) == 0) {
+        *minor = ENOENT;
+        return GSS_S_FAILURE;
+    }
+
+    buffer->length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(cfString),
+                                                       kCFStringEncodingUTF8);
+    buffer->value = GSSBID_MALLOC(buffer->length + 1);
+    if (buffer->value == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    if (!CFStringGetCString(cfString, buffer->value,
+                            buffer->length, kCFStringEncodingUTF8)) {
+        OM_uint32 tmpMinor;
+        *minor = EINVAL;
+        gss_release_buffer(&tmpMinor, buffer);
+        return GSS_S_FAILURE;
+    }
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+cfStringToGssOid(OM_uint32 *minor, CFStringRef cfString, gss_OID oid)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc stringBuf = GSS_C_EMPTY_BUFFER;
+    char mechbuf[64];
+    size_t mech_len;
+    heim_oid heimOid;
+    int ret;
+
+    major = cfStringToGssBuffer(minor, cfString, &stringBuf);
+    if (GSS_ERROR(major))
+        return major;
+
+    if (der_parse_heim_oid(stringBuf.value, " .", &heimOid)) {
+        gss_release_buffer(&tmpMinor, &stringBuf);
+        return GSS_S_FAILURE;
+    }
+
+    gss_release_buffer(&tmpMinor, &stringBuf);
+
+    ret = der_put_oid ((unsigned char *)mechbuf + sizeof(mechbuf) - 1,
+                       sizeof(mechbuf),
+                       &heimOid,
+                       &mech_len);
+    if (ret) {
+        der_free_oid(&heimOid);
+        *minor = ret;
+        return GSS_S_FAILURE;
+    }
+
+    oid->length = mech_len;
+    oid->elements = GSSBID_MALLOC(oid->length);
+    if (oid->elements == NULL) {
+        der_free_oid(&heimOid);
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    memcpy(oid->elements, mechbuf + sizeof(mechbuf) - mech_len, mech_len);
+
+    der_free_oid(&heimOid);
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+gssBidSetCredWithCFDictionary(OM_uint32 *minor,
+                              gss_cred_id_t cred,
+                              CFDictionaryRef attrs)
+{
+    OM_uint32 major, tmpMinor;
+    CFStringRef assertion = NULL;
+    gss_buffer_desc assertionBuf = GSS_C_EMPTY_BUFFER;
+    CFStringRef cuiName = NULL;
+    gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
+    gss_OID_desc oidBuf = { 0, NULL };
+    CFStringRef cuiClass = NULL;
+
+    if (cred->name == GSS_C_NO_NAME &&
+        (cuiName = (CFStringRef)CFDictionaryGetValue(attrs, kCUIAttrName)) != NULL) {
+        major = cfStringToGssBuffer(minor, cuiName, &nameBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gssBidImportName(minor, &nameBuf, GSS_C_NT_USER_NAME, GSS_C_NULL_OID, &cred->name);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        cred->flags |= CRED_FLAG_INITIATE;
+    }
+
+    if ((cuiClass = (CFStringRef)CFDictionaryGetValue(attrs, kCUIAttrClass)) != NULL) {
+        gss_OID canonOid;
+        gss_OID_set_desc desiredMechs;
+
+        major = cfStringToGssOid(minor, cuiClass, &oidBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gssBidCanonicalizeOid(minor, &oidBuf, 0, &canonOid);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        desiredMechs.count = 1;
+        desiredMechs.elements = canonOid;
+
+        major = duplicateOidSet(minor, &desiredMechs, &cred->mechanisms);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    assertion = CFDictionaryGetValue(attrs, kGSSICBrowserIDAssertion);
+    if (assertion == NULL) {
+        major = GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CRED;
+        goto cleanup;
+    }
+
+    major = cfStringToGssBuffer(minor, assertion, &assertionBuf);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    major = gssBidSetCredAssertion(minor, cred, &assertionBuf);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
+    GSSBID_FREE(oidBuf.elements);
+    gss_release_buffer(&tmpMinor, &assertionBuf);
+    gss_release_buffer(&tmpMinor, &nameBuf);
+
+    return major;
+}
+
+#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */

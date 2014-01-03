@@ -37,13 +37,9 @@
 #include "gssapiP_bid.h"
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
-
 /* GSS_C_CRED_CFDictionary - 1.3.6.1.4.1.5322.25.1.1 */
 static const gss_OID_desc
 GSS_C_CRED_CFDictionary = { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x19\x01\x01" };
-
-static const CFStringRef
-GSSICBrowserIDAssertion = CFSTR("GSSICBrowserIDAssertion");
 
 OM_uint32 GSSAPI_CALLCONV
 gss_acquire_cred_ext(OM_uint32 *minor,
@@ -56,53 +52,30 @@ gss_acquire_cred_ext(OM_uint32 *minor,
                      gss_cred_id_t *output_cred_handle)
 
 {
-    OM_uint32 major, tmpMinor;
-    gss_cred_id_t cred = GSS_C_NO_CREDENTIAL;
+    OM_uint32 major;
     gss_OID_set_desc desired_mechs = { 1, (gss_OID)desired_mech };
-    CFStringRef assertion = NULL;
-    gss_buffer_desc assertionBuf = GSS_C_EMPTY_BUFFER;
 
     *output_cred_handle = GSS_C_NO_CREDENTIAL;
 
-    if (!oidEqual(credential_type, &GSS_C_CRED_CFDictionary)) {
-        major = GSS_S_UNAVAILABLE;
-        goto cleanup;
-    }
+    if (!oidEqual(credential_type, &GSS_C_CRED_CFDictionary))
+        return GSS_S_UNAVAILABLE;
 
-    major = gssBidAcquireCred(minor, desired_name, time_req, &desired_mechs,
-                              cred_usage, &cred, NULL, NULL);
+    major = gssBidAcquireCred(minor,
+                              desired_name,
+                              time_req,
+                              desired_mech ? &desired_mechs : GSS_C_NO_OID_SET,
+                              cred_usage,
+                              output_cred_handle, NULL, NULL);
     if (GSS_ERROR(major))
-        goto cleanup;
+        return major;
 
-    assertion = CFDictionaryGetValue((CFDictionaryRef)credential_data, GSSICBrowserIDAssertion);
-    if (assertion == NULL || CFStringGetLength(assertion) == 0) {
-        major = GSS_S_NO_CRED;
-        goto cleanup;
+    major = gssBidSetCredWithCFDictionary(minor,
+                                          *output_cred_handle,
+                                          (CFDictionaryRef)credential_data);
+    if (GSS_ERROR(major)) {
+        OM_uint32 tmpMinor;
+        gssBidReleaseCred(&tmpMinor, output_cred_handle);
     }
-
-    assertionBuf.length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(assertion),
-                                                            kCFStringEncodingUTF8);
-    assertionBuf.value = BIDMalloc(assertionBuf.length + 1);
-    if (assertionBuf.value == NULL) {
-        major = GSS_S_FAILURE;
-        *minor = ENOMEM;
-        goto cleanup;
-    }
-
-    /* XXX check ret code */
-    CFStringGetCString(assertion, assertionBuf.value,
-                       assertionBuf.length, kCFStringEncodingUTF8);
-
-    major = gssBidSetCredAssertion(minor, cred, &assertionBuf);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    *output_cred_handle = cred;
-    cred = GSS_C_NO_CREDENTIAL;
-
-cleanup:
-    gssBidReleaseCred(&tmpMinor, &cred);
-    BIDFree(assertionBuf.value);
 
     return major;
 }
