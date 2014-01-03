@@ -80,6 +80,7 @@ else
 	AC_CHECK_LIB(krb5, gss_inquire_attrs_for_mech, [AC_DEFINE_UNQUOTED([HAVE_GSS_INQUIRE_ATTRS_FOR_MECH], 1, [Define if GSS-API library supports RFC 5587])], [], "$KRB5_LIBS")
 	AC_CHECK_LIB(krb5, gss_krb5_import_cred, [AC_DEFINE_UNQUOTED([HAVE_GSS_KRB5_IMPORT_CRED], 1, [Define if GSS-API library supports gss_krb5_import_cred])], [], "$KRB5_LIBS")
 	AC_CHECK_LIB(krb5, gss_acquire_cred_from, [AC_DEFINE_UNQUOTED([HAVE_GSS_ACQUIRE_CRED_FROM], 1, [Define if GSS-API library supports gss_acquire_cred_from]), gss_acquire_cred_from=yes], [gss_acquire_cred_from=no], "$KRB5_LIBS")
+	AC_CHECK_LIB(krb5, gss_aapl_initial_cred, [AC_DEFINE_UNQUOTED([HAVE_GSS_AAPL_INITIAL_CRED], 1, [Define if GSS-API library supports gss_aapl_initial_cred]), gss_aapl_initial_cred=yes], [gss_aapl_initial_cred=no], "$KRB5_LIBS")
 	AC_CHECK_LIB(krb5, heimdal_version, [AC_DEFINE_UNQUOTED([HAVE_HEIMDAL_VERSION], 1, [Define if building against Heimdal Kerberos implementation]), heimdal=yes], [heimdal=no], "$KRB5_LIBS")
 fi
 ])dnl

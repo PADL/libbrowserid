@@ -309,6 +309,21 @@ gssBidInquireCred(OM_uint32 *minor,
                   gss_cred_usage_t *cred_usage,
                   gss_OID_set *mechanisms);
 
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#include <CoreFoundation/CFDictionary.h>
+
+OM_uint32
+gssBidSetCredWithCFDictionary(OM_uint32 *minor,
+                              gss_cred_id_t cred,
+                              CFDictionaryRef attrs);
+
+OM_uint32
+gssBidSetCredCFDictionary(OM_uint32 *minor,
+                         gss_cred_id_t *pCred,
+                         const gss_buffer_t dict);
+
+#endif
+
 /* util_crypt.c */
 int
 gssBidEncrypt(krb5_context context, int dce_style, size_t ec,
