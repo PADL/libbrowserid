@@ -646,6 +646,7 @@ cleanup:
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 
+#include <dlfcn.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <GSS/gssapi_apple.h>
 
@@ -757,7 +758,6 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
     CFStringRef assertion = NULL;
     gss_buffer_desc assertionBuf = GSS_C_EMPTY_BUFFER;
     gss_name_t desiredName = NULL;
-    CFStringRef desiredNameString = NULL;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
     gss_OID_desc oidBuf = { 0, NULL };
     CFStringRef desiredMechOid = NULL;
@@ -796,20 +796,16 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
 
     if (cred->name == GSS_C_NO_NAME &&
         (desiredName = (gss_name_t)CFDictionaryGetValue(attrs, kGSSCredentialName)) != NULL) {
-        desiredNameString = GSSNameCreateDisplayString(desiredName);
-        if (desiredNameString == NULL) {
-            major = GSS_S_BAD_NAME;
-            goto cleanup;
-        }
+        gss_OID nameType = GSS_C_NO_OID;
+        OM_uint32 (*gdn)(OM_uint32 *, const gss_name_t, gss_buffer_t, gss_OID *) = dlsym(RTLD_NEXT, "gss_display_name");
 
-        major = cfStringToGssBuffer(minor, desiredNameString, &nameBuf);
+        GSSBID_ASSERT(gdn != NULL);
+
+        major = gdn(minor, desiredName, &nameBuf, &nameType);
         if (GSS_ERROR(major))
             goto cleanup;
 
-        major = gssBidImportName(minor, &nameBuf,
-                                 (cred->flags & CRED_FLAG_INITIATE) ?
-                                    GSS_C_NT_USER_NAME : GSS_C_NT_HOSTBASED_SERVICE,
-                                 GSS_C_NULL_OID, &cred->name);
+        major = gssBidImportName(minor, &nameBuf, nameType, GSS_C_NULL_OID, &cred->name);
         if (GSS_ERROR(major))
             goto cleanup;
 
@@ -836,8 +832,6 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
     }
 
 cleanup:
-    if (desiredNameString != NULL)
-        CFRelease(desiredNameString);
     GSSBID_FREE(oidBuf.elements);
     gss_release_buffer(&tmpMinor, &assertionBuf);
     gss_release_buffer(&tmpMinor, &nameBuf);
