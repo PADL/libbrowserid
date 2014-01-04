@@ -46,7 +46,7 @@ gssBidAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     *pCred = GSS_C_NO_CREDENTIAL;
 
     cred = (gss_cred_id_t)GSSBID_CALLOC(1, sizeof(*cred));
-    if (cred == NULL) {
+    if (cred == GSS_C_NO_CREDENTIAL) {
         *minor = ENOMEM;
         return GSS_S_FAILURE;
     }
@@ -61,7 +61,7 @@ gssBidAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     if (err != BID_S_OK) {
         major = gssBidMapError(minor, err);
         gssBidReleaseCred(&tmpMinor, &cred);
-        return major;
+        return GSS_ERROR(major) ? major : GSS_S_FAILURE;
     }
 
     *pCred = cred;
@@ -86,11 +86,14 @@ gssBidReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
     gssBidReleaseName(&tmpMinor, &cred->name);
     gssBidReleaseName(&tmpMinor, &cred->target);
     gss_release_buffer(&tmpMinor, &cred->assertion);
+    gss_release_oid_set(&tmpMinor, &cred->mechanisms);
     if (cred->bidContext != BID_C_NO_CONTEXT) {
         BIDReleaseTicketCache(cred->bidContext, cred->bidTicketCache);
         BIDReleaseReplayCache(cred->bidContext, cred->bidReplayCache);
         BIDReleaseContext(cred->bidContext);
     }
+    json_decref(cred->identityAttributes);
+    json_decref(cred->identityPrivateAttributes);
 
     GSSBID_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
@@ -112,6 +115,50 @@ gssBidPrimaryMechForCred(gss_cred_id_t cred)
         credMech = &cred->mechanisms->elements[0];
 
     return credMech;
+}
+
+static OM_uint32
+gssBidSetCredMechs(OM_uint32 *minor,
+                   gss_cred_id_t cred,
+                   gss_OID_set mechs)
+{
+    OM_uint32 major, tmpMinor;
+    gss_OID_set newMechs = GSS_C_NO_OID_SET;
+
+    major = duplicateOidSet(minor, mechs, &newMechs);
+    if (GSS_ERROR(major))
+        return major;
+
+    gss_release_oid_set(&tmpMinor, &cred->mechanisms);
+    cred->mechanisms = newMechs;
+
+    return GSS_S_COMPLETE;
+}
+
+static OM_uint32
+gssBidSetCredName(OM_uint32 *minor,
+                  gss_cred_id_t cred,
+                  gss_name_t name,
+                  int freeIt)
+{
+    OM_uint32 major, tmpMinor;
+    gss_name_t newName;
+
+    if (freeIt == 0) {
+        GSSBID_MUTEX_LOCK(&name->mutex);
+        major = gssBidDuplicateName(minor, name, &newName);
+        GSSBID_MUTEX_UNLOCK(&name->mutex);
+
+        if (GSS_ERROR(major))
+            return major;
+    } else {
+        newName = name;
+    }
+
+    gssBidReleaseName(&tmpMinor, &cred->name);
+    cred->name = newName;
+
+    return GSS_S_COMPLETE;
 }
 
 OM_uint32
@@ -155,20 +202,16 @@ gssBidAcquireCred(OM_uint32 *minor,
     if (GSS_ERROR(major))
         goto cleanup;
 
-    major = duplicateOidSet(minor, desiredMechs, &cred->mechanisms);
+    major = gssBidSetCredMechs(minor, cred, desiredMechs);
     if (GSS_ERROR(major))
         goto cleanup;
 
     if (desiredName != GSS_C_NO_NAME) {
-        GSSBID_MUTEX_LOCK(&desiredName->mutex);
-
-        major = gssBidDuplicateName(minor, desiredName, &cred->name);
+        major = gssBidSetCredName(minor, cred, desiredName, 0);
         if (GSS_ERROR(major)) {
             GSSBID_MUTEX_UNLOCK(&desiredName->mutex);
             goto cleanup;
         }
-
-        GSSBID_MUTEX_UNLOCK(&desiredName->mutex);
     }
 
     if (pActualMechs != NULL) {
@@ -285,8 +328,8 @@ cleanup:
 
 OM_uint32
 gssBidSetCredAssertion(OM_uint32 *minor,
-                      gss_cred_id_t cred,
-                      const gss_buffer_t assertion)
+                       gss_cred_id_t cred,
+                       const gss_buffer_t assertion)
 {
     OM_uint32 major, tmpMinor;
     gss_buffer_desc newAssertion = GSS_C_EMPTY_BUFFER;
@@ -438,13 +481,13 @@ gssBidDuplicateCred(OM_uint32 *minor,
     dst->flags = src->flags;
 
     if (src->name != GSS_C_NO_NAME) {
-        major = gssBidDuplicateName(minor, src->name, &dst->name);
+        major = gssBidSetCredName(minor, dst, src->name, 0);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
     if (src->target != GSS_C_NO_NAME) {
-        major = gssBidDuplicateName(minor, src->target, &dst->target);
+        major = gssBidSetCredService(minor, dst, src->target);
         if (GSS_ERROR(major))
             goto cleanup;
     }
@@ -455,7 +498,11 @@ gssBidDuplicateCred(OM_uint32 *minor,
             goto cleanup;
     }
 
-    major = duplicateOidSet(minor, src->mechanisms, &dst->mechanisms);
+    dst->identityAttributes = json_incref(src->identityAttributes);
+    dst->identityPrivateAttributes = json_incref(src->identityPrivateAttributes);
+    dst->bidFlags = src->bidFlags;
+
+    major = gssBidSetCredMechs(minor, dst, src->mechanisms);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -523,13 +570,35 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
             goto cleanup;
     }
 
+    /*
+     * If building for CredUI, and the initiator tried to re-authenticate and
+     * it failed, don't acquire a credential here because we can't show UI.
+     * Just return an error to the application.
+     */
+    if ((resolvedCred->flags & CRED_FLAG_CALLER_UI) && (ctx->flags & CTX_FLAG_REAUTH)) {
+        ctx->flags &= ~(CTX_FLAG_REAUTH);
+        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_RETRY_INITIAL);
+        major = GSS_S_FAILURE | GSS_S_PROMPTING_NEEDED;
+        *minor = GSSBID_REAUTH_FAILED;
+        goto cleanup;
+    }
+
     if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
-        err = BIDAcquireAssertionFromString(ctx->bidContext,
-                                            (const char *)resolvedCred->assertion.value,
-                                            BID_ACQUIRE_FLAG_NO_INTERACT,
-                                            &ctx->bidIdentity,
-                                            &resolvedCred->expiryTime,
-                                            &ulRetFlags);
+        if (cred->identityAttributes != NULL) {
+            err = _BIDAllocIdentity(ctx->bidContext, cred->identityAttributes, &ctx->bidIdentity);
+            if (err == BID_S_OK) {
+                json_decref(ctx->bidIdentity->PrivateAttributes);
+                ctx->bidIdentity->PrivateAttributes = json_incref(cred->identityPrivateAttributes);
+                ctx->flags &= ~(CTX_FLAG_REAUTH);
+            }
+        } else {
+            err = BIDAcquireAssertionFromString(ctx->bidContext,
+                                                (const char *)resolvedCred->assertion.value,
+                                                BID_ACQUIRE_FLAG_NO_INTERACT,
+                                                &ctx->bidIdentity,
+                                                &resolvedCred->expiryTime,
+                                                &ulRetFlags);
+        }
     } else {
         uint32_t ulReqFlags;
 
@@ -551,6 +620,8 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         }
 
         ulReqFlags = 0;
+        if (resolvedCred->flags & CRED_FLAG_CALLER_UI)
+            ulReqFlags |= BID_ACQUIRE_FLAG_NO_INTERACT;
         if (ctx->flags & CTX_FLAG_REAUTH)
             ulReqFlags |= BID_ACQUIRE_FLAG_NO_CACHED;
         if (req_flags & GSS_C_MUTUAL_FLAG)
@@ -644,14 +715,21 @@ cleanup:
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 
-static const CFStringRef
-kGSSICBrowserIDAssertion = CFSTR("kGSSICBrowserIDAssertion");
+#include <dlfcn.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <GSS/gssapi_apple.h>
 
-static const CFStringRef
-kCUIAttrName = CFSTR("kCUIAttrName");
+#define kGSSICBrowserIDAssertion        CFSTR("kGSSICBrowserIDAssertion")
+#define kGSSICBrowserIDIdentity         CFSTR("kGSSICBrowserIDIdentity")
+#define kGSSICBrowserIDFlags            CFSTR("kGSSICBrowserIDFlags")
 
-static const CFStringRef
-kCUIAttrClass = CFSTR("kCUIAttrClass");
+#define kGSSCredentialName              CFSTR("kGSSCredentialName")
+#define kGSSCredentialMechanismOID      CFSTR("kGSSCredentialMechanismOID")
+
+#define kGSSCredentialUsage             CFSTR("kGSSCredentialUsage")
+#define kGSS_C_INITIATE                 CFSTR("kGSS_C_INITIATE")
+#define kGSS_C_ACCEPT                   CFSTR("kGSS_C_ACCEPT")
+#define kGSS_C_BOTH                     CFSTR("kGSS_C_BOTH")
 
 extern int
 der_parse_heim_oid (const char *str, const char *sep, heim_oid *data);
@@ -668,7 +746,7 @@ cfStringToGssBuffer(OM_uint32 *minor,
                    CFStringRef cfString,
                    gss_buffer_t buffer)
 {
-    if (cfString == NULL)
+    if (cfString == NULL || CFGetTypeID(cfString) != CFStringGetTypeID())
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_FAILURE;
 
     if (CFStringGetLength(cfString) == 0) {
@@ -747,60 +825,102 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
                               gss_cred_id_t cred,
                               CFDictionaryRef attrs)
 {
-    OM_uint32 major, tmpMinor;
-    CFStringRef assertion = NULL;
+    OM_uint32 major = GSS_S_COMPLETE, tmpMinor;
+    CFStringRef credUsage;
+    CFStringRef assertion;
     gss_buffer_desc assertionBuf = GSS_C_EMPTY_BUFFER;
-    CFStringRef cuiName = NULL;
+    gss_name_t desiredName;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
     gss_OID_desc oidBuf = { 0, NULL };
-    CFStringRef cuiClass = NULL;
+    CFStringRef desiredMechOid ;
+    BIDIdentity identity;
+    CFNumberRef bidFlags;
 
-    if (cred->name == GSS_C_NO_NAME &&
-        (cuiName = (CFStringRef)CFDictionaryGetValue(attrs, kCUIAttrName)) != NULL) {
-        major = cfStringToGssBuffer(minor, cuiName, &nameBuf);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        major = gssBidImportName(minor, &nameBuf, GSS_C_NT_USER_NAME, GSS_C_NULL_OID, &cred->name);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        cred->flags |= CRED_FLAG_INITIATE;
-    }
-
-    if ((cuiClass = (CFStringRef)CFDictionaryGetValue(attrs, kCUIAttrClass)) != NULL) {
+    desiredMechOid = (CFStringRef)CFDictionaryGetValue(attrs, kGSSCredentialMechanismOID);
+    if (desiredMechOid != NULL) {
         gss_OID canonOid;
         gss_OID_set_desc desiredMechs;
 
-        major = cfStringToGssOid(minor, cuiClass, &oidBuf);
+        major = cfStringToGssOid(minor, desiredMechOid, &oidBuf);
         if (GSS_ERROR(major))
             goto cleanup;
 
         major = gssBidCanonicalizeOid(minor, &oidBuf, 0, &canonOid);
-        if (GSS_ERROR(major))
+        if (GSS_ERROR(major)) {
+            if (major == GSS_S_BAD_MECH)
+                major = GSS_S_CRED_UNAVAIL;
             goto cleanup;
+        }
 
         desiredMechs.count = 1;
         desiredMechs.elements = canonOid;
 
-        major = duplicateOidSet(minor, &desiredMechs, &cred->mechanisms);
+        major = gssBidSetCredMechs(minor, cred, &desiredMechs);
         if (GSS_ERROR(major))
             goto cleanup;
     }
 
-    assertion = CFDictionaryGetValue(attrs, kGSSICBrowserIDAssertion);
-    if (assertion == NULL) {
-        major = GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CRED;
-        goto cleanup;
+    credUsage = (CFStringRef)CFDictionaryGetValue(attrs, kGSSCredentialUsage);
+    if (credUsage != NULL) {
+        if (CFEqual(credUsage, kGSS_C_INITIATE))
+            cred->flags |= CRED_FLAG_INITIATE;
+        else if (CFEqual(credUsage, kGSS_C_ACCEPT))
+            cred->flags |= CRED_FLAG_ACCEPT;
+        else if (CFEqual(credUsage, kGSS_C_BOTH))
+            cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
     }
 
-    major = cfStringToGssBuffer(minor, assertion, &assertionBuf);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    desiredName = (gss_name_t)CFDictionaryGetValue(attrs, kGSSCredentialName);
+    if (desiredName != NULL) {
+        gss_OID nameType = GSS_C_NO_OID;
+        gss_name_t gssBidName = GSS_C_NO_NAME;
+        OM_uint32 (*gssDisplayNameFn)(OM_uint32 *, const gss_name_t, gss_buffer_t, gss_OID *) = dlsym(RTLD_NEXT, "gss_display_name");
 
-    major = gssBidSetCredAssertion(minor, cred, &assertionBuf);
-    if (GSS_ERROR(major))
-        goto cleanup;
+        GSSBID_ASSERT(gssDisplayNameFn != NULL);
+
+        /* convert from mechglue name to string, then to MN */
+        major = gssDisplayNameFn(minor, desiredName, &nameBuf, &nameType);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gssBidImportName(minor, &nameBuf, nameType, GSS_C_NULL_OID, &gssBidName);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        gssBidSetCredName(minor, cred, gssBidName, 1);
+    }
+
+    assertion = (CFStringRef)CFDictionaryGetValue(attrs, kGSSICBrowserIDAssertion);
+    if (assertion != NULL) {
+        major = cfStringToGssBuffer(minor, assertion, &assertionBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gssBidSetCredAssertion(minor, cred, &assertionBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        GSSBID_ASSERT(cred->flags & CRED_FLAG_RESOLVED);
+    }
+
+    identity = (BIDIdentity)CFDictionaryGetValue(attrs, kGSSICBrowserIDIdentity);
+    if (identity != BID_C_NO_IDENTITY && CFGetTypeID(identity) == BIDIdentityGetTypeID()) {
+        /* Pass the identity attributes from the credential provider */
+        cred->identityAttributes = json_incref(identity->Attributes);
+        cred->identityPrivateAttributes = json_incref(identity->PrivateAttributes);
+    }
+
+    bidFlags = (CFNumberRef)CFDictionaryGetValue(attrs, kGSSICBrowserIDFlags);
+    if (bidFlags != NULL && CFGetTypeID(bidFlags) == CFNumberGetTypeID())
+        CFNumberGetValue(bidFlags, kCFNumberSInt32Type, (void *)&cred->bidFlags);
+
+    /* in case the dictionary wasn't filled out correctly, assume we're an initiator */
+    if ((cred->flags & (CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT)) == 0)
+        cred->flags |= CRED_FLAG_INITIATE;
+
+    /* Caller must display UI, we just return GSS_S_PROMPTING_NEEDED */
+    if (cred->flags & CRED_FLAG_INITIATE)
+        cred->flags |= CRED_FLAG_CALLER_UI;
 
 cleanup:
     GSSBID_FREE(oidBuf.elements);

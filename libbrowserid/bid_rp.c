@@ -56,7 +56,6 @@ BIDMakeRPResponseToken(
     json_t *payload = NULL;
     json_t *certChain = NULL;
     json_t *dh = NULL;
-    json_t *ticket = NULL;
     json_t *jti = NULL;
     uint32_t ulProtoOpts = 0;
 
@@ -73,6 +72,8 @@ BIDMakeRPResponseToken(
     }
 
     if (ulReqFlags & BID_RP_FLAG_HAVE_SESSION_KEY) {
+        json_t *ticket = NULL;
+
         if (ulReqFlags & BID_RP_FLAG_INITIAL) {
             err = _BIDGetKeyAgreementPublicValue(context, identity, &dh);
             BID_BAIL_ON_ERROR(err);
@@ -157,7 +158,6 @@ cleanup:
     json_decref(key);
     json_decref(certChain);
     json_decref(dh);
-    json_decref(ticket);
     json_decref(jti);
     _BIDReleaseJWTInternal(context, &jwt, 0);
 

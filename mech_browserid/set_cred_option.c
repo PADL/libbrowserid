@@ -156,9 +156,9 @@ gssspi_set_cred_option(OM_uint32 *minor,
     int i;
 
     if (cred == GSS_C_NO_CREDENTIAL) {
-        major = gssBidAcquireCred(minor, GSS_C_NO_NAME, GSS_C_INDEFINITE,
-                                  GSS_C_NO_OID_SET, GSS_C_INITIATE,
-                                  &cred, NULL, NULL);
+        major = gssBidAllocCred(minor, &cred);
+        if (GSS_ERROR(major))
+            return major;
     }
 
     GSSBID_MUTEX_LOCK(&cred->mutex);

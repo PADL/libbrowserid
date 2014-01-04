@@ -115,6 +115,10 @@ typedef struct gss_any *gss_any_t;
 typedef const gss_OID_desc *gss_const_OID;
 #endif
 
+#ifndef GSS_S_PROMPTING_NEEDED
+#define GSS_S_PROMPTING_NEEDED (1 << (GSS_C_SUPPLEMENTARY_OFFSET + 5))
+#endif
+
 /* Kerberos headers */
 #include <krb5.h>
 
@@ -157,6 +161,7 @@ struct gss_name_struct
 #define CRED_FLAG_DEFAULT_CCACHE            0x00080000
 #define CRED_FLAG_RESOLVED                  0x00100000
 #define CRED_FLAG_TARGET                    0x00200000
+#define CRED_FLAG_CALLER_UI                 0x00400000 /* caller must display UI */
 #define CRED_FLAG_PUBLIC_MASK               0x0000FFFF
 
 #ifdef HAVE_HEIMDAL_VERSION
@@ -175,6 +180,9 @@ struct gss_cred_id_struct
     BIDContext bidContext;
     BIDTicketCache bidTicketCache;
     BIDReplayCache bidReplayCache;
+    json_t *identityAttributes;
+    json_t *identityPrivateAttributes;
+    uint32_t bidFlags;
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
