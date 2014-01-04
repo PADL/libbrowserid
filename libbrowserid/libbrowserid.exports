@@ -29,6 +29,7 @@ BIDVerifyAssertion
 BIDVerifyRPResponseToken
 BIDVerifyXRTToken
 _BIDAcquireCache
+_BIDAllocIdentity
 _BIDBase64UrlDecode
 _BIDBase64UrlDecode
 _BIDDestroyCache
