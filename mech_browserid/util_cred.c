@@ -92,8 +92,10 @@ gssBidReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         BIDReleaseReplayCache(cred->bidContext, cred->bidReplayCache);
         BIDReleaseContext(cred->bidContext);
     }
-    json_decref(cred->identityAttributes);
-    json_decref(cred->identityPrivateAttributes);
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+    if (cred->bidIdentity)
+        CFRelease(cred->bidIdentity);
+#endif
 
     GSSBID_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
@@ -498,9 +500,11 @@ gssBidDuplicateCred(OM_uint32 *minor,
             goto cleanup;
     }
 
-    dst->identityAttributes = json_incref(src->identityAttributes);
-    dst->identityPrivateAttributes = json_incref(src->identityPrivateAttributes);
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+    if (src->bidIdentity)
+        dst->bidIdentity = (BIDIdentity)CFRetain(src->bidIdentity);
     dst->bidFlags = src->bidFlags;
+#endif
 
     major = gssBidSetCredMechs(minor, dst, src->mechanisms);
     if (GSS_ERROR(major))
@@ -584,21 +588,19 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     }
 
     if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
-        if (cred->identityAttributes != NULL) {
-            err = _BIDAllocIdentity(ctx->bidContext, cred->identityAttributes, &ctx->bidIdentity);
-            if (err == BID_S_OK) {
-                json_decref(ctx->bidIdentity->PrivateAttributes);
-                ctx->bidIdentity->PrivateAttributes = json_incref(cred->identityPrivateAttributes);
-                ctx->flags &= ~(CTX_FLAG_REAUTH);
-            }
-        } else {
-            err = BIDAcquireAssertionFromString(ctx->bidContext,
-                                                (const char *)resolvedCred->assertion.value,
-                                                BID_ACQUIRE_FLAG_NO_INTERACT,
-                                                &ctx->bidIdentity,
-                                                &resolvedCred->expiryTime,
-                                                &ulRetFlags);
-        }
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+        if (resolvedCred->bidIdentity != BID_C_NO_IDENTITY) {
+            ctx->bidIdentity = (BIDIdentity)CFRetain(cred->bidIdentity);
+            ctx->flags &= ~(CTX_FLAG_REAUTH);
+            err = BID_S_OK;
+        } else
+#endif
+        err = BIDAcquireAssertionFromString(ctx->bidContext,
+                                            (const char *)resolvedCred->assertion.value,
+                                            BID_ACQUIRE_FLAG_NO_INTERACT,
+                                            &ctx->bidIdentity,
+                                            &resolvedCred->expiryTime,
+                                            &ulRetFlags);
     } else {
         uint32_t ulReqFlags;
 
@@ -904,11 +906,8 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
     }
 
     identity = (BIDIdentity)CFDictionaryGetValue(attrs, kGSSICBrowserIDIdentity);
-    if (identity != BID_C_NO_IDENTITY && CFGetTypeID(identity) == BIDIdentityGetTypeID()) {
-        /* Pass the identity attributes from the credential provider */
-        cred->identityAttributes = json_incref(identity->Attributes);
-        cred->identityPrivateAttributes = json_incref(identity->PrivateAttributes);
-    }
+    if (identity != BID_C_NO_IDENTITY && CFGetTypeID(identity) == BIDIdentityGetTypeID())
+        cred->bidIdentity = (BIDIdentity)CFRetain(identity);
 
     bidFlags = (CFNumberRef)CFDictionaryGetValue(attrs, kGSSICBrowserIDFlags);
     if (bidFlags != NULL && CFGetTypeID(bidFlags) == CFNumberGetTypeID())
