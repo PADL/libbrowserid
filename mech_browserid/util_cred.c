@@ -652,7 +652,7 @@ cleanup:
 
 #define kGSSICBrowserIDAssertion        CFSTR("kGSSICBrowserIDAssertion")
 #define kGSSCredentialName              CFSTR("kGSSCredentialName")
-#define kGSSCredentialMechanism         CFSTR("kGSSCredentialMechanism")
+#define kGSSCredentialMechanismOID      CFSTR("kGSSCredentialMechanismOID")
 
 #define kGSSCredentialUsage             CFSTR("kGSSCredentialUsage")
 #define kGSS_C_INITIATE                 CFSTR("kGSS_C_INITIATE")
@@ -762,7 +762,7 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
     gss_OID_desc oidBuf = { 0, NULL };
     CFStringRef desiredMechOid = NULL;
 
-    if ((desiredMechOid = (CFStringRef)CFDictionaryGetValue(attrs, kGSSCredentialMechanism)) != NULL) {
+    if ((desiredMechOid = (CFStringRef)CFDictionaryGetValue(attrs, kGSSCredentialMechanismOID)) != NULL) {
         gss_OID canonOid;
         gss_OID_set_desc desiredMechs;
 
