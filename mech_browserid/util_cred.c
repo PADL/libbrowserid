@@ -91,6 +91,8 @@ gssBidReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         BIDReleaseReplayCache(cred->bidContext, cred->bidReplayCache);
         BIDReleaseContext(cred->bidContext);
     }
+    json_decref(cred->identityAttributes);
+    json_decref(cred->identityPrivateAttributes);
 
     GSSBID_MUTEX_DESTROY(&cred->mutex);
     memset(cred, 0, sizeof(*cred));
