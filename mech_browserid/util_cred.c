@@ -646,14 +646,17 @@ cleanup:
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 
-static const CFStringRef
-kGSSICBrowserIDAssertion = CFSTR("kGSSICBrowserIDAssertion");
+#include <CoreFoundation/CoreFoundation.h>
+#include <GSS/gssapi_apple.h>
 
-static const CFStringRef
-kCUIAttrName = CFSTR("kCUIAttrName");
+#define kGSSICBrowserIDAssertion        CFSTR("kGSSICBrowserIDAssertion")
+#define kGSSCredentialName              CFSTR("kGSSCredentialName")
+#define kGSSCredentialMechanism         CFSTR("kGSSCredentialMechanism")
 
-static const CFStringRef
-kCUIAttrClass = CFSTR("kCUIAttrClass");
+#define kGSSCredentialUsage             CFSTR("kGSSCredentialUsage")
+#define kGSS_C_INITIATE                 CFSTR("kGSS_C_INITIATE")
+#define kGSS_C_ACCEPT                   CFSTR("kGSS_C_ACCEPT")
+#define kGSS_C_BOTH                     CFSTR("kGSS_C_BOTH")
 
 extern int
 der_parse_heim_oid (const char *str, const char *sep, heim_oid *data);
@@ -750,37 +753,29 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
                               CFDictionaryRef attrs)
 {
     OM_uint32 major, tmpMinor;
+    CFStringRef credUsage = NULL;
     CFStringRef assertion = NULL;
     gss_buffer_desc assertionBuf = GSS_C_EMPTY_BUFFER;
-    CFStringRef cuiName = NULL;
+    gss_name_t desiredName = NULL;
+    CFStringRef desiredNameString = NULL;
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
     gss_OID_desc oidBuf = { 0, NULL };
-    CFStringRef cuiClass = NULL;
+    CFStringRef desiredMechOid = NULL;
 
-    if (cred->name == GSS_C_NO_NAME &&
-        (cuiName = (CFStringRef)CFDictionaryGetValue(attrs, kCUIAttrName)) != NULL) {
-        major = cfStringToGssBuffer(minor, cuiName, &nameBuf);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        major = gssBidImportName(minor, &nameBuf, GSS_C_NT_USER_NAME, GSS_C_NULL_OID, &cred->name);
-        if (GSS_ERROR(major))
-            goto cleanup;
-
-        cred->flags |= CRED_FLAG_INITIATE;
-    }
-
-    if ((cuiClass = (CFStringRef)CFDictionaryGetValue(attrs, kCUIAttrClass)) != NULL) {
+    if ((desiredMechOid = (CFStringRef)CFDictionaryGetValue(attrs, kGSSCredentialMechanism)) != NULL) {
         gss_OID canonOid;
         gss_OID_set_desc desiredMechs;
 
-        major = cfStringToGssOid(minor, cuiClass, &oidBuf);
+        major = cfStringToGssOid(minor, desiredMechOid, &oidBuf);
         if (GSS_ERROR(major))
             goto cleanup;
 
         major = gssBidCanonicalizeOid(minor, &oidBuf, 0, &canonOid);
-        if (GSS_ERROR(major))
+        if (GSS_ERROR(major)) {
+            if (major == GSS_S_BAD_MECH)
+                major = GSS_S_CRED_UNAVAIL;
             goto cleanup;
+        }
 
         desiredMechs.count = 1;
         desiredMechs.elements = canonOid;
@@ -788,6 +783,35 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
         major = duplicateOidSet(minor, &desiredMechs, &cred->mechanisms);
         if (GSS_ERROR(major))
             goto cleanup;
+    }
+
+    if ((credUsage = (CFStringRef)CFDictionaryGetValue(attrs, kGSSCredentialUsage)) != NULL) {
+        if (CFEqual(credUsage, kGSS_C_INITIATE))
+            cred->flags |= CRED_FLAG_INITIATE;
+        else if (CFEqual(credUsage, kGSS_C_ACCEPT))
+            cred->flags |= CRED_FLAG_ACCEPT;
+        else if (CFEqual(credUsage, kGSS_C_BOTH))
+            cred->flags |= CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT;
+    }
+
+    if (cred->name == GSS_C_NO_NAME &&
+        (desiredName = (gss_name_t)CFDictionaryGetValue(attrs, kGSSCredentialName)) != NULL) {
+        desiredNameString = GSSNameCreateDisplayString(desiredName);
+        if (desiredNameString == NULL) {
+            major = GSS_S_BAD_NAME;
+            goto cleanup;
+        }
+
+        major = cfStringToGssBuffer(minor, desiredNameString, &nameBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gssBidImportName(minor, &nameBuf, GSS_C_NT_USER_NAME, GSS_C_NULL_OID, &cred->name);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        if ((cred->flags & (CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT)) == 0)
+            cred->flags |= CRED_FLAG_INITIATE;
     }
 
     assertion = CFDictionaryGetValue(attrs, kGSSICBrowserIDAssertion);
@@ -807,6 +831,8 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
     cred->flags |= CRED_FLAG_CALLER_UI;
 
 cleanup:
+    if (desiredNameString != NULL)
+        CFRelease(desiredNameString);
     GSSBID_FREE(oidBuf.elements);
     gss_release_buffer(&tmpMinor, &assertionBuf);
     gss_release_buffer(&tmpMinor, &nameBuf);
