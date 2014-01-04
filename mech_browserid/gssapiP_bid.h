@@ -180,6 +180,9 @@ struct gss_cred_id_struct
     BIDContext bidContext;
     BIDTicketCache bidTicketCache;
     BIDReplayCache bidReplayCache;
+    json_t *identityAttributes;
+    json_t *identityPrivateAttributes;
+    uint32_t bidFlags;
 };
 
 #define CTX_FLAG_INITIATOR                  0x00000001
