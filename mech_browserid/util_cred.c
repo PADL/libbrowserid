@@ -806,7 +806,10 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
         if (GSS_ERROR(major))
             goto cleanup;
 
-        major = gssBidImportName(minor, &nameBuf, GSS_C_NT_USER_NAME, GSS_C_NULL_OID, &cred->name);
+        major = gssBidImportName(minor, &nameBuf,
+                                 (cred->flags & CRED_FLAG_INITIATE) ?
+                                    GSS_C_NT_USER_NAME : GSS_C_NT_HOSTBASED_SERVICE,
+                                 GSS_C_NULL_OID, &cred->name);
         if (GSS_ERROR(major))
             goto cleanup;
 
@@ -827,8 +830,10 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
         GSSBID_ASSERT(cred->flags & CRED_FLAG_RESOLVED);
     }
 
-    /* Caller must display UI, we just return GSS_S_PROMPTING_NEEDED */
-    cred->flags |= CRED_FLAG_CALLER_UI;
+    if (cred->flags & CRED_FLAG_INITIATE) {
+        /* Caller must display UI, we just return GSS_S_PROMPTING_NEEDED */
+        cred->flags |= CRED_FLAG_CALLER_UI;
+    }
 
 cleanup:
     if (desiredNameString != NULL)
