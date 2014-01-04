@@ -651,6 +651,7 @@ cleanup:
 #include <GSS/gssapi_apple.h>
 
 #define kGSSICBrowserIDAssertion        CFSTR("kGSSICBrowserIDAssertion")
+#define kGSSICBrowserIDIdentity         CFSTR("kGSSICBrowserIDIdentity")
 #define kGSSCredentialName              CFSTR("kGSSCredentialName")
 #define kGSSCredentialMechanismOID      CFSTR("kGSSCredentialMechanismOID")
 
