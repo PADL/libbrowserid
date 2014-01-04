@@ -115,6 +115,10 @@ typedef struct gss_any *gss_any_t;
 typedef const gss_OID_desc *gss_const_OID;
 #endif
 
+#ifndef GSS_S_PROMPTING_NEEDED
+#define GSS_S_PROMPTING_NEEDED (1 << (GSS_C_SUPPLEMENTARY_OFFSET + 5))
+#endif
+
 /* Kerberos headers */
 #include <krb5.h>
 
