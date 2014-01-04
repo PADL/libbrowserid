@@ -583,22 +583,20 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         goto cleanup;
     }
 
-    if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
-        if (cred->identityAttributes != NULL) {
-            err = _BIDAllocIdentity(ctx->bidContext, cred->identityAttributes, &ctx->bidIdentity);
-            if (err == BID_S_OK) {
-                json_decref(ctx->bidIdentity->PrivateAttributes);
-                ctx->bidIdentity->PrivateAttributes = json_incref(cred->identityPrivateAttributes);
-                ctx->flags &= ~(CTX_FLAG_REAUTH);
-            }
-        } else {
-            err = BIDAcquireAssertionFromString(ctx->bidContext,
-                                                (const char *)resolvedCred->assertion.value,
-                                                BID_ACQUIRE_FLAG_NO_INTERACT,
-                                                &ctx->bidIdentity,
-                                                &resolvedCred->expiryTime,
-                                                &ulRetFlags);
+    if ((resolvedCred->flags & CRED_FLAG_CALLER_UI) && (resolvedCred->flags & CRED_FLAG_RESOLVED)) {
+        err = _BIDAllocIdentity(ctx->bidContext, cred->identityAttributes, &ctx->bidIdentity);
+        if (err == BID_S_OK) {
+            json_decref(ctx->bidIdentity->PrivateAttributes);
+            ctx->bidIdentity->PrivateAttributes = json_incref(cred->identityPrivateAttributes);
+            ctx->flags &= ~(CTX_FLAG_REAUTH);
         }
+    } else if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
+        err = BIDAcquireAssertionFromString(ctx->bidContext,
+                                            (const char *)resolvedCred->assertion.value,
+                                            BID_ACQUIRE_FLAG_NO_INTERACT,
+                                            &ctx->bidIdentity,
+                                            &resolvedCred->expiryTime,
+                                            &ulRetFlags);
     } else {
         uint32_t ulReqFlags;
 
@@ -908,6 +906,9 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
         /* Pass the identity attributes from the credential provider */
         cred->identityAttributes = json_incref(identity->Attributes);
         cred->identityPrivateAttributes = json_incref(identity->PrivateAttributes);
+
+        /* Caller must display UI, we just return GSS_S_PROMPTING_NEEDED */
+        cred->flags |= CRED_FLAG_CALLER_UI;
     }
 
     bidFlags = (CFNumberRef)CFDictionaryGetValue(attrs, kGSSICBrowserIDFlags);
@@ -917,10 +918,6 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
     /* in case the dictionary wasn't filled out correctly, assume we're an initiator */
     if ((cred->flags & (CRED_FLAG_INITIATE | CRED_FLAG_ACCEPT)) == 0)
         cred->flags |= CRED_FLAG_INITIATE;
-
-    /* Caller must display UI, we just return GSS_S_PROMPTING_NEEDED */
-    if (cred->flags & CRED_FLAG_INITIATE)
-        cred->flags |= CRED_FLAG_CALLER_UI;
 
 cleanup:
     GSSBID_FREE(oidBuf.elements);
