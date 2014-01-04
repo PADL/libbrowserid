@@ -457,6 +457,9 @@ gssBidDuplicateCred(OM_uint32 *minor,
             goto cleanup;
     }
 
+    dst->identityAttributes = json_incref(src->identityAttributes);
+    dst->identityPrivateAttributes = json_incref(src->identityPrivateAttributes);
+
     major = duplicateOidSet(minor, src->mechanisms, &dst->mechanisms);
     if (GSS_ERROR(major))
         goto cleanup;
@@ -530,7 +533,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
      * it failed, don't acquire a credential here because we can't show UI.
      * Just return an error to the application.
      */
-    if ((cred->flags & CRED_FLAG_CALLER_UI) && (ctx->flags & CTX_FLAG_REAUTH)) {
+    if ((resolvedCred->flags & CRED_FLAG_CALLER_UI) && (ctx->flags & CTX_FLAG_REAUTH)) {
         ctx->flags &= ~(CTX_FLAG_REAUTH);
         GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_RETRY_INITIAL);
         major = GSS_S_FAILURE | GSS_S_PROMPTING_NEEDED;
@@ -575,7 +578,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         }
 
         ulReqFlags = 0;
-        if (cred->flags & CRED_FLAG_CALLER_UI)
+        if (resolvedCred->flags & CRED_FLAG_CALLER_UI)
             ulReqFlags |= BID_ACQUIRE_FLAG_NO_INTERACT;
         if (ctx->flags & CTX_FLAG_REAUTH)
             ulReqFlags |= BID_ACQUIRE_FLAG_NO_CACHED;
