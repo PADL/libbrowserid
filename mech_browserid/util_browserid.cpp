@@ -396,6 +396,8 @@ gssBidMapError(OM_uint32 *minor, BIDError err)
     case BID_S_INTERACT_FAILURE:
     case BID_S_INTERACT_REQUIRED:
         major = GSS_S_CRED_UNAVAIL;
+        if (err == BID_S_INTERACT_REQUIRED)
+            major |= GSS_S_PROMPTING_NEEDED;
         *minor = GSSBID_NO_DEFAULT_CRED;
         break;
     case BID_S_INVALID_JSON:

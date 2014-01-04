@@ -530,6 +530,8 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                             &ctx->bidIdentity,
                                             &resolvedCred->expiryTime,
                                             &ulRetFlags);
+    } else if (resolvedCred->flags & CRED_FLAG_CALLER_UI) {
+        err = BID_S_INTERACT_REQUIRED;
     } else {
         uint32_t ulReqFlags;
 
@@ -789,18 +791,20 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
     }
 
     assertion = CFDictionaryGetValue(attrs, kGSSICBrowserIDAssertion);
-    if (assertion == NULL) {
-        major = GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CRED;
-        goto cleanup;
+    if (assertion != NULL) {
+        major = cfStringToGssBuffer(minor, assertion, &assertionBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        major = gssBidSetCredAssertion(minor, cred, &assertionBuf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+
+        GSSBID_ASSERT(cred->flags & CRED_FLAG_RESOLVED);
     }
 
-    major = cfStringToGssBuffer(minor, assertion, &assertionBuf);
-    if (GSS_ERROR(major))
-        goto cleanup;
-
-    major = gssBidSetCredAssertion(minor, cred, &assertionBuf);
-    if (GSS_ERROR(major))
-        goto cleanup;
+    /* Caller must display UI, we just return GSS_S_PROMPTING_NEEDED */
+    cred->flags |= CRED_FLAG_CALLER_UI;
 
 cleanup:
     GSSBID_FREE(oidBuf.elements);
