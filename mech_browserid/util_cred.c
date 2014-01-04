@@ -525,13 +525,35 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
             goto cleanup;
     }
 
+    /*
+     * If building for CredUI, and the initiator tried to re-authenticate and
+     * it failed, don't acquire a credential here because we can't show UI.
+     * Just return an error to the application.
+     */
+    if ((cred->flags & CRED_FLAG_CALLER_UI) && (ctx->flags & CTX_FLAG_REAUTH)) {
+        ctx->flags &= ~(CTX_FLAG_REAUTH);
+        GSSBID_SM_TRANSITION(ctx, GSSBID_STATE_RETRY_INITIAL);
+        major = GSS_S_FAILURE | GSS_S_PROMPTING_NEEDED;
+        *minor = GSSBID_REAUTH_FAILED;
+        goto cleanup;
+    }
+
     if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
-        err = BIDAcquireAssertionFromString(ctx->bidContext,
-                                            (const char *)resolvedCred->assertion.value,
-                                            BID_ACQUIRE_FLAG_NO_INTERACT,
-                                            &ctx->bidIdentity,
-                                            &resolvedCred->expiryTime,
-                                            &ulRetFlags);
+        if (cred->identityAttributes != NULL) {
+            err = _BIDAllocIdentity(ctx->bidContext, cred->identityAttributes, &ctx->bidIdentity);
+            if (err == BID_S_OK) {
+                json_decref(ctx->bidIdentity->PrivateAttributes);
+                ctx->bidIdentity->PrivateAttributes = json_incref(cred->identityPrivateAttributes);
+                ctx->flags &= ~(CTX_FLAG_REAUTH);
+            }
+        } else {
+            err = BIDAcquireAssertionFromString(ctx->bidContext,
+                                                (const char *)resolvedCred->assertion.value,
+                                                BID_ACQUIRE_FLAG_NO_INTERACT,
+                                                &ctx->bidIdentity,
+                                                &resolvedCred->expiryTime,
+                                                &ulRetFlags);
+        }
     } else {
         uint32_t ulReqFlags;
 
@@ -677,7 +699,7 @@ cfStringToGssBuffer(OM_uint32 *minor,
                    CFStringRef cfString,
                    gss_buffer_t buffer)
 {
-    if (cfString == NULL)
+    if (cfString == NULL || CFGetTypeID(cfString) != CFStringGetTypeID())
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_FAILURE;
 
     if (CFStringGetLength(cfString) == 0) {
@@ -764,6 +786,7 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
     gss_buffer_desc nameBuf = GSS_C_EMPTY_BUFFER;
     gss_OID_desc oidBuf = { 0, NULL };
     CFStringRef desiredMechOid = NULL;
+    BIDIdentity identity = NULL;
 
     if ((desiredMechOid = (CFStringRef)CFDictionaryGetValue(attrs, kGSSCredentialMechanismOID)) != NULL) {
         gss_OID canonOid;
@@ -816,7 +839,7 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
             cred->flags |= CRED_FLAG_INITIATE;
     }
 
-    assertion = CFDictionaryGetValue(attrs, kGSSICBrowserIDAssertion);
+    assertion = (CFStringRef)CFDictionaryGetValue(attrs, kGSSICBrowserIDAssertion);
     if (assertion != NULL) {
         major = cfStringToGssBuffer(minor, assertion, &assertionBuf);
         if (GSS_ERROR(major))
@@ -827,6 +850,13 @@ gssBidSetCredWithCFDictionary(OM_uint32 *minor,
             goto cleanup;
 
         GSSBID_ASSERT(cred->flags & CRED_FLAG_RESOLVED);
+    }
+
+    identity = (BIDIdentity)CFDictionaryGetValue(attrs, kGSSICBrowserIDIdentity);
+    if (identity != BID_C_NO_IDENTITY && CFGetTypeID(identity) == BIDIdentityGetTypeID()) {
+        /* Pass the identity attributes from the credential provider */
+        cred->identityAttributes = json_incref(identity->Attributes);
+        cred->identityPrivateAttributes = json_incref(identity->PrivateAttributes);
     }
 
     if (cred->flags & CRED_FLAG_INITIATE) {
