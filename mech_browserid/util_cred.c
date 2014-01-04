@@ -530,8 +530,6 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
                                             &ctx->bidIdentity,
                                             &resolvedCred->expiryTime,
                                             &ulRetFlags);
-    } else if (resolvedCred->flags & CRED_FLAG_CALLER_UI) {
-        err = BID_S_INTERACT_REQUIRED;
     } else {
         uint32_t ulReqFlags;
 
@@ -553,6 +551,8 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
         }
 
         ulReqFlags = 0;
+        if (cred->flags & CRED_FLAG_CALLER_UI)
+            ulReqFlags |= BID_ACQUIRE_FLAG_NO_INTERACT;
         if (ctx->flags & CTX_FLAG_REAUTH)
             ulReqFlags |= BID_ACQUIRE_FLAG_NO_CACHED;
         if (req_flags & GSS_C_MUTUAL_FLAG)
