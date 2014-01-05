@@ -731,11 +731,11 @@ CF_CLASSIMPLEMENTATION(__BIDCFIdentity)
     NSDictionary *privateAttributes;
 
     attributes = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"attributes"];
-    if (attributes)
+    if (attributes != NULL)
         identity->Attributes = CFRetain(attributes);
 
     privateAttributes = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"privateAttributes"];
-    if (privateAttributes)
+    if (privateAttributes != NULL)
         identity->PrivateAttributes = CFRetain(privateAttributes);
 
     return self;
