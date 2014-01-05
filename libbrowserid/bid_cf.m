@@ -41,6 +41,12 @@
 
 #ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
 
+#include <Foundation/Foundation.h>
+
+CF_EXPORT void _CFRuntimeBridgeClasses(CFTypeID cf_typeID, const char *objc_classname);
+CF_EXPORT CFTypeRef _CFTryRetain(CFTypeRef cf);
+CF_EXPORT Boolean _CFIsDeallocating(CFTypeRef cf);
+
 /*
  * This is a CoreFoundation wrapper for libbrowserid. It only builds if the
  * CoreFoundation/CFRuntime.h private header is available (which may change
@@ -117,6 +123,7 @@ _BIDCFInit(void)
 {
     _BIDIdentityTypeID = _CFRuntimeRegisterClass(&_BIDIdentityClass);
     BID_ASSERT(_BIDIdentityTypeID != _kCFRuntimeNotATypeID);
+    _CFRuntimeBridgeClasses(_BIDIdentityTypeID, "__BIDCFIdentity");
 
     _BIDContextTypeID = _CFRuntimeRegisterClass(&_BIDContextClass);
     BID_ASSERT(_BIDContextTypeID != _kCFRuntimeNotATypeID);
@@ -272,7 +279,7 @@ BIDIdentityCreateByVerifyingAssertion(
                              ulReqFlags, &identity, &expiryTime, pulVerifyFlags);
     BID_BAIL_ON_ERROR(err);
 
-cleanup:                             
+cleanup:
     if (err != BID_S_OK && pError != NULL)
         *pError = _BIDCFMapError(context, err);
 
@@ -616,5 +623,124 @@ _BIDCachePerformBlock(
     return err;
 }
 #endif /* __BLOCKS__ */
+
+#define CF_CLASSIMPLEMENTATION(ClassName)                                       \
+- (id)retain                                                                    \
+{                                                                               \
+    return CFRetain((CFTypeRef)self);                                           \
+}                                                                               \
+                                                                                \
+- (oneway void)release                                                          \
+{                                                                               \
+    CFRelease((CFTypeRef)self);                                                 \
+}                                                                               \
+                                                                                \
+- (NSUInteger)retainCount                                                       \
+{                                                                               \
+    return CFGetRetainCount((CFTypeRef)self);                                   \
+}                                                                               \
+                                                                                \
+- (BOOL)isEqual:(id)anObject                                                    \
+{                                                                               \
+    if (anObject == nil)                                                        \
+        return NO;                                                              \
+    return CFEqual((CFTypeRef)self, (CFTypeRef)anObject);                       \
+}                                                                               \
+                                                                                \
+- (NSUInteger)hash                                                              \
+{                                                                               \
+    return CFHash((CFTypeRef)self);                                             \
+}                                                                               \
+                                                                                \
+- (BOOL)allowsWeakReference                                                     \
+{                                                                               \
+    return ![self _isDeallocating];                                             \
+}                                                                               \
+                                                                                \
+- (BOOL)retainWeakReference                                                     \
+{                                                                               \
+    return [self _tryRetain];                                                   \
+}                                                                               \
+                                                                                \
+- (BOOL)_isDeallocating                                                         \
+{                                                                               \
+    return _CFIsDeallocating((CFTypeRef)self);                                  \
+}                                                                               \
+                                                                                \
+- (BOOL)_tryRetain                                                              \
+{                                                                               \
+    return _CFTryRetain((CFTypeRef)self) != NULL;                               \
+}                                                                               \
+                                                                                \
+- (NSString *)description                                                       \
+{                                                                               \
+    return [NSMakeCollectable(CFCopyDescription((CFTypeRef)self)) autorelease]; \
+}                                                                               \
+
+/*
+ * This is not a full Objective-C interface to BIDIdentity, it's just there so it
+ * can be serialized. To make it fully toll free bridged would require all public
+ * APIs to be instrumented so that subclasses can be invoked.
+ */
+
+@interface __BIDCFIdentity : NSObject
+@end
+
+@implementation __BIDCFIdentity
+
++ (id)allocWithZone:(NSZone *)BID_UNUSED zone
+{
+    BIDIdentity identity = BID_C_NO_IDENTITY;
+
+    _BIDAllocIdentity(BID_C_NO_CONTEXT, NULL, &identity);
+
+    return (id)identity;
+}
+
+CF_CLASSIMPLEMENTATION(__BIDCFIdentity)
+
+- (BIDIdentity)_identity
+{
+    return (BIDIdentity)self;
+}
+
+- (CFTypeID)_cfTypeID
+{
+    return BIDIdentityGetTypeID();
+}
+
++ (BOOL)supportsSecureCoding
+{
+    return YES;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    BIDIdentity identity = [self _identity];
+
+    if (identity->Attributes != NULL)
+        [coder encodeObject:identity->Attributes forKey:@"attributes"];
+    if (identity->PrivateAttributes != NULL)
+        [coder encodeObject:identity->PrivateAttributes forKey:@"privateAttributes"];
+}
+
+- (id)initWithCoder:(NSCoder *)coder
+{
+    BIDIdentity identity = [self _identity];
+    NSDictionary *attributes;
+    NSDictionary *privateAttributes;
+
+    attributes = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"attributes"];
+    if (attributes)
+        identity->Attributes = CFRetain(attributes);
+
+    privateAttributes = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"privateAttributes"];
+    if (privateAttributes)
+        identity->PrivateAttributes = CFRetain(privateAttributes);
+
+    return self;
+}
+
+@end
 
 #endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
