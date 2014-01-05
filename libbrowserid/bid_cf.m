@@ -682,6 +682,7 @@ _BIDCachePerformBlock(
  * can be serialized. To make it fully toll free bridged would require all public
  * APIs to be instrumented so that subclasses can be invoked.
  */
+
 @interface __BIDCFIdentity : NSObject
 @end
 
