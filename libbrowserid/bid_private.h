@@ -95,9 +95,16 @@ extern "C" {
 #define BID_UNUSED
 #endif
 
+#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#define BID_CONTEXT_VALID_P(context)        ((context) != BID_C_NO_CONTEXT && \
+                                             CFGetTypeID((context)) == BIDContextGetTypeID())
+#else
+#define BID_CONTEXT_VALID_P(context)        ((context) != BID_C_NO_CONTEXT)
+#endif
+
 #define BID_CONTEXT_VALIDATE(context)   do {        \
-        BID_ASSERT((context) != BID_C_NO_CONTEXT);  \
-        if ((context) == BID_C_NO_CONTEXT)          \
+        BID_ASSERT(BID_CONTEXT_VALID_P(context));   \
+        if (!BID_CONTEXT_VALID_P(context))          \
             return BID_S_NO_CONTEXT;                \
     } while (0)
 
