@@ -688,17 +688,13 @@ _BIDCachePerformBlock(
 
 @implementation __BIDCFIdentity
 
-+ (id)allocWithZone:(NSZone *)zone
++ (id)allocWithZone:(NSZone *)BID_UNUSED zone
 {
-    static __BIDCFIdentity *placeholderField;
-    static dispatch_once_t onceToken;
+    BIDIdentity identity = BID_C_NO_IDENTITY;
 
-    dispatch_once(&onceToken, ^{
-        if (placeholderField == nil)
-            placeholderField = [super allocWithZone:zone];
-    });
+    _BIDAllocIdentity(BID_C_NO_CONTEXT, NULL, &identity);
 
-    return placeholderField;
+    return (id)identity;
 }
 
 CF_CLASSIMPLEMENTATION(__BIDCFIdentity)
@@ -730,22 +726,17 @@ CF_CLASSIMPLEMENTATION(__BIDCFIdentity)
 
 - (id)initWithCoder:(NSCoder *)coder
 {
-    BIDError err;
-    BIDIdentity identity;
+    BIDIdentity identity = [self _identity];
     NSDictionary *attributes;
     NSDictionary *privateAttributes;
 
     attributes = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"attributes"];
+    if (attributes)
+        identity->Attributes = CFRetain(attributes);
+
     privateAttributes = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"privateAttributes"];
-
-    err = _BIDAllocIdentity(BID_C_NO_CONTEXT, attributes, &identity);
-    if (err != BID_S_OK)
-        return nil;
-
     if (privateAttributes)
         identity->PrivateAttributes = CFRetain(privateAttributes);
-
-    self = (id)identity;
 
     return self;
 }
