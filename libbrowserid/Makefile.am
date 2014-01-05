@@ -69,7 +69,7 @@ endif
 
 if CFBROWSERID
 include_HEADERS += CFBrowserID.h
-libbrowserid_la_SOURCES += bid_cf.c
+libbrowserid_la_SOURCES += bid_cf.m
 endif
 
 else
