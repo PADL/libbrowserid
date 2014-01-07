@@ -200,6 +200,11 @@ gssBidAcquireCred(OM_uint32 *minor,
         break;
     }
 
+#ifdef GSS_C_CRED_NO_UI
+    if (credUsage & GSS_C_CRED_NO_UI)
+        cred->flags |= CRED_FLAG_CALLER_UI;
+#endif
+
     major = gssBidValidateMechs(minor, desiredMechs);
     if (GSS_ERROR(major))
         goto cleanup;
