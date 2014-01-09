@@ -73,9 +73,9 @@ Example:
 
 ## CoreFoundation support
 
-If you have the CoreFoundation internal headers installed (CFRuntime.h), then
-you can build libbrowserid such that it exposes its types as first-class
-CoreFoundation objects. You can also use the helper APIs in CFBrowserID.h.
+If you are running on OS X (only Mavericks is tested), then libbrowserid
+will build such that it exposes its types as first-class CoreFoundation objects.
+You can also use the helper APIs in CFBrowserID.h.
 
     BIDContext context;
     CFStringRef audience = CFSTR("http://example.com");
@@ -88,11 +88,10 @@ CoreFoundation objects. You can also use the helper APIs in CFBrowserID.h.
                                      NULL, NULL, 0, NULL, &flags, &cfErr);
     CFRelease(context);
 
-Regardless of whether you have CFRuntime.h installed, libbrowserid will use
-CFNetwork instead of libcurl if available, and CoreFoundation instead of
-libjansson.. This is not necessarily OS X-specific, although it''s unlikely
-other platforms will have this. (So, on OS X and iOS, you can treat any json_t
-objects returned by libbrowserid APIs as CoreFoundation types.)
+Also, BIDIdentity objects support NSSecureCoding, so they can be serialized.
+
+libbrowserid will also use CFNetwork instead of libcurl if available, and
+CoreFoundation instead of libjansson.
 
 ## Windows port
 
