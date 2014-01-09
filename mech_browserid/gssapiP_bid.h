@@ -71,7 +71,9 @@
 #ifndef _GSSAPIP_BID_H_
 #define _GSSAPIP_BID_H_ 1
 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #ifdef HAVE_HEIMDAL_VERSION
 #define KRB5_DEPRECATED         /* so we can use krb5_free_unparsed_name() */
