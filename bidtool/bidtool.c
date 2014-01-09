@@ -614,5 +614,5 @@ int main(int argc, char *argv[])
 
     BIDReleaseContext(gContext);
 
-    exit(0);
+    exit(err);
 }
