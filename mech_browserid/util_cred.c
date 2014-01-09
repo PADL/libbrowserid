@@ -720,7 +720,7 @@ cleanup:
     return major;
 }
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(HAVE_HEIMDAL_VERSION)
 
 #include <dlfcn.h>
 #include <CoreFoundation/CoreFoundation.h>

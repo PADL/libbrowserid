@@ -95,7 +95,7 @@ setCredReplayCache(OM_uint32 *minor,
     return gssBidSetCredReplayCacheName(minor, cred, buffer);
 }
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(HAVE_HEIMDAL_VERSION)
 static OM_uint32
 setCredCFDictionary(OM_uint32 *minor,
                     gss_cred_id_t cred,
@@ -131,7 +131,7 @@ static struct {
         { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x18\x03\x03\x03" },
         setCredReplayCache,
     },
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(HAVE_HEIMDAL_VERSION)
     /* GSSSetCredCFDictionary - 1.3.6.1.4.1.5322.25.4.1 */
     {
         { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x19\x04\x01" },

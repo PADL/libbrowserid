@@ -1,6 +1,5 @@
 gss_accept_sec_context
 gss_acquire_cred
-gss_acquire_cred_ext
 gss_acquire_cred_from
 gss_add_cred
 gss_add_cred_from
