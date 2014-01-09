@@ -95,7 +95,7 @@ setCredReplayCache(OM_uint32 *minor,
     return gssBidSetCredReplayCacheName(minor, cred, buffer);
 }
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
 static OM_uint32
 setCredCFDictionary(OM_uint32 *minor,
                     gss_cred_id_t cred,
@@ -104,7 +104,7 @@ setCredCFDictionary(OM_uint32 *minor,
 {
     return gssBidSetCredWithCFDictionary(minor, cred, (CFDictionaryRef)buffer->value);
 }
-#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
+#endif /* __APPLE__ */
 
 static struct {
     gss_OID_desc oid;
@@ -131,13 +131,13 @@ static struct {
         { 11, "\x2B\x06\x01\x04\x01\xA9\x4A\x18\x03\x03\x03" },
         setCredReplayCache,
     },
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
     /* GSSSetCredCFDictionary - 1.3.6.1.4.1.5322.25.4.1 */
     {
         { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x19\x04\x01" },
         setCredCFDictionary,
     },
-#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
+#endif /* __APPLE__ */
 };
 
 gss_OID GSS_BROWSERID_CRED_SET_CRED_FLAG            = &setCredOps[0].oid;

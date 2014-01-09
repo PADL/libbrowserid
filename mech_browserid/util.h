@@ -309,7 +309,7 @@ gssBidInquireCred(OM_uint32 *minor,
                   gss_cred_usage_t *cred_usage,
                   gss_OID_set *mechanisms);
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
 #include <CoreFoundation/CFDictionary.h>
 
 OM_uint32

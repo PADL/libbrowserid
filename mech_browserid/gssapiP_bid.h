@@ -180,7 +180,7 @@ struct gss_cred_id_struct
     BIDContext bidContext;
     BIDTicketCache bidTicketCache;
     BIDReplayCache bidReplayCache;
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
     BIDIdentity bidIdentity;
     uint32_t bidFlags;
 #endif
