@@ -83,7 +83,7 @@ BIDPrintVerboseTicketCacheEntry(
     const char *szECDHCurve = NULL;
     time_t issueTime, certExpiryTime, tktExpiryTime;
     json_t *tkt = _BIDJsonObjectGet(context, j, "tkt");
-    uint32_t ulTicketFlags = _BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "flags"));
+    uint32_t ulTicketFlags = (uint32_t)_BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "flags"));
 
     _BIDGetJsonTimestampValue(gContext, j, "iat", &issueTime);
     _BIDGetJsonTimestampValue(gContext, j, "exp", &certExpiryTime);
@@ -213,8 +213,8 @@ BIDPrintVerboseReplayCacheEntry(
     unsigned char *pbHash = NULL;
     size_t cbHash = 0, i;
     time_t issueTime, certExpiryTime, assertionExpiryTime, renewExpiryTime;
-    uint32_t ulTicketFlags = _BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "flags"));
-    uint32_t ulDHKeySize = _BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "dh-key-size"));
+    uint32_t ulTicketFlags = (uint32_t)_BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "flags"));
+    uint32_t ulDHKeySize = (uint32_t)_BIDJsonIntegerValue(_BIDJsonObjectGet(context, j, "dh-key-size"));
     const char *szECDHCurve = _BIDJsonStringValue(_BIDJsonObjectGet(context, j, "crv"));
 
     _BIDBase64UrlDecode(k, &pbHash, &cbHash);

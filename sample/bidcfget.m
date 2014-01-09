@@ -77,7 +77,7 @@ int main(int argc, const char *argv[])
             NSLog(@"Assertion is %@", assertion);
         } else {
             NSLog(@"Failed to get assertion: %@", error);
-            exitCode = [error code];
+            exitCode = (int)[error code];
         }
     }
 
