@@ -411,8 +411,8 @@ gss_init_sec_context(OM_uint32 *minor,
                      gss_const_name_t target_name,
                      const gss_OID mech_type,
 #else
-                     gss_OID mech_type,
                      gss_name_t target_name,
+                     gss_OID mech_type,
 #endif
                      OM_uint32 req_flags,
                      OM_uint32 time_req,
