@@ -1,5 +1,7 @@
 /* Generated file */
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
 
 #include <krb5-types.h>
 
