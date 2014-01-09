@@ -38,13 +38,20 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_cred_by_mech(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                         gss_const_cred_id_t cred_const,
+#else
                          gss_cred_id_t cred,
+#endif
                          gss_OID mech_type,
                          gss_name_t *name,
                          OM_uint32 *pInitiatorLifetime,
                          OM_uint32 *pAcceptorLifetime,
                          gss_cred_usage_t *cred_usage)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_cred_id_t cred = (gss_cred_id_t)cred_const;
+#endif
     OM_uint32 major, lifetime;
 
     if (cred == NULL) {

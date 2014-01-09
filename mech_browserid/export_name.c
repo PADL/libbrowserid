@@ -38,9 +38,16 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_export_name(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                gss_const_name_t input_name_const,
+#else
                 const gss_name_t input_name,
+#endif
                 gss_buffer_t exported_name)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_name_t input_name = (gss_name_t)input_name_const;
+#endif
     OM_uint32 major;
 
     *minor = 0;

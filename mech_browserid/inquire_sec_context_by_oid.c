@@ -220,10 +220,17 @@ static struct {
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_sec_context_by_oid(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                               gss_const_ctx_id_t ctx_const,
+#else
                                const gss_ctx_id_t ctx,
+#endif
                                const gss_OID desired_object,
                                gss_buffer_set_t *data_set)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_ctx_id_t ctx = (gss_ctx_id_t)ctx_const;
+#endif
     OM_uint32 major;
     int i;
 

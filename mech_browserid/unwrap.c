@@ -38,12 +38,19 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_unwrap(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+           gss_const_ctx_id_t ctx_const,
+#else
            gss_ctx_id_t ctx,
+#endif
            gss_buffer_t input_message_buffer,
            gss_buffer_t output_message_buffer,
            int *conf_state,
            gss_qop_t *qop_state)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_ctx_id_t ctx = (gss_ctx_id_t)ctx_const;
+#endif
     OM_uint32 major, tmpMinor;
     gss_iov_buffer_desc iov[2];
 

@@ -38,12 +38,19 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_wrap_size_limit(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                    gss_const_ctx_id_t ctx_const,
+#else
                     gss_ctx_id_t ctx,
+#endif
                     int conf_req_flag,
                     gss_qop_t qop_req,
                     OM_uint32 req_output_size,
                     OM_uint32 *max_input_size)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_ctx_id_t ctx = (gss_ctx_id_t)ctx_const;
+#endif
     gss_iov_buffer_desc iov[4];
     OM_uint32 major, overhead;
 

@@ -38,11 +38,19 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_canonicalize_name(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                      gss_const_name_t input_name_const,
+                      const gss_OID mech_type,
+#else
                       const gss_name_t input_name,
                       const gss_OID mech_type,
+#endif
                       gss_name_t *output_name)
 {
     OM_uint32 major;
+#ifdef HAVE_HEIMDAL_VERSION
+    const gss_name_t input_name = (const gss_name_t)input_name_const;
+#endif
 
     *minor = 0;
 

@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_context(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                    gss_const_ctx_id_t ctx_const,
+#else
                     gss_ctx_id_t ctx,
+#endif
                     gss_name_t *src_name,
                     gss_name_t *targ_name,
                     OM_uint32 *lifetime_rec,
@@ -47,6 +51,9 @@ gss_inquire_context(OM_uint32 *minor,
                     int *locally_initiated,
                     int *open)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_ctx_id_t ctx = (gss_ctx_id_t)ctx_const;
+#endif
     OM_uint32 major, tmpMinor;
 
     if (ctx == GSS_C_NO_CONTEXT) {
