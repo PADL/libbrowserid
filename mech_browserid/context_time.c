@@ -38,9 +38,16 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_context_time(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                 gss_const_ctx_id_t ctx_const,
+#else
                  gss_ctx_id_t ctx,
+#endif
                  OM_uint32 *time_rec)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_ctx_id_t ctx = (gss_ctx_id_t)ctx_const;
+#endif
     OM_uint32 major;
 
     if (ctx == GSS_C_NO_CONTEXT) {

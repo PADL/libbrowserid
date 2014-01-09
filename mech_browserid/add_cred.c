@@ -43,9 +43,15 @@
  */
 OM_uint32 GSSAPI_CALLCONV
 gss_add_cred(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+             gss_const_cred_id_t input_cred_handle GSSBID_UNUSED,
+             gss_const_name_t desired_name,
+             const gss_OID desired_mech,
+#else
              gss_cred_id_t input_cred_handle GSSBID_UNUSED,
              gss_name_t desired_name,
              gss_OID desired_mech,
+#endif
              gss_cred_usage_t cred_usage,
              OM_uint32 initiator_time_req,
              OM_uint32 acceptor_time_req,
@@ -70,7 +76,7 @@ gss_add_cred(OM_uint32 *minor,
     mechs.elements = desired_mech;
 
     major = gssBidAcquireCred(minor,
-                              desired_name,
+                              (gss_name_t)desired_name,
                               time_req,
                               &mechs,
                               cred_usage,

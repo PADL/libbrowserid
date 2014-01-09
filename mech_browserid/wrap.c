@@ -38,13 +38,20 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_wrap(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+         gss_const_ctx_id_t ctx_const,
+#else
          gss_ctx_id_t ctx,
+#endif
          int conf_req_flag,
          gss_qop_t qop_req,
          gss_buffer_t input_message_buffer,
          int *conf_state,
          gss_buffer_t output_message_buffer)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_ctx_id_t ctx = (gss_ctx_id_t)ctx_const;
+#endif
     OM_uint32 major;
 
     if (ctx == GSS_C_NO_CONTEXT) {

@@ -47,10 +47,18 @@ static struct {
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_cred_by_oid(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                        gss_const_cred_id_t cred_handle_const,
+                        const gss_OID desired_object GSSBID_UNUSED,
+#else
                         const gss_cred_id_t cred_handle,
                         const gss_OID desired_object GSSBID_UNUSED,
+#endif
                         gss_buffer_set_t *data_set)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_cred_id_t cred_handle = (gss_cred_id_t)cred_handle_const;
+#endif
     OM_uint32 major;
 #if 0
     int i;

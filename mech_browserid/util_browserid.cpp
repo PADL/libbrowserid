@@ -208,7 +208,7 @@ BIDGSSJWTAttributeProvider::getAttribute(const gss_buffer_t attr,
             valueBuf.value = (void *)szValue;
         break;
     case JSON_INTEGER:
-        snprintf(tmpBuf, sizeof(tmpBuf), "%"JSON_INTEGER_FORMAT, jAttr.integer());
+        snprintf(tmpBuf, sizeof(tmpBuf), "%" JSON_INTEGER_FORMAT, jAttr.integer());
         valueBuf.value = (void *)tmpBuf;
         break;
     case JSON_REAL:

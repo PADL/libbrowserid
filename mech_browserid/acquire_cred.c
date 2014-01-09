@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_acquire_cred(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                 gss_const_name_t desired_name,
+#else
                  gss_name_t desired_name,
+#endif
                  OM_uint32 time_req,
                  gss_OID_set desired_mechs,
                  gss_cred_usage_t cred_usage,
@@ -46,7 +50,7 @@ gss_acquire_cred(OM_uint32 *minor,
                  gss_OID_set *actual_mechs,
                  OM_uint32 *time_rec)
 {
-    return gssBidAcquireCred(minor, desired_name,
+    return gssBidAcquireCred(minor, (gss_name_t)desired_name,
                              time_req, desired_mechs, cred_usage,
                              output_cred_handle, actual_mechs, time_rec);
 }
