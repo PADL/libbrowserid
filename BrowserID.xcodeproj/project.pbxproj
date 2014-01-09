@@ -131,7 +131,6 @@
 		D394959518477E5B00C7D85B /* bid_xrt.c in Sources */ = {isa = PBXBuildFile; fileRef = D394956E18477E5B00C7D85B /* bid_xrt.c */; };
 		D394959618477E5B00C7D85B /* browserid.h in Headers */ = {isa = PBXBuildFile; fileRef = D394956F18477E5B00C7D85B /* browserid.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D394959718477E5B00C7D85B /* CFBrowserID.h in Headers */ = {isa = PBXBuildFile; fileRef = D394957018477E5B00C7D85B /* CFBrowserID.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		D394959B18477F9100C7D85B /* BrowserID-Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = D394959918477F9100C7D85B /* BrowserID-Prefix.pch */; };
 		D394959C1847829900C7D85B /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698918477D4F009B8DC9 /* AppKit.framework */; };
 		D394959E184782A700C7D85B /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959D184782A700C7D85B /* WebKit.framework */; };
 		D39495A0184782AC00C7D85B /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959F184782AC00C7D85B /* CoreFoundation.framework */; };
@@ -141,6 +140,9 @@
 		D3FD1116187EDBA200AD32FB /* bid_openssl.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955B18477E5B00C7D85B /* bid_openssl.c */; };
 		D3FD1117187EDBA200AD32FB /* bid_rcache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955E18477E5B00C7D85B /* bid_rcache.c */; };
 		D3FD1122187EE9F400AD32FB /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698718477D4F009B8DC9 /* Foundation.framework */; };
+		D3FD1126187EEFC100AD32FB /* BrowserID-Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = D3FD1125187EEFC100AD32FB /* BrowserID-Prefix.pch */; };
+		D3FD1127187EEFC100AD32FB /* BrowserID-Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = D3FD1125187EEFC100AD32FB /* BrowserID-Prefix.pch */; };
+		D3FD1128187EEFC100AD32FB /* BrowserID-Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = D3FD1125187EEFC100AD32FB /* BrowserID-Prefix.pch */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -314,13 +316,13 @@
 		D394956F18477E5B00C7D85B /* browserid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = browserid.h; path = libbrowserid/browserid.h; sourceTree = SOURCE_ROOT; };
 		D394957018477E5B00C7D85B /* CFBrowserID.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CFBrowserID.h; path = libbrowserid/CFBrowserID.h; sourceTree = SOURCE_ROOT; };
 		D394959818477F9100C7D85B /* BrowserID-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "BrowserID-Info.plist"; path = "libbrowserid/BrowserID-Info.plist"; sourceTree = SOURCE_ROOT; };
-		D394959918477F9100C7D85B /* BrowserID-Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "BrowserID-Prefix.pch"; path = "libbrowserid/BrowserID-Prefix.pch"; sourceTree = SOURCE_ROOT; };
 		D394959D184782A700C7D85B /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		D394959F184782AC00C7D85B /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		D39495A1184782B600C7D85B /* libcrypto.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.dylib; path = usr/lib/libcrypto.dylib; sourceTree = SDKROOT; };
 		D3D39A6E184D3E3100331007 /* cfjson.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cfjson.h; path = libcfjson/cfjson.h; sourceTree = SOURCE_ROOT; };
 		D3D39A6F184D3E3100331007 /* cfjson.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = cfjson.m; path = libcfjson/cfjson.m; sourceTree = SOURCE_ROOT; };
 		D3FD1119187EDC2800AD32FB /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = mech_browserid/Info.plist; sourceTree = "<group>"; };
+		D3FD1125187EEFC100AD32FB /* BrowserID-Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "BrowserID-Prefix.pch"; path = "build/BrowserID-Prefix.pch"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -476,6 +478,7 @@
 		D345697718477D4F009B8DC9 = {
 			isa = PBXGroup;
 			children = (
+				D3FD1125187EEFC100AD32FB /* BrowserID-Prefix.pch */,
 				D32E7C0E187ED79500F5BDF0 /* mech_browserid */,
 				D32E7BFF187ED42800F5BDF0 /* cfjson */,
 				D32E7BF2187ED3B200F5BDF0 /* CoreFoundation */,
@@ -562,7 +565,6 @@
 			isa = PBXGroup;
 			children = (
 				D394959818477F9100C7D85B /* BrowserID-Info.plist */,
-				D394959918477F9100C7D85B /* BrowserID-Prefix.pch */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -583,6 +585,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D32E7C05187ED4D700F5BDF0 /* cfjson.h in Headers */,
+				D3FD1127187EEFC100AD32FB /* BrowserID-Prefix.pch in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -590,6 +593,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D3FD1128187EEFC100AD32FB /* BrowserID-Prefix.pch in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -605,7 +609,7 @@
 				D32E7C9E187ED80900F5BDF0 /* util_shib.h in Headers */,
 				D32E7C51187ED7F500F5BDF0 /* gssapi_browserid.h in Headers */,
 				D32E7C52187ED7F500F5BDF0 /* gssapiP_bid.h in Headers */,
-				D394959B18477F9100C7D85B /* BrowserID-Prefix.pch in Headers */,
+				D3FD1126187EEFC100AD32FB /* BrowserID-Prefix.pch in Headers */,
 				D394958E18477E5B00C7D85B /* bid_wk.h in Headers */,
 				D32E7C93187ED80800F5BDF0 /* util_json.h in Headers */,
 				D32E7C8C187ED80800F5BDF0 /* util_browserid.h in Headers */,
@@ -993,7 +997,6 @@
 					"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "mech_browserid/mech_browserid-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -1029,7 +1032,6 @@
 					"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks",
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "mech_browserid/mech_browserid-Prefix.pch";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1068,6 +1070,7 @@
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREFIX_HEADER = "$(SRCROOT)/build/BrowserID-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -1114,6 +1117,7 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PREFIX_HEADER = "$(SRCROOT)/build/BrowserID-Prefix.pch";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -1145,7 +1149,6 @@
 				EXPORTED_SYMBOLS_FILE = "$(DERIVED_FILE_DIR)/_libbrowserid-cf.exports";
 				FRAMEWORK_VERSION = A;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "libbrowserid/BrowserID-Prefix.pch";
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				INFOPLIST_FILE = "libbrowserid/BrowserID-Info.plist";
 				OTHER_LDFLAGS = "$(OBJECT_FILE_DIR)-$(CURRENT_VARIANT)/$(CURRENT_ARCH)/vers.o";
@@ -1165,7 +1168,6 @@
 				EXPORTED_SYMBOLS_FILE = "$(DERIVED_FILE_DIR)/_libbrowserid-cf.exports";
 				FRAMEWORK_VERSION = A;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "libbrowserid/BrowserID-Prefix.pch";
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				INFOPLIST_FILE = "libbrowserid/BrowserID-Info.plist";
 				OTHER_LDFLAGS = "$(OBJECT_FILE_DIR)-$(CURRENT_VARIANT)/$(CURRENT_ARCH)/vers.o";
