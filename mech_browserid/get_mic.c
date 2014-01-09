@@ -38,11 +38,18 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_get_mic(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+            gss_const_ctx_id_t ctx_const,
+#else
             gss_ctx_id_t ctx,
+#endif
             gss_qop_t qop_req,
             gss_buffer_t message_buffer,
             gss_buffer_t message_token)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_ctx_id_t ctx = (gss_ctx_id_t)ctx_const;
+#endif
     OM_uint32 major;
     gss_iov_buffer_desc iov[2];
 

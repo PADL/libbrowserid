@@ -92,7 +92,7 @@ gssBidReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
         BIDReleaseReplayCache(cred->bidContext, cred->bidReplayCache);
         BIDReleaseContext(cred->bidContext);
     }
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
     if (cred->bidIdentity)
         CFRelease(cred->bidIdentity);
 #endif
@@ -199,6 +199,11 @@ gssBidAcquireCred(OM_uint32 *minor,
         goto cleanup;
         break;
     }
+
+#ifdef GSS_C_CRED_NO_UI
+    if (credUsage & GSS_C_CRED_NO_UI)
+        cred->flags |= CRED_FLAG_CALLER_UI;
+#endif
 
     major = gssBidValidateMechs(minor, desiredMechs);
     if (GSS_ERROR(major))
@@ -500,7 +505,7 @@ gssBidDuplicateCred(OM_uint32 *minor,
             goto cleanup;
     }
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
     if (src->bidIdentity)
         dst->bidIdentity = (BIDIdentity)CFRetain(src->bidIdentity);
     dst->bidFlags = src->bidFlags;
@@ -588,7 +593,7 @@ gssBidResolveInitiatorCred(OM_uint32 *minor,
     }
 
     if (resolvedCred->flags & CRED_FLAG_RESOLVED) {
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
         if (resolvedCred->bidIdentity != BID_C_NO_IDENTITY) {
             ctx->bidIdentity = (BIDIdentity)CFRetain(cred->bidIdentity);
             ctx->flags &= ~(CTX_FLAG_REAUTH);
@@ -715,7 +720,7 @@ cleanup:
     return major;
 }
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#if defined(__APPLE__) && defined(HAVE_HEIMDAL_VERSION)
 
 #include <dlfcn.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -929,4 +934,4 @@ cleanup:
     return major;
 }
 
-#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
+#endif /* __APPLE__ */

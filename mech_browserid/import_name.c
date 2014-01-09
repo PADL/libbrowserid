@@ -38,8 +38,13 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_import_name(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                const gss_buffer_t import_name_buffer,
+                const gss_OID input_name_type,
+#else
                 gss_buffer_t import_name_buffer,
                 gss_OID input_name_type,
+#endif
                 gss_name_t *output_name)
 {
     return gssBidImportName(minor, import_name_buffer,

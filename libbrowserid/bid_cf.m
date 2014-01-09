@@ -39,9 +39,10 @@
 
 #include "bid_private.h"
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
 
 #include <Foundation/Foundation.h>
+#include <CoreFoundation/CFBridgingPriv.h>
 
 CF_EXPORT void _CFRuntimeBridgeClasses(CFTypeID cf_typeID, const char *objc_classname);
 CF_EXPORT CFTypeRef _CFTryRetain(CFTypeRef cf);
@@ -624,59 +625,6 @@ _BIDCachePerformBlock(
 }
 #endif /* __BLOCKS__ */
 
-#define CF_CLASSIMPLEMENTATION(ClassName)                                       \
-- (id)retain                                                                    \
-{                                                                               \
-    return CFRetain((CFTypeRef)self);                                           \
-}                                                                               \
-                                                                                \
-- (oneway void)release                                                          \
-{                                                                               \
-    CFRelease((CFTypeRef)self);                                                 \
-}                                                                               \
-                                                                                \
-- (NSUInteger)retainCount                                                       \
-{                                                                               \
-    return CFGetRetainCount((CFTypeRef)self);                                   \
-}                                                                               \
-                                                                                \
-- (BOOL)isEqual:(id)anObject                                                    \
-{                                                                               \
-    if (anObject == nil)                                                        \
-        return NO;                                                              \
-    return CFEqual((CFTypeRef)self, (CFTypeRef)anObject);                       \
-}                                                                               \
-                                                                                \
-- (NSUInteger)hash                                                              \
-{                                                                               \
-    return CFHash((CFTypeRef)self);                                             \
-}                                                                               \
-                                                                                \
-- (BOOL)allowsWeakReference                                                     \
-{                                                                               \
-    return ![self _isDeallocating];                                             \
-}                                                                               \
-                                                                                \
-- (BOOL)retainWeakReference                                                     \
-{                                                                               \
-    return [self _tryRetain];                                                   \
-}                                                                               \
-                                                                                \
-- (BOOL)_isDeallocating                                                         \
-{                                                                               \
-    return _CFIsDeallocating((CFTypeRef)self);                                  \
-}                                                                               \
-                                                                                \
-- (BOOL)_tryRetain                                                              \
-{                                                                               \
-    return _CFTryRetain((CFTypeRef)self) != NULL;                               \
-}                                                                               \
-                                                                                \
-- (NSString *)description                                                       \
-{                                                                               \
-    return [NSMakeCollectable(CFCopyDescription((CFTypeRef)self)) autorelease]; \
-}                                                                               \
-
 /*
  * This is not a full Objective-C interface to BIDIdentity, it's just there so it
  * can be serialized. To make it fully toll free bridged would require all public
@@ -731,11 +679,11 @@ CF_CLASSIMPLEMENTATION(__BIDCFIdentity)
     NSDictionary *privateAttributes;
 
     attributes = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"attributes"];
-    if (attributes)
+    if (attributes != NULL)
         identity->Attributes = CFRetain(attributes);
 
     privateAttributes = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"privateAttributes"];
-    if (privateAttributes)
+    if (privateAttributes != NULL)
         identity->PrivateAttributes = CFRetain(privateAttributes);
 
     return self;
@@ -743,4 +691,4 @@ CF_CLASSIMPLEMENTATION(__BIDCFIdentity)
 
 @end
 
-#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
+#endif /* __APPLE__ */

@@ -38,9 +38,14 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_compare_name(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                 gss_const_name_t name1,
+                 gss_const_name_t name2,
+#else
                  gss_name_t name1,
                  gss_name_t name2,
+#endif
                  int *name_equal)
 {
-    return gssBidCompareName(minor, name1, name2, 0, name_equal);
+    return gssBidCompareName(minor, (gss_name_t)name1, (gss_name_t)name2, 0, name_equal);
 }

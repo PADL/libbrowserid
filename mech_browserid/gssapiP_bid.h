@@ -108,12 +108,12 @@
 typedef struct gss_any *gss_any_t;
 #else
 #include <gssapi/gssapi_ext.h>
-#endif
-#include "gssapi_browserid.h"
-
 #ifndef HAVE_GSS_INQUIRE_ATTRS_FOR_MECH
 typedef const gss_OID_desc *gss_const_OID;
 #endif
+#endif
+
+#include "gssapi_browserid.h"
 
 #ifndef GSS_S_PROMPTING_NEEDED
 #define GSS_S_PROMPTING_NEEDED (1 << (GSS_C_SUPPLEMENTARY_OFFSET + 5))
@@ -180,7 +180,7 @@ struct gss_cred_id_struct
     BIDContext bidContext;
     BIDTicketCache bidTicketCache;
     BIDReplayCache bidReplayCache;
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
     BIDIdentity bidIdentity;
     uint32_t bidFlags;
 #endif

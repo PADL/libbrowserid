@@ -18,12 +18,6 @@ AC_CONFIG_HEADERS([config.h])
 AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h fcntl.h)
 AC_REPLACE_FUNCS(vasprintf)
 
-AC_CHECK_HEADERS(CoreFoundation/CFRuntime.h, [CFBrowserID=yes], [CFBrowserID=no])
-AM_CONDITIONAL(CFBROWSERID, test "x$CFBrowserID" = "xyes")
-
-AC_CHECK_HEADERS(CFNetwork/CFNetwork.h, [CFNetwork=yes], [CFNetwork=no])
-AM_CONDITIONAL(CFNETWORK, test "x$CFNetwork" = "xyes")
-
 build_mech=no
 AC_ARG_ENABLE(gss-mech,
   [  --enable-gss-mech whether to build GSS BrowserID mechanism: yes/no; default no ],
@@ -65,6 +59,12 @@ if test x_$target_macosx != x_yes; then
   AX_CHECK_CURL
   AX_CHECK_JANSSON
 fi
+
+AC_CHECK_HEADERS(CFNetwork/CFNetwork.h, [CFNetwork=yes], [CFNetwork=no])
+AM_CONDITIONAL(CFNETWORK, test "x$CFNetwork" = "xyes")
+
+dnl AC_CHECK_HEADERS(CoreFoundation/CFRuntime.h, [CFBrowserID=yes], [CFBrowserID=no])
+AM_CONDITIONAL(CFBROWSERID, test "x$target_macosx" = "xyes")
 
 if test x_$build_mech != x_no; then
   AX_CHECK_KRB5

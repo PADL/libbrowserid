@@ -36,7 +36,7 @@
 
 #include "gssapiP_bid.h"
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#if defined(__APPLE__) && defined(HAVE_HEIMDAL_VERSION)
 /* GSS_C_CRED_CFDictionary - 1.3.6.1.4.1.5322.25.1.1 */
 static const gss_OID_desc
 GSS_C_CRED_CFDictionary = { 10, "\x2B\x06\x01\x04\x01\xA9\x4A\x19\x01\x01" };
@@ -79,4 +79,4 @@ gss_acquire_cred_ext(OM_uint32 *minor,
 
     return major;
 }
-#endif /* HAVE_COREFOUNDATION_CFRUNTIME_H */
+#endif /* __APPLE__ */

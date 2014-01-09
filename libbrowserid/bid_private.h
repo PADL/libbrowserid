@@ -72,7 +72,7 @@
 #endif
 #include "browserid.h"
 
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFRuntime.h>
 #include "CFBrowserID.h"
@@ -95,9 +95,16 @@ extern "C" {
 #define BID_UNUSED
 #endif
 
+#ifdef __APPLE__
+#define BID_CONTEXT_VALID_P(context)        ((context) != BID_C_NO_CONTEXT && \
+                                             CFGetTypeID((context)) == BIDContextGetTypeID())
+#else
+#define BID_CONTEXT_VALID_P(context)        ((context) != BID_C_NO_CONTEXT)
+#endif
+
 #define BID_CONTEXT_VALIDATE(context)   do {        \
-        BID_ASSERT((context) != BID_C_NO_CONTEXT);  \
-        if ((context) == BID_C_NO_CONTEXT)          \
+        BID_ASSERT(BID_CONTEXT_VALID_P(context));   \
+        if (!BID_CONTEXT_VALID_P(context))          \
             return BID_S_NO_CONTEXT;                \
     } while (0)
 
@@ -329,7 +336,7 @@ struct BIDAcquireContextArgsDesc {
     BIDAuthorityCache AuthorityCache;
     BIDReplayCache ReplayCache;
     BIDTicketCache TicketCache;
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
     CFAllocatorRef CFAllocator;
 #endif
 };
@@ -337,7 +344,7 @@ struct BIDAcquireContextArgsDesc {
 #define BID_ACQUIRE_CONTEXT_ARGS_VERSION        1
 
 struct BIDContextDesc {
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
     CFRuntimeBase Base;
 #endif
     uint32_t ContextOptions;
@@ -1047,7 +1054,7 @@ struct BIDBackedAssertionDesc {
 };
 
 struct BIDIdentityDesc {
-#ifdef HAVE_COREFOUNDATION_CFRUNTIME_H
+#ifdef __APPLE__
     CFRuntimeBase Base;
 #endif
     json_t *Attributes;                         /* attributes from leaf certificate */

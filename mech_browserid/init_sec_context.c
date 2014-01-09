@@ -401,19 +401,36 @@ cleanup:
 
 OM_uint32 GSSAPI_CALLCONV
 gss_init_sec_context(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                     gss_const_cred_id_t cred_const,
+#else
                      gss_cred_id_t cred,
+#endif
                      gss_ctx_id_t *context_handle,
+#ifdef HAVE_HEIMDAL_VERSION
+                     gss_const_name_t target_name,
+                     const gss_OID mech_type,
+#else
                      gss_name_t target_name,
                      gss_OID mech_type,
+#endif
                      OM_uint32 req_flags,
                      OM_uint32 time_req,
+#ifdef HAVE_HEIMDAL_VERSION
+                     const gss_channel_bindings_t input_chan_bindings,
+                     const gss_buffer_t input_token,
+#else
                      gss_channel_bindings_t input_chan_bindings,
                      gss_buffer_t input_token,
+#endif
                      gss_OID *actual_mech_type,
                      gss_buffer_t output_token,
                      OM_uint32 *ret_flags,
                      OM_uint32 *time_rec)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_cred_id_t cred = (gss_cred_id_t)cred_const;
+#endif
     OM_uint32 major, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
 
@@ -440,7 +457,7 @@ gss_init_sec_context(OM_uint32 *minor,
     major = gssBidInitSecContext(minor,
                                  cred,
                                  ctx,
-                                 target_name,
+                                 (gss_name_t)target_name,
                                  mech_type,
                                  req_flags,
                                  time_req,

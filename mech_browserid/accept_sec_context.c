@@ -273,9 +273,15 @@ cleanup:
 OM_uint32 GSSAPI_CALLCONV
 gss_accept_sec_context(OM_uint32 *minor,
                        gss_ctx_id_t *context_handle,
+#ifdef HAVE_HEIMDAL_VERSION
+                       gss_const_cred_id_t cred_const,
+                       const gss_buffer_t input_token,
+                       const gss_channel_bindings_t input_chan_bindings,
+#else
                        gss_cred_id_t cred,
                        gss_buffer_t input_token,
                        gss_channel_bindings_t input_chan_bindings,
+#endif
                        gss_name_t *src_name,
                        gss_OID *mech_type,
                        gss_buffer_t output_token,
@@ -283,6 +289,9 @@ gss_accept_sec_context(OM_uint32 *minor,
                        OM_uint32 *time_rec,
                        gss_cred_id_t *delegated_cred_handle)
 {
+#ifdef HAVE_HEIMDAL_VERSION
+    gss_cred_id_t cred = (gss_cred_id_t)cred_const;
+#endif
     OM_uint32 major, tmpMajor, tmpMinor;
     gss_ctx_id_t ctx = *context_handle;
     gss_buffer_desc innerInputToken = GSS_C_EMPTY_BUFFER;
