@@ -7,10 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D32E7BF1187ED39400F5BDF0 /* bid_cf.m in Sources */ = {isa = PBXBuildFile; fileRef = D32E7BF0187ED39400F5BDF0 /* bid_cf.m */; };
+		D32E7BF5187ED3C000F5BDF0 /* CFBridgingPriv.h in Headers */ = {isa = PBXBuildFile; fileRef = D32E7BF3187ED3C000F5BDF0 /* CFBridgingPriv.h */; };
+		D32E7BF6187ED3C000F5BDF0 /* CFRuntime.h in Headers */ = {isa = PBXBuildFile; fileRef = D32E7BF4187ED3C000F5BDF0 /* CFRuntime.h */; };
+		D32E7C01187ED44600F5BDF0 /* cfjson.m in Sources */ = {isa = PBXBuildFile; fileRef = D3D39A6F184D3E3100331007 /* cfjson.m */; };
+		D32E7C04187ED45900F5BDF0 /* libcfjson.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D32E7BFB187ED41B00F5BDF0 /* libcfjson.a */; };
+		D32E7C05187ED4D700F5BDF0 /* cfjson.h in Headers */ = {isa = PBXBuildFile; fileRef = D3D39A6E184D3E3100331007 /* cfjson.h */; };
 		D394957118477E5B00C7D85B /* bid_authority.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954A18477E5B00C7D85B /* bid_authority.c */; };
 		D394957218477E5B00C7D85B /* bid_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954B18477E5B00C7D85B /* bid_base64.c */; };
 		D394957318477E5B00C7D85B /* bid_cache.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954C18477E5B00C7D85B /* bid_cache.c */; };
-		D394957418477E5B00C7D85B /* bid_cf.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954D18477E5B00C7D85B /* bid_cf.c */; };
 		D394957518477E5B00C7D85B /* bid_cfhttp.c in Sources */ = {isa = PBXBuildFile; fileRef = D394954E18477E5B00C7D85B /* bid_cfhttp.c */; };
 		D394957818477E5B00C7D85B /* bid_context.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955118477E5B00C7D85B /* bid_context.c */; };
 		D394957918477E5B00C7D85B /* bid_crypto.c in Sources */ = {isa = PBXBuildFile; fileRef = D394955218477E5B00C7D85B /* bid_crypto.c */; };
@@ -46,7 +51,21 @@
 		D3D39A71184D3E3100331007 /* cfjson.m in Sources */ = {isa = PBXBuildFile; fileRef = D3D39A6F184D3E3100331007 /* cfjson.m */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D32E7C02187ED45100F5BDF0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D345697818477D4F009B8DC9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D32E7BFA187ED41B00F5BDF0;
+			remoteInfo = cfjson;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		D32E7BF0187ED39400F5BDF0 /* bid_cf.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = bid_cf.m; path = libbrowserid/bid_cf.m; sourceTree = SOURCE_ROOT; };
+		D32E7BF3187ED3C000F5BDF0 /* CFBridgingPriv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CFBridgingPriv.h; path = CoreFoundation/CFBridgingPriv.h; sourceTree = "<group>"; };
+		D32E7BF4187ED3C000F5BDF0 /* CFRuntime.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CFRuntime.h; path = CoreFoundation/CFRuntime.h; sourceTree = "<group>"; };
+		D32E7BFB187ED41B00F5BDF0 /* libcfjson.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libcfjson.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		D345698118477D4F009B8DC9 /* BrowserID.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = BrowserID.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D345698418477D4F009B8DC9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		D345698718477D4F009B8DC9 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -55,7 +74,6 @@
 		D394954A18477E5B00C7D85B /* bid_authority.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_authority.c; path = libbrowserid/bid_authority.c; sourceTree = SOURCE_ROOT; };
 		D394954B18477E5B00C7D85B /* bid_base64.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_base64.c; path = libbrowserid/bid_base64.c; sourceTree = SOURCE_ROOT; };
 		D394954C18477E5B00C7D85B /* bid_cache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cache.c; path = libbrowserid/bid_cache.c; sourceTree = SOURCE_ROOT; };
-		D394954D18477E5B00C7D85B /* bid_cf.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cf.c; path = libbrowserid/bid_cf.c; sourceTree = SOURCE_ROOT; };
 		D394954E18477E5B00C7D85B /* bid_cfhttp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_cfhttp.c; path = libbrowserid/bid_cfhttp.c; sourceTree = SOURCE_ROOT; };
 		D394955118477E5B00C7D85B /* bid_context.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_context.c; path = libbrowserid/bid_context.c; sourceTree = SOURCE_ROOT; };
 		D394955218477E5B00C7D85B /* bid_crypto.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = bid_crypto.c; path = libbrowserid/bid_crypto.c; sourceTree = SOURCE_ROOT; };
@@ -92,10 +110,18 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		D32E7BF8187ED41B00F5BDF0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D345697D18477D4F009B8DC9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D32E7C04187ED45900F5BDF0 /* libcfjson.a in Frameworks */,
 				D39495A2184782B600C7D85B /* libcrypto.dylib in Frameworks */,
 				D39495A0184782AC00C7D85B /* CoreFoundation.framework in Frameworks */,
 				D394959E184782A700C7D85B /* WebKit.framework in Frameworks */,
@@ -106,9 +132,29 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D32E7BF2187ED3B200F5BDF0 /* CoreFoundation */ = {
+			isa = PBXGroup;
+			children = (
+				D32E7BF3187ED3C000F5BDF0 /* CFBridgingPriv.h */,
+				D32E7BF4187ED3C000F5BDF0 /* CFRuntime.h */,
+			);
+			name = CoreFoundation;
+			sourceTree = "<group>";
+		};
+		D32E7BFF187ED42800F5BDF0 /* cfjson */ = {
+			isa = PBXGroup;
+			children = (
+				D3D39A6E184D3E3100331007 /* cfjson.h */,
+				D3D39A6F184D3E3100331007 /* cfjson.m */,
+			);
+			name = cfjson;
+			sourceTree = "<group>";
+		};
 		D345697718477D4F009B8DC9 = {
 			isa = PBXGroup;
 			children = (
+				D32E7BFF187ED42800F5BDF0 /* cfjson */,
+				D32E7BF2187ED3B200F5BDF0 /* CoreFoundation */,
 				D345698A18477D4F009B8DC9 /* BrowserID */,
 				D345698318477D4F009B8DC9 /* Frameworks */,
 				D345698218477D4F009B8DC9 /* Products */,
@@ -119,6 +165,7 @@
 			isa = PBXGroup;
 			children = (
 				D345698118477D4F009B8DC9 /* BrowserID.framework */,
+				D32E7BFB187ED41B00F5BDF0 /* libcfjson.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -148,12 +195,10 @@
 		D345698A18477D4F009B8DC9 /* BrowserID */ = {
 			isa = PBXGroup;
 			children = (
-				D3D39A6E184D3E3100331007 /* cfjson.h */,
-				D3D39A6F184D3E3100331007 /* cfjson.m */,
+				D32E7BF0187ED39400F5BDF0 /* bid_cf.m */,
 				D394954A18477E5B00C7D85B /* bid_authority.c */,
 				D394954B18477E5B00C7D85B /* bid_base64.c */,
 				D394954C18477E5B00C7D85B /* bid_cache.c */,
-				D394954D18477E5B00C7D85B /* bid_cf.c */,
 				D394954E18477E5B00C7D85B /* bid_cfhttp.c */,
 				D394955118477E5B00C7D85B /* bid_context.c */,
 				D394955218477E5B00C7D85B /* bid_crypto.c */,
@@ -197,15 +242,25 @@
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
+		D32E7BF9187ED41B00F5BDF0 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D32E7C05187ED4D700F5BDF0 /* cfjson.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D345697E18477D4F009B8DC9 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D32E7BF5187ED3C000F5BDF0 /* CFBridgingPriv.h in Headers */,
 				D394959618477E5B00C7D85B /* browserid.h in Headers */,
 				D3D39A70184D3E3100331007 /* cfjson.h in Headers */,
 				D394959B18477F9100C7D85B /* BrowserID-Prefix.pch in Headers */,
 				D394958E18477E5B00C7D85B /* bid_wk.h in Headers */,
 				D394958418477E5B00C7D85B /* bid_private.h in Headers */,
+				D32E7BF6187ED3C000F5BDF0 /* CFRuntime.h in Headers */,
 				D394959718477E5B00C7D85B /* CFBrowserID.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -213,6 +268,23 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		D32E7BFA187ED41B00F5BDF0 /* cfjson */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D32E7BFC187ED41B00F5BDF0 /* Build configuration list for PBXNativeTarget "cfjson" */;
+			buildPhases = (
+				D32E7BF7187ED41B00F5BDF0 /* Sources */,
+				D32E7BF8187ED41B00F5BDF0 /* Frameworks */,
+				D32E7BF9187ED41B00F5BDF0 /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = cfjson;
+			productName = cfjson;
+			productReference = D32E7BFB187ED41B00F5BDF0 /* libcfjson.a */;
+			productType = "com.apple.product-type.library.static";
+		};
 		D345698018477D4F009B8DC9 /* BrowserID */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D34569A918477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserID" */;
@@ -228,6 +300,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				D32E7C03187ED45100F5BDF0 /* PBXTargetDependency */,
 			);
 			name = BrowserID;
 			productName = BrowserID;
@@ -256,6 +329,7 @@
 			projectRoot = "";
 			targets = (
 				D345698018477D4F009B8DC9 /* BrowserID */,
+				D32E7BFA187ED41B00F5BDF0 /* cfjson */,
 			);
 		};
 /* End PBXProject section */
@@ -324,6 +398,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		D32E7BF7187ED41B00F5BDF0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D32E7C01187ED44600F5BDF0 /* cfjson.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D345697C18477D4F009B8DC9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -334,7 +416,6 @@
 				D394958018477E5B00C7D85B /* bid_mcache.c in Sources */,
 				D394957818477E5B00C7D85B /* bid_context.c in Sources */,
 				D394958318477E5B00C7D85B /* bid_ppal.c in Sources */,
-				D394957418477E5B00C7D85B /* bid_cf.c in Sources */,
 				D394957D18477E5B00C7D85B /* bid_fcache.c in Sources */,
 				D394959118477E5B00C7D85B /* bid_wkmac.m in Sources */,
 				D394958D18477E5B00C7D85B /* bid_verify.c in Sources */,
@@ -342,6 +423,7 @@
 				D394957E18477E5B00C7D85B /* bid_identity.c in Sources */,
 				D394958F18477E5B00C7D85B /* bid_wk.m in Sources */,
 				D394959018477E5B00C7D85B /* bid_wkios.m in Sources */,
+				D32E7BF1187ED39400F5BDF0 /* bid_cf.m in Sources */,
 				D394958618477E5B00C7D85B /* bid_reauth.c in Sources */,
 				D394958918477E5B00C7D85B /* bid_rverify.c in Sources */,
 				D394959518477E5B00C7D85B /* bid_xrt.c in Sources */,
@@ -360,7 +442,38 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		D32E7C03187ED45100F5BDF0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D32E7BFA187ED41B00F5BDF0 /* cfjson */;
+			targetProxy = D32E7C02187ED45100F5BDF0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		D32E7BFD187ED41B00F5BDF0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = "-fno-objc-arc";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		D32E7BFE187ED41B00F5BDF0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				OTHER_CFLAGS = "-fno-objc-arc";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		D34569A718477D4F009B8DC9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -393,6 +506,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					"$(SRCROOT)",
+					"$(SRCROOT)/libcfjson",
+					"$(SRCROOT)/libbrowserid",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
@@ -426,6 +546,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					"$(SRCROOT)",
+					"$(SRCROOT)/libcfjson",
+					"$(SRCROOT)/libbrowserid",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
@@ -475,6 +602,14 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		D32E7BFC187ED41B00F5BDF0 /* Build configuration list for PBXNativeTarget "cfjson" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D32E7BFD187ED41B00F5BDF0 /* Debug */,
+				D32E7BFE187ED41B00F5BDF0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
 		D345697B18477D4F009B8DC9 /* Build configuration list for PBXProject "BrowserID" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
