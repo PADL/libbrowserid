@@ -194,8 +194,8 @@
     modalSession = [NSApp beginModalSessionForWindow:self.identityDialog];
     do {
         modalResponse = [NSApp runModalSession:modalSession];
-        [[NSRunLoop currentRunLoop] limitDateForMode:NSDefaultRunLoopMode];
-    } while (modalResponse == NSModalResponseContinue);
+    } while (modalResponse == NSModalResponseContinue &&
+             [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
 
     [NSApp endModalSession:modalSession];
 }
