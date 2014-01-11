@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXAggregateTarget section */
-		D344387B187F578B00562318 /* BrowserID */ = {
+		D344387B187F578B00562318 /* BrowserIDFramework */ = {
 			isa = PBXAggregateTarget;
-			buildConfigurationList = D344387C187F578B00562318 /* Build configuration list for PBXAggregateTarget "BrowserID" */;
+			buildConfigurationList = D344387C187F578B00562318 /* Build configuration list for PBXAggregateTarget "BrowserIDFramework" */;
 			buildPhases = (
 			);
 			dependencies = (
@@ -18,7 +18,19 @@
 				D3443884187F579800562318 /* PBXTargetDependency */,
 				D3443886187F579800562318 /* PBXTargetDependency */,
 			);
-			name = BrowserID;
+			name = BrowserIDFramework;
+			productName = BrowserID;
+		};
+		D3775DFB188107A8008B0420 /* BrowserIDGSSMech */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = D3775E04188107A8008B0420 /* Build configuration list for PBXAggregateTarget "BrowserIDGSSMech" */;
+			buildPhases = (
+			);
+			dependencies = (
+				D3775E0A188107BD008B0420 /* PBXTargetDependency */,
+				D3775E08188107B6008B0420 /* PBXTargetDependency */,
+			);
+			name = BrowserIDGSSMech;
 			productName = BrowserID;
 		};
 /* End PBXAggregateTarget section */
@@ -30,7 +42,7 @@
 		D32E7C01187ED44600F5BDF0 /* cfjson.m in Sources */ = {isa = PBXBuildFile; fileRef = D3D39A6F184D3E3100331007 /* cfjson.m */; };
 		D32E7C04187ED45900F5BDF0 /* libcfjson.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D32E7BFB187ED41B00F5BDF0 /* libcfjson.a */; };
 		D32E7C05187ED4D700F5BDF0 /* cfjson.h in Headers */ = {isa = PBXBuildFile; fileRef = D3D39A6E184D3E3100331007 /* cfjson.h */; };
-		D32E7C13187ED7A600F5BDF0 /* libbrowserid.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* libbrowserid.framework */; };
+		D32E7C13187ED7A600F5BDF0 /* BrowserID.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* BrowserID.framework */; };
 		D32E7C14187ED7A600F5BDF0 /* libcfjson.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D32E7BFB187ED41B00F5BDF0 /* libcfjson.a */; };
 		D32E7C51187ED7F500F5BDF0 /* gssapi_browserid.h in Headers */ = {isa = PBXBuildFile; fileRef = D32E7C2A187ED7F500F5BDF0 /* gssapi_browserid.h */; };
 		D32E7C52187ED7F500F5BDF0 /* gssapiP_bid.h in Headers */ = {isa = PBXBuildFile; fileRef = D32E7C2B187ED7F500F5BDF0 /* gssapiP_bid.h */; };
@@ -121,12 +133,12 @@
 		D32E7D18187EDAAA00F5BDF0 /* inquire_saslname_for_mech.c in Sources */ = {isa = PBXBuildFile; fileRef = D32E7C39187ED7F500F5BDF0 /* inquire_saslname_for_mech.c */; };
 		D32E7D19187EDAAA00F5BDF0 /* inquire_sec_context_by_oid.c in Sources */ = {isa = PBXBuildFile; fileRef = D32E7C3A187ED7F500F5BDF0 /* inquire_sec_context_by_oid.c */; };
 		D32E7D1A187EDAAA00F5BDF0 /* map_name_to_any.c in Sources */ = {isa = PBXBuildFile; fileRef = D32E7C3B187ED7F500F5BDF0 /* map_name_to_any.c */; };
-		D344384F187F556C00562318 /* libbrowserid.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* libbrowserid.framework */; };
+		D344384F187F556C00562318 /* BrowserID.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* BrowserID.framework */; };
 		D3443851187F557E00562318 /* bidtool.c in Sources */ = {isa = PBXBuildFile; fileRef = D3443850187F557E00562318 /* bidtool.c */; };
 		D3443852187F55DD00562318 /* libcfjson.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D32E7BFB187ED41B00F5BDF0 /* libcfjson.a */; };
 		D3443853187F55E700562318 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959F184782AC00C7D85B /* CoreFoundation.framework */; };
-		D3443863187F569300562318 /* libbrowserid.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* libbrowserid.framework */; };
-		D3443872187F56AD00562318 /* libbrowserid.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* libbrowserid.framework */; };
+		D3443863187F569300562318 /* BrowserID.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* BrowserID.framework */; };
+		D3443872187F56AD00562318 /* BrowserID.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698118477D4F009B8DC9 /* BrowserID.framework */; };
 		D3443876187F56D500562318 /* bidcfget.m in Sources */ = {isa = PBXBuildFile; fileRef = D3443875187F56D500562318 /* bidcfget.m */; };
 		D3443878187F56F800562318 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698918477D4F009B8DC9 /* AppKit.framework */; };
 		D3443879187F570000562318 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D345698718477D4F009B8DC9 /* Foundation.framework */; };
@@ -235,6 +247,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = D3443868187F56A600562318;
 			remoteInfo = bidcfverify;
+		};
+		D3775E07188107B6008B0420 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D345697818477D4F009B8DC9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D32E7C09187ED78F00F5BDF0;
+			remoteInfo = mech_browserid;
+		};
+		D3775E09188107BD008B0420 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D345697818477D4F009B8DC9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D344387B187F578B00562318;
+			remoteInfo = BrowserIDFramework;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -370,7 +396,7 @@
 		D3443869187F56A700562318 /* bidcfverify */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = bidcfverify; sourceTree = BUILT_PRODUCTS_DIR; };
 		D3443873187F56CA00562318 /* bidcfverify.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = bidcfverify.m; path = sample/bidcfverify.m; sourceTree = SOURCE_ROOT; };
 		D3443875187F56D500562318 /* bidcfget.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = bidcfget.m; path = sample/bidcfget.m; sourceTree = SOURCE_ROOT; };
-		D345698118477D4F009B8DC9 /* libbrowserid.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = libbrowserid.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D345698118477D4F009B8DC9 /* BrowserID.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = BrowserID.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D345698418477D4F009B8DC9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		D345698718477D4F009B8DC9 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		D345698818477D4F009B8DC9 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
@@ -427,7 +453,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D3FD1122187EE9F400AD32FB /* Foundation.framework in Frameworks */,
-				D32E7C13187ED7A600F5BDF0 /* libbrowserid.framework in Frameworks */,
+				D32E7C13187ED7A600F5BDF0 /* BrowserID.framework in Frameworks */,
 				D32E7CCB187ED98200F5BDF0 /* Heimdal.framework in Frameworks */,
 				D32E7CC9187ED97700F5BDF0 /* GSS.framework in Frameworks */,
 				D32E7CCC187ED98F00F5BDF0 /* CoreFoundation.framework in Frameworks */,
@@ -440,7 +466,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D3443852187F55DD00562318 /* libcfjson.a in Frameworks */,
-				D344384F187F556C00562318 /* libbrowserid.framework in Frameworks */,
+				D344384F187F556C00562318 /* BrowserID.framework in Frameworks */,
 				D3443853187F55E700562318 /* CoreFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -451,7 +477,7 @@
 			files = (
 				D3443879187F570000562318 /* Foundation.framework in Frameworks */,
 				D3443878187F56F800562318 /* AppKit.framework in Frameworks */,
-				D3443863187F569300562318 /* libbrowserid.framework in Frameworks */,
+				D3443863187F569300562318 /* BrowserID.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,7 +485,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D3443872187F56AD00562318 /* libbrowserid.framework in Frameworks */,
+				D3443872187F56AD00562318 /* BrowserID.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -643,7 +669,7 @@
 		D345698218477D4F009B8DC9 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D345698118477D4F009B8DC9 /* libbrowserid.framework */,
+				D345698118477D4F009B8DC9 /* BrowserID.framework */,
 				D32E7BFB187ED41B00F5BDF0 /* libcfjson.a */,
 				D32E7C0A187ED78F00F5BDF0 /* mech_browserid.so */,
 				D3443846187F555F00562318 /* bidtool */,
@@ -869,9 +895,9 @@
 			productReference = D3443869187F56A700562318 /* bidcfverify */;
 			productType = "com.apple.product-type.tool";
 		};
-		D345698018477D4F009B8DC9 /* libbrowserid */ = {
+		D345698018477D4F009B8DC9 /* BrowserID */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D34569A918477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "libbrowserid" */;
+			buildConfigurationList = D34569A918477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserID" */;
 			buildPhases = (
 				D345697C18477D4F009B8DC9 /* Sources */,
 				D3B5F98C1847964D0019E284 /* Tag library with version information */,
@@ -886,9 +912,9 @@
 			dependencies = (
 				D32E7C03187ED45100F5BDF0 /* PBXTargetDependency */,
 			);
-			name = libbrowserid;
+			name = BrowserID;
 			productName = BrowserID;
-			productReference = D345698118477D4F009B8DC9 /* libbrowserid.framework */;
+			productReference = D345698118477D4F009B8DC9 /* BrowserID.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 /* End PBXNativeTarget section */
@@ -912,13 +938,14 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				D344387B187F578B00562318 /* BrowserIDFramework */,
+				D3775DFB188107A8008B0420 /* BrowserIDGSSMech */,
 				D32E7BFA187ED41B00F5BDF0 /* cfjson */,
-				D345698018477D4F009B8DC9 /* libbrowserid */,
+				D345698018477D4F009B8DC9 /* BrowserID */,
 				D3443845187F555F00562318 /* bidtool */,
 				D3443857187F566A00562318 /* bidcfget */,
 				D3443868187F56A600562318 /* bidcfverify */,
 				D32E7C09187ED78F00F5BDF0 /* mech_browserid */,
-				D344387B187F578B00562318 /* BrowserID */,
 			);
 		};
 /* End PBXProject section */
@@ -1179,7 +1206,7 @@
 		};
 		D32E7C10187ED7A200F5BDF0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D345698018477D4F009B8DC9 /* libbrowserid */;
+			target = D345698018477D4F009B8DC9 /* BrowserID */;
 			targetProxy = D32E7C0F187ED7A200F5BDF0 /* PBXContainerItemProxy */;
 		};
 		D32E7C12187ED7A200F5BDF0 /* PBXTargetDependency */ = {
@@ -1189,7 +1216,7 @@
 		};
 		D3443880187F579800562318 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D345698018477D4F009B8DC9 /* libbrowserid */;
+			target = D345698018477D4F009B8DC9 /* BrowserID */;
 			targetProxy = D344387F187F579800562318 /* PBXContainerItemProxy */;
 		};
 		D3443882187F579800562318 /* PBXTargetDependency */ = {
@@ -1206,6 +1233,16 @@
 			isa = PBXTargetDependency;
 			target = D3443868187F56A600562318 /* bidcfverify */;
 			targetProxy = D3443885187F579800562318 /* PBXContainerItemProxy */;
+		};
+		D3775E08188107B6008B0420 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D32E7C09187ED78F00F5BDF0 /* mech_browserid */;
+			targetProxy = D3775E07188107B6008B0420 /* PBXContainerItemProxy */;
+		};
+		D3775E0A188107BD008B0420 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D344387B187F578B00562318 /* BrowserIDFramework */;
+			targetProxy = D3775E09188107BD008B0420 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1500,6 +1537,20 @@
 			};
 			name = Release;
 		};
+		D3775E05188107A8008B0420 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "BrowserIDFramework copy";
+			};
+			name = Debug;
+		};
+		D3775E06188107A8008B0420 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "BrowserIDFramework copy";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1528,6 +1579,7 @@
 				D344384E187F555F00562318 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		D344385E187F566A00562318 /* Build configuration list for PBXNativeTarget "bidcfget" */ = {
 			isa = XCConfigurationList;
@@ -1536,6 +1588,7 @@
 				D3443860187F566A00562318 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		D344386F187F56A700562318 /* Build configuration list for PBXNativeTarget "bidcfverify" */ = {
 			isa = XCConfigurationList;
@@ -1544,14 +1597,16 @@
 				D3443871187F56A700562318 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
-		D344387C187F578B00562318 /* Build configuration list for PBXAggregateTarget "BrowserID" */ = {
+		D344387C187F578B00562318 /* Build configuration list for PBXAggregateTarget "BrowserIDFramework" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D344387D187F578B00562318 /* Debug */,
 				D344387E187F578B00562318 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		D345697B18477D4F009B8DC9 /* Build configuration list for PBXProject "BrowserID" */ = {
 			isa = XCConfigurationList;
@@ -1562,11 +1617,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D34569A918477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "libbrowserid" */ = {
+		D34569A918477D4F009B8DC9 /* Build configuration list for PBXNativeTarget "BrowserID" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D34569AA18477D4F009B8DC9 /* Debug */,
 				D34569AB18477D4F009B8DC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D3775E04188107A8008B0420 /* Build configuration list for PBXAggregateTarget "BrowserIDGSSMech" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D3775E05188107A8008B0420 /* Debug */,
+				D3775E06188107A8008B0420 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
