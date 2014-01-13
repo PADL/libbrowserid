@@ -59,7 +59,7 @@ int main(int argc, const char *argv[])
                 identityAttrs = attrs;
             } else {
                 NSLog(@"Failed to verify assertion: %@", error);
-                exitCode = [error code];
+                exitCode = (int)[error code];
             }
             dispatch_semaphore_signal(sema);
         });
