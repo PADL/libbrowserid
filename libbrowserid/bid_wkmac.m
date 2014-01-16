@@ -205,7 +205,8 @@
     [self.identityDialog makeFirstResponder:self.webView];
     self.identityDialog.contentView = self.webView;
     [self.identityDialog makeKeyAndOrderFront:self.webView];
-    [self.identityDialog center];
+    if (self.parentWindow == nil)
+        [self.identityDialog center];
 }
 @end
 
