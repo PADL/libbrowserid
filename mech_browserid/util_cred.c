@@ -720,6 +720,153 @@ cleanup:
     return major;
 }
 
+OM_uint32
+gssBidImportCred(OM_uint32 *minor,
+                 gss_buffer_t credToken,
+                 gss_cred_id_t *pCredHandle)
+{
+    OM_uint32 major, tmpMinor;
+    gss_cred_id_t cred = GSS_C_NO_CREDENTIAL;
+    json_t *jsonObject = NULL, *tmp;
+    json_error_t jsonError;
+    char *szJson = NULL;
+
+    major = bufferToString(minor, credToken, &szJson);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    jsonObject = json_loads(szJson, 0, &jsonError);
+    if (jsonObject == NULL) {
+        major = GSS_S_DEFECTIVE_TOKEN;
+        goto cleanup;
+    }
+
+    major = gssBidAllocCred(minor, &cred);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+    cred->flags = json_integer_value(json_object_get(jsonObject, "flags"));
+    cred->name = gssBidImportNameJson(json_object_get(jsonObject, "name"));
+    cred->target = gssBidImportNameJson(json_object_get(jsonObject, "target"));
+
+    tmp = json_object_get(jsonObject, "assertion");
+    if (tmp != NULL && json_is_string(tmp)) {
+        major = makeStringBuffer(minor, json_string_value(tmp), &cred->assertion);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    }
+
+    /* XXX mechanisms */
+    cred->expiryTime = json_integer_value(json_object_get(jsonObject, "expiry-time"));
+
+    tmp = json_object_get(jsonObject, "ticket-cache");
+    if (tmp != NULL && json_is_string(tmp)) {
+        gss_buffer_desc buf = { strlen(json_string_value(tmp)), (void *)json_string_value(tmp) };
+
+        major = gssBidSetCredTicketCacheName(minor, cred, &buf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    } 
+
+    tmp = json_object_get(jsonObject, "replay-cache");
+    if (tmp != NULL && json_is_string(tmp)) {
+        gss_buffer_desc buf = { strlen(json_string_value(tmp)), (void *)json_string_value(tmp) };
+
+        major = gssBidSetCredReplayCacheName(minor, cred, &buf);
+        if (GSS_ERROR(major))
+            goto cleanup;
+    } 
+
+#ifdef __APPLE__
+    tmp = json_object_get(jsonObject, "bid-identity");
+    if (tmp != NULL && json_is_object(tmp)) {
+        BIDError err;
+
+        err = _BIDAllocIdentity(cred->bidContext, json_object_get(tmp, "attributes"), &cred->bidIdentity);
+        if (err != BID_S_OK) {
+            major = gssBidMapError(minor, err);
+            goto cleanup;
+        }
+
+        tmp = json_object_get(tmp, "privateAttributes");
+        if (tmp != NULL && json_is_object(tmp))
+            cred->bidIdentity->PrivateAttributes = json_incref(tmp);
+    }
+
+    cred->bidFlags = json_integer_value(json_object_get(jsonObject, "bid-flags"));
+#endif /* __APPLE__ */
+
+    *pCredHandle = cred;
+
+cleanup:
+    json_decref(jsonObject);
+    GSSBID_FREE(szJson);
+
+    if (GSS_ERROR(major))
+        gssBidReleaseCred(&tmpMinor, &cred);
+
+    return major;
+}
+
+OM_uint32
+gssBidExportCred(OM_uint32 *minor,
+                 gss_cred_id_t cred,
+                 gss_buffer_t credToken)
+{
+    json_t *credObject;
+    const char *cacheName;
+
+    if (credToken == GSS_C_NO_BUFFER)
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_FAILURE;
+
+    credObject = json_object();
+    if (credObject == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    json_object_set_new(credObject, "flags", json_integer(cred->flags));
+    if (cred->name != GSS_C_NO_NAME)
+        json_object_set_new(credObject, "name", gssBidExportNameJson(cred->name));
+    if (cred->target != GSS_C_NO_NAME)
+        json_object_set_new(credObject, "target", gssBidExportNameJson(cred->target));
+    if (cred->assertion.value != NULL)
+        json_object_set_new(credObject, "assertion", json_string((char *)cred->assertion.value));
+    if (cred->mechanisms != GSS_C_NO_OID_SET)
+        ; /* XXX mechanisms */
+    json_object_set_new(credObject, "expiry-time", json_integer(cred->expiryTime));
+
+    _BIDGetCacheName(cred->bidContext, cred->bidTicketCache, &cacheName);
+    if (cacheName != NULL)
+        json_object_set_new(cred->bidContext, "ticket-cache", json_string(cacheName));
+    _BIDGetCacheName(cred->bidContext, cred->bidReplayCache, &cacheName);
+    if (cacheName != NULL)
+        json_object_set_new(cred->bidContext, "replay-cache", json_string(cacheName));
+
+#ifdef __APPLE__
+    if (cred->bidIdentity != BID_C_NO_IDENTITY) {
+        json_t *bidIdentity = json_object();
+
+        if (cred->bidIdentity->Attributes != NULL)
+            json_object_set(bidIdentity, "attributes", cred->bidIdentity->Attributes);
+        if (cred->bidIdentity->PrivateAttributes != NULL)
+            json_object_set(bidIdentity, "privateAttributes", cred->bidIdentity->PrivateAttributes);
+
+        json_object_set_new(credObject, "bid-identity", bidIdentity);
+    }
+
+    json_object_set_new(credObject, "bid-flags", json_integer(cred->bidFlags));
+#endif /* __APPLE__ */
+
+    credToken->value = json_dumps(credObject, JSON_COMPACT);
+    credToken->length = strlen((char *)credToken->value);
+
+    json_decref(credObject);
+
+    *minor = 0;
+    return GSS_S_COMPLETE;
+}
+
 #if defined(__APPLE__) && defined(HAVE_HEIMDAL_VERSION)
 
 #include <dlfcn.h>
@@ -750,8 +897,8 @@ der_free_oid (heim_oid *k);
 
 static OM_uint32
 cfStringToGssBuffer(OM_uint32 *minor,
-                   CFStringRef cfString,
-                   gss_buffer_t buffer)
+                    CFStringRef cfString,
+                    gss_buffer_t buffer)
 {
     if (cfString == NULL || CFGetTypeID(cfString) != CFStringGetTypeID())
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_FAILURE;

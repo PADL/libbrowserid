@@ -168,6 +168,8 @@
 		D394959E184782A700C7D85B /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959D184782A700C7D85B /* WebKit.framework */; };
 		D39495A0184782AC00C7D85B /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D394959F184782AC00C7D85B /* CoreFoundation.framework */; };
 		D39495A2184782B600C7D85B /* libcrypto.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D39495A1184782B600C7D85B /* libcrypto.dylib */; };
+		D3CA6F1D188E48A4000319B4 /* export_cred.c in Sources */ = {isa = PBXBuildFile; fileRef = D3CA6F1B188E48A4000319B4 /* export_cred.c */; };
+		D3CA6F1E188E48A4000319B4 /* import_cred.c in Sources */ = {isa = PBXBuildFile; fileRef = D3CA6F1C188E48A4000319B4 /* import_cred.c */; };
 		D3D36E8D1887B98100C7E892 /* cfjson.m in Sources */ = {isa = PBXBuildFile; fileRef = D3D39A6F184D3E3100331007 /* cfjson.m */; };
 		D3D36E8E1887B98A00C7E892 /* cfjson.m in Sources */ = {isa = PBXBuildFile; fileRef = D3D39A6F184D3E3100331007 /* cfjson.m */; };
 		D3D39A70184D3E3100331007 /* cfjson.h in Headers */ = {isa = PBXBuildFile; fileRef = D3D39A6E184D3E3100331007 /* cfjson.h */; };
@@ -415,6 +417,8 @@
 		D394959D184782A700C7D85B /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		D394959F184782AC00C7D85B /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		D39495A1184782B600C7D85B /* libcrypto.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.dylib; path = usr/lib/libcrypto.dylib; sourceTree = SDKROOT; };
+		D3CA6F1B188E48A4000319B4 /* export_cred.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = export_cred.c; path = mech_browserid/export_cred.c; sourceTree = "<group>"; };
+		D3CA6F1C188E48A4000319B4 /* import_cred.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = import_cred.c; path = mech_browserid/import_cred.c; sourceTree = "<group>"; };
 		D3D39A6E184D3E3100331007 /* cfjson.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cfjson.h; path = libcfjson/cfjson.h; sourceTree = SOURCE_ROOT; };
 		D3D39A6F184D3E3100331007 /* cfjson.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = cfjson.m; path = libcfjson/cfjson.m; sourceTree = SOURCE_ROOT; };
 		D3FD1119187EDC2800AD32FB /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = mech_browserid/Info.plist; sourceTree = "<group>"; };
@@ -496,6 +500,8 @@
 		D32E7C0E187ED79500F5BDF0 /* mech_browserid */ = {
 			isa = PBXGroup;
 			children = (
+				D3CA6F1B188E48A4000319B4 /* export_cred.c */,
+				D3CA6F1C188E48A4000319B4 /* import_cred.c */,
 				D3FD1118187EDC0F00AD32FB /* Supporting Files */,
 				D32E7CC2187ED95700F5BDF0 /* gssbrowserid_err.et */,
 				D32E7CC3187ED95700F5BDF0 /* libbrowserid_err.et */,
@@ -998,6 +1004,7 @@
 				D32E7CD1187EDAAA00F5BDF0 /* query_mechanism_info.c in Sources */,
 				D32E7CD2187EDAAA00F5BDF0 /* query_meta_data.c in Sources */,
 				D32E7CD3187EDAAA00F5BDF0 /* release_any_name_mapping.c in Sources */,
+				D3CA6F1E188E48A4000319B4 /* import_cred.c in Sources */,
 				D32E7CD4187EDAAA00F5BDF0 /* release_cred.c in Sources */,
 				D32E7CD5187EDAAA00F5BDF0 /* release_name.c in Sources */,
 				D32E7CD6187EDAAA00F5BDF0 /* release_oid.c in Sources */,
@@ -1006,6 +1013,7 @@
 				D32E7CD9187EDAAA00F5BDF0 /* set_sec_context_option.c in Sources */,
 				D32E7CDA187EDAAA00F5BDF0 /* store_cred.c in Sources */,
 				D32E7CDB187EDAAA00F5BDF0 /* unwrap_iov.c in Sources */,
+				D3CA6F1D188E48A4000319B4 /* export_cred.c in Sources */,
 				D32E7CDC187EDAAA00F5BDF0 /* unwrap.c in Sources */,
 				D32E7CDD187EDAAA00F5BDF0 /* util_attr.cpp in Sources */,
 				D32E7CDF187EDAAA00F5BDF0 /* util_base64.c in Sources */,
@@ -1313,7 +1321,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_ARC = NO;

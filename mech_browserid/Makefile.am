@@ -63,10 +63,12 @@ mech_browserid_la_SOURCES =    			\
 	display_status.c			\
 	duplicate_name.c			\
 	exchange_meta_data.c			\
+	export_cred.c				\
 	export_name.c				\
 	export_sec_context.c			\
 	get_mic.c				\
 	gssbrowserid_err.c			\
+	import_cred.c				\
 	import_name.c				\
 	import_sec_context.c			\
 	indicate_mechs.c			\

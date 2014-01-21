@@ -272,6 +272,16 @@ gssBidAcquireCred(OM_uint32 *minor,
                   OM_uint32 *timeRec);
 
 OM_uint32
+gssBidImportCred(OM_uint32 *minor,
+                 gss_buffer_t credToken,
+                 gss_cred_id_t *pCredHanlde);
+
+OM_uint32
+gssBidExportCred(OM_uint32 *minor,
+                 gss_cred_id_t credHandle,
+                 gss_buffer_t credToken);
+
+OM_uint32
 gssBidSetCredAssertion(OM_uint32 *minor,
                        gss_cred_id_t cred,
                        const gss_buffer_t password);
@@ -597,6 +607,10 @@ OM_uint32 gssBidExportNameInternal(OM_uint32 *minor,
                                    const gss_name_t name,
                                    gss_buffer_t exportedName,
                                    OM_uint32 flags);
+
+json_t *gssBidExportNameJson(const gss_name_t name);
+gss_name_t gssBidImportNameJson(json_t *json);
+
 OM_uint32 gssBidImportName(OM_uint32 *minor,
                            const gss_buffer_t input_name_buffer,
                            const gss_OID input_name_type,
