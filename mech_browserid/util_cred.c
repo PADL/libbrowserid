@@ -838,10 +838,10 @@ gssBidExportCred(OM_uint32 *minor,
 
     _BIDGetCacheName(cred->bidContext, cred->bidTicketCache, &cacheName);
     if (cacheName != NULL)
-        json_object_set_new(cred->bidContext, "ticket-cache", json_string(cacheName));
+        json_object_set_new(credObject, "ticket-cache", json_string(cacheName));
     _BIDGetCacheName(cred->bidContext, cred->bidReplayCache, &cacheName);
     if (cacheName != NULL)
-        json_object_set_new(cred->bidContext, "replay-cache", json_string(cacheName));
+        json_object_set_new(credObject, "replay-cache", json_string(cacheName));
 
 #ifdef __APPLE__
     if (cred->bidIdentity != BID_C_NO_IDENTITY) {
