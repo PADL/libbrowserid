@@ -102,7 +102,7 @@ _BIDCompleteModalSession(
     BIDIdentity identity = BID_C_NO_IDENTITY;
     time_t expiryTime = 0;
     uint32_t ulRetFlags = 0;
-    int freeIdentity = TRUE;
+    int freeIdentity = 1;
     BIDModalSession modalSession = *pModalSession;
     
     if (err == BID_S_OK) {
@@ -281,7 +281,7 @@ _BIDBeginModalSessionReauth(
     time_t expiryTime;
     uint32_t ulTicketFlags = 0;
     uint32_t ulRetFlags = 0;
-    int freeIdentity = TRUE;
+    int freeIdentity = 1;
     BIDModalSession modalSession = *pModalSession;
 
     err = _BIDGetReauthAssertion(context, ticketCache, szAudienceOrSpn,
@@ -452,7 +452,7 @@ _BIDAcquireAssertion_CompletionHandler(
         cc->identity = identity;
         cc->expiryTime = expiryTime;
         cc->ulRetFlags = ulRetFlags;
-        *freeIdentity = FALSE;
+        *freeIdentity = 0;
     }
 }
 
