@@ -129,6 +129,9 @@ typedef struct BIDBackedAssertionDesc *BIDBackedAssertion;
 struct BIDSecretHandleDesc;
 typedef struct BIDSecretHandleDesc *BIDSecretHandle;
 
+struct BIDModalSessionDesc;
+typedef struct BIDModalSessionDesc *BIDModalSession;
+
 BIDError
 _BIDAcquireDefaultAuthorityCache(
     BIDContext context);
@@ -1013,6 +1016,50 @@ _BIDPurgeReplayCache(
  * bid_user.c
  */
 
+BIDError
+_BIDAllocModalSession(
+    BIDContext context BID_UNUSED,
+    void (*completionHandler)(BIDContext, BIDError, const char *, BIDIdentity, time_t, uint32_t, int *, void *),
+    void *completionContext,
+    void (*finalizeCompletionContext)(BIDContext, void *),
+    BIDModalSession *pModalSession);
+
+BIDError
+_BIDBeginModalSession(
+    BIDContext context,
+    BIDTicketCache ticketCache,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    const char *szIdentityName,
+    uint32_t ulReqFlags,
+    json_t *userClaims,
+    BIDModalSession *pModalSession);
+
+BIDError
+_BIDReleaseModalSession(
+    BIDContext context,
+    BIDModalSession modalSession);
+
+void
+_BIDSetModalSessionUIContext(
+    BIDContext context,
+    BIDModalSession modalSession,
+    void *data,
+    void (*finalize)(BIDContext, void *));
+
+void *
+_BIDGetModalSessionUIContext(
+    BIDContext context,
+    BIDModalSession modalSession);
+
+void
+_BIDCompleteModalSession(
+    BIDContext context,
+    BIDError bidError,
+    const char *szAssertion,
+    BIDModalSession *pModalSession);
+
 /*
  * bid_verify.c
  */
@@ -1084,7 +1131,12 @@ _BIDBrowserGetAssertion(
     json_t *claims,
     const char *szIdentityName, /* optional */
     uint32_t ulReqFlags,
-    char **pAssertion);
+    BIDModalSession modalSession);
+
+BIDError
+_BIDRunModalSession(
+    BIDContext context,
+    BIDModalSession *pModalSession);
 
 /*
  * bid_wpal.c

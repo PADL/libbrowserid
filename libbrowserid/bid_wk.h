@@ -81,6 +81,8 @@ JSExportAs(identityCallback,
     NSString *_emailHint;
     NSString *_siteName;
     NSString *_assertion;
+    BIDContext _bidContext;
+    BIDModalSession _bidModalSession;
     BIDError _bidError;
     BOOL _forceAuthentication;
 #if TARGET_OS_IPHONE
@@ -101,6 +103,8 @@ JSExportAs(identityCallback,
 @property(nonatomic, copy) NSString *emailHint;
 @property(nonatomic, copy) NSString *siteName;
 @property(nonatomic, retain, readonly) NSString *assertion;
+@property(nonatomic, readonly) BIDContext bidContext;
+@property(nonatomic, assign) BIDModalSession bidModalSession;
 @property(nonatomic, readonly) BIDError bidError;
 @property(nonatomic, assign) BOOL forceAuthentication;
 
@@ -116,8 +120,9 @@ JSExportAs(identityCallback,
 
 /* public interface */
 - (BIDError)getAssertion;
-- (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims;
+- (instancetype)initWithContext:(BIDContext)context audience:(NSString *)anAudience claims:(NSDictionary *)someClaims;
 - (void)identityCallback:(NSString *)anAssertion withParams:(id)params;
+- (void)_completeModalSession;
 
 /* private interface */
 - (void)abortWithError:(NSError *)error;
@@ -134,6 +139,7 @@ JSExportAs(identityCallback,
 - (void)closeIdentityDialog;
 - (void)loadIdentityDialog;
 - (void)showIdentityDialog;
+- (void)_runModal;
 #if !TARGET_OS_IPHONE
 - (NSString *)claimsString;
 #endif

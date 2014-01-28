@@ -128,9 +128,11 @@ public:
                         const char *szAudienceOrSpn,
                         json_t *claims,
                         const char *szIdentityName,
-                        uint32_t ulReqFlags);
+                        uint32_t ulReqFlags,
+                        BIDModalSession modalSession);
 
-    BIDError GetAssertion(char **pAssertion);
+    BIDError GetAssertion(void);
+    HRESULT _RunModal(void);
 
 private:
     HRESULT _LoadLibrary(void);
@@ -150,7 +152,6 @@ private:
     HRESULT _GetArguments(VARIANT *vArgs);
 
     HRESULT _ShowDialog(void);
-    HRESULT _RunModal(void);
     HRESULT _GetBrowserWindow(void);
     HRESULT _FindConnectionPoint(IConnectionPoint **ppConnectionPoint);
     HRESULT _PublishController(void);
@@ -163,6 +164,7 @@ private:
     LONG _cRef;
 
     BIDContext _context;
+    BIDModalSession _modalSession;
     BIDError _bidError;
     uint32_t _ulReqFlags;
 
@@ -183,7 +185,8 @@ CBIDIdentityController::CBIDIdentityController()
 {
     _cRef = 1;
 
-    _context = NULL;
+    _context = BID_C_NO_CONTEXT;
+    _modalSession = NULL;
     _bidError = BID_S_INTERACT_REQUIRED;
     _ulReqFlags = 0;
 
@@ -205,6 +208,7 @@ CBIDIdentityController::~CBIDIdentityController()
     if (_hinstMSHTML != NULL)
         FreeLibrary(_hinstMSHTML);
 
+    _BIDReleaseModalSession(_context, _modalSession);
     json_decref(_args);
     BIDFree(_szAssertion);
 
@@ -549,12 +553,14 @@ CBIDIdentityController::Initialize(
     const char *szAudienceOrSpn,
     json_t *claims,
     const char *szIdentityName,
-    uint32_t ulReqFlags)
+    uint32_t ulReqFlags,
+    BIDModalSession modalSession)
 {
     HRESULT hr;
     BSTR bstrURL = NULL;
 
     _context = context;
+    _modalSession = modalSession;
 
     hr = _LoadLibrary();
     BID_BAIL_ON_HERROR(hr);
@@ -784,6 +790,8 @@ CBIDIdentityController::_IdentityCallback(DISPPARAMS *pDispParams)
     hr = _CloseIdentityDialog();
     BID_BAIL_ON_ERROR(hr);
 
+    _BIDCompleteModalSession(_context, _bidError, _szAssertion, &_modalSession);
+
     hr = S_OK;
 
 cleanup:
@@ -802,6 +810,9 @@ CBIDIdentityController::_RunModal(void)
         if (_bidError != BID_S_INTERACT_REQUIRED)
             break;
     }
+
+    if (_context->ParentWindow)
+        EnableWindow((HWND)_context->ParentWindow, TRUE);
 
     return S_OK;
 }
@@ -860,18 +871,7 @@ CBIDIdentityController::GetAssertion(char **pAssertion)
     hr = _ShowDialog();
     BID_BAIL_ON_HERROR(hr);
 
-    hr = _RunModal();
-    BID_BAIL_ON_HERROR(hr);
-
-    if (_bidError == BID_S_OK) {
-        *pAssertion = _szAssertion;
-        _szAssertion = NULL;
-    }
-
 cleanup:
-    if (_context->ParentWindow)
-        EnableWindow((HWND)_context->ParentWindow, TRUE);
-
     return FAILED(hr) ? _MapError(hr) : _bidError;
 }
 
@@ -915,6 +915,17 @@ CBIDIdentityController::_SpnToSiteName(
     return S_OK;
 }
 
+static void
+_BIDBrowserGetAssertion_FinalizeUIContext(
+    BIDContext context BID_UNUSED,
+    void *data)
+{
+    CBIDIdentityController *pController = (CBIDIdentityController *)data;
+
+    if (pController)
+        pController->Release();
+}
+
 BIDError
 _BIDBrowserGetAssertion(
     BIDContext context,
@@ -922,7 +933,7 @@ _BIDBrowserGetAssertion(
     json_t *claims,
     const char *szIdentityName,
     uint32_t ulReqFlags,
-    char **pAssertion)
+    BIDModalSession modalSession)
 {
     BIDError err;
     CBIDIdentityController *pController = NULL;
@@ -936,16 +947,32 @@ _BIDBrowserGetAssertion(
     }
 
     err = pController->Initialize(context, szAudienceOrSpn,
-                                  claims, szIdentityName, ulReqFlags);
+                                  claims, szIdentityName, ulReqFlags, modalSession);
     BID_BAIL_ON_ERROR(err);
 
-    err = pController->GetAssertion(pAssertion);
+    err = pController->GetAssertion();
     BID_BAIL_ON_ERROR(err);
+
+    pController->AddRef();
+    _BIDSetModalSessionUIContext(context, modalSession, pController, _BIDBrowserGetAssertion_FinalizeUIContext);
 
 cleanup:
-    if (pController != NULL)
+    if (pController)
         pController->Release();
 
     return err;
 }
 
+BIDError
+_BIDRunModalSession(
+    BIDContext context,
+    BIDModalSession *pModalSession)
+{
+    CBIDIdentityController *pController = (CBIDIdentityController *)_BIDGetModalSessionUIContext(context, *pModalSession);
+
+    pController->RunModal();
+
+    *pModalSession = NULL;
+
+    return BID_S_OK;
+}

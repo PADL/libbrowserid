@@ -50,7 +50,15 @@ _BIDBrowserGetAssertion(
     json_t *claims BID_UNUSED,
     const char *szIdentityName BID_UNUSED,
     uint32_t ulReqFlags BID_UNUSED,
-    char **pAssertion BID_UNUSED)
+    BIDModalSession modalSession BID_UNUSED)
 {
     return BID_S_INTERACT_UNAVAILABLE;
+}
+
+BIDError
+_BIDRunModalSession(
+    BIDContext context BID_UNUSED,
+    BIDModalSession *pModalSession BID_UNUSED)
+{
+    return BID_S_NOT_IMPLEMENTED;
 }
