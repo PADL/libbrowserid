@@ -49,36 +49,6 @@
     } while (0)
 
 static OM_uint32
-importMechanismOid(OM_uint32 *minor,
-                   unsigned char **pBuf,
-                   size_t *pRemain,
-                   gss_OID *pOid)
-{
-    OM_uint32 major;
-    unsigned char *p = *pBuf;
-    size_t remain = *pRemain;
-    gss_OID_desc oidBuf;
-
-    oidBuf.length = load_uint32_be(p);
-    if (remain < 4 + oidBuf.length || oidBuf.length == 0) {
-        *minor = GSSBID_TOK_TRUNC;
-        return GSS_S_DEFECTIVE_TOKEN;
-    }
-
-    oidBuf.elements = &p[4];
-
-    major = gssBidCanonicalizeOid(minor, &oidBuf, 0, pOid);
-    if (GSS_ERROR(major))
-        return major;
-
-    *pBuf    += 4 + oidBuf.length;
-    *pRemain -= 4 + oidBuf.length;
-
-    *minor = 0;
-    return GSS_S_COMPLETE;
-}
-
-static OM_uint32
 importKerberosKey(OM_uint32 *minor,
                   unsigned char **pBuf,
                   size_t *pRemain,
@@ -221,7 +191,7 @@ gssBidImportContext(OM_uint32 *minor,
     if (CTX_IS_INITIATOR(ctx) && !CTX_IS_ESTABLISHED(ctx))
         return GSS_S_DEFECTIVE_TOKEN;
 
-    major = importMechanismOid(minor, &p, &remain, &ctx->mechanismUsed);
+    major = gssBidImportMechanismOid(minor, &p, &remain, &ctx->mechanismUsed);
     if (GSS_ERROR(major))
         return major;
 

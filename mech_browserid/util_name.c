@@ -809,3 +809,63 @@ gssBidCompareName(OM_uint32 *minor,
 
     return GSS_S_COMPLETE;
 }
+
+json_t *
+gssBidExportNameJson(const gss_name_t name)
+{
+    OM_uint32 major, minor;
+    gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
+    ssize_t cbBuffer;
+    char *szBuffer;
+    json_t *json;
+
+    major = gssBidExportNameInternal(&minor, name, &buffer, EXPORT_NAME_FLAG_COMPOSITE);
+    if (GSS_ERROR(major))
+        return NULL;
+
+    cbBuffer = base64Encode(buffer.value, buffer.length, &szBuffer);
+    if (cbBuffer < 0) {
+        gss_release_buffer(&minor, &buffer);
+        return NULL;    
+    }
+
+    json = json_string(szBuffer);
+
+    gss_release_buffer(&minor, &buffer);
+
+    return json;
+}
+
+gss_name_t
+gssBidImportNameJson(json_t *json)
+{
+    OM_uint32 minor;
+    gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
+    ssize_t cbBuffer;
+    size_t cchEncodedBuffer;
+    gss_name_t name = GSS_C_NO_NAME;
+
+    if (!json_is_string(json))
+        return GSS_C_NO_NAME;
+
+    cchEncodedBuffer = strlen(json_string_value(json));
+
+    buffer.value = GSSBID_MALLOC(cchEncodedBuffer);
+    if (buffer.value == NULL)
+        return GSS_C_NO_NAME;
+
+    cbBuffer = base64Decode(json_string_value(json), buffer.value);
+    if (cbBuffer < 0) {
+        gss_release_buffer(&minor, &buffer);
+        return NULL;
+    }
+
+    buffer.length = cbBuffer;
+
+    gssBidImportNameInternal(&minor, &buffer, &name, EXPORT_NAME_FLAG_COMPOSITE);
+
+    gss_release_buffer(&minor, &buffer);
+
+    return name;
+}
+

@@ -39,6 +39,127 @@
 
 #include "bid_private.h"
 
+struct BIDModalSessionDesc {
+    uint32_t ulReqFlags;
+    json_t *Claims;
+    json_t *Key;
+    void (*CompletionHandler)(BIDContext, BIDError, const char *, BIDIdentity, time_t, uint32_t, int *, void *);
+    void *CompletionContext;
+    void (*FinalizeCompletionContext)(BIDContext, void *);
+    void *UIContext;
+    void (*FinalizeUIContext)(BIDContext, void *);
+};
+
+BIDError
+_BIDAllocModalSession(
+    BIDContext context BID_UNUSED,
+    void (*completionHandler)(BIDContext, BIDError, const char *, BIDIdentity, time_t, uint32_t, int *, void *),
+    void *completionContext,
+    void (*finalizeCompletionContext)(BIDContext, void *),
+    BIDModalSession *pModalSession)
+{
+    BIDModalSession modalSession;
+
+    modalSession = (BIDModalSession)BIDCalloc(1, sizeof(*modalSession));
+    if (modalSession == NULL)
+        return BID_S_NO_MEMORY;
+
+    modalSession->CompletionHandler = completionHandler;
+    modalSession->CompletionContext = completionContext;
+    modalSession->FinalizeCompletionContext = finalizeCompletionContext;
+
+    *pModalSession = modalSession;
+    return BID_S_OK;
+}
+
+BIDError
+_BIDReleaseModalSession(
+    BIDContext context,
+    BIDModalSession modalSession)
+{
+    if (modalSession == NULL)
+        return BID_S_INVALID_PARAMETER;
+
+    if (modalSession->FinalizeCompletionContext != NULL)
+        modalSession->FinalizeCompletionContext(context, modalSession->CompletionContext);
+    if (modalSession->FinalizeUIContext != NULL)
+        modalSession->FinalizeUIContext(context, modalSession->UIContext);
+    json_decref(modalSession->Claims);
+    json_decref(modalSession->Key);
+
+    BIDFree(modalSession);
+
+    return BID_S_OK;
+}
+
+void
+_BIDCompleteModalSession(
+    BIDContext context,
+    BIDError err,
+    const char *szAssertion,
+    BIDModalSession *pModalSession)
+{
+    BIDIdentity identity = BID_C_NO_IDENTITY;
+    time_t expiryTime = 0;
+    uint32_t ulRetFlags = 0;
+    int freeIdentity = 1;
+    BIDModalSession modalSession = *pModalSession;
+    
+    if (err == BID_S_OK) {
+        err = BIDAcquireAssertionFromString(context, szAssertion, modalSession->ulReqFlags,
+                                            &identity, &expiryTime, &ulRetFlags);
+        BID_BAIL_ON_ERROR(err);
+
+        BID_ASSERT(identity->PrivateAttributes != NULL);
+        
+        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
+            err = _BIDSetKeyAgreementObject(context, identity->PrivateAttributes, modalSession->Key);
+            BID_BAIL_ON_ERROR(err);
+        }
+
+        if (modalSession->ulReqFlags & BID_ACQUIRE_FLAG_MUTUAL_AUTH) {
+            json_t *nonce = json_object_get(modalSession->Claims, "nonce");
+
+            BID_ASSERT(nonce != NULL);
+
+            err = _BIDJsonObjectSet(context, identity->PrivateAttributes, "nonce", nonce, 0);
+            BID_BAIL_ON_ERROR(err);
+        }
+    }
+
+cleanup:
+    modalSession->CompletionHandler(context, err, szAssertion, identity, expiryTime, ulRetFlags,
+                                    &freeIdentity, modalSession->CompletionContext);
+
+    if (freeIdentity)
+        BIDReleaseIdentity(context, identity);
+
+    _BIDReleaseModalSession(context, modalSession);
+    *pModalSession = NULL;
+}
+
+void
+_BIDSetModalSessionUIContext(
+    BIDContext context BID_UNUSED,
+    BIDModalSession modalSession,
+    void *uiContext,
+    void (*finalize)(BIDContext, void *))
+{
+    if (modalSession->UIContext != NULL)
+        modalSession->FinalizeUIContext(context, modalSession->UIContext);
+
+    modalSession->UIContext = uiContext;
+    modalSession->FinalizeUIContext = finalize;
+}
+
+void *
+_BIDGetModalSessionUIContext(
+    BIDContext context BID_UNUSED,
+    BIDModalSession modalSession)
+{
+    return modalSession->UIContext;
+}
+
 static BIDError
 _BIDMakeClaims(
     BIDContext context,
@@ -143,8 +264,52 @@ BIDAcquireAssertion(
                                  pulRetFlags);
 }
 
+static BIDError
+_BIDBeginModalSessionReauth(
+    BIDContext context,
+    BIDTicketCache ticketCache,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    const char *szIdentityName,
+    uint32_t ulReqFlags,
+    BIDModalSession *pModalSession)
+{
+    BIDError err;
+    char *szAssertion = NULL;
+    BIDIdentity identity = BID_C_NO_IDENTITY;
+    time_t expiryTime;
+    uint32_t ulTicketFlags = 0;
+    uint32_t ulRetFlags = 0;
+    int freeIdentity = 1;
+    BIDModalSession modalSession = *pModalSession;
+
+    err = _BIDGetReauthAssertion(context, ticketCache, szAudienceOrSpn,
+                                 pbChannelBindings, cbChannelBindings, szIdentityName,
+                                 ulReqFlags, &szAssertion, &identity, &expiryTime,
+                                 &ulTicketFlags);
+    if (err != BID_S_OK)
+        return err;
+
+    ulRetFlags |= BID_ACQUIRE_FLAG_REAUTH;
+    if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
+        ulRetFlags |= BID_ACQUIRE_FLAG_REAUTH_MUTUAL;
+
+    modalSession->CompletionHandler(context, BID_S_OK, szAssertion, identity, expiryTime,
+                                    ulRetFlags, &freeIdentity, modalSession->CompletionContext);
+
+    BIDFree(szAssertion);
+    if (freeIdentity)
+        BIDReleaseIdentity(context, identity);
+
+    _BIDReleaseModalSession(context, modalSession);
+    *pModalSession = NULL;
+
+    return BID_S_OK;
+}
+
 BIDError
-BIDAcquireAssertionEx(
+_BIDBeginModalSession(
     BIDContext context,
     BIDTicketCache ticketCache,
     const char *szAudienceOrSpn,
@@ -153,29 +318,16 @@ BIDAcquireAssertionEx(
     const char *szIdentityName,
     uint32_t ulReqFlags,
     json_t *userClaims,
-    char **pAssertion,
-    BIDIdentity *pAssertedIdentity,
-    time_t *ptExpiryTime,
-    uint32_t *pulRetFlags)
+    BIDModalSession *pModalSession)
 {
     BIDError err;
-    BIDBackedAssertion backedAssertion = NULL;
-    json_t *claims = NULL;
-    json_t *key = NULL;
     json_t *nonce = NULL;
-    char *szAssertion = NULL;
-    uint32_t ulRetFlags = 0;
-    uint32_t ulTicketFlags = 0;
-
-    *pAssertion = NULL;
-    if (pAssertedIdentity != NULL)
-        *pAssertedIdentity = NULL;
-    if (ptExpiryTime != NULL)
-        *ptExpiryTime = 0;
-    if (pulRetFlags != NULL)
-        *pulRetFlags = 0;
+    BIDModalSession modalSession = *pModalSession;
 
     BID_CONTEXT_VALIDATE(context);
+    BID_ASSERT(modalSession->CompletionHandler != NULL);
+
+    modalSession->ulReqFlags = ulReqFlags;
 
     if (szAudienceOrSpn == NULL) {
         err = BID_S_INVALID_AUDIENCE_URN;
@@ -184,16 +336,11 @@ BIDAcquireAssertionEx(
 
     if ((context->ContextOptions & BID_CONTEXT_REAUTH) &&
         (ulReqFlags & BID_ACQUIRE_FLAG_NO_CACHED) == 0) {
-        err = _BIDGetReauthAssertion(context, ticketCache, szAudienceOrSpn,
-                                     pbChannelBindings, cbChannelBindings, szIdentityName,
-                                     ulReqFlags, pAssertion, pAssertedIdentity, ptExpiryTime,
-                                     &ulTicketFlags);
-        if (err == BID_S_OK) {
-            ulRetFlags |= BID_ACQUIRE_FLAG_REAUTH;
-            if (ulTicketFlags & BID_TICKET_FLAG_MUTUAL_AUTH)
-                ulRetFlags |= BID_ACQUIRE_FLAG_REAUTH_MUTUAL;
+        err = _BIDBeginModalSessionReauth(context, ticketCache, szAudienceOrSpn,
+                                          pbChannelBindings, cbChannelBindings, szIdentityName,
+                                          ulReqFlags, pModalSession);
+        if (err == BID_S_OK)
             goto cleanup;
-        }
     }
 
     if (!_BIDCanInteractP(context, ulReqFlags)) {
@@ -202,50 +349,23 @@ BIDAcquireAssertionEx(
     }
 
     err = _BIDMakeClaims(context, pbChannelBindings, cbChannelBindings,
-                         ulReqFlags, userClaims, &claims, &key);
+                         ulReqFlags, userClaims, &modalSession->Claims, &modalSession->Key);
     BID_BAIL_ON_ERROR(err);
 
     if (ulReqFlags & BID_ACQUIRE_FLAG_MUTUAL_AUTH) {
         err = _BIDGenerateNonce(context, &nonce);
         BID_BAIL_ON_ERROR(err);
 
-        err = _BIDJsonObjectSet(context, claims, "nonce", nonce, BID_JSON_FLAG_REQUIRED);
+        err = _BIDJsonObjectSet(context, modalSession->Claims, "nonce", nonce, BID_JSON_FLAG_REQUIRED);
         BID_BAIL_ON_ERROR(err);
     }
 
-    err = _BIDBrowserGetAssertion(context, szAudienceOrSpn, claims,
-                                  szIdentityName, ulReqFlags, &szAssertion);
+    err = _BIDBrowserGetAssertion(context, szAudienceOrSpn, modalSession->Claims,
+                                  szIdentityName, ulReqFlags, modalSession);
     BID_BAIL_ON_ERROR(err);
-
-    err = BIDAcquireAssertionFromString(context, szAssertion, ulReqFlags,
-                                        pAssertedIdentity, ptExpiryTime, &ulRetFlags);
-    BID_BAIL_ON_ERROR(err);
-
-    if (pAssertedIdentity != NULL) {
-        BIDIdentity assertedIdentity = *pAssertedIdentity;
-
-        if (context->ContextOptions & BID_CONTEXT_ECDH_KEYEX) {
-            err = _BIDSetKeyAgreementObject(context, assertedIdentity->PrivateAttributes, key);
-            BID_BAIL_ON_ERROR(err);
-        }
-
-        if (ulReqFlags & BID_ACQUIRE_FLAG_MUTUAL_AUTH) {
-            err = _BIDJsonObjectSet(context, assertedIdentity->PrivateAttributes, "nonce", nonce, 0);
-            BID_BAIL_ON_ERROR(err);
-        }
-    }
-
-    *pAssertion = szAssertion;
 
 cleanup:
-    if (pulRetFlags != NULL)
-        *pulRetFlags = ulRetFlags;
-    if (err != BID_S_OK)
-        BIDFree(szAssertion);
-    json_decref(claims);
-    json_decref(key);
     json_decref(nonce);
-    _BIDReleaseBackedAssertion(context, backedAssertion);
 
     return err;
 }
@@ -302,4 +422,103 @@ BIDFreeAssertion(
 
     BIDFree(assertion);
     return BID_S_OK;
+}
+
+struct BIDAcquireAssertionCompletionContextDesc {
+    BIDError bidError;
+    char *szAssertion;
+    BIDIdentity identity;
+    time_t expiryTime;
+    uint32_t ulRetFlags;
+};
+
+static void
+_BIDAcquireAssertion_CompletionHandler(
+    BIDContext context,
+    BIDError err,
+    const char *szAssertion,
+    BIDIdentity identity,
+    time_t expiryTime,
+    uint32_t ulRetFlags,
+    int *freeIdentity,
+    void *completionContext)
+{
+    struct BIDAcquireAssertionCompletionContextDesc *cc = completionContext;
+
+    cc->bidError = err;
+
+    if (cc->bidError == BID_S_OK) {
+        _BIDDuplicateString(context, szAssertion, &cc->szAssertion);
+        cc->identity = identity;
+        cc->expiryTime = expiryTime;
+        cc->ulRetFlags = ulRetFlags;
+        *freeIdentity = 0;
+    }
+}
+
+BIDError
+BIDAcquireAssertionEx(
+    BIDContext context,
+    BIDTicketCache ticketCache,
+    const char *szAudienceOrSpn,
+    const unsigned char *pbChannelBindings,
+    size_t cbChannelBindings,
+    const char *szIdentityName,
+    uint32_t ulReqFlags,
+    json_t *userClaims,
+    char **pAssertion,
+    BIDIdentity *pAssertedIdentity,
+    time_t *ptExpiryTime,
+    uint32_t *pulRetFlags)
+{
+    BIDError err;
+    BIDModalSession modalSession = NULL;
+    struct BIDAcquireAssertionCompletionContextDesc cc = { 0 };
+
+    *pAssertion = NULL;
+    if (pAssertedIdentity != NULL)
+        *pAssertedIdentity = NULL;
+    if (ptExpiryTime != NULL)
+        *ptExpiryTime = 0;
+    if (pulRetFlags != NULL)
+        *pulRetFlags = 0;
+
+    BID_CONTEXT_VALIDATE(context);
+
+    err = _BIDAllocModalSession(context, _BIDAcquireAssertion_CompletionHandler, &cc, NULL, &modalSession);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDBeginModalSession(context, ticketCache, szAudienceOrSpn,
+                                pbChannelBindings, cbChannelBindings,
+                                szIdentityName, ulReqFlags, userClaims,
+                                &modalSession);
+    BID_BAIL_ON_ERROR(err);
+
+    if (modalSession != NULL) {
+        err = _BIDRunModalSession(context, &modalSession);
+        BID_BAIL_ON_ERROR(err);
+    }
+
+    err = cc.bidError;
+
+    if (pAssertion != NULL)
+        *pAssertion = cc.szAssertion;
+    else
+        BIDFree(cc.szAssertion);
+
+    if (pAssertedIdentity != NULL)
+        *pAssertedIdentity = cc.identity;
+    else
+        BIDReleaseIdentity(context, cc.identity);
+
+    if (ptExpiryTime != NULL)
+        *ptExpiryTime = cc.expiryTime;
+
+    if (pulRetFlags != NULL)
+        *pulRetFlags = cc.ulRetFlags;
+
+cleanup:
+    _BIDReleaseModalSession(context, modalSession);
+
+    return err;
 }

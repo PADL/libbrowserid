@@ -114,7 +114,11 @@
 
 - (void)windowWillClose:(NSNotification *)BID_UNUSED notification
 {
-    [NSApp stopModalWithCode:self.bidError];
+    if (self.parentWindow != nil)
+        [self.parentWindow endSheet:self.identityDialog returnCode:self.bidError];
+    else
+        [NSApp stopModalWithCode:self.bidError];
+    [self _completeModalSession];
 }
 
 - (void)webView:(WebView *)sender didFailProvisionalLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
@@ -174,8 +178,6 @@
 - (void)loadIdentityDialog
 {
     NSURL *personaURL = [NSURL URLWithString:@BID_SIGN_IN_URL];
-    NSModalSession modalSession;
-    NSModalResponse modalResponse;
 
     self.identityDialog = [BIDIdentityDialog identityDialog];
     self.identityDialog.delegate = self;
@@ -187,14 +189,20 @@
         [self.parentWindow beginSheet:self.identityDialog completionHandler:^(NSModalResponse returnCode BID_UNUSED) {
         }];
     }
+}
 
-    modalSession = [NSApp beginModalSessionForWindow:self.identityDialog];
+- (void)_runModal
+{
+    NSModalResponse modalResponse;
+    NSModalSession realModalSession;
+
+    realModalSession = [NSApp beginModalSessionForWindow:self.identityDialog];
     do {
-        modalResponse = [NSApp runModalSession:modalSession];
+        modalResponse = [NSApp runModalSession:realModalSession];
     } while (modalResponse == NSModalResponseContinue &&
              [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]]);
 
-    [NSApp endModalSession:modalSession];
+    [NSApp endModalSession:realModalSession];
 }
 
 - (void)showIdentityDialog
@@ -202,7 +210,8 @@
     [self.identityDialog makeFirstResponder:self.webView];
     self.identityDialog.contentView = self.webView;
     [self.identityDialog makeKeyAndOrderFront:self.webView];
-    [self.identityDialog center];
+    if (self.parentWindow == nil)
+        [self.identityDialog center];
 }
 @end
 
@@ -248,6 +257,7 @@
 {
     return YES;
 }
+
 @end
 
 #endif /* !TARGET_OS_IPHONE */

@@ -90,14 +90,41 @@ _BIDDismissIdentityDialogAndStopModal(void *obj);
 
 - (void)closeIdentityDialog
 {
-    CFRunLoopSourceSignal((__bridge CFRunLoopSourceRef)_rls);
-    CFRunLoopWakeUp(CFRunLoopGetMain());
+    if (_rls != nil) {
+        CFRunLoopSourceSignal((__bridge CFRunLoopSourceRef)_rls);
+        CFRunLoopWakeUp(CFRunLoopGetMain());
+    }
+    [self _completeModalSession];
 }
 
 - (void)loadIdentityDialog
 {
     NSURL *personaURL = [NSURL URLWithString:@BID_SIGN_IN_URL];
     UIViewController *viewController = self.parentWindow.rootViewController;
+    self.webView.hidden = YES;
+
+    [self.webView loadRequest:[NSURLRequest requestWithURL:personaURL]];
+    [self.parentWindow addSubview:self.webView];
+
+    [viewController presentViewController:self animated:NO completion:nil];
+}
+
+- (void)showIdentityDialog
+{
+    self.webView.hidden = NO;
+}
+
+- (void)dismissIdentityDialogAndStopModal
+{
+    [self dismissViewControllerAnimated:NO completion:^{
+    }];
+    [self.webView removeFromSuperview];
+    if (_rls != nil)
+        CFRunLoopStop(CFRunLoopGetMain());
+}
+
+- (void)_runModal
+{
     CFRunLoopSourceContext rlContext = {
         0,                 // version
         (__bridge void *)self,
@@ -111,29 +138,11 @@ _BIDDismissIdentityDialogAndStopModal(void *obj);
         &_BIDDismissIdentityDialogAndStopModal // perform
     };
 
-    self.webView.hidden = YES;
-
-    [self.webView loadRequest:[NSURLRequest requestWithURL:personaURL]];
-    [self.parentWindow addSubview:self.webView];
-
-    [viewController presentViewController:self animated:NO completion:nil];
-
     _rls = CFBridgingRelease(CFRunLoopSourceCreate(kCFAllocatorDefault, 0, &rlContext));
     CFRunLoopAddSource(CFRunLoopGetMain(), (__bridge CFRunLoopSourceRef)_rls, kCFRunLoopCommonModes);
     CFRunLoopRun();
 }
 
-- (void)showIdentityDialog
-{
-    self.webView.hidden = NO;
-}
-
-- (void)dismissIdentityDialogAndStopModal
-{
-    [self dismissViewControllerAnimated:NO completion:NULL];
-    [self.webView removeFromSuperview];
-    CFRunLoopStop(CFRunLoopGetMain());
-}
 @end
 
 static void

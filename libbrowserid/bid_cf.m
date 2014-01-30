@@ -475,6 +475,100 @@ cleanup:
     return assertion;
 }
 
+#if __BLOCKS__
+static void
+_BIDAssertionCreateUIWithHandler_CompletionHandler(
+    BIDContext context BID_UNUSED,
+    BIDError err,
+    const char *szAssertion,
+    BIDIdentity identity,
+    time_t expiryTime BID_UNUSED,
+    uint32_t ulRetFlags BID_UNUSED,
+    int *freeIdentity BID_UNUSED,
+    void *completionContext)
+{
+    void (^userCompletionHandler)(CFStringRef assertion, BIDIdentity identity, CFErrorRef error) = completionContext;
+
+    if (err == BID_S_OK) {
+        CFStringRef assertion = CFStringCreateWithCString(CFGetAllocator(context), szAssertion, kCFStringEncodingASCII);
+        userCompletionHandler(assertion, identity, NULL);
+        CFRelease(assertion);
+    } else {
+        CFErrorRef cfError = _BIDCFMapError(context, err);
+        userCompletionHandler(NULL, BID_C_NO_IDENTITY, cfError);
+        CFRelease(cfError);
+    }
+}
+
+static void
+_BIDAssertionCreateUIWithHandler_FinalizeCompletionContext(
+    BIDContext context BID_UNUSED,
+    void *completionContext)
+{
+    Block_release(completionContext);
+}
+
+BIDError
+BIDAssertionCreateUIWithHandler(
+    BIDContext context,
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFStringRef optionalIdentity,
+    uint32_t ulFlags,
+    CFDictionaryRef userClaims,
+    void (^completionHandler)(CFStringRef assertion, BIDIdentity identity, CFErrorRef error))
+{
+    char *szAudienceOrSpn = NULL;
+    const unsigned char *pbChannelBindings = NULL;
+    size_t cbChannelBindings = 0;
+    char *szIdentity = NULL;
+    BIDError err;
+    BIDModalSession modalSession = NULL;
+
+    if (audienceOrSpn != NULL) {
+        szAudienceOrSpn = json_string_copy(audienceOrSpn);
+        if (szAudienceOrSpn == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+    }
+
+    if (channelBindings != NULL) {
+        pbChannelBindings = CFDataGetBytePtr(channelBindings);
+        cbChannelBindings = CFDataGetLength(channelBindings);
+    }
+
+    if (optionalIdentity != NULL) {
+        szIdentity = json_string_copy(optionalIdentity);
+        if (szIdentity == NULL) {
+            err = BID_S_NO_MEMORY;
+            goto cleanup;
+        }
+    }
+
+    err = _BIDAllocModalSession(context,
+                                _BIDAssertionCreateUIWithHandler_CompletionHandler,
+                                Block_copy(completionHandler),
+                                _BIDAssertionCreateUIWithHandler_FinalizeCompletionContext,
+                                &modalSession);
+    BID_BAIL_ON_ERROR(err);
+
+    err = _BIDBeginModalSession(context, BID_C_NO_TICKET_CACHE,
+                                szAudienceOrSpn,
+                                pbChannelBindings, cbChannelBindings, szIdentity,
+                                ulFlags, userClaims, &modalSession);
+    BID_BAIL_ON_ERROR(err);
+
+cleanup:
+    BIDFree(szAudienceOrSpn);
+    BIDFree(szIdentity);
+    if (err != BID_S_OK)
+        _BIDReleaseModalSession(context, modalSession);
+
+    return err;
+}
+#endif /* __BLOCKS__ */
+
 BIDTicketCache
 BIDTicketCacheCreate(
     BIDContext context,

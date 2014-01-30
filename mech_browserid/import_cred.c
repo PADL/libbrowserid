@@ -37,28 +37,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "bid_private.h"
+#include "gssapiP_bid.h"
 
-/*
- * You need to implement this for your platform.
- */
-
-BIDError
-_BIDBrowserGetAssertion(
-    BIDContext context BID_UNUSED,
-    const char *szAudienceOrSpn BID_UNUSED,
-    json_t *claims BID_UNUSED,
-    const char *szIdentityName BID_UNUSED,
-    uint32_t ulReqFlags BID_UNUSED,
-    BIDModalSession modalSession BID_UNUSED)
+OM_uint32 GSSAPI_CALLCONV
+gss_import_cred(OM_uint32 *minor,
+                gss_buffer_t cred_token,
+                gss_cred_id_t *cred_handle)
 {
-    return BID_S_INTERACT_UNAVAILABLE;
-}
-
-BIDError
-_BIDRunModalSession(
-    BIDContext context BID_UNUSED,
-    BIDModalSession *pModalSession BID_UNUSED)
-{
-    return BID_S_NOT_IMPLEMENTED;
+    return gssBidImportCred(minor, cred_token, cred_handle);
 }

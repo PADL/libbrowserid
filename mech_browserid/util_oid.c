@@ -60,6 +60,18 @@
 
 #include "gssapiP_bid.h"
 
+#ifdef HAVE_HEIMDAL_VERSION
+extern int
+der_parse_heim_oid (const char *str, const char *sep, heim_oid *data);
+
+extern int
+der_put_oid (unsigned char *p, size_t len,
+             const heim_oid *data, size_t *size);
+
+extern void
+der_free_oid (heim_oid *k);
+#endif /* HAVE_HEIMDAL_VERSION */
+
 OM_uint32
 duplicateOid(OM_uint32 *minor,
              const gss_OID_desc * const oid,
@@ -204,3 +216,177 @@ duplicateOidSet(OM_uint32 *minor,
 
     return major;
 }
+
+OM_uint32
+oidToJson(OM_uint32 *minor,
+          gss_OID oid,
+          json_t **pJson)
+{
+    OM_uint32 major, tmpMinor;
+    gss_buffer_desc buffer = GSS_C_EMPTY_BUFFER;
+
+    *pJson = NULL;
+
+    major = gss_oid_to_str(minor, oid, &buffer);
+    if (GSS_ERROR(major))
+        return major;
+
+    *pJson = json_string((char *)buffer.value); /* XXX NUL termination */
+
+    gss_release_buffer(&tmpMinor, &buffer);
+
+    return GSS_S_COMPLETE;
+}
+
+OM_uint32
+oidSetToJson(OM_uint32 *minor,
+             gss_OID_set oidSet,
+             json_t **pJson)
+{
+    OM_uint32 major;
+    json_t *json;
+    size_t i;
+
+    *pJson = NULL;
+
+    json = json_array();
+    if (json == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    major = GSS_S_COMPLETE;
+
+    for (i = 0; i < oidSet->count; i++) {
+        json_t *oid;
+
+        major = oidToJson(minor, &oidSet->elements[i], &oid);
+        if (GSS_ERROR(major))
+            break;
+
+        json_array_append_new(json, oid);
+    }
+
+    if (GSS_ERROR(major))
+        json_decref(json);
+    else
+        *pJson = json;
+
+    return major;
+}
+
+OM_uint32
+jsonToOid(OM_uint32 *minor,
+          json_t *json,
+          gss_OID *pOid)
+{
+    gss_buffer_desc stringBuf = GSS_C_EMPTY_BUFFER;
+
+    if (!json_is_string(json)) {
+        *pOid = GSS_C_NO_OID;
+        return GSS_S_BAD_MECH;
+    }
+
+    stringBuf.length = strlen(json_string_value(json));
+    stringBuf.value = (void *)json_string_value(json);
+
+#ifdef HAVE_GSS_STR_TO_OID
+    return gss_str_to_oid(minor, &stringBuf, pOid);
+#elif defined(HAVE_HEIMDAL_VERSION)
+    char mechbuf[64];
+    size_t mech_len;
+    heim_oid heimOid;
+    int ret;
+    gss_OID oid;
+
+    if (der_parse_heim_oid(stringBuf.value, " .", &heimOid))
+        return GSS_S_FAILURE;
+
+    ret = der_put_oid((unsigned char *)mechbuf + sizeof(mechbuf) - 1,
+                      sizeof(mechbuf),
+                      &heimOid,
+                      &mech_len);
+    if (ret) {
+        der_free_oid(&heimOid);
+        *minor = ret;
+        return GSS_S_FAILURE;
+    }
+
+    oid = (gss_OID)GSSBID_MALLOC(sizeof(*oid));
+    if (oid == NULL) {
+        der_free_oid(&heimOid);
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    oid->length = mech_len;
+    oid->elements = GSSBID_MALLOC(oid->length);
+    if (oid->elements == NULL) {
+        der_free_oid(&heimOid);
+        GSSBID_FREE(oid);
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    memcpy(oid->elements, mechbuf + sizeof(mechbuf) - mech_len, mech_len);
+
+    der_free_oid(&heimOid);
+
+    *pOid = oid;
+    return GSS_S_COMPLETE;
+#else
+#error no gss_str_to_oid
+#endif /* HAVE_GSS_STR_TO_OID */
+}
+
+OM_uint32
+jsonToOidSet(OM_uint32 *minor,
+             json_t *json,
+             gss_OID_set *pOidSet)
+{
+    OM_uint32 major, tmpMinor;
+    gss_OID_set oidSet;
+    size_t i;
+
+    *pOidSet = GSS_C_NO_OID_SET;
+
+    if (!json_is_array(json))
+        return GSS_S_BAD_MECH;
+
+    oidSet = (gss_OID_set)GSSBID_MALLOC(sizeof(*oidSet));
+    if (oidSet == NULL) {
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    oidSet->count = 0;
+    oidSet->elements = (gss_OID)GSSBID_CALLOC(json_array_size(json), sizeof(gss_OID_desc));
+    if (oidSet->elements == NULL) {
+        GSSBID_FREE(oidSet);
+        *minor = ENOMEM;
+        return GSS_S_FAILURE;
+    }
+
+    major = GSS_S_COMPLETE;
+
+    for (i = 0; i < json_array_size(json); i++) {
+        json_t *oid = json_array_get(json, i);
+        gss_OID tmpOid = GSS_C_NO_OID;
+
+        major = jsonToOid(minor, oid, &tmpOid);
+        if (GSS_ERROR(major))
+            break;
+
+        oidSet->elements[i] = *tmpOid;
+        GSSBID_FREE(tmpOid);
+        oidSet->count++;
+    }
+
+    if (GSS_ERROR(major))
+        gss_release_oid_set(&tmpMinor, &oidSet);
+    else
+        *pOidSet = oidSet;
+
+    return major;
+}
+

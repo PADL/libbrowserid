@@ -85,6 +85,18 @@ BIDAssertionCreateUIWithClaims(
     uint32_t *pulFlags,
     CFErrorRef *pError) CF_RETURNS_RETAINED;
 
+#if __BLOCKS__
+BIDError
+BIDAssertionCreateUIWithHandler(
+    BIDContext context,
+    CFStringRef audienceOrSpn,
+    CFDataRef channelBindings,
+    CFStringRef optionalIdentity,
+    uint32_t ulFlags,
+    CFDictionaryRef userClaims,
+    void (^completionHandler)(CFStringRef assertion, BIDIdentity identity, CFErrorRef error));
+#endif
+
 BIDIdentity
 BIDIdentityCreateFromString(
     BIDContext context,

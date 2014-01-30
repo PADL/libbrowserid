@@ -46,16 +46,59 @@
 
 @interface BIDIdentityController ()
 @property(nonatomic, retain, readwrite) NSString *assertion;
+@property(nonatomic, readwrite) BIDContext bidContext;
 @property(nonatomic, readwrite) BIDError bidError;
 @end
 
 @implementation BIDIdentityController
 #pragma mark - accessors
 
+- (void)dealloc
+{
+#if !__has_feature(objc_arc)
+    [_audience release];
+    [_claims release];
+    [_emailHint release];
+    [_siteName release];
+    [_assertion release];
+    _BIDReleaseModalSession(_bidContext, _bidModalSession);
+    if (_bidContext)
+        CFRelease(_bidContext);
+#if TARGET_OS_IPHONE
+    [_parentWindow release];
+    [_webView release];
+#else
+    [_identityDialog release];
+    [_parentWindow release];
+    [_webView release];
+#endif
+#if TARGET_OS_IPHONE
+    [_rls release];
+#endif
+#endif
+    [super dealloc];
+}
+
 @synthesize claims = _claims;
 @synthesize emailHint = _emailHint;
 @synthesize siteName = _siteName;
 @synthesize assertion = _assertion;
+
+- (BIDContext)bidContext
+{
+    return _bidContext;
+}
+
+- (void)setBidContext:(BIDContext)bidContext
+{
+    if (bidContext != _bidContext) {
+        if (_bidContext != NULL)
+            CFRelease(_bidContext);
+        _bidContext = (BIDContext)CFRetain(bidContext);
+    }
+}
+
+@synthesize bidModalSession = _bidModalSession;
 @synthesize bidError = _bidError;
 @synthesize forceAuthentication = _forceAuthentication;
 #if !TARGET_OS_IPHONE
@@ -155,11 +198,12 @@
     return [super init];
 }
 
-- (id)initWithAudience:(NSString *)anAudience claims:(NSDictionary *)someClaims
+- (instancetype)initWithContext:(BIDContext)bidContext audience:(NSString *)anAudience claims:(NSDictionary *)someClaims
 {
     self = [self init];
 
     if (self != nil) {
+        self.bidContext = bidContext;
         self.audience = anAudience;
         self.claims = someClaims;
     }
@@ -176,7 +220,27 @@
     return self.bidError;
 }
 
+- (void)_completeModalSession
+{
+    char *szAssertion = NULL;
+
+    if (self.bidError == BID_S_OK)
+        szAssertion = json_string_copy((__bridge json_t *)self.assertion);
+
+    _BIDCompleteModalSession(self.bidContext, self.bidError, szAssertion, &_bidModalSession);
+
+    BIDFree(szAssertion);
+}
+
 @end
+
+static void
+_BIDBrowserGetAssertion_FinalizeUIContext(
+    BIDContext context BID_UNUSED,
+    void *data)
+{
+    CFBridgingRelease((__bridge id)data);
+}
 
 BIDError
 _BIDBrowserGetAssertion(
@@ -185,12 +249,9 @@ _BIDBrowserGetAssertion(
     json_t *claims,
     const char *szIdentityName,
     uint32_t ulReqFlags BID_UNUSED,
-    char **pAssertion)
+    BIDModalSession modalSession)
 {
-    BIDError err = BID_S_INTERACT_FAILURE;
     BIDIdentityController *controller = nil;
-
-    *pAssertion = NULL;
 
     @autoreleasepool {
 #if !TARGET_OS_IPHONE
@@ -213,7 +274,11 @@ _BIDBrowserGetAssertion(
             return BID_S_INTERACT_UNAVAILABLE;
 #endif /* !TARGET_OS_IPHONE */
 
-        controller = [[BIDIdentityController alloc] initWithAudience:[NSString stringWithUTF8String:szAudienceOrSpn] claims:(__bridge NSDictionary *)claims];
+        controller = [[BIDIdentityController alloc] initWithContext:context
+                                                           audience:[NSString stringWithUTF8String:szAudienceOrSpn]
+                                                             claims:(__bridge NSDictionary *)claims];
+        controller.bidContext = context;
+        controller.bidModalSession = modalSession;
         if (szIdentityName != NULL)
             controller.emailHint = [NSString stringWithUTF8String:szIdentityName];
         if (context->ParentWindow != NULL)
@@ -228,13 +293,23 @@ _BIDBrowserGetAssertion(
 
         [controller performSelectorOnMainThread:@selector(getAssertion) withObject:nil waitUntilDone:TRUE];
 
-        err = controller.bidError;
-        if (err == BID_S_OK) {
-            *pAssertion = json_string_copy((__bridge json_t *)controller.assertion);
-            if (*pAssertion == NULL)
-            err = BID_S_NO_MEMORY;
-        }
+        _BIDSetModalSessionUIContext(context, modalSession, (void *)CFBridgingRetain(controller), _BIDBrowserGetAssertion_FinalizeUIContext);
     }
 
-    return err;
+    return BID_S_OK;
+}
+
+BIDError
+_BIDRunModalSession(
+    BIDContext context,
+    BIDModalSession *pModalSession)
+{
+    BIDIdentityController *controller = _BIDGetModalSessionUIContext(context, *pModalSession);
+
+    [controller performSelectorOnMainThread:@selector(_runModal) withObject:nil waitUntilDone:TRUE];
+
+    *pModalSession = controller.bidModalSession;
+    BID_ASSERT(*pModalSession == NULL);
+
+    return BID_S_OK;
 }
