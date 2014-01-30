@@ -854,12 +854,13 @@ gssBidImportNameJson(json_t *json)
     if (buffer.value == NULL)
         return GSS_C_NO_NAME;
 
-
     cbBuffer = base64Decode(json_string_value(json), buffer.value);
     if (cbBuffer < 0) {
         gss_release_buffer(&minor, &buffer);
         return NULL;
     }
+
+    buffer.length = cbBuffer;
 
     gssBidImportNameInternal(&minor, &buffer, &name, EXPORT_NAME_FLAG_COMPOSITE);
 

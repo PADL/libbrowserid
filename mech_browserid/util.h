@@ -593,6 +593,12 @@ gssBidInitiatorInit(OM_uint32 *minor);
 gss_OID
 gssBidSaslNameToOid(const gss_buffer_t name);
 
+OM_uint32
+gssBidImportMechanismOid(OM_uint32 *minor,
+                        unsigned char **pBuf,
+                        size_t *pRemain,
+                        gss_OID *pOid);
+
 /* util_name.c */
 #define EXPORT_NAME_FLAG_OID                    0x1
 #define EXPORT_NAME_FLAG_COMPOSITE              0x2
@@ -693,6 +699,26 @@ oidEqual(const gss_OID_desc *o1, const gss_OID_desc *o2)
         return (o1->length == o2->length &&
                 memcmp(o1->elements, o2->elements, o1->length) == 0);
 }
+
+OM_uint32
+oidToJson(OM_uint32 *minor,
+          gss_OID oid,
+          json_t **pJson);
+
+OM_uint32
+jsonToOid(OM_uint32 *minor,
+          json_t *json,
+          gss_OID *pOid);
+
+OM_uint32
+oidSetToJson(OM_uint32 *minor,
+             gss_OID_set oidSet,
+             json_t **pJson);
+
+OM_uint32
+jsonToOidSet(OM_uint32 *minor,
+             json_t *json,
+             gss_OID_set *pOidSet);
 
 /* util_ordering.c */
 OM_uint32
