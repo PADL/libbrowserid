@@ -972,7 +972,5 @@ _BIDRunModalSession(
 
     pController->RunModal();
 
-    *pModalSession = NULL;
-
     return BID_S_OK;
 }
