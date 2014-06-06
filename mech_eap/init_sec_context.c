@@ -415,6 +415,8 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     eapPeerConfig->ca_cert = (unsigned char *)cred->caCertificate.value;
     eapPeerConfig->subject_match = (unsigned char *)cred->subjectNameConstraint.value;
     eapPeerConfig->altsubject_match = (unsigned char *)cred->subjectAltNameConstraint.value;
+    configBlobs[CONFIG_BLOB_CA_CERT].data = cred->caCertificateBlob.value;
+    configBlobs[CONFIG_BLOB_CA_CERT].len = cred->caCertificateBlob.length;
 
     /* eap channel binding */
     if (ctx->initiatorCtx.chbindData != NULL) {

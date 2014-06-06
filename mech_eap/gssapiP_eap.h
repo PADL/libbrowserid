@@ -157,6 +157,7 @@ struct gss_cred_id_struct
     gss_buffer_desc subjectAltNameConstraint;
     gss_buffer_desc clientCertificate;
     gss_buffer_desc privateKey;
+    gss_buffer_desc caCertificateBlob;
 #ifdef GSSEAP_ENABLE_REAUTH
     krb5_ccache krbCredCache;
     gss_cred_id_t reauthCred;
@@ -186,7 +187,8 @@ struct gss_cred_id_struct
 
 #define CONFIG_BLOB_CLIENT_CERT             0
 #define CONFIG_BLOB_PRIVATE_KEY             1
-#define CONFIG_BLOB_MAX                     2
+#define CONFIG_BLOB_CA_CERT                 2
+#define CONFIG_BLOB_MAX                     3
 
 struct gss_eap_initiator_ctx {
     unsigned int idleWhile;
