@@ -180,6 +180,8 @@ peerGetConfigBlob(void *ctx,
         index = CONFIG_BLOB_CLIENT_CERT;
     else if (strcmp(name, "private-key") == 0)
         index = CONFIG_BLOB_PRIVATE_KEY;
+    else if (strcmp(name, "ca-cert") == 0)
+        index = CONFIG_BLOB_CA_CERT;
     else
         return NULL;
 
