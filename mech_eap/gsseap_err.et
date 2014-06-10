@@ -86,6 +86,7 @@ error_code GSSEAP_BAD_CRED_OPTION,              "Bad credential option"
 error_code GSSEAP_NO_DEFAULT_IDENTITY,          "Default credentials identity unavailable"
 error_code GSSEAP_NO_DEFAULT_CRED,              "Missing default password or other credentials"
 error_code GSSEAP_CRED_RESOLVED,                "Credential is already fully resolved"
+error_code GSSEAP_BAD_CACERTIFICATE,            "CA Certificate could not be parsed by openssl"
 
 #
 # Local identity service errors

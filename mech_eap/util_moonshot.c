@@ -34,6 +34,7 @@
 #include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
+#include <stdio.h>
 
 #ifdef HAVE_MOONSHOT_GET_IDENTITY
 #include <libmoonshot.h>
@@ -240,15 +241,15 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
         }
         cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
         if (cert == NULL) {
-            major = GSS_S_FAILURE;
-            *minor = ENOMEM;
+            major = GSS_S_DEFECTIVE_CREDENTIAL;
+            *minor = GSSEAP_BAD_CACERTIFICATE;
             goto cleanup;
         }
         BIO_free(bio);
         bio = BIO_new(BIO_s_mem());
         if (i2d_X509_bio(bio, cert) < 0) {
-            major = GSS_S_FAILURE;
-            *minor = ENOMEM; /* TODO */
+            major = GSS_S_DEFECTIVE_CREDENTIAL;
+            *minor = GSSEAP_BAD_CACERTIFICATE;
             goto cleanup;
         }
         BIO_get_mem_ptr(bio, &bptr);
@@ -259,6 +260,7 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
             goto cleanup;
         }
         BIO_free(bio);
+        bio = NULL;
         makeStringBufferOrCleanup("blob://ca-cert", &cred->caCertificate);
     }
 
