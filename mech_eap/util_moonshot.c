@@ -31,10 +31,6 @@
  */
 
 #include "gssapiP_eap.h"
-#include <openssl/bio.h>
-#include <openssl/pem.h>
-#include <openssl/x509.h>
-#include <stdio.h>
 
 #ifdef HAVE_MOONSHOT_GET_IDENTITY
 #include <libmoonshot.h>
@@ -159,7 +155,6 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
     char *subjectNameConstraint = NULL;
     char *subjectAltNameConstraint = NULL;
     MoonshotError *error = NULL;
-    BIO *bio = NULL;
 
     if (cred->name != GSS_C_NO_NAME) {
         major = gssEapDisplayName(minor, cred->name, &initiator, NULL);
@@ -229,38 +224,32 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
 
         cred->caCertificate.length = HASH_PREFIX_LEN + len;
     } else if (!stringEmpty(caCertificate)) {
-        BUF_MEM *bptr;
-        X509 *cert;
-        gss_buffer_desc tmp;
-
-        bio = BIO_new_mem_buf(caCertificate, -1);
-        if (bio == NULL) {
+        void *blobData;
+        ssize_t blobLength;
+        ssize_t maxLength = ((strlen(caCertificate) + 3) / 4) * 3;
+        if (maxLength < 3) {
+            major = GSS_S_FAILURE;
+            *minor = GSSEAP_BAD_CACERTIFICATE;
+            goto cleanup;
+        }
+        blobData = GSSEAP_MALLOC(maxLength);
+        if (blobData == NULL) {
             major = GSS_S_FAILURE;
             *minor = ENOMEM;
             goto cleanup;
         }
-        cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-        if (cert == NULL) {
+
+        blobLength = base64Decode(caCertificate, blobData);
+
+        if ((blobLength <= 0) ||
+            (blobLength < maxLength - 2)) {
             major = GSS_S_DEFECTIVE_CREDENTIAL;
             *minor = GSSEAP_BAD_CACERTIFICATE;
+            GSSEAP_FREE(blobData);
             goto cleanup;
         }
-        BIO_free(bio);
-        bio = BIO_new(BIO_s_mem());
-        if (i2d_X509_bio(bio, cert) < 0) {
-            major = GSS_S_DEFECTIVE_CREDENTIAL;
-            *minor = GSSEAP_BAD_CACERTIFICATE;
-            goto cleanup;
-        }
-        BIO_get_mem_ptr(bio, &bptr);
-        tmp.value = bptr->data;
-        tmp.length = bptr->length;
-        major = duplicateBuffer(minor, &tmp, &cred->caCertificateBlob);
-        if (major != GSS_S_COMPLETE) {
-            goto cleanup;
-        }
-        BIO_free(bio);
-        bio = NULL;
+        cred->caCertificateBlob.value = blobData;
+        cred->caCertificateBlob.length = blobLength;
         makeStringBufferOrCleanup("blob://ca-cert", &cred->caCertificate);
     }
 
@@ -276,7 +265,6 @@ cleanup:
     moonshot_free(caCertificate);
     moonshot_free(subjectNameConstraint);
     moonshot_free(subjectAltNameConstraint);
-    BIO_free(bio);
 
     gss_release_buffer(&tmpMinor, &initiator);
     gss_release_buffer(&tmpMinor, &target);
