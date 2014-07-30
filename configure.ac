@@ -1,5 +1,5 @@
 /AC_PREREQ([2.61])
-AC_INIT([mech_eap], [0.9], [bugs@project-moonshot.org])
+AC_INIT([mech_eap], [0.9.1], [bugs@project-moonshot.org])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 
