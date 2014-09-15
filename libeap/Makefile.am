@@ -11,7 +11,8 @@ noinst_HEADERS = \
 	src/common/wpa_common.h \
 	src/common/wpa_ctrl.h
 
-EXTRA_DIST = src/tls/libtommath.c
+EXTRA_DIST = src/tls/libtommath.c \
+	wpa_supplicant/README
 
 SOURCES_BOTH = src/eap_common/eap_peap_common.c
 SOURCES_BOTH += src/eap_common/eap_psk_common.c
