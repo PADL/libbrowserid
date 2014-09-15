@@ -40,6 +40,11 @@
 #include "util_radius.h"
 #include "utils/radius_utils.h"
 
+/* methods allowed for phase1 authentication*/
+static const struct eap_method_type allowed_eap_method_types[] = {
+    {EAP_VENDOR_IETF, EAP_TYPE_TTLS},
+    {EAP_VENDOR_IETF, EAP_TYPE_NONE}};
+
 static OM_uint32
 policyVariableToFlag(enum eapol_bool_var variable)
 {
@@ -368,6 +373,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     eapPeerConfig->anonymous_identity_len = 0;
     eapPeerConfig->password = NULL;
     eapPeerConfig->password_len = 0;
+    eapPeerConfig->eap_methods = (struct eap_method_type *) allowed_eap_method_types;
 
     GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
 
