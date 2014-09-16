@@ -2,7 +2,8 @@ AUTOMAKE_OPTIONS = foreign
 
 EXTRA_DIST = gsseap_err.et radsec_err.et \
 	mech_eap.exports mech_eap-noacceptor.exports  radius_ad.exports \
-	LICENSE AUTHORS
+	LICENSE AUTHORS mech \
+	README.samba4 NOTES radsec.conf
 
 
 gssincludedir = $(includedir)/gssapi
