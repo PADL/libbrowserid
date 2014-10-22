@@ -90,24 +90,29 @@ gssEapAttrProvidersInit(OM_uint32 *minor)
     return gssEapAttrProvidersInitStatus;
 }
 
-OM_uint32
-gssEapAttrProvidersFinalize(OM_uint32 *minor)
-{
-    if (gssEapAttrProvidersInitStatus == GSS_S_COMPLETE) {
+namespace {
+    class finalize_class {
+    public:
+      ~finalize_class()
+	    {
+		OM_uint32 minor = 0;
+		if (gssEapAttrProvidersInitStatus == GSS_S_COMPLETE) {
 #ifdef HAVE_SHIBRESOLVER
-        gssEapLocalAttrProviderFinalize(minor);
+		    gssEapLocalAttrProviderFinalize(&minor);
 #endif
 #ifdef HAVE_OPENSAML
-        gssEapSamlAttrProvidersFinalize(minor);
+		    gssEapSamlAttrProvidersFinalize(&minor);
 #endif
-        gssEapRadiusAttrProviderFinalize(minor);
+		    gssEapRadiusAttrProviderFinalize(&minor);
 
-        gssEapAttrProvidersInitStatus = GSS_S_UNAVAILABLE;
-    }
-
-    return GSS_S_COMPLETE;
+		    gssEapAttrProvidersInitStatus = GSS_S_UNAVAILABLE;
+		}
+	    }
+    } finalizer;
 }
 
+	    
+	
 static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX + 1];
 
 /*

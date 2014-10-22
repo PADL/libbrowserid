@@ -379,9 +379,6 @@ OM_uint32
 gssEapReleaseAttrContext(OM_uint32 *minor,
                          gss_name_t name);
 
-OM_uint32
-gssEapAttrProvidersFinalize(OM_uint32 *minor);
-
 #ifdef __cplusplus
 }
 #endif
