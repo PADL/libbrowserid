@@ -14,8 +14,9 @@ LT_INIT([dlopen disable-static win32-dll])
 dnl AC_PROG_CC
 AC_PROG_CXX
 AC_CONFIG_HEADERS([config.h])
-AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h)
+AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h stdlib.h)
 AC_REPLACE_FUNCS(vasprintf)
+AC_CHECK_FUNCS([ secure_getenv])
 
 dnl Check if we're on Solaris and set CFLAGS accordingly
 dnl AC_CANONICAL_TARGET

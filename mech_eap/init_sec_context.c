@@ -210,9 +210,7 @@ static struct eapol_callbacks gssEapPolicyCallbacks = {
     peerNotifyPending,
 };
 
-#ifdef GSSEAP_DEBUG
 extern int wpa_debug_level;
-#endif
 
 #define CHBIND_SERVICE_NAME_FLAG        0x01
 #define CHBIND_HOST_NAME_FLAG           0x02
@@ -366,6 +364,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     gss_buffer_desc identity = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc realm = GSS_C_EMPTY_BUFFER;
     gss_cred_id_t cred = ctx->cred;
+    char *debug_file = NULL;
 
     eapPeerConfig->identity = NULL;
     eapPeerConfig->identity_len = 0;
@@ -380,10 +379,12 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     GSSEAP_KRB_INIT(&krbContext);
 
     eapPeerConfig->fragment_size = 1024;
-#ifdef GSSEAP_DEBUG
-    wpa_debug_level = 0;
-#endif
-
+    wpa_debug_level = MSG_ERROR;
+    if ((debug_file = getenv("GSSEAP_TRACE")) != NULL) {
+	    wpa_debug_open_file(debug_file);
+	    wpa_debug_level = 0;
+	}
+    
     GSSEAP_ASSERT(cred->name != GSS_C_NO_NAME);
 
     if ((cred->name->flags & (NAME_FLAG_NAI | NAME_FLAG_SERVICE)) == 0) {

@@ -407,6 +407,12 @@ gssEapInitiatorInit(OM_uint32 *minor);
 void
 gssEapFinalize(void);
 
+
+  /*If built as a library on Linux, don't respect environment when set*uid*/
+#ifdef HAVE_SECURE_GETENV
+#define getenv secure_getenv
+#endif
+
 #ifdef __cplusplus
 }
 #endif
