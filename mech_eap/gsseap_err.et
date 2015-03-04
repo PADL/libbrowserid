@@ -33,7 +33,7 @@
 error_table eapg
 
 #
-# Protocol errors that can be returned in an error token. This should match
+# Standards-track Protocol errors that can be returned in an error token. This should match
 # up with makeErrorToken in accept_sec_context.c.
 #
 error_code GSSEAP_RESERVED,                     ""
@@ -54,6 +54,13 @@ error_code GSSEAP_UNKNOWN_RADIUS_CODE,          "Received unknown response code 
 error_code GSSEAP_MISSING_EAP_REQUEST,          "RADIUS response is missing EAP request"
 error_code GSSEAP_RADIUS_PROT_FAILURE,          "Generic RADIUS failure"
 
+# Extension errors starting with 128 that can be returned in a
+#protocol token; again should match accept_sec_context.c 
+
+error_code GSSEAP_RADIUS_UNROUTABLE, "Proxy had no route to identity
+provider realm"
+
+error_code GSSEAP_RADIUS_ADMIN_PROHIBIT, "IDP Administratively Prohibits Request"
 #
 # Context errors
 #

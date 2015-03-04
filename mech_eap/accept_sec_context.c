@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, JANET(UK)
+ * Copyright (c) 2011, 2013, 2015, JANET(UK)
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -439,6 +439,52 @@ createRadiusHandle(OM_uint32 *minor,
     return GSS_S_COMPLETE;
 }
 
+/**
+ * Choose the correct error for an access reject packet.
+ */
+static OM_uint32
+eapGssAcceptHandleReject(
+			 OM_uint32 *minor,
+			 struct rs_packet *response)
+{
+    rs_avp **vps;
+    rs_const_avp  *vp = NULL;
+    OM_uint32 major;
+    const char * reply_message = NULL;
+    size_t reply_length = 0;
+
+    rs_packet_avps(response, &vps);
+    major = gssEapRadiusGetRawAvp(minor, *vps,
+				  PW_REPLY_MESSAGE, 0, &vp);
+    if (!GSS_ERROR(major)) {
+	reply_message = rs_avp_string_value(vp);
+	reply_length = rs_avp_length(vp);
+    }
+
+    major = gssEapRadiusGetRawAvp(minor, *vps,
+				  PW_ERROR_CAUSE, 0, &vp);
+    if (!GSS_ERROR(major)) {
+	switch (rs_avp_integer_value(vp)) {
+	    /* Values from http://www.iana.org/assignments/radius-types/radius-types.xhtml#radius-types-18                                                      */
+	case 502: /*request not routable (proxy)*/
+	    *minor = GSSEAP_RADIUS_UNROUTABLE;
+	    break;
+	case 501: /*administratively prohibited*/
+	    *minor = GSSEAP_RADIUS_ADMIN_PROHIBIT;
+	    break;
+
+	default:
+	    *minor = GSSEAP_RADIUS_AUTH_FAILURE;
+	    break;
+	}
+    } else *minor = GSSEAP_RADIUS_AUTH_FAILURE;
+
+    if (reply_message)
+	gssEapSaveStatusInfo(*minor, "%s: %.*s", error_message(*minor),
+			     reply_length, reply_message);
+    else gssEapSaveStatusInfo( *minor, "%s", error_message(*minor));
+    return GSS_S_DEFECTIVE_CREDENTIAL;
+}
 /*
  * Process a EAP response from the initiator.
  */
@@ -527,8 +573,7 @@ eapGssSmAcceptAuthenticate(OM_uint32 *minor,
     case PW_ACCESS_ACCEPT:
         break;
     case PW_ACCESS_REJECT:
-        *minor = GSSEAP_RADIUS_AUTH_FAILURE;
-        major = GSS_S_DEFECTIVE_CREDENTIAL;
+	major = eapGssAcceptHandleReject( minor, resp);
         goto cleanup;
         break;
     default:
