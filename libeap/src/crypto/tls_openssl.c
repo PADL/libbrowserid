@@ -767,13 +767,7 @@ void tls_deinit(void *ssl_ctx)
 
 	tls_openssl_ref_count--;
 	if (tls_openssl_ref_count == 0) {
-#ifndef OPENSSL_NO_ENGINE
-		ENGINE_cleanup();
-#endif /* OPENSSL_NO_ENGINE */
-		CRYPTO_cleanup_all_ex_data();
 		ERR_remove_state(0);
-		ERR_free_strings();
-		EVP_cleanup();
 		os_free(tls_global);
 		tls_global = NULL;
 	}
