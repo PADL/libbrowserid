@@ -630,7 +630,10 @@ eapGssSmInitError(OM_uint32 *minor,
     p = (unsigned char *)inputToken->value;
 
     major = load_uint32_be(&p[0]);
-    *minor = ERROR_TABLE_BASE_eapg + load_uint32_be(&p[4]);
+    *minor =  load_uint32_be(&p[4]);
+    if ((*minor >0) && (*minor < 128))
+      * minor += ERROR_TABLE_BASE_eapg;
+    else *minor = 0;
 
     if (!GSS_ERROR(major) || !IS_WIRE_ERROR(*minor)) {
         major = GSS_S_FAILURE;

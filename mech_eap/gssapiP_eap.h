@@ -337,7 +337,7 @@ gssEapDisplayStatus(OM_uint32 *minor,
                     OM_uint32 status_value,
                     gss_buffer_t status_string);
 
-#define IS_WIRE_ERROR(err)              ((err) > GSSEAP_RESERVED && \
+#define IS_WIRE_ERROR(err)              ((err) >= GSSEAP_RESERVED && \
                                          (err) <= GSSEAP_RADIUS_PROT_FAILURE)
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR

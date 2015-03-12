@@ -115,10 +115,11 @@ makeErrorToken(OM_uint32 *minor,
         minorStatus = GSSEAP_RADIUS_PROT_FAILURE;
     } else if (!IS_WIRE_ERROR(minorStatus)) {
         /* Don't return non-wire error codes */
-        return GSS_S_COMPLETE;
+      minorStatus = 0;
     }
 
-    minorStatus -= ERROR_TABLE_BASE_eapg;
+    if (minorStatus != 0)
+      minorStatus -= ERROR_TABLE_BASE_eapg;
 
     store_uint32_be(majorStatus, &errorData[0]);
     store_uint32_be(minorStatus, &errorData[4]);
