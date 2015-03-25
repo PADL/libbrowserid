@@ -241,8 +241,7 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
 
         blobLength = base64Decode(caCertificate, blobData);
 
-        if ((blobLength <= 0) ||
-            (blobLength < maxLength - 2)) {
+        if (blobLength <= 0) {
             major = GSS_S_DEFECTIVE_CREDENTIAL;
             *minor = GSSEAP_BAD_CACERTIFICATE;
             GSSEAP_FREE(blobData);
