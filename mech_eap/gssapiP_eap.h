@@ -407,6 +407,35 @@ gssEapInitiatorInit(OM_uint32 *minor);
 void
 gssEapFinalize(void);
 
+  /* Debugging and tracing*/
+  #define gssEapTrace(_fmt, ...) wpa_printf(MSG_INFO, _fmt, __VA_ARGS__);
+
+static inline void
+gssEapTraceStatus(const char *function,
+		  OM_uint32 major, OM_uint32 minor)
+{
+    gss_buffer_desc  gss_code_buf, mech_buf;
+    OM_uint32 tmpmaj, tmpmin, ctx = 0;
+    gss_code_buf.value = NULL;
+    mech_buf.value = NULL;
+    tmpmaj = gss_display_status(&tmpmin,  major,
+				GSS_C_GSS_CODE, GSS_C_NO_OID, &ctx,
+				&gss_code_buf);
+  if (!GSS_ERROR(tmpmaj)) {
+if (minor == 0)
+    tmpmaj = makeStringBuffer(&tmpmin, "no minor", &mech_buf);
+else tmpmaj = gssEapDisplayStatus(&tmpmin, minor, &mech_buf);
+}
+    if (!GSS_ERROR(tmpmaj))
+	wpa_printf(MSG_INFO, "%s: %.*s/%.*s",
+		   function, (int) gss_code_buf.length, (char *) gss_code_buf.value,
+		   (int) mech_buf.length, (char *) mech_buf.value);
+    else wpa_printf(MSG_INFO, "%s: %u/%u",
+		    function, major, minor);
+    tmpmaj = gss_release_buffer(&tmpmin, &gss_code_buf);
+    tmpmaj = gss_release_buffer(&tmpmin, &mech_buf);
+ }
+
 
   /*If built as a library on Linux, don't respect environment when set*uid*/
 #ifdef HAVE_SECURE_GETENV

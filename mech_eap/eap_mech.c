@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, JANET(UK)
+ * Copyright (c) 2011, 2015, JANET(UK)
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,8 @@
  */
 
 #include "gssapiP_eap.h"
+
+extern int wpa_debug_level;
 
 static OM_uint32
 eapPeerRegisterMethods(OM_uint32 *minor)
@@ -151,6 +153,13 @@ eapPeerRegisterMethods(OM_uint32 *minor)
 static OM_uint32
 gssEapInitLibEap(OM_uint32 *minor)
 {
+    char *debug_file = NULL;
+    wpa_debug_level = MSG_ERROR;
+    if ((debug_file = getenv("GSSEAP_TRACE")) != NULL) {
+	    wpa_debug_open_file(debug_file);
+	    wpa_debug_level = 0;
+	}
+
     return eapPeerRegisterMethods(minor);
 }
 

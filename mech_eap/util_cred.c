@@ -343,6 +343,7 @@ cleanup:
     if (GSS_ERROR(major))
         gssEapReleaseCred(&tmpMinor, &cred);
 
+    gssEapTraceStatus("gss_acquire_cred", major, *minor);
     return major;
 }
 
