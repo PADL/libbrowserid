@@ -74,20 +74,8 @@ gss_inquire_context(OM_uint32 *minor,
             *targ_name = GSS_C_NO_NAME;
     }
 
-    if (lifetime_rec != NULL) {
-        time_t now, lifetime;
-
-        if (ctx->expiryTime == 0) {
-            lifetime = GSS_C_INDEFINITE;
-        } else {
-            now = time(NULL);
-            lifetime = now - ctx->expiryTime;
-            if (lifetime < 0)
-                lifetime = 0;
-        }
-
-        *lifetime_rec = lifetime;
-    }
+    if (lifetime_rec != NULL)
+        gssEapContextTime(&tmpMinor, ctx, lifetime_rec);
 
     if (mech_type != NULL) {
         major = gssEapCanonicalizeOid(minor, ctx->mechanismUsed, 0, mech_type);
