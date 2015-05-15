@@ -44,10 +44,6 @@
 #include <Foundation/Foundation.h>
 #include <CoreFoundation/CFBridgingPriv.h>
 
-CF_EXPORT void _CFRuntimeBridgeClasses(CFTypeID cf_typeID, const char *objc_classname);
-CF_EXPORT CFTypeRef _CFTryRetain(CFTypeRef cf);
-CF_EXPORT Boolean _CFIsDeallocating(CFTypeRef cf);
-
 /*
  * This is a CoreFoundation wrapper for libbrowserid. It only builds if the
  * CoreFoundation/CFRuntime.h private header is available (which may change
