@@ -443,14 +443,13 @@ createRadiusHandle(OM_uint32 *minor,
  * Choose the correct error for an access reject packet.
  */
 static OM_uint32
-eapGssAcceptHandleReject(
-			 OM_uint32 *minor,
+eapGssAcceptHandleReject(OM_uint32 *minor,
 			 struct rs_packet *response)
 {
     rs_avp **vps;
-    rs_const_avp  *vp = NULL;
+    rs_const_avp *vp = NULL;
     OM_uint32 major;
-    const char * reply_message = NULL;
+    const char *reply_message = NULL;
     size_t reply_length = 0;
 
     rs_packet_avps(response, &vps);
@@ -465,11 +464,11 @@ eapGssAcceptHandleReject(
 				  PW_ERROR_CAUSE, 0, &vp);
     if (!GSS_ERROR(major)) {
 	switch (rs_avp_integer_value(vp)) {
-	    /* Values from http://www.iana.org/assignments/radius-types/radius-types.xhtml#radius-types-18                                                      */
-	case 502: /*request not routable (proxy)*/
+	    /* Values from http://www.iana.org/assignments/radius-types/radius-types.xhtml#radius-types-18 */
+	case 502: /* request not routable (proxy) */
 	    *minor = GSSEAP_RADIUS_UNROUTABLE;
 	    break;
-	case 501: /*administratively prohibited*/
+	case 501: /* administratively prohibited */
 	    *minor = GSSEAP_RADIUS_ADMIN_PROHIBIT;
 	    break;
 
@@ -477,14 +476,18 @@ eapGssAcceptHandleReject(
 	    *minor = GSSEAP_RADIUS_AUTH_FAILURE;
 	    break;
 	}
-    } else *minor = GSSEAP_RADIUS_AUTH_FAILURE;
+    } else
+        *minor = GSSEAP_RADIUS_AUTH_FAILURE;
 
-    if (reply_message)
+    if (reply_message != NULL)
 	gssEapSaveStatusInfo(*minor, "%s: %.*s", error_message(*minor),
 			     reply_length, reply_message);
-    else gssEapSaveStatusInfo( *minor, "%s", error_message(*minor));
+    else
+        gssEapSaveStatusInfo( *minor, "%s", error_message(*minor));
+
     return GSS_S_DEFECTIVE_CREDENTIAL;
 }
+
 /*
  * Process a EAP response from the initiator.
  */
