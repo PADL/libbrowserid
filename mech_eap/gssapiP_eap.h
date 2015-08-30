@@ -83,6 +83,7 @@ typedef const gss_OID_desc *gss_const_OID;
 
 /* Kerberos headers */
 #include <krb5.h>
+#include <com_err.h>
 
 /* EAP headers */
 #include <includes.h>
