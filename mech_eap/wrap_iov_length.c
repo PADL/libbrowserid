@@ -245,7 +245,6 @@ gss_get_mic_iov_length(OM_uint32 *minor,
                        int iov_count)
 {
     OM_uint32 major;
-    int conf_state;
 
     if (ctx == GSS_C_NO_CONTEXT) {
         *minor = EINVAL;
@@ -263,7 +262,7 @@ gss_get_mic_iov_length(OM_uint32 *minor,
     }
 
     major = gssEapWrapIovLength(minor, ctx, FALSE, qop_req,
-                                &conf_state, iov, iov_count, TOK_TYPE_MIC);
+                                NULL, iov, iov_count, TOK_TYPE_MIC);
     if (GSS_ERROR(major))
         goto cleanup;
 
