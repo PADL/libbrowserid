@@ -315,6 +315,15 @@ gssEapLocateIov(gss_iov_buffer_desc *iov, int iov_count, OM_uint32 type)
     return p;
 }
 
+gss_iov_buffer_t
+gssEapLocateHeaderIov(gss_iov_buffer_desc *iov, int iov_count, enum gss_eap_token_type toktype)
+{
+    if (toktype == TOK_TYPE_MIC)
+        return gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_MIC_TOKEN);
+    else
+        return gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
+}
+
 void
 gssEapIovMessageLength(gss_iov_buffer_desc *iov,
                        int iov_count,

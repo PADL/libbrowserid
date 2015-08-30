@@ -126,7 +126,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
     gssEapIovMessageLength(iov, iov_count, &dataLen, &assocDataLen);
 
-    header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
+    header = gssEapLocateHeaderIov(iov, iov_count, toktype);
     if (header == NULL) {
         *minor = GSSEAP_MISSING_IOV;
         return GSS_S_FAILURE;
@@ -297,7 +297,7 @@ gssEapWrapOrGetMIC(OM_uint32 *minor,
 
         code = gssEapSign(krbContext, ctx->checksumType, rrc,
                           KRB_CRYPTO_CONTEXT(ctx), keyUsage,
-                          iov, iov_count);
+                          iov, iov_count, toktype);
         if (code != 0)
             goto cleanup;
 
@@ -377,3 +377,4 @@ cleanup:
 
     return major;
 }
+

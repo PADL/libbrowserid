@@ -102,7 +102,7 @@ unwrapToken(OM_uint32 *minor,
     if (qop_state != NULL)
         *qop_state = GSS_C_QOP_DEFAULT;
 
-    header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
+    header = gssEapLocateHeaderIov(iov, iov_count, toktype);
     GSSEAP_ASSERT(header != NULL);
 
     padding = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_PADDING);
@@ -226,7 +226,7 @@ unwrapToken(OM_uint32 *minor,
 
             code = gssEapVerify(krbContext, ctx->checksumType, rrc,
                                 KRB_CRYPTO_CONTEXT(ctx), keyUsage,
-                                iov, iov_count, &valid);
+                                iov, iov_count, toktype, &valid);
             if (code != 0 || valid == FALSE) {
                 major = GSS_S_BAD_SIG;
                 goto cleanup;
@@ -245,16 +245,12 @@ unwrapToken(OM_uint32 *minor,
             goto defective;
         seqnum = load_uint64_be(ptr + 8);
 
-        /*
-         * Although MIC tokens don't have a RRC, they are similarly
-         * composed of a header and a checksum. So the verify_mic()
-         * can be implemented with a single header buffer, fake the
-         * RRC to the putative trailer length if no trailer buffer.
-         */
-        code = gssEapVerify(krbContext, ctx->checksumType,
-                            trailer != NULL ? 0 : header->buffer.length - 16,
+        /* For MIC tokens, the GSS header and checksum are in the same buffer.
+         * Fake up an RRC so that the checksum is expected in the header. */
+        rrc = (trailer != NULL) ? 0 : header->buffer.length - 16;
+        code = gssEapVerify(krbContext, ctx->checksumType, rrc,
                             KRB_CRYPTO_CONTEXT(ctx), keyUsage,
-                            iov, iov_count, &valid);
+                            iov, iov_count, toktype, &valid);
         if (code != 0 || valid == FALSE) {
             major = GSS_S_BAD_SIG;
             goto cleanup;

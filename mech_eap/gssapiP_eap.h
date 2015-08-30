@@ -77,6 +77,10 @@ typedef struct gss_any *gss_any_t;
 typedef const gss_OID_desc *gss_const_OID;
 #endif
 
+#ifndef GSS_IOV_BUFFER_TYPE_MIC_TOKEN
+#define GSS_IOV_BUFFER_TYPE_MIC_TOKEN      12  /* MIC token destination */
+#endif
+
 /* Kerberos headers */
 #include <krb5.h>
 
@@ -315,7 +319,9 @@ gssEapWrapIovLength(OM_uint32 *minor,
                     gss_qop_t qop_req,
                     int *conf_state,
                     gss_iov_buffer_desc *iov,
-                    int iov_count);
+                    int iov_count,
+                    enum gss_eap_token_type tokType);
+
 OM_uint32
 gssEapWrap(OM_uint32 *minor,
            gss_ctx_id_t ctx,

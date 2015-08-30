@@ -104,7 +104,7 @@ gssEapWrap(OM_uint32 *minor,
     iov[3].buffer.length = 0;
 
     major = gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
-                                NULL, iov, 4);
+                                NULL, iov, 4, TOK_TYPE_WRAP);
     if (GSS_ERROR(major)) {
         return major;
     }

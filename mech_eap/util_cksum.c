@@ -69,6 +69,7 @@ gssEapChecksum(krb5_context context,
                krb5_keyusage sign_usage,
                gss_iov_buffer_desc *iov,
                int iov_count,
+               enum gss_eap_token_type toktype,
                int verify,
                int *valid)
 {
@@ -87,7 +88,7 @@ gssEapChecksum(krb5_context context,
     if (code != 0)
         return code;
 
-    header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
+    header = gssEapLocateHeaderIov(iov, iov_count, toktype);
     GSSEAP_ASSERT(header != NULL);
 
     trailer = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_TRAILER);
@@ -172,10 +173,11 @@ gssEapSign(krb5_context context,
 #endif
            krb5_keyusage sign_usage,
            gss_iov_buffer_desc *iov,
-           int iov_count)
+           int iov_count,
+           enum gss_eap_token_type toktype)
 {
     return gssEapChecksum(context, type, rrc, crypto,
-                          sign_usage, iov, iov_count, 0, NULL);
+                          sign_usage, iov, iov_count, toktype, 0, NULL);
 }
 
 int
@@ -190,10 +192,11 @@ gssEapVerify(krb5_context context,
              krb5_keyusage sign_usage,
              gss_iov_buffer_desc *iov,
              int iov_count,
+             enum gss_eap_token_type toktype,
              int *valid)
 {
     return gssEapChecksum(context, type, rrc, crypto,
-                          sign_usage, iov, iov_count, 1, valid);
+                          sign_usage, iov, iov_count, toktype, 1, valid);
 }
 
 #if 0

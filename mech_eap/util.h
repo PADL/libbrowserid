@@ -142,6 +142,17 @@ bufferEqualString(const gss_buffer_t b1, const char *s)
 }
 
 /* util_cksum.c */
+enum gss_eap_token_type {
+    TOK_TYPE_NONE                    = 0x0000,  /* no token */
+    TOK_TYPE_MIC                     = 0x0404,  /* RFC 4121 MIC token */
+    TOK_TYPE_WRAP                    = 0x0504,  /* RFC 4121 wrap token */
+    TOK_TYPE_EXPORT_NAME             = 0x0401,  /* RFC 2743 exported name */
+    TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,  /* exported composite name */
+    TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
+    TOK_TYPE_INITIATOR_CONTEXT       = 0x0601,  /* initiator-sent context token */
+    TOK_TYPE_ACCEPTOR_CONTEXT        = 0x0602,  /* acceptor-sent context token */
+};
+
 int
 gssEapSign(krb5_context context,
            krb5_cksumtype type,
@@ -153,7 +164,8 @@ gssEapSign(krb5_context context,
 #endif
            krb5_keyusage sign_usage,
            gss_iov_buffer_desc *iov,
-           int iov_count);
+           int iov_count,
+           enum gss_eap_token_type toktype);
 
 int
 gssEapVerify(krb5_context context,
@@ -167,6 +179,7 @@ gssEapVerify(krb5_context context,
              krb5_keyusage sign_usage,
              gss_iov_buffer_desc *iov,
              int iov_count,
+             enum gss_eap_token_type toktype,
              int *valid);
 
 #if 0
@@ -178,17 +191,6 @@ gssEapEncodeGssChannelBindings(OM_uint32 *minor,
 
 /* util_context.c */
 #define EAP_EXPORT_CONTEXT_V1           1
-
-enum gss_eap_token_type {
-    TOK_TYPE_NONE                    = 0x0000,  /* no token */
-    TOK_TYPE_MIC                     = 0x0404,  /* RFC 4121 MIC token */
-    TOK_TYPE_WRAP                    = 0x0504,  /* RFC 4121 wrap token */
-    TOK_TYPE_EXPORT_NAME             = 0x0401,  /* RFC 2743 exported name */
-    TOK_TYPE_EXPORT_NAME_COMPOSITE   = 0x0402,  /* exported composite name */
-    TOK_TYPE_DELETE_CONTEXT          = 0x0405,  /* RFC 2743 delete context */
-    TOK_TYPE_INITIATOR_CONTEXT       = 0x0601,  /* initiator-sent context token */
-    TOK_TYPE_ACCEPTOR_CONTEXT        = 0x0602,  /* acceptor-sent context token */
-};
 
 /* inner token types and flags */
 #define ITOK_TYPE_NONE                  0x00000000
@@ -328,6 +330,11 @@ gss_iov_buffer_t
 gssEapLocateIov(gss_iov_buffer_desc *iov,
                 int iov_count,
                 OM_uint32 type);
+
+gss_iov_buffer_t
+gssEapLocateHeaderIov(gss_iov_buffer_desc *iov,
+                      int iov_count,
+                      enum gss_eap_token_type toktype);
 
 void
 gssEapIovMessageLength(gss_iov_buffer_desc *iov,
