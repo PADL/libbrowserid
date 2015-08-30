@@ -483,7 +483,7 @@ eapGssAcceptHandleReject(OM_uint32 *minor,
 	gssEapSaveStatusInfo(*minor, "%s: %.*s", error_message(*minor),
 			     reply_length, reply_message);
     else
-        gssEapSaveStatusInfo( *minor, "%s", error_message(*minor));
+        gssEapSaveStatusInfo(*minor, "%s", error_message(*minor));
 
     return GSS_S_DEFECTIVE_CREDENTIAL;
 }
