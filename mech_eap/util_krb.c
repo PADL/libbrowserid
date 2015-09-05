@@ -165,7 +165,7 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
         goto cleanup;
 #endif /* HAVE_HEIMDAL_VERSION */
 
-    /* Convert BrowserID DH key into a Kerberos key */
+    /* Convert EAP MSK into a Kerberos key */
 
 #ifdef HAVE_HEIMDAL_VERSION
     code = krb5_random_to_key(krbContext, encryptionType, inputKey,
