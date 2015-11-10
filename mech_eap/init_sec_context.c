@@ -1362,6 +1362,7 @@ gss_init_sec_context(OM_uint32 *minor,
     if (GSS_ERROR(major))
         gssEapReleaseContext(&tmpMinor, context_handle);
 
-    gssEapTraceStatus( "gss_init_sec_context", major, *minor);
+    gssEapTraceStatus("gss_init_sec_context", major, *minor);
+
     return major;
 }

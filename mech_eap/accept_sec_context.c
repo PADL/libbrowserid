@@ -1134,5 +1134,6 @@ gss_accept_sec_context(OM_uint32 *minor,
         gssEapReleaseContext(&tmpMinor, context_handle);
 
     gssEapTraceStatus("gss_accept_sec_context", major, *minor);
+
     return major;
 }
