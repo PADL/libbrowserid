@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_cred(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                 gss_const_cred_id_t cred,
+#else
                  gss_cred_id_t cred,
+#endif
                  gss_name_t *name,
                  OM_uint32 *pLifetime,
                  gss_cred_usage_t *cred_usage,
@@ -51,11 +55,12 @@ gss_inquire_cred(OM_uint32 *minor,
         return GSS_S_NO_CRED;
     }
 
-    GSSEAP_MUTEX_LOCK(&cred->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_cred_id_t)cred)->mutex);
 
-    major = gssEapInquireCred(minor, cred, name, pLifetime, cred_usage, mechanisms);
+    major = gssEapInquireCred(minor, (gss_cred_id_t)cred, name, pLifetime,
+                              cred_usage, mechanisms);
 
-    GSSEAP_MUTEX_UNLOCK(&cred->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_cred_id_t)cred)->mutex);
 
     return major;
 }

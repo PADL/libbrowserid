@@ -534,7 +534,7 @@ gssEapImportName(OM_uint32 *minor,
 
 OM_uint32
 gssEapExportName(OM_uint32 *minor,
-                 const gss_name_t name,
+                 gss_const_name_t name,
                  gss_buffer_t exportedName)
 {
     return gssEapExportNameInternal(minor, name, exportedName,
@@ -543,7 +543,7 @@ gssEapExportName(OM_uint32 *minor,
 
 OM_uint32
 gssEapExportNameInternal(OM_uint32 *minor,
-                         const gss_name_t name,
+                         gss_const_name_t name,
                          gss_buffer_t exportedName,
                          OM_uint32 flags)
 {
@@ -636,7 +636,7 @@ cleanup:
 
 OM_uint32
 gssEapCanonicalizeName(OM_uint32 *minor,
-                       const gss_name_t input_name,
+                       gss_const_name_t input_name,
                        const gss_OID mech_type,
                        gss_name_t *dest_name)
 {
@@ -698,7 +698,7 @@ cleanup:
 
 OM_uint32
 gssEapDuplicateName(OM_uint32 *minor,
-                    const gss_name_t input_name,
+                    gss_const_name_t input_name,
                     gss_name_t *dest_name)
 {
     return gssEapCanonicalizeName(minor, input_name,
@@ -706,7 +706,7 @@ gssEapDuplicateName(OM_uint32 *minor,
 }
 
 static int
-hasRealmP(gss_name_t name)
+hasRealmP(gss_const_name_t name)
 {
 #ifdef HAVE_HEIMDAL_VERSION
     if (KRB_PRINC_REALM(name->krbPrincipal) != NULL &&
@@ -721,7 +721,7 @@ hasRealmP(gss_name_t name)
 
 OM_uint32
 gssEapDisplayName(OM_uint32 *minor,
-                  gss_name_t name,
+                  gss_const_name_t name,
                   gss_buffer_t output_name_buffer,
                   gss_OID *output_name_type)
 {
@@ -779,8 +779,8 @@ gssEapDisplayName(OM_uint32 *minor,
 
 OM_uint32
 gssEapCompareName(OM_uint32 *minor,
-                  gss_name_t name1,
-                  gss_name_t name2,
+                  gss_const_name_t name1,
+                  gss_const_name_t name2,
                   OM_uint32 flags,
                   int *name_equal)
 {

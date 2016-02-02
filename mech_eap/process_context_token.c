@@ -34,7 +34,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_process_context_token(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                          gss_const_ctx_id_t ctx,
+#else
                           gss_ctx_id_t ctx,
+#endif
                           gss_buffer_t token_buffer)
 {
     OM_uint32 major;
@@ -47,10 +51,10 @@ gss_process_context_token(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CONTEXT;
     }
 
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
-        GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+        GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
         *minor = GSSEAP_CONTEXT_INCOMPLETE;
         return GSS_S_NO_CONTEXT;
     }
@@ -58,14 +62,14 @@ gss_process_context_token(OM_uint32 *minor,
     iov[0].type = GSS_IOV_BUFFER_TYPE_HEADER;
     iov[0].buffer = *token_buffer;
 
-    major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, NULL,
+    major = gssEapUnwrapOrVerifyMIC(minor, (gss_ctx_id_t)ctx, NULL, NULL,
                                     iov, 1, TOK_TYPE_DELETE_CONTEXT);
     if (GSS_ERROR(major)) {
-        GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+        GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
         return major;
     }
 
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
 
-    return gssEapReleaseContext(minor, &ctx);
+    return gssEapReleaseContext(minor, (gss_ctx_id_t *)&ctx);
 }

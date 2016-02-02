@@ -83,7 +83,7 @@ zeroAndReleaseBufferSet(gss_buffer_set_t *dataSet)
 
 static OM_uint32
 inquireSessionKey(OM_uint32 *minor,
-                  const gss_ctx_id_t ctx,
+                  gss_const_ctx_id_t ctx,
                   const gss_OID desired_object GSSEAP_UNUSED,
                   gss_buffer_set_t *dataSet)
 {
@@ -119,7 +119,7 @@ cleanup:
 
 static OM_uint32
 inquireNegoExKey(OM_uint32 *minor,
-                  const gss_ctx_id_t ctx,
+                  gss_const_ctx_id_t ctx,
                   const gss_OID desired_object,
                   gss_buffer_set_t *dataSet)
 {
@@ -193,7 +193,7 @@ cleanup:
 
 static struct {
     gss_OID_desc oid;
-    OM_uint32 (*inquire)(OM_uint32 *, const gss_ctx_id_t,
+    OM_uint32 (*inquire)(OM_uint32 *, gss_const_ctx_id_t,
                          const gss_OID, gss_buffer_set_t *);
 } inquireCtxOps[] = {
     {
@@ -220,7 +220,11 @@ static struct {
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_sec_context_by_oid(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                               gss_const_ctx_id_t ctx,
+#else
                                const gss_ctx_id_t ctx,
+#endif
                                const gss_OID desired_object,
                                gss_buffer_set_t *data_set)
 {
@@ -229,7 +233,7 @@ gss_inquire_sec_context_by_oid(OM_uint32 *minor,
 
     *data_set = GSS_C_NO_BUFFER_SET;
 
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_ctx_id_t)ctx)->mutex);
 
 #if 0
     if (!CTX_IS_ESTABLISHED(ctx)) {
@@ -250,7 +254,7 @@ gss_inquire_sec_context_by_oid(OM_uint32 *minor,
         }
     }
 
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     return major;
 }

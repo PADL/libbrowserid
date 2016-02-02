@@ -151,7 +151,7 @@ OM_uint32
 gssEapSmStep(OM_uint32 *minor,
              gss_cred_id_t cred,
              gss_ctx_id_t ctx,
-             gss_name_t target,
+             gss_const_name_t target,
              gss_OID mech,
              OM_uint32 reqFlags,
              OM_uint32 timeReq,

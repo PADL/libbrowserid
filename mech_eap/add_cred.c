@@ -43,8 +43,13 @@
  */
 OM_uint32 GSSAPI_CALLCONV
 gss_add_cred(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+             gss_const_cred_id_t input_cred_handle GSSEAP_UNUSED,
+             gss_const_name_t desired_name,
+#else
              gss_cred_id_t input_cred_handle GSSEAP_UNUSED,
              gss_name_t desired_name,
+#endif
              gss_OID desired_mech,
              gss_cred_usage_t cred_usage,
              OM_uint32 initiator_time_req,

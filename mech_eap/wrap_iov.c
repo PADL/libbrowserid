@@ -60,7 +60,7 @@
 #include "gssapiP_eap.h"
 
 unsigned char
-rfc4121Flags(gss_ctx_id_t ctx, int receiving)
+rfc4121Flags(gss_const_ctx_id_t ctx, int receiving)
 {
     unsigned char flags;
     int isAcceptor;
@@ -359,7 +359,7 @@ gss_wrap_iov(OM_uint32 *minor,
 
     *minor = 0;
 
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
         major = GSS_S_NO_CONTEXT;
@@ -367,13 +367,13 @@ gss_wrap_iov(OM_uint32 *minor,
         goto cleanup;
     }
 
-    major = gssEapWrapOrGetMIC(minor, ctx, conf_req_flag, conf_state,
+    major = gssEapWrapOrGetMIC(minor, (gss_ctx_id_t)ctx, conf_req_flag, conf_state,
                                iov, iov_count, TOK_TYPE_WRAP);
     if (GSS_ERROR(major))
         goto cleanup;
 
 cleanup:
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     return major;
 }

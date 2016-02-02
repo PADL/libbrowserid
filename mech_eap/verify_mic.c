@@ -50,19 +50,23 @@ gss_verify_mic_iov(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CONTEXT;
     }
 
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_ctx_id_t)ctx)->mutex);
 
-    major = gssEapUnwrapOrVerifyMIC(minor, ctx, NULL, qop_state,
+    major = gssEapUnwrapOrVerifyMIC(minor, (gss_ctx_id_t)ctx, NULL, qop_state,
                                     iov, iov_count, TOK_TYPE_MIC);
 
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     return major;
 }
 
 OM_uint32 GSSAPI_CALLCONV
 gss_verify_mic(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+               gss_const_ctx_id_t ctx,
+#else
                gss_ctx_id_t ctx,
+#endif
                gss_buffer_t message_buffer,
                gss_buffer_t message_token,
                gss_qop_t *qop_state)
@@ -75,5 +79,5 @@ gss_verify_mic(OM_uint32 *minor,
     iov[1].type = GSS_IOV_BUFFER_TYPE_MIC_TOKEN;
     iov[1].buffer = *message_token;
 
-    return gss_verify_mic_iov(minor, ctx, qop_state, iov, 2);
+    return gss_verify_mic_iov(minor, (gss_ctx_id_t)ctx, qop_state, iov, 2);
 }

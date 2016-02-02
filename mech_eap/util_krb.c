@@ -350,7 +350,7 @@ krbCryptoLength(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                 krb5_crypto krbCrypto,
 #else
-                krb5_keyblock *key,
+                const krb5_keyblock *key,
 #endif
                 int type,
                 size_t *length)
@@ -374,7 +374,7 @@ krbPaddingLength(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                  krb5_crypto krbCrypto,
 #else
-                 krb5_keyblock *key,
+                 const krb5_keyblock *key,
 #endif
                  size_t dataLength,
                  size_t *padLength)
@@ -417,7 +417,7 @@ krbBlockSize(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                  krb5_crypto krbCrypto,
 #else
-                 krb5_keyblock *key,
+                 const krb5_keyblock *key,
 #endif
                  size_t *blockSize)
 {

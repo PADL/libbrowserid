@@ -38,7 +38,7 @@
 
 OM_uint32
 gssEapExportLucidSecContext(OM_uint32 *minor,
-                            gss_ctx_id_t ctx,
+                            gss_const_ctx_id_t ctx,
                             const gss_OID desiredObject GSSEAP_UNUSED,
                             gss_buffer_set_t *data_set)
 {

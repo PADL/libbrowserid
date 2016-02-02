@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_display_name(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                 gss_const_name_t name,
+#else
                  gss_name_t name,
+#endif
                  gss_buffer_t output_name_buffer,
                  gss_OID *output_name_type)
 {

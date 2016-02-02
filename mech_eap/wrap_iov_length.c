@@ -65,7 +65,7 @@
 
 OM_uint32
 gssEapWrapIovLength(OM_uint32 *minor,
-                    gss_ctx_id_t ctx,
+                    gss_const_ctx_id_t ctx,
                     int conf_req_flag,
                     gss_qop_t qop_req,
                     int *conf_state,

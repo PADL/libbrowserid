@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_context(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                    gss_const_ctx_id_t ctx,
+#else
                     gss_ctx_id_t ctx,
+#endif
                     gss_name_t *src_name,
                     gss_name_t *targ_name,
                     OM_uint32 *lifetime_rec,
@@ -54,7 +58,7 @@ gss_inquire_context(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CONTEXT;
     }
 
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     if (src_name != NULL) {
         if (ctx->initiatorName != GSS_C_NO_NAME) {
@@ -99,7 +103,7 @@ gss_inquire_context(OM_uint32 *minor,
     *minor = 0;
 
 cleanup:
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     if (GSS_ERROR(major)) {
         gssEapReleaseName(&tmpMinor, src_name);

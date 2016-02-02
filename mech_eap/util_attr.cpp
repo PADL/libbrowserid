@@ -985,7 +985,7 @@ gssEapSetNameAttribute(OM_uint32 *minor,
 
 OM_uint32
 gssEapExportAttrContext(OM_uint32 *minor,
-                        gss_name_t name,
+                        gss_const_name_t name,
                         gss_buffer_t buffer)
 {
     if (name->attrCtx == NULL) {
@@ -1049,7 +1049,7 @@ gssEapImportAttrContext(OM_uint32 *minor,
 
 OM_uint32
 gssEapDuplicateAttrContext(OM_uint32 *minor,
-                           gss_name_t in,
+                           gss_const_name_t in,
                            gss_name_t out)
 {
     gss_eap_attr_ctx *ctx = NULL;

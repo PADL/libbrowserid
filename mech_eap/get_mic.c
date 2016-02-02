@@ -78,9 +78,17 @@ cleanup:
 
 OM_uint32 GSSAPI_CALLCONV
 gss_get_mic(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+            gss_const_ctx_id_t ctx,
+#else
             gss_ctx_id_t ctx,
+#endif
             gss_qop_t qop_req,
+#ifdef HAVE_HEIMDAL_VERSION
+            const gss_buffer_t message_buffer,
+#else
             gss_buffer_t message_buffer,
+#endif
             gss_buffer_t message_token)
 {
     OM_uint32 major;
@@ -93,7 +101,7 @@ gss_get_mic(OM_uint32 *minor,
     iov[1].buffer.value = NULL;
     iov[1].buffer.length = 0;
 
-    major = gss_get_mic_iov(minor, ctx, qop_req, iov, 2);
+    major = gss_get_mic_iov(minor, (gss_ctx_id_t)ctx, qop_req, iov, 2);
     if (major == GSS_S_COMPLETE)
         *message_token = iov[1].buffer;
 

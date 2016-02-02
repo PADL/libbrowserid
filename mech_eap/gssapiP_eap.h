@@ -283,7 +283,7 @@ OM_uint32
 gssEapInitSecContext(OM_uint32 *minor,
                      gss_cred_id_t cred,
                      gss_ctx_id_t ctx,
-                     gss_name_t target_name,
+                     gss_const_name_t target_name,
                      gss_OID mech_type,
                      OM_uint32 req_flags,
                      OM_uint32 time_req,
@@ -315,7 +315,7 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
 
 OM_uint32
 gssEapWrapIovLength(OM_uint32 *minor,
-                    gss_ctx_id_t ctx,
+                    gss_const_ctx_id_t ctx,
                     int conf_req_flag,
                     gss_qop_t qop_req,
                     int *conf_state,
@@ -333,7 +333,7 @@ gssEapWrap(OM_uint32 *minor,
            gss_buffer_t output_message_buffer);
 
 unsigned char
-rfc4121Flags(gss_ctx_id_t ctx, int receiving);
+rfc4121Flags(gss_const_ctx_id_t ctx, int receiving);
 
 /* display_status.c */
 void
@@ -386,7 +386,7 @@ gssEapImportContext(OM_uint32 *minor,
 /* pseudo_random.c */
 OM_uint32
 gssEapPseudoRandom(OM_uint32 *minor,
-                   gss_ctx_id_t ctx,
+                   gss_const_ctx_id_t ctx,
                    int prf_key,
                    const gss_buffer_t prf_in,
                    gss_buffer_t prf_out);

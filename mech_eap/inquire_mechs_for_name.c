@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_mechs_for_name(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                           gss_const_name_t input_name,
+#else
                            const gss_name_t input_name,
+#endif
                            gss_OID_set *mech_types)
 {
     OM_uint32 major, tmpMinor;

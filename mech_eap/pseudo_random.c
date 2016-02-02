@@ -61,7 +61,7 @@
 
 OM_uint32
 gssEapPseudoRandom(OM_uint32 *minor,
-                   gss_ctx_id_t ctx,
+                   gss_const_ctx_id_t ctx,
                    int prf_key,
                    const gss_buffer_t prf_in,
                    gss_buffer_t prf_out)

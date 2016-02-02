@@ -238,7 +238,7 @@ gssEapVerifyToken(OM_uint32 *minor,
 
 OM_uint32
 gssEapContextTime(OM_uint32 *minor,
-                  gss_ctx_id_t context_handle,
+                  gss_const_ctx_id_t context_handle,
                   OM_uint32 *time_rec);
 
 OM_uint32
@@ -260,7 +260,7 @@ gssEapPrimaryMechForCred(gss_cred_id_t cred);
 
 OM_uint32
 gssEapAcquireCred(OM_uint32 *minor,
-                  const gss_name_t desiredName,
+                  gss_const_name_t desiredName,
                   OM_uint32 timeReq,
                   const gss_OID_set desiredMechs,
                   int cred_usage,
@@ -282,15 +282,15 @@ gssEapSetCredClientCertificate(OM_uint32 *minor,
 OM_uint32
 gssEapSetCredService(OM_uint32 *minor,
                      gss_cred_id_t cred,
-                     const gss_name_t target);
+                     gss_const_name_t target);
 
 OM_uint32
 gssEapResolveInitiatorCred(OM_uint32 *minor,
                            const gss_cred_id_t cred,
-                           const gss_name_t target,
+                           gss_const_name_t target,
                            gss_cred_id_t *resolvedCred);
 
-int gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech);
+int gssEapCredAvailable(gss_const_cred_id_t cred, gss_OID mech);
 
 OM_uint32
 gssEapInquireCred(OM_uint32 *minor,
@@ -470,7 +470,7 @@ krbCryptoLength(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                 krb5_crypto krbCrypto,
 #else
-                krb5_keyblock *key,
+                const krb5_keyblock *key,
 #endif
                 int type,
                 size_t *length);
@@ -480,7 +480,7 @@ krbPaddingLength(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                  krb5_crypto krbCrypto,
 #else
-                 krb5_keyblock *key,
+                 const krb5_keyblock *key,
 #endif
                  size_t dataLength,
                  size_t *padLength);
@@ -490,7 +490,7 @@ krbBlockSize(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                  krb5_crypto krbCrypto,
 #else
-                 krb5_keyblock *key,
+                 const krb5_keyblock *key,
 #endif
                  size_t *blockSize);
 
@@ -522,7 +522,7 @@ krbMakeCred(krb5_context context,
 /* util_lucid.c */
 OM_uint32
 gssEapExportLucidSecContext(OM_uint32 *minor,
-                            gss_ctx_id_t ctx,
+                            gss_const_ctx_id_t ctx,
                             const gss_OID desiredObject,
                             gss_buffer_set_t *data_set);
 
@@ -586,7 +586,7 @@ libMoonshotResolveDefaultIdentity(OM_uint32 *minor,
 OM_uint32
 libMoonshotResolveInitiatorCred(OM_uint32 *minor,
                                 gss_cred_id_t cred,
-                                const gss_name_t targetName);
+                                gss_const_name_t targetName);
 
 /* util_name.c */
 #define EXPORT_NAME_FLAG_OID                    0x1
@@ -596,10 +596,10 @@ libMoonshotResolveInitiatorCred(OM_uint32 *minor,
 OM_uint32 gssEapAllocName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapReleaseName(OM_uint32 *minor, gss_name_t *pName);
 OM_uint32 gssEapExportName(OM_uint32 *minor,
-                           const gss_name_t name,
+                           gss_const_name_t name,
                            gss_buffer_t exportedName);
 OM_uint32 gssEapExportNameInternal(OM_uint32 *minor,
-                                   const gss_name_t name,
+                                   gss_const_name_t name,
                                    gss_buffer_t exportedName,
                                    OM_uint32 flags);
 OM_uint32 gssEapImportName(OM_uint32 *minor,
@@ -613,18 +613,18 @@ OM_uint32 gssEapImportNameInternal(OM_uint32 *minor,
                                    OM_uint32 flags);
 OM_uint32
 gssEapDuplicateName(OM_uint32 *minor,
-                    const gss_name_t input_name,
+                    gss_const_name_t input_name,
                     gss_name_t *dest_name);
 
 OM_uint32
 gssEapCanonicalizeName(OM_uint32 *minor,
-                       const gss_name_t input_name,
+                       gss_const_name_t input_name,
                        const gss_OID mech_type,
                        gss_name_t *dest_name);
 
 OM_uint32
 gssEapDisplayName(OM_uint32 *minor,
-                  gss_name_t name,
+                  gss_const_name_t name,
                   gss_buffer_t output_name_buffer,
                   gss_OID *output_name_type);
 
@@ -632,8 +632,8 @@ gssEapDisplayName(OM_uint32 *minor,
 
 OM_uint32
 gssEapCompareName(OM_uint32 *minor,
-                  gss_name_t name1,
-                  gss_name_t name2,
+                  gss_const_name_t name1,
+                  gss_const_name_t name2,
                   OM_uint32 flags,
                   int *name_equal);
 
@@ -735,7 +735,7 @@ struct gss_eap_sm {
     OM_uint32 (*processToken)(OM_uint32 *,
                               gss_cred_id_t,
                               gss_ctx_id_t,
-                              gss_name_t,
+                              gss_const_name_t,
                               gss_OID,
                               OM_uint32,
                               OM_uint32,
@@ -758,7 +758,7 @@ OM_uint32
 gssEapSmStep(OM_uint32 *minor,
              gss_cred_id_t cred,
              gss_ctx_id_t ctx,
-             gss_name_t target,
+             gss_const_name_t target,
              gss_OID mech,
              OM_uint32 reqFlags,
              OM_uint32 timeReq,
