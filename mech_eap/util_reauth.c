@@ -1097,7 +1097,7 @@ OM_uint32
 gssReleaseName(OM_uint32 *minor,
                gss_name_t *name)
 {
-    if (gssReleaseName == NULL) {
+    if (gssReleaseNameNext == NULL) {
         *minor = GSSEAP_NO_MECHGLUE_SYMBOL;
         return GSS_S_UNAVAILABLE;
     }
