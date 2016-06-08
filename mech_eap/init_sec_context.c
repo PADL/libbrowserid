@@ -543,7 +543,7 @@ initReady(OM_uint32 *minor, gss_ctx_id_t ctx)
 static OM_uint32
 initBegin(OM_uint32 *minor,
           gss_ctx_id_t ctx,
-          gss_name_t target,
+          gss_const_name_t target,
           gss_OID mech,
           OM_uint32 reqFlags GSSEAP_UNUSED,
           OM_uint32 timeReq,
@@ -571,15 +571,15 @@ initBegin(OM_uint32 *minor,
         return major;
 
     if (target != GSS_C_NO_NAME) {
-        GSSEAP_MUTEX_LOCK(&target->mutex);
+        GSSEAP_MUTEX_LOCK(&((gss_name_t)target)->mutex);
 
         major = gssEapDuplicateName(minor, target, &ctx->acceptorName);
         if (GSS_ERROR(major)) {
-            GSSEAP_MUTEX_UNLOCK(&target->mutex);
+            GSSEAP_MUTEX_LOCK(&((gss_name_t)target)->mutex);
             return major;
         }
 
-        GSSEAP_MUTEX_UNLOCK(&target->mutex);
+        GSSEAP_MUTEX_UNLOCK(&((gss_name_t)target)->mutex);
     }
 
     major = gssEapCanonicalizeOid(minor,
@@ -603,7 +603,7 @@ static OM_uint32
 eapGssSmInitError(OM_uint32 *minor,
                   gss_cred_id_t cred GSSEAP_UNUSED,
                   gss_ctx_id_t ctx GSSEAP_UNUSED,
-                  gss_name_t target GSSEAP_UNUSED,
+                  gss_const_name_t target GSSEAP_UNUSED,
                   gss_OID mech GSSEAP_UNUSED,
                   OM_uint32 reqFlags GSSEAP_UNUSED,
                   OM_uint32 timeReq GSSEAP_UNUSED,
@@ -643,7 +643,7 @@ static OM_uint32
 eapGssSmInitGssReauth(OM_uint32 *minor,
                       gss_cred_id_t cred,
                       gss_ctx_id_t ctx,
-                      gss_name_t target,
+                      gss_const_name_t target,
                       gss_OID mech GSSEAP_UNUSED,
                       OM_uint32 reqFlags,
                       OM_uint32 timeReq,
@@ -719,7 +719,7 @@ static OM_uint32
 eapGssSmInitVendorInfo(OM_uint32 *minor,
                        gss_cred_id_t cred GSSEAP_UNUSED,
                        gss_ctx_id_t ctx GSSEAP_UNUSED,
-                       gss_name_t target GSSEAP_UNUSED,
+                       gss_const_name_t target GSSEAP_UNUSED,
                        gss_OID mech GSSEAP_UNUSED,
                        OM_uint32 reqFlags GSSEAP_UNUSED,
                        OM_uint32 timeReq GSSEAP_UNUSED,
@@ -742,7 +742,7 @@ static OM_uint32
 eapGssSmInitAcceptorName(OM_uint32 *minor,
                          gss_cred_id_t cred GSSEAP_UNUSED,
                          gss_ctx_id_t ctx,
-                         gss_name_t target GSSEAP_UNUSED,
+                         gss_const_name_t target GSSEAP_UNUSED,
                          gss_OID mech GSSEAP_UNUSED,
                          OM_uint32 reqFlags GSSEAP_UNUSED,
                          OM_uint32 timeReq GSSEAP_UNUSED,
@@ -825,7 +825,7 @@ static OM_uint32
 eapGssSmInitIdentity(OM_uint32 *minor,
                      gss_cred_id_t cred GSSEAP_UNUSED,
                      gss_ctx_id_t ctx,
-                     gss_name_t target GSSEAP_UNUSED,
+                     gss_const_name_t target GSSEAP_UNUSED,
                      gss_OID mech GSSEAP_UNUSED,
                      OM_uint32 reqFlags GSSEAP_UNUSED,
                      OM_uint32 timeReq GSSEAP_UNUSED,
@@ -881,7 +881,7 @@ static OM_uint32
 eapGssSmInitAuthenticate(OM_uint32 *minor,
                          gss_cred_id_t cred GSSEAP_UNUSED,
                          gss_ctx_id_t ctx,
-                         gss_name_t target GSSEAP_UNUSED,
+                         gss_const_name_t target GSSEAP_UNUSED,
                          gss_OID mech GSSEAP_UNUSED,
                          OM_uint32 reqFlags GSSEAP_UNUSED,
                          OM_uint32 timeReq GSSEAP_UNUSED,
@@ -962,7 +962,7 @@ static OM_uint32
 eapGssSmInitGssFlags(OM_uint32 *minor,
                      gss_cred_id_t cred GSSEAP_UNUSED,
                      gss_ctx_id_t ctx,
-                     gss_name_t target GSSEAP_UNUSED,
+                     gss_const_name_t target GSSEAP_UNUSED,
                      gss_OID mech GSSEAP_UNUSED,
                      OM_uint32 reqFlags GSSEAP_UNUSED,
                      OM_uint32 timeReq GSSEAP_UNUSED,
@@ -991,7 +991,7 @@ static OM_uint32
 eapGssSmInitGssChannelBindings(OM_uint32 *minor,
                                gss_cred_id_t cred GSSEAP_UNUSED,
                                gss_ctx_id_t ctx,
-                               gss_name_t target GSSEAP_UNUSED,
+                               gss_const_name_t target GSSEAP_UNUSED,
                                gss_OID mech GSSEAP_UNUSED,
                                OM_uint32 reqFlags GSSEAP_UNUSED,
                                OM_uint32 timeReq GSSEAP_UNUSED,
@@ -1047,7 +1047,7 @@ static OM_uint32
 eapGssSmInitInitiatorMIC(OM_uint32 *minor,
                          gss_cred_id_t cred GSSEAP_UNUSED,
                          gss_ctx_id_t ctx,
-                         gss_name_t target GSSEAP_UNUSED,
+                         gss_const_name_t target GSSEAP_UNUSED,
                          gss_OID mech GSSEAP_UNUSED,
                          OM_uint32 reqFlags GSSEAP_UNUSED,
                          OM_uint32 timeReq GSSEAP_UNUSED,
@@ -1075,7 +1075,7 @@ static OM_uint32
 eapGssSmInitReauthCreds(OM_uint32 *minor,
                         gss_cred_id_t cred,
                         gss_ctx_id_t ctx,
-                        gss_name_t target GSSEAP_UNUSED,
+                        gss_const_name_t target GSSEAP_UNUSED,
                         gss_OID mech GSSEAP_UNUSED,
                         OM_uint32 reqFlags GSSEAP_UNUSED,
                         OM_uint32 timeReq GSSEAP_UNUSED,
@@ -1101,7 +1101,7 @@ static OM_uint32
 eapGssSmInitAcceptorMIC(OM_uint32 *minor,
                         gss_cred_id_t cred GSSEAP_UNUSED,
                         gss_ctx_id_t ctx,
-                        gss_name_t target GSSEAP_UNUSED,
+                        gss_const_name_t target GSSEAP_UNUSED,
                         gss_OID mech GSSEAP_UNUSED,
                         OM_uint32 reqFlags GSSEAP_UNUSED,
                         OM_uint32 timeReq GSSEAP_UNUSED,
@@ -1218,7 +1218,7 @@ OM_uint32
 gssEapInitSecContext(OM_uint32 *minor,
                      gss_cred_id_t cred,
                      gss_ctx_id_t ctx,
-                     gss_name_t target_name,
+                     gss_const_name_t target_name,
                      gss_OID mech_type,
                      OM_uint32 req_flags,
                      OM_uint32 time_req,
@@ -1305,9 +1305,17 @@ cleanup:
 
 OM_uint32 GSSAPI_CALLCONV
 gss_init_sec_context(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                     gss_const_cred_id_t cred,
+#else
                      gss_cred_id_t cred,
+#endif
                      gss_ctx_id_t *context_handle,
+#ifdef HAVE_HEIMDAL_VERSION
+                     gss_const_name_t target_name,
+#else
                      gss_name_t target_name,
+#endif
                      gss_OID mech_type,
                      OM_uint32 req_flags,
                      OM_uint32 time_req,
@@ -1344,7 +1352,7 @@ gss_init_sec_context(OM_uint32 *minor,
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     major = gssEapInitSecContext(minor,
-                                 cred,
+                                 (gss_cred_id_t)cred,
                                  ctx,
                                  target_name,
                                  mech_type,
@@ -1362,6 +1370,7 @@ gss_init_sec_context(OM_uint32 *minor,
     if (GSS_ERROR(major))
         gssEapReleaseContext(&tmpMinor, context_handle);
 
-    gssEapTraceStatus( "gss_init_sec_context", major, *minor);
+    gssEapTraceStatus("gss_init_sec_context", major, *minor);
+
     return major;
 }

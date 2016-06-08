@@ -77,8 +77,13 @@ typedef struct gss_any *gss_any_t;
 typedef const gss_OID_desc *gss_const_OID;
 #endif
 
+#ifndef GSS_IOV_BUFFER_TYPE_MIC_TOKEN
+#define GSS_IOV_BUFFER_TYPE_MIC_TOKEN      12  /* MIC token destination */
+#endif
+
 /* Kerberos headers */
 #include <krb5.h>
+#include <com_err.h>
 
 /* EAP headers */
 #include <includes.h>
@@ -278,7 +283,7 @@ OM_uint32
 gssEapInitSecContext(OM_uint32 *minor,
                      gss_cred_id_t cred,
                      gss_ctx_id_t ctx,
-                     gss_name_t target_name,
+                     gss_const_name_t target_name,
                      gss_OID mech_type,
                      OM_uint32 req_flags,
                      OM_uint32 time_req,
@@ -310,12 +315,14 @@ gssEapUnwrapOrVerifyMIC(OM_uint32 *minor_status,
 
 OM_uint32
 gssEapWrapIovLength(OM_uint32 *minor,
-                    gss_ctx_id_t ctx,
+                    gss_const_ctx_id_t ctx,
                     int conf_req_flag,
                     gss_qop_t qop_req,
                     int *conf_state,
                     gss_iov_buffer_desc *iov,
-                    int iov_count);
+                    int iov_count,
+                    enum gss_eap_token_type tokType);
+
 OM_uint32
 gssEapWrap(OM_uint32 *minor,
            gss_ctx_id_t ctx,
@@ -326,7 +333,7 @@ gssEapWrap(OM_uint32 *minor,
            gss_buffer_t output_message_buffer);
 
 unsigned char
-rfc4121Flags(gss_ctx_id_t ctx, int receiving);
+rfc4121Flags(gss_const_ctx_id_t ctx, int receiving);
 
 /* display_status.c */
 void
@@ -379,7 +386,7 @@ gssEapImportContext(OM_uint32 *minor,
 /* pseudo_random.c */
 OM_uint32
 gssEapPseudoRandom(OM_uint32 *minor,
-                   gss_ctx_id_t ctx,
+                   gss_const_ctx_id_t ctx,
                    int prf_key,
                    const gss_buffer_t prf_in,
                    gss_buffer_t prf_out);
@@ -407,37 +414,42 @@ gssEapInitiatorInit(OM_uint32 *minor);
 void
 gssEapFinalize(void);
 
-  /* Debugging and tracing*/
-  #define gssEapTrace(_fmt, ...) wpa_printf(MSG_INFO, _fmt, __VA_ARGS__);
+/* Debugging and tracing */
 
 static inline void
 gssEapTraceStatus(const char *function,
-		  OM_uint32 major, OM_uint32 minor)
+                  OM_uint32 major,
+                  OM_uint32 minor)
 {
-    gss_buffer_desc  gss_code_buf, mech_buf;
-    OM_uint32 tmpmaj, tmpmin, ctx = 0;
-    gss_code_buf.value = NULL;
-    mech_buf.value = NULL;
-    tmpmaj = gss_display_status(&tmpmin,  major,
-				GSS_C_GSS_CODE, GSS_C_NO_OID, &ctx,
-				&gss_code_buf);
-  if (!GSS_ERROR(tmpmaj)) {
-if (minor == 0)
-    tmpmaj = makeStringBuffer(&tmpmin, "no minor", &mech_buf);
-else tmpmaj = gssEapDisplayStatus(&tmpmin, minor, &mech_buf);
-}
-    if (!GSS_ERROR(tmpmaj))
+    gss_buffer_desc gssErrorCodeBuf = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc gssMechBuf = GSS_C_EMPTY_BUFFER;
+    OM_uint32 tmpMajor, tmpMinor;
+    OM_uint32 messageCtx = 0;
+
+    tmpMajor = gss_display_status(&tmpMinor, major,
+                                  GSS_C_GSS_CODE, GSS_C_NO_OID,
+                                  &messageCtx, &gssErrorCodeBuf);
+    if (!GSS_ERROR(tmpMajor)) {
+        if (minor == 0)
+            tmpMajor = makeStringBuffer(&tmpMinor, "no minor", &gssMechBuf);
+        else
+            tmpMajor = gssEapDisplayStatus(&tmpMinor, minor, &gssMechBuf);
+    }
+
+    if (!GSS_ERROR(tmpMajor))
 	wpa_printf(MSG_INFO, "%s: %.*s/%.*s",
-		   function, (int) gss_code_buf.length, (char *) gss_code_buf.value,
-		   (int) mech_buf.length, (char *) mech_buf.value);
-    else wpa_printf(MSG_INFO, "%s: %u/%u",
+		   function,
+                   (int)gssErrorCodeBuf.length, (char *)gssErrorCodeBuf.value,
+		   (int)gssMechBuf.length, (char *)gssMechBuf.value);
+    else
+        wpa_printf(MSG_INFO, "%s: %u/%u",
 		    function, major, minor);
-    tmpmaj = gss_release_buffer(&tmpmin, &gss_code_buf);
-    tmpmaj = gss_release_buffer(&tmpmin, &mech_buf);
- }
 
+    gss_release_buffer(&tmpMinor, &gssErrorCodeBuf);
+    gss_release_buffer(&tmpMinor, &gssMechBuf);
+}
 
-  /*If built as a library on Linux, don't respect environment when set*uid*/
+/* If built as a library on Linux, don't respect environment when set*uid */
 #ifdef HAVE_SECURE_GETENV
 #define getenv secure_getenv
 #endif

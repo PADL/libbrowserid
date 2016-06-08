@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_context_time(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                 gss_const_ctx_id_t ctx,
+#else
                  gss_ctx_id_t ctx,
+#endif
                  OM_uint32 *time_rec)
 {
     OM_uint32 major;
@@ -50,7 +54,7 @@ gss_context_time(OM_uint32 *minor,
 
     *minor = 0;
 
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
         *minor = GSSEAP_CONTEXT_INCOMPLETE;
@@ -63,7 +67,7 @@ gss_context_time(OM_uint32 *minor,
         goto cleanup;
 
 cleanup:
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     return major;
 }

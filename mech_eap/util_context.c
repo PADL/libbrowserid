@@ -214,7 +214,7 @@ gssEapVerifyToken(OM_uint32 *minor,
 
 OM_uint32
 gssEapContextTime(OM_uint32 *minor,
-                  gss_ctx_id_t context_handle,
+                  gss_const_ctx_id_t context_handle,
                   OM_uint32 *time_rec)
 {
     *minor = 0;

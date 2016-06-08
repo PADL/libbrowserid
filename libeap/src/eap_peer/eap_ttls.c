@@ -1370,7 +1370,7 @@ static int eap_ttls_add_chbind_request(struct eap_sm *sm,
 				       struct eap_ttls_data *data,
 				       struct wpabuf **resp)
 {
-	struct wpabuf *chbind_req, *res;
+	struct wpabuf *chbind_req;
 	int length = 1, i;
 	struct eap_peer_config *config = eap_get_config(sm);
 

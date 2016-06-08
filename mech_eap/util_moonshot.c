@@ -141,7 +141,7 @@ static int stringEmpty(const char * s)
 OM_uint32
 libMoonshotResolveInitiatorCred(OM_uint32 *minor,
                                 gss_cred_id_t cred,
-                                const gss_name_t targetName)
+                                gss_const_name_t targetName)
 {
     OM_uint32 major, tmpMinor;
     gss_OID nameMech = gssEapPrimaryMechForCred(cred);

@@ -47,7 +47,11 @@ static struct {
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_cred_by_oid(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                        gss_const_cred_id_t cred_handle,
+#else
                         const gss_cred_id_t cred_handle,
+#endif
                         const gss_OID desired_object GSSEAP_UNUSED,
                         gss_buffer_set_t *data_set)
 {
@@ -62,7 +66,7 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CRED;
     }
 
-    GSSEAP_MUTEX_LOCK(&cred_handle->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_cred_id_t)cred_handle)->mutex);
 
     major = GSS_S_UNAVAILABLE;
     *minor = GSSEAP_BAD_CRED_OPTION;
@@ -77,7 +81,7 @@ gss_inquire_cred_by_oid(OM_uint32 *minor,
     }
 #endif
 
-    GSSEAP_MUTEX_UNLOCK(&cred_handle->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_cred_id_t)cred_handle)->mutex);
 
     return major;
 }

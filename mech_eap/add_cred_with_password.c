@@ -38,8 +38,13 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_add_cred_with_password(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                           gss_const_cred_id_t input_cred_handle GSSEAP_UNUSED,
+                           gss_const_name_t desired_name,
+#else
                            const gss_cred_id_t input_cred_handle GSSEAP_UNUSED,
                            const gss_name_t desired_name,
+#endif
                            const gss_OID desired_mech,
                            const gss_buffer_t password,
                            gss_cred_usage_t cred_usage,

@@ -68,7 +68,11 @@ initKrbContext(krb5_context *pKrbContext)
     *pKrbContext = krbContext;
 
 cleanup:
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_xfree(defaultRealm);
+#else
     krb5_free_default_realm(krbContext, defaultRealm);
+#endif
 
     if (code != 0 && krbContext != NULL)
         krb5_free_context(krbContext);
@@ -121,7 +125,9 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
                        krb5_keyblock *pKey)
 {
     krb5_context krbContext;
-#ifndef HAVE_HEIMDAL_VERSION
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto = NULL;
+#else
     krb5_data data;
 #endif
     krb5_data ns, t, derivedKeyData;
@@ -142,10 +148,22 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
     KRB_DATA_INIT(&t);
     KRB_DATA_INIT(&derivedKeyData);
 
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_enctype_keybits(krbContext, encryptionType, &randomLength);
+    if (code != 0)
+        goto cleanup;
+
+    randomLength = (randomLength + 7) / 8; /* from mit_glue.c */
+
+    code = krb5_enctype_keysize(krbContext, encryptionType, &keyLength);
+    if (code != 0)
+        goto cleanup;
+#else
     code = krb5_c_keylengths(krbContext, encryptionType,
                              &randomLength, &keyLength);
     if (code != 0)
         goto cleanup;
+#endif /* HAVE_HEIMDAL_VERSION */
 
     /* Convert EAP MSK into a Kerberos key */
 
@@ -175,12 +193,19 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
     ns.data = (char *)constant;
 
     /* Plug derivation constant and key into PRF */
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_prf_length(krbContext, encryptionType, &prfLength);
+#else
     code = krb5_c_prf_length(krbContext, encryptionType, &prfLength);
+#endif
     if (code != 0)
         goto cleanup;
 
-#ifndef HAVE_HEIMDAL_VERSION
-    /* Same API, but different allocation rules, unfortunately. */
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_init(krbContext, &kd, 0, &krbCrypto);
+    if (code != 0)
+        goto cleanup;
+#else
     t.length = prfLength;
     t.data = GSSEAP_MALLOC(t.length);
     if (t.data == NULL) {
@@ -202,7 +227,11 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
     {
         store_uint32_be(i, ns.data);
 
+#ifdef HAVE_HEIMDAL_VERSION
+        code = krb5_crypto_prf(krbContext, krbCrypto, &ns, &t);
+#else
         code = krb5_c_prf(krbContext, &kd, &ns, &t);
+#endif
         if (code != 0)
             goto cleanup;
 
@@ -229,6 +258,7 @@ cleanup:
     if (code != 0)
         krb5_free_keyblock_contents(krbContext, &kd);
 #ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto_destroy(krbContext, krbCrypto);
     krb5_data_free(&t);
 #else
     if (t.data != NULL) {
@@ -257,9 +287,12 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
                           krb5_cksumtype *cksumtype)
 {
     krb5_context krbContext;
-#ifndef HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE
+#if !defined(HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE) && !defined(HAVE_HEIMDAL_VERSION)
     krb5_data data;
     krb5_checksum cksum;
+#endif
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto = NULL;
 #endif
 
     GSSEAP_KRB_INIT(&krbContext);
@@ -267,6 +300,17 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
 #ifdef HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE
     *minor = krb5int_c_mandatory_cksumtype(krbContext, KRB_KEY_TYPE(key),
                                            cksumtype);
+    if (*minor != 0)
+        return GSS_S_FAILURE;
+#elif defined(HAVE_HEIMDAL_VERSION)
+    *minor = krb5_crypto_init(krbContext, key, 0, &krbCrypto);
+    if (*minor != 0)
+        return GSS_S_FAILURE;
+
+    *minor = krb5_crypto_get_checksum_type(krbContext, krbCrypto, cksumtype);
+
+    krb5_crypto_destroy(krbContext, krbCrypto);
+
     if (*minor != 0)
         return GSS_S_FAILURE;
 #else
@@ -288,7 +332,12 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
     krb5_free_checksum_contents(krbContext, &cksum);
 #endif /* HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE */
 
-    if (!krb5_c_is_keyed_cksum(*cksumtype)) {
+#ifdef HAVE_HEIMDAL_VERSION
+    if (!krb5_checksum_is_keyed(krbContext, *cksumtype))
+#else
+    if (!krb5_c_is_keyed_cksum(*cksumtype))
+#endif
+    {
         *minor = (OM_uint32)KRB5KRB_AP_ERR_INAPP_CKSUM;
         return GSS_S_FAILURE;
     }
@@ -301,7 +350,7 @@ krbCryptoLength(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                 krb5_crypto krbCrypto,
 #else
-                krb5_keyblock *key,
+                const krb5_keyblock *key,
 #endif
                 int type,
                 size_t *length)
@@ -325,7 +374,7 @@ krbPaddingLength(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                  krb5_crypto krbCrypto,
 #else
-                 krb5_keyblock *key,
+                 const krb5_keyblock *key,
 #endif
                  size_t dataLength,
                  size_t *padLength)
@@ -368,7 +417,7 @@ krbBlockSize(krb5_context krbContext,
 #ifdef HAVE_HEIMDAL_VERSION
                  krb5_crypto krbCrypto,
 #else
-                 krb5_keyblock *key,
+                 const krb5_keyblock *key,
 #endif
                  size_t *blockSize)
 {

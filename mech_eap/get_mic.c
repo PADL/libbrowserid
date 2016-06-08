@@ -37,14 +37,13 @@
 #include "gssapiP_eap.h"
 
 OM_uint32 GSSAPI_CALLCONV
-gss_get_mic(OM_uint32 *minor,
-            gss_ctx_id_t ctx,
-            gss_qop_t qop_req,
-            gss_buffer_t message_buffer,
-            gss_buffer_t message_token)
+gss_get_mic_iov(OM_uint32 *minor,
+                gss_ctx_id_t ctx,
+                gss_qop_t qop_req,
+                gss_iov_buffer_desc *iov,
+                int iov_count)
 {
     OM_uint32 major;
-    gss_iov_buffer_desc iov[2];
 
     if (ctx == GSS_C_NO_CONTEXT) {
         *minor = EINVAL;
@@ -58,9 +57,6 @@ gss_get_mic(OM_uint32 *minor,
 
     *minor = 0;
 
-    message_token->value = NULL;
-    message_token->length = 0;
-
     GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
@@ -69,21 +65,45 @@ gss_get_mic(OM_uint32 *minor,
         goto cleanup;
     }
 
-    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
-    iov[0].buffer = *message_buffer;
-
-    iov[1].type = GSS_IOV_BUFFER_TYPE_HEADER | GSS_IOV_BUFFER_FLAG_ALLOCATE;
-    iov[1].buffer.value = NULL;
-    iov[1].buffer.length = 0;
-
-    major = gssEapWrapOrGetMIC(minor, ctx, FALSE, NULL, iov, 2, TOK_TYPE_MIC);
+    major = gssEapWrapOrGetMIC(minor, ctx, FALSE, NULL,
+                               iov, iov_count, TOK_TYPE_MIC);
     if (GSS_ERROR(major))
         goto cleanup;
 
-    *message_token = iov[1].buffer;
-
 cleanup:
     GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    return major;
+}
+
+OM_uint32 GSSAPI_CALLCONV
+gss_get_mic(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+            gss_const_ctx_id_t ctx,
+#else
+            gss_ctx_id_t ctx,
+#endif
+            gss_qop_t qop_req,
+#ifdef HAVE_HEIMDAL_VERSION
+            const gss_buffer_t message_buffer,
+#else
+            gss_buffer_t message_buffer,
+#endif
+            gss_buffer_t message_token)
+{
+    OM_uint32 major;
+    gss_iov_buffer_desc iov[2];
+
+    iov[0].type = GSS_IOV_BUFFER_TYPE_DATA;
+    iov[0].buffer = *message_buffer;
+
+    iov[1].type = GSS_IOV_BUFFER_TYPE_MIC_TOKEN | GSS_IOV_BUFFER_FLAG_ALLOCATE;
+    iov[1].buffer.value = NULL;
+    iov[1].buffer.length = 0;
+
+    major = gss_get_mic_iov(minor, (gss_ctx_id_t)ctx, qop_req, iov, 2);
+    if (major == GSS_S_COMPLETE)
+        *message_token = iov[1].buffer;
 
     return major;
 }

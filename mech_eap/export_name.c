@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_export_name(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                gss_const_name_t input_name,
+#else
                 const gss_name_t input_name,
+#endif
                 gss_buffer_t exported_name)
 {
     OM_uint32 major;
@@ -50,11 +54,11 @@ gss_export_name(OM_uint32 *minor,
         return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_BAD_NAME;
     }
 
-    GSSEAP_MUTEX_LOCK(&input_name->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_name_t)input_name)->mutex);
 
     major = gssEapExportName(minor, input_name, exported_name);
 
-    GSSEAP_MUTEX_UNLOCK(&input_name->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_name_t)input_name)->mutex);
 
     return major;
 }

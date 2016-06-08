@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_wrap_size_limit(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                    gss_const_ctx_id_t ctx,
+#else
                     gss_ctx_id_t ctx,
+#endif
                     int conf_req_flag,
                     gss_qop_t qop_req,
                     OM_uint32 req_output_size,
@@ -54,7 +58,7 @@ gss_wrap_size_limit(OM_uint32 *minor,
 
     *minor = 0;
 
-    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     if (!CTX_IS_ESTABLISHED(ctx)) {
         major = GSS_S_NO_CONTEXT;
@@ -79,7 +83,7 @@ gss_wrap_size_limit(OM_uint32 *minor,
     iov[3].buffer.length = 0;
 
     major = gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
-                                NULL, iov, 4);
+                                NULL, iov, TOK_TYPE_WRAP, 4);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -91,7 +95,7 @@ gss_wrap_size_limit(OM_uint32 *minor,
         *max_input_size = 0;
 
 cleanup:
-    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_ctx_id_t)ctx)->mutex);
 
     return major;
 }

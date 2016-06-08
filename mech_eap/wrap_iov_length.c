@@ -65,12 +65,13 @@
 
 OM_uint32
 gssEapWrapIovLength(OM_uint32 *minor,
-                    gss_ctx_id_t ctx,
+                    gss_const_ctx_id_t ctx,
                     int conf_req_flag,
                     gss_qop_t qop_req,
                     int *conf_state,
                     gss_iov_buffer_desc *iov,
-                    int iov_count)
+                    int iov_count,
+                    enum gss_eap_token_type toktype)
 {
     gss_iov_buffer_t header, trailer, padding;
     size_t dataLength, assocDataLength;
@@ -78,7 +79,7 @@ gssEapWrapIovLength(OM_uint32 *minor,
     size_t krbHeaderLen = 0, krbTrailerLen = 0, krbPadLen = 0;
     krb5_error_code code;
     krb5_context krbContext;
-    int dce_style;
+    int dce_or_mic;
     size_t ec;
 #ifdef HAVE_HEIMDAL_VERSION
     krb5_crypto krbCrypto = NULL;
@@ -96,7 +97,7 @@ gssEapWrapIovLength(OM_uint32 *minor,
 
     GSSEAP_KRB_INIT(&krbContext);
 
-    header = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_HEADER);
+    header = gssEapLocateHeaderIov(iov, iov_count, toktype);
     if (header == NULL) {
         *minor = GSSEAP_MISSING_IOV;
         return GSS_S_FAILURE;
@@ -108,7 +109,10 @@ gssEapWrapIovLength(OM_uint32 *minor,
         INIT_IOV_DATA(trailer);
     }
 
-    dce_style = ((ctx->gssFlags & GSS_C_DCE_STYLE) != 0);
+    /* MIC tokens and DCE-style wrap tokens have similar length considerations:
+     * no padding, and the framing surrounds the header only, not the data. */
+    dce_or_mic = ((ctx->gssFlags & GSS_C_DCE_STYLE) != 0 ||
+                  toktype == TOK_TYPE_MIC);
 
     /* For CFX, EC is used instead of padding, and is placed in header or trailer */
     padding = gssEapLocateIov(iov, iov_count, GSS_IOV_BUFFER_TYPE_PADDING);
@@ -160,7 +164,7 @@ gssEapWrapIovLength(OM_uint32 *minor,
             return GSS_S_FAILURE;
         }
 
-        if (krbPadLen == 0 && dce_style) {
+        if (krbPadLen == 0 && dce_or_mic) {
             /* Windows rejects AEAD tokens with non-zero EC */
             code = krbBlockSize(krbContext, KRB_CRYPTO_CONTEXT(ctx), &ec);
             if (code != 0) {
@@ -223,7 +227,42 @@ gss_wrap_iov_length(OM_uint32 *minor,
     }
 
     major = gssEapWrapIovLength(minor, ctx, conf_req_flag, qop_req,
-                                conf_state, iov, iov_count);
+                                conf_state, iov, iov_count, TOK_TYPE_WRAP);
+    if (GSS_ERROR(major))
+        goto cleanup;
+
+cleanup:
+    GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
+
+    return major;
+}
+
+OM_uint32 GSSAPI_CALLCONV
+gss_get_mic_iov_length(OM_uint32 *minor,
+                       gss_ctx_id_t ctx,
+                       gss_qop_t qop_req,
+                       gss_iov_buffer_desc *iov,
+                       int iov_count)
+{
+    OM_uint32 major;
+
+    if (ctx == GSS_C_NO_CONTEXT) {
+        *minor = EINVAL;
+        return GSS_S_CALL_INACCESSIBLE_READ | GSS_S_NO_CONTEXT;
+    }
+
+    *minor = 0;
+
+    GSSEAP_MUTEX_LOCK(&ctx->mutex);
+
+    if (!CTX_IS_ESTABLISHED(ctx)) {
+        major = GSS_S_NO_CONTEXT;
+        *minor = GSSEAP_CONTEXT_INCOMPLETE;
+        goto cleanup;
+    }
+
+    major = gssEapWrapIovLength(minor, ctx, FALSE, qop_req,
+                                NULL, iov, iov_count, TOK_TYPE_MIC);
     if (GSS_ERROR(major))
         goto cleanup;
 

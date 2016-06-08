@@ -38,7 +38,11 @@
 
 OM_uint32 GSSAPI_CALLCONV
 gss_inquire_cred_by_mech(OM_uint32 *minor,
+#ifdef HAVE_HEIMDAL_VERSION
+                         gss_const_cred_id_t cred,
+#else
                          gss_cred_id_t cred,
+#endif
                          gss_OID mech_type,
                          gss_name_t *name,
                          OM_uint32 *pInitiatorLifetime,
@@ -52,7 +56,7 @@ gss_inquire_cred_by_mech(OM_uint32 *minor,
         return GSS_S_NO_CRED;
     }
 
-    GSSEAP_MUTEX_LOCK(&cred->mutex);
+    GSSEAP_MUTEX_LOCK(&((gss_cred_id_t)cred)->mutex);
 
     if (!gssEapCredAvailable(cred, mech_type)) {
         major = GSS_S_BAD_MECH;
@@ -60,7 +64,8 @@ gss_inquire_cred_by_mech(OM_uint32 *minor,
         goto cleanup;
     }
 
-    major = gssEapInquireCred(minor, cred, name, &lifetime, cred_usage, NULL);
+    major = gssEapInquireCred(minor, (gss_cred_id_t)cred, name,
+                              &lifetime, cred_usage, NULL);
     if (GSS_ERROR(major))
         goto cleanup;
 
@@ -70,7 +75,7 @@ gss_inquire_cred_by_mech(OM_uint32 *minor,
         *pAcceptorLifetime = (cred->flags & CRED_FLAG_ACCEPT) ? lifetime : 0;
 
 cleanup:
-    GSSEAP_MUTEX_UNLOCK(&cred->mutex);
+    GSSEAP_MUTEX_UNLOCK(&((gss_cred_id_t)cred)->mutex);
 
     return major;
 }

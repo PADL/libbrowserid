@@ -258,7 +258,7 @@ gssEapPrimaryMechForCred(gss_cred_id_t cred)
 
 OM_uint32
 gssEapAcquireCred(OM_uint32 *minor,
-                  const gss_name_t desiredName,
+                  gss_const_name_t desiredName,
                   OM_uint32 timeReq GSSEAP_UNUSED,
                   const gss_OID_set desiredMechs,
                   int credUsage,
@@ -302,15 +302,15 @@ gssEapAcquireCred(OM_uint32 *minor,
         goto cleanup;
 
     if (desiredName != GSS_C_NO_NAME) {
-        GSSEAP_MUTEX_LOCK(&desiredName->mutex);
+        GSSEAP_MUTEX_LOCK(&((gss_name_t)desiredName)->mutex);
 
         major = gssEapDuplicateName(minor, desiredName, &cred->name);
         if (GSS_ERROR(major)) {
-            GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
+            GSSEAP_MUTEX_UNLOCK(&((gss_name_t)desiredName)->mutex);
             goto cleanup;
         }
 
-        GSSEAP_MUTEX_UNLOCK(&desiredName->mutex);
+        GSSEAP_MUTEX_UNLOCK(&((gss_name_t)desiredName)->mutex);
     }
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR
@@ -344,6 +344,7 @@ cleanup:
         gssEapReleaseCred(&tmpMinor, &cred);
 
     gssEapTraceStatus("gss_acquire_cred", major, *minor);
+
     return major;
 }
 
@@ -352,7 +353,7 @@ cleanup:
  * lock because mechanisms list is immutable.
  */
 int
-gssEapCredAvailable(gss_cred_id_t cred, gss_OID mech)
+gssEapCredAvailable(gss_const_cred_id_t cred, gss_OID mech)
 {
     OM_uint32 minor;
     int present = 0;
@@ -607,7 +608,7 @@ cleanup:
 OM_uint32
 gssEapSetCredService(OM_uint32 *minor,
                      gss_cred_id_t cred,
-                     const gss_name_t target)
+                     gss_const_name_t target)
 {
     OM_uint32 major, tmpMinor;
     gss_name_t newTarget = GSS_C_NO_NAME;
@@ -767,7 +768,7 @@ cleanup:
 OM_uint32
 gssEapResolveInitiatorCred(OM_uint32 *minor,
                            const gss_cred_id_t cred,
-                           const gss_name_t targetName
+                           gss_const_name_t targetName
 #ifndef HAVE_MOONSHOT_GET_IDENTITY
                                                        GSSEAP_UNUSED
 #endif
