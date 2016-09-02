@@ -78,6 +78,9 @@ policyVariableToFlag(enum eapol_bool_var variable)
     case EAPOL_altReject:
         flag = CTX_FLAG_EAP_ALT_REJECT;
         break;
+    case EAPOL_eapTriggerStart:
+        flag = CTX_FLAG_EAP_TRIGGER_START;
+        break;
     }
 
     return flag;
@@ -458,7 +461,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
             eapPeerConfig->client_cert = (unsigned char *)cred->clientCertificate.value;
             eapPeerConfig->private_key = (unsigned char *)cred->privateKey.value;
         }
-        eapPeerConfig->private_key_passwd = (unsigned char *)cred->password.value;
+        eapPeerConfig->private_key_passwd = (char *)cred->password.value;
     }
 
     *minor = 0;

@@ -2,14 +2,8 @@
  * Testing tool for X.509v3 routines
  * Copyright (c) 2006-2007, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -17,8 +11,6 @@
 #include "common.h"
 #include "tls/asn1.h"
 #include "tls/x509v3.h"
-
-extern int wpa_debug_level;
 
 
 int main(int argc, char *argv[])
@@ -59,7 +51,7 @@ int main(int argc, char *argv[])
 	}
 
 	printf("\n\nValidating certificate chain\n");
-	if (x509_certificate_chain_validate(last, certs, &reason) < 0) {
+	if (x509_certificate_chain_validate(last, certs, &reason, 0) < 0) {
 		printf("\nCertificate chain validation failed: %d\n", reason);
 		return -1;
 	}

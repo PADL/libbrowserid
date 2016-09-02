@@ -2,14 +2,8 @@
  * FIPS 186-2 PRF for libcrypto
  * Copyright (c) 2004-2005, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -19,13 +13,21 @@
 #include "crypto.h"
 
 
-static void sha1_transform(u8 *state, const u8 data[64])
+static void sha1_transform(u32 *state, const u8 data[64])
 {
 	SHA_CTX context;
 	os_memset(&context, 0, sizeof(context));
-	os_memcpy(&context.h0, state, 5 * 4);
+	context.h0 = state[0];
+	context.h1 = state[1];
+	context.h2 = state[2];
+	context.h3 = state[3];
+	context.h4 = state[4];
 	SHA1_Transform(&context, data);
-	os_memcpy(state, &context.h0, 5 * 4);
+	state[0] = context.h0;
+	state[1] = context.h1;
+	state[2] = context.h2;
+	state[3] = context.h3;
+	state[4] = context.h4;
 }
 
 
@@ -37,13 +39,14 @@ int fips186_2_prf(const u8 *seed, size_t seed_len, u8 *x, size_t xlen)
 	u8 *xpos = x;
 	u32 carry;
 
-	if (seed_len > sizeof(xkey))
+	if (seed_len < sizeof(xkey))
+		os_memset(xkey + seed_len, 0, sizeof(xkey) - seed_len);
+	else
 		seed_len = sizeof(xkey);
 
 	/* FIPS 186-2 + change notice 1 */
 
 	os_memcpy(xkey, seed, seed_len);
-	os_memset(xkey + seed_len, 0, 64 - seed_len);
 	t[0] = 0x67452301;
 	t[1] = 0xEFCDAB89;
 	t[2] = 0x98BADCFE;
@@ -58,7 +61,7 @@ int fips186_2_prf(const u8 *seed, size_t seed_len, u8 *x, size_t xlen)
 
 			/* w_i = G(t, XVAL) */
 			os_memcpy(_t, t, 20);
-			sha1_transform((u8 *) _t, xkey);
+			sha1_transform(_t, xkey);
 			_t[0] = host_to_be32(_t[0]);
 			_t[1] = host_to_be32(_t[1]);
 			_t[2] = host_to_be32(_t[2]);

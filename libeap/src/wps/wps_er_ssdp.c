@@ -2,14 +2,8 @@
  * Wi-Fi Protected Setup - External Registrar (SSDP)
  * Copyright (c) 2009, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -84,9 +78,7 @@ static void wps_er_ssdp_rx(int sd, void *eloop_ctx, void *sock_ctx)
 			if (os_strstr(start, "ssdp:byebye"))
 				byebye = 1;
 		} else if (os_strncasecmp(start, "CACHE-CONTROL:", 14) == 0) {
-			start += 9;
-			while (*start == ' ')
-				start++;
+			start += 14;
 			pos2 = os_strstr(start, "max-age=");
 			if (pos2 == NULL)
 				continue;
@@ -113,6 +105,7 @@ static void wps_er_ssdp_rx(int sd, void *eloop_ctx, void *sock_ctx)
 		return; /* Not WPS advertisement/reply */
 
 	if (byebye) {
+		wps_er_ap_cache_settings(er, &addr.sin_addr);
 		wps_er_ap_remove(er, &addr.sin_addr);
 		return;
 	}
@@ -171,7 +164,9 @@ int wps_er_ssdp_init(struct wps_er *er)
 		return -1;
 	}
 
-	er->multicast_sd = ssdp_open_multicast_sock(er->ip_addr);
+	er->multicast_sd = ssdp_open_multicast_sock(er->ip_addr,
+						    er->forced_ifname ?
+						    er->ifname : NULL);
 	if (er->multicast_sd < 0) {
 		wpa_printf(MSG_INFO, "WPS ER: Failed to open multicast socket "
 			   "for SSDP");
