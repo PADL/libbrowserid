@@ -1,4 +1,5 @@
 Makefile.in
+Makefile
 aclocal.m4
 autom4te.cache
 configure
@@ -21,6 +22,7 @@ mech_eap*tar*
 *.pyc
 *#
 *~
+*.orig
 .config
 tests/hwsim/logs
 wpaspy/build
@@ -44,3 +46,10 @@ wlantest/libwlantest.a
 wlantest/test_vectors
 wlantest/wlantest
 wlantest/wlantest_cli
+libeap/.deps
+libeap/.libs
+libeap/Makefile
+libeap/libeap.la
+libeap/tests/hwsim/logs/
+libeap/tests/test-rsa-sig-ver
+stamp-h1
