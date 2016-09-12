@@ -21,6 +21,11 @@
 #ifndef CRYPTO_H
 #define CRYPTO_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /**
  * md4_vector - MD4 hash for data vector
  * @num_elem: Number of elements in the data vector
@@ -805,5 +810,10 @@ int crypto_ec_point_is_on_curve(struct crypto_ec *e,
 int crypto_ec_point_cmp(const struct crypto_ec *e,
 			const struct crypto_ec_point *a,
 			const struct crypto_ec_point *b);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CRYPTO_H */

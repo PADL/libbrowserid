@@ -99,6 +99,7 @@ AM_CFLAGS += -DCONFIG_INTERNAL_LIBTOMMATH
 AM_CFLAGS += -DCONFIG_INTERNAL_SHA1
 AM_CFLAGS += -DEAP_TLS_OPENSSL
 AM_CFLAGS += -DPKCS12_FUNCS
+AM_CFLAGS += -DCONFIG_CRYPTO_INTERNAL
 AM_CFLAGS += -DCONFIG_SHA256
 
 UTILS_SRCS = src/utils/base64.c \
@@ -111,11 +112,12 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/wpabuf.c \
 	src/utils/os_unix.c \
 	src/utils/radius_utils.c \
-src/utils/radius_utils.h \
+	src/utils/radius_utils.h \
 	src/utils/base64.h \
 	src/utils/build_config.h \
 	src/utils/common.h \
 	src/utils/eloop.h \
+	src/utils/eloop.c \
 	src/utils/includes.h \
 	src/utils/ip_addr.h \
 	src/utils/list.h \
@@ -145,6 +147,7 @@ CRYPTO_SRCS = \
     src/crypto/aes-siv.h \
     src/crypto/aes-unwrap.c \
     src/crypto/aes-wrap.c \
+    src/crypto/tls_openssl.c \
     src/crypto/aes.h \
     src/crypto/aes_i.h \
     src/crypto/aes_wrap.h \
@@ -160,6 +163,8 @@ CRYPTO_SRCS = \
     src/crypto/milenage.h \
     src/crypto/ms_funcs.c \
     src/crypto/ms_funcs.h \
+    src/crypto/random.c \
+    src/crypto/random.h \
     src/crypto/rc4.c \
     src/crypto/sha1.c \
     src/crypto/sha1-internal.c \
@@ -167,6 +172,7 @@ CRYPTO_SRCS = \
     src/crypto/sha1-prf.c \
     src/crypto/sha1-tlsprf.c \
     src/crypto/sha1-tprf.c \
+    src/crypto/sha256-internal.c \
     src/crypto/sha256-prf.c \
     src/crypto/sha256-tlsprf.c \
     src/crypto/sha256.c \

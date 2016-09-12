@@ -204,3 +204,15 @@ duplicateOidSet(OM_uint32 *minor,
 
     return major;
 }
+
+int
+oidEqual(const gss_OID_desc *o1, const gss_OID_desc *o2)
+{
+    if (o1 == GSS_C_NO_OID)
+        return (o2 == GSS_C_NO_OID);
+    else if (o2 == GSS_C_NO_OID)
+        return (o1 == GSS_C_NO_OID);
+    else
+        return (o1->length == o2->length &&
+                memcmp(o1->elements, o2->elements, o1->length) == 0);
+}

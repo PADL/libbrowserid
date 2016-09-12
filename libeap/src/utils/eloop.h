@@ -17,6 +17,11 @@
 #ifndef ELOOP_H
 #define ELOOP_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /**
  * ELOOP_ALL_CTX - eloop_cancel_timeout() magic number to match all timeouts
  */
@@ -355,5 +360,9 @@ int eloop_terminated(void);
  * Do a blocking wait for a single read socket.
  */
 void eloop_wait_for_read_sock(int sock);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ELOOP_H */
