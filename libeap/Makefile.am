@@ -99,11 +99,13 @@ AM_CFLAGS += -DCONFIG_INTERNAL_LIBTOMMATH
 AM_CFLAGS += -DCONFIG_INTERNAL_SHA1
 AM_CFLAGS += -DEAP_TLS_OPENSSL
 AM_CFLAGS += -DPKCS12_FUNCS
-AM_CFLAGS += -DCONFIG_CRYPTO_INTERNAL
+#AM_CFLAGS += -DCONFIG_CRYPTO_INTERNAL
 AM_CFLAGS += -DCONFIG_SHA256
 
 UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
+	src/utils/eloop.c \
+	src/utils/eloop.h \
 	src/utils/ip_addr.c \
 	src/utils/radiotap.c \
 	src/utils/trace.c \
@@ -117,7 +119,6 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/build_config.h \
 	src/utils/common.h \
 	src/utils/eloop.h \
-	src/utils/eloop.c \
 	src/utils/includes.h \
 	src/utils/ip_addr.h \
 	src/utils/list.h \
@@ -133,51 +134,30 @@ UTILS_SRCS = src/utils/base64.c \
 
 
 CRYPTO_SRCS = \
-    src/crypto/aes-cbc.c \
-    src/crypto/aes-ccm.c \
     src/crypto/aes-ctr.c \
     src/crypto/aes-eax.c \
     src/crypto/aes-encblock.c \
-    src/crypto/aes-gcm.c \
-    src/crypto/aes-internal.c \
-    src/crypto/aes-internal-dec.c \
-    src/crypto/aes-internal-enc.c \
     src/crypto/aes-omac1.c \
-    src/crypto/aes-siv.c \
-    src/crypto/aes-siv.h \
-    src/crypto/aes-unwrap.c \
-    src/crypto/aes-wrap.c \
+    src/crypto/milenage.c \
+    src/crypto/ms_funcs.c \
+    src/crypto/sha1-tlsprf.c \
+    src/crypto/sha1-tprf.c \
+    src/crypto/crypto_openssl.c \
     src/crypto/tls_openssl.c \
     src/crypto/aes.h \
     src/crypto/aes_i.h \
     src/crypto/aes_wrap.h \
     src/crypto/crypto.h \
-    src/crypto/des-internal.c \
-    src/crypto/dh_group5.h \
-    src/crypto/dh_groups.h \
-    src/crypto/md4-internal.c \
-    src/crypto/md5.c \
-    src/crypto/md5-internal.c \
+	src/crypto/dh_group5.h \
+	src/crypto/dh_groups.h \
     src/crypto/md5.h \
-    src/crypto/milenage.c \
     src/crypto/milenage.h \
-    src/crypto/ms_funcs.c \
     src/crypto/ms_funcs.h \
     src/crypto/random.c \
     src/crypto/random.h \
-    src/crypto/rc4.c \
-    src/crypto/sha1.c \
-    src/crypto/sha1-internal.c \
-    src/crypto/sha1-pbkdf2.c \
-    src/crypto/sha1-prf.c \
-    src/crypto/sha1-tlsprf.c \
-    src/crypto/sha1-tprf.c \
-    src/crypto/sha256-internal.c \
-    src/crypto/sha256-prf.c \
-    src/crypto/sha256-tlsprf.c \
-    src/crypto/sha256.c \
+    src/crypto/sha1.h \
     src/crypto/sha256.h \
-    src/crypto/sha256_i.h \
+	src/crypto/sha256-tlsprf.c \
     src/crypto/tls.h
 
 
