@@ -103,6 +103,8 @@ static void eap_tls_params_from_conf1(struct tls_connection_params *params,
 	params->cert_id = config->cert_id;
 	params->ca_cert_id = config->ca_cert_id;
 	eap_tls_params_flags(params, config->phase1);
+    params->validate_ca_cb = config->validate_ca_cb;
+    params->validate_ca_ctx = config->validate_ca_ctx;
 }
 
 

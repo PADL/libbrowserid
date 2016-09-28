@@ -9,6 +9,8 @@
 #ifndef TLS_H
 #define TLS_H
 
+#include <openssl/x509.h>
+
 struct tls_connection;
 
 struct tls_random {
@@ -96,6 +98,8 @@ struct tls_config {
 #define TLS_CONN_EAP_FAST BIT(7)
 #define TLS_CONN_DISABLE_TLSv1_0 BIT(8)
 
+struct X509; /* from OpenSSL */
+
 /**
  * struct tls_connection_params - Parameters for TLS connection
  * @ca_cert: File or reference name for CA X.509 certificate in PEM or DER
@@ -139,6 +143,9 @@ struct tls_config {
  * @flags: Parameter options (TLS_CONN_*)
  * @ocsp_stapling_response: DER encoded file with cached OCSP stapling response
  *	or %NULL if OCSP is not enabled
+ * @validate_ca_cb: Optional callback to be used to validate server certificate
+ *  when no CA or path was specified. 
+ * @validate_ca_ctx: Optional context arg for validate_ca_cb.
  *
  * TLS connection parameters to be configured with tls_connection_set_params()
  * and tls_global_set_params().
@@ -179,6 +186,13 @@ struct tls_connection_params {
 
 	unsigned int flags;
 	const char *ocsp_stapling_response;
+
+    /**
+     * If non-null, specifies a callback method that can be used to
+     * confirm the validity of a peer certificate.
+     */
+    int (*validate_ca_cb)(int ok_so_far, X509* cert, void *ca_ctx);
+    void *validate_ca_ctx;
 };
 
 

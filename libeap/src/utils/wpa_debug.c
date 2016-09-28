@@ -549,7 +549,7 @@ int wpa_debug_open_file(const char *path)
 	out_file = fopen(path, "a");
 	if (out_file == NULL) {
 		wpa_printf(MSG_ERROR, "wpa_debug_open_file: Failed to open "
-			   "output file, using standard output");
+                   "output file %s, using standard output", path);
 		return -1;
 	}
 #ifndef _WIN32

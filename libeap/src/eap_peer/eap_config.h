@@ -9,6 +9,9 @@
 #ifndef EAP_CONFIG_H
 #define EAP_CONFIG_H
 
+#include <openssl/x509.h>
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -777,6 +780,13 @@ struct eap_peer_config {
 	 * erp - Whether EAP Re-authentication Protocol (ERP) is enabled
 	 */
 	int erp;
+
+    /**
+     * If non-null, specifies a callback method that can be used to
+     * override the validity of a peer certificate.
+     */
+    int (*validate_ca_cb)(int ok_so_far, X509* cert, void *ca_ctx);
+    void *validate_ca_ctx;
 };
 
 
