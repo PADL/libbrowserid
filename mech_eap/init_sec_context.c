@@ -429,8 +429,9 @@ static int peerValidateCA(int ok_so_far, X509* cert, void *ca_ctx)
     MoonshotError        *error = NULL;
     struct eap_peer_config *eap_config = (struct eap_peer_config *) ca_ctx;
     char *identity = strdup((const char *) eap_config->identity);
-    char* at = strchr(identity, '@');
 
+    // Truncate the identity to just the username
+    char* at = strchr(identity, '@');
     if (at != NULL) {
         *at = '\0';
     }
@@ -450,6 +451,7 @@ static int peerValidateCA(int ok_so_far, X509* cert, void *ca_ctx)
     realm = ((char *) eap_config->anonymous_identity) + 1;
 
     ok_so_far = moonshot_confirm_ca_certificate(identity, realm, hash, 32, &error);
+    free(identity);
 
     printf("peerValidateCA: Returning %d\n", ok_so_far);
     return ok_so_far;
@@ -564,8 +566,8 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
         eapPeerConfig->private_key_passwd = (char *)cred->password.value;
     }
 
-    eapPeerConfig->validate_ca_cb = peerValidateCA;
-    eapPeerConfig->validate_ca_ctx = eapPeerConfig;
+    eapPeerConfig->server_cert_cb = peerValidateCA;
+    eapPeerConfig->server_cert_ctx = eapPeerConfig;
 
     *minor = 0;
     return GSS_S_COMPLETE;

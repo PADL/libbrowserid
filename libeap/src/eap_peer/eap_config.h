@@ -785,8 +785,8 @@ struct eap_peer_config {
      * If non-null, specifies a callback method that can be used to
      * override the validity of a peer certificate.
      */
-    int (*validate_ca_cb)(int ok_so_far, X509* cert, void *ca_ctx);
-    void *validate_ca_ctx;
+    int (*server_cert_cb)(int ok_so_far, X509* cert, void *ca_ctx);
+    void *server_cert_ctx;
 };
 
 

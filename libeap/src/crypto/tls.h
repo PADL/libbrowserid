@@ -143,9 +143,9 @@ struct X509; /* from OpenSSL */
  * @flags: Parameter options (TLS_CONN_*)
  * @ocsp_stapling_response: DER encoded file with cached OCSP stapling response
  *	or %NULL if OCSP is not enabled
- * @validate_ca_cb: Optional callback to be used to validate server certificate
+ * @server_cert_cb: Optional callback to be used to validate server certificate
  *  when no CA or path was specified. 
- * @validate_ca_ctx: Optional context arg for validate_ca_cb.
+ * @server_cert_ctx: Optional context arg for server_cert_cb.
  *
  * TLS connection parameters to be configured with tls_connection_set_params()
  * and tls_global_set_params().
@@ -191,8 +191,8 @@ struct tls_connection_params {
      * If non-null, specifies a callback method that can be used to
      * confirm the validity of a peer certificate.
      */
-    int (*validate_ca_cb)(int ok_so_far, X509* cert, void *ca_ctx);
-    void *validate_ca_ctx;
+    int (*server_cert_cb)(int ok_so_far, X509* cert, void *ca_ctx);
+    void *server_cert_ctx;
 };
 
 

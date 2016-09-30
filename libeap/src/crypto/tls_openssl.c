@@ -130,8 +130,8 @@ struct tls_connection {
 	unsigned char server_random[SSL3_RANDOM_SIZE];
 #endif
 
-    int (*validate_ca_cb)(int ok_so_far, X509* cert, void *ca_ctx);
-    void *validate_ca_ctx;
+    int (*server_cert_cb)(int ok_so_far, X509* cert, void *ca_ctx);
+    void *server_cert_ctx;
 };
 
 
@@ -1561,6 +1561,8 @@ static void openssl_tls_cert_event(struct tls_connection *conn,
 }
 
 
+static void debug_print_cert(X509 *cert, const char *title);
+
 static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 {
 	char buf[256];
@@ -1575,6 +1577,8 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 	err_cert = X509_STORE_CTX_get_current_cert(x509_ctx);
 	if (!err_cert)
 		return 0;
+
+    // debug_print_cert(err_cert, "\n\n***** tls_verify_cb:\n");
 
 	err = X509_STORE_CTX_get_error(x509_ctx);
 	depth = X509_STORE_CTX_get_error_depth(x509_ctx);
@@ -1594,9 +1598,9 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 		conn->peer_issuer_issuer = err_cert;
 
 	wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb(enter) - preverify_ok=%d "
-		   "err=%d (%s) ca_cert_verify=%d depth=%d buf='%s'",
+		   "err=%d (%s) ca_cert_verify=%d depth=%d buf='%s' server_cert_cb=%p server_cert_only=%d",
 		   preverify_ok, err, X509_verify_cert_error_string(err),
-		   conn->ca_cert_verify, depth, buf);
+               conn->ca_cert_verify, depth, buf, conn->server_cert_cb, conn->server_cert_only);
 
 
 	context = conn->context;
@@ -1605,16 +1609,9 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 	suffix_match = conn->suffix_match;
 	domain_match = conn->domain_match;
 
-	if (!preverify_ok && !conn->ca_cert_verify) {
-        if (conn->validate_ca_cb) {
-            preverify_ok = conn->validate_ca_cb(preverify_ok, err_cert, conn->validate_ca_ctx);
-            wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb: validate_ca_cb returned %d", preverify_ok);
-        }
-        else {
-            preverify_ok = 1;
-            wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb: allowing cert because !conn->ca_cert_verify\n");
-        }
-    }
+	if (!preverify_ok && !conn->ca_cert_verify)
+		preverify_ok = 1;
+
 	if (!preverify_ok && depth > 0 && conn->server_cert_only) {
         wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb: allowing cert because depth > 0 && conn->server_cert_only\n");
 		preverify_ok = 1;
@@ -1630,40 +1627,46 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 	err_str = X509_verify_cert_error_string(err);
 
 #ifdef CONFIG_SHA256
-	/*
-	 * Do not require preverify_ok so we can explicity allow otherwise
-	 * invalid pinned server certificates.
-	 */
 	if (depth == 0 && conn->server_cert_only) {
-		struct wpabuf *cert;
-		cert = get_x509_cert(err_cert);
-		if (!cert) {
-			wpa_printf(MSG_DEBUG, "tls_verify_cb: OpenSSL: Could not fetch "
-				   "server certificate data");
-			preverify_ok = 0;
-		} else {
-			u8 hash[32];
-			const u8 *addr[1];
-			size_t len[1];
-			addr[0] = wpabuf_head(cert);
-			len[0] = wpabuf_len(cert);
-			if (sha256_vector(1, addr, len, hash) < 0 ||
-			    os_memcmp(conn->srv_cert_hash, hash, 32) != 0) {
-				err_str = "Server certificate mismatch";
-				err = X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN;
-				preverify_ok = 0;
-			} else if (!preverify_ok) {
-				/*
-				 * Certificate matches pinned certificate, allow
-				 * regardless of other problems.
-				 */
-				wpa_printf(MSG_DEBUG,
-					   "tls_verify_cb: OpenSSL: Ignore validation issues for a pinned server certificate");
-				preverify_ok = 1;
-			}
-			wpabuf_free(cert);
-		}
-	}
+        if (depth == 0 && conn->server_cert_cb) {
+            preverify_ok = conn->server_cert_cb(preverify_ok, err_cert, conn->server_cert_ctx);
+            wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb: server_cert_cb returned %d", preverify_ok);
+        }
+        else {
+            /*
+             * Do not require preverify_ok so we can explicity allow otherwise
+             * invalid pinned server certificates.
+             */
+            struct wpabuf *cert;
+            cert = get_x509_cert(err_cert);
+            if (!cert) {
+                wpa_printf(MSG_DEBUG, "tls_verify_cb: OpenSSL: Could not fetch "
+                           "server certificate data");
+                preverify_ok = 0;
+            } else {
+                u8 hash[32];
+                const u8 *addr[1];
+                size_t len[1];
+                addr[0] = wpabuf_head(cert);
+                len[0] = wpabuf_len(cert);
+                if (sha256_vector(1, addr, len, hash) < 0 ||
+                    os_memcmp(conn->srv_cert_hash, hash, 32) != 0) {
+                    err_str = "Server certificate mismatch";
+                    err = X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN;
+                    preverify_ok = 0;
+                } else if (!preverify_ok) {
+                    /*
+                     * Certificate matches pinned certificate, allow
+                     * regardless of other problems.
+                     */
+                    wpa_printf(MSG_DEBUG,
+                               "tls_verify_cb: OpenSSL: Ignore validation issues for a pinned server certificate");
+                    preverify_ok = 1;
+                }
+                wpabuf_free(cert);
+            }
+        }
+    }
 #endif /* CONFIG_SHA256 */
 
 	if (!preverify_ok) {
@@ -1767,8 +1770,8 @@ static int tls_connection_ca_cert(struct tls_data *data,
                                   struct tls_connection *conn,
                                   const char *ca_cert, const u8 *ca_cert_blob,
                                   size_t ca_cert_blob_len, const char *ca_path,
-                                  int (*validate_ca_cb)(int ok_so_far, X509* cert, void *ca_ctx),
-                                  void *validate_ca_ctx)
+                                  int (*server_cert_cb)(int ok_so_far, X509* cert, void *ca_ctx),
+                                  void *server_cert_ctx)
 {
 	SSL_CTX *ssl_ctx = data->ssl;
 	X509_STORE *store;
@@ -1787,6 +1790,8 @@ static int tls_connection_ca_cert(struct tls_data *data,
 
 	SSL_set_verify(conn->ssl, SSL_VERIFY_PEER, tls_verify_cb);
 	conn->ca_cert_verify = 1;
+    conn->server_cert_cb = server_cert_cb;
+    conn->server_cert_ctx = server_cert_ctx;
 
 	if (ca_cert && os_strncmp(ca_cert, "probe://", 8) == 0) {
 		wpa_printf(MSG_DEBUG, "OpenSSL: Probe for server certificate "
@@ -1926,8 +1931,6 @@ static int tls_connection_ca_cert(struct tls_data *data,
 		 * certificate */
 		wpa_printf(MSG_DEBUG, "OpenSSL: tls_connection_ca_cert: No ca_cert; setting conn->ca_cert_verify=0");
 		conn->ca_cert_verify = 0;
-        conn->validate_ca_cb = validate_ca_cb;
-        conn->validate_ca_ctx = validate_ca_ctx;
 	}
 
 	return 0;
@@ -3866,8 +3869,8 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
         if (tls_connection_ca_cert(data, conn, params->ca_cert,
                                    params->ca_cert_blob,
                                    params->ca_cert_blob_len,
-                                   params->ca_path, params->validate_ca_cb, 
-                                   params->validate_ca_ctx))
+                                   params->ca_path, params->server_cert_cb, 
+                                   params->server_cert_ctx))
             return -1;
     }
 
