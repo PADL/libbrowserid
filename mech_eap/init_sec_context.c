@@ -419,7 +419,7 @@ static int sha256(unsigned char *bytes, int len, unsigned char *hash)
 }
 
 
-static int peerValidateCA(int ok_so_far, X509* cert, void *ca_ctx)
+static int peerValidateServer(int ok_so_far, X509* cert, void *ca_ctx)
 {
     const char           *realm = NULL;
     unsigned char        *cert_bytes = NULL;
@@ -441,7 +441,7 @@ static int peerValidateCA(int ok_so_far, X509* cert, void *ca_ctx)
     GSSEAP_FREE(cert_bytes);
     
     if (hash_len != 32) {
-        printf("peerValidateCA: Error: hash_len=%d, not 32!\n", hash_len);
+        printf("peerValidateServer: Error: hash_len=%d, not 32!\n", hash_len);
         return FALSE;
     }
 
@@ -453,7 +453,7 @@ static int peerValidateCA(int ok_so_far, X509* cert, void *ca_ctx)
     ok_so_far = moonshot_confirm_ca_certificate(identity, realm, hash, 32, &error);
     free(identity);
 
-    printf("peerValidateCA: Returning %d\n", ok_so_far);
+    printf("peerValidateServer: Returning %d\n", ok_so_far);
     return ok_so_far;
 }
 
@@ -566,7 +566,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
         eapPeerConfig->private_key_passwd = (char *)cred->password.value;
     }
 
-    eapPeerConfig->server_cert_cb = peerValidateCA;
+    eapPeerConfig->server_cert_cb = peerValidateServer;
     eapPeerConfig->server_cert_ctx = eapPeerConfig;
 
     *minor = 0;
