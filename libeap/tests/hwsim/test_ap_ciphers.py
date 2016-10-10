@@ -4,6 +4,7 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import time
 import logging
 logger = logging.getLogger()
@@ -22,16 +23,12 @@ def check_cipher(dev, ap, cipher):
                "wpa": "2",
                "wpa_key_mgmt": "WPA-PSK",
                "rsn_pairwise": cipher }
-    hapd = hostapd.add_ap(ap['ifname'], params)
+    hapd = hostapd.add_ap(ap, params)
     dev.connect("test-wpa2-psk", psk="12345678",
                 pairwise=cipher, group=cipher, scan_freq="2412")
     hwsim_utils.test_connectivity(dev, hapd)
 
 def check_group_mgmt_cipher(dev, ap, cipher):
-    wt = Wlantest()
-    wt.flush()
-    wt.add_passphrase("12345678")
-
     if cipher not in dev.get_capability("group_mgmt"):
         raise HwsimSkip("Cipher %s not supported" % cipher)
     params = { "ssid": "test-wpa2-psk-pmf",
@@ -41,7 +38,13 @@ def check_group_mgmt_cipher(dev, ap, cipher):
                "wpa_key_mgmt": "WPA-PSK-SHA256",
                "rsn_pairwise": "CCMP",
                "group_mgmt_cipher": cipher }
-    hapd = hostapd.add_ap(ap['ifname'], params)
+    hapd = hostapd.add_ap(ap, params)
+
+    Wlantest.setup(hapd)
+    wt = Wlantest()
+    wt.flush()
+    wt.add_passphrase("12345678")
+
     dev.connect("test-wpa2-psk-pmf", psk="12345678", ieee80211w="2",
                 key_mgmt="WPA-PSK-SHA256",
                 pairwise="CCMP", group="CCMP", scan_freq="2412")
@@ -61,16 +64,18 @@ def check_group_mgmt_cipher(dev, ap, cipher):
     if res != group_mgmt:
         raise Exception("Unexpected group mgmt cipher: " + res)
 
+@remote_compatible
 def test_ap_cipher_tkip(dev, apdev):
     """WPA2-PSK/TKIP connection"""
     skip_with_fips(dev[0])
     check_cipher(dev[0], apdev[0], "TKIP")
 
+@remote_compatible
 def test_ap_cipher_tkip_countermeasures_ap(dev, apdev):
     """WPA-PSK/TKIP countermeasures (detected by AP)"""
     skip_with_fips(dev[0])
     testfile = "/sys/kernel/debug/ieee80211/%s/netdev:%s/tkip_mic_test" % (dev[0].get_driver_status_field("phyname"), dev[0].ifname)
-    if not os.path.exists(testfile):
+    if dev[0].cmd_execute([ "ls", testfile ])[0] != 0:
         raise HwsimSkip("tkip_mic_test not supported in mac80211")
 
     params = { "ssid": "tkip-countermeasures",
@@ -78,20 +83,20 @@ def test_ap_cipher_tkip_countermeasures_ap(dev, apdev):
                "wpa": "1",
                "wpa_key_mgmt": "WPA-PSK",
                "wpa_pairwise": "TKIP" }
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].connect("tkip-countermeasures", psk="12345678",
                    pairwise="TKIP", group="TKIP", scan_freq="2412")
 
     dev[0].dump_monitor()
-    with open(testfile, "w") as f:
-        f.write(apdev[0]['bssid'])
+    dev[0].cmd_execute([ "echo", "-n", apdev[0]['bssid'], ">", testfile ],
+                       shell=True)
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
         raise Exception("Unexpected disconnection on first Michael MIC failure")
 
-    with open(testfile, "w") as f:
-        f.write("ff:ff:ff:ff:ff:ff")
+    dev[0].cmd_execute([ "echo", "-n", "ff:ff:ff:ff:ff:ff", ">", testfile ],
+                       shell=True)
     ev = dev[0].wait_disconnected(timeout=10,
                                   error="No disconnection after two Michael MIC failures")
     if "reason=14" not in ev:
@@ -100,6 +105,7 @@ def test_ap_cipher_tkip_countermeasures_ap(dev, apdev):
     if ev is not None:
         raise Exception("Unexpected connection during TKIP countermeasures")
 
+@remote_compatible
 def test_ap_cipher_tkip_countermeasures_sta(dev, apdev):
     """WPA-PSK/TKIP countermeasures (detected by STA)"""
     skip_with_fips(dev[0])
@@ -108,24 +114,24 @@ def test_ap_cipher_tkip_countermeasures_sta(dev, apdev):
                "wpa": "1",
                "wpa_key_mgmt": "WPA-PSK",
                "wpa_pairwise": "TKIP" }
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     testfile = "/sys/kernel/debug/ieee80211/%s/netdev:%s/tkip_mic_test" % (hapd.get_driver_status_field("phyname"), apdev[0]['ifname'])
-    if not os.path.exists(testfile):
+    if hapd.cmd_execute([ "ls", testfile ])[0] != 0:
         raise HwsimSkip("tkip_mic_test not supported in mac80211")
 
     dev[0].connect("tkip-countermeasures", psk="12345678",
                    pairwise="TKIP", group="TKIP", scan_freq="2412")
 
     dev[0].dump_monitor()
-    with open(testfile, "w") as f:
-        f.write(dev[0].p2p_dev_addr())
+    hapd.cmd_execute([ "echo", "-n", dev[0].own_addr(), ">", testfile ],
+                     shell=True)
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
         raise Exception("Unexpected disconnection on first Michael MIC failure")
 
-    with open(testfile, "w") as f:
-        f.write("ff:ff:ff:ff:ff:ff")
+    hapd.cmd_execute([ "echo", "-n", "ff:ff:ff:ff:ff:ff", ">", testfile ],
+                     shell=True)
     ev = dev[0].wait_disconnected(timeout=10,
                                   error="No disconnection after two Michael MIC failures")
     if "reason=14 locally_generated=1" not in ev:
@@ -134,6 +140,7 @@ def test_ap_cipher_tkip_countermeasures_sta(dev, apdev):
     if ev is not None:
         raise Exception("Unexpected connection during TKIP countermeasures")
 
+@remote_compatible
 def test_ap_cipher_ccmp(dev, apdev):
     """WPA2-PSK/CCMP connection"""
     check_cipher(dev[0], apdev[0], "CCMP")
@@ -150,6 +157,7 @@ def test_ap_cipher_gcmp_256(dev, apdev):
     """WPA2-PSK/GCMP-256 connection"""
     check_cipher(dev[0], apdev[0], "GCMP-256")
 
+@remote_compatible
 def test_ap_cipher_mixed_wpa_wpa2(dev, apdev):
     """WPA2-PSK/CCMP/ and WPA-PSK/TKIP mixed configuration"""
     skip_with_fips(dev[0])
@@ -161,7 +169,7 @@ def test_ap_cipher_mixed_wpa_wpa2(dev, apdev):
                "wpa_key_mgmt": "WPA-PSK",
                "rsn_pairwise": "CCMP",
                "wpa_pairwise": "TKIP" }
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, proto="WPA2",
                    pairwise="CCMP", group="TKIP", scan_freq="2412")
     status = dev[0].get_status()
@@ -192,6 +200,7 @@ def test_ap_cipher_mixed_wpa_wpa2(dev, apdev):
     hwsim_utils.test_connectivity(dev[1], hapd)
     hwsim_utils.test_connectivity(dev[0], dev[1])
 
+@remote_compatible
 def test_ap_cipher_bip(dev, apdev):
     """WPA2-PSK with BIP"""
     check_group_mgmt_cipher(dev[0], apdev[0], "AES-128-CMAC")

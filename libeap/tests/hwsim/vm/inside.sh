@@ -12,6 +12,8 @@ mount sysfs -t sysfs /sys
 # needed for tracing
 mount debugfs -t debugfs /sys/kernel/debug
 
+export PATH=/usr/sbin:$PATH
+
 # reboot on any sort of crash
 sysctl kernel.panic_on_oops=1
 sysctl kernel.panic=1
@@ -20,13 +22,14 @@ sysctl kernel.panic=1
 TESTDIR=$(sed 's/.*testdir=\([^ ]*\) .*/\1/' /proc/cmdline)
 TIMEWARP=$(sed 's/.*timewarp=\([^ ]*\) .*/\1/' /proc/cmdline)
 EPATH=$(sed 's/.*EPATH=\([^ ]*\) .*/\1/' /proc/cmdline)
-ARGS=$(sed 's/.*ARGS=//' /proc/cmdline)
+ARGS=$(sed 's/.*ARGS=\([^ ]*\)\( \|$\).*/\1/' /proc/cmdline)
 
 # create /dev entries we need
 mknod -m 660 /dev/ttyS0 c 4 64
 mknod -m 660 /dev/random c 1 8
 mknod -m 660 /dev/urandom c 1 9
 mknod -m 666 /dev/null c 1 3
+mknod -m 666 /dev/kmsg c 1 11
 test -f /sys/class/misc/rfkill/dev && \
 	mknod -m 660 /dev/rfkill c $(cat /sys/class/misc/rfkill/dev | tr ':' ' ')
 ln -s /proc/self/fd/0 /dev/stdin
@@ -75,6 +78,10 @@ ip link set lo up
 mkdir /tmp/logs
 mount -t 9p -o trans=virtio,rw logshare /tmp/logs
 
+# allow access to any outside directory (e.g. /tmp) we also have
+mkdir /tmp/host
+mount --bind / /tmp/host
+
 if [ "$TIMEWARP" = "1" ] ; then
     (
         while sleep 1 ; do
@@ -104,7 +111,7 @@ else
 	dbus-daemon --config-file=$TESTDIR/vm/dbus.conf --fork
 
 	cd $TESTDIR
-	./run-all.sh $ARGS </dev/ttyS0 >/dev/ttyS0 2>&1
+	./run-all.sh $(cat /tmp/host$ARGS) </dev/ttyS0 >/dev/ttyS0 2>&1
 	if test -d /sys/kernel/debug/gcov ; then
 		cp -ar /sys/kernel/debug/gcov /tmp/logs/
 		# these are broken as they're updated while being read ...

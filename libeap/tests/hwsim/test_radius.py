@@ -1,9 +1,11 @@
 # RADIUS tests
-# Copyright (c) 2013-2015, Jouni Malinen <j@w1.fi>
+# Copyright (c) 2013-2016, Jouni Malinen <j@w1.fi>
 #
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
+import binascii
 import hashlib
 import hmac
 import logging
@@ -16,7 +18,9 @@ import threading
 import time
 
 import hostapd
-from utils import HwsimSkip, require_under_vm
+from utils import HwsimSkip, require_under_vm, skip_with_fips, fail_test
+from test_ap_hs20 import build_dhcp_ack
+from test_ap_ft import ft_params1
 
 def connect(dev, ssid, wait_connect=True):
     dev.connect(ssid, key_mgmt="WPA-EAP", scan_freq="2412",
@@ -24,12 +28,12 @@ def connect(dev, ssid, wait_connect=True):
                 password_hex="0123456789abcdef0123456789abcdef",
                 wait_connect=wait_connect)
 
+@remote_compatible
 def test_radius_auth_unreachable(dev, apdev):
     """RADIUS Authentication server unreachable"""
     params = hostapd.wpa2_eap_params(ssid="radius-auth")
     params['auth_server_port'] = "18139"
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-auth", wait_connect=False)
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-STARTED"])
     if ev is None:
@@ -50,8 +54,7 @@ def test_radius_auth_unreachable2(dev, apdev):
     params = hostapd.wpa2_eap_params(ssid="radius-auth")
     params['auth_server_addr'] = "192.168.213.17"
     params['auth_server_port'] = "18139"
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     subprocess.call(['ip', 'ro', 'del', '192.168.213.17', 'dev', 'lo'])
     connect(dev[0], "radius-auth", wait_connect=False)
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-STARTED"])
@@ -70,8 +73,7 @@ def test_radius_auth_unreachable3(dev, apdev):
     subprocess.call(['ip', 'ro', 'replace', 'blackhole', '192.168.213.18'])
     params = hostapd.wpa2_eap_params(ssid="radius-auth")
     params['auth_server_addr'] = "192.168.213.18"
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-auth", wait_connect=False)
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-STARTED"])
     if ev is None:
@@ -90,8 +92,7 @@ def test_radius_acct_unreachable(dev, apdev):
     params['acct_server_addr'] = "127.0.0.1"
     params['acct_server_port'] = "18139"
     params['acct_server_shared_secret'] = "radius"
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-acct")
     logger.info("Checking for RADIUS retries")
     time.sleep(4)
@@ -110,8 +111,7 @@ def test_radius_acct_unreachable2(dev, apdev):
     params['acct_server_addr'] = "192.168.213.17"
     params['acct_server_port'] = "18139"
     params['acct_server_shared_secret'] = "radius"
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     subprocess.call(['ip', 'ro', 'del', '192.168.213.17', 'dev', 'lo'])
     connect(dev[0], "radius-acct")
     logger.info("Checking for RADIUS retries")
@@ -132,8 +132,7 @@ def test_radius_acct_unreachable3(dev, apdev):
     params['acct_server_addr'] = "192.168.213.18"
     params['acct_server_port'] = "1813"
     params['acct_server_shared_secret'] = "radius"
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-acct")
     subprocess.call(['ip', 'ro', 'del', 'blackhole', '192.168.213.18'])
     time.sleep(0.1)
@@ -154,8 +153,7 @@ def test_radius_acct_unreachable4(dev, apdev):
     params['acct_server_addr'] = "127.0.0.1"
     params['acct_server_port'] = "18139"
     params['acct_server_shared_secret'] = "radius"
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     for i in range(20):
         connect(dev[0], "radius-acct")
         dev[0].request("REMOVE_NETWORK all")
@@ -171,8 +169,7 @@ def test_radius_acct(dev, apdev):
     params['acct_server_shared_secret'] = "radius"
     params['radius_auth_req_attr'] = [ "126:s:Operator", "77:s:testing" ]
     params['radius_acct_req_attr'] = [ "126:s:Operator", "77:s:testing" ]
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-acct")
     dev[1].connect("radius-acct", key_mgmt="WPA-EAP", scan_freq="2412",
                    eap="PAX", identity="test-class",
@@ -207,6 +204,19 @@ def test_radius_acct(dev, apdev):
     if acc_e < acc_s + 1:
         raise Exception("Unexpected RADIUS server auth MIB value")
 
+def test_radius_acct_non_ascii_ssid(dev, apdev):
+    """RADIUS Accounting and non-ASCII SSID"""
+    params = hostapd.wpa2_eap_params()
+    params['acct_server_addr'] = "127.0.0.1"
+    params['acct_server_port'] = "1813"
+    params['acct_server_shared_secret'] = "radius"
+    ssid2 = "740665007374"
+    params['ssid2'] = ssid2
+    hostapd.add_ap(apdev[0], params)
+    dev[0].connect(ssid2=ssid2, key_mgmt="WPA-EAP", scan_freq="2412",
+                   eap="PSK", identity="psk.user@example.com",
+                   password_hex="0123456789abcdef0123456789abcdef")
+
 def test_radius_acct_pmksa_caching(dev, apdev):
     """RADIUS Accounting with PMKSA caching"""
     as_hapd = hostapd.Hostapd("as")
@@ -215,7 +225,7 @@ def test_radius_acct_pmksa_caching(dev, apdev):
     params['acct_server_addr'] = "127.0.0.1"
     params['acct_server_port'] = "1813"
     params['acct_server_shared_secret'] = "radius"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-acct")
     dev[1].connect("radius-acct", key_mgmt="WPA-EAP", scan_freq="2412",
                    eap="PAX", identity="test-class",
@@ -257,8 +267,7 @@ def test_radius_acct_interim(dev, apdev):
     params['acct_server_port'] = "1813"
     params['acct_server_shared_secret'] = "radius"
     params['radius_acct_interim_interval'] = "1"
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    hapd = hostapd.Hostapd(apdev[0]['ifname'])
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-acct")
     logger.info("Checking for RADIUS counters")
     as_mib_start = as_hapd.get_mib(param="radius_server")
@@ -276,7 +285,7 @@ def test_radius_acct_interim_unreachable(dev, apdev):
     params['acct_server_port'] = "18139"
     params['acct_server_shared_secret'] = "radius"
     params['radius_acct_interim_interval'] = "1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     start = hapd.get_mib()
     connect(dev[0], "radius-acct")
     logger.info("Waiting for interium accounting updates")
@@ -286,6 +295,68 @@ def test_radius_acct_interim_unreachable(dev, apdev):
     req_e = int(end['radiusAccClientTimeouts'])
     if req_e < req_s + 2:
         raise Exception("Unexpected RADIUS server acct MIB value")
+
+def test_radius_acct_interim_unreachable2(dev, apdev):
+    """RADIUS Accounting interim update with unreachable server (retry)"""
+    params = hostapd.wpa2_eap_params(ssid="radius-acct")
+    params['acct_server_addr'] = "127.0.0.1"
+    params['acct_server_port'] = "18139"
+    params['acct_server_shared_secret'] = "radius"
+    # Use long enough interim update interval to allow RADIUS retransmission
+    # case (3 seconds) to trigger first.
+    params['radius_acct_interim_interval'] = "4"
+    hapd = hostapd.add_ap(apdev[0], params)
+    start = hapd.get_mib()
+    connect(dev[0], "radius-acct")
+    logger.info("Waiting for interium accounting updates")
+    time.sleep(7.5)
+    end = hapd.get_mib()
+    req_s = int(start['radiusAccClientTimeouts'])
+    req_e = int(end['radiusAccClientTimeouts'])
+    if req_e < req_s + 2:
+        raise Exception("Unexpected RADIUS server acct MIB value")
+
+def test_radius_acct_ipaddr(dev, apdev):
+    """RADIUS Accounting and Framed-IP-Address"""
+    try:
+        _test_radius_acct_ipaddr(dev, apdev)
+    finally:
+        subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'down'],
+                        stderr=open('/dev/null', 'w'))
+        subprocess.call(['brctl', 'delbr', 'ap-br0'],
+                        stderr=open('/dev/null', 'w'))
+
+def _test_radius_acct_ipaddr(dev, apdev):
+    params = { "ssid": "radius-acct-open",
+               'acct_server_addr': "127.0.0.1",
+               'acct_server_port': "1813",
+               'acct_server_shared_secret': "radius",
+               'proxy_arp': '1',
+               'ap_isolate': '1',
+               'bridge': 'ap-br0' }
+    hapd = hostapd.add_ap(apdev[0], params, no_enable=True)
+    try:
+        hapd.enable()
+    except:
+        # For now, do not report failures due to missing kernel support
+        raise HwsimSkip("Could not start hostapd - assume proxyarp not supported in kernel version")
+    bssid = apdev[0]['bssid']
+
+    subprocess.call(['brctl', 'setfd', 'ap-br0', '0'])
+    subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'up'])
+
+    dev[0].connect("radius-acct-open", key_mgmt="NONE", scan_freq="2412")
+    addr0 = dev[0].own_addr()
+
+    pkt = build_dhcp_ack(dst_ll="ff:ff:ff:ff:ff:ff", src_ll=bssid,
+                         ip_src="192.168.1.1", ip_dst="255.255.255.255",
+                         yiaddr="192.168.1.123", chaddr=addr0)
+    if "OK" not in hapd.request("DATA_TEST_FRAME ifname=ap-br0 " + binascii.hexlify(pkt)):
+        raise Exception("DATA_TEST_FRAME failed")
+
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    hapd.disable()
 
 def send_and_check_reply(srv, req, code, error_cause=0):
     reply = srv.SendPacket(req)
@@ -299,6 +370,57 @@ def send_and_check_reply(srv, req, code, error_cause=0):
             raise Exception("Missing Error-Cause")
             if reply['Error-Cause'][0] != error_cause:
                 raise Exception("Unexpected Error-Cause: {}".format(reply['Error-Cause']))
+
+def test_radius_acct_psk(dev, apdev):
+    """RADIUS Accounting - PSK"""
+    as_hapd = hostapd.Hostapd("as")
+    params = hostapd.wpa2_params(ssid="radius-acct", passphrase="12345678")
+    params['acct_server_addr'] = "127.0.0.1"
+    params['acct_server_port'] = "1813"
+    params['acct_server_shared_secret'] = "radius"
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect("radius-acct", psk="12345678", scan_freq="2412")
+
+def test_radius_acct_psk_sha256(dev, apdev):
+    """RADIUS Accounting - PSK SHA256"""
+    as_hapd = hostapd.Hostapd("as")
+    params = hostapd.wpa2_params(ssid="radius-acct", passphrase="12345678")
+    params["wpa_key_mgmt"] = "WPA-PSK-SHA256"
+    params['acct_server_addr'] = "127.0.0.1"
+    params['acct_server_port'] = "1813"
+    params['acct_server_shared_secret'] = "radius"
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect("radius-acct", key_mgmt="WPA-PSK-SHA256",
+                   psk="12345678", scan_freq="2412")
+
+def test_radius_acct_ft_psk(dev, apdev):
+    """RADIUS Accounting - FT-PSK"""
+    as_hapd = hostapd.Hostapd("as")
+    params = ft_params1(ssid="radius-acct", passphrase="12345678")
+    params['acct_server_addr'] = "127.0.0.1"
+    params['acct_server_port'] = "1813"
+    params['acct_server_shared_secret'] = "radius"
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect("radius-acct", key_mgmt="FT-PSK",
+                   psk="12345678", scan_freq="2412")
+
+def test_radius_acct_ieee8021x(dev, apdev):
+    """RADIUS Accounting - IEEE 802.1X"""
+    skip_with_fips(dev[0])
+    as_hapd = hostapd.Hostapd("as")
+    params = hostapd.radius_params()
+    params["ssid"] = "radius-acct-1x"
+    params["ieee8021x"] = "1"
+    params["wep_key_len_broadcast"] = "13"
+    params["wep_key_len_unicast"] = "13"
+    params['acct_server_addr'] = "127.0.0.1"
+    params['acct_server_port'] = "1813"
+    params['acct_server_shared_secret'] = "radius"
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect("radius-acct-1x", key_mgmt="IEEE8021X", eap="PSK",
+                   identity="psk.user@example.com",
+                   password_hex="0123456789abcdef0123456789abcdef",
+                   scan_freq="2412")
 
 def test_radius_das_disconnect(dev, apdev):
     """RADIUS Dynamic Authorization Extensions - Disconnect"""
@@ -316,7 +438,7 @@ def test_radius_das_disconnect(dev, apdev):
     params['radius_das_require_event_timestamp'] = "1"
     params['own_ip_addr'] = "127.0.0.1"
     params['nas_identifier'] = "nas.example.com"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-das")
     addr = dev[0].p2p_interface_addr()
     sta = hapd.get_sta(addr)
@@ -613,7 +735,7 @@ def test_radius_das_coa(dev, apdev):
     params['radius_das_port'] = "3799"
     params['radius_das_client'] = "127.0.0.1 secret"
     params['radius_das_require_event_timestamp'] = "1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-das")
     addr = dev[0].p2p_interface_addr()
     sta = hapd.get_sta(addr)
@@ -647,7 +769,7 @@ def test_radius_ipv6(dev, apdev):
     params['ca_cert'] = 'auth_serv/ca.pem'
     params['server_cert'] = 'auth_serv/server.pem'
     params['private_key'] = 'auth_serv/server.key'
-    hostapd.add_ap(apdev[1]['ifname'], params)
+    hostapd.add_ap(apdev[1], params)
 
     params = hostapd.wpa2_eap_params(ssid="radius-ipv6")
     params['auth_server_addr'] = "::0"
@@ -656,7 +778,7 @@ def test_radius_ipv6(dev, apdev):
     params['acct_server_port'] = "18139"
     params['acct_server_shared_secret'] = "radius"
     params['own_ip_addr'] = "::0"
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-ipv6")
 
 def test_radius_macacl(dev, apdev):
@@ -664,7 +786,7 @@ def test_radius_macacl(dev, apdev):
     params = hostapd.radius_params()
     params["ssid"] = "radius"
     params["macaddr_acl"] = "2"
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     dev[0].connect("radius", key_mgmt="NONE", scan_freq="2412")
 
 def test_radius_macacl_acct(dev, apdev):
@@ -675,7 +797,7 @@ def test_radius_macacl_acct(dev, apdev):
     params['acct_server_addr'] = "127.0.0.1"
     params['acct_server_port'] = "1813"
     params['acct_server_shared_secret'] = "radius"
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     dev[0].connect("radius", key_mgmt="NONE", scan_freq="2412")
     dev[1].connect("radius", key_mgmt="NONE", scan_freq="2412")
     dev[1].request("DISCONNECT")
@@ -695,7 +817,7 @@ def test_radius_failover(dev, apdev):
     params['acct_server_port'] = "1813"
     params['acct_server_shared_secret'] = "testing"
     params['radius_retry_primary_interval'] = "20"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params, no_enable=True)
+    hapd = hostapd.add_ap(apdev[0], params, no_enable=True)
     hapd.set("auth_server_addr", "127.0.0.1")
     hapd.set("auth_server_port", "1812")
     hapd.set("auth_server_shared_secret", "radius")
@@ -795,7 +917,7 @@ def test_radius_protocol(dev, apdev):
                         try:
                             fdo = self._fdmap[fd]
                             self._ProcessInput(fdo)
-                        except ServerPacketError as err:
+                        except pyrad.server.ServerPacketError as err:
                             logger.info("pyrad server dropping packet: " + str(err))
                         except pyrad.packet.PacketError as err:
                             logger.info("pyrad server received invalid packet: " + str(err))
@@ -819,7 +941,7 @@ def test_radius_protocol(dev, apdev):
     try:
         params = hostapd.wpa2_eap_params(ssid="radius-test")
         params['auth_server_port'] = "18138"
-        hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+        hapd = hostapd.add_ap(apdev[0], params)
         connect(dev[0], "radius-test", wait_connect=False)
         ev = dev[0].wait_event(["CTRL-EVENT-EAP-STARTED"], timeout=15)
         if ev is None:
@@ -900,7 +1022,7 @@ def test_radius_psk(dev, apdev):
                         try:
                             fdo = self._fdmap[fd]
                             self._ProcessInput(fdo)
-                        except ServerPacketError as err:
+                        except pyrad.server.ServerPacketError as err:
                             logger.info("pyrad server dropping packet: " + str(err))
                         except pyrad.packet.PacketError as err:
                             logger.info("pyrad server received invalid packet: " + str(err))
@@ -929,10 +1051,84 @@ def test_radius_psk(dev, apdev):
         params['macaddr_acl'] = '2'
         params['wpa_psk_radius'] = '2'
         params['auth_server_port'] = "18138"
-        hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+        hapd = hostapd.add_ap(apdev[0], params)
         dev[0].connect(ssid, psk="12345678", scan_freq="2412")
         t_events['long'].set()
         dev[1].connect(ssid, psk="0123456789abcdef", scan_freq="2412")
+    finally:
+        t_events['stop'].set()
+        t.join()
+
+def test_radius_psk_invalid(dev, apdev):
+    """WPA2 with invalid PSK from RADIUS"""
+    try:
+        import pyrad.server
+        import pyrad.packet
+        import pyrad.dictionary
+    except ImportError:
+        raise HwsimSkip("No pyrad modules available")
+
+    class TestServer(pyrad.server.Server):
+        def _HandleAuthPacket(self, pkt):
+            pyrad.server.Server._HandleAuthPacket(self, pkt)
+            logger.info("Received authentication request")
+            reply = self.CreateReplyPacket(pkt)
+            reply.code = pyrad.packet.AccessAccept
+            a = "\xab\xcd"
+            secret = reply.secret
+            p = b'\x07' + "1234567" + 8 * b'\x00'
+            b = hashlib.md5(secret + pkt.authenticator + a).digest()
+            pp = bytearray(p)
+            bb = bytearray(b)
+            cc = bytearray(pp[i] ^ bb[i] for i in range(len(bb)))
+            data = '\x00' + a + bytes(cc)
+            reply.AddAttribute("Tunnel-Password", data)
+            self.SendReplyPacket(pkt.fd, reply)
+
+        def RunWithStop(self, t_events):
+            self._poll = select.poll()
+            self._fdmap = {}
+            self._PrepareSockets()
+            self.t_events = t_events
+
+            while not t_events['stop'].is_set():
+                for (fd, event) in self._poll.poll(1000):
+                    if event == select.POLLIN:
+                        try:
+                            fdo = self._fdmap[fd]
+                            self._ProcessInput(fdo)
+                        except pyrad.server.ServerPacketError as err:
+                            logger.info("pyrad server dropping packet: " + str(err))
+                        except pyrad.packet.PacketError as err:
+                            logger.info("pyrad server received invalid packet: " + str(err))
+                    else:
+                        logger.error("Unexpected event in pyrad server main loop")
+
+    srv = TestServer(dict=pyrad.dictionary.Dictionary("dictionary.radius"),
+                     authport=18138, acctport=18139)
+    srv.hosts["127.0.0.1"] = pyrad.server.RemoteHost("127.0.0.1",
+                                                     "radius",
+                                                     "localhost")
+    srv.BindToAddress("")
+    t_events = {}
+    t_events['stop'] = threading.Event()
+    t = threading.Thread(target=run_pyrad_server, args=(srv, t_events))
+    t.start()
+
+    try:
+        ssid = "test-wpa2-psk"
+        params = hostapd.radius_params()
+        params['ssid'] = ssid
+        params["wpa"] = "2"
+        params["wpa_key_mgmt"] = "WPA-PSK"
+        params["rsn_pairwise"] = "CCMP"
+        params['macaddr_acl'] = '2'
+        params['wpa_psk_radius'] = '2'
+        params['auth_server_port'] = "18138"
+        hapd = hostapd.add_ap(apdev[0], params)
+        dev[0].connect(ssid, psk="12345678", scan_freq="2412",
+                       wait_connect=False)
+        time.sleep(1)
     finally:
         t_events['stop'].set()
         t.join()
@@ -941,15 +1137,16 @@ def test_radius_auth_force_client_addr(dev, apdev):
     """RADIUS client address specified"""
     params = hostapd.wpa2_eap_params(ssid="radius-auth")
     params['radius_client_addr'] = "127.0.0.1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-auth")
 
+@remote_compatible
 def test_radius_auth_force_invalid_client_addr(dev, apdev):
     """RADIUS client address specified and invalid address"""
     params = hostapd.wpa2_eap_params(ssid="radius-auth")
     #params['radius_client_addr'] = "10.11.12.14"
     params['radius_client_addr'] = "1::2"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     connect(dev[0], "radius-auth", wait_connect=False)
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-STARTED"])
     if ev is None:
@@ -1048,7 +1245,7 @@ def test_ap_vlan_wpa2_psk_radius_required(dev, apdev):
                         try:
                             fdo = self._fdmap[fd]
                             self._ProcessInput(fdo)
-                        except ServerPacketError as err:
+                        except pyrad.server.ServerPacketError as err:
                             logger.info("pyrad server dropping packet: " + str(err))
                         except pyrad.packet.PacketError as err:
                             logger.info("pyrad server received invalid packet: " + str(err))
@@ -1079,7 +1276,7 @@ def test_ap_vlan_wpa2_psk_radius_required(dev, apdev):
         params['dynamic_vlan'] = "2"
         params['wpa_passphrase'] = '0123456789abcdefghi'
         params['auth_server_port'] = "18138"
-        hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+        hapd = hostapd.add_ap(apdev[0], params)
 
         logger.info("connecting without VLAN")
         dev[0].connect(ssid, psk="0123456789abcdefghi", scan_freq="2412",
@@ -1119,3 +1316,28 @@ def test_ap_vlan_wpa2_psk_radius_required(dev, apdev):
     finally:
         t_events['stop'].set()
         t.join()
+
+def test_radius_mppe_failure(dev, apdev):
+    """RADIUS failure when adding MPPE keys"""
+    params = { "ssid": "as", "beacon_int": "2000",
+               "radius_server_clients": "auth_serv/radius_clients.conf",
+               "radius_server_auth_port": '18127',
+               "eap_server": "1",
+               "eap_user_file": "auth_serv/eap_user.conf",
+               "ca_cert": "auth_serv/ca.pem",
+               "server_cert": "auth_serv/server.pem",
+               "private_key": "auth_serv/server.key" }
+    authsrv = hostapd.add_ap(apdev[1], params)
+
+    params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
+    params['auth_server_port'] = "18127"
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    with fail_test(authsrv, 1, "os_get_random;radius_msg_add_mppe_keys"):
+        dev[0].connect("test-wpa2-eap", key_mgmt="WPA-EAP", eap="TTLS",
+                       identity="user", anonymous_identity="ttls",
+                       password="password",
+                       ca_cert="auth_serv/ca.pem", phase2="autheap=GTC",
+                       wait_connect=False, scan_freq="2412")
+        dev[0].wait_disconnected()
+        dev[0].request("REMOVE_NETWORK all")

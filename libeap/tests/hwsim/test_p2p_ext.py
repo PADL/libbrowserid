@@ -4,13 +4,15 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import logging
 logger = logging.getLogger()
 import os
 
 from tshark import run_tshark
-from test_p2p_persistent import form
+from p2p_utils import *
 
+@remote_compatible
 def test_p2p_ext_discovery(dev):
     """P2P device discovery with vendor specific extensions"""
     addr0 = dev[0].p2p_dev_addr()
@@ -71,6 +73,7 @@ def test_p2p_ext_discovery(dev):
     finally:
         dev[0].request("VENDOR_ELEM_REMOVE 1 *")
 
+@remote_compatible
 def test_p2p_ext_discovery_go(dev):
     """P2P device discovery with vendor specific extensions for GO"""
     addr0 = dev[0].p2p_dev_addr()
@@ -333,11 +336,15 @@ def test_p2p_ext_vendor_elem_assoc(dev, apdev, params):
 def _test_p2p_ext_vendor_elem_assoc(dev, apdev, params):
     addr0 = dev[0].p2p_dev_addr()
     addr1 = dev[1].p2p_dev_addr()
+
+    res = dev[0].get_driver_status()
+    p2p_device = True if (int(res['capa.flags'], 0) & 0x20000000) else False
+
     if "OK" not in dev[0].request("VENDOR_ELEM_ADD 11 dd050011223308"):
         raise Exception("VENDOR_ELEM_ADD failed")
     if "OK" not in dev[1].request("VENDOR_ELEM_ADD 12 dd050011223309"):
         raise Exception("VENDOR_ELEM_ADD failed")
-    if "OK" not in dev[0].request("VENDOR_ELEM_ADD 13 dd05001122330a"):
+    if not p2p_device and "OK" not in dev[0].request("VENDOR_ELEM_ADD 13 dd05001122330a"):
         raise Exception("VENDOR_ELEM_ADD failed")
     dev[0].p2p_listen()
     dev[1].p2p_listen()
@@ -352,7 +359,7 @@ def _test_p2p_ext_vendor_elem_assoc(dev, apdev, params):
                      "wlan.fc.type_subtype == 0x00", wait=False)
     if "Vendor Specific Data: 3308" not in out:
         raise Exception("Vendor element (P2P) not found from Association Request frame")
-    if "Vendor Specific Data: 330a" not in out:
+    if not p2p_device and "Vendor Specific Data: 330a" not in out:
         raise Exception("Vendor element (non-P2P) not found from Association Request frame")
 
     out = run_tshark(os.path.join(params['logdir'], "hwsim0.pcapng"),

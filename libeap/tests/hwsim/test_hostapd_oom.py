@@ -4,6 +4,7 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import logging
 logger = logging.getLogger()
 import time
@@ -12,17 +13,16 @@ import hostapd
 from utils import HwsimSkip
 
 def hostapd_oom_loop(apdev, params, start_func="main"):
-    hapd = hostapd.add_ap(apdev[0]['ifname'], { "ssid": "ctrl" })
-    hapd_global = hostapd.HostapdGlobal()
+    hapd = hostapd.add_ap(apdev[0], { "ssid": "ctrl" })
 
     count = 0
     for i in range(1, 1000):
         if "OK" not in hapd.request("TEST_ALLOC_FAIL %d:%s" % (i, start_func)):
             raise HwsimSkip("TEST_ALLOC_FAIL not supported")
         try:
-            hostapd.add_ap(apdev[1]['ifname'], params)
+            hostapd.add_ap(apdev[1], params, timeout=2.5)
             logger.info("Iteration %d - success" % i)
-            hapd_global.remove(apdev[1]['ifname'])
+            hostapd.remove_bss(apdev[1])
 
             state = hapd.request('GET_ALLOC_FAIL')
             logger.info("GET_ALLOC_FAIL: " + state)
@@ -38,6 +38,7 @@ def hostapd_oom_loop(apdev, params, start_func="main"):
         except Exception, e:
             logger.info("Iteration %d - %s" % (i, str(e)))
 
+@remote_compatible
 def test_hostapd_oom_open(dev, apdev):
     """hostapd failing to setup open mode due to OOM"""
     params = { "ssid": "open" }
@@ -49,6 +50,7 @@ def test_hostapd_oom_wpa2_psk(dev, apdev):
     params['wpa_psk_file'] = 'hostapd.wpa_psk'
     hostapd_oom_loop(apdev, params)
 
+@remote_compatible
 def test_hostapd_oom_wpa2_eap(dev, apdev):
     """hostapd failing to setup WPA2-EAP mode due to OOM"""
     params = hostapd.wpa2_eap_params(ssid="test")
@@ -57,6 +59,7 @@ def test_hostapd_oom_wpa2_eap(dev, apdev):
     params['acct_server_shared_secret'] = "radius"
     hostapd_oom_loop(apdev, params)
 
+@remote_compatible
 def test_hostapd_oom_wpa2_eap_radius(dev, apdev):
     """hostapd failing to setup WPA2-EAP mode due to OOM in RADIUS"""
     params = hostapd.wpa2_eap_params(ssid="test")
@@ -68,7 +71,7 @@ def test_hostapd_oom_wpa2_eap_radius(dev, apdev):
 def test_hostapd_oom_wpa2_psk_connect(dev, apdev):
     """hostapd failing during WPA2-PSK mode connection due to OOM"""
     params = hostapd.wpa2_params(ssid="test-wpa2-psk", passphrase="12345678")
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].request("SCAN_INTERVAL 1")
     count = 0
@@ -114,7 +117,7 @@ def test_hostapd_oom_wpa2_eap_connect(dev, apdev, params):
     params['acct_server_addr'] = "127.0.0.1"
     params['acct_server_port'] = "1813"
     params['acct_server_shared_secret'] = "radius"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].request("SCAN_INTERVAL 1")
     count = 0

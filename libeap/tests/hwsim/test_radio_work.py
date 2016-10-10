@@ -7,7 +7,6 @@
 import time
 import logging
 logger = logging.getLogger()
-import subprocess
 
 import hostapd
 from wpasupplicant import WpaSupplicant
@@ -71,9 +70,9 @@ def test_ext_radio_work(dev, apdev):
     if ev is None:
         raise Exception("Timeout while waiting radio work to start")
     if "FAIL" not in dev[0].request("RADIO_WORK done 12345678"):
-        raise Exception("Invalid RADIO_WORK done accepted");
+        raise Exception("Invalid RADIO_WORK done accepted")
     if "FAIL" not in dev[0].request("RADIO_WORK foo"):
-        raise Exception("Invalid RADIO_WORK accepted");
+        raise Exception("Invalid RADIO_WORK accepted")
     dev[0].request("FLUSH")
     items = dev[0].request("RADIO_WORK show")
     if items != "":
@@ -82,7 +81,7 @@ def test_ext_radio_work(dev, apdev):
 def test_radio_work_cancel(dev, apdev):
     """Radio work items cancelled on interface removal"""
     params = hostapd.wpa2_params(ssid="radio", passphrase="12345678")
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
     wpas.interface_add("wlan5")
     wpas.scan(freq="2412")

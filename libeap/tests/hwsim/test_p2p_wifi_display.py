@@ -4,6 +4,7 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import logging
 logger = logging.getLogger()
 import time
@@ -12,8 +13,7 @@ import Queue
 
 import hwsim_utils
 import utils
-from test_p2p_autogo import connect_cli
-from test_p2p_persistent import form, invite, invite_from_cli, invite_from_go
+from p2p_utils import *
 
 def test_wifi_display(dev):
     """Wi-Fi Display extensions to P2P"""
@@ -299,6 +299,7 @@ def test_wifi_display_persistent_group(dev):
         dev[1].request("SET wifi_display 0")
         dev[2].request("SET wifi_display 0")
 
+@remote_compatible
 def test_wifi_display_invalid_subelem(dev):
     """Wi-Fi Display and invalid subelement parsing"""
     addr1 = dev[1].p2p_dev_addr()
@@ -319,3 +320,41 @@ def test_wifi_display_invalid_subelem(dev):
     finally:
         dev[0].request("SET wifi_display 0")
         dev[1].request("SET wifi_display 0")
+
+def test_wifi_display_parsing(dev):
+    """Wi-Fi Display extensions to P2P and special parsing cases"""
+    try:
+        _test_wifi_display_parsing(dev)
+    finally:
+        dev[1].request("VENDOR_ELEM_REMOVE 11 *")
+        dev[0].request("SET wifi_display 0")
+
+def _test_wifi_display_parsing(dev):
+    wfd_devinfo = "00411c440028"
+    dev[0].request("SET wifi_display 1")
+    dev[0].request("WFD_SUBELEM_SET 0 0006" + wfd_devinfo)
+    dev[0].p2p_start_go(freq=2412)
+
+    # P2P Client with invalid WFD IE
+    if "OK" not in dev[1].request("VENDOR_ELEM_ADD 11 dd10506f9a0a000000010000060000ffffff"):
+        raise Exception("VENDOR_ELEM_ADD failed")
+
+    pin = dev[1].wps_read_pin()
+    dev[0].p2p_go_authorize_client(pin)
+    dev[1].p2p_connect_group(dev[0].p2p_dev_addr(), pin, timeout=60,
+                             social=True, freq=2412)
+    bssid = dev[0].get_group_status_field('bssid')
+    dev[2].scan_for_bss(bssid, freq=2412, force_scan=True)
+    bss = dev[2].get_bss(bssid)
+    if bss['wfd_subelems'] != "000006" + wfd_devinfo:
+        raise Exception("Unexpected WFD elements in scan results: " + bss['wfd_subelems'])
+
+    # P2P Client without WFD IE
+    pin = dev[2].wps_read_pin()
+    dev[0].p2p_go_authorize_client(pin)
+    dev[2].p2p_connect_group(dev[0].p2p_dev_addr(), pin, timeout=60,
+                             social=True, freq=2412)
+    dev[2].remove_group()
+
+    dev[0].remove_group()
+    dev[1].wait_go_ending_session()

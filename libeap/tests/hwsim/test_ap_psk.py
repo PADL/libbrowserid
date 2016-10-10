@@ -4,6 +4,7 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import binascii
 from Crypto.Cipher import AES
 import hashlib
@@ -27,6 +28,7 @@ def check_mib(dev, vals):
         if mib[v[0]] != v[1]:
             raise Exception("Unexpected {} = {} (expected {})".format(v[0], mib[v[0]], v[1]))
 
+@remote_compatible
 def test_ap_wpa2_psk(dev, apdev):
     """WPA2-PSK AP with PSK instead of passphrase"""
     ssid = "test-wpa2-psk"
@@ -34,7 +36,7 @@ def test_ap_wpa2_psk(dev, apdev):
     psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
     params = hostapd.wpa2_params(ssid=ssid)
     params['wpa_psk'] = psk
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     key_mgmt = hapd.get_config()['key_mgmt']
     if key_mgmt.split(' ')[0] != "WPA-PSK":
         raise Exception("Unexpected GET_CONFIG(key_mgmt): " + key_mgmt)
@@ -55,7 +57,7 @@ def test_ap_wpa2_psk_file(dev, apdev):
     psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     params['wpa_psk_file'] = 'hostapd.wpa_psk'
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     dev[1].connect(ssid, psk="very secret", scan_freq="2412", wait_connect=False)
     dev[2].connect(ssid, raw_psk=psk, scan_freq="2412")
     dev[2].request("REMOVE_NETWORK all")
@@ -68,6 +70,7 @@ def test_ap_wpa2_psk_file(dev, apdev):
         raise Exception("Timed out while waiting for failure report")
     dev[1].request("REMOVE_NETWORK all")
 
+@remote_compatible
 def test_ap_wpa2_psk_mem(dev, apdev):
     """WPA2-PSK AP with passphrase only in memory"""
     try:
@@ -82,7 +85,7 @@ def _test_ap_wpa2_psk_mem(dev, apdev):
     psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
     params = hostapd.wpa2_params(ssid=ssid)
     params['wpa_psk'] = psk
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].connect(ssid, mem_only_psk="1", scan_freq="2412", wait_connect=False)
     dev[0].request("SCAN_INTERVAL 1")
@@ -102,38 +105,41 @@ def _test_ap_wpa2_psk_mem(dev, apdev):
     dev[1].request("CTRL-RSP-PSK_PASSPHRASE-" + id + ':' + psk)
     dev[1].wait_connected(timeout=10)
 
+@remote_compatible
 def test_ap_wpa2_ptk_rekey(dev, apdev):
     """WPA2-PSK AP and PTK rekey enforced by station"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, wpa_ptk_rekey="1", scan_freq="2412")
     ev = dev[0].wait_event(["WPA: Key negotiation completed"])
     if ev is None:
         raise Exception("PTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa2_ptk_rekey_ap(dev, apdev):
     """WPA2-PSK AP and PTK rekey enforced by AP"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     params['wpa_ptk_rekey'] = '2'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     ev = dev[0].wait_event(["WPA: Key negotiation completed"])
     if ev is None:
         raise Exception("PTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa2_sha256_ptk_rekey(dev, apdev):
     """WPA2-PSK/SHA256 AKM AP and PTK rekey enforced by station"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     params["wpa_key_mgmt"] = "WPA-PSK-SHA256"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, key_mgmt="WPA-PSK-SHA256",
                    wpa_ptk_rekey="1", scan_freq="2412")
     ev = dev[0].wait_event(["WPA: Key negotiation completed"])
@@ -143,6 +149,7 @@ def test_ap_wpa2_sha256_ptk_rekey(dev, apdev):
     check_mib(dev[0], [ ("dot11RSNAAuthenticationSuiteRequested", "00-0f-ac-6"),
                         ("dot11RSNAAuthenticationSuiteSelected", "00-0f-ac-6") ])
 
+@remote_compatible
 def test_ap_wpa2_sha256_ptk_rekey_ap(dev, apdev):
     """WPA2-PSK/SHA256 AKM AP and PTK rekey enforced by AP"""
     ssid = "test-wpa2-psk"
@@ -150,7 +157,7 @@ def test_ap_wpa2_sha256_ptk_rekey_ap(dev, apdev):
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     params["wpa_key_mgmt"] = "WPA-PSK-SHA256"
     params['wpa_ptk_rekey'] = '2'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, key_mgmt="WPA-PSK-SHA256",
                    scan_freq="2412")
     ev = dev[0].wait_event(["WPA: Key negotiation completed"])
@@ -160,13 +167,14 @@ def test_ap_wpa2_sha256_ptk_rekey_ap(dev, apdev):
     check_mib(dev[0], [ ("dot11RSNAAuthenticationSuiteRequested", "00-0f-ac-6"),
                         ("dot11RSNAAuthenticationSuiteSelected", "00-0f-ac-6") ])
 
+@remote_compatible
 def test_ap_wpa_ptk_rekey(dev, apdev):
     """WPA-PSK/TKIP AP and PTK rekey enforced by station"""
     skip_with_fips(dev[0])
     ssid = "test-wpa-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa_params(ssid=ssid, passphrase=passphrase)
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, wpa_ptk_rekey="1", scan_freq="2412")
     if "[WPA-PSK-TKIP]" not in dev[0].request("SCAN_RESULTS"):
         raise Exception("Scan results missing WPA element info")
@@ -175,6 +183,7 @@ def test_ap_wpa_ptk_rekey(dev, apdev):
         raise Exception("PTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa_ptk_rekey_ap(dev, apdev):
     """WPA-PSK/TKIP AP and PTK rekey enforced by AP"""
     skip_with_fips(dev[0])
@@ -182,20 +191,21 @@ def test_ap_wpa_ptk_rekey_ap(dev, apdev):
     passphrase = 'qwertyuiop'
     params = hostapd.wpa_params(ssid=ssid, passphrase=passphrase)
     params['wpa_ptk_rekey'] = '2'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     ev = dev[0].wait_event(["WPA: Key negotiation completed"], timeout=10)
     if ev is None:
         raise Exception("PTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa_ccmp(dev, apdev):
     """WPA-PSK/CCMP"""
     ssid = "test-wpa-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa_params(ssid=ssid, passphrase=passphrase)
     params['wpa_pairwise'] = "CCMP"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
     check_mib(dev[0], [ ("dot11RSNAConfigGroupCipherSize", "128"),
@@ -224,7 +234,7 @@ def test_ap_wpa2_psk_file(dev, apdev):
 
     try:
         # missing PSK file
-        hapd = hostapd.add_ap(apdev[0]['ifname'], params, no_enable=True)
+        hapd = hostapd.add_ap(apdev[0], params, no_enable=True)
         if "FAIL" not in hapd.request("ENABLE"):
             raise Exception("Unexpected ENABLE success")
         hapd.request("DISABLE")
@@ -270,30 +280,33 @@ def test_ap_wpa2_psk_file(dev, apdev):
         except:
             pass
 
+@remote_compatible
 def test_ap_wpa2_psk_wildcard_ssid(dev, apdev):
     """WPA2-PSK AP and wildcard SSID configuration"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect("", bssid=apdev[0]['bssid'], psk=passphrase,
                    scan_freq="2412")
     dev[1].connect("", bssid=apdev[0]['bssid'], raw_psk=psk, scan_freq="2412")
 
+@remote_compatible
 def test_ap_wpa2_gtk_rekey(dev, apdev):
     """WPA2-PSK AP and GTK rekey enforced by AP"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     params['wpa_group_rekey'] = '1'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa_gtk_rekey(dev, apdev):
     """WPA-PSK/TKIP AP and GTK rekey enforced by AP"""
     skip_with_fips(dev[0])
@@ -301,13 +314,14 @@ def test_ap_wpa_gtk_rekey(dev, apdev):
     passphrase = 'qwertyuiop'
     params = hostapd.wpa_params(ssid=ssid, passphrase=passphrase)
     params['wpa_group_rekey'] = '1'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
     if ev is None:
         raise Exception("GTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa2_gmk_rekey(dev, apdev):
     """WPA2-PSK AP and GMK and GTK rekey enforced by AP"""
     ssid = "test-wpa2-psk"
@@ -315,7 +329,7 @@ def test_ap_wpa2_gmk_rekey(dev, apdev):
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     params['wpa_group_rekey'] = '1'
     params['wpa_gmk_rekey'] = '2'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     for i in range(0, 3):
         ev = dev[0].wait_event(["WPA: Group rekeying completed"], timeout=2)
@@ -323,13 +337,14 @@ def test_ap_wpa2_gmk_rekey(dev, apdev):
             raise Exception("GTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa2_strict_rekey(dev, apdev):
     """WPA2-PSK AP and strict GTK rekey enforced by AP"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     params['wpa_strict_rekey'] = '1'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     dev[1].connect(ssid, psk=passphrase, scan_freq="2412")
     dev[1].request("DISCONNECT")
@@ -338,31 +353,30 @@ def test_ap_wpa2_strict_rekey(dev, apdev):
         raise Exception("GTK rekey timed out")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa2_bridge_fdb(dev, apdev):
     """Bridge FDB entry removal"""
+    hapd = None
     try:
         ssid = "test-wpa2-psk"
         passphrase = "12345678"
         params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
         params['bridge'] = 'ap-br0'
-        hostapd.add_ap(apdev[0]['ifname'], params)
-        subprocess.call(['brctl', 'setfd', 'ap-br0', '0'])
-        subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'up'])
+        hapd = hostapd.add_ap(apdev[0], params)
+        hapd.cmd_execute(['brctl', 'setfd', 'ap-br0', '0'])
+        hapd.cmd_execute(['ip', 'link', 'set', 'dev', 'ap-br0', 'up'])
         dev[0].connect(ssid, psk=passphrase, scan_freq="2412",
                        bssid=apdev[0]['bssid'])
         dev[1].connect(ssid, psk=passphrase, scan_freq="2412",
                        bssid=apdev[0]['bssid'])
         addr0 = dev[0].p2p_interface_addr()
         hwsim_utils.test_connectivity_sta(dev[0], dev[1])
-        cmd = subprocess.Popen(['brctl', 'showmacs', 'ap-br0'],
-                               stdout=subprocess.PIPE)
-        macs1 = cmd.stdout.read()
+        err, macs1 = hapd.cmd_execute(['brctl', 'showmacs', 'ap-br0'])
+        hapd.cmd_execute(['brctl', 'setageing', 'ap-br0', '1'])
         dev[0].request("DISCONNECT")
         dev[1].request("DISCONNECT")
         time.sleep(1)
-        cmd = subprocess.Popen(['brctl', 'showmacs', 'ap-br0'],
-                               stdout=subprocess.PIPE)
-        macs2 = cmd.stdout.read()
+        err, macs2 = hapd.cmd_execute(['brctl', 'showmacs', 'ap-br0'])
 
         addr1 = dev[1].p2p_interface_addr()
         if addr0 not in macs1 or addr1 not in macs1:
@@ -370,9 +384,11 @@ def test_ap_wpa2_bridge_fdb(dev, apdev):
         if addr0 in macs2 or addr1 in macs2:
             raise Exception("Bridge FDB entry was not removed")
     finally:
-        subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'down'])
-        subprocess.call(['brctl', 'delbr', 'ap-br0'])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', 'ap-br0',
+                                       'down'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delbr', 'ap-br0'])
 
+@remote_compatible
 def test_ap_wpa2_already_in_bridge(dev, apdev):
     """hostapd behavior with interface already in bridge"""
     ifname = apdev[0]['ifname']
@@ -380,22 +396,25 @@ def test_ap_wpa2_already_in_bridge(dev, apdev):
     try:
         ssid = "test-wpa2-psk"
         passphrase = "12345678"
-        subprocess.call(['brctl', 'addbr', br_ifname])
-        subprocess.call(['brctl', 'setfd', br_ifname, '0'])
-        subprocess.call(['ip', 'link', 'set', 'dev', br_ifname, 'up'])
-        subprocess.call(['iw', ifname, 'set', 'type', '__ap'])
-        subprocess.call(['brctl', 'addif', br_ifname, ifname])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'addbr', br_ifname])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'setfd', br_ifname, '0'])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', br_ifname,
+                                       'up'])
+        hostapd.cmd_execute(apdev[0], ['iw', ifname, 'set', 'type', '__ap'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'addif', br_ifname, ifname])
         params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-        hapd = hostapd.add_ap(ifname, params)
+        hapd = hostapd.add_ap(apdev[0], params)
         if hapd.get_driver_status_field('brname') != br_ifname:
             raise Exception("Bridge name not identified correctly")
         dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     finally:
-        subprocess.call(['ip', 'link', 'set', 'dev', br_ifname, 'down'])
-        subprocess.call(['brctl', 'delif', br_ifname, ifname])
-        subprocess.call(['iw', ifname, 'set', 'type', 'station'])
-        subprocess.call(['brctl', 'delbr', br_ifname])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', br_ifname,
+                                       'down'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delif', br_ifname, ifname])
+        hostapd.cmd_execute(apdev[0], ['iw', ifname, 'set', 'type', 'station'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delbr', br_ifname])
 
+@remote_compatible
 def test_ap_wpa2_in_different_bridge(dev, apdev):
     """hostapd behavior with interface in different bridge"""
     ifname = apdev[0]['ifname']
@@ -403,17 +422,19 @@ def test_ap_wpa2_in_different_bridge(dev, apdev):
     try:
         ssid = "test-wpa2-psk"
         passphrase = "12345678"
-        subprocess.call(['brctl', 'addbr', br_ifname])
-        subprocess.call(['brctl', 'setfd', br_ifname, '0'])
-        subprocess.call(['ip', 'link', 'set', 'dev', br_ifname, 'up'])
-        subprocess.call(['iw', ifname, 'set', 'type', '__ap'])
-        subprocess.call(['brctl', 'addif', br_ifname, ifname])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'addbr', br_ifname])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'setfd', br_ifname, '0'])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', br_ifname,
+                                       'up'])
+        hostapd.cmd_execute(apdev[0], ['iw', ifname, 'set', 'type', '__ap'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'addif', br_ifname, ifname])
         time.sleep(0.5)
         params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
         params['bridge'] = 'ap-br0'
-        hapd = hostapd.add_ap(ifname, params)
-        subprocess.call(['brctl', 'setfd', 'ap-br0', '0'])
-        subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'up'])
+        hapd = hostapd.add_ap(apdev[0], params)
+        hostapd.cmd_execute(apdev[0], ['brctl', 'setfd', 'ap-br0', '0'])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', 'ap-br0',
+                                       'up'])
         brname = hapd.get_driver_status_field('brname')
         if brname != 'ap-br0':
             raise Exception("Incorrect bridge: " + brname)
@@ -426,11 +447,13 @@ def test_ap_wpa2_in_different_bridge(dev, apdev):
         dev[0].request("DISCONNECT")
         hapd.disable()
     finally:
-        subprocess.call(['ip', 'link', 'set', 'dev', br_ifname, 'down'])
-        subprocess.call(['brctl', 'delif', br_ifname, ifname],
-                        stderr=open('/dev/null', 'w'))
-        subprocess.call(['brctl', 'delbr', br_ifname])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', br_ifname,
+                                       'down'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delif', br_ifname, ifname,
+                                       "2>", "/dev/null"], shell=True)
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delbr', br_ifname])
 
+@remote_compatible
 def test_ap_wpa2_ext_add_to_bridge(dev, apdev):
     """hostapd behavior with interface added to bridge externally"""
     ifname = apdev[0]['ifname']
@@ -439,19 +462,21 @@ def test_ap_wpa2_ext_add_to_bridge(dev, apdev):
         ssid = "test-wpa2-psk"
         passphrase = "12345678"
         params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-        hapd = hostapd.add_ap(ifname, params)
+        hapd = hostapd.add_ap(apdev[0], params)
 
-        subprocess.call(['brctl', 'addbr', br_ifname])
-        subprocess.call(['brctl', 'setfd', br_ifname, '0'])
-        subprocess.call(['ip', 'link', 'set', 'dev', br_ifname, 'up'])
-        subprocess.call(['brctl', 'addif', br_ifname, ifname])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'addbr', br_ifname])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'setfd', br_ifname, '0'])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', br_ifname,
+                                       'up'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'addif', br_ifname, ifname])
         dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
         if hapd.get_driver_status_field('brname') != br_ifname:
             raise Exception("Bridge name not identified correctly")
     finally:
-        subprocess.call(['ip', 'link', 'set', 'dev', br_ifname, 'down'])
-        subprocess.call(['brctl', 'delif', br_ifname, ifname])
-        subprocess.call(['brctl', 'delbr', br_ifname])
+        hostapd.cmd_execute(apdev[0], ['ip', 'link', 'set', 'dev', br_ifname,
+                                       'down'])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delif', br_ifname, ifname])
+        hostapd.cmd_execute(apdev[0], ['brctl', 'delbr', br_ifname])
 
 def test_ap_wpa2_psk_ext(dev, apdev):
     """WPA2-PSK AP using external EAPOL I/O"""
@@ -461,7 +486,7 @@ def test_ap_wpa2_psk_ext(dev, apdev):
     psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
     params = hostapd.wpa2_params(ssid=ssid)
     params['wpa_psk'] = psk
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     hapd.request("SET ext_eapol_frame_io 1")
     dev[0].request("SET ext_eapol_frame_io 1")
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412", wait_connect=False)
@@ -484,6 +509,73 @@ def test_ap_wpa2_psk_ext(dev, apdev):
         res = hapd.request("EAPOL_RX " + addr + " " + ev.split(' ')[2])
         if "OK" not in res:
             raise Exception("EAPOL_RX to hostapd failed")
+
+def test_ap_wpa2_psk_ext_retry_msg_3(dev, apdev):
+    """WPA2-PSK AP using external EAPOL I/O and retry for EAPOL-Key msg 3/4"""
+    bssid = apdev[0]['bssid']
+    ssid = "test-wpa2-psk"
+    passphrase = 'qwertyuiop'
+    psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
+    params = hostapd.wpa2_params(ssid=ssid)
+    params['wpa_psk'] = psk
+    hapd = hostapd.add_ap(apdev[0], params)
+    hapd.request("SET ext_eapol_frame_io 1")
+    dev[0].request("SET ext_eapol_frame_io 1")
+    dev[0].connect(ssid, psk=passphrase, scan_freq="2412", wait_connect=False)
+    addr = dev[0].p2p_interface_addr()
+
+    # EAPOL-Key msg 1/4
+    ev = hapd.wait_event(["EAPOL-TX"], timeout=15)
+    if ev is None:
+        raise Exception("Timeout on EAPOL-TX from hostapd")
+    res = dev[0].request("EAPOL_RX " + bssid + " " + ev.split(' ')[2])
+    if "OK" not in res:
+        raise Exception("EAPOL_RX to wpa_supplicant failed")
+
+    # EAPOL-Key msg 2/4
+    ev = dev[0].wait_event(["EAPOL-TX"], timeout=15)
+    if ev is None:
+        raise Exception("Timeout on EAPOL-TX from wpa_supplicant")
+    res = hapd.request("EAPOL_RX " + addr + " " + ev.split(' ')[2])
+    if "OK" not in res:
+        raise Exception("EAPOL_RX to hostapd failed")
+
+    # EAPOL-Key msg 3/4
+    ev = hapd.wait_event(["EAPOL-TX"], timeout=15)
+    if ev is None:
+        raise Exception("Timeout on EAPOL-TX from hostapd")
+    res = dev[0].request("EAPOL_RX " + bssid + " " + ev.split(' ')[2])
+    if "OK" not in res:
+        raise Exception("EAPOL_RX to wpa_supplicant failed")
+
+    # EAPOL-Key msg 4/4
+    ev = dev[0].wait_event(["EAPOL-TX"], timeout=15)
+    if ev is None:
+        raise Exception("Timeout on EAPOL-TX from wpa_supplicant")
+    # Do not send to the AP
+    dev[0].wait_connected(timeout=15)
+
+    # EAPOL-Key msg 3/4 (retry)
+    ev = hapd.wait_event(["EAPOL-TX"], timeout=15)
+    if ev is None:
+        raise Exception("Timeout on EAPOL-TX from hostapd")
+    res = dev[0].request("EAPOL_RX " + bssid + " " + ev.split(' ')[2])
+    if "OK" not in res:
+        raise Exception("EAPOL_RX to wpa_supplicant failed")
+
+    # EAPOL-Key msg 4/4
+    ev = dev[0].wait_event(["EAPOL-TX"], timeout=15)
+    if ev is None:
+        raise Exception("Timeout on EAPOL-TX from wpa_supplicant")
+    res = hapd.request("EAPOL_RX " + addr + " " + ev.split(' ')[2])
+    if "OK" not in res:
+        raise Exception("EAPOL_RX to hostapd failed")
+
+    ev = hapd.wait_event(["AP-STA-CONNECTED"], timeout=15)
+    if ev is None:
+        raise Exception("Timeout on AP-STA-CONNECTED from hostapd")
+
+    hwsim_utils.test_connectivity(dev[0], hapd)
 
 def parse_eapol(data):
     (version, type, length) = struct.unpack('>BBH', data[0:4])
@@ -626,7 +718,7 @@ def eapol_test(apdev, dev, wpa2=True):
     else:
         params = hostapd.wpa_params(ssid=ssid)
     params['wpa_psk'] = psk
-    hapd = hostapd.add_ap(apdev['ifname'], params)
+    hapd = hostapd.add_ap(apdev, params)
     hapd.request("SET ext_eapol_frame_io 1")
     dev.request("SET ext_eapol_frame_io 1")
     dev.connect(ssid, raw_psk=psk, scan_freq="2412", wait_connect=False)
@@ -638,6 +730,7 @@ def eapol_test(apdev, dev, wpa2=True):
     snonce = binascii.unhexlify('1111111111111111111111111111111111111111111111111111111111111111')
     return (bssid,ssid,hapd,snonce,pmk,addr,rsne)
 
+@remote_compatible
 def test_ap_wpa2_psk_ext_eapol(dev, apdev):
     """WPA2-PSK AP using external EAPOL supplicant"""
     (bssid,ssid,hapd,snonce,pmk,addr,rsne) = eapol_test(apdev[0], dev[0])
@@ -665,6 +758,7 @@ def test_ap_wpa2_psk_ext_eapol(dev, apdev):
     reply_eapol("4/4", hapd, addr, msg, 0x030a, None, None, kck)
     hapd_connected(hapd)
 
+@remote_compatible
 def test_ap_wpa2_psk_ext_eapol_retry1(dev, apdev):
     """WPA2 4-way handshake with EAPOL-Key 1/4 retransmitted"""
     (bssid,ssid,hapd,snonce,pmk,addr,rsne) = eapol_test(apdev[0], dev[0])
@@ -691,6 +785,7 @@ def test_ap_wpa2_psk_ext_eapol_retry1(dev, apdev):
     reply_eapol("4/4", hapd, addr, msg, 0x030a, None, None, kck)
     hapd_connected(hapd)
 
+@remote_compatible
 def test_ap_wpa2_psk_ext_eapol_retry1b(dev, apdev):
     """WPA2 4-way handshake with EAPOL-Key 1/4 and 2/4 retransmitted"""
     (bssid,ssid,hapd,snonce,pmk,addr,rsne) = eapol_test(apdev[0], dev[0])
@@ -712,6 +807,7 @@ def test_ap_wpa2_psk_ext_eapol_retry1b(dev, apdev):
     reply_eapol("4/4", hapd, addr, msg, 0x030a, None, None, kck)
     hapd_connected(hapd)
 
+@remote_compatible
 def test_ap_wpa2_psk_ext_eapol_retry1c(dev, apdev):
     """WPA2 4-way handshake with EAPOL-Key 1/4 and 2/4 retransmitted and SNonce changing"""
     (bssid,ssid,hapd,snonce,pmk,addr,rsne) = eapol_test(apdev[0], dev[0])
@@ -735,6 +831,7 @@ def test_ap_wpa2_psk_ext_eapol_retry1c(dev, apdev):
     reply_eapol("4/4", hapd, addr, msg, 0x030a, None, None, kck)
     hapd_connected(hapd)
 
+@remote_compatible
 def test_ap_wpa2_psk_ext_eapol_retry1d(dev, apdev):
     """WPA2 4-way handshake with EAPOL-Key 1/4 and 2/4 retransmitted and SNonce changing and older used"""
     (bssid,ssid,hapd,snonce,pmk,addr,rsne) = eapol_test(apdev[0], dev[0])
@@ -758,6 +855,7 @@ def test_ap_wpa2_psk_ext_eapol_retry1d(dev, apdev):
     reply_eapol("4/4", hapd, addr, msg, 0x030a, None, None, kck)
     hapd_connected(hapd)
 
+@remote_compatible
 def test_ap_wpa2_psk_ext_eapol_type_diff(dev, apdev):
     """WPA2 4-way handshake using external EAPOL supplicant"""
     (bssid,ssid,hapd,snonce,pmk,addr,rsne) = eapol_test(apdev[0], dev[0])
@@ -788,6 +886,7 @@ def test_ap_wpa2_psk_ext_eapol_type_diff(dev, apdev):
     reply_eapol("4/4", hapd, addr, msg, 0x030a, None, None, kck)
     hapd_connected(hapd)
 
+@remote_compatible
 def test_ap_wpa_psk_ext_eapol(dev, apdev):
     """WPA2-PSK AP using external EAPOL supplicant"""
     (bssid,ssid,hapd,snonce,pmk,addr,wpae) = eapol_test(apdev[0], dev[0],
@@ -815,6 +914,7 @@ def test_ap_wpa_psk_ext_eapol(dev, apdev):
     reply_eapol("4/4", hapd, addr, msg, 0x030a, None, None, kck)
     hapd_connected(hapd)
 
+@remote_compatible
 def test_ap_wpa2_psk_ext_eapol_key_info(dev, apdev):
     """WPA2-PSK 4-way handshake with strange key info values"""
     (bssid,ssid,hapd,snonce,pmk,addr,rsne) = eapol_test(apdev[0], dev[0])
@@ -1291,6 +1391,7 @@ def test_ap_wpa2_psk_supp_proto_unexpected_group_msg(dev, apdev):
         raise Exception("Unexpected group key message not reported")
     dev[0].wait_disconnected(timeout=1)
 
+@remote_compatible
 def test_ap_wpa2_psk_supp_proto_msg_1_invalid_kde(dev, apdev):
     """WPA2-PSK supplicant protocol testing: invalid KDE in msg 1/4"""
     (bssid,ssid,hapd,snonce,pmk,addr,rsne) = eapol_test(apdev[0], dev[0])
@@ -1598,8 +1699,7 @@ def test_ap_wpa2_psk_supp_proto_gtk_not_encrypted(dev, apdev):
 
 def find_wpas_process(dev):
     ifname = dev.ifname
-    cmd = subprocess.Popen(['ps', 'ax'], stdout=subprocess.PIPE)
-    (data,err) = cmd.communicate()
+    err, data = dev.cmd_execute(['ps', 'ax'])
     for l in data.splitlines():
         if "wpa_supplicant" not in l:
             continue
@@ -1610,6 +1710,7 @@ def find_wpas_process(dev):
 
 def read_process_memory(pid, key=None):
     buf = bytes()
+    logger.info("Reading process memory (pid=%d)" % pid)
     with open('/proc/%d/maps' % pid, 'r') as maps, \
          open('/proc/%d/mem' % pid, 'r') as mem:
         for l in maps.readlines():
@@ -1625,11 +1726,15 @@ def read_process_memory(pid, key=None):
                 continue
             if not perm.startswith('rw'):
                 continue
+            for name in [ "[heap]", "[stack]" ]:
+                if name in l:
+                    logger.info("%s 0x%x-0x%x is at %d-%d" % (name, start, end, len(buf), len(buf) + (end - start)))
             mem.seek(start)
             data = mem.read(end - start)
             buf += data
             if key and key in data:
                 logger.info("Key found in " + l)
+    logger.info("Total process memory read: %d bytes" % len(buf))
     return buf
 
 def verify_not_present(buf, key, fname, keyname):
@@ -1650,6 +1755,13 @@ def get_key_locations(buf, key, keyname):
         if pos < 0:
             break
         logger.info("Found %s at %d" % (keyname, pos))
+        context = 128
+        start = pos - context if pos > context else 0
+        before = binascii.hexlify(buf[start:pos])
+        context += len(key)
+        end = pos + context if pos < len(buf) - context else len(buf) - context
+        after = binascii.hexlify(buf[pos + len(key):end])
+        logger.debug("Memory context %d-%d: %s|%s|%s" % (start, end, before, binascii.hexlify(key), after))
         count += 1
         pos += len(key)
     return count
@@ -1662,7 +1774,7 @@ def test_wpa2_psk_key_lifetime_in_memory(dev, apdev, params):
     pmk = binascii.unhexlify(psk)
     p = hostapd.wpa2_params(ssid=ssid)
     p['wpa_psk'] = psk
-    hapd = hostapd.add_ap(apdev[0]['ifname'], p)
+    hapd = hostapd.add_ap(apdev[0], p)
 
     pid = find_wpas_process(dev[0])
 
@@ -1686,7 +1798,11 @@ def test_wpa2_psk_key_lifetime_in_memory(dev, apdev, params):
     get_key_locations(buf, pmk, "PMK")
 
     dev[0].connect_network(id, timeout=20)
+    # The decrypted copy of GTK is freed only after the CTRL-EVENT-CONNECTED
+    # event has been delivered, so verify that wpa_supplicant has returned to
+    # eloop before reading process memory.
     time.sleep(1)
+    dev[0].ping()
 
     buf = read_process_memory(pid, pmk)
 
@@ -1724,6 +1840,7 @@ def test_wpa2_psk_key_lifetime_in_memory(dev, apdev, params):
     if tk in buf:
         raise Exception("TK found from memory")
     if gtk in buf:
+        get_key_locations(buf, gtk, "GTK")
         raise Exception("GTK found from memory")
 
     logger.info("Checking keys in memory after disassociation")
@@ -1751,12 +1868,13 @@ def test_wpa2_psk_key_lifetime_in_memory(dev, apdev, params):
     verify_not_present(buf, tk, fname, "TK")
     verify_not_present(buf, gtk, fname, "GTK")
 
+@remote_compatible
 def test_ap_wpa2_psk_wep(dev, apdev):
     """WPA2-PSK AP and WEP enabled"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     try:
         hapd.set('wep_key0', '"hello"')
         raise Exception("WEP key accepted to WPA2 network")
@@ -1779,7 +1897,7 @@ def _test_ap_wpa2_psk_wpas_in_bridge(dev, apdev):
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     br_ifname='sta-br0'
     ifname='wlan5'
@@ -1790,25 +1908,28 @@ def _test_ap_wpa2_psk_wpas_in_bridge(dev, apdev):
     subprocess.call(['iw', ifname, 'set', '4addr', 'on'])
     subprocess.check_call(['brctl', 'addif', br_ifname, ifname])
     wpas.interface_add(ifname, br_ifname=br_ifname)
+    wpas.dump_monitor()
 
     wpas.connect(ssid, psk=passphrase, scan_freq="2412")
+    wpas.dump_monitor()
 
+@remote_compatible
 def test_ap_wpa2_psk_ifdown(dev, apdev):
     """AP with open mode and external ifconfig down"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
 
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
-    subprocess.call(['ip', 'link', 'set', 'dev', apdev[0]['ifname'], 'down'])
+    hapd.cmd_execute(['ip', 'link', 'set', 'dev', apdev[0]['ifname'], 'down'])
     ev = hapd.wait_event(["INTERFACE-DISABLED"], timeout=10)
     if ev is None:
         raise Exception("No INTERFACE-DISABLED event")
     # this wait tests beacon loss detection in mac80211
     dev[0].wait_disconnected()
-    subprocess.call(['ip', 'link', 'set', 'dev', apdev[0]['ifname'], 'up'])
+    hapd.cmd_execute(['ip', 'link', 'set', 'dev', apdev[0]['ifname'], 'up'])
     ev = hapd.wait_event(["INTERFACE-ENABLED"], timeout=10)
     if ev is None:
         raise Exception("No INTERFACE-ENABLED event")
@@ -1823,7 +1944,7 @@ def test_ap_wpa2_psk_drop_first_msg_4(dev, apdev):
     psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
     params = hostapd.wpa2_params(ssid=ssid)
     params['wpa_psk'] = psk
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     hapd.request("SET ext_eapol_frame_io 1")
     dev[0].request("SET ext_eapol_frame_io 1")
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412", wait_connect=False)
@@ -1882,6 +2003,7 @@ def test_ap_wpa2_psk_drop_first_msg_4(dev, apdev):
         # case, this exception can be uncommented here.
         #raise Exception("Unexpected disconnection")
 
+@remote_compatible
 def test_ap_wpa2_psk_disable_enable(dev, apdev):
     """WPA2-PSK AP getting disabled and re-enabled"""
     ssid = "test-wpa2-psk"
@@ -1889,7 +2011,7 @@ def test_ap_wpa2_psk_disable_enable(dev, apdev):
     psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
     params = hostapd.wpa2_params(ssid=ssid)
     params['wpa_psk'] = psk
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, raw_psk=psk, scan_freq="2412")
 
     for i in range(2):
@@ -1899,12 +2021,13 @@ def test_ap_wpa2_psk_disable_enable(dev, apdev):
         dev[0].wait_connected()
         hwsim_utils.test_connectivity(dev[0], hapd)
 
+@remote_compatible
 def test_ap_wpa2_psk_incorrect_passphrase(dev, apdev):
     """WPA2-PSK AP and station using incorrect passphrase"""
     ssid = "test-wpa2-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk="incorrect passphrase", scan_freq="2412",
                    wait_connect=False)
     ev = hapd.wait_event(["AP-STA-POSSIBLE-PSK-MISMATCH"], timeout=10)
@@ -1918,13 +2041,14 @@ def test_ap_wpa2_psk_incorrect_passphrase(dev, apdev):
 
     dev[0].wait_connected(timeout=20)
 
+@remote_compatible
 def test_ap_wpa_ie_parsing(dev, apdev):
     """WPA IE parsing"""
     skip_with_fips(dev[0])
     ssid = "test-wpa-psk"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa_params(ssid=ssid, passphrase=passphrase)
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     id = dev[0].connect(ssid, psk=passphrase, scan_freq="2412",
                         only_add_network=True)
 
@@ -1960,6 +2084,7 @@ def test_ap_wpa_ie_parsing(dev, apdev):
             if ev is None:
                 raise Exception("Association rejection not reported")
             dev[0].request("DISCONNECT")
+            dev[0].dump_monitor()
         finally:
             dev[0].request("VENDOR_ELEM_REMOVE 13 *")
 
@@ -1973,9 +2098,11 @@ def test_ap_wpa_ie_parsing(dev, apdev):
             dev[0].select_network(id)
             dev[0].wait_connected()
             dev[0].request("DISCONNECT")
+            dev[0].dump_monitor()
         finally:
             dev[0].request("VENDOR_ELEM_REMOVE 13 *")
 
+@remote_compatible
 def test_ap_wpa2_psk_no_random(dev, apdev):
     """WPA2-PSK AP and no random numbers available"""
     ssid = "test-wpa2-psk"
@@ -1983,7 +2110,7 @@ def test_ap_wpa2_psk_no_random(dev, apdev):
     psk = '602e323e077bc63bd80307ef4745b754b0ae0a925c2638ecd13a794b9527b9e6'
     params = hostapd.wpa2_params(ssid=ssid)
     params['wpa_psk'] = psk
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     with fail_test(hapd, 1, "wpa_gmk_to_gtk"):
         id = dev[0].connect(ssid, raw_psk=psk, scan_freq="2412",
                             wait_connect=False)
@@ -1994,6 +2121,7 @@ def test_ap_wpa2_psk_no_random(dev, apdev):
         dev[0].select_network(id, freq=2412)
         dev[0].wait_connected()
 
+@remote_compatible
 def test_rsn_ie_proto_psk_sta(dev, apdev):
     """RSN element protocol testing for PSK cases on STA side"""
     bssid = apdev[0]['bssid']
@@ -2002,7 +2130,7 @@ def test_rsn_ie_proto_psk_sta(dev, apdev):
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
     # This is the RSN element used normally by hostapd
     params['own_ie_override'] = '30140100000fac040100000fac040100000fac020c00'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     if "FAIL" not in hapd.request("SET own_ie_override qwerty"):
         raise Exception("Invalid own_ie_override value accepted")
     id = dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
@@ -2033,17 +2161,12 @@ def test_rsn_ie_proto_psk_sta(dev, apdev):
         dev[0].select_network(id, freq=2412)
         dev[0].wait_connected()
 
+@remote_compatible
 def test_ap_cli_order(dev, apdev):
     ssid = "test-rsn-setup"
     passphrase = 'zzzzzzzz'
-    ifname = apdev[0]['ifname']
 
-    hapd_global = hostapd.HostapdGlobal()
-    hapd_global.remove(ifname)
-    hapd_global.add(ifname)
-
-    hapd = hostapd.Hostapd(ifname)
-    hapd.set_defaults()
+    hapd = hostapd.add_ap(apdev[0], {}, no_enable=True)
     hapd.set('ssid', ssid)
     hapd.set('wpa_passphrase', passphrase)
     hapd.set('rsn_pairwise', 'CCMP')
@@ -2063,3 +2186,52 @@ def test_ap_cli_order(dev, apdev):
         raise Exception("AP startup failed")
 
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
+
+def set_test_assoc_ie(dev, ie):
+    if "OK" not in dev.request("TEST_ASSOC_IE " + ie):
+        raise Exception("Could not set TEST_ASSOC_IE")
+
+@remote_compatible
+def test_ap_wpa2_psk_assoc_rsn(dev, apdev):
+    """WPA2-PSK AP and association request RSN IE differences"""
+    ssid = "test-wpa2-psk"
+    passphrase = 'qwertyuiop'
+    params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    tests = [ ("Normal wpa_supplicant assoc req RSN IE",
+               "30140100000fac040100000fac040100000fac020000"),
+              ("RSN IE without RSN Capabilities",
+               "30120100000fac040100000fac040100000fac02") ]
+    for title, ie in tests:
+        logger.info(title)
+        set_test_assoc_ie(dev[0], ie)
+        dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
+        dev[0].request("REMOVE_NETWORK all")
+        dev[0].wait_disconnected()
+
+    tests = [ ("WPA IE instead of RSN IE and only RSN enabled on AP",
+               "dd160050f20101000050f20201000050f20201000050f202", 40),
+              ("Empty RSN IE", "3000", 40),
+              ("RSN IE with truncated Version", "300101", 40),
+              ("RSN IE with only Version", "30020100", 43) ]
+    for title, ie, status in tests:
+        logger.info(title)
+        set_test_assoc_ie(dev[0], ie)
+        dev[0].connect(ssid, psk=passphrase, scan_freq="2412",
+                       wait_connect=False)
+        ev = dev[0].wait_event(["CTRL-EVENT-ASSOC-REJECT"])
+        if ev is None:
+            raise Exception("Association rejection not reported")
+        if "status_code=" + str(status) not in ev:
+            raise Exception("Unexpected status code: " + ev)
+        dev[0].request("REMOVE_NETWORK all")
+        dev[0].dump_monitor()
+
+def test_ap_wpa_psk_rsn_pairwise(dev, apdev):
+    """WPA-PSK AP and only rsn_pairwise set"""
+    params = { "ssid": "wpapsk", "wpa": "1", "wpa_key_mgmt": "WPA-PSK",
+               "rsn_pairwise": "TKIP", "wpa_passphrase": "1234567890" }
+    hapd = hostapd.add_ap(apdev[0], params)
+    dev[0].connect("wpapsk", psk="1234567890", proto="WPA", pairwise="TKIP",
+                   scan_freq="2412")

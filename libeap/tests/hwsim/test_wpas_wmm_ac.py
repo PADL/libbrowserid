@@ -4,6 +4,7 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import logging
 logger = logging.getLogger()
 import struct
@@ -20,7 +21,7 @@ def add_wmm_ap(apdev, acm_list):
     for ac in acm_list:
         params["wmm_ac_%s_acm" % (ac.lower())] = "1"
 
-    return hostapd.add_ap(apdev['ifname'], params)
+    return hostapd.add_ap(apdev, params)
 
 def test_tspec(dev, apdev):
     """Basic addts/delts tests"""
@@ -209,13 +210,14 @@ def test_tspec_protocol(dev, apdev):
 
     hapd.set("ext_mgmt_frame_handling", "0")
 
+@remote_compatible
 def test_tspec_not_enabled(dev, apdev):
     """addts failing if AP does not support WMM"""
     params = { "ssid": "wmm_no_ac",
                "hw_mode": "g",
                "channel": "11",
                "wmm_enabled" : "0" }
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect("wmm_no_ac", key_mgmt="NONE", scan_freq="2462")
     status = dev[0].request("WMM_AC_STATUS")
     if "Not associated to a WMM AP, WMM AC is Disabled" not in status:
@@ -246,6 +248,7 @@ def test_tspec_not_enabled(dev, apdev):
     msg['payload'] = struct.pack('BBBB', 17, 2, 0, 0)
     hapd.mgmt_tx(msg)
 
+@remote_compatible
 def test_tspec_ap_roam_open(dev, apdev):
     """Roam between two open APs while having tspecs"""
     hapd0 = add_wmm_ap(apdev[0], ["VO", "VI"])
@@ -264,6 +267,7 @@ def test_tspec_ap_roam_open(dev, apdev):
     dev[0].roam(apdev[0]['bssid'])
     hwsim_utils.test_connectivity(dev[0], hapd0)
 
+@remote_compatible
 def test_tspec_reassoc(dev, apdev):
     """Reassociation to same BSS while having tspecs"""
     hapd0 = add_wmm_ap(apdev[0], ["VO", "VI"])

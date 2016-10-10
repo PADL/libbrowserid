@@ -5,6 +5,8 @@
 # See README for more details.
 
 import os
+import time
+import remotehost
 
 def get_ifnames():
     ifnames = []
@@ -50,6 +52,14 @@ class fail_test(object):
             if self._dev.request("GET_FAIL") != "0:%s" % self._funcs:
                 raise Exception("Test failure did not trigger")
 
+def wait_fail_trigger(dev, cmd, note="Failure not triggered"):
+    for i in range(0, 40):
+        if dev.request(cmd).startswith("0:"):
+            break
+        if i == 39:
+            raise Exception(note)
+        time.sleep(0.05)
+
 def require_under_vm():
     with open('/proc/1/cmdline', 'r') as f:
         cmd = f.read()
@@ -71,3 +81,24 @@ def skip_with_fips(dev, reason="Not supported in FIPS mode"):
     res = dev.get_capability("fips")
     if res and 'FIPS' in res:
         raise HwsimSkip(reason)
+
+def get_phy(ap, ifname=None):
+    phy = "phy3"
+    try:
+        hostname = ap['hostname']
+    except:
+        hostname = None
+    host = remotehost.Host(hostname)
+
+    if ifname == None:
+        ifname = ap['ifname']
+    status, buf = host.execute(["iw", "dev", ifname, "info"])
+    if status != 0:
+        raise Exception("iw " + ifname + " info failed")
+    lines = buf.split("\n")
+    for line in lines:
+        if "wiphy" in line:
+            words = line.split()
+            phy = "phy" + words[1]
+            break
+    return phy

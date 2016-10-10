@@ -50,6 +50,7 @@ long_tests = [ "ap_roam_open",
                "ap_vht160",
                "dfs_radar",
                "dfs",
+               "dfs_ht40_minus",
                "grpform_cred_ready_timeout",
                "hostapd_oom_wpa2_eap_connect",
                "wpas_ap_dfs",
@@ -352,6 +353,13 @@ def main():
                    help="run tests under valgrind")
     p.add_argument('params', nargs='*')
     args = p.parse_args()
+
+    dir = os.environ.get('HWSIM_TEST_LOG_DIR', '/tmp/hwsim-test-logs')
+    try:
+        os.makedirs(dir)
+    except:
+        pass
+
     num_servers = args.num_servers
     rerun_failures = not args.no_retry
     if args.debug:
@@ -363,7 +371,7 @@ def main():
         extra_args += [ '--long' ]
     if args.codecov:
         print "Code coverage - build separate binaries"
-        logdir = "/tmp/hwsim-test-logs/" + str(timestamp)
+        logdir = os.path.join(dir, str(timestamp))
         os.makedirs(logdir)
         subprocess.check_call([os.path.join(scriptsdir, 'build-codecov.sh'),
                                logdir])
@@ -389,12 +397,6 @@ def main():
             tests.append(name)
     if len(tests) == 0:
         sys.exit("No test cases selected")
-
-    dir = '/tmp/hwsim-test-logs'
-    try:
-        os.mkdir(dir)
-    except:
-        pass
 
     if args.shuffle:
         from random import shuffle
@@ -457,7 +459,9 @@ def main():
         for i in range(0, num_servers):
             if len(vm[i]['failed']) == 0:
                 continue
-            print "./parallel-vm.py -1 1",
+            print "./vm-run.sh",
+            if args.long:
+                print "--long",
             skip = len(vm[i]['fail_seq'])
             skip -= min(skip, 30)
             for t in vm[i]['fail_seq']:

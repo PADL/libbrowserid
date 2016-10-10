@@ -1,9 +1,10 @@
 # P2P protocol tests for various messages
-# Copyright (c) 2014, Jouni Malinen <j@w1.fi>
+# Copyright (c) 2014-2015, Jouni Malinen <j@w1.fi>
 #
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import binascii
 import struct
 import time
@@ -11,71 +12,8 @@ import logging
 logger = logging.getLogger()
 
 import hostapd
-from test_p2p_persistent import form
-from test_p2p_persistent import invite
-
-MGMT_SUBTYPE_PROBE_REQ = 4
-MGMT_SUBTYPE_ACTION = 13
-ACTION_CATEG_PUBLIC = 4
-
-P2P_GO_NEG_REQ = 0
-P2P_GO_NEG_RESP = 1
-P2P_GO_NEG_CONF = 2
-P2P_INVITATION_REQ = 3
-P2P_INVITATION_RESP = 4
-P2P_DEV_DISC_REQ = 5
-P2P_DEV_DISC_RESP = 6
-P2P_PROV_DISC_REQ = 7
-P2P_PROV_DISC_RESP = 8
-
-P2P_ATTR_STATUS = 0
-P2P_ATTR_MINOR_REASON_CODE = 1
-P2P_ATTR_CAPABILITY = 2
-P2P_ATTR_DEVICE_ID = 3
-P2P_ATTR_GROUP_OWNER_INTENT = 4
-P2P_ATTR_CONFIGURATION_TIMEOUT = 5
-P2P_ATTR_LISTEN_CHANNEL = 6
-P2P_ATTR_GROUP_BSSID = 7
-P2P_ATTR_EXT_LISTEN_TIMING = 8
-P2P_ATTR_INTENDED_INTERFACE_ADDR = 9
-P2P_ATTR_MANAGEABILITY = 10
-P2P_ATTR_CHANNEL_LIST = 11
-P2P_ATTR_NOTICE_OF_ABSENCE = 12
-P2P_ATTR_DEVICE_INFO = 13
-P2P_ATTR_GROUP_INFO = 14
-P2P_ATTR_GROUP_ID = 15
-P2P_ATTR_INTERFACE = 16
-P2P_ATTR_OPERATING_CHANNEL = 17
-P2P_ATTR_INVITATION_FLAGS = 18
-P2P_ATTR_OOB_GO_NEG_CHANNEL = 19
-P2P_ATTR_SERVICE_HASH = 21
-P2P_ATTR_SESSION_INFORMATION_DATA = 22
-P2P_ATTR_CONNECTION_CAPABILITY = 23
-P2P_ATTR_ADVERTISEMENT_ID = 24
-P2P_ATTR_ADVERTISED_SERVICE = 25
-P2P_ATTR_SESSION_ID = 26
-P2P_ATTR_FEATURE_CAPABILITY = 27
-P2P_ATTR_PERSISTENT_GROUP = 28
-P2P_ATTR_VENDOR_SPECIFIC = 221
-
-P2P_SC_SUCCESS = 0
-P2P_SC_FAIL_INFO_CURRENTLY_UNAVAILABLE = 1
-P2P_SC_FAIL_INCOMPATIBLE_PARAMS = 2
-P2P_SC_FAIL_LIMIT_REACHED = 3
-P2P_SC_FAIL_INVALID_PARAMS = 4
-P2P_SC_FAIL_UNABLE_TO_ACCOMMODATE = 5
-P2P_SC_FAIL_PREV_PROTOCOL_ERROR = 6
-P2P_SC_FAIL_NO_COMMON_CHANNELS = 7
-P2P_SC_FAIL_UNKNOWN_GROUP = 8
-P2P_SC_FAIL_BOTH_GO_INTENT_15 = 9
-P2P_SC_FAIL_INCOMPATIBLE_PROV_METHOD = 10
-P2P_SC_FAIL_REJECTED_BY_USER = 11
-
-WSC_ATTR_CONFIG_METHODS = 0x1008
-
-WLAN_EID_SSID = 0
-WLAN_EID_SUPP_RATES = 1
-WLAN_EID_VENDOR_SPECIFIC = 221
+from p2p_utils import *
+from test_gas import anqp_adv_proto
 
 def ie_ssid(ssid):
     return struct.pack("<BB", WLAN_EID_SSID, len(ssid)) + ssid
@@ -145,8 +83,9 @@ def p2p_attr_channel_list():
 def p2p_attr_device_info(addr, name="Test", config_methods=0, dev_type="00010050F2040001"):
     val = struct.unpack('6B', binascii.unhexlify(addr.replace(':','')))
     val2 = struct.unpack('8B', binascii.unhexlify(dev_type))
-    t = (P2P_ATTR_DEVICE_INFO, 6 + 2 + 8 + 1 + 4 + len(name)) + val + (config_methods,) + val2 + (0,)
-    return struct.pack("<BH6BH8BB", *t) + struct.pack('>HH', 0x1011, len(name)) +name
+    t = (P2P_ATTR_DEVICE_INFO, 6 + 2 + 8 + 1 + 4 + len(name)) + val
+    t2 = val2 + (0,)
+    return struct.pack("<BH6B", *t) + struct.pack(">H", config_methods) + struct.pack("8BB", *t2) + struct.pack('>HH', 0x1011, len(name)) +name
 
 def p2p_attr_group_id(addr, ssid):
     val = struct.unpack('6B', binascii.unhexlify(addr.replace(':','')))
@@ -201,7 +140,7 @@ def start_p2p(dev, apdev):
         params['channel'] = '6'
     elif peer['listen_freq'] == "2462":
         params['channel'] = '11'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     hapd.set("ext_mgmt_frame_handling", "1")
     return addr0, bssid, hapd, int(params['channel'])
 
@@ -281,12 +220,14 @@ def parse_p2p_public_action(payload):
 
     return p2p
 
+@remote_compatible
 def test_p2p_msg_empty(dev, apdev):
     """P2P protocol test: empty P2P Public Action frame"""
     dst, src, hapd, channel = start_p2p(dev, apdev)
     msg = p2p_hdr(dst, src)
     hapd.mgmt_tx(msg)
 
+@remote_compatible
 def test_p2p_msg_long_ssid(dev, apdev):
     """P2P protocol test: Too long SSID in P2P Public Action frame"""
     dst, src, hapd, channel = start_p2p(dev, apdev)
@@ -302,10 +243,11 @@ def test_p2p_msg_long_ssid(dev, apdev):
     msg['payload'] += ie_p2p(attrs)
     msg['payload'] += ie_ssid(255 * 'A')
     hapd.mgmt_tx(msg)
-    ev = dev[0].wait_event(["P2P-DEVICE-FOUND"], timeout=5)
+    ev = dev[0].wait_global_event(["P2P-DEVICE-FOUND"], timeout=5)
     if ev is None:
         raise Exception("Timeout on device found event")
 
+@remote_compatible
 def test_p2p_msg_long_dev_name(dev, apdev):
     """P2P protocol test: Too long Device Name in P2P Public Action frame"""
     dst, src, hapd, channel = start_p2p(dev, apdev)
@@ -897,6 +839,7 @@ def test_p2p_msg_invitation_req_to_go(dev, apdev):
     if p2p['p2p_status'] != 7 and dev[1].get_mcc() <= 1:
         raise Exception("Unexpected status %d" % p2p['p2p_status'])
 
+@remote_compatible
 def test_p2p_msg_invitation_req_unknown(dev, apdev):
     """P2P protocol tests for invitation request from unknown peer"""
     dst, src, hapd, channel = start_p2p(dev, apdev)
@@ -919,6 +862,7 @@ def test_p2p_msg_invitation_req_unknown(dev, apdev):
     if hapd.mgmt_rx(timeout=1) is None:
         raise Exception("No invitation response " + str(dialog_token))
 
+@remote_compatible
 def test_p2p_msg_invitation_no_common_channels(dev, apdev):
     """P2P protocol tests for invitation request without common channels"""
     dst, src, hapd, channel = start_p2p(dev, apdev)
@@ -1055,7 +999,7 @@ def test_p2p_msg_invitation_resp(dev, apdev):
     msg['payload'] += ie_p2p(attrs)
     mgmt_tx(dev[1], "MGMT_TX {} {} freq={} wait_time=200 no_cck=1 action={}".format(addr0, addr0, rx_msg['freq'], binascii.hexlify(msg['payload'])))
 
-    ev = dev[0].wait_global_event(["P2P-GROUP-STARTED"], timeout=15);
+    ev = dev[0].wait_global_event(["P2P-GROUP-STARTED"], timeout=15)
     if ev is None:
         raise Exception("Group was not started")
 
@@ -1087,11 +1031,11 @@ def test_p2p_msg_invitation_resend(dev, apdev):
     mgmt_tx(dev[1], "MGMT_TX {} {} freq={} wait_time=200 no_cck=1 action={}".format(addr0, addr0, rx_msg['freq'], binascii.hexlify(msg['payload'])))
     ev = dev[0].wait_global_event(["P2P-INVITATION-RESULT"], timeout=15)
     if ev is None:
-        raise Exception("Timeout on invitation result");
+        raise Exception("Timeout on invitation result")
     if "status=7" not in ev:
         raise Exception("Unexpected invitation result: " + ev)
 
-    logger.info("Any channel allowed, only preference provided in invitation");
+    logger.info("Any channel allowed, only preference provided in invitation")
     invite(dev[0], dev[1], extra="pref=2422")
     rx_msg = dev[1].mgmt_rx()
     if rx_msg is None:
@@ -1110,14 +1054,14 @@ def test_p2p_msg_invitation_resend(dev, apdev):
     mgmt_tx(dev[1], "MGMT_TX {} {} freq={} wait_time=200 no_cck=1 action={}".format(addr0, addr0, rx_msg['freq'], binascii.hexlify(msg['payload'])))
     ev = dev[0].wait_global_event(["P2P-INVITATION-RESULT"], timeout=15)
     if ev is None:
-        raise Exception("Timeout on invitation result");
+        raise Exception("Timeout on invitation result")
     if "status=0" not in ev:
         raise Exception("Unexpected invitation result: " + ev)
 
-    ev = dev[0].wait_global_event(["P2P-GROUP-STARTED"], timeout=15);
+    ev = dev[0].wait_global_event(["P2P-GROUP-STARTED"], timeout=15)
     if ev is None:
         raise Exception("Group was not started on dev0")
-    ev = dev[1].wait_global_event(["P2P-GROUP-STARTED"], timeout=15);
+    ev = dev[1].wait_global_event(["P2P-GROUP-STARTED"], timeout=15)
     if ev is None:
         raise Exception("Group was not started on dev1")
 
@@ -1132,7 +1076,7 @@ def test_p2p_msg_invitation_resend_duplicate(dev, apdev):
     if "FAIL" in dev[1].request("SET ext_mgmt_frame_handling 1"):
         raise Exception("Failed to enable external management frame handling")
 
-    logger.info("Any channel allowed, only preference provided in invitation");
+    logger.info("Any channel allowed, only preference provided in invitation")
     invite(dev[0], dev[1], extra="pref=2422")
     rx_msg = dev[1].mgmt_rx()
     if rx_msg is None:
@@ -1172,7 +1116,7 @@ def test_p2p_msg_invitation_resend_duplicate(dev, apdev):
 
     ev = dev[0].wait_global_event(["P2P-INVITATION-RESULT"], timeout=10)
     if ev is None:
-        raise Exception("Timeout on invitation result");
+        raise Exception("Timeout on invitation result")
     if "status=0" not in ev:
         raise Exception("Unexpected invitation result: " + ev)
     ev = dev[0].wait_global_event(["P2P-GROUP-STARTED"], timeout=10)
@@ -1181,6 +1125,7 @@ def test_p2p_msg_invitation_resend_duplicate(dev, apdev):
     dev[0].group_form_result(ev)
     dev[0].remove_group()
 
+@remote_compatible
 def test_p2p_msg_pd_req(dev, apdev):
     """P2P protocol tests for provision discovery request processing"""
     dst, src, hapd, channel = start_p2p(dev, apdev)
@@ -1351,10 +1296,10 @@ def test_p2p_msg_go_neg_both_start(dev, apdev):
     ev = dev[0].wait_global_event(["P2P-GO-NEG-SUCCESS"], timeout=10)
     if ev is None:
         raise Exception("GO Neg did not succeed")
-    ev = dev[0].wait_global_event(["P2P-GROUP-STARTED"], timeout=5);
+    ev = dev[0].wait_global_event(["P2P-GROUP-STARTED"], timeout=5)
     if ev is None:
         raise Exception("Group formation not succeed")
-    ev = dev[1].wait_global_event(["P2P-GROUP-STARTED"], timeout=5);
+    ev = dev[1].wait_global_event(["P2P-GROUP-STARTED"], timeout=5)
     if ev is None:
         raise Exception("Group formation not succeed")
 
@@ -1949,3 +1894,198 @@ def test_p2p_msg_unexpected_go_neg_resp(dev, apdev):
     mgmt_tx(dev[0], "MGMT_TX {} {} freq={} wait_time=200 no_cck=1 action={}".format(addr1, addr1, p2p['freq'], binascii.hexlify(msg['payload'])))
     check_p2p_go_neg_fail_event(dev[1], P2P_SC_FAIL_NO_COMMON_CHANNELS)
     rx_go_neg_conf(dev[0], P2P_SC_FAIL_NO_COMMON_CHANNELS, dialog_token)
+
+def test_p2p_msg_group_info(dev):
+    """P2P protocol tests for Group Info parsing"""
+    try:
+        _test_p2p_msg_group_info(dev)
+    finally:
+        dev[0].request("VENDOR_ELEM_REMOVE 2 *")
+
+def _test_p2p_msg_group_info(dev):
+    tests = [ "dd08506f9a090e010001",
+              "dd08506f9a090e010000",
+              "dd20506f9a090e190018" + "112233445566" + "aabbccddeeff" + "00" + "0000" + "0000000000000000" + "ff",
+              "dd20506f9a090e190018" + "112233445566" + "aabbccddeeff" + "00" + "0000" + "0000000000000000" + "00",
+              "dd24506f9a090e1d001c" + "112233445566" + "aabbccddeeff" + "00" + "0000" + "0000000000000000" + "00" + "00000000",
+              "dd24506f9a090e1d001c" + "112233445566" + "aabbccddeeff" + "00" + "0000" + "0000000000000000" + "00" + "10110001",
+              "dd24506f9a090e1d001c" + "112233445566" + "aabbccddeeff" + "00" + "0000" + "0000000000000000" + "00" + "1011ffff" ]
+    for t in tests:
+        dev[0].request("VENDOR_ELEM_REMOVE 2 *")
+        if "OK" not in dev[0].request("VENDOR_ELEM_ADD 2 " + t):
+            raise Exception("VENDOR_ELEM_ADD failed")
+        dev[0].p2p_start_go(freq=2412)
+        bssid = dev[0].get_group_status_field('bssid')
+        dev[2].request("BSS_FLUSH 0")
+        dev[2].scan_for_bss(bssid, freq=2412, force_scan=True)
+        bss = dev[2].request("BSS " + bssid)
+        if 'p2p_group_client' in bss:
+            raise Exception("Unexpected p2p_group_client")
+        dev[0].remove_group()
+
+MGMT_SUBTYPE_ACTION = 13
+ACTION_CATEG_PUBLIC = 4
+
+GAS_INITIAL_REQUEST = 10
+GAS_INITIAL_RESPONSE = 11
+GAS_COMEBACK_REQUEST = 12
+GAS_COMEBACK_RESPONSE = 13
+
+def gas_hdr(dst, src, type, req=True, dialog_token=0):
+    msg = {}
+    msg['fc'] = MGMT_SUBTYPE_ACTION << 4
+    msg['da'] = dst
+    msg['sa'] = src
+    if req:
+        msg['bssid'] = dst
+    else:
+        msg['bssid'] = src
+    if dialog_token is None:
+        msg['payload'] = struct.pack("<BB", ACTION_CATEG_PUBLIC, type)
+    else:
+        msg['payload'] = struct.pack("<BBB", ACTION_CATEG_PUBLIC, type,
+                                     dialog_token)
+    return msg
+
+@remote_compatible
+def test_p2p_msg_sd(dev, apdev):
+    """P2P protocol tests for service discovery messages"""
+    dst, src, hapd, channel = start_p2p(dev, apdev)
+
+    logger.debug("Truncated GAS Initial Request - no Dialog Token field")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST, dialog_token=None)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - no Advertisement Protocol element")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - no Advertisement Protocol element length")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += struct.pack('B', 108)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Invalid GAS Initial Request - unexpected IE")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += struct.pack('BB', 0, 0)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - too short Advertisement Protocol element")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += struct.pack('BB', 108, 0)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - too short Advertisement Protocol element 2")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += struct.pack('BBB', 108, 1, 127)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Invalid GAS Initial Request - unsupported GAS advertisement protocol id 255")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += struct.pack('BBBB', 108, 2, 127, 255)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - no Query Request length field")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - too short Query Request length field")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<B', 0)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - too short Query Request field (minimum underflow)")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<H', 1)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - too short Query Request field (maximum underflow)")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<H', 65535)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - too short Query Request field")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<H', 0)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Invalid GAS Initial Request - unsupported ANQP Info ID 65535")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<HHH', 4, 65535, 0)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Invalid GAS Initial Request - invalid ANQP Query Request length (truncated frame)")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<HHH', 4, 56797, 65535)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Invalid GAS Initial Request - invalid ANQP Query Request length (too short Query Request to contain OUI + OUI-type)")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<HHH', 4, 56797, 0)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Invalid GAS Initial Request - unsupported ANQP vendor OUI-type")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    req = struct.pack('<HH', 56797, 4) + struct.pack('>L', 0x506f9a00)
+    msg['payload'] += struct.pack('<H', len(req)) + req
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - no Service Update Indicator")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    req = struct.pack('<HH', 56797, 4) + struct.pack('>L', 0x506f9a09)
+    msg['payload'] += struct.pack('<H', len(req)) + req
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Initial Request - truncated Service Update Indicator")
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    req = struct.pack('<HH', 56797, 4) + struct.pack('>L', 0x506f9a09)
+    req += struct.pack('<B', 0)
+    msg['payload'] += struct.pack('<H', len(req)) + req
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Unexpected GAS Initial Response")
+    hapd.dump_monitor()
+    msg = gas_hdr(dst, src, GAS_INITIAL_RESPONSE)
+    msg['payload'] += struct.pack('<HH', 0, 0)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<H', 0)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Truncated GAS Comeback Request - no Dialog Token field")
+    msg = gas_hdr(dst, src, GAS_COMEBACK_REQUEST, dialog_token=None)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("GAS Comeback Request - no pending SD response fragment available")
+    msg = gas_hdr(dst, src, GAS_COMEBACK_REQUEST)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Unexpected GAS Comeback Response")
+    hapd.dump_monitor()
+    msg = gas_hdr(dst, src, GAS_COMEBACK_RESPONSE)
+    msg['payload'] += struct.pack('<HBH', 0, 0, 0)
+    msg['payload'] += anqp_adv_proto()
+    msg['payload'] += struct.pack('<H', 0)
+    hapd.mgmt_tx(msg)
+
+    logger.debug("Minimal GAS Initial Request")
+    hapd.dump_monitor()
+    msg = gas_hdr(dst, src, GAS_INITIAL_REQUEST)
+    msg['payload'] += anqp_adv_proto()
+    req = struct.pack('<HH', 56797, 4) + struct.pack('>L', 0x506f9a09)
+    req += struct.pack('<H', 0)
+    msg['payload'] += struct.pack('<H', len(req)) + req
+    hapd.mgmt_tx(msg)
+    resp = hapd.mgmt_rx()
+    if resp is None:
+        raise Exception("No response to minimal GAS Initial Request")

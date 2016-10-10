@@ -4,14 +4,17 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import binascii
 import hmac
 import logging
+import os
 import time
 
 import hostapd
 import hwsim_utils
 from utils import skip_with_fips
+from tshark import run_tshark
 
 logger = logging.getLogger()
 
@@ -23,7 +26,7 @@ def test_ieee8021x_wep104(dev, apdev):
     params["ieee8021x"] = "1"
     params["wep_key_len_broadcast"] = "13"
     params["wep_key_len_unicast"] = "13"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].connect("ieee8021x-wep", key_mgmt="IEEE8021X", eap="PSK",
                    identity="psk.user@example.com",
@@ -39,7 +42,7 @@ def test_ieee8021x_wep40(dev, apdev):
     params["ieee8021x"] = "1"
     params["wep_key_len_broadcast"] = "5"
     params["wep_key_len_unicast"] = "5"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].connect("ieee8021x-wep", key_mgmt="IEEE8021X", eap="PSK",
                    identity="psk.user@example.com",
@@ -52,7 +55,7 @@ def test_ieee8021x_open(dev, apdev):
     params = hostapd.radius_params()
     params["ssid"] = "ieee8021x-open"
     params["ieee8021x"] = "1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     id = dev[0].connect("ieee8021x-open", key_mgmt="IEEE8021X", eapol_flags="0",
                         eap="PSK", identity="psk.user@example.com",
@@ -78,7 +81,7 @@ def test_ieee8021x_static_wep40(dev, apdev):
     params["ssid"] = "ieee8021x-wep"
     params["ieee8021x"] = "1"
     params["wep_key0"] = '"hello"'
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].connect("ieee8021x-wep", key_mgmt="IEEE8021X", eap="PSK",
                    identity="psk.user@example.com",
@@ -92,7 +95,7 @@ def test_ieee8021x_proto(dev, apdev):
     params = hostapd.radius_params()
     params["ssid"] = "ieee8021x-open"
     params["ieee8021x"] = "1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
 
     dev[1].request("SET ext_eapol_frame_io 1")
@@ -133,12 +136,13 @@ def test_ieee8021x_proto(dev, apdev):
         if int(stop[val]) <= int(start[val]):
             raise Exception(val + " did not increase")
 
+@remote_compatible
 def test_ieee8021x_eapol_start(dev, apdev):
     """IEEE 802.1X and EAPOL-Start retransmissions"""
     params = hostapd.radius_params()
     params["ssid"] = "ieee8021x-open"
     params["ieee8021x"] = "1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
     addr0 = dev[0].own_addr()
 
@@ -172,7 +176,7 @@ def test_ieee8021x_held(dev, apdev):
     params = hostapd.radius_params()
     params["ssid"] = "ieee8021x-open"
     params["ieee8021x"] = "1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
 
     hapd.set("ext_eapol_frame_io", "1")
@@ -231,7 +235,7 @@ def test_ieee8021x_eapol_key(dev, apdev):
     params["ieee8021x"] = "1"
     params["wep_key_len_broadcast"] = "5"
     params["wep_key_len_unicast"] = "5"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
 
     dev[0].connect("ieee8021x-wep", key_mgmt="IEEE8021X", eap="VENDOR-TEST",
@@ -271,7 +275,7 @@ def test_ieee8021x_reauth(dev, apdev):
     params = hostapd.radius_params()
     params["ssid"] = "ieee8021x-open"
     params["ieee8021x"] = "1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].connect("ieee8021x-open", key_mgmt="IEEE8021X", eapol_flags="0",
                    eap="PSK", identity="psk.user@example.com",
@@ -288,12 +292,65 @@ def test_ieee8021x_reauth(dev, apdev):
     time.sleep(0.1)
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+def test_ieee8021x_reauth_wep(dev, apdev, params):
+    """IEEE 802.1X and EAPOL_REAUTH request with WEP"""
+    logdir = params['logdir']
+
+    params = hostapd.radius_params()
+    params["ssid"] = "ieee8021x-open"
+    params["ieee8021x"] = "1"
+    params["wep_key_len_broadcast"] = "13"
+    params["wep_key_len_unicast"] = "13"
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[0].connect("ieee8021x-open", key_mgmt="IEEE8021X",
+                   eap="PSK", identity="psk.user@example.com",
+                   password_hex="0123456789abcdef0123456789abcdef",
+                   scan_freq="2412")
+    hwsim_utils.test_connectivity(dev[0], hapd)
+
+    hapd.request("EAPOL_REAUTH " + dev[0].own_addr())
+    ev = dev[0].wait_event(["CTRL-EVENT-EAP-STARTED"], timeout=5)
+    if ev is None:
+        raise Exception("EAP authentication did not start")
+    ev = dev[0].wait_event(["CTRL-EVENT-EAP-SUCCESS"], timeout=5)
+    if ev is None:
+        raise Exception("EAP authentication did not succeed")
+    time.sleep(0.1)
+    hwsim_utils.test_connectivity(dev[0], hapd)
+
+    out = run_tshark(os.path.join(logdir, "hwsim0.pcapng"),
+                     "llc.type == 0x888e", ["eapol.type", "eap.code"])
+    if out is None:
+        raise Exception("Could not find EAPOL frames in capture")
+    num_eapol_key = 0
+    num_eap_req = 0
+    num_eap_resp = 0
+    for line in out.splitlines():
+        vals = line.split()
+        if vals[0] == '3':
+            num_eapol_key += 1
+        if vals[0] == '0' and len(vals) == 2:
+            if vals[1] == '1':
+                num_eap_req += 1
+            elif vals[1] == '2':
+                num_eap_resp += 1
+    logger.info("num_eapol_key: %d" % num_eapol_key)
+    logger.info("num_eap_req: %d" % num_eap_req)
+    logger.info("num_eap_resp: %d" % num_eap_resp)
+    if num_eapol_key < 4:
+        raise Exception("Did not see four unencrypted EAPOL-Key frames")
+    if num_eap_req < 6:
+        raise Exception("Did not see six unencrypted EAP-Request frames")
+    if num_eap_resp < 6:
+        raise Exception("Did not see six unencrypted EAP-Response frames")
+
 def test_ieee8021x_set_conf(dev, apdev):
     """IEEE 802.1X and EAPOL_SET command"""
     params = hostapd.radius_params()
     params["ssid"] = "ieee8021x-open"
     params["ieee8021x"] = "1"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].connect("ieee8021x-open", key_mgmt="IEEE8021X", eapol_flags="0",
                    eap="PSK", identity="psk.user@example.com",
@@ -346,7 +403,7 @@ def test_ieee8021x_auth_awhile(dev, apdev):
     params["ssid"] = "ieee8021x-open"
     params["ieee8021x"] = "1"
     params['auth_server_port'] = "18129"
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     bssid = apdev[0]['bssid']
     addr0 = dev[0].own_addr()
 
@@ -360,7 +417,7 @@ def test_ieee8021x_auth_awhile(dev, apdev):
     params['ca_cert'] = 'auth_serv/ca.pem'
     params['server_cert'] = 'auth_serv/server.pem'
     params['private_key'] = 'auth_serv/server.key'
-    hapd1 = hostapd.add_ap(apdev[1]['ifname'], params)
+    hapd1 = hostapd.add_ap(apdev[1], params)
 
     dev[0].connect("ieee8021x-open", key_mgmt="IEEE8021X", eapol_flags="0",
                    eap="PSK", identity="psk.user@example.com",
@@ -391,3 +448,37 @@ def test_ieee8021x_auth_awhile(dev, apdev):
     ev = hapd.wait_event(["CTRL-EVENT-EAP-PROPOSED"], timeout=10)
     if ev is None:
         raise Exception("Authentication restart not seen")
+
+def test_ieee8021x_open_leap(dev, apdev):
+    """IEEE 802.1X connection with LEAP included in configuration"""
+    params = hostapd.radius_params()
+    params["ssid"] = "ieee8021x-open"
+    params["ieee8021x"] = "1"
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[1].connect("ieee8021x-open", key_mgmt="IEEE8021X", eapol_flags="0",
+                   eap="LEAP", identity="psk.user@example.com",
+                   password_hex="0123456789abcdef0123456789abcdef",
+                   scan_freq="2412", wait_connect=False)
+    dev[0].connect("ieee8021x-open", key_mgmt="IEEE8021X", eapol_flags="0",
+                   eap="PSK LEAP", identity="psk.user@example.com",
+                   password_hex="0123456789abcdef0123456789abcdef",
+                   scan_freq="2412")
+    ev = dev[1].wait_event(["CTRL-EVENT-AUTH-REJECT"], timeout=5)
+    dev[1].request("DISCONNECT")
+
+def test_ieee8021x_and_wpa_enabled(dev, apdev):
+    """IEEE 802.1X connection using dynamic WEP104 when WPA enabled"""
+    skip_with_fips(dev[0])
+    params = hostapd.radius_params()
+    params["ssid"] = "ieee8021x-wep"
+    params["ieee8021x"] = "1"
+    params["wep_key_len_broadcast"] = "13"
+    params["wep_key_len_unicast"] = "13"
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[0].connect("ieee8021x-wep", key_mgmt="IEEE8021X WPA-EAP", eap="PSK",
+                   identity="psk.user@example.com",
+                   password_hex="0123456789abcdef0123456789abcdef",
+                   scan_freq="2412")
+    hwsim_utils.test_connectivity(dev[0], hapd)

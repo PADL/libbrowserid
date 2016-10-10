@@ -4,6 +4,7 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import logging
 logger = logging.getLogger()
 import os
@@ -15,8 +16,10 @@ import hostapd
 import hwsim_utils
 from hwsim import HWSimRadio
 from wpasupplicant import WpaSupplicant
-from utils import alloc_fail
+from utils import alloc_fail, fail_test
+from test_wpas_ap import wait_ap_ready
 
+@remote_compatible
 def test_wpas_ctrl_network(dev):
     """wpa_supplicant ctrl_iface network set/get"""
     id = dev[0].add_network()
@@ -32,7 +35,36 @@ def test_wpas_ctrl_network(dev):
     if "FAIL" not in dev[0].request("GET_NETWORK " + str(id + 1) + " proto"):
         raise Exception("Unexpected success for invalid network id")
 
-    tests = (("key_mgmt", "WPA-PSK WPA-EAP IEEE8021X NONE WPA-NONE FT-PSK FT-EAP WPA-PSK-SHA256 WPA-EAP-SHA256"),
+    if "OK" not in dev[0].request("SET_NETWORK " + str(id) + " proto  \t WPA2 "):
+        raise Exception("Unexpected failure for SET_NETWORK proto")
+    res = dev[0].request("GET_NETWORK " + str(id) + " proto")
+    if res != "RSN":
+        raise Exception("Unexpected SET_NETWORK/GET_NETWORK conversion for proto: " + res)
+
+    if "OK" not in dev[0].request("SET_NETWORK " + str(id) + " key_mgmt  \t WPA-PSK "):
+        raise Exception("Unexpected success for SET_NETWORK key_mgmt")
+    res = dev[0].request("GET_NETWORK " + str(id) + " key_mgmt")
+    if res != "WPA-PSK":
+        raise Exception("Unexpected SET_NETWORK/GET_NETWORK conversion for key_mgmt: " + res)
+
+    if "OK" not in dev[0].request("SET_NETWORK " + str(id) + " auth_alg  \t OPEN "):
+        raise Exception("Unexpected failure for SET_NETWORK auth_alg")
+    res = dev[0].request("GET_NETWORK " + str(id) + " auth_alg")
+    if res != "OPEN":
+        raise Exception("Unexpected SET_NETWORK/GET_NETWORK conversion for auth_alg: " + res)
+
+    if "OK" not in dev[0].request("SET_NETWORK " + str(id) + " eap  \t TLS "):
+        raise Exception("Unexpected failure for SET_NETWORK eap")
+    res = dev[0].request("GET_NETWORK " + str(id) + " eap")
+    if res != "TLS":
+        raise Exception("Unexpected SET_NETWORK/GET_NETWORK conversion for eap: " + res)
+
+    tests = ("bssid foo", "key_mgmt foo", "key_mgmt ", "group NONE")
+    for t in tests:
+        if "FAIL" not in dev[0].request("SET_NETWORK " + str(id) + " " + t):
+            raise Exception("Unexpected success for invalid SET_NETWORK: " + t)
+
+    tests = [("key_mgmt", "WPA-PSK WPA-EAP IEEE8021X NONE WPA-NONE FT-PSK FT-EAP WPA-PSK-SHA256 WPA-EAP-SHA256"),
              ("pairwise", "CCMP-256 GCMP-256 CCMP GCMP TKIP"),
              ("group", "CCMP-256 GCMP-256 CCMP GCMP TKIP"),
              ("auth_alg", "OPEN SHARED LEAP"),
@@ -43,7 +75,11 @@ def test_wpas_ctrl_network(dev):
              ("proto", "WPA RSN OSEN"),
              ("eap", "TLS"),
              ("go_p2p_dev_addr", "22:33:44:55:66:aa"),
-             ("p2p_client_list", "22:33:44:55:66:bb 02:11:22:33:44:55"))
+             ("p2p_client_list", "22:33:44:55:66:bb 02:11:22:33:44:55")]
+    if "SAE" not in dev[0].get_capability("auth_alg"):
+        tests.append(("key_mgmt", "WPS OSEN"))
+    else:
+        tests.append(("key_mgmt", "WPS SAE FT-SAE OSEN"))
 
     dev[0].set_network_quoted(id, "ssid", "test")
     for field, value in tests:
@@ -51,6 +87,18 @@ def test_wpas_ctrl_network(dev):
         res = dev[0].get_network(id, field)
         if res != value:
             raise Exception("Unexpected response for '" + field + "': '" + res + "'")
+
+    try:
+        value = "WPA-EAP-SUITE-B WPA-EAP-SUITE-B-192"
+        dev[0].set_network(id, "key_mgmt", value)
+        res = dev[0].get_network(id, "key_mgmt")
+        if res != value:
+            raise Exception("Unexpected response for key_mgmt")
+    except Exception, e:
+        if str(e).startswith("Unexpected"):
+            raise
+        else:
+            pass
 
     q_tests = (("identity", "hello"),
                ("anonymous_identity", "foo@nowhere.com"))
@@ -141,10 +189,10 @@ def test_wpas_ctrl_network(dev):
         raise Exception("Too short PSK accepted")
     if "FAIL" not in dev[0].request('SET_NETWORK ' + str(id) + ' psk "1234567890123456789012345678901234567890123456789012345678901234"'):
         raise Exception("Too long PSK accepted")
-    dev[0].set_network_quoted(id, "psk", "123456768");
-    dev[0].set_network_quoted(id, "psk", "123456789012345678901234567890123456789012345678901234567890123");
+    dev[0].set_network_quoted(id, "psk", "123456768")
+    dev[0].set_network_quoted(id, "psk", "123456789012345678901234567890123456789012345678901234567890123")
     if dev[0].get_network(id, "psk") != '*':
-        raise Exception("Unexpected psk read result");
+        raise Exception("Unexpected psk read result")
 
     if "FAIL" not in dev[0].request('SET_NETWORK ' + str(id) + ' eap UNKNOWN'):
         raise Exception("Unknown EAP method accepted")
@@ -232,6 +280,7 @@ def test_wpas_ctrl_network(dev):
         if "FAIL" not in dev[0].request("SET_NETWORK %d bssid_blacklist %s" % (id, val)):
             raise Exception("Invalid bssid_blacklist value accepted")
 
+@remote_compatible
 def test_wpas_ctrl_network_oom(dev):
     """wpa_supplicant ctrl_iface network OOM in string parsing"""
     id = dev[0].add_network()
@@ -245,6 +294,7 @@ def test_wpas_ctrl_network_oom(dev):
             if "FAIL" not in dev[0].request("SET_NETWORK " + str(id) + ' ssid ' + val):
                 raise Exception("Unexpected success for SET_NETWORK during OOM")
 
+@remote_compatible
 def test_wpas_ctrl_many_networks(dev, apdev):
     """wpa_supplicant ctrl_iface LIST_NETWORKS with huge number of networks"""
     for i in range(1000):
@@ -260,12 +310,13 @@ def test_wpas_ctrl_many_networks(dev, apdev):
     # with the test case failing and following reset operation timing out.
     dev[0].request("REMOVE_NETWORK all", timeout=60)
 
+@remote_compatible
 def test_wpas_ctrl_dup_network(dev, apdev):
     """wpa_supplicant ctrl_iface DUP_NETWORK"""
     ssid = "target"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
 
     src = dev[0].connect("another", psk=passphrase, scan_freq="2412",
                          only_add_network=True)
@@ -293,12 +344,13 @@ def test_wpas_ctrl_dup_network(dev, apdev):
     if "OK" not in dev[0].request("DUP_NETWORK %d %d ssid" % (id, id)):
         raise Exception("Unexpected DUP_NETWORK failure")
 
+@remote_compatible
 def test_wpas_ctrl_dup_network_global(dev, apdev):
     """wpa_supplicant ctrl_iface DUP_NETWORK (global)"""
     ssid = "target"
     passphrase = 'qwertyuiop'
     params = hostapd.wpa2_params(ssid=ssid, passphrase=passphrase)
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
 
     src = dev[0].connect("another", psk=passphrase, scan_freq="2412",
                          only_add_network=True)
@@ -361,6 +413,7 @@ def remove_cred(dev, id):
     if " " + str(id) not in ev:
         raise Exception("CRED-REMOVED event without matching id")
 
+@remote_compatible
 def test_wpas_ctrl_cred(dev):
     """wpa_supplicant ctrl_iface cred set"""
     id1 = add_cred(dev[0])
@@ -381,6 +434,7 @@ def test_wpas_ctrl_cred(dev):
     set_cred(dev[0], id, "temporary", "1")
     set_cred(dev[0], id, "priority", "1")
     set_cred(dev[0], id, "pcsc", "1")
+    set_cred(dev[0], id, "sim_num", "0")
     set_cred_quoted(dev[0], id, "private_key_passwd", "test")
     set_cred_quoted(dev[0], id, "domain_suffix_match", "test")
     set_cred_quoted(dev[0], id, "phase1", "test")
@@ -402,6 +456,16 @@ def test_wpas_ctrl_cred(dev):
 
     if "FAIL" not in dev[0].request("SET_CRED " + str(id) + " foo 4142"):
         raise Exception("Unexpected success on unknown field")
+
+    tests = ["sp_priority 256",
+             'roaming_partner "example.org"',
+             'roaming_partner "' + 200*'a' + '.example.org,"',
+             'roaming_partner "example.org,1"',
+             'roaming_partner "example.org,1,2"',
+             'roaming_partner "example.org,1,2,ABC"' ]
+    for t in tests:
+        if "FAIL" not in dev[0].request("SET_CRED " + str(id) + " " + t):
+            raise Exception("Unexpected success on invalid SET_CRED value: " + t)
 
     id3 = add_cred(dev[0])
     id4 = add_cred(dev[0])
@@ -545,6 +609,7 @@ def test_wpas_ctrl_pno(dev):
     if "FAIL" in dev[0].request("SET pno 0"):
         raise Exception("Unexpected failure in disabling PNO")
 
+@remote_compatible
 def test_wpas_ctrl_get(dev):
     """wpa_supplicant ctrl_iface get"""
     if "FAIL" in dev[0].request("GET version"):
@@ -554,6 +619,7 @@ def test_wpas_ctrl_get(dev):
     if "FAIL" not in dev[0].request("GET foo"):
         raise Exception("Unexpected success on get command")
 
+@remote_compatible
 def test_wpas_ctrl_preauth(dev):
     """wpa_supplicant ctrl_iface preauth"""
     if "FAIL" not in dev[0].request("PREAUTH "):
@@ -561,6 +627,7 @@ def test_wpas_ctrl_preauth(dev):
     if "FAIL" in dev[0].request("PREAUTH 00:11:22:33:44:55"):
         raise Exception("Unexpected failure on PREAUTH")
 
+@remote_compatible
 def test_wpas_ctrl_stkstart(dev):
     """wpa_supplicant ctrl_iface strkstart"""
     if "FAIL" not in dev[0].request("STKSTART "):
@@ -568,6 +635,7 @@ def test_wpas_ctrl_stkstart(dev):
     if "FAIL" not in dev[0].request("STKSTART 00:11:22:33:44:55"):
         raise Exception("Unexpected success on STKSTART")
 
+@remote_compatible
 def test_wpas_ctrl_tdls_discover(dev):
     """wpa_supplicant ctrl_iface tdls_discover"""
     if "FAIL" not in dev[0].request("TDLS_DISCOVER "):
@@ -575,6 +643,7 @@ def test_wpas_ctrl_tdls_discover(dev):
     if "FAIL" not in dev[0].request("TDLS_DISCOVER 00:11:22:33:44:55"):
         raise Exception("Unexpected success on TDLS_DISCOVER")
 
+@remote_compatible
 def test_wpas_ctrl_tdls_chan_switch(dev):
     """wpa_supplicant ctrl_iface tdls_chan_switch error cases"""
     for args in [ '', '00:11:22:33:44:55' ]:
@@ -587,6 +656,7 @@ def test_wpas_ctrl_tdls_chan_switch(dev):
         if "FAIL" not in dev[0].request("TDLS_CHAN_SWITCH " + args):
             raise Exception("Unexpected success on invalid TDLS_CHAN_SWITCH: " + args)
 
+@remote_compatible
 def test_wpas_ctrl_addr(dev):
     """wpa_supplicant ctrl_iface invalid address"""
     if "FAIL" not in dev[0].request("TDLS_SETUP "):
@@ -608,6 +678,7 @@ def test_wpas_ctrl_addr(dev):
     if "FAIL" not in dev[0].request("BLACKLIST 00:11:22:33:44"):
         raise Exception("Unexpected success on invalid BLACKLIST")
 
+@remote_compatible
 def test_wpas_ctrl_wps_errors(dev):
     """wpa_supplicant ctrl_iface WPS error cases"""
     if "FAIL" not in dev[0].request("WPS_REG 00:11:22:33:44:55"):
@@ -656,6 +727,7 @@ def test_wpas_ctrl_wps_errors(dev):
     if "FAIL" not in dev[0].request("WPS_NFC_TOKEN FOO"):
         raise Exception("Unexpected success on invalid WPS_NFC_TOKEN")
 
+@remote_compatible
 def test_wpas_ctrl_config_parser(dev):
     """wpa_supplicant ctrl_iface SET config parser"""
     if "FAIL" not in dev[0].request("SET pbc_in_m1 qwerty"):
@@ -668,6 +740,7 @@ def test_wpas_ctrl_config_parser(dev):
     if "FAIL" not in dev[0].request("SET serial_number 0123456789abcdef0123456789abcdef0"):
         raise Exception("Too long string accepted")
 
+@remote_compatible
 def test_wpas_ctrl_mib(dev):
     """wpa_supplicant ctrl_iface MIB"""
     mib = dev[0].get_mib()
@@ -678,6 +751,12 @@ def test_wpas_ctrl_mib(dev):
 
 def test_wpas_ctrl_set_wps_params(dev):
     """wpa_supplicant ctrl_iface SET config_methods"""
+    try:
+        _test_wpas_ctrl_set_wps_params(dev)
+    finally:
+        dev[2].request("SET config_methods ")
+
+def _test_wpas_ctrl_set_wps_params(dev):
     ts = [ "config_methods label virtual_display virtual_push_button keypad",
            "device_type 1-0050F204-1",
            "os_version 01020300",
@@ -720,8 +799,8 @@ def test_wpas_ctrl_bssid_filter(dev, apdev):
         if "OK" not in dev[2].request("SET bssid_filter " + apdev[0]['bssid']):
             raise Exception("Failed to set bssid_filter")
         params = { "ssid": "test" }
-        hostapd.add_ap(apdev[0]['ifname'], params)
-        hostapd.add_ap(apdev[1]['ifname'], params)
+        hostapd.add_ap(apdev[0], params)
+        hostapd.add_ap(apdev[1], params)
         dev[2].scan_for_bss(apdev[0]['bssid'], freq="2412")
         dev[2].scan(freq="2412")
         bss = dev[2].get_bss(apdev[0]['bssid'])
@@ -751,10 +830,11 @@ def test_wpas_ctrl_bssid_filter(dev, apdev):
     finally:
         dev[2].request("SET bssid_filter ")
 
+@remote_compatible
 def test_wpas_ctrl_disallow_aps(dev, apdev):
     """wpa_supplicant ctrl_iface disallow_aps"""
     params = { "ssid": "test" }
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
 
     if "FAIL" not in dev[0].request("SET disallow_aps bssid "):
         raise Exception("Unexpected success on invalid disallow_aps")
@@ -772,7 +852,7 @@ def test_wpas_ctrl_disallow_aps(dev, apdev):
         raise Exception("Unexpected success on invalid disallow_aps")
 
     dev[0].connect("test", key_mgmt="NONE", scan_freq="2412")
-    hostapd.add_ap(apdev[1]['ifname'], params)
+    hostapd.add_ap(apdev[1], params)
     dev[0].scan_for_bss(apdev[1]['bssid'], freq="2412")
     dev[0].dump_monitor()
     if "OK" not in dev[0].request("SET disallow_aps bssid 00:11:22:33:44:55 bssid 00:22:33:44:55:66"):
@@ -796,6 +876,7 @@ def test_wpas_ctrl_disallow_aps(dev, apdev):
     if "OK" not in dev[0].request("SET disallow_aps "):
         raise Exception("Failed to set disallow_aps")
 
+@remote_compatible
 def test_wpas_ctrl_blob(dev):
     """wpa_supplicant ctrl_iface SET blob"""
     if "FAIL" not in dev[0].request("SET blob foo"):
@@ -809,6 +890,7 @@ def test_wpas_ctrl_blob(dev):
     if "OK" not in dev[0].request("SET blob foo 0011"):
         raise Exception("Unexpected SET failure")
 
+@remote_compatible
 def test_wpas_ctrl_set_uapsd(dev):
     """wpa_supplicant ctrl_iface SET uapsd"""
     if "FAIL" not in dev[0].request("SET uapsd foo"):
@@ -837,7 +919,9 @@ def test_wpas_ctrl_set(dev):
              "dot11RSNAConfigPMKReauthThreshold 101",
              "dot11RSNAConfigSATimeout 0",
              "wps_version_number -1",
-             "wps_version_number 256" ]
+             "wps_version_number 256",
+             "fst_group_id ",
+             "fst_llt 0"]
     for val in vals:
         if "FAIL" not in dev[0].request("SET " + val):
             raise Exception("Unexpected SET success for " + val)
@@ -856,6 +940,12 @@ def test_wpas_ctrl_set(dev):
         if "OK" not in dev[0].request("SET " + val):
             raise Exception("Unexpected SET failure for " + val)
 
+    # This fails if wpa_supplicant is built with loadable EAP peer method
+    # support due to missing file and succeeds if no support for loadable
+    # methods is included, so don't check the return value for now.
+    dev[0].request("SET load_dynamic_eap /tmp/hwsim-eap-not-found.so")
+
+@remote_compatible
 def test_wpas_ctrl_get_capability(dev):
     """wpa_supplicant ctrl_iface GET_CAPABILITY"""
     if "FAIL" not in dev[0].request("GET_CAPABILITY 1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"):
@@ -911,6 +1001,7 @@ def test_wpas_ctrl_get_capability(dev):
     if dev[0].get_capability("foo") is not None:
         raise Exception("Unexpected GET_CAPABILITY foo response: " + str(res))
 
+@remote_compatible
 def test_wpas_ctrl_nfc_report_handover(dev):
     """wpa_supplicant ctrl_iface NFC_REPORT_HANDOVER"""
     vals = [ "FOO",
@@ -926,6 +1017,7 @@ def test_wpas_ctrl_nfc_report_handover(dev):
         if "FAIL" not in dev[0].request("NFC_REPORT_HANDOVER " + v):
             raise Exception("Unexpected NFC_REPORT_HANDOVER success for " + v)
 
+@remote_compatible
 def test_wpas_ctrl_nfc_tag_read(dev):
     """wpa_supplicant ctrl_iface WPS_NFC_TAG_READ"""
     vals = [ "FOO", "0Q", "00", "000000", "10000001", "10000000", "00000000",
@@ -934,6 +1026,7 @@ def test_wpas_ctrl_nfc_tag_read(dev):
         if "FAIL" not in dev[0].request("WPS_NFC_TAG_READ " + v):
             raise Exception("Unexpected WPS_NFC_TAG_READ success for " + v)
 
+@remote_compatible
 def test_wpas_ctrl_nfc_get_handover(dev):
     """wpa_supplicant ctrl_iface NFC_GET_HANDOVER"""
     vals = [ "FOO", "FOO BAR", "WPS WPS", "WPS WPS-CR", "WPS FOO", "NDEF P2P" ]
@@ -961,6 +1054,7 @@ def test_wpas_ctrl_nfc_get_handover(dev):
 def get_blacklist(dev):
     return dev.request("BLACKLIST").splitlines()
 
+@remote_compatible
 def test_wpas_ctrl_blacklist(dev):
     """wpa_supplicant ctrl_iface BLACKLIST"""
     if "OK" not in dev[0].request("BLACKLIST clear"):
@@ -989,6 +1083,7 @@ def test_wpas_ctrl_blacklist(dev):
     if dev[0].request("BLACKLIST") != "":
         raise Exception("Unexpected blacklist contents")
 
+@remote_compatible
 def test_wpas_ctrl_blacklist_oom(dev):
     """wpa_supplicant ctrl_iface BLACKLIST and out-of-memory"""
     with alloc_fail(dev[0], 1, "wpa_blacklist_add"):
@@ -1037,10 +1132,11 @@ def test_wpas_ctrl_log_level(dev):
     if "Timestamp: 1" not in level:
         raise Exception("Unexpected timestamp(3): " + level)
 
+@remote_compatible
 def test_wpas_ctrl_enable_disable_network(dev, apdev):
     """wpa_supplicant ctrl_iface ENABLE/DISABLE_NETWORK"""
     params = { "ssid": "test" }
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
 
     id = dev[0].connect("test", key_mgmt="NONE", scan_freq="2412",
                         only_add_network=True)
@@ -1088,7 +1184,9 @@ def test_wpas_ctrl_country(dev, apdev):
         ev = dev[0].wait_global_event(["CTRL-EVENT-REGDOM-CHANGE"], 10)
         if ev is None:
             raise Exception("regdom change event not seen")
-        if "init=CORE type=WORLD" not in ev:
+        # init=CORE was previously used due to invalid db.txt data for 00. For
+        # now, allow both it and the new init=USER after fixed db.txt.
+        if "init=CORE type=WORLD" not in ev and "init=USER type=WORLD" not in ev:
             raise Exception("Unexpected event contents: " + ev)
     finally:
         subprocess.call(['iw', 'reg', 'set', '00'])
@@ -1169,7 +1267,10 @@ def test_wpas_ctrl_global(dev):
         raise Exception("INTERFACE_ADD succeeded unexpectedly")
     if "FAIL" not in wpas.global_request("INTERFACE_ADD FOO					"):
         raise Exception("INTERFACE_ADD succeeded unexpectedly")
+    if "FAIL" not in wpas.global_request("INTERFACE_ADD FOO	conf	driver	ctrliface	driverparam	bridge	create	abcd"):
+        raise Exception("INTERFACE_ADD succeeded unexpectedly")
 
+@remote_compatible
 def test_wpas_ctrl_roam(dev, apdev):
     """wpa_supplicant ctrl_iface ROAM error cases"""
     if "FAIL" not in dev[0].request("ROAM 00:11:22:33:44"):
@@ -1177,63 +1278,25 @@ def test_wpas_ctrl_roam(dev, apdev):
     if "FAIL" not in dev[0].request("ROAM 00:11:22:33:44:55"):
         raise Exception("Unexpected success")
     params = { "ssid": "test" }
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     id = dev[0].connect("test", key_mgmt="NONE", scan_freq="2412")
     if "FAIL" not in dev[0].request("ROAM 00:11:22:33:44:55"):
         raise Exception("Unexpected success")
 
+@remote_compatible
 def test_wpas_ctrl_ipaddr(dev, apdev):
     """wpa_supplicant IP address in STATUS"""
     try:
-        subprocess.call(['ip', 'addr', 'add', '10.174.65.207/32', 'dev',
-                         dev[0].ifname])
+        dev[0].cmd_execute(['ip', 'addr', 'add', '10.174.65.207/32', 'dev',
+                            dev[0].ifname])
         ipaddr = dev[0].get_status_field('ip_address')
         if ipaddr != '10.174.65.207':
             raise Exception("IP address not in STATUS output")
     finally:
-        subprocess.call(['ip', 'addr', 'del', '10.174.65.207/32', 'dev',
-                         dev[0].ifname])
+        dev[0].cmd_execute(['ip', 'addr', 'del', '10.174.65.207/32', 'dev',
+                            dev[0].ifname])
 
-def test_wpas_ctrl_neighbor_rep_req(dev, apdev):
-    """wpa_supplicant ctrl_iface NEIGHBOR_REP_REQUEST"""
-    params = { "ssid": "test" }
-    hostapd.add_ap(apdev[0]['ifname'], params)
-    params = { "ssid": "test2", "radio_measurements": "1" }
-    hostapd.add_ap(apdev[1]['ifname'], params)
-
-    dev[0].connect("test", key_mgmt="NONE", scan_freq="2412")
-    if "FAIL" not in dev[0].request("NEIGHBOR_REP_REQUEST"):
-        raise Exception("Request succeeded unexpectedly")
-    if "FAIL" not in dev[0].request("NEIGHBOR_REP_REQUEST ssid=abcdef"):
-        raise Exception("Request succeeded unexpectedly")
-    dev[0].request("DISCONNECT")
-
-    rrm = int(dev[0].get_driver_status_field("capa.rrm_flags"), 16)
-    if rrm & 0x5 != 0x5:
-        logger.info("Driver does not support required RRM capabilities - skip rest of the test case")
-        return
-
-    dev[0].connect("test2", key_mgmt="NONE", scan_freq="2412")
-
-    # These requests are expected to get sent properly, but since hostapd does
-    # not yet support processing of the request, these are expected to fail.
-    
-    if "OK" not in dev[0].request("NEIGHBOR_REP_REQUEST"):
-        raise Exception("Request failed")
-    ev = dev[0].wait_event([ "RRM-NEIGHBOR-REP-RECEIVED",
-                             "RRM-NEIGHBOR-REP-REQUEST-FAILED" ], timeout=10)
-    if ev is None:
-        raise Exception("RRM report result not indicated")
-    logger.info("RRM result: " + ev)
-
-    if "OK" not in dev[0].request("NEIGHBOR_REP_REQUEST ssid=abcdef"):
-        raise Exception("Request failed")
-    ev = dev[0].wait_event([ "RRM-NEIGHBOR-REP-RECEIVED",
-                             "RRM-NEIGHBOR-REP-REQUEST-FAILED" ], timeout=10)
-    if ev is None:
-        raise Exception("RRM report result not indicated")
-    logger.info("RRM result: " + ev)
-
+@remote_compatible
 def test_wpas_ctrl_rsp(dev, apdev):
     """wpa_supplicant ctrl_iface CTRL-RSP-"""
     if "FAIL" not in dev[0].request("CTRL-RSP-"):
@@ -1254,6 +1317,7 @@ def test_wpas_ctrl_rsp(dev, apdev):
         if "OK" not in dev[0].request("CTRL-RSP-%s-%d:" % (req, id)):
             raise Exception("Request failed unexpectedly")
 
+@remote_compatible
 def test_wpas_ctrl_vendor(dev, apdev):
     """wpa_supplicant ctrl_iface VENDOR"""
     cmds = [ "foo",
@@ -1265,6 +1329,7 @@ def test_wpas_ctrl_vendor(dev, apdev):
         if "FAIL" not in dev[0].request("VENDOR " + cmd):
             raise Exception("Invalid VENDOR command accepted: " + cmd)
 
+@remote_compatible
 def test_wpas_ctrl_mgmt_tx(dev, apdev):
     """wpa_supplicant ctrl_iface MGMT_TX"""
     cmds = [ "foo",
@@ -1279,11 +1344,13 @@ def test_wpas_ctrl_mgmt_tx(dev, apdev):
     if "OK" not in dev[0].request("MGMT_TX_DONE"):
         raise Exception("MGMT_TX_DONE failed")
 
+@remote_compatible
 def test_wpas_ctrl_driver_event(dev, apdev):
     """wpa_supplicant ctrl_iface DRIVER_EVENT"""
     if "FAIL" not in dev[0].request("DRIVER_EVENT foo"):
         raise Exception("Invalid DRIVER_EVENT accepted")
 
+@remote_compatible
 def test_wpas_ctrl_eapol_rx(dev, apdev):
     """wpa_supplicant ctrl_iface EAPOL_RX"""
     cmds = [ "foo",
@@ -1293,6 +1360,7 @@ def test_wpas_ctrl_eapol_rx(dev, apdev):
         if "FAIL" not in dev[0].request("EAPOL_RX " + cmd):
             raise Exception("Invalid EAPOL_RX command accepted: " + cmd)
 
+@remote_compatible
 def test_wpas_ctrl_data_test(dev, apdev):
     """wpa_supplicant ctrl_iface DATA_TEST"""
     dev[0].request("DATA_TEST_CONFIG 0")
@@ -1327,6 +1395,7 @@ def test_wpas_ctrl_data_test(dev, apdev):
     if "OK" not in dev[0].request("DATA_TEST_FRAME 00112233445566778899aabbccddee"):
         raise Exception("DATA_TEST_FRAME failed")
 
+@remote_compatible
 def test_wpas_ctrl_vendor_elem(dev, apdev):
     """wpa_supplicant ctrl_iface VENDOR_ELEM"""
     if "OK" not in dev[0].request("VENDOR_ELEM_ADD 1 "):
@@ -1395,6 +1464,7 @@ def test_wpas_ctrl_misc(dev, apdev):
     if "FAIL" not in dev[0].global_request("SET foo"):
         raise Exception("Invalid global SET accepted")
 
+@remote_compatible
 def test_wpas_ctrl_dump(dev, apdev):
     """wpa_supplicant ctrl_iface and DUMP/GET global parameters"""
     vals = dev[0].get_config()
@@ -1411,7 +1481,7 @@ def test_wpas_ctrl_dump(dev, apdev):
 
 def test_wpas_ctrl_interface_add(dev, apdev):
     """wpa_supplicant INTERFACE_ADD/REMOVE with vif creation/removal"""
-    hapd = hostapd.add_ap(apdev[0]['ifname'], { "ssid": "open" })
+    hapd = hostapd.add_ap(apdev[0], { "ssid": "open" })
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
@@ -1424,6 +1494,48 @@ def test_wpas_ctrl_interface_add(dev, apdev):
     dev[0].global_request("INTERFACE_REMOVE " + ifname)
     hwsim_utils.test_connectivity(dev[0], hapd)
 
+def test_wpas_ctrl_interface_add_sta(dev, apdev):
+    """wpa_supplicant INTERFACE_ADD/REMOVE with STA vif creation/removal"""
+    hapd = hostapd.add_ap(apdev[0], { "ssid": "open" })
+    ifname = "test-" + dev[0].ifname
+    dev[0].interface_add(ifname, create=True, if_type='sta')
+    wpas = WpaSupplicant(ifname=ifname)
+    wpas.connect("open", key_mgmt="NONE", scan_freq="2412")
+    wpas.request("DISCONNECT")
+    wpas.wait_disconnected()
+    dev[0].global_request("INTERFACE_REMOVE " + ifname)
+
+def test_wpas_ctrl_interface_add_ap(dev, apdev):
+    """wpa_supplicant INTERFACE_ADD/REMOVE AP interface"""
+    with HWSimRadio() as (radio, iface):
+        wpas0 = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
+        wpas0.interface_add(iface)
+
+        ifname = "test-wpas-ap"
+        wpas0.interface_add(ifname, create=True, if_type='ap')
+        wpas = WpaSupplicant(ifname=ifname)
+
+        id = wpas.add_network()
+        wpas.set_network(id, "mode", "2")
+        wpas.set_network_quoted(id, "ssid", "wpas-ap-open")
+        wpas.set_network(id, "key_mgmt", "NONE")
+        wpas.set_network(id, "frequency", "2412")
+        wpas.set_network(id, "scan_freq", "2412")
+        wpas.select_network(id)
+        wait_ap_ready(wpas)
+
+        dev[1].connect("wpas-ap-open", key_mgmt="NONE", scan_freq="2412")
+        dev[2].connect("wpas-ap-open", key_mgmt="NONE", scan_freq="2412")
+
+        hwsim_utils.test_connectivity(wpas, dev[1])
+        hwsim_utils.test_connectivity(dev[1], dev[2])
+
+        dev[1].request("DISCONNECT")
+        dev[2].request("DISCONNECT")
+        dev[1].wait_disconnected()
+        dev[2].wait_disconnected()
+        wpas0.global_request("INTERFACE_REMOVE " + ifname)
+
 def test_wpas_ctrl_interface_add_many(dev, apdev):
     """wpa_supplicant INTERFACE_ADD/REMOVE with vif creation/removal (many)"""
     try:
@@ -1434,9 +1546,10 @@ def test_wpas_ctrl_interface_add_many(dev, apdev):
             dev[0].global_request("INTERFACE_REMOVE " + ifname)
 
 def _test_wpas_ctrl_interface_add_many(dev, apdev):
-    hapd = hostapd.add_ap(apdev[0]['ifname'], { "ssid": "open" })
+    hapd = hostapd.add_ap(apdev[0], { "ssid": "open" })
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
+    dev[0].dump_monitor()
 
     l = []
     for i in range(10):
@@ -1444,9 +1557,14 @@ def _test_wpas_ctrl_interface_add_many(dev, apdev):
         dev[0].interface_add(ifname, create=True)
         wpas = WpaSupplicant(ifname=ifname)
         wpas.connect("open", key_mgmt="NONE", scan_freq="2412")
+        wpas.dump_monitor()
         l.append(wpas)
+        dev[0].dump_monitor()
     for wpas in l:
+        wpas.dump_monitor()
         hwsim_utils.test_connectivity(wpas, hapd)
+        wpas.dump_monitor()
+    dev[0].dump_monitor()
 
 def test_wpas_ctrl_interface_add2(dev, apdev):
     """wpa_supplicant INTERFACE_ADD/REMOVE with vif without creation/removal"""
@@ -1457,12 +1575,14 @@ def test_wpas_ctrl_interface_add2(dev, apdev):
         subprocess.call(['iw', 'dev', ifname, 'del'])
 
 def _test_wpas_ctrl_interface_add2(dev, apdev, ifname):
-    hapd = hostapd.add_ap(apdev[0]['ifname'], { "ssid": "open" })
+    hapd = hostapd.add_ap(apdev[0], { "ssid": "open" })
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
     subprocess.call(['iw', 'dev', dev[0].ifname, 'interface', 'add', ifname,
                      'type', 'station'])
+    subprocess.call(['ip', 'link', 'set', 'dev', ifname, 'address',
+                     '02:01:00:00:02:01'])
     dev[0].interface_add(ifname, set_ifname=False, all_params=True)
     wpas = WpaSupplicant(ifname=ifname)
     wpas.connect("open", key_mgmt="NONE", scan_freq="2412")
@@ -1514,6 +1634,7 @@ def test_wpas_ctrl_wait(dev, apdev, test_params):
         if os.path.exists(pidfile):
             raise Exception("PID file not removed")
 
+@remote_compatible
 def test_wpas_ctrl_oom(dev):
     """Various wpa_supplicant ctrl_iface OOM cases"""
     try:
@@ -1571,8 +1692,6 @@ def _test_wpas_ctrl_oom(dev):
                3, 'wpa_supplicant_ctrl_iface_wps_nfc_token'),
               ('WPS_NFC_TOKEN NDEF', 'FAIL',
                4, 'wpa_supplicant_ctrl_iface_wps_nfc_token'),
-              ('WPS_NFC_TOKEN NDEF', 'FAIL',
-               5, 'wpa_supplicant_ctrl_iface_wps_nfc_token'),
               ('NFC_REPORT_HANDOVER ROLE TYPE 00 00', 'FAIL',
                1, 'wpas_ctrl_nfc_report_handover'),
               ('NFC_REPORT_HANDOVER ROLE TYPE 00 00', 'FAIL',
@@ -1583,8 +1702,6 @@ def _test_wpas_ctrl_oom(dev):
                1, 'ndef_build_record'),
               ('NFC_GET_HANDOVER_REQ NDEF P2P-CR', None,
                1, 'wpas_p2p_nfc_handover'),
-              ('NFC_GET_HANDOVER_REQ NDEF P2P-CR', 'FAIL',
-               2, 'wpas_p2p_nfc_handover'),
               ('NFC_GET_HANDOVER_REQ NDEF P2P-CR', None,
                1, 'wps_build_nfc_handover_req_p2p'),
               ('NFC_GET_HANDOVER_REQ NDEF P2P-CR', 'FAIL',
@@ -1593,18 +1710,6 @@ def _test_wpas_ctrl_oom(dev):
                1, 'wpas_ctrl_nfc_get_handover_sel_p2p'),
               ('NFC_GET_HANDOVER_SEL NDEF P2P-CR', None,
                1, 'wpas_ctrl_nfc_get_handover_sel_p2p'),
-              ('NFC_GET_HANDOVER_SEL NDEF P2P-CR-TAG', 'FAIL',
-               2, 'wpas_ctrl_nfc_get_handover_sel_p2p'),
-              ('NFC_GET_HANDOVER_SEL NDEF P2P-CR', 'FAIL',
-               2, 'wpas_ctrl_nfc_get_handover_sel_p2p'),
-              ('NFC_GET_HANDOVER_SEL NDEF P2P-CR-TAG', 'FAIL',
-               3, 'wpas_ctrl_nfc_get_handover_sel_p2p'),
-              ('NFC_GET_HANDOVER_SEL NDEF P2P-CR', 'FAIL',
-               3, 'wpas_ctrl_nfc_get_handover_sel_p2p'),
-              ('NFC_GET_HANDOVER_SEL NDEF P2P-CR-TAG', 'FAIL',
-               4, 'wpas_ctrl_nfc_get_handover_sel_p2p'),
-              ('NFC_GET_HANDOVER_SEL NDEF P2P-CR', 'FAIL',
-               4, 'wpas_ctrl_nfc_get_handover_sel_p2p'),
               ('P2P_ASP_PROVISION_RESP 00:11:22:33:44:55 id=1', 'FAIL',
                1, 'p2p_parse_asp_provision_cmd'),
               ('P2P_SERV_DISC_REQ 00:11:22:33:44:55 02000001', 'FAIL',
@@ -1657,11 +1762,15 @@ def _test_wpas_ctrl_oom(dev):
                1, 'wpa_supplicant_ctrl_iface_autoscan'),
               ('PING', None,
                1, 'wpa_supplicant_ctrl_iface_process') ]
+    tls = dev[0].request("GET tls_library")
+    if not tls.startswith("internal"):
+        tests.append(('NFC_GET_HANDOVER_SEL NDEF P2P-CR-TAG', 'FAIL',
+                      4, 'wpas_ctrl_nfc_get_handover_sel_p2p'))
     for cmd,exp,count,func in tests:
         with alloc_fail(dev[0], count, func):
             res = dev[0].request(cmd)
             if exp and exp not in res:
-                raise Exception("Unexpected success for '%s' during OOM" % cmd)
+                raise Exception("Unexpected success for '%s' during OOM (%d:%s)" % (cmd, count, func))
 
     tests = [ ('FOO', None,
                1, 'wpa_supplicant_global_ctrl_iface_process'),
@@ -1672,6 +1781,23 @@ def _test_wpas_ctrl_oom(dev):
             res = dev[0].global_request(cmd)
             if exp and exp not in res:
                 raise Exception("Unexpected success for '%s' during OOM" % cmd)
+
+@remote_compatible
+def test_wpas_ctrl_error(dev):
+    """Various wpa_supplicant ctrl_iface error cases"""
+    tests = [ ('WPS_NFC_TOKEN NDEF', 'FAIL',
+               1, 'wpa_supplicant_ctrl_iface_wps_nfc_token'),
+              ('WPS_NFC_TOKEN NDEF', 'FAIL',
+               2, 'wpa_supplicant_ctrl_iface_wps_nfc_token'),
+              ('NFC_GET_HANDOVER_REQ NDEF P2P-CR', None,
+               1, 'wpas_p2p_nfc_handover'),
+              ('NFC_GET_HANDOVER_REQ NDEF P2P-CR', None,
+               1, 'wps_build_nfc_handover_req_p2p') ]
+    for cmd,exp,count,func in tests:
+        with fail_test(dev[0], count, func):
+            res = dev[0].request(cmd)
+            if exp and exp not in res:
+                raise Exception("Unexpected success for '%s' during failure testing (%d:%s)" % (cmd, count, func))
 
 def test_wpas_ctrl_socket_full(dev, apdev, test_params):
     """wpa_supplicant control socket and full send buffer"""
@@ -1757,3 +1883,93 @@ def test_wpas_ctrl_socket_full(dev, apdev, test_params):
     if not dev[0].ping():
         raise Exception("Could not ping wpa_supplicant at the end of the test")
     dev[0].get_status()
+
+def test_wpas_ctrl_event_burst(dev, apdev):
+    """wpa_supplicant control socket and event burst"""
+    if "OK" not in dev[0].request("EVENT_TEST 1000"):
+        raise Exception("Could not request event messages")
+
+    total_i = 0
+    total_g = 0
+    for i in range(100):
+        (i,g) = dev[0].dump_monitor()
+        total_i += i
+        total_g += g
+        logger.info("Received i=%d g=%d" % (i, g))
+        if total_i >= 1000 and total_g >= 1000:
+            break
+        time.sleep(0.05)
+
+    if total_i < 1000:
+        raise Exception("Some per-interface events not seen: %d" % total_i)
+    if total_g < 1000:
+        raise Exception("Some global events not seen: %d" % total_g)
+
+    if not dev[0].ping():
+        raise Exception("Could not ping wpa_supplicant at the end of the test")
+
+@remote_compatible
+def test_wpas_ctrl_sched_scan_plans(dev, apdev):
+    """wpa_supplicant sched_scan_plans parsing"""
+    dev[0].request("SET sched_scan_plans foo")
+    dev[0].request("SET sched_scan_plans 10:100 20:200 30")
+    with alloc_fail(dev[0], 1, "wpas_sched_scan_plans_set"):
+        dev[0].request("SET sched_scan_plans 10:100")
+    dev[0].request("SET sched_scan_plans 4294967295:0")
+    dev[0].request("SET sched_scan_plans 1 1")
+    dev[0].request("SET sched_scan_plans  ")
+    dev[0].request("SET sched_scan_plans ")
+
+def test_wpas_ctrl_signal_monitor(dev, apdev):
+    """wpa_supplicant SIGNAL_MONITOR command"""
+    hapd = hostapd.add_ap(apdev[0], { "ssid": "open" })
+    dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
+    dev[1].connect("open", key_mgmt="NONE", scan_freq="2412",
+                   bgscan="simple:1:-45:2")
+    dev[2].connect("open", key_mgmt="NONE", scan_freq="2412")
+
+    tests = [ " THRESHOLD=-45", " THRESHOLD=-44 HYSTERESIS=5", "" ]
+    try:
+        if "FAIL" in dev[2].request("SIGNAL_MONITOR THRESHOLD=-1 HYSTERESIS=5"):
+            raise Exception("SIGNAL_MONITOR command failed")
+        for t in tests:
+            if "OK" not in dev[0].request("SIGNAL_MONITOR" + t):
+                raise Exception("SIGNAL_MONITOR command failed: " + t)
+        if "FAIL" not in dev[1].request("SIGNAL_MONITOR THRESHOLD=-44 HYSTERESIS=5"):
+            raise Exception("SIGNAL_MONITOR command accepted while using bgscan")
+        ev = dev[2].wait_event(["CTRL-EVENT-SIGNAL-CHANGE"], timeout=10)
+        if ev is None:
+            raise Exception("No signal change event seen")
+        if "above=0" not in ev:
+            raise Exception("Unexpected signal change event contents: " + ev)
+    finally:
+        dev[0].request("SIGNAL_MONITOR")
+        dev[1].request("SIGNAL_MONITOR")
+        dev[2].request("SIGNAL_MONITOR")
+
+    dev[0].request("REMOVE_NETWORK all")
+    dev[1].request("REMOVE_NETWORK all")
+    dev[1].wait_disconnected()
+
+def test_wpas_ctrl_p2p_listen_offload(dev, apdev):
+    """wpa_supplicant P2P_LO_START and P2P_LO_STOP commands"""
+    dev[0].request("P2P_LO_STOP")
+    dev[0].request("P2P_LO_START ")
+    dev[0].request("P2P_LO_START 2412")
+    dev[0].request("P2P_LO_START 2412 100 200 3")
+    dev[0].request("P2P_LO_STOP")
+
+def test_wpas_ctrl_driver_flags(dev, apdev):
+    """DRIVER_FLAGS command"""
+    params = hostapd.wpa2_params(ssid="test", passphrase="12345678")
+    hapd = hostapd.add_ap(apdev[0], params)
+    hapd_flags = hapd.request("DRIVER_FLAGS")
+    wpas_flags = dev[0].request("DRIVER_FLAGS")
+    if "FAIL" in hapd_flags:
+        raise Exception("DRIVER_FLAGS failed")
+    if hapd_flags != wpas_flags:
+        raise Exception("Unexpected difference in hostapd vs. wpa_supplicant DRIVER_FLAGS output")
+    logger.info("DRIVER_FLAGS: " + hapd_flags)
+    flags = hapd_flags.split('\n')
+    if 'AP' not in flags:
+        raise Exception("AP flag missing from DRIVER_FLAGS")

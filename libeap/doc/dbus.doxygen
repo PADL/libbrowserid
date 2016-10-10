@@ -97,6 +97,11 @@ registered in the bus with fi.w1.wpa_supplicant1 name.
 	  <dd>Getting an interface object path failed for an unknown reason.</dd>
 	</dl>
       </li>
+
+      <li>
+	<h3>ExpectDisconnect ( ) --> nothing</h3>
+	<p>Notify wpa_supplicant of an externally triggered disconnection, e.g., due to system suspend.</p>
+      </li>
     </ul>
 
 \subsection dbus_main_properties Properties
@@ -451,6 +456,62 @@ fi.w1.wpa_supplicant1.CreateInterface.
 	</dl>
       </li>
       <li>
+	<h3>VendorElemAdd ( i: frame_id, ay: ielems ) --> nothing</h3>
+	<p>Add Vendor Elements to corresponding frame ID.</p>
+	<h4>Arguments</h4>
+	<dl>
+	  <dt>i : frame_id</dt>
+	  <dd>Frame ID for which Vendor specific IE is to be added.</dd>
+	  <dt>ay : ielems</dt>
+	  <dd>Information Element(s).</dd>
+	</dl>
+	<h4>Possible errors</h4>
+	<dl>
+	  <dt>fi.w1.wpa_supplicant1.InvalidArgs</dt>
+	  <dd>The "ielems" argument is not a properly formatted or size mismatch.</dd>
+	  <dt>fi.w1.wpa_supplicant1.NoMemory</dt>
+	  <dd>Needed memory was not possible to get allocated.</dd>
+	</dl>
+      </li>
+      <li>
+	<h3>VendorElemGet ( i: frame_id ) --> ay: ielems</h3>
+	<p>Get Vendor Elements of corresponding frame ID.</p>
+	<h4>Arguments</h4>
+	<dl>
+	  <dt>i : frame_id</dt>
+	  <dd>Frame ID for which Vendor specific IE is being queried.</dd>
+	  <dt>ay : ielems</dt>
+	  <dd>Information Element(s).</dd>
+	</dl>
+	<h4>Possible errors</h4>
+	<dl>
+	  <dt>fi.w1.wpa_supplicant1.InvalidArgs</dt>
+	  <dd>The "frame_id" argument is not valid.</dd>
+	</dl>
+      </li>
+      <li>
+	<h3>VendorElemRem ( i: frame_id, ay: ielems ) --> nothing</h3>
+	<p>Remove Vendor Elements of corresponding frame ID.</p>
+	<h4>Arguments</h4>
+	<dl>
+	  <dt>i : frame_id</dt>
+	  <dd>Frame ID for which Vendor specific IE is to be removed.</dd>
+	  <dt>ay : ielems</dt>
+	  <dd>Information Element(s) OR * to remove all.</dd>
+	</dl>
+	<h4>Possible errors</h4>
+	<dl>
+	  <dt>fi.w1.wpa_supplicant1.InvalidArgs</dt>
+	  <dd>The "ielems" argument is not a properly formatted or size mismatch.</dd>
+	  <dt>fi.w1.wpa_supplicant1.NoMemory</dt>
+	  <dd>Needed memory was not possible to get allocated.</dd>
+	</dl>
+      </li>
+      <li>
+	<h3>SaveConfig ( ) --> nothing</h3>
+	<p>Save configuration to the configuration file.</p>
+      </li>
+      <li>
 	<h3>EAPLogoff ( ) --> nothing</h3>
 	<p>IEEE 802.1X EAPOL state machine logoff.</p>
       </li>
@@ -620,6 +681,11 @@ fi.w1.wpa_supplicant1.CreateInterface.
       </li>
 
       <li>
+	<h3>ConfigFile - s - (read)</h3>
+	<p>Configuration file path. Returns an empty string if no configuration file is in use.</p>
+      </li>
+
+      <li>
 	<h3>CurrentBSS - o - (read)</h3>
 	<p>Path to D-Bus object representing BSS which wpa_supplicant is associated with, or "/" if is not associated at all.</p>
       </li>
@@ -672,6 +738,256 @@ fi.w1.wpa_supplicant1.CreateInterface.
       <li>
 	<h3>DisconnectReason - i - (read)</h3>
 	<p>The most recent IEEE 802.11 reason code for disconnect. Negative value indicates locally generated disconnection.</p>
+      </li>
+
+      <li>
+	<h3>AssocStatusCode - i - (read)</h3>
+	<p>The most recent IEEE 802.11 status code for association rejection.</p>
+      </li>
+
+      <li>
+	<h3>EapolVersion - s - (read/write)</h3>
+	<p>IEEE 802.1X/EAPOL version number</p>
+      </li>
+
+      <li>
+	<h3>Bgscan - s - (read/write)</h3>
+	<p>Background scan and roaming parameters or an empty string if none</p>
+      </li>
+
+      <li>
+	<h3>DisableScanOffload - s - (read/write)</h3>
+	<p>Disable automatic offloading of scan requests</p>
+      </li>
+
+      <li>
+	<h3>OpenscEnginePath - s - (read/write)</h3>
+	<p>Path to the OpenSSL engine for opensc</p>
+      </li>
+
+      <li>
+	<h3>OpensslCiphers - s - (read/write)</h3>
+	<p>OpenSSL cipher string</p>
+      </li>
+
+      <li>
+	<h3>PcscReader - s - (read/write)</h3>
+	<p>PC/SC reader name prefix</p>
+      </li>
+
+      <li>
+	<h3>PcscPin - s - (read/write)</h3>
+	<p>PIN for USIM, GSM SIM, and smartcards</p>
+      </li>
+
+      <li>
+	<h3>ExternalSim - s - (read/write)</h3>
+	<p>Use external processing for SIM/USIM operations</p>
+      </li>
+
+      <li>
+	<h3>DriverParam - s - (read/write)</h3>
+	<p>Driver interface parameters</p>
+      </li>
+
+      <li>
+	<h3>Dot11RSNAConfigPMKLifetime - s - (read/write)</h3>
+	<p>Maximum lifetime of a PMK</p>
+      </li>
+
+      <li>
+	<h3>Dot11RSNAConfigPMKReauthThreshold - s - (read/write)</h3>
+	<p>PMK re-authentication threshold</p>
+      </li>
+
+      <li>
+	<h3>Dot11RSNAConfigSATimeout - s - (read/write)</h3>
+	<p>Security association timeout</p>
+      </li>
+
+      <li>
+	<h3>BssMaxCount - s - (read/write)</h3>
+	<p>Maximum number of BSS entries to keep in memory</p>
+      </li>
+
+      <li>
+	<h3>FilterSsids - s - (read/write)</h3>
+	<p>SSID-based scan result filtering</p>
+      </li>
+
+      <li>
+	<h3>FilterRssi - s - (read/write)</h3>
+	<p>RSSI-based scan result filtering</p>
+      </li>
+
+      <li>
+	<h3>MaxNumSta - s - (read/write)</h3>
+	<p>Maximum number of STAs in an AP/P2P GO</p>
+      </li>
+
+      <li>
+	<h3>DisassocLowAck - s - (read/write)</h3>
+	<p>Disassocicate stations with massive packet loss</p>
+      </li>
+
+      <li>
+	<h3>Interworking - s - (read/write)</h3>
+	<p>Whether Interworking (IEEE 802.11u) is enabled</p>
+      </li>
+
+      <li>
+	<h3>Hessid - s - (read/write)</h3>
+	<p>Homogenous ESS identifier</p>
+      </li>
+
+      <li>
+	<h3>AccessNetworkType - s - (read/write)</h3>
+	<p>Access Network Type</p>
+      </li>
+
+      <li>
+	<h3>PbcInM1 - s - (read/write)</h3>
+	<p>AP mode WPS probing workaround for PBC with Windows 7</p>
+      </li>
+
+      <li>
+	<h3>Autoscan - s - (read/write)</h3>
+	<p>Automatic scan parameters or an empty string if none</p>
+      </li>
+
+      <li>
+	<h3>WpsNfcDevPwId - s - (read/write)</h3>
+	<p>NFC Device Password ID for password token</p>
+      </li>
+
+      <li>
+	<h3>WpsNfcDhPubkey - s - (read/write)</h3>
+	<p>NFC DH Public Key for password token</p>
+      </li>
+
+      <li>
+	<h3>WpsNfcDhPrivkey - s - (read/write)</h3>
+	<p>NFC DH Private Key for password token</p>
+      </li>
+
+      <li>
+	<h3>WpsNfcDevPw - s - (read/write)</h3>
+	<p>NFC Device Password for password token</p>
+      </li>
+
+      <li>
+	<h3>ExtPasswordBackend - s - (read/write)</h3>
+	<p>External password backend or an empty string if none</p>
+      </li>
+
+      <li>
+	<h3>P2pGoMaxInactivity - s - (read/write)</h3>
+	<p>Timeout in seconds to detect STA inactivity</p>
+      </li>
+
+      <li>
+	<h3>AutoInterworking - s - (read/write)</h3>
+	<p>Whether to use network selection automatically</p>
+      </li>
+
+      <li>
+	<h3>Okc - s - (read/write)</h3>
+	<p>Whether to enable opportunistic key caching by default</p>
+      </li>
+
+      <li>
+	<h3>Pmf - s - (read/write)</h3>
+	<p>Whether to enable/require PMF by default</p>
+      </li>
+
+      <li>
+	<h3>SaeGroups - s - (read/write)</h3>
+	<p>Preference list of enabled groups for SAE</p>
+      </li>
+
+      <li>
+	<h3>DtimPeriod - s - (read/write)</h3>
+	<p>Default DTIM period in Beacon intervals</p>
+      </li>
+
+      <li>
+	<h3>BeaconInt - s - (read/write)</h3>
+	<p>Default Beacon interval in TU</p>
+      </li>
+
+      <li>
+	<h3>IgnoreOldScanRes - s - (read/write)</h3>
+	<p>Ignore scan results older than request</p>
+      </li>
+
+      <li>
+	<h3>FreqList - s - (read/write)</h3>
+	<p>Array of allowed scan frequencies or an empty string for all</p>
+      </li>
+
+      <li>
+	<h3>ScanCurFreq - s - (read/write)</h3>
+	<p>Whether to scan only the current channel</p>
+      </li>
+
+      <li>
+	<h3>SchedScanInterval - s - (read/write)</h3>
+	<p>schedule scan interval</p>
+      </li>
+
+      <li>
+	<h3>TdlsExternalControl - s - (read/write)</h3>
+	<p>External control for TDLS setup requests</p>
+      </li>
+
+      <li>
+	<h3>OsuDir - s - (read/write)</h3>
+	<p>OSU provider information directory</p>
+      </li>
+
+      <li>
+	<h3>WowlanTriggers - s - (read/write)</h3>
+	<p>Wake-on-WLAN triggers</p>
+      </li>
+
+      <li>
+	<h3>P2pSearchDelay - s - (read/write)</h3>
+	<p>Extra delay between concurrent search iterations</p>
+      </li>
+
+      <li>
+	<h3>MacAddr - s - (read/write)</h3>
+	<p>MAC address policy default</p>
+      </li>
+
+      <li>
+	<h3>RandAddrLifetime - s - (read/write)</h3>
+	<p>Lifetime of random MAC address in seconds</p>
+      </li>
+
+      <li>
+	<h3>PreassocMacAddr - s - (read/write)</h3>
+	<p>Pre-association MAC address policy</p>
+      </li>
+
+      <li>
+	<h3>KeyMgmtOffload - s - (read/write)</h3>
+	<p>Use key management offload</p>
+      </li>
+
+      <li>
+	<h3>PassiveScan - s - (read/write)</h3>
+	<p>Whether to force passive scan for network connection</p>
+      </li>
+
+      <li>
+	<h3>ReassocSameBssOptim - s - (read/write)</h3>
+	<p>Whether to optimize reassoc-to-same-BSS</p>
+      </li>
+
+      <li>
+	<h3>WpsPriority - s - (read/write)</h3>
+	<p>Priority for the networks added through WPS</p>
       </li>
     </ul>
 
@@ -1318,6 +1634,20 @@ Interface for performing P2P (Wi-Fi Peer-to-Peer) P2P Device operations.
 <ul>
   <li>
     <h3>DeviceFound ( o : path )</h3>
+  </li>
+
+  <li>
+    <h3>DeviceFoundProperties ( o : path, a{sv} : properties )</h3>
+    <p>A new peer device has been found.</p>
+    <h4>Arguments</h4>
+    <dl>
+      <dt>o : path</dt>
+      <dd>A D-Bus path to an object representing the found peer device.</dd>
+    </dl>
+    <dl>
+      <dt>a{sv} : properties</dt>
+      <dd>A dictionary containing properties of the found peer device.</dd>
+    </dl>
   </li>
 
   <li>

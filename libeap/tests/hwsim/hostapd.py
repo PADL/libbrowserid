@@ -10,6 +10,9 @@ import logging
 import binascii
 import struct
 import wpaspy
+import remotehost
+import utils
+import subprocess
 
 logger = logging.getLogger()
 hapd_ctrl = '/var/run/hostapd'
@@ -19,20 +22,50 @@ def mac2tuple(mac):
     return struct.unpack('6B', binascii.unhexlify(mac.replace(':','')))
 
 class HostapdGlobal:
-    def __init__(self):
-        self.ctrl = wpaspy.Ctrl(hapd_global)
-        self.mon = wpaspy.Ctrl(hapd_global)
+    def __init__(self, apdev=None):
+        try:
+            hostname = apdev['hostname']
+            port = apdev['port']
+        except:
+            hostname = None
+            port = 8878
+        self.host = remotehost.Host(hostname)
+        self.hostname = hostname
+        self.port = port
+        if hostname is None:
+            self.ctrl = wpaspy.Ctrl(hapd_global)
+            self.mon = wpaspy.Ctrl(hapd_global)
+            self.dbg = ""
+        else:
+            self.ctrl = wpaspy.Ctrl(hostname, port)
+            self.mon = wpaspy.Ctrl(hostname, port)
+            self.dbg = hostname + "/" + str(port)
         self.mon.attach()
 
-    def request(self, cmd):
-        return self.ctrl.request(cmd)
+    def cmd_execute(self, cmd_array, shell=False):
+        if self.hostname is None:
+            if shell:
+                cmd = ' '.join(cmd_array)
+            else:
+                cmd = cmd_array
+            proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT,
+                                    stdout=subprocess.PIPE, shell=shell)
+            out = proc.communicate()[0]
+            ret = proc.returncode
+            return ret, out
+        else:
+            return self.host.execute(cmd_array)
+
+    def request(self, cmd, timeout=10):
+        logger.debug(self.dbg + ": CTRL(global): " + cmd)
+        return self.ctrl.request(cmd, timeout)
 
     def wait_event(self, events, timeout):
         start = os.times()[4]
         while True:
             while self.mon.pending():
                 ev = self.mon.recv()
-                logger.debug("(global): " + ev)
+                logger.debug(self.dbg + "(global): " + ev)
                 for event in events:
                     if event in ev:
                         return ev
@@ -44,46 +77,99 @@ class HostapdGlobal:
                 break
         return None
 
-    def request(self, cmd):
-        return self.ctrl.request(cmd)
-
     def add(self, ifname, driver=None):
         cmd = "ADD " + ifname + " " + hapd_ctrl
         if driver:
             cmd += " " + driver
-        res = self.ctrl.request(cmd)
+        res = self.request(cmd)
         if not "OK" in res:
             raise Exception("Could not add hostapd interface " + ifname)
 
     def add_iface(self, ifname, confname):
-        res = self.ctrl.request("ADD " + ifname + " config=" + confname)
+        res = self.request("ADD " + ifname + " config=" + confname)
         if not "OK" in res:
             raise Exception("Could not add hostapd interface")
 
     def add_bss(self, phy, confname, ignore_error=False):
-        res = self.ctrl.request("ADD bss_config=" + phy + ":" + confname)
+        res = self.request("ADD bss_config=" + phy + ":" + confname)
         if not "OK" in res:
             if not ignore_error:
                 raise Exception("Could not add hostapd BSS")
 
     def remove(self, ifname):
-        self.ctrl.request("REMOVE " + ifname, timeout=30)
+        self.request("REMOVE " + ifname, timeout=30)
 
     def relog(self):
-        self.ctrl.request("RELOG")
+        self.request("RELOG")
 
     def flush(self):
-        self.ctrl.request("FLUSH")
+        self.request("FLUSH")
 
+    def get_ctrl_iface_port(self, ifname):
+        if self.hostname is None:
+            return None
+
+        res = self.request("INTERFACES ctrl")
+        lines = res.splitlines()
+        found = False
+        for line in lines:
+            words = line.split()
+            if words[0] == ifname:
+                found = True
+                break
+        if not found:
+            raise Exception("Could not find UDP port for " + ifname)
+        res = line.find("ctrl_iface=udp:")
+        if res == -1:
+            raise Exception("Wrong ctrl_interface format")
+        words = line.split(":")
+        return int(words[1])
+
+    def terminate(self):
+        self.mon.detach()
+        self.mon.close()
+        self.mon = None
+        self.ctrl.terminate()
+        self.ctrl = None
 
 class Hostapd:
-    def __init__(self, ifname, bssidx=0):
+    def __init__(self, ifname, bssidx=0, hostname=None, port=8877):
+        self.hostname = hostname
+        self.host = remotehost.Host(hostname, ifname)
         self.ifname = ifname
-        self.ctrl = wpaspy.Ctrl(os.path.join(hapd_ctrl, ifname))
-        self.mon = wpaspy.Ctrl(os.path.join(hapd_ctrl, ifname))
+        if hostname is None:
+            self.ctrl = wpaspy.Ctrl(os.path.join(hapd_ctrl, ifname))
+            self.mon = wpaspy.Ctrl(os.path.join(hapd_ctrl, ifname))
+            self.dbg = ifname
+        else:
+            self.ctrl = wpaspy.Ctrl(hostname, port)
+            self.mon = wpaspy.Ctrl(hostname, port)
+            self.dbg = hostname + "/" + ifname
         self.mon.attach()
         self.bssid = None
         self.bssidx = bssidx
+
+    def cmd_execute(self, cmd_array, shell=False):
+        if self.hostname is None:
+            if shell:
+                cmd = ' '.join(cmd_array)
+            else:
+                cmd = cmd_array
+            proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT,
+                                    stdout=subprocess.PIPE, shell=shell)
+            out = proc.communicate()[0]
+            ret = proc.returncode
+            return ret, out
+        else:
+            return self.host.execute(cmd_array)
+
+    def close_ctrl(self):
+        if self.mon is not None:
+            self.mon.detach()
+            self.mon.close()
+            self.mon = None
+            self.ctrl.close()
+            self.ctrl = None
 
     def own_addr(self):
         if self.bssid is None:
@@ -91,7 +177,7 @@ class Hostapd:
         return self.bssid
 
     def request(self, cmd):
-        logger.debug(self.ifname + ": CTRL: " + cmd)
+        logger.debug(self.dbg + ": CTRL: " + cmd)
         return self.ctrl.request(cmd)
 
     def ping(self):
@@ -154,14 +240,14 @@ class Hostapd:
     def dump_monitor(self):
         while self.mon.pending():
             ev = self.mon.recv()
-            logger.debug(self.ifname + ": " + ev)
+            logger.debug(self.dbg + ": " + ev)
 
     def wait_event(self, events, timeout):
         start = os.times()[4]
         while True:
             while self.mon.pending():
                 ev = self.mon.recv()
-                logger.debug(self.ifname + ": " + ev)
+                logger.debug(self.dbg + ": " + ev)
                 for event in events:
                     if event in ev:
                         return ev
@@ -275,12 +361,42 @@ class Hostapd:
                 vals[name_val[0]] = name_val[1]
         return vals
 
-def add_ap(ifname, params, wait_enabled=True, no_enable=False):
-        logger.info("Starting AP " + ifname)
-        hapd_global = HostapdGlobal()
+    def get_pmksa(self, addr):
+        res = self.request("PMKSA")
+        lines = res.splitlines()
+        for l in lines:
+            if addr not in l:
+                continue
+            vals = dict()
+            [index,aa,pmkid,expiration,opportunistic] = l.split(' ')
+            vals['index'] = index
+            vals['pmkid'] = pmkid
+            vals['expiration'] = expiration
+            vals['opportunistic'] = opportunistic
+            return vals
+        return None
+
+def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30):
+        if isinstance(apdev, dict):
+            ifname = apdev['ifname']
+            try:
+                hostname = apdev['hostname']
+                port = apdev['port']
+                logger.info("Starting AP " + hostname + "/" + port + " " + ifname)
+            except:
+                logger.info("Starting AP " + ifname)
+                hostname = None
+                port = 8878
+        else:
+            ifname = apdev
+            logger.info("Starting AP " + ifname + " (old add_ap argument type)")
+            hostname = None
+            port = 8878
+        hapd_global = HostapdGlobal(apdev)
         hapd_global.remove(ifname)
         hapd_global.add(ifname)
-        hapd = Hostapd(ifname)
+        port = hapd_global.get_ctrl_iface_port(ifname)
+        hapd = Hostapd(ifname, hostname=hostname, port=port)
         if not hapd.ping():
             raise Exception("Could not ping hostapd")
         hapd.set_defaults()
@@ -303,33 +419,70 @@ def add_ap(ifname, params, wait_enabled=True, no_enable=False):
             return hapd
         hapd.enable()
         if wait_enabled:
-            ev = hapd.wait_event(["AP-ENABLED", "AP-DISABLED"], timeout=30)
+            ev = hapd.wait_event(["AP-ENABLED", "AP-DISABLED"], timeout=timeout)
             if ev is None:
                 raise Exception("AP startup timed out")
             if "AP-ENABLED" not in ev:
                 raise Exception("AP startup failed")
         return hapd
 
-def add_bss(phy, ifname, confname, ignore_error=False):
-    logger.info("Starting BSS phy=" + phy + " ifname=" + ifname)
-    hapd_global = HostapdGlobal()
+def add_bss(apdev, ifname, confname, ignore_error=False):
+    phy = utils.get_phy(apdev)
+    try:
+        hostname = apdev['hostname']
+        port = apdev['port']
+        logger.info("Starting BSS " + hostname + "/" + port + " phy=" + phy + " ifname=" + ifname)
+    except:
+        logger.info("Starting BSS phy=" + phy + " ifname=" + ifname)
+        hostname = None
+        port = 8878
+    hapd_global = HostapdGlobal(apdev)
     hapd_global.add_bss(phy, confname, ignore_error)
-    hapd = Hostapd(ifname)
+    port = hapd_global.get_ctrl_iface_port(ifname)
+    hapd = Hostapd(ifname, hostname=hostname, port=port)
     if not hapd.ping():
         raise Exception("Could not ping hostapd")
+    return hapd
 
-def add_iface(ifname, confname):
-    logger.info("Starting interface " + ifname)
-    hapd_global = HostapdGlobal()
+def add_iface(apdev, confname):
+    ifname = apdev['ifname']
+    try:
+        hostname = apdev['hostname']
+        port = apdev['port']
+        logger.info("Starting interface " + hostname + "/" + port + " " + ifname)
+    except:
+        logger.info("Starting interface " + ifname)
+        hostname = None
+        port = 8878
+    hapd_global = HostapdGlobal(apdev)
     hapd_global.add_iface(ifname, confname)
-    hapd = Hostapd(ifname)
+    port = hapd_global.get_ctrl_iface_port(ifname)
+    hapd = Hostapd(ifname, hostname=hostname, port=port)
     if not hapd.ping():
         raise Exception("Could not ping hostapd")
+    return hapd
 
-def remove_bss(ifname):
-    logger.info("Removing BSS " + ifname)
-    hapd_global = HostapdGlobal()
+def remove_bss(apdev, ifname=None):
+    if ifname == None:
+        ifname = apdev['ifname']
+    try:
+        hostname = apdev['hostname']
+        port = apdev['port']
+        logger.info("Removing BSS " + hostname + "/" + port + " " + ifname)
+    except:
+        logger.info("Removing BSS " + ifname)
+    hapd_global = HostapdGlobal(apdev)
     hapd_global.remove(ifname)
+
+def terminate(apdev):
+    try:
+        hostname = apdev['hostname']
+        port = apdev['port']
+        logger.info("Terminating hostapd " + hostname + "/" + port)
+    except:
+        logger.info("Terminating hostapd")
+    hapd_global = HostapdGlobal(apdev)
+    hapd_global.terminate()
 
 def wpa2_params(ssid=None, passphrase=None):
     params = { "wpa": "2",
@@ -388,3 +541,56 @@ def wpa2_eap_params(ssid=None):
     if ssid:
         params["ssid"] = ssid
     return params
+
+def b_only_params(channel="1", ssid=None, country=None):
+    params = { "hw_mode" : "b",
+               "channel" : channel }
+    if ssid:
+        params["ssid"] = ssid
+    if country:
+        params["country_code"] = country
+    return params
+
+def g_only_params(channel="1", ssid=None, country=None):
+    params = { "hw_mode" : "g",
+               "channel" : channel }
+    if ssid:
+        params["ssid"] = ssid
+    if country:
+        params["country_code"] = country
+    return params
+
+def a_only_params(channel="36", ssid=None, country=None):
+    params = { "hw_mode" : "a",
+               "channel" : channel }
+    if ssid:
+        params["ssid"] = ssid
+    if country:
+        params["country_code"] = country
+    return params
+
+def ht20_params(channel="1", ssid=None, country=None):
+    params = { "ieee80211n" : "1",
+               "channel" : channel,
+               "hw_mode" : "g" }
+    if int(channel) > 14:
+        params["hw_mode"] = "a"
+    if ssid:
+        params["ssid"] = ssid
+    if country:
+        params["country_code"] = country
+    return params
+
+def ht40_plus_params(channel="1", ssid=None, country=None):
+    params = ht20_params(channel, ssid, country)
+    params['ht_capab'] = "[HT40+]"
+    return params
+
+def ht40_minus_params(channel="1", ssid=None, country=None):
+    params = ht20_params(channel, ssid, country)
+    params['ht_capab'] = "[HT40-]"
+    return params
+
+def cmd_execute(apdev, cmd, shell=False):
+    hapd_global = HostapdGlobal(apdev)
+    return hapd_global.cmd_execute(cmd, shell=shell)

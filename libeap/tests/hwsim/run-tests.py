@@ -252,13 +252,13 @@ def main():
 
     # read the modules from the modules file
     if args.mfile:
-	args.testmodules = []
-	with open(args.mfile) as f:
-	    for line in f.readlines():
-		line = line.strip()
-		if not line or line.startswith('#'):
-		    continue
-	        args.testmodules.append(line)
+        args.testmodules = []
+        with open(args.mfile) as f:
+            for line in f.readlines():
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                    args.testmodules.append(line)
 
     tests_to_run = []
     if args.tests:
@@ -400,6 +400,7 @@ def main():
             t = tests_to_run.pop(0)
 
         name = t.__name__.replace('test_', '', 1)
+        open('/dev/kmsg', 'w').write('running hwsim test case %s\n' % name)
         if log_handler:
             log_handler.stream.close()
             logger.removeHandler(log_handler)
@@ -452,8 +453,15 @@ def main():
             except HwsimSkip, e:
                 logger.info("Skip test case: %s" % e)
                 result = "SKIP"
-            except Exception, e:
+            except NameError, e:
+                import traceback
                 logger.info(e)
+                traceback.print_exc()
+                result = "FAIL"
+            except Exception, e:
+                import traceback
+                logger.info(e)
+                traceback.print_exc()
                 if args.loglevel == logging.WARNING:
                     print "Exception: " + str(e)
                 result = "FAIL"
@@ -465,6 +473,10 @@ def main():
                     logger.info("Failed to issue TEST-STOP after {} for {}".format(name, d.ifname))
                     logger.info(e)
                     result = "FAIL"
+            if args.no_reset:
+                print "Leaving devices in current state"
+            else:
+                reset_ok = reset_devs(dev, apdev)
             wpas = None
             try:
                 wpas = WpaSupplicant(global_iface="/tmp/wpas-wlan5")
@@ -475,10 +487,6 @@ def main():
                 pass
             if wpas:
                 wpas.close_ctrl()
-            if args.no_reset:
-                print "Leaving devices in current state"
-            else:
-                reset_ok = reset_devs(dev, apdev)
 
             for i in range(0, 3):
                 rename_log(args.logdir, 'log' + str(i), name, dev[i])
@@ -495,6 +503,9 @@ def main():
                 del hapd
                 hapd = None
 
+            # Use None here since this instance of Wlantest() will never be
+            # used for remote host hwsim tests on real hardware.
+            Wlantest.setup(None)
             wt = Wlantest()
             rename_log(args.logdir, 'hwsim0.pcapng', name, wt)
             rename_log(args.logdir, 'hwsim0', name, wt)

@@ -188,7 +188,7 @@ def fst_start_session(apdev, test_params, bad_param_type, start_on_ap,
                         exception_text = "Failure. Bad parameter was not detected (%s)" % bad_param_names[bad_param_type]
                     raise Exception(exception_text)
         else:
-            print "Failure. Unexpected exception"
+            logger.info("Failure. Unexpected exception")
 
 def fst_initiate_session(apdev, test_params, bad_param_type, init_on_ap):
     """This function makes the necessary preparations and then adds, sets and
@@ -326,7 +326,7 @@ def fst_initiate_session(apdev, test_params, bad_param_type, init_on_ap):
                 else:
                     raise Exception("Failure. Bad parameter was not detected (%s)" % bad_param_names[bad_param_type])
         else:
-            print "Failure. Unexpected exception"
+            logger.info("Failure. Unexpected exception")
 
 def fst_transfer_session(apdev, test_params, bad_param_type, init_on_ap,
                          rsn=False):
@@ -385,7 +385,7 @@ def fst_transfer_session(apdev, test_params, bad_param_type, init_on_ap,
                 else:
                     raise Exception("Failure. Bad parameter was not detected (%s)" % bad_param_names[bad_param_type])
         else:
-            print "Failure. Unexpected exception"
+            logger.info("Failure. Unexpected exception")
 
 
 def fst_tear_down_session(apdev, test_params, bad_param_type, init_on_ap):
@@ -453,7 +453,7 @@ def fst_tear_down_session(apdev, test_params, bad_param_type, init_on_ap):
                 else:
                     raise Exception("Failure. Bad parameter was not detected (%s)" % bad_param_names[bad_param_type])
         else:
-            print "Failure. Unexpected exception"
+            logger.info("Failure. Unexpected exception")
 
 
 #enum - remove session scenarios
@@ -528,7 +528,7 @@ def fst_remove_session(apdev, test_params, remove_session_scenario, init_on_ap):
                 else:
                     raise Exception("Failure. Remove scenario ended in an unexpected way (%s)" % remove_scenario_names[remove_session_scenario])
         else:
-            print "Failure. Unexpected exception"
+            logger.info("Failure. Unexpected exception")
 
 
 #enum - frame types
@@ -612,7 +612,7 @@ def fst_send_unexpected_frame(apdev, test_params, frame_type, send_from_ap, addi
                 else:
                     raise Exception("Failure. Frame was not ignored (%s)" % frame_type_names[frame_type])
         else:
-            print "Failure. Unexpected exception"
+            logger.info("Failure. Unexpected exception")
 
 
 #enum - bad session transfer scenarios
@@ -733,7 +733,7 @@ def fst_bad_transfer(apdev, test_params, bad_scenario_type, init_on_ap):
             else:
                 raise Exception("Failure. Bad scenario was handled incorrectly (%s)" % bad_scenario_names[bad_scenario_type])
         else:
-            print "Failure. Unexpected exception"
+            logger.info("Failure. Unexpected exception")
 
 def test_fst_sta_connect_to_non_fst_ap(dev, apdev, test_params):
     """FST STA connecting to non-FST AP"""
@@ -752,9 +752,9 @@ def test_fst_sta_connect_to_non_fst_ap(dev, apdev, test_params):
             res_sta2_mbies = sta2.get_local_mbies()
             if (orig_sta1_mbies.startswith("FAIL") or
                 orig_sta2_mbies.startswith("FAIL") or
-                not res_sta1_mbies.startswith("FAIL") or
-                not res_sta2_mbies.startswith("FAIL")):
-                raise Exception("Failure. MB IEs have not been removed on the stations")
+                res_sta1_mbies.startswith("FAIL") or
+                res_sta2_mbies.startswith("FAIL")):
+                raise Exception("Failure. MB IEs must be present on the stations")
         except Exception, e:
             logger.info(e)
             raise
@@ -839,9 +839,9 @@ def test_fst_second_sta_connect_to_non_fst_ap(dev, apdev, test_params):
             res_sta2_mbies = sta2.get_local_mbies()
             if (orig_sta1_mbies.startswith("FAIL") or
                 orig_sta2_mbies.startswith("FAIL") or
-                not res_sta1_mbies.startswith("FAIL") or
-                not res_sta2_mbies.startswith("FAIL")):
-                raise Exception("Failure. MB IEs have not been removed on the stations")
+                res_sta1_mbies.startswith("FAIL") or
+                res_sta2_mbies.startswith("FAIL")):
+                raise Exception("Failure. MB IEs must be present on the stations")
         except Exception, e:
             logger.info(e)
             raise
@@ -868,11 +868,11 @@ def test_fst_second_sta_connect_to_fst_ap(dev, apdev, test_params):
             time.sleep(2)
             res_sta1_mbies = sta1.get_local_mbies()
             res_sta2_mbies = sta2.get_local_mbies()
-            if (not orig_sta1_mbies.startswith("FAIL") or
-                not orig_sta2_mbies.startswith("FAIL") or
-                not res_sta1_mbies.startswith("FAIL") or
-                not res_sta2_mbies.startswith("FAIL")):
-                raise Exception("Failure. MB IEs should have stayed non-present on the stations")
+            if (orig_sta1_mbies.startswith("FAIL") or
+                orig_sta2_mbies.startswith("FAIL") or
+                res_sta1_mbies.startswith("FAIL") or
+                res_sta2_mbies.startswith("FAIL")):
+                raise Exception("Failure. MB IEs must be present on the stations")
         except Exception, e:
             logger.info(e)
             raise
@@ -900,11 +900,11 @@ def test_fst_disconnect_1_of_2_stas_from_non_fst_ap(dev, apdev, test_params):
             time.sleep(2)
             res_sta1_mbies = sta1.get_local_mbies()
             res_sta2_mbies = sta2.get_local_mbies()
-            if (not orig_sta1_mbies.startswith("FAIL") or
-                not orig_sta2_mbies.startswith("FAIL") or
+            if (orig_sta1_mbies.startswith("FAIL") or
+                orig_sta2_mbies.startswith("FAIL") or
                 res_sta1_mbies.startswith("FAIL") or
                 res_sta2_mbies.startswith("FAIL")):
-                raise Exception("Failure. MB IEs haven't reappeared on the stations")
+                raise Exception("Failure. MB IEs must be present on the stations")
         except Exception, e:
             logger.info(e)
             raise
@@ -932,11 +932,11 @@ def test_fst_disconnect_1_of_2_stas_from_fst_ap(dev, apdev, test_params):
             time.sleep(2)
             res_sta1_mbies = sta1.get_local_mbies()
             res_sta2_mbies = sta2.get_local_mbies()
-            if (not orig_sta1_mbies.startswith("FAIL") or
-                not orig_sta2_mbies.startswith("FAIL") or
-                not res_sta1_mbies.startswith("FAIL") or
-                not res_sta2_mbies.startswith("FAIL")):
-                raise Exception("Failure. MB IEs should have stayed non-present on the stations")
+            if (orig_sta1_mbies.startswith("FAIL") or
+                orig_sta2_mbies.startswith("FAIL") or
+                res_sta1_mbies.startswith("FAIL") or
+                res_sta2_mbies.startswith("FAIL")):
+                raise Exception("Failure. MB IEs must be present on the stations")
         except Exception, e:
             logger.info(e)
             raise
@@ -966,11 +966,11 @@ def test_fst_disconnect_2_of_2_stas_from_non_fst_ap(dev, apdev, test_params):
             time.sleep(2)
             res_sta1_mbies = sta1.get_local_mbies()
             res_sta2_mbies = sta2.get_local_mbies()
-            if (not orig_sta1_mbies.startswith("FAIL") or
-                not orig_sta2_mbies.startswith("FAIL") or
+            if (orig_sta1_mbies.startswith("FAIL") or
+                orig_sta2_mbies.startswith("FAIL") or
                 res_sta1_mbies.startswith("FAIL") or
                 res_sta2_mbies.startswith("FAIL")):
-                raise Exception("Failure. MB IEs haven't reappeared on the stations")
+                raise Exception("Failure. MB IEs must be present on the stations")
         except Exception, e:
             logger.info(e)
             raise
@@ -1065,7 +1065,7 @@ def test_fst_disconnect_non_fst_sta(dev, apdev, test_params):
 def test_fst_disconnect_fst_sta(dev, apdev, test_params):
     """FST disconnect FST STA"""
     ap1, ap2, fst_sta1, fst_sta2 = fst_module_aux.start_two_ap_sta_pairs(apdev)
-    external_sta_connected = False;
+    external_sta_connected = False
     try:
         vals = fst_sta1.scan(freq=fst_test_common.fst_test_def_freq_a)
         fst_sta1.connect(ap1, key_mgmt="NONE",
@@ -1527,6 +1527,12 @@ def test_fst_ap_start_session_oom(dev, apdev, test_params):
                                fst_test_common.fst_test_def_prio_low,
                                fst_test_common.fst_test_def_llt)
     ap1.start()
+    try:
+        run_fst_ap_start_session_oom(apdev, ap1)
+    finally:
+        ap1.stop()
+
+def run_fst_ap_start_session_oom(apdev, ap1):
     with alloc_fail(ap1, 1, "fst_iface_create"):
         ap2_started = False
         try:
@@ -1541,7 +1547,6 @@ def test_fst_ap_start_session_oom(dev, apdev, test_params):
             except:
                 pass
         finally:
-            ap1.stop()
             try:
                 ap2.stop()
             except:
@@ -2339,7 +2344,7 @@ def fst_start_and_connect(apdev, group, sgroup):
 
     params = { "ssid": "fst_11a", "hw_mode": "a", "channel": "36",
                "country_code": "US" }
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     fst_attach_ap(hglobal, apdev[0]['ifname'], group)
 
@@ -2349,7 +2354,7 @@ def fst_start_and_connect(apdev, group, sgroup):
 
     params = { "ssid": "fst_11g", "hw_mode": "g", "channel": "1",
                "country_code": "US" }
-    hapd2 = hostapd.add_ap(apdev[1]['ifname'], params)
+    hapd2 = hostapd.add_ap(apdev[1], params)
     fst_attach_ap(hglobal, apdev[1]['ifname'], group)
 
     wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
@@ -2534,9 +2539,20 @@ def _test_fst_setup_mbie_diff(dev, apdev, test_params):
     req = "1200011a060000"
     stie = "a40b0100000000020001040001"
     mbie = "9e16040200010200000004000000000000000000000000ff"
-    with alloc_fail(hapd, 1, "mb_ies_by_info"):
-        fst_setup_req(wpas, hglobal, 5180, apdev[0]['bssid'], req, stie, mbie,
-                      no_wait=True)
+    try:
+        with alloc_fail(hapd, 1, "mb_ies_by_info"):
+            fst_setup_req(wpas, hglobal, 5180, apdev[0]['bssid'], req, stie,
+                          mbie, no_wait=True)
+    except HwsimSkip, e:
+        # Skip exception to allow proper cleanup
+        pass
+
+    # Remove sessions to avoid causing issues to following test ases
+    s = hglobal.request("FST-MANAGER LIST_SESSIONS " + group)
+    if not s.startswith("FAIL"):
+        for sid in s.split(' '):
+            if len(sid):
+                hglobal.request("FST-MANAGER SESSION_REMOVE " + sid)
 
 def test_fst_many_setup(dev, apdev, test_params):
     """FST setup multiple times"""

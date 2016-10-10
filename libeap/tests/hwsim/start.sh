@@ -103,7 +103,7 @@ fi
 test -f /proc/modules && sudo modprobe mac80211_hwsim radios=7 channels=$NUM_CH support_p2p_device=0
 
 sudo ifconfig hwsim0 up
-sudo $WLANTEST -i hwsim0 -n $LOGDIR/hwsim0.pcapng -c -dt -L $LOGDIR/hwsim0 &
+sudo $WLANTEST -i hwsim0 -n $LOGDIR/hwsim0.pcapng -c -dtN -L $LOGDIR/hwsim0 &
 for i in 0 1 2; do
     DBUSARG=""
     if [ $i = "0" -a -r /var/run/dbus/pid -a -r /var/run/dbus/hwsim-test ]; then
@@ -136,6 +136,19 @@ if [ ! -r $LOGDIR/ocsp-server-cache.der ]; then
     cp $DIR/auth_serv/ocsp-server-cache.der $LOGDIR/ocsp-server-cache.der
 fi
 
+cp $DIR/auth_serv/ocsp-multi-server-cache.der $LOGDIR/ocsp-multi-server-cache.der
+
+openssl ocsp -index $DIR/auth_serv/index.txt \
+    -rsigner $DIR/auth_serv/ocsp-responder.pem \
+    -rkey $DIR/auth_serv/ocsp-responder.key \
+    -resp_key_id \
+    -CA $DIR/auth_serv/ca.pem \
+    -issuer $DIR/auth_serv/ca.pem \
+    -verify_other $DIR/auth_serv/ca.pem -trust_other \
+    -ndays 7 \
+    -reqin $DIR/auth_serv/ocsp-req.der \
+    -respout $LOGDIR/ocsp-server-cache-key-id.der > $LOGDIR/ocsp.log 2>&1
+
 for i in unknown revoked; do
     openssl ocsp -index $DIR/auth_serv/index-$i.txt \
 	-rsigner $DIR/auth_serv/ocsp-responder.pem \
@@ -147,6 +160,27 @@ for i in unknown revoked; do
 	-reqin $DIR/auth_serv/ocsp-req.der \
 	-respout $LOGDIR/ocsp-server-cache-$i.der >> $LOGDIR/ocsp.log 2>&1
 done
+
+openssl ocsp -reqout $LOGDIR/ocsp-req.der -issuer $DIR/auth_serv/ca.pem \
+    -serial 0xD8D3E3A6CBE3CCE9 -no_nonce -sha256 >> $LOGDIR/ocsp.log 2>&1
+for i in "" "-unknown" "-revoked"; do
+    openssl ocsp -index $DIR/auth_serv/index$i.txt \
+	-rsigner $DIR/auth_serv/ca.pem \
+	-rkey $DIR/auth_serv/ca-key.pem \
+	-CA $DIR/auth_serv/ca.pem \
+	-ndays 7 \
+	-reqin $LOGDIR/ocsp-req.der \
+	-resp_no_certs \
+	-respout $LOGDIR/ocsp-resp-ca-signed$i.der >> $LOGDIR/ocsp.log 2>&1
+done
+openssl ocsp -index $DIR/auth_serv/index.txt \
+    -rsigner $DIR/auth_serv/server.pem \
+    -rkey $DIR/auth_serv/server.key \
+    -CA $DIR/auth_serv/ca.pem \
+    -ndays 7 \
+    -reqin $LOGDIR/ocsp-req.der \
+    -respout $LOGDIR/ocsp-resp-server-signed.der >> $LOGDIR/ocsp.log 2>&1
+
 touch $LOGDIR/hostapd.db
 sudo $HAPD_AS -ddKt $LOGDIR/as.conf $LOGDIR/as2.conf > $LOGDIR/auth_serv &
 

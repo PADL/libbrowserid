@@ -4,113 +4,16 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import logging
 logger = logging.getLogger()
 import re
 import time
 
 import hwsim_utils
-from test_p2p_autogo import connect_cli
+from p2p_utils import *
 
-def go_neg_pin_authorized_persistent(i_dev, r_dev, i_intent=None, r_intent=None, i_method='enter', r_method='display', test_data=True):
-    r_dev.p2p_listen()
-    i_dev.p2p_listen()
-    pin = r_dev.wps_read_pin()
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
-    r_dev.p2p_go_neg_auth(i_dev.p2p_dev_addr(), pin, r_method,
-                          go_intent=r_intent, persistent=True)
-    r_dev.p2p_listen()
-    i_res = i_dev.p2p_go_neg_init(r_dev.p2p_dev_addr(), pin, i_method,
-                                  timeout=20, go_intent=i_intent,
-                                  persistent=True)
-    r_res = r_dev.p2p_go_neg_auth_result()
-    logger.debug("i_res: " + str(i_res))
-    logger.debug("r_res: " + str(r_res))
-    r_dev.dump_monitor()
-    i_dev.dump_monitor()
-    logger.info("Group formed")
-    if test_data:
-        hwsim_utils.test_connectivity_p2p(r_dev, i_dev)
-    return [i_res, r_res]
-
-def terminate_group(go, cli):
-    logger.info("Terminate persistent group")
-    go.remove_group()
-    cli.wait_go_ending_session()
-
-def invite(inv, resp, extra=None, persistent_reconnect=True):
-    addr = resp.p2p_dev_addr()
-    if persistent_reconnect:
-        resp.global_request("SET persistent_reconnect 1")
-    else:
-        resp.global_request("SET persistent_reconnect 0")
-    resp.p2p_listen()
-    if not inv.discover_peer(addr, social=True):
-        raise Exception("Peer " + addr + " not found")
-    inv.dump_monitor()
-    peer = inv.get_peer(addr)
-    cmd = "P2P_INVITE persistent=" + peer['persistent'] + " peer=" + addr
-    if extra:
-        cmd = cmd + " " + extra;
-    inv.global_request(cmd)
-
-def check_result(go, cli):
-    ev = go.wait_global_event(["P2P-GROUP-STARTED"], timeout=30)
-    if ev is None:
-        raise Exception("Timeout on group re-invocation (on GO)")
-    if "[PERSISTENT]" not in ev:
-        raise Exception("Re-invoked group not marked persistent")
-    go_res = go.group_form_result(ev)
-    if go_res['role'] != 'GO':
-        raise Exception("Persistent group GO did not become GO")
-    if not go_res['persistent']:
-        raise Exception("Persistent group not re-invoked as persistent (GO)")
-    ev = cli.wait_global_event(["P2P-GROUP-STARTED"], timeout=30)
-    if ev is None:
-        raise Exception("Timeout on group re-invocation (on client)")
-    if "[PERSISTENT]" not in ev:
-        raise Exception("Re-invoked group not marked persistent")
-    cli_res = cli.group_form_result(ev)
-    if cli_res['role'] != 'client':
-        raise Exception("Persistent group client did not become client")
-    if not cli_res['persistent']:
-        raise Exception("Persistent group not re-invoked as persistent (cli)")
-    return [go_res, cli_res]
-
-def form(go, cli, test_data=True, reverse_init=False):
-    logger.info("Form a persistent group")
-    if reverse_init:
-        [i_res, r_res] = go_neg_pin_authorized_persistent(i_dev=cli, i_intent=0,
-                                                          r_dev=go, r_intent=15,
-                                                          test_data=test_data)
-    else:
-        [i_res, r_res] = go_neg_pin_authorized_persistent(i_dev=go, i_intent=15,
-                                                          r_dev=cli, r_intent=0,
-                                                          test_data=test_data)
-    if not i_res['persistent'] or not r_res['persistent']:
-        raise Exception("Formed group was not persistent")
-    terminate_group(go, cli)
-    if reverse_init:
-        return r_res
-    else:
-        return i_res
-
-def invite_from_cli(go, cli):
-    logger.info("Re-invoke persistent group from client")
-    invite(cli, go)
-    [go_res, cli_res] = check_result(go, cli)
-    hwsim_utils.test_connectivity_p2p(go, cli)
-    terminate_group(go, cli)
-    return [go_res, cli_res]
-
-def invite_from_go(go, cli):
-    logger.info("Re-invoke persistent group from GO")
-    invite(go, cli)
-    [go_res, cli_res] = check_result(go, cli)
-    hwsim_utils.test_connectivity_p2p(go, cli)
-    terminate_group(go, cli)
-    return [go_res, cli_res]
-
+@remote_compatible
 def test_persistent_group(dev):
     """P2P persistent group formation and re-invocation"""
     form(dev[0], dev[1])
@@ -155,12 +58,14 @@ def test_persistent_group(dev):
     if dev[1].p2p_dev_addr() in clients:
         raise Exception("Peer was still in client list")
 
+@remote_compatible
 def test_persistent_group2(dev):
     """P2P persistent group formation with reverse roles"""
     form(dev[0], dev[1], reverse_init=True)
     invite_from_cli(dev[0], dev[1])
     invite_from_go(dev[0], dev[1])
 
+@remote_compatible
 def test_persistent_group3(dev):
     """P2P persistent group formation and re-invocation with empty BSS table"""
     form(dev[0], dev[1])
@@ -358,6 +263,7 @@ def test_persistent_group_invite_removed_client(dev):
 
     terminate_group(dev[0], dev[1])
 
+@remote_compatible
 def test_persistent_group_channel(dev):
     """P2P persistent group re-invocation with channel selection"""
     form(dev[0], dev[1], test_data=False)
@@ -383,6 +289,7 @@ def test_persistent_group_channel(dev):
         raise Exception("Persistent group client channel preference not followed")
     terminate_group(dev[0], dev[1])
 
+@remote_compatible
 def test_persistent_group_and_role_change(dev):
     """P2P persistent group, auto GO in another role, and re-invocation"""
     form(dev[0], dev[1])
@@ -451,6 +358,7 @@ def test_persistent_go_client_list(dev):
     if 'persistent' not in peer or peer['persistent'] != id:
         raise Exception("Persistent group client not recognized(2)")
 
+@remote_compatible
 def test_persistent_group_in_grpform(dev):
     """P2P persistent group parameters re-used in group formation"""
     addr0 = dev[0].p2p_dev_addr()
@@ -472,6 +380,7 @@ def test_persistent_group_in_grpform(dev):
     logger.debug("i_res: " + str(i_res))
     logger.debug("r_res: " + str(r_res))
 
+@remote_compatible
 def test_persistent_group_without_persistent_reconnect(dev):
     """P2P persistent group re-invocation without persistent reconnect"""
     form(dev[0], dev[1])
@@ -483,13 +392,13 @@ def test_persistent_group_without_persistent_reconnect(dev):
 
     ev = dev[0].wait_global_event(["P2P-INVITATION-RECEIVED"], timeout=15)
     if ev is None:
-        raise Exception("No invitation request reported");
+        raise Exception("No invitation request reported")
     if "persistent=" not in ev:
         raise Exception("Invalid invitation type reported: " + ev)
 
     ev2 = dev[1].wait_global_event(["P2P-INVITATION-RESULT"], timeout=15)
     if ev2 is None:
-        raise Exception("No invitation response reported");
+        raise Exception("No invitation response reported")
     if "status=1" not in ev2:
         raise Exception("Unexpected status: " + ev2)
     dev[1].p2p_listen()
@@ -523,13 +432,13 @@ def test_persistent_group_without_persistent_reconnect(dev):
 
     ev = dev[1].wait_global_event(["P2P-INVITATION-RECEIVED"], timeout=15)
     if ev is None:
-        raise Exception("No invitation request reported");
+        raise Exception("No invitation request reported")
     if "persistent=" not in ev:
         raise Exception("Invalid invitation type reported: " + ev)
 
     ev2 = dev[0].wait_global_event(["P2P-INVITATION-RESULT"], timeout=15)
     if ev2 is None:
-        raise Exception("No invitation response reported");
+        raise Exception("No invitation response reported")
     if "status=1" not in ev2:
         raise Exception("Unexpected status: " + ev2)
     dev[0].p2p_listen()
@@ -546,6 +455,7 @@ def test_persistent_group_without_persistent_reconnect(dev):
     [go_res, cli_res] = check_result(dev[0], dev[1])
     terminate_group(dev[0], dev[1])
 
+@remote_compatible
 def test_persistent_group_already_running(dev):
     """P2P persistent group formation and invitation while GO already running"""
     form(dev[0], dev[1])
@@ -562,19 +472,25 @@ def test_persistent_group_already_running(dev):
         raise Exception("Could not state GO")
     invite_from_cli(dev[0], dev[1])
 
+@remote_compatible
 def test_persistent_group_add_cli_chan(dev):
     """P2P persistent group formation and re-invocation with p2p_add_cli_chan=1"""
-    dev[0].request("SET p2p_add_cli_chan 1")
-    dev[1].request("SET p2p_add_cli_chan 1")
-    form(dev[0], dev[1])
-    dev[1].request("BSS_FLUSH 0")
-    dev[1].scan(freq="2412", only_new=True)
-    dev[1].scan(freq="2437", only_new=True)
-    dev[1].scan(freq="2462", only_new=True)
-    dev[1].request("BSS_FLUSH 0")
-    invite_from_cli(dev[0], dev[1])
-    invite_from_go(dev[0], dev[1])
+    try:
+        dev[0].request("SET p2p_add_cli_chan 1")
+        dev[1].request("SET p2p_add_cli_chan 1")
+        form(dev[0], dev[1])
+        dev[1].request("BSS_FLUSH 0")
+        dev[1].scan(freq="2412", only_new=True)
+        dev[1].scan(freq="2437", only_new=True)
+        dev[1].scan(freq="2462", only_new=True)
+        dev[1].request("BSS_FLUSH 0")
+        invite_from_cli(dev[0], dev[1])
+        invite_from_go(dev[0], dev[1])
+    finally:
+        dev[0].request("SET p2p_add_cli_chan 0")
+        dev[1].request("SET p2p_add_cli_chan 0")
 
+@remote_compatible
 def test_persistent_invalid_group_add(dev):
     """Invalid P2P_GROUP_ADD command"""
     id = dev[0].add_network()
@@ -633,14 +549,15 @@ def test_persistent_group_missed_inv_resp(dev):
 
     terminate_group(dev[0], dev[1])
 
+@remote_compatible
 def test_persistent_group_profile_add(dev):
     """Create a P2P persistent group with ADD_NETWORK"""
     passphrase="passphrase here"
-    id = dev[0].add_network()
-    dev[0].set_network_quoted(id, "ssid", "DIRECT-ab")
-    dev[0].set_network_quoted(id, "psk", passphrase)
-    dev[0].set_network(id, "mode", "3")
-    dev[0].set_network(id, "disabled", "2")
+    id = dev[0].p2pdev_add_network()
+    dev[0].p2pdev_set_network_quoted(id, "ssid", "DIRECT-ab")
+    dev[0].p2pdev_set_network_quoted(id, "psk", passphrase)
+    dev[0].p2pdev_set_network(id, "mode", "3")
+    dev[0].p2pdev_set_network(id, "disabled", "2")
     dev[0].p2p_start_go(persistent=id, freq=2412)
 
     pin = dev[1].wps_read_pin()
@@ -652,3 +569,105 @@ def test_persistent_group_profile_add(dev):
 
     dev[0].remove_group()
     dev[1].wait_go_ending_session()
+
+@remote_compatible
+def test_persistent_group_cancel_on_cli(dev):
+    """P2P persistent group formation, re-invocation, and cancel"""
+    dev[0].global_request("SET p2p_no_group_iface 0")
+    dev[1].global_request("SET p2p_no_group_iface 0")
+    form(dev[0], dev[1])
+
+    invite_from_go(dev[0], dev[1], terminate=False)
+    if "FAIL" not in dev[1].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on CLI")
+    if "FAIL" not in dev[0].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on GO")
+    terminate_group(dev[0], dev[1])
+
+    invite_from_cli(dev[0], dev[1], terminate=False)
+    if "FAIL" not in dev[1].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on CLI")
+    if "FAIL" not in dev[0].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on GO")
+    terminate_group(dev[0], dev[1])
+
+@remote_compatible
+def test_persistent_group_cancel_on_cli2(dev):
+    """P2P persistent group formation, re-invocation, and cancel (2)"""
+    form(dev[0], dev[1])
+    invite_from_go(dev[0], dev[1], terminate=False)
+    if "FAIL" not in dev[1].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on CLI")
+    if "FAIL" not in dev[0].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on GO")
+    terminate_group(dev[0], dev[1])
+
+    invite_from_cli(dev[0], dev[1], terminate=False)
+    if "FAIL" not in dev[1].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on CLI")
+    if "FAIL" not in dev[0].global_request("P2P_CANCEL"):
+        raise Exception("P2P_CANCEL succeeded unexpectedly on GO")
+    terminate_group(dev[0], dev[1])
+
+@remote_compatible
+def test_persistent_group_peer_dropped(dev):
+    """P2P persistent group formation and re-invocation with peer having dropped group"""
+    form(dev[0], dev[1], reverse_init=True)
+    invite_from_cli(dev[0], dev[1])
+
+    logger.info("Remove group on the GO and try to invite from the client")
+    dev[0].global_request("REMOVE_NETWORK all")
+    invite(dev[1], dev[0])
+    ev = dev[1].wait_global_event(["P2P-INVITATION-RESULT"], timeout=10)
+    if ev is None:
+        raise Exception("No invitation result seen")
+    if "status=8" not in ev:
+        raise Exception("Unexpected invitation result: " + ev)
+    networks = dev[1].list_networks(p2p=True)
+    if len(networks) > 0:
+        raise Exception("Unexpected network block on client")
+
+    logger.info("Verify that a new group can be formed")
+    form(dev[0], dev[1], reverse_init=True)
+
+@remote_compatible
+def test_persistent_group_peer_dropped2(dev):
+    """P2P persistent group formation and re-invocation with peer having dropped group (2)"""
+    form(dev[0], dev[1])
+    invite_from_go(dev[0], dev[1])
+
+    logger.info("Remove group on the client and try to invite from the GO")
+    dev[1].global_request("REMOVE_NETWORK all")
+    invite(dev[0], dev[1])
+    ev = dev[0].wait_global_event(["P2P-INVITATION-RESULT"], timeout=10)
+    if ev is None:
+        raise Exception("No invitation result seen")
+    if "status=8" not in ev:
+        raise Exception("Unexpected invitation result: " + ev)
+    networks = dev[1].list_networks(p2p=True)
+    if len(networks) > 0:
+        raise Exception("Unexpected network block on client")
+
+    logger.info("Verify that a new group can be formed")
+    form(dev[0], dev[1])
+
+def test_persistent_group_peer_dropped3(dev):
+    """P2P persistent group formation and re-invocation with peer having dropped group (3)"""
+    form(dev[0], dev[1], reverse_init=True)
+    invite_from_cli(dev[0], dev[1])
+
+    logger.info("Remove group on the GO and try to invite from the client")
+    dev[0].global_request("REMOVE_NETWORK all")
+    invite(dev[1], dev[0], use_listen=False)
+    ev = dev[1].wait_global_event(["P2P-INVITATION-RESULT"], timeout=10)
+    if ev is None:
+        raise Exception("No invitation result seen")
+    if "status=8" not in ev:
+        raise Exception("Unexpected invitation result: " + ev)
+    networks = dev[1].list_networks(p2p=True)
+    if len(networks) > 0:
+        raise Exception("Unexpected network block on client")
+
+    time.sleep(0.2)
+    logger.info("Verify that a new group can be formed")
+    form(dev[0], dev[1], reverse_init=True, r_listen=False)

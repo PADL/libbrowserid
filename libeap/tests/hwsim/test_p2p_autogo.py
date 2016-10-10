@@ -4,6 +4,7 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import time
 import subprocess
 import logging
@@ -14,22 +15,8 @@ import utils
 from utils import HwsimSkip
 from wlantest import Wlantest
 from wpasupplicant import WpaSupplicant
-
-def autogo(go, freq=None, persistent=None):
-    logger.info("Start autonomous GO " + go.ifname)
-    res = go.p2p_start_go(freq=freq, persistent=persistent)
-    logger.debug("res: " + str(res))
-    return res
-
-def connect_cli(go, client, social=False, freq=None):
-    logger.info("Try to connect the client to the GO")
-    pin = client.wps_read_pin()
-    go.p2p_go_authorize_client(pin)
-    res = client.p2p_connect_group(go.p2p_dev_addr(), pin, timeout=60,
-                                   social=social, freq=freq)
-    logger.info("Client connected")
-    hwsim_utils.test_connectivity_p2p(go, client)
-    return res
+from p2p_utils import *
+from test_p2p_messages import mgmt_tx, parse_p2p_public_action
 
 def test_autogo(dev):
     """P2P autonomous GO and client joining group"""
@@ -97,7 +84,7 @@ def test_autogo(dev):
 
 def test_autogo2(dev):
     """P2P autonomous GO with a separate group interface and client joining group"""
-    dev[0].request("SET p2p_no_group_iface 0")
+    dev[0].global_request("SET p2p_no_group_iface 0")
     res = autogo(dev[0], freq=2437)
     if "p2p-wlan" not in res['ifname']:
         raise Exception("Unexpected group interface name on GO")
@@ -111,7 +98,7 @@ def test_autogo2(dev):
 
 def test_autogo3(dev):
     """P2P autonomous GO and client with a separate group interface joining group"""
-    dev[1].request("SET p2p_no_group_iface 0")
+    dev[1].global_request("SET p2p_no_group_iface 0")
     autogo(dev[0], freq=2462)
     res = connect_cli(dev[0], dev[1], social=True, freq=2462)
     if "p2p-wlan" not in res['ifname']:
@@ -126,8 +113,8 @@ def test_autogo3(dev):
 
 def test_autogo4(dev):
     """P2P autonomous GO and client joining group (both with a separate group interface)"""
-    dev[0].request("SET p2p_no_group_iface 0")
-    dev[1].request("SET p2p_no_group_iface 0")
+    dev[0].global_request("SET p2p_no_group_iface 0")
+    dev[1].global_request("SET p2p_no_group_iface 0")
     res1 = autogo(dev[0], freq=2412)
     res2 = connect_cli(dev[0], dev[1], social=True, freq=2412)
     if "p2p-wlan" not in res1['ifname']:
@@ -190,13 +177,14 @@ def test_autogo_m2d(dev):
     if ev is None:
         raise Exception("No M2D event on group interface (2)")
 
+@remote_compatible
 def test_autogo_fail(dev):
     """P2P autonomous GO and incorrect PIN"""
     autogo(dev[0], freq=2412)
     go_addr = dev[0].p2p_dev_addr()
     dev[0].p2p_go_authorize_client("00000000")
 
-    dev[1].request("SET p2p_no_group_iface 0")
+    dev[1].global_request("SET p2p_no_group_iface 0")
     if not dev[1].discover_peer(go_addr, social=True):
         raise Exception("GO " + go_addr + " not found")
     dev[1].dump_monitor()
@@ -245,7 +233,6 @@ def test_autogo_pbc(dev):
 
 def test_autogo_tdls(dev):
     """P2P autonomous GO and two clients using TDLS"""
-    wt = Wlantest()
     go = dev[0]
     logger.info("Start autonomous GO with fixed parameters " + go.ifname)
     id = go.add_network()
@@ -255,6 +242,8 @@ def test_autogo_tdls(dev):
     go.set_network(id, "disabled", "2")
     res = go.p2p_start_go(persistent=id, freq="2462")
     logger.debug("res: " + str(res))
+    Wlantest.setup(go, True)
+    wt = Wlantest()
     wt.flush()
     wt.add_passphrase("12345678")
     connect_cli(go, dev[1], social=True, freq=2462)
@@ -266,28 +255,28 @@ def test_autogo_tdls(dev):
     dev[1].tdls_setup(addr2)
     time.sleep(1)
     hwsim_utils.test_connectivity_p2p(dev[1], dev[2])
-    conf = wt.get_tdls_counter("setup_conf_ok", bssid, addr1, addr2);
+    conf = wt.get_tdls_counter("setup_conf_ok", bssid, addr1, addr2)
     if conf == 0:
         raise Exception("No TDLS Setup Confirm (success) seen")
-    dl = wt.get_tdls_counter("valid_direct_link", bssid, addr1, addr2);
+    dl = wt.get_tdls_counter("valid_direct_link", bssid, addr1, addr2)
     if dl == 0:
         raise Exception("No valid frames through direct link")
-    wt.tdls_clear(bssid, addr1, addr2);
+    wt.tdls_clear(bssid, addr1, addr2)
     dev[1].tdls_teardown(addr2)
     time.sleep(1)
-    teardown = wt.get_tdls_counter("teardown", bssid, addr1, addr2);
+    teardown = wt.get_tdls_counter("teardown", bssid, addr1, addr2)
     if teardown == 0:
         raise Exception("No TDLS Setup Teardown seen")
-    wt.tdls_clear(bssid, addr1, addr2);
+    wt.tdls_clear(bssid, addr1, addr2)
     hwsim_utils.test_connectivity_p2p(dev[1], dev[2])
-    ap_path = wt.get_tdls_counter("valid_ap_path", bssid, addr1, addr2);
+    ap_path = wt.get_tdls_counter("valid_ap_path", bssid, addr1, addr2)
     if ap_path == 0:
         raise Exception("No valid frames via AP path")
-    direct_link = wt.get_tdls_counter("valid_direct_link", bssid, addr1, addr2);
+    direct_link = wt.get_tdls_counter("valid_direct_link", bssid, addr1, addr2)
     if direct_link > 0:
         raise Exception("Unexpected frames through direct link")
     idirect_link = wt.get_tdls_counter("invalid_direct_link", bssid, addr1,
-                                       addr2);
+                                       addr2)
     if idirect_link > 0:
         raise Exception("Unexpected frames through direct link (invalid)")
     dev[2].remove_group()
@@ -352,6 +341,7 @@ def test_autogo_chan_switch(dev):
     time.sleep(0.1)
     hwsim_utils.test_connectivity_p2p(dev[0], dev[1])
 
+@remote_compatible
 def test_autogo_extra_cred(dev):
     """P2P autonomous GO sending two WPS credentials"""
     if "FAIL" in dev[0].request("SET wps_testing_dummy_cred 1"):
@@ -378,6 +368,7 @@ def test_autogo_ifdown(dev):
     if res['ifname'] not in ev:
         raise Exception("Unexpected group removal event: " + ev)
 
+@remote_compatible
 def test_autogo_start_during_scan(dev):
     """P2P autonomous GO started during ongoing manual scan"""
     try:
@@ -431,6 +422,7 @@ def test_autogo_passphrase_len(dev):
     finally:
         dev[0].request("SET p2p_passphrase_len 8")
 
+@remote_compatible
 def test_autogo_bridge(dev):
     """P2P autonomous GO in a bridge"""
     try:
@@ -439,16 +431,16 @@ def test_autogo_bridge(dev):
             raise Exception("Failed to set autoscan")
         autogo(dev[0])
         ifname = dev[0].get_group_ifname()
-        subprocess.call(['brctl', 'addbr', 'p2p-br0'])
-        subprocess.call(['brctl', 'setfd', 'p2p-br0', '0'])
-        subprocess.call(['brctl', 'addif', 'p2p-br0', ifname])
-        subprocess.call(['ip', 'link', 'set', 'dev', 'p2p-br0', 'up'])
+        dev[0].cmd_execute(['brctl', 'addbr', 'p2p-br0'])
+        dev[0].cmd_execute(['brctl', 'setfd', 'p2p-br0', '0'])
+        dev[0].cmd_execute(['brctl', 'addif', 'p2p-br0', ifname])
+        dev[0].cmd_execute(['ip', 'link', 'set', 'dev', 'p2p-br0', 'up'])
         time.sleep(0.1)
-        subprocess.call(['brctl', 'delif', 'p2p-br0', ifname])
+        dev[0].cmd_execute(['brctl', 'delif', 'p2p-br0', ifname])
         time.sleep(0.1)
-        subprocess.call(['ip', 'link', 'set', 'dev', 'p2p-br0', 'down'])
+        dev[0].cmd_execute(['ip', 'link', 'set', 'dev', 'p2p-br0', 'down'])
         time.sleep(0.1)
-        subprocess.call(['brctl', 'delbr', 'p2p-br0'])
+        dev[0].cmd_execute(['brctl', 'delbr', 'p2p-br0'])
         ev = dev[0].wait_global_event(["P2P-GROUP-REMOVED"], timeout=1)
         if ev is not None:
             raise Exception("P2P group removed unexpectedly")
@@ -457,16 +449,17 @@ def test_autogo_bridge(dev):
         dev[0].remove_group()
     finally:
         dev[0].request("AUTOSCAN ")
-        subprocess.Popen(['brctl', 'delif', 'p2p-br0', ifname],
-                         stderr=open('/dev/null', 'w'))
-        subprocess.Popen(['ip', 'link', 'set', 'dev', 'p2p-br0', 'down'],
-                         stderr=open('/dev/null', 'w'))
-        subprocess.Popen(['brctl', 'delbr', 'p2p-br0'],
-                         stderr=open('/dev/null', 'w'))
+        dev[0].cmd_execute(['brctl', 'delif', 'p2p-br0', ifname,
+                            '2>', '/dev/null'], shell=True)
+        dev[0].cmd_execute(['ip', 'link', 'set', 'dev', 'p2p-br0', 'down',
+                            '2>', '/dev/null'], shell=True)
+        dev[0].cmd_execute(['brctl', 'delbr', 'p2p-br0', '2>', '/dev/null'],
+                           shell=True)
 
+@remote_compatible
 def test_presence_req_on_group_interface(dev):
     """P2P_PRESENCE_REQ on group interface"""
-    dev[1].request("SET p2p_no_group_iface 0")
+    dev[1].global_request("SET p2p_no_group_iface 0")
     res = autogo(dev[0], freq=2437)
     res = connect_cli(dev[0], dev[1], social=True, freq=2437)
     if "FAIL" in dev[1].group_request("P2P_PRESENCE_REQ 30000 102400"):
@@ -486,6 +479,7 @@ def test_autogo_join_auto_go_not_found(dev):
     autogo(wpas, freq=2412)
     addr = wpas.p2p_dev_addr()
     bssid = wpas.p2p_interface_addr()
+    wpas.dump_monitor()
 
     dev[1].global_request("SET p2p_no_group_iface 0")
     dev[1].scan_for_bss(bssid, freq=2412)
@@ -496,12 +490,15 @@ def test_autogo_join_auto_go_not_found(dev):
     # exchange.
     if "OK" not in wpas.group_request("STOP_AP"):
         raise Exception("STOP_AP failed")
+    wpas.dump_monitor()
     wpas.group_request("SET ext_mgmt_frame_handling 1")
     wpas.p2p_listen()
+    wpas.dump_monitor()
     time.sleep(0.02)
     dev[1].global_request("P2P_CONNECT " + addr + " pbc auto")
 
     ev = dev[1].wait_global_event(["P2P-FALLBACK-TO-GO-NEG-ENABLED"], 15)
+    wpas.dump_monitor()
     if ev is None:
         raise Exception("Could not trigger old-scan-only case")
         return
@@ -512,6 +509,7 @@ def test_autogo_join_auto_go_not_found(dev):
         raise Exception("Fallback to GO Negotiation not seen")
     if "reason=GO-not-found" not in ev:
         raise Exception("Unexpected reason for fallback: " + ev)
+    wpas.dump_monitor()
 
 def test_autogo_join_auto(dev):
     """P2P_CONNECT-auto joining a group"""
@@ -536,11 +534,15 @@ def test_autogo_join_auto(dev):
     dev[1].wait_go_ending_session()
     dev[1].flush_scan_cache()
 
+@remote_compatible
 def test_autogo_join_auto_go_neg(dev):
     """P2P_CONNECT-auto fallback to GO Neg"""
     dev[1].flush_scan_cache()
     dev[0].p2p_listen()
     addr = dev[0].p2p_dev_addr()
+    if not dev[1].discover_peer(addr, social=True):
+        raise Exception("Peer not found")
+    dev[1].p2p_stop_find()
     if "OK" not in dev[1].global_request("P2P_CONNECT " + addr + " pbc auto"):
         raise Exception("P2P_CONNECT failed")
 
@@ -569,6 +571,7 @@ def test_autogo_join_auto_go_neg(dev):
     dev[1].wait_go_ending_session()
     dev[1].flush_scan_cache()
 
+@remote_compatible
 def test_autogo_join_auto_go_neg_after_seeing_go(dev):
     """P2P_CONNECT-auto fallback to GO Neg after seeing GO"""
     autogo(dev[0], freq=2412)
@@ -625,7 +628,7 @@ def test_go_search_non_social(dev):
 
 def test_autogo_many(dev):
     """P2P autonomous GO with large number of GO instances"""
-    dev[0].request("SET p2p_no_group_iface 0")
+    dev[0].global_request("SET p2p_no_group_iface 0")
     for i in range(100):
         if "OK" not in dev[0].global_request("P2P_GROUP_ADD freq=2412"):
             logger.info("Was able to add %d groups" % i)
@@ -701,3 +704,112 @@ def _test_autogo_many_clients(dev):
     for i in [ name0, name2, name3 ]:
         if i not in ev1 and i not in ev2 and i not in ev3:
             raise Exception('name "%s" not found' % i)
+
+def rx_pd_req(dev):
+    msg = dev.mgmt_rx()
+    if msg is None:
+        raise Exception("MGMT-RX timeout")
+    p2p = parse_p2p_public_action(msg['payload'])
+    if p2p is None:
+        raise Exception("Not a P2P Public Action frame " + str(dialog_token))
+    if p2p['subtype'] != P2P_PROV_DISC_REQ:
+        raise Exception("Unexpected subtype %d" % p2p['subtype'])
+    p2p['freq'] = msg['freq']
+    return p2p
+
+@remote_compatible
+def test_autogo_scan(dev):
+    """P2P autonomous GO and no P2P IE in Probe Response scan results"""
+    addr0 = dev[0].p2p_dev_addr()
+    addr1 = dev[1].p2p_dev_addr()
+    dev[0].p2p_start_go(freq=2412, persistent=True)
+    bssid = dev[0].p2p_interface_addr()
+
+    dev[1].discover_peer(addr0)
+    dev[1].p2p_stop_find()
+    ev = dev[1].wait_global_event(["P2P-FIND-STOPPED"], timeout=2)
+    time.sleep(0.1)
+    dev[1].flush_scan_cache()
+
+    pin = dev[1].wps_read_pin()
+    dev[0].group_request("WPS_PIN any " + pin)
+
+    try:
+        dev[1].request("SET p2p_disabled 1")
+        dev[1].request("SCAN freq=2412")
+        ev = dev[1].wait_event(["CTRL-EVENT-SCAN-RESULTS"])
+        if ev is None:
+            raise Exception("Active scan did not complete")
+    finally:
+        dev[1].request("SET p2p_disabled 0")
+
+    for i in range(2):
+        dev[1].request("SCAN freq=2412 passive=1")
+        ev = dev[1].wait_event(["CTRL-EVENT-SCAN-RESULTS"])
+        if ev is None:
+            raise Exception("Scan did not complete")
+
+    # Disable management frame processing for a moment to skip Probe Response
+    # frame with P2P IE.
+    dev[0].group_request("SET ext_mgmt_frame_handling 1")
+
+    dev[1].global_request("P2P_CONNECT " + bssid + " " + pin + " freq=2412 join")
+
+    # Skip the first Probe Request frame
+    ev = dev[0].wait_group_event(["MGMT-RX"], timeout=10)
+    if ev is None:
+        raise Exception("No Probe Request frame seen")
+    if not ev.split(' ')[4].startswith("40"):
+        raise Exception("Not a Probe Request frame")
+
+    # If a P2P Device is not used, the PD Request will be received on the group
+    # interface (which is actually wlan0, since a separate interface is not
+    # used), which was set to external management frame handling, so need to
+    # reply to it manually.
+    res = dev[0].get_driver_status()
+    if not (int(res['capa.flags'], 0) & 0x20000000):
+        # Reply to PD Request while still filtering Probe Request frames
+        msg = rx_pd_req(dev[0])
+        mgmt_tx(dev[0], "MGMT_TX {} {} freq={} wait_time=10 no_cck=1 action={}".format(addr1, addr0, 2412, "0409506f9a0908%02xdd0a0050f204100800020008" % msg['dialog_token']))
+
+    # Skip Probe Request frames until something else is received
+    for i in range(10):
+        ev = dev[0].wait_group_event(["MGMT-RX"], timeout=10)
+        if ev is None:
+            raise Exception("No frame seen")
+        if not ev.split(' ')[4].startswith("40"):
+            break
+
+    # Allow wpa_supplicant to process authentication and association
+    dev[0].group_request("SET ext_mgmt_frame_handling 0")
+
+    # Joining the group should succeed and indicate persistent group based on
+    # Beacon frame P2P IE.
+    ev = dev[1].wait_global_event(["P2P-GROUP-STARTED"], timeout=10)
+    if ev is None:
+        raise Exception("Failed to join group")
+    if "[PERSISTENT]" not in ev:
+        raise Exception("Did not recognize group as persistent")
+    dev[0].remove_group()
+    dev[1].wait_go_ending_session()
+
+@remote_compatible
+def test_autogo_join_before_found(dev):
+    """P2P client joining a group before having found GO Device Address"""
+    dev[0].global_request("SET p2p_no_group_iface 0")
+    res = autogo(dev[0], freq=2412)
+    if "p2p-wlan" not in res['ifname']:
+        raise Exception("Unexpected group interface name on GO")
+    status = dev[0].get_group_status()
+    bssid = status['bssid']
+
+    pin = dev[1].wps_read_pin()
+    dev[0].p2p_go_authorize_client(pin)
+    cmd = "P2P_CONNECT " + bssid + " " + pin + " join freq=2412"
+    if "OK" not in dev[1].global_request(cmd):
+        raise Exception("P2P_CONNECT join failed")
+    ev = dev[1].wait_global_event(["P2P-GROUP-STARTED"], timeout=15)
+    if ev is None:
+        raise Exception("Joining the group timed out")
+    dev[0].remove_group()
+    dev[1].wait_go_ending_session()

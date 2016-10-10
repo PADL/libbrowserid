@@ -6,7 +6,11 @@ if [ -z "$TESTDIR" ] ; then
 	TESTDIR=$(pwd)/../
 fi
 
-LOGS=/tmp/hwsim-test-logs
+if [ -n "$HWSIM_TEST_LOG_DIR" ] ; then
+	LOGS="$HWSIM_TEST_LOG_DIR"
+else
+	LOGS=/tmp/hwsim-test-logs
+fi
 
 # increase the memory size if you want to run with valgrind, 512 MB works
 MEMORY=192
@@ -101,7 +105,26 @@ fi
 
 echo "Starting test run in a virtual machine"
 
-kvm \
+KVM=kvm
+for kvmprog in kvm qemu-kvm; do
+    if $kvmprog --version &> /dev/null; then
+	KVM=$kvmprog
+	break
+    fi
+done
+
+argsfile=$(mktemp)
+if [ $? -ne 0 ] ; then
+	exit 2
+fi
+function finish {
+	rm -f $argsfile
+}
+trap finish EXIT
+
+echo "$RUN_TEST_ARGS" > $argsfile
+
+$KVM \
 	-kernel $KERNEL -smp 4 \
 	$KVMARGS -m $MEMORY -nographic \
 	-fsdev local,security_model=none,id=fsdev-root,path=/$ROTAG \
@@ -109,7 +132,7 @@ kvm \
 	-fsdev local,security_model=none,id=fsdev-logs,path="$LOGDIR",writeout=immediate \
 	-device virtio-9p-pci,id=fs-logs,fsdev=fsdev-logs,mount_tag=logshare \
 	-monitor null -serial stdio -serial file:$LOGDIR/console \
-	-append "mac80211_hwsim.support_p2p_device=0 mac80211_hwsim.channels=$CHANNELS mac80211_hwsim.radios=7 init=$CMD testdir=$TESTDIR timewarp=$TIMEWARP console=$KVMOUT root=/dev/root rootflags=trans=virtio,version=9p2000.u ro rootfstype=9p EPATH=$EPATH ARGS=$RUN_TEST_ARGS"
+	-append "mac80211_hwsim.support_p2p_device=0 mac80211_hwsim.channels=$CHANNELS mac80211_hwsim.radios=7 init=$CMD testdir=$TESTDIR timewarp=$TIMEWARP console=$KVMOUT root=/dev/root rootflags=trans=virtio,version=9p2000.u ro rootfstype=9p EPATH=$EPATH ARGS=$argsfile"
 
 if [ $CODECOV = "yes" ]; then
     echo "Preparing code coverage reports"

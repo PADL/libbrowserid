@@ -4,11 +4,12 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
+import binascii
 import logging
 logger = logging.getLogger()
+import struct
 import time
-import threading
-import Queue
 import os
 
 import hostapd
@@ -16,160 +17,10 @@ import hwsim_utils
 import utils
 from utils import HwsimSkip
 from wpasupplicant import WpaSupplicant
+from p2p_utils import *
+from test_p2p_messages import parse_p2p_public_action, p2p_hdr, p2p_attr_capability, p2p_attr_go_intent, p2p_attr_config_timeout, p2p_attr_listen_channel, p2p_attr_intended_interface_addr, p2p_attr_channel_list, p2p_attr_device_info, p2p_attr_operating_channel, ie_p2p, ie_wsc, mgmt_tx, P2P_GO_NEG_REQ
 
-def check_grpform_results(i_res, r_res):
-    if i_res['result'] != 'success' or r_res['result'] != 'success':
-        raise Exception("Failed group formation")
-    if i_res['ssid'] != r_res['ssid']:
-        raise Exception("SSID mismatch")
-    if i_res['freq'] != r_res['freq']:
-        raise Exception("freq mismatch")
-    if 'go_neg_freq' in r_res and i_res['go_neg_freq'] != r_res['go_neg_freq']:
-        raise Exception("go_neg_freq mismatch")
-    if i_res['freq'] != i_res['go_neg_freq']:
-        raise Exception("freq/go_neg_freq mismatch")
-    if i_res['role'] != i_res['go_neg_role']:
-        raise Exception("role/go_neg_role mismatch")
-    if 'go_neg_role' in r_res and r_res['role'] != r_res['go_neg_role']:
-        raise Exception("role/go_neg_role mismatch")
-    if i_res['go_dev_addr'] != r_res['go_dev_addr']:
-        raise Exception("GO Device Address mismatch")
-
-def go_neg_init(i_dev, r_dev, pin, i_method, i_intent, res):
-    logger.debug("Initiate GO Negotiation from i_dev")
-    try:
-        i_res = i_dev.p2p_go_neg_init(r_dev.p2p_dev_addr(), pin, i_method, timeout=20, go_intent=i_intent)
-        logger.debug("i_res: " + str(i_res))
-    except Exception, e:
-        i_res = None
-        logger.info("go_neg_init thread caught an exception from p2p_go_neg_init: " + str(e))
-    res.put(i_res)
-
-def go_neg_pin(i_dev, r_dev, i_intent=None, r_intent=None, i_method='enter', r_method='display'):
-    r_dev.p2p_listen()
-    i_dev.p2p_listen()
-    pin = r_dev.wps_read_pin()
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
-    r_dev.dump_monitor()
-    res = Queue.Queue()
-    t = threading.Thread(target=go_neg_init, args=(i_dev, r_dev, pin, i_method, i_intent, res))
-    t.start()
-    logger.debug("Wait for GO Negotiation Request on r_dev")
-    ev = r_dev.wait_global_event(["P2P-GO-NEG-REQUEST"], timeout=15)
-    if ev is None:
-        raise Exception("GO Negotiation timed out")
-    r_dev.dump_monitor()
-    logger.debug("Re-initiate GO Negotiation from r_dev")
-    r_res = r_dev.p2p_go_neg_init(i_dev.p2p_dev_addr(), pin, r_method, go_intent=r_intent, timeout=20)
-    logger.debug("r_res: " + str(r_res))
-    r_dev.dump_monitor()
-    t.join()
-    i_res = res.get()
-    if i_res is None:
-        raise Exception("go_neg_init thread failed")
-    logger.debug("i_res: " + str(i_res))
-    logger.info("Group formed")
-    hwsim_utils.test_connectivity_p2p(r_dev, i_dev)
-    i_dev.dump_monitor()
-    return [i_res, r_res]
-
-def go_neg_pin_authorized(i_dev, r_dev, i_intent=None, r_intent=None, expect_failure=False, i_go_neg_status=None, i_method='enter', r_method='display', test_data=True, i_freq=None, r_freq=None):
-    i_dev.p2p_listen()
-    pin = r_dev.wps_read_pin()
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
-    r_dev.p2p_go_neg_auth(i_dev.p2p_dev_addr(), pin, r_method, go_intent=r_intent, freq=r_freq)
-    r_dev.p2p_listen()
-    i_res = i_dev.p2p_go_neg_init(r_dev.p2p_dev_addr(), pin, i_method, timeout=20, go_intent=i_intent, expect_failure=expect_failure, freq=i_freq)
-    r_res = r_dev.p2p_go_neg_auth_result(expect_failure=expect_failure)
-    logger.debug("i_res: " + str(i_res))
-    logger.debug("r_res: " + str(r_res))
-    r_dev.dump_monitor()
-    i_dev.dump_monitor()
-    if i_go_neg_status:
-        if i_res['result'] != 'go-neg-failed':
-            raise Exception("Expected GO Negotiation failure not reported")
-        if i_res['status'] != i_go_neg_status:
-            raise Exception("Expected GO Negotiation status not seen")
-    if expect_failure:
-        return
-    logger.info("Group formed")
-    if test_data:
-        hwsim_utils.test_connectivity_p2p(r_dev, i_dev)
-    return [i_res, r_res]
-
-def go_neg_init_pbc(i_dev, r_dev, i_intent, res, freq, provdisc):
-    logger.debug("Initiate GO Negotiation from i_dev")
-    try:
-        i_res = i_dev.p2p_go_neg_init(r_dev.p2p_dev_addr(), None, "pbc",
-                                      timeout=20, go_intent=i_intent, freq=freq,
-                                      provdisc=provdisc)
-        logger.debug("i_res: " + str(i_res))
-    except Exception, e:
-        i_res = None
-        logger.info("go_neg_init_pbc thread caught an exception from p2p_go_neg_init: " + str(e))
-    res.put(i_res)
-
-def go_neg_pbc(i_dev, r_dev, i_intent=None, r_intent=None, i_freq=None, r_freq=None, provdisc=False, r_listen=False):
-    if r_listen:
-        r_dev.p2p_listen()
-    else:
-        r_dev.p2p_find(social=True)
-    i_dev.p2p_find(social=True)
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
-    r_dev.dump_monitor()
-    res = Queue.Queue()
-    t = threading.Thread(target=go_neg_init_pbc, args=(i_dev, r_dev, i_intent, res, i_freq, provdisc))
-    t.start()
-    logger.debug("Wait for GO Negotiation Request on r_dev")
-    ev = r_dev.wait_global_event(["P2P-GO-NEG-REQUEST"], timeout=15)
-    if ev is None:
-        raise Exception("GO Negotiation timed out")
-    r_dev.dump_monitor()
-    # Allow some time for the GO Neg Resp to go out before initializing new
-    # GO Negotiation.
-    time.sleep(0.2)
-    logger.debug("Re-initiate GO Negotiation from r_dev")
-    r_res = r_dev.p2p_go_neg_init(i_dev.p2p_dev_addr(), None, "pbc",
-                                  go_intent=r_intent, timeout=20, freq=r_freq)
-    logger.debug("r_res: " + str(r_res))
-    r_dev.dump_monitor()
-    t.join()
-    i_res = res.get()
-    if i_res is None:
-        raise Exception("go_neg_init_pbc thread failed")
-    logger.debug("i_res: " + str(i_res))
-    logger.info("Group formed")
-    hwsim_utils.test_connectivity_p2p(r_dev, i_dev)
-    i_dev.dump_monitor()
-    return [i_res, r_res]
-
-def go_neg_pbc_authorized(i_dev, r_dev, i_intent=None, r_intent=None,
-                          expect_failure=False, i_freq=None, r_freq=None):
-    i_dev.p2p_listen()
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
-    r_dev.p2p_go_neg_auth(i_dev.p2p_dev_addr(), None, "pbc",
-                          go_intent=r_intent, freq=r_freq)
-    r_dev.p2p_listen()
-    i_res = i_dev.p2p_go_neg_init(r_dev.p2p_dev_addr(), None, "pbc", timeout=20,
-                                  go_intent=i_intent,
-                                  expect_failure=expect_failure, freq=i_freq)
-    r_res = r_dev.p2p_go_neg_auth_result(expect_failure=expect_failure)
-    logger.debug("i_res: " + str(i_res))
-    logger.debug("r_res: " + str(r_res))
-    r_dev.dump_monitor()
-    i_dev.dump_monitor()
-    if expect_failure:
-        return
-    logger.info("Group formed")
-    return [i_res, r_res]
-
-def remove_group(dev1, dev2):
-    dev1.remove_group()
-    try:
-        dev2.remove_group()
-    except:
-        pass
-
+@remote_compatible
 def test_grpform(dev):
     """P2P group formation using PIN and authorized connection (init -> GO)"""
     try:
@@ -206,6 +57,15 @@ def test_grpform_b(dev):
     if "p2p-wlan" not in r_res['ifname']:
         raise Exception("Unexpected group interface name")
     check_grpform_results(i_res, r_res)
+    addr = dev[0].group_request("P2P_GROUP_MEMBER " + dev[1].p2p_dev_addr())
+    if "FAIL" in addr:
+        raise Exception("P2P_GROUP_MEMBER failed")
+    if addr != dev[1].p2p_interface_addr():
+        raise Exception("Unexpected P2P_GROUP_MEMBER result: " + addr)
+    if "FAIL" not in dev[0].group_request("P2P_GROUP_MEMBER a"):
+        raise Exception("Invalid P2P_GROUP_MEMBER command accepted")
+    if "FAIL" not in dev[0].group_request("P2P_GROUP_MEMBER 00:11:22:33:44:55"):
+        raise Exception("P2P_GROUP_MEMBER for non-member accepted")
     remove_group(dev[0], dev[1])
     if r_res['ifname'] in utils.get_ifnames():
         raise Exception("Group interface netdev was not removed")
@@ -227,6 +87,7 @@ def test_grpform_c(dev):
     if r_res['ifname'] in utils.get_ifnames():
         raise Exception("Group interface netdev was not removed")
 
+@remote_compatible
 def test_grpform2(dev):
     """P2P group formation using PIN and authorized connection (resp -> GO)"""
     go_neg_pin_authorized(i_dev=dev[0], i_intent=0, r_dev=dev[1], r_intent=15)
@@ -243,6 +104,7 @@ def test_grpform2_c(dev):
     if r_res['ifname'] in utils.get_ifnames():
         raise Exception("Group interface netdev was not removed")
 
+@remote_compatible
 def test_grpform3(dev):
     """P2P group formation using PIN and re-init GO Negotiation"""
     go_neg_pin(i_dev=dev[0], i_intent=15, r_dev=dev[1], r_intent=0)
@@ -259,6 +121,7 @@ def test_grpform3_c(dev):
     if r_res['ifname'] in utils.get_ifnames():
         raise Exception("Group interface netdev was not removed")
 
+@remote_compatible
 def test_grpform4(dev):
     """P2P group formation response during p2p_find"""
     addr1 = dev[1].p2p_dev_addr()
@@ -274,6 +137,7 @@ def test_grpform4(dev):
     dev[1].p2p_stop_find()
     dev[0].p2p_stop_find()
 
+@remote_compatible
 def test_grpform_pbc(dev):
     """P2P group formation using PBC and re-init GO Negotiation"""
     [i_res, r_res] = go_neg_pbc(i_dev=dev[0], i_intent=15, r_dev=dev[1], r_intent=0)
@@ -282,6 +146,7 @@ def test_grpform_pbc(dev):
         raise Exception("Unexpected device roles")
     remove_group(dev[0], dev[1])
 
+@remote_compatible
 def test_grpform_pd(dev):
     """P2P group formation with PD-before-GO-Neg workaround"""
     [i_res, r_res] = go_neg_pbc(i_dev=dev[0], provdisc=True, r_dev=dev[1], r_listen=True)
@@ -378,18 +243,22 @@ def _test_grpform_ext_listen_oper(dev):
     if not found:
         raise Exception("Could not discover peer that was supposed to use extended listen")
 
+@remote_compatible
 def test_both_go_intent_15(dev):
     """P2P GO Negotiation with both devices using GO intent 15"""
     go_neg_pin_authorized(i_dev=dev[0], i_intent=15, r_dev=dev[1], r_intent=15, expect_failure=True, i_go_neg_status=9)
 
+@remote_compatible
 def test_both_go_neg_display(dev):
     """P2P GO Negotiation with both devices trying to display PIN"""
     go_neg_pin_authorized(i_dev=dev[0], r_dev=dev[1], expect_failure=True, i_go_neg_status=10, i_method='display', r_method='display')
 
+@remote_compatible
 def test_both_go_neg_enter(dev):
     """P2P GO Negotiation with both devices trying to enter PIN"""
     go_neg_pin_authorized(i_dev=dev[0], r_dev=dev[1], expect_failure=True, i_go_neg_status=10, i_method='enter', r_method='enter')
 
+@remote_compatible
 def test_go_neg_pbc_vs_pin(dev):
     """P2P GO Negotiation with one device using PBC and the other PIN"""
     addr0 = dev[0].p2p_dev_addr()
@@ -410,6 +279,7 @@ def test_go_neg_pbc_vs_pin(dev):
     if "status=10" not in ev:
         raise Exception("Unexpected failure reason: " + ev)
 
+@remote_compatible
 def test_go_neg_pin_vs_pbc(dev):
     """P2P GO Negotiation with one device using PIN and the other PBC"""
     addr0 = dev[0].p2p_dev_addr()
@@ -466,6 +336,7 @@ def test_grpform_per_sta_psk_wps(dev):
     dev[2].request("DISCONNECT")
     dev[1].wait_go_ending_session()
 
+@remote_compatible
 def test_grpform_force_chan_go(dev):
     """P2P group formation forced channel selection by GO"""
     [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
@@ -477,6 +348,7 @@ def test_grpform_force_chan_go(dev):
         raise Exception("Unexpected channel - did not follow GO's forced channel")
     remove_group(dev[0], dev[1])
 
+@remote_compatible
 def test_grpform_force_chan_cli(dev):
     """P2P group formation forced channel selection by client"""
     [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
@@ -488,53 +360,71 @@ def test_grpform_force_chan_cli(dev):
         raise Exception("Unexpected channel - did not follow GO's forced channel")
     remove_group(dev[0], dev[1])
 
+@remote_compatible
 def test_grpform_force_chan_conflict(dev):
     """P2P group formation fails due to forced channel mismatch"""
     go_neg_pin_authorized(i_dev=dev[0], i_intent=0, i_freq=2422,
                           r_dev=dev[1], r_intent=15, r_freq=2427,
                           expect_failure=True, i_go_neg_status=7)
 
+@remote_compatible
 def test_grpform_pref_chan_go(dev):
     """P2P group formation preferred channel selection by GO"""
-    dev[0].request("SET p2p_pref_chan 81:7")
-    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
-                                           r_dev=dev[1], r_intent=0,
-                                           test_data=False)
-    check_grpform_results(i_res, r_res)
-    if i_res['freq'] != "2442":
-        raise Exception("Unexpected channel - did not follow GO's p2p_pref_chan")
-    remove_group(dev[0], dev[1])
+    try:
+        dev[0].request("SET p2p_pref_chan 81:7")
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                               r_dev=dev[1], r_intent=0,
+                                               test_data=False)
+        check_grpform_results(i_res, r_res)
+        if i_res['freq'] != "2442":
+            raise Exception("Unexpected channel - did not follow GO's p2p_pref_chan")
+        remove_group(dev[0], dev[1])
+    finally:
+        dev[0].request("SET p2p_pref_chan ")
 
+@remote_compatible
 def test_grpform_pref_chan_go_overridden(dev):
     """P2P group formation preferred channel selection by GO overridden by client"""
-    dev[1].request("SET p2p_pref_chan 81:7")
-    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
-                                           i_freq=2422,
-                                           r_dev=dev[1], r_intent=15,
-                                           test_data=False)
-    check_grpform_results(i_res, r_res)
-    if i_res['freq'] != "2422":
-        raise Exception("Unexpected channel - did not follow client's forced channel")
-    remove_group(dev[0], dev[1])
+    try:
+        dev[1].request("SET p2p_pref_chan 81:7")
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
+                                               i_freq=2422,
+                                               r_dev=dev[1], r_intent=15,
+                                               test_data=False)
+        check_grpform_results(i_res, r_res)
+        if i_res['freq'] != "2422":
+            raise Exception("Unexpected channel - did not follow client's forced channel")
+        remove_group(dev[0], dev[1])
+    finally:
+        dev[1].request("SET p2p_pref_chan ")
 
+@remote_compatible
 def test_grpform_no_go_freq_forcing_chan(dev):
     """P2P group formation with no-GO freq forcing channel"""
-    dev[1].request("SET p2p_no_go_freq 100-200,300,4000-6000")
-    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
-                                           r_dev=dev[1], r_intent=15,
-                                           test_data=False)
-    check_grpform_results(i_res, r_res)
-    if int(i_res['freq']) > 4000:
-        raise Exception("Unexpected channel - did not follow no-GO freq")
-    remove_group(dev[0], dev[1])
+    try:
+        dev[1].request("SET p2p_no_go_freq 100-200,300,4000-6000")
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
+                                               r_dev=dev[1], r_intent=15,
+                                               test_data=False)
+        check_grpform_results(i_res, r_res)
+        if int(i_res['freq']) > 4000:
+            raise Exception("Unexpected channel - did not follow no-GO freq")
+        remove_group(dev[0], dev[1])
+    finally:
+        dev[1].request("SET p2p_no_go_freq ")
 
+@remote_compatible
 def test_grpform_no_go_freq_conflict(dev):
     """P2P group formation fails due to no-GO range forced by client"""
-    dev[1].request("SET p2p_no_go_freq 2000-3000")
-    go_neg_pin_authorized(i_dev=dev[0], i_intent=0, i_freq=2422,
-                          r_dev=dev[1], r_intent=15,
-                          expect_failure=True, i_go_neg_status=7)
+    try:
+        dev[1].request("SET p2p_no_go_freq 2000-3000")
+        go_neg_pin_authorized(i_dev=dev[0], i_intent=0, i_freq=2422,
+                              r_dev=dev[1], r_intent=15,
+                              expect_failure=True, i_go_neg_status=7)
+    finally:
+        dev[1].request("SET p2p_no_go_freq ")
 
+@remote_compatible
 def test_grpform_no_5ghz_world_roaming(dev):
     """P2P group formation with world roaming regulatory"""
     [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
@@ -545,54 +435,75 @@ def test_grpform_no_5ghz_world_roaming(dev):
         raise Exception("Unexpected channel - did not follow world roaming rules")
     remove_group(dev[0], dev[1])
 
+@remote_compatible
 def test_grpform_no_5ghz_add_cli(dev):
     """P2P group formation with passive scan 5 GHz and p2p_add_cli_chan=1"""
-    dev[0].request("SET p2p_add_cli_chan 1")
-    dev[1].request("SET p2p_add_cli_chan 1")
-    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
-                                           r_dev=dev[1], r_intent=14,
-                                           test_data=False)
-    check_grpform_results(i_res, r_res)
-    if int(i_res['freq']) > 4000:
-        raise Exception("Unexpected channel - did not follow world roaming rules")
-    remove_group(dev[0], dev[1])
+    try:
+        dev[0].request("SET p2p_add_cli_chan 1")
+        dev[1].request("SET p2p_add_cli_chan 1")
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
+                                               r_dev=dev[1], r_intent=14,
+                                               test_data=False)
+        check_grpform_results(i_res, r_res)
+        if int(i_res['freq']) > 4000:
+            raise Exception("Unexpected channel - did not follow world roaming rules")
+        remove_group(dev[0], dev[1])
+    finally:
+        dev[0].request("SET p2p_add_cli_chan 0")
+        dev[1].request("SET p2p_add_cli_chan 0")
 
+@remote_compatible
 def test_grpform_no_5ghz_add_cli2(dev):
     """P2P group formation with passive scan 5 GHz and p2p_add_cli_chan=1 (reverse)"""
-    dev[0].request("SET p2p_add_cli_chan 1")
-    dev[1].request("SET p2p_add_cli_chan 1")
-    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=14,
-                                           r_dev=dev[1], r_intent=0,
-                                           test_data=False)
-    check_grpform_results(i_res, r_res)
-    if int(i_res['freq']) > 4000:
-        raise Exception("Unexpected channel - did not follow world roaming rules")
-    remove_group(dev[0], dev[1])
+    try:
+        dev[0].request("SET p2p_add_cli_chan 1")
+        dev[1].request("SET p2p_add_cli_chan 1")
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=14,
+                                               r_dev=dev[1], r_intent=0,
+                                               test_data=False)
+        check_grpform_results(i_res, r_res)
+        if int(i_res['freq']) > 4000:
+            raise Exception("Unexpected channel - did not follow world roaming rules")
+        remove_group(dev[0], dev[1])
+    finally:
+        dev[0].request("SET p2p_add_cli_chan 0")
+        dev[1].request("SET p2p_add_cli_chan 0")
 
+@remote_compatible
 def test_grpform_no_5ghz_add_cli3(dev):
     """P2P group formation with passive scan 5 GHz and p2p_add_cli_chan=1 (intent 15)"""
-    dev[0].request("SET p2p_add_cli_chan 1")
-    dev[1].request("SET p2p_add_cli_chan 1")
-    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
-                                           r_dev=dev[1], r_intent=15,
-                                           test_data=False)
-    check_grpform_results(i_res, r_res)
-    if int(i_res['freq']) > 4000:
-        raise Exception("Unexpected channel - did not follow world roaming rules")
-    remove_group(dev[0], dev[1])
+    try:
+        dev[0].request("SET p2p_add_cli_chan 1")
+        dev[1].request("SET p2p_add_cli_chan 1")
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
+                                               r_dev=dev[1], r_intent=15,
+                                               test_data=False)
+        check_grpform_results(i_res, r_res)
+        if int(i_res['freq']) > 4000:
+            raise Exception("Unexpected channel - did not follow world roaming rules")
+        remove_group(dev[0], dev[1])
+    finally:
+        dev[0].request("SET p2p_add_cli_chan 0")
+        dev[1].request("SET p2p_add_cli_chan 0")
 
+@remote_compatible
 def test_grpform_no_5ghz_add_cli4(dev):
     """P2P group formation with passive scan 5 GHz and p2p_add_cli_chan=1 (reverse; intent 15)"""
-    dev[0].request("SET p2p_add_cli_chan 1")
-    dev[1].request("SET p2p_add_cli_chan 1")
-    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
-                                           r_dev=dev[1], r_intent=0,
-                                           test_data=False)
-    check_grpform_results(i_res, r_res)
-    if int(i_res['freq']) > 4000:
-        raise Exception("Unexpected channel - did not follow world roaming rules")
-    remove_group(dev[0], dev[1])
+    try:
+        dev[0].request("SET p2p_add_cli_chan 1")
+        dev[1].request("SET p2p_add_cli_chan 1")
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                               r_dev=dev[1], r_intent=0,
+                                               test_data=False)
+        check_grpform_results(i_res, r_res)
+        if int(i_res['freq']) > 4000:
+            raise Exception("Unexpected channel - did not follow world roaming rules")
+        remove_group(dev[0], dev[1])
+    finally:
+        dev[0].request("SET p2p_add_cli_chan 0")
+        dev[1].request("SET p2p_add_cli_chan 0")
 
+@remote_compatible
 def test_grpform_incorrect_pin(dev):
     """P2P GO Negotiation with incorrect PIN"""
     dev[1].p2p_listen()
@@ -627,6 +538,7 @@ def test_grpform_incorrect_pin(dev):
     if ev is None:
         raise Exception("Group formation failure timed out")
 
+@remote_compatible
 def test_grpform_reject(dev):
     """User rejecting group formation attempt by a P2P peer"""
     addr0 = dev[0].p2p_dev_addr()
@@ -641,12 +553,13 @@ def test_grpform_reject(dev):
         raise Exception("P2P_REJECT failed")
     dev[1].request("P2P_STOP_FIND")
     dev[1].p2p_go_neg_init(addr0, None, "pbc")
-    ev = dev[1].wait_global_event(["GO-NEG-FAILURE"], timeout=10)
+    ev = dev[1].wait_global_event(["P2P-GO-NEG-FAILURE"], timeout=10)
     if ev is None:
         raise Exception("Rejection not reported")
     if "status=11" not in ev:
         raise Exception("Unexpected status code in rejection")
 
+@remote_compatible
 def test_grpform_pd_no_probe_resp(dev):
     """GO Negotiation after PD, but no Probe Response"""
     addr0 = dev[0].p2p_dev_addr()
@@ -713,15 +626,14 @@ def test_go_neg_two_peers(dev):
     if ev is None:
         raise Exception("timeout on GO Neg RX event")
     dev[2].request("P2P_CONNECT " + addr0 + " pbc")
-    ev = dev[2].wait_global_event(["GO-NEG-FAILURE"], timeout=10)
+    ev = dev[2].wait_global_event(["P2P-GO-NEG-FAILURE"], timeout=10)
     if ev is None:
         raise Exception("Rejection not reported")
     if "status=5" not in ev:
         raise Exception("Unexpected status code in rejection: " + ev)
 
-def clear_pbc_overlap(dev, ifname):
-    hapd_global = hostapd.HostapdGlobal()
-    hapd_global.remove(ifname)
+def clear_pbc_overlap(dev, ap):
+    hostapd.remove_bss(ap)
     dev[0].request("P2P_CANCEL")
     dev[1].request("P2P_CANCEL")
     dev[0].p2p_stop_find()
@@ -733,10 +645,11 @@ def clear_pbc_overlap(dev, ifname):
     dev[1].flush_scan_cache()
     time.sleep(0.1)
 
+@remote_compatible
 def test_grpform_pbc_overlap(dev, apdev):
     """P2P group formation during PBC overlap"""
     params = { "ssid": "wps", "eap_server": "1", "wps_state": "1" }
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     hapd.request("WPS_PBC")
     time.sleep(0.1)
 
@@ -768,15 +681,16 @@ def test_grpform_pbc_overlap(dev, apdev):
     if ev is None:
         raise Exception("PBC overlap not reported")
 
-    clear_pbc_overlap(dev, apdev[0]['ifname'])
+    clear_pbc_overlap(dev, apdev[0])
 
+@remote_compatible
 def test_grpform_pbc_overlap_group_iface(dev, apdev):
     """P2P group formation during PBC overlap using group interfaces"""
     # Note: Need to include P2P IE from the AP to get the P2P interface BSS
     # update use this information.
     params = { "ssid": "wps", "eap_server": "1", "wps_state": "1",
                "beacon_int": "15", 'manage_p2p': '1' }
-    hapd = hostapd.add_ap(apdev[0]['ifname'], params)
+    hapd = hostapd.add_ap(apdev[0], params)
     hapd.request("WPS_PBC")
 
     dev[0].request("SET p2p_no_group_iface 0")
@@ -806,8 +720,9 @@ def test_grpform_pbc_overlap_group_iface(dev, apdev):
         # the group interface.
         logger.info("PBC overlap not reported")
 
-    clear_pbc_overlap(dev, apdev[0]['ifname'])
+    clear_pbc_overlap(dev, apdev[0])
 
+@remote_compatible
 def test_grpform_goneg_fail_with_group_iface(dev):
     """P2P group formation fails while using group interface"""
     dev[0].request("SET p2p_no_group_iface 0")
@@ -933,6 +848,7 @@ def test_grpform_no_wsc_done(dev):
         if mode != "P2P GO - group formation":
             raise Exception("Unexpected mode on GO during group formation: " + mode)
 
+@remote_compatible
 def test_grpform_wait_peer(dev):
     """P2P group formation wait for peer to become ready"""
     addr0 = dev[0].p2p_dev_addr()
@@ -957,6 +873,7 @@ def test_grpform_wait_peer(dev):
         raise Exception("Group formation timed out")
     dev[0].remove_group()
 
+@remote_compatible
 def test_invalid_p2p_connect_command(dev):
     """P2P_CONNECT error cases"""
     id = dev[0].add_network()
@@ -979,6 +896,7 @@ def test_invalid_p2p_connect_command(dev):
     if "FAIL-CHANNEL-UNSUPPORTED" not in dev[0].request("P2P_CONNECT 00:11:22:33:44:55 pin freq=3000"):
         raise Exception("Unsupported channel not reported")
 
+@remote_compatible
 def test_p2p_unauthorize(dev):
     """P2P_UNAUTHORIZE to unauthorize a peer"""
     if "FAIL" not in dev[0].request("P2P_UNAUTHORIZE foo"):
@@ -999,6 +917,7 @@ def test_p2p_unauthorize(dev):
     if ev is None:
         raise Exception("No GO Negotiation Request RX reported")
 
+@remote_compatible
 def test_grpform_pbc_multiple(dev):
     """P2P group formation using PBC multiple times in a row"""
     try:
@@ -1050,3 +969,195 @@ def test_grpform_not_ready2(dev):
         raise Exception("Unexpected peer discovered: " + ev)
     for i in range(3):
         dev[i].p2p_stop_find()
+
+@remote_compatible
+def test_grpform_and_scan(dev):
+    """GO Negotiation and scan operations"""
+    addr0 = dev[0].p2p_dev_addr()
+    addr1 = dev[1].p2p_dev_addr()
+    dev[1].p2p_listen()
+    if not dev[0].discover_peer(addr1):
+        raise Exception("Could not discover peer")
+    dev[0].p2p_stop_find()
+    dev[1].p2p_stop_find()
+
+    if "OK" not in dev[0].request("SCAN TYPE=ONLY freq=2412-2472"):
+        raise Exception("Could not start scan")
+    ev = dev[0].wait_event(["CTRL-EVENT-SCAN-STARTED"], timeout=5)
+    if ev is None:
+        raise Exception("Scan did not start")
+    time.sleep(0.1)
+    # Request PD while the previously started scan is still in progress
+    if "OK" not in dev[0].request("P2P_PROV_DISC %s pbc" % addr1):
+        raise Exception("Could not request PD")
+    ev = dev[0].wait_event(["CTRL-EVENT-SCAN-RESULTS"], timeout=10)
+    if ev is None:
+        raise Exception("Scan did not complete")
+    time.sleep(0.3)
+
+    dev[1].p2p_listen()
+    ev = dev[0].wait_global_event(["P2P-PROV-DISC-PBC-RESP"], timeout=5)
+    if ev is None:
+        raise Exception("PD Response not received")
+
+    if "OK" not in dev[0].request("SCAN TYPE=ONLY freq=2412-2472"):
+        raise Exception("Could not start scan")
+    ev = dev[0].wait_event(["CTRL-EVENT-SCAN-STARTED"], timeout=5)
+    if ev is None:
+        raise Exception("Scan did not start")
+    time.sleep(0.1)
+    # Request GO Neg while the previously started scan is still in progress
+    if "OK" not in dev[0].request("P2P_CONNECT %s pbc" % addr1):
+        raise Exception("Could not request GO Negotiation")
+    ev = dev[0].wait_event(["CTRL-EVENT-SCAN-RESULTS"], timeout=10)
+    if ev is None:
+        raise Exception("Scan did not complete")
+
+    ev = dev[1].wait_global_event(["P2P-GO-NEG-REQUEST"], timeout=10)
+    if ev is None:
+        raise Exception("GO Neg Req RX not reported")
+
+    dev[1].p2p_stop_find()
+
+    if "OK" not in dev[1].request("SCAN TYPE=ONLY freq=2412-2472"):
+        raise Exception("Could not start scan")
+    ev = dev[1].wait_event(["CTRL-EVENT-SCAN-STARTED"], timeout=5)
+    if ev is None:
+        raise Exception("Scan did not start")
+    time.sleep(0.1)
+    dev[1].global_request("P2P_CONNECT " + addr0 + " pbc")
+    ev = dev[1].wait_event(["CTRL-EVENT-SCAN-RESULTS"], timeout=10)
+    if ev is None:
+        raise Exception("Scan did not complete")
+
+    ev0 = dev[0].wait_global_event(["P2P-GROUP-STARTED"], timeout=15)
+    if ev0 is None:
+        raise Exception("Group formation timed out on dev0")
+    dev[0].group_form_result(ev0)
+
+    ev1 = dev[1].wait_global_event(["P2P-GROUP-STARTED"], timeout=15)
+    if ev1 is None:
+        raise Exception("Group formation timed out on dev1")
+    dev[1].group_form_result(ev1)
+
+    dev[0].dump_monitor()
+    dev[1].dump_monitor()
+
+    remove_group(dev[0], dev[1])
+
+    dev[0].dump_monitor()
+    dev[1].dump_monitor()
+
+def test_grpform_go_neg_dup_on_restart(dev):
+    """Duplicated GO Negotiation Request after GO Neg restart"""
+    if dev[0].p2p_dev_addr() > dev[1].p2p_dev_addr():
+        higher = dev[0]
+        lower = dev[1]
+    else:
+        higher = dev[1]
+        lower = dev[0]
+    addr_low = lower.p2p_dev_addr()
+    addr_high = higher.p2p_dev_addr()
+    higher.p2p_listen()
+    if not lower.discover_peer(addr_high):
+        raise Exception("Could not discover peer")
+    lower.p2p_stop_find()
+
+    if "OK" not in lower.request("P2P_CONNECT %s pbc" % addr_high):
+        raise Exception("Could not request GO Negotiation")
+    ev = higher.wait_global_event(["P2P-GO-NEG-REQUEST"], timeout=10)
+    if ev is None:
+        raise Exception("GO Neg Req RX not reported")
+
+    # Wait for GO Negotiation Response (Status=1) to go through
+    time.sleep(0.2)
+
+    if "FAIL" in lower.request("SET ext_mgmt_frame_handling 1"):
+        raise Exception("Failed to enable external management frame handling")
+
+    higher.p2p_stop_find()
+    higher.global_request("P2P_CONNECT " + addr_low + " pbc")
+
+    # Wait for the GO Negotiation Request frame of the restarted GO Negotiation
+    rx_msg = lower.mgmt_rx()
+    if rx_msg is None:
+        raise Exception("MGMT-RX timeout")
+    p2p = parse_p2p_public_action(rx_msg['payload'])
+    if p2p is None:
+        raise Exception("Not a P2P Public Action frame")
+    if p2p['subtype'] != 0:
+        raise Exception("Unexpected P2P Public Action subtype %d" % p2p['subtype'])
+
+    # Send duplicate GO Negotiation Request from the prior instance of GO
+    # Negotiation
+    lower.p2p_stop_find()
+    peer = higher.get_peer(addr_low)
+
+    msg = p2p_hdr(addr_high, addr_low, type=P2P_GO_NEG_REQ, dialog_token=123)
+    attrs = p2p_attr_capability(dev_capab=0x25, group_capab=0x08)
+    attrs += p2p_attr_go_intent(go_intent=7, tie_breaker=1)
+    attrs += p2p_attr_config_timeout()
+    attrs += p2p_attr_listen_channel(chan=(int(peer['listen_freq']) - 2407) / 5)
+    attrs += p2p_attr_intended_interface_addr(lower.p2p_dev_addr())
+    attrs += p2p_attr_channel_list()
+    attrs += p2p_attr_device_info(addr_low, config_methods=0x80, name="Device A")
+    attrs += p2p_attr_operating_channel()
+    wsc_attrs = struct.pack(">HHH", 0x1012, 2, 4)
+    msg['payload'] += ie_p2p(attrs) + ie_wsc(wsc_attrs)
+    mgmt_tx(lower, "MGMT_TX {} {} freq={} wait_time=200 no_cck=1 action={}".format(addr_high, addr_high, peer['listen_freq'], binascii.hexlify(msg['payload'])))
+
+    # Wait for the GO Negotiation Response frame which would have been sent in
+    # this case previously, but not anymore after the check for
+    # dev->go_neg_req_sent and dev->flags & P2P_DEV_PEER_WAITING_RESPONSE.
+    rx_msg = lower.mgmt_rx(timeout=0.2)
+    if rx_msg is not None:
+        raise Exception("Unexpected management frame")
+
+    if "FAIL" in lower.request("SET ext_mgmt_frame_handling 0"):
+        raise Exception("Failed to disable external management frame handling")
+    lower.p2p_listen()
+
+    ev = lower.wait_global_event(["P2P-GO-NEG-SUCCESS"], timeout=10)
+    if ev is None:
+        raise Exception("GO Negotiation did not succeed on dev0")
+
+    ev = higher.wait_global_event(["P2P-GO-NEG-SUCCESS"], timeout=10)
+    if ev is None:
+        raise Exception("GO Negotiation did not succeed on dev1")
+
+    ev0 = lower.wait_global_event(["P2P-GROUP-STARTED"], timeout=15)
+    if ev0 is None:
+        raise Exception("Group formation timed out on dev0")
+    lower.group_form_result(ev0)
+
+    ev1 = higher.wait_global_event(["P2P-GROUP-STARTED"], timeout=15)
+    if ev1 is None:
+        raise Exception("Group formation timed out on dev1")
+    higher.group_form_result(ev1)
+
+    lower.dump_monitor()
+    higher.dump_monitor()
+
+    remove_group(lower, higher)
+
+    lower.dump_monitor()
+    higher.dump_monitor()
+
+@remote_compatible
+def test_grpform_go_neg_stopped(dev):
+    """GO Negotiation stopped after TX start"""
+    addr0 = dev[0].p2p_dev_addr()
+    dev[0].p2p_listen()
+    if not dev[1].discover_peer(addr0):
+        raise Exception("Could not discover peer")
+    dev[0].p2p_stop_find()
+    if "OK" not in dev[1].request("P2P_CONNECT %s pbc" % addr0):
+        raise Exception("Could not request GO Negotiation")
+    dev[1].p2p_stop_find()
+    dev[1].p2p_listen()
+    dev[0].p2p_find(social=True)
+    ev = dev[0].wait_global_event(["P2P-DEVICE-FOUND"], timeout=1.2)
+    dev[0].p2p_stop_find()
+    dev[1].p2p_stop_find()
+    if ev is None:
+        raise Exception("Did not find peer quickly enough after stopped P2P_CONNECT")

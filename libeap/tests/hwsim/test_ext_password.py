@@ -4,6 +4,7 @@
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
+from remotehost import remote_compatible
 import logging
 logger = logging.getLogger()
 
@@ -14,17 +15,18 @@ from test_ap_hs20 import hs20_ap_params
 from test_ap_hs20 import interworking_select
 from test_ap_hs20 import interworking_connect
 
+@remote_compatible
 def test_ext_password_psk(dev, apdev):
     """External password storage for PSK"""
     params = hostapd.wpa2_params(ssid="ext-pw-psk", passphrase="12345678")
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     dev[0].request("SET ext_password_backend test:psk1=12345678")
     dev[0].connect("ext-pw-psk", raw_psk="ext:psk1", scan_freq="2412")
 
 def test_ext_password_psk_not_found(dev, apdev):
     """External password storage for PSK and PSK not found"""
     params = hostapd.wpa2_params(ssid="ext-pw-psk", passphrase="12345678")
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     dev[0].request("SET ext_password_backend test:psk1=12345678")
     dev[0].connect("ext-pw-psk", raw_psk="ext:psk2", scan_freq="2412",
                    wait_connect=False)
@@ -56,7 +58,7 @@ def test_ext_password_psk_not_found(dev, apdev):
 def test_ext_password_eap(dev, apdev):
     """External password storage for EAP password"""
     params = hostapd.wpa2_eap_params(ssid="ext-pw-eap")
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
     dev[0].request("SET ext_password_backend test:pw0=hello|pw1=password|pw2=secret")
     dev[0].connect("ext-pw-eap", key_mgmt="WPA-EAP", eap="PEAP",
                    identity="user", password_hex="ext:pw1",
@@ -68,7 +70,7 @@ def test_ext_password_interworking(dev, apdev):
     skip_with_fips(dev[0])
     bssid = apdev[0]['bssid']
     params = hs20_ap_params()
-    hostapd.add_ap(apdev[0]['ifname'], params)
+    hostapd.add_ap(apdev[0], params)
 
     dev[0].hs20_enable()
     dev[0].request("SET ext_password_backend test:pw1=password")
