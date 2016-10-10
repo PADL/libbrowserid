@@ -55,7 +55,7 @@ gssEapTraceStatus(const char *function,
                    (int) mech_buf.length, (char *) mech_buf.value);
     }
     else {
-        wpa_printf(MSG_INFO, "%s: %u/%u", function, major, minor);
+        wpa_printf(MSG_INFO, "%s: %08X/%08X", function, major, minor);
     }
     tmpmaj = gss_release_buffer(&tmpmin, &gss_code_buf);
     tmpmaj = gss_release_buffer(&tmpmin, &mech_buf);
