@@ -203,17 +203,6 @@ peerNotifyPending(void *ctx GSSEAP_UNUSED)
 {
 }
 
-static void peerNotifyCert(void *ctx GSSEAP_UNUSED,
-			   int depth ,
-			   const char *subject GSSEAP_UNUSED,
-			   const char *altsubject[] GSSEAP_UNUSED,
-			   int num_altsubject GSSEAP_UNUSED,
-			   const char *cert_hash GSSEAP_UNUSED,
-			   const struct wpabuf *cert  GSSEAP_UNUSED)
-{
-    printf("peerNotifyCert: depth=%d; hash=%s (%p)\n", depth, cert_hash, cert_hash);
-}
-
 
 static struct eapol_callbacks gssEapPolicyCallbacks = {
     peerGetConfig,
@@ -226,7 +215,7 @@ static struct eapol_callbacks gssEapPolicyCallbacks = {
     peerGetConfigBlob,
     peerNotifyPending,
     NULL,  /* eap_param_needed */
-    peerNotifyCert
+    NULL   /* eap_notify_cert */
 };
 
 
@@ -419,9 +408,9 @@ static int sha256(unsigned char *bytes, int len, unsigned char *hash)
 }
 
 
-static int peerValidateServer(int ok_so_far, X509* cert, void *ca_ctx)
+static int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
 {
-    const char           *realm = NULL;
+    char                 *realm = NULL;
     unsigned char        *cert_bytes = NULL;
     int                   cert_len;
     unsigned char         hash[32];
@@ -430,9 +419,10 @@ static int peerValidateServer(int ok_so_far, X509* cert, void *ca_ctx)
     struct eap_peer_config *eap_config = (struct eap_peer_config *) ca_ctx;
     char *identity = strdup((const char *) eap_config->identity);
 
-    // Truncate the identity to just the username
+    // Truncate the identity to just the username; make a separate string for the realm.
     char* at = strchr(identity, '@');
     if (at != NULL) {
+        realm = strdup(at + 1);
         *at = '\0';
     }
     
@@ -441,19 +431,17 @@ static int peerValidateServer(int ok_so_far, X509* cert, void *ca_ctx)
     GSSEAP_FREE(cert_bytes);
     
     if (hash_len != 32) {
-        printf("peerValidateServer: Error: hash_len=%d, not 32!\n", hash_len);
+        fprintf(stderr, "peerValidateServerCert: Error: hash_len=%d, not 32!\n", hash_len);
         return FALSE;
     }
 
-    /* This is ugly, but it works -- anonymous_identity is '@' + realm
-     *  (see peerConfigInit)
-     */
-    realm = ((char *) eap_config->anonymous_identity) + 1;
-
     ok_so_far = moonshot_confirm_ca_certificate(identity, realm, hash, 32, &error);
     free(identity);
-
-    printf("peerValidateServer: Returning %d\n", ok_so_far);
+    if (realm != NULL) {
+        free(realm);
+    }
+    
+    wpa_printf(MSG_INFO, "peerValidateServerCert: Returning %d\n", ok_so_far);
     return ok_so_far;
 }
 
@@ -566,7 +554,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
         eapPeerConfig->private_key_passwd = (char *)cred->password.value;
     }
 
-    eapPeerConfig->server_cert_cb = peerValidateServer;
+    eapPeerConfig->server_cert_cb = peerValidateServerCert;
     eapPeerConfig->server_cert_ctx = eapPeerConfig;
 
     *minor = 0;
