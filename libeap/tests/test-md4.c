@@ -2,14 +2,8 @@
  * Test program for MD4 (test vectors from RFC 1320)
  * Copyright (c) 2006-2009, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -67,7 +61,7 @@ int main(int argc, char *argv[])
 	size_t len[2];
 	int errors = 0;
 
-	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+	for (i = 0; i < ARRAY_SIZE(tests); i++) {
 		printf("MD4 test case %d:", i);
 
 		addr[0] = (u8 *) tests[i].data;

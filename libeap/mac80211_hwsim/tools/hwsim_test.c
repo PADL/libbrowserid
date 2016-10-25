@@ -2,14 +2,8 @@
  * hwsim_test - Data connectivity test for mac80211_hwsim
  * Copyright (c) 2009, Atheros Communications
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include <stdlib.h>
@@ -23,6 +17,7 @@
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#include <netinet/ip.h>
 
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
@@ -32,11 +27,29 @@
 
 static unsigned char addr1[ETH_ALEN], addr2[ETH_ALEN], bcast[ETH_ALEN];
 
+static u_int16_t checksum(const void *buf, size_t len)
+{
+	size_t i;
+	u_int32_t sum = 0;
+	const u_int16_t *pos = buf;
+
+	for (i = 0; i < len / 2; i++)
+		sum += *pos++;
+
+	while (sum >> 16)
+		sum = (sum & 0xffff) + (sum >> 16);
+
+	return sum ^ 0xffff;
+}
+
+
 static void tx(int s, const char *ifname, int ifindex,
-	       const unsigned char *src, const unsigned char *dst)
+	       const unsigned char *src, const unsigned char *dst,
+	       u_int8_t tos)
 {
 	char buf[HWSIM_PACKETLEN], *pos;
 	struct ether_header *eth;
+	struct iphdr *ip;
 	int i;
 
 	printf("TX: %s(ifindex=%d) " MACSTR " -> " MACSTR "\n",
@@ -46,8 +59,19 @@ static void tx(int s, const char *ifname, int ifindex,
 	memcpy(eth->ether_dhost, dst, ETH_ALEN);
 	memcpy(eth->ether_shost, src, ETH_ALEN);
 	eth->ether_type = htons(HWSIM_ETHERTYPE);
-	pos = (char *) (eth + 1);
-	for (i = 0; i < sizeof(buf) - sizeof(*eth); i++)
+	ip = (struct iphdr *) (eth + 1);
+	memset(ip, 0, sizeof(*ip));
+	ip->ihl = 5;
+	ip->version = 4;
+	ip->ttl = 64;
+	ip->tos = tos;
+	ip->tot_len = htons(HWSIM_PACKETLEN - sizeof(*eth));
+	ip->protocol = 1;
+	ip->saddr = htonl(192 << 24 | 168 << 16 | 1 << 8 | 1);
+	ip->daddr = htonl(192 << 24 | 168 << 16 | 1 << 8 | 2);
+	ip->check = checksum(ip, sizeof(*ip));
+	pos = (char *) (ip + 1);
+	for (i = 0; i < sizeof(buf) - sizeof(*eth) - sizeof(*ip); i++)
 		*pos++ = i;
 
 	if (send(s, buf, sizeof(buf), 0) < 0)
@@ -56,10 +80,10 @@ static void tx(int s, const char *ifname, int ifindex,
 
 
 struct rx_result {
-	int rx_unicast1:1;
-	int rx_broadcast1:1;
-	int rx_unicast2:1;
-	int rx_broadcast2:1;
+	unsigned int rx_unicast1:1;
+	unsigned int rx_broadcast1:1;
+	unsigned int rx_unicast2:1;
+	unsigned int rx_broadcast2:1;
 };
 
 
@@ -68,6 +92,7 @@ static void rx(int s, int iface, const char *ifname, int ifindex,
 {
 	char buf[HWSIM_PACKETLEN + 1], *pos;
 	struct ether_header *eth;
+	struct iphdr *ip;
 	int len, i;
 
 	len = recv(s, buf, sizeof(buf), 0);
@@ -82,12 +107,13 @@ static void rx(int s, int iface, const char *ifname, int ifindex,
 	       MAC2STR(eth->ether_shost), MAC2STR(eth->ether_dhost), len);
 
 	if (len != HWSIM_PACKETLEN) {
-		printf("Ignore frame with unexpected RX length\n");
+		printf("Ignore frame with unexpected RX length (%d)\n", len);
 		return;
 	}
 
-	pos = (char *) (eth + 1);
-	for (i = 0; i < sizeof(buf) - 1 - sizeof(*eth); i++) {
+	ip = (struct iphdr *) (eth + 1);
+	pos = (char *) (ip + 1);
+	for (i = 0; i < sizeof(buf) - 1 - sizeof(*eth) - sizeof(*ip); i++) {
 		if ((unsigned char) *pos != (unsigned char) i) {
 			printf("Ignore frame with unexpected contents\n");
 			printf("i=%d received=0x%x expected=0x%x\n",
@@ -116,20 +142,56 @@ static void rx(int s, int iface, const char *ifname, int ifindex,
 }
 
 
+static void usage(void)
+{
+	fprintf(stderr, "usage: hwsim_test [-D<DSCP>] [-t<tos>] <ifname1> <ifname2>\n");
+}
+
+
 int main(int argc, char *argv[])
 {
-	int s1 = -1, s2 = -1, ret = -1;
+	int s1 = -1, s2 = -1, ret = -1, c;
 	struct ifreq ifr;
 	int ifindex1, ifindex2;
 	struct sockaddr_ll ll;
 	fd_set rfds;
 	struct timeval tv;
 	struct rx_result res;
+	char *s_ifname, *d_ifname, *end;
+	int tos = 0;
 
-	if (argc != 3) {
-		fprintf(stderr, "usage: hwsim_test <ifname1> <ifname2>\n");
+	for (;;) {
+		c = getopt(argc, argv, "D:t:");
+		if (c < 0)
+			break;
+		switch (c) {
+		case 'D':
+			tos = strtol(optarg, &end, 0) << 2;
+			if (*end) {
+				usage();
+				return -1;
+			}
+			break;
+		case 't':
+			tos = strtol(optarg, &end, 0);
+			if (*end) {
+				usage();
+				return -1;
+			}
+			break;
+		default:
+			usage();
+			return -1;
+		}
+	}
+
+	if (optind != argc - 2) {
+		usage();
 		return -1;
 	}
+
+	s_ifname = argv[optind];
+	d_ifname = argv[optind + 1];
 
 	memset(bcast, 0xff, ETH_ALEN);
 
@@ -146,7 +208,7 @@ int main(int argc, char *argv[])
 	}
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, argv[1], sizeof(ifr.ifr_name));
+	strncpy(ifr.ifr_name, s_ifname, sizeof(ifr.ifr_name));
 	if (ioctl(s1, SIOCGIFINDEX, &ifr) < 0) {
 		perror("ioctl[SIOCGIFINDEX]");
 		goto fail;
@@ -159,7 +221,7 @@ int main(int argc, char *argv[])
 	memcpy(addr1, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, argv[2], sizeof(ifr.ifr_name));
+	strncpy(ifr.ifr_name, d_ifname, sizeof(ifr.ifr_name));
 	if (ioctl(s2, SIOCGIFINDEX, &ifr) < 0) {
 		perror("ioctl[SIOCGIFINDEX]");
 		goto fail;
@@ -189,10 +251,10 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	tx(s1, argv[1], ifindex1, addr1, addr2);
-	tx(s1, argv[1], ifindex1, addr1, bcast);
-	tx(s2, argv[2], ifindex2, addr2, addr1);
-	tx(s2, argv[2], ifindex2, addr2, bcast);
+	tx(s1, s_ifname, ifindex1, addr1, addr2, tos);
+	tx(s1, s_ifname, ifindex1, addr1, bcast, tos);
+	tx(s2, d_ifname, ifindex2, addr2, addr1, tos);
+	tx(s2, d_ifname, ifindex2, addr2, bcast, tos);
 
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
@@ -213,10 +275,10 @@ int main(int argc, char *argv[])
 		if (r == 0)
 			break; /* timeout */
 
-		if (FD_SET(s1, &rfds))
-			rx(s1, 1, argv[1], ifindex1, &res);
-		if (FD_SET(s2, &rfds))
-			rx(s2, 2, argv[2], ifindex2, &res);
+		if (FD_ISSET(s1, &rfds))
+			rx(s1, 1, s_ifname, ifindex1, &res);
+		if (FD_ISSET(s2, &rfds))
+			rx(s2, 2, d_ifname, ifindex2, &res);
 
 		if (res.rx_unicast1 && res.rx_broadcast1 &&
 		    res.rx_unicast2 && res.rx_broadcast2) {
@@ -227,8 +289,8 @@ int main(int argc, char *argv[])
 
 	if (ret) {
 		printf("Did not receive all expected frames:\n"
-		       "rx_unicast1=%d rx_broadcast1=%d "
-		       "rx_unicast2=%d rx_broadcast2=%d\n",
+		       "rx_unicast1=%u rx_broadcast1=%u "
+		       "rx_unicast2=%u rx_broadcast2=%u\n",
 		       res.rx_unicast1, res.rx_broadcast1,
 		       res.rx_unicast2, res.rx_broadcast2);
 	} else {

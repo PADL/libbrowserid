@@ -2,14 +2,8 @@
  * WPA Supplicant - background scan and roaming interface
  * Copyright (c) 2009-2010, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -19,12 +13,6 @@
 #include "config_ssid.h"
 #include "bgscan.h"
 
-#ifdef CONFIG_BGSCAN_SIMPLE
-extern const struct bgscan_ops bgscan_simple_ops;
-#endif /* CONFIG_BGSCAN_SIMPLE */
-#ifdef CONFIG_BGSCAN_LEARN
-extern const struct bgscan_ops bgscan_learn_ops;
-#endif /* CONFIG_BGSCAN_LEARN */
 
 static const struct bgscan_ops * bgscan_modules[] = {
 #ifdef CONFIG_BGSCAN_SIMPLE
@@ -37,9 +25,9 @@ static const struct bgscan_ops * bgscan_modules[] = {
 };
 
 
-int bgscan_init(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
+int bgscan_init(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
+		const char *name)
 {
-	const char *name = ssid->bgscan;
 	const char *params;
 	size_t nlen;
 	int i;
@@ -47,7 +35,7 @@ int bgscan_init(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
 
 	bgscan_deinit(wpa_s);
 	if (name == NULL)
-		return 0;
+		return -1;
 
 	params = os_strchr(name, ':');
 	if (params == NULL) {

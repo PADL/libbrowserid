@@ -112,6 +112,7 @@ mech_eap_la_SOURCES =    			\
 	util_ordering.c				\
 	util_radius.cpp				\
 	util_sm.c				\
+	util_trace.c				\
 	util_tld.c				\
 	util_token.c				\
 	verify_mic.c				\

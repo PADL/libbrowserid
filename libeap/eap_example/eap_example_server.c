@@ -3,14 +3,8 @@
  * a library.
  * Copyright (c) 2007, Jouni Malinen <j@w1.fi>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
  */
 
 #include "includes.h"
@@ -87,6 +81,7 @@ static int eap_example_server_init_tls(void)
 	/* tparams.private_key = "server.key"; */
 	tparams.private_key = "server-key.pem";
 	/* tparams.private_key_passwd = "whatever"; */
+	tparams.dh_file = "dh.conf";
 
 	if (tls_global_set_params(eap_ctx.tls_ctx, &tparams)) {
 		printf("Failed to set TLS parameters\n");

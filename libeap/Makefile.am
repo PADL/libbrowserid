@@ -95,14 +95,14 @@ AM_CFLAGS += -DEAP_SERVER_GPSK -DEAP_SERVER_GPSK_SHA256
 AM_CFLAGS += -DIEEE8021X_EAPOL
 AM_CFLAGS += -DCONFIG_IPV6
 AM_CFLAGS += -DCONFIG_DEBUG_FILE
-AM_CFLAGS += -DCONFIG_INTERNAL_LIBTOMMATH
-AM_CFLAGS += -DCONFIG_INTERNAL_SHA1
 AM_CFLAGS += -DEAP_TLS_OPENSSL
 AM_CFLAGS += -DPKCS12_FUNCS
 AM_CFLAGS += -DCONFIG_SHA256
 
 UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
+	src/utils/eloop.c \
+	src/utils/eloop.h \
 	src/utils/ip_addr.c \
 	src/utils/radiotap.c \
 	src/utils/trace.c \
@@ -111,7 +111,7 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/wpabuf.c \
 	src/utils/os_unix.c \
 	src/utils/radius_utils.c \
-src/utils/radius_utils.h \
+	src/utils/radius_utils.h \
 	src/utils/base64.h \
 	src/utils/build_config.h \
 	src/utils/common.h \
@@ -131,22 +131,14 @@ src/utils/radius_utils.h \
 
 
 CRYPTO_SRCS = \
-    src/crypto/aes-cbc.c \
     src/crypto/aes-ctr.c \
     src/crypto/aes-eax.c \
     src/crypto/aes-encblock.c \
     src/crypto/aes-omac1.c \
-    src/crypto/aes-unwrap.c \
-    src/crypto/aes-wrap.c \
-    src/crypto/md5.c \
-    src/crypto/md5-non-fips.c \
     src/crypto/milenage.c \
     src/crypto/ms_funcs.c \
-    src/crypto/sha1.c \
-    src/crypto/sha1-pbkdf2.c \
     src/crypto/sha1-tlsprf.c \
     src/crypto/sha1-tprf.c \
-    src/crypto/sha256.c \
     src/crypto/crypto_openssl.c \
     src/crypto/tls_openssl.c \
     src/crypto/aes.h \
@@ -158,41 +150,45 @@ CRYPTO_SRCS = \
     src/crypto/md5.h \
     src/crypto/milenage.h \
     src/crypto/ms_funcs.h \
+    src/crypto/random.c \
+    src/crypto/random.h \
     src/crypto/sha1.h \
     src/crypto/sha256.h \
+	src/crypto/sha256-tlsprf.c \
     src/crypto/tls.h
 
-TLS_SRCS = \
-    src/tls/asn1.c \
-    src/tls/bignum.c \
-    src/tls/pkcs1.c \
-    src/tls/pkcs5.c \
-    src/tls/pkcs8.c \
-    src/tls/rsa.c \
-    src/tls/tlsv1_client.c \
-    src/tls/tlsv1_client_read.c \
-    src/tls/tlsv1_client_write.c \
-    src/tls/tlsv1_common.c \
-    src/tls/tlsv1_cred.c \
-    src/tls/tlsv1_record.c \
-    src/tls/tlsv1_server.c \
-    src/tls/tlsv1_server_read.c \
-    src/tls/tlsv1_server_write.c \
-    src/tls/x509v3.c \
-    src/tls/asn1.h \
-    src/tls/bignum.h \
-    src/tls/pkcs1.h \
-    src/tls/pkcs5.h \
-    src/tls/pkcs8.h \
-    src/tls/rsa.h \
-    src/tls/tlsv1_client.h \
-    src/tls/tlsv1_client_i.h \
-    src/tls/tlsv1_common.h \
-    src/tls/tlsv1_cred.h \
-    src/tls/tlsv1_record.h \
-    src/tls/tlsv1_server.h \
-    src/tls/tlsv1_server_i.h \
-    src/tls/x509v3.h 
+
+#TLS_SRCS = \
+#    src/tls/asn1.c \
+#    src/tls/bignum.c \
+#    src/tls/pkcs1.c \
+#    src/tls/pkcs5.c \
+#    src/tls/pkcs8.c \
+#    src/tls/rsa.c \
+#    src/tls/tlsv1_client.c \
+#    src/tls/tlsv1_client_read.c \
+#    src/tls/tlsv1_client_write.c \
+#    src/tls/tlsv1_common.c \
+#    src/tls/tlsv1_cred.c \
+#    src/tls/tlsv1_record.c \
+#    src/tls/tlsv1_server.c \
+#    src/tls/tlsv1_server_read.c \
+#    src/tls/tlsv1_server_write.c \
+#    src/tls/x509v3.c \
+#    src/tls/asn1.h \
+#    src/tls/bignum.h \
+#    src/tls/pkcs1.h \
+#    src/tls/pkcs5.h \
+#    src/tls/pkcs8.h \
+#    src/tls/rsa.h \
+#    src/tls/tlsv1_client.h \
+#    src/tls/tlsv1_client_i.h \
+#    src/tls/tlsv1_common.h \
+#    src/tls/tlsv1_cred.h \
+#    src/tls/tlsv1_record.h \
+#    src/tls/tlsv1_server.h \
+#    src/tls/tlsv1_server_i.h \
+#    src/tls/x509v3.h 
 
 libeap_la_SOURCES = $(SOURCES_BOTH) $(SOURCES_peer) $(UTILS_SRCS) $(CRYPTO_SRCS)
 

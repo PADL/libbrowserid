@@ -5,9 +5,6 @@
 #include "crypto/milenage.h"
 
 
-extern int wpa_debug_level;
-
-
 /**
  * milenage_opc - Determine OPc from OP and K
  * @op: OP = 128-bit operator variant algorithm configuration field
@@ -249,7 +246,7 @@ static const struct gsm_milenage_test_set gsm_test_sets[] =
 	}
 };
 
-#define NUM_GSM_TESTS (sizeof(gsm_test_sets) / sizeof(gsm_test_sets[0]))
+#define NUM_GSM_TESTS ARRAY_SIZE(gsm_test_sets)
 
 
 struct milenage_test_set {
@@ -693,7 +690,7 @@ static const struct milenage_test_set test_sets[] =
 	}
 };
 
-#define NUM_TESTS (sizeof(test_sets) / sizeof(test_sets[0]))
+#define NUM_TESTS ARRAY_SIZE(test_sets)
 
 
 int main(int argc, char *argv[])
