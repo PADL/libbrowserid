@@ -827,14 +827,14 @@ const u8 * eap_peer_tls_process_init(struct eap_sm *sm,
 	size_t left;
 	unsigned int tls_msg_len;
 
-	/* Ignore errors before we do anything*/
-	(void) tls_get_errors(sm->ssl_ctx);
 
-	//// if (tls_get_errors(data->ssl_ctx)) {
-	////	wpa_printf(MSG_INFO, "SSL: TLS errors detected");
-	////	ret->ignore = TRUE;
-	////	return NULL;
-	//// }
+	if (tls_get_errors(data->ssl_ctx)) {
+		wpa_printf(MSG_INFO, "SSL: TLS errors detected");
+        /* Next two lines commented out by Painless Security for Moonshot */
+	     /*	ret->ignore = TRUE;
+	      *	return NULL;
+		  */
+	}
 
 	if (eap_type == EAP_UNAUTH_TLS_TYPE)
 		pos = eap_hdr_validate(EAP_VENDOR_UNAUTH_TLS,
