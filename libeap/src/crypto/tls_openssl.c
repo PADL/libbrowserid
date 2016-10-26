@@ -252,6 +252,7 @@ static struct tls_context * tls_context_new(const struct tls_config *conf)
 	return context;
 }
 
+
 #ifdef CONFIG_NO_STDOUT_DEBUG
 
 static void _tls_show_errors(void)
@@ -1776,8 +1777,6 @@ static void openssl_tls_cert_event(struct tls_connection *conn,
 }
 
 
-static void debug_print_cert(X509 *cert, const char *title);
-
 static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 {
 	char buf[256];
@@ -1792,8 +1791,6 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 	err_cert = X509_STORE_CTX_get_current_cert(x509_ctx);
 	if (!err_cert)
 		return 0;
-
-    // debug_print_cert(err_cert, "\n\n***** tls_verify_cb:\n");
 
 	err = X509_STORE_CTX_get_error(x509_ctx);
 	depth = X509_STORE_CTX_get_error_depth(x509_ctx);
@@ -1812,11 +1809,11 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 	else if (depth == 2)
 		conn->peer_issuer_issuer = err_cert;
 
-	wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb(enter) - preverify_ok=%d "
-		   "err=%d (%s) ca_cert_verify=%d depth=%d buf='%s' server_cert_cb=%p server_cert_only=%d",
-		   preverify_ok, err, X509_verify_cert_error_string(err),
-               conn->ca_cert_verify, depth, buf, conn->server_cert_cb, conn->server_cert_only);
-
+/*	wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb(enter) - preverify_ok=%d "
+ *		   "err=%d (%s) ca_cert_verify=%d depth=%d buf='%s' server_cert_cb=%p server_cert_only=%d",
+ *		   preverify_ok, err, X509_verify_cert_error_string(err),
+ *               conn->ca_cert_verify, depth, buf, conn->server_cert_cb, conn->server_cert_only);
+ */
 
 	context = conn->context;
 	match = conn->subject_match;
@@ -1828,13 +1825,13 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 		preverify_ok = 1;
 
 	if (!preverify_ok && depth > 0 && conn->server_cert_only) {
-        wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb: allowing cert because depth > 0 && conn->server_cert_only\n");
+        /* wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb: allowing cert because depth > 0 && conn->server_cert_only\n"); */
 		preverify_ok = 1;
     }
 	if (!preverify_ok && (conn->flags & TLS_CONN_DISABLE_TIME_CHECKS) &&
 	    (err == X509_V_ERR_CERT_HAS_EXPIRED ||
 	     err == X509_V_ERR_CERT_NOT_YET_VALID)) {
-		wpa_printf(MSG_DEBUG, "tls_verify_cb: OpenSSL: Ignore certificate validity "
+		wpa_printf(MSG_DEBUG, "OpenSSL: Ignore certificate validity "
 			   "time mismatch");
 		preverify_ok = 1;
 	}
@@ -1855,7 +1852,7 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
             struct wpabuf *cert;
             cert = get_x509_cert(err_cert);
             if (!cert) {
-                wpa_printf(MSG_DEBUG, "tls_verify_cb: OpenSSL: Could not fetch "
+                wpa_printf(MSG_DEBUG, "OpenSSL: Could not fetch "
                            "server certificate data");
                 preverify_ok = 0;
             } else {
@@ -1885,7 +1882,7 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 #endif /* CONFIG_SHA256 */
 
 	if (!preverify_ok) {
-		wpa_printf(MSG_WARNING, "tls_verify_cb: TLS: Certificate verification failed,"
+		wpa_printf(MSG_WARNING, "TLS: Certificate verification failed,"
 			   " error %d (%s) depth %d for '%s'", err, err_str,
 			   depth, buf);
 		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
@@ -1893,12 +1890,12 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 		return preverify_ok;
 	}
 
-	wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb(exit) - preverify_ok=%d "
+	wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb - preverify_ok=%d "
 		   "err=%d (%s) ca_cert_verify=%d depth=%d buf='%s'",
 		   preverify_ok, err, err_str,
 		   conn->ca_cert_verify, depth, buf);
 	if (depth == 0 && match && os_strstr(buf, match) == NULL) {
-		wpa_printf(MSG_WARNING, "tls_verify_cb: TLS: Subject '%s' did not "
+		wpa_printf(MSG_WARNING, "TLS: Subject '%s' did not "
 			   "match with '%s'", buf, match);
 		preverify_ok = 0;
 		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
@@ -1906,7 +1903,7 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 				       TLS_FAIL_SUBJECT_MISMATCH);
 	} else if (depth == 0 && altmatch &&
 		   !tls_match_altsubject(err_cert, altmatch)) {
-		wpa_printf(MSG_WARNING, "tls_verify_cb: TLS: altSubjectName match "
+		wpa_printf(MSG_WARNING, "TLS: altSubjectName match "
 			   "'%s' not found", altmatch);
 		preverify_ok = 0;
 		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
@@ -1914,7 +1911,7 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 				       TLS_FAIL_ALTSUBJECT_MISMATCH);
 	} else if (depth == 0 && suffix_match &&
 		   !tls_match_suffix(err_cert, suffix_match, 0)) {
-		wpa_printf(MSG_WARNING, "tls_verify_cb: TLS: Domain suffix match '%s' not found",
+		wpa_printf(MSG_WARNING, "TLS: Domain suffix match '%s' not found",
 			   suffix_match);
 		preverify_ok = 0;
 		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
@@ -1922,7 +1919,7 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 				       TLS_FAIL_DOMAIN_SUFFIX_MISMATCH);
 	} else if (depth == 0 && domain_match &&
 		   !tls_match_suffix(err_cert, domain_match, 1)) {
-		wpa_printf(MSG_WARNING, "tls_verify_cb: TLS: Domain match '%s' not found",
+		wpa_printf(MSG_WARNING, "TLS: Domain match '%s' not found",
 			   domain_match);
 		preverify_ok = 0;
 		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
@@ -1932,7 +1929,7 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 		openssl_tls_cert_event(conn, err_cert, depth, buf);
 
 	if (conn->cert_probe && preverify_ok && depth == 0) {
-		wpa_printf(MSG_DEBUG, "tls_verify_cb: OpenSSL: Reject server certificate "
+		wpa_printf(MSG_DEBUG, "OpenSSL: Reject server certificate "
 			   "on probe-only run");
 		preverify_ok = 0;
 		openssl_tls_fail_event(conn, err_cert, err, depth, buf,
@@ -2036,7 +2033,7 @@ static int tls_connection_ca_cert(struct tls_data *data,
 
 	if (ca_cert && os_strncmp(ca_cert, "probe://", 8) == 0) {
 		wpa_printf(MSG_DEBUG, "OpenSSL: Probe for server certificate "
-			   "chain; setting conn->ca_cert_verify=0");
+			   "chain");
 		conn->cert_probe = 1;
 		conn->ca_cert_verify = 0;
 		return 0;
@@ -2180,7 +2177,6 @@ static int tls_connection_ca_cert(struct tls_data *data,
 	} else {
 		/* No ca_cert configured - do not try to verify server
 		 * certificate */
-		wpa_printf(MSG_DEBUG, "OpenSSL: tls_connection_ca_cert: No ca_cert; setting conn->ca_cert_verify=0");
 		conn->ca_cert_verify = 0;
 	}
 
@@ -2326,7 +2322,6 @@ int tls_connection_set_verify(void *ssl_ctx, struct tls_connection *conn,
 			       SSL_VERIFY_FAIL_IF_NO_PEER_CERT |
 			       SSL_VERIFY_CLIENT_ONCE, tls_verify_cb);
 	} else {
-		wpa_printf(MSG_DEBUG, "OpenSSL: tls_connection_set_verify: !verify_peer; setting conn->ca_cert_verify=0");
 		conn->ca_cert_verify = 0;
 		SSL_set_verify(conn->ssl, SSL_VERIFY_NONE, NULL);
 	}
@@ -4041,14 +4036,13 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
 	if (engine_id && ca_cert_id) {
 		if (tls_connection_engine_ca_cert(data, conn, ca_cert_id))
 			return TLS_SET_PARAMS_ENGINE_PRV_VERIFY_FAILED;
-	} else {
-        if (tls_connection_ca_cert(data, conn, params->ca_cert,
+	} else if (tls_connection_ca_cert(data, conn, params->ca_cert,
                                    params->ca_cert_blob,
                                    params->ca_cert_blob_len,
-                                   params->ca_path, params->server_cert_cb, 
+                                   params->ca_path,
+								   params->server_cert_cb, 
                                    params->server_cert_ctx))
-            return -1;
-    }
+		return -1;
 
 	if (engine_id && cert_id) {
 		if (tls_connection_engine_client_cert(conn, cert_id))
