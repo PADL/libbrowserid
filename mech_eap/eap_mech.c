@@ -205,6 +205,7 @@ gssEapInitiatorInit(OM_uint32 *minor)
 void
 gssEapFinalize(void)
 {
+    wpa_printf(MSG_INFO, "### gssEapFinalize()");
     eap_peer_unregister_methods();
 }
 

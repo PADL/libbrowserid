@@ -64,9 +64,14 @@ GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
     gssEapLocalAttrProviderInit(&minor);
 #endif
 #ifdef HAVE_OPENSAML
+    wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Calling gssEapSamlAttrProvidersInit()");
     major = gssEapSamlAttrProvidersInit(&minor);
-    if (GSS_ERROR(major))
+    if (GSS_ERROR(major)) {
+        wpa_printf(MSG_ERROR, "### gssEapAttrProvidersInitInternal(): Error returned from gssEapSamlAttrProvidersInit; major code is %08X; minor is %08X", major, minor);
         goto cleanup;
+    }
+#else
+    wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Don't have OpenSAML; not calling gssEapSamlAttrProvidersInit()");
 #endif
 
 cleanup:
@@ -74,6 +79,7 @@ cleanup:
     GSSEAP_ASSERT(major == GSS_S_COMPLETE);
 #endif
 
+    wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Setting gssEapAttrProvidersInitStatus to %08X", major);
     gssEapAttrProvidersInitStatus = major;
 
     GSSEAP_ONCE_LEAVE;
@@ -90,16 +96,25 @@ gssEapAttrProvidersInit(OM_uint32 *minor)
     return gssEapAttrProvidersInitStatus;
 }
 
+
 namespace {
+
     class finalize_class {
     public:
+
+        finalize_class() {
+            wpa_printf(MSG_INFO, "### finalize_class::finalize_class(): Constructing");
+        }
+
       ~finalize_class()
 	    {
 		OM_uint32 minor = 0;
+
+        wpa_printf(MSG_INFO, "### ~finalize_class::~finalize_class() : initStatus=%08x", gssEapAttrProvidersInitStatus);
+
 		if (gssEapAttrProvidersInitStatus == GSS_S_COMPLETE) {
-#ifdef HAVE_SHIBRESOLVER
-		    gssEapLocalAttrProviderFinalize(&minor);
-#endif
+            wpa_printf(MSG_INFO, "### ~finalize_class::~finalize_class() : really finalizing");
+
 #ifdef HAVE_OPENSAML
 		    gssEapSamlAttrProvidersFinalize(&minor);
 #endif
