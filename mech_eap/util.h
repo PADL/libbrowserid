@@ -376,6 +376,8 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
 
 #ifdef HAVE_HEIMDAL_VERSION
 
+#include <der.h>
+
 #define KRB_TIME_FOREVER        ((time_t)~0L)
 
 #define KRB_KEY_TYPE(key)       ((key)->keytype)
@@ -404,6 +406,11 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
         (cksum)->checksum.data = (d)->value;        \
     } while (0)
 
+#define KRB_CHECKSUM_FREE(ctx, cksum)          do { \
+        der_free_octet_string(&(cksum)->checksum);  \
+        memset((cksum), 0, sizeof(*(cksum)));       \
+    } while (0)
+                                    
 #else
 
 #define KRB_TIME_FOREVER        KRB5_INT32_MAX
@@ -439,6 +446,8 @@ gssEapDeriveRfc3961Key(OM_uint32 *minor,
         (cksum)->length = (d)->length;              \
         (cksum)->contents = (d)->value;             \
     } while (0)
+
+#define KRB_CHECKSUM_FREE(ctx, cksum) krb5_free_checksum_contents((ctx), (cksum))
 
 #endif /* HAVE_HEIMDAL_VERSION */
 

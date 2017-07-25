@@ -329,7 +329,7 @@ rfc3961ChecksumTypeForKey(OM_uint32 *minor,
 
     *cksumtype = KRB_CHECKSUM_TYPE(&cksum);
 
-    krb5_free_checksum_contents(krbContext, &cksum);
+    KRB_CHECKSUM_FREE(krbContext, &cksum);
 #endif /* HAVE_KRB5INT_C_MANDATORY_CKSUMTYPE */
 
 #ifdef HAVE_HEIMDAL_VERSION
@@ -480,6 +480,7 @@ krbEnctypeToString(
     return 0;
 }
 
+#ifdef GSSEAP_ENABLE_REAUTH
 krb5_error_code
 krbMakeAuthDataKdcIssued(krb5_context context,
                          const krb5_keyblock *key,
@@ -675,3 +676,4 @@ cleanup:
     return code;
 #endif /* HAVE_HEIMDAL_VERSION */
 }
+#endif /* GSSEAP_ENABLE_REAUTH */

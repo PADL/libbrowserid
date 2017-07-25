@@ -40,7 +40,9 @@
 #include "util_radius.h"
 #include "utils/radius_utils.h"
 #include "openssl/err.h"
+#ifdef HAVE_MOONSHOT_GET_IDENTITY
 #include "libmoonshot.h"
+#endif
 
 /* methods allowed for phase1 authentication*/
 static const struct eap_method_type allowed_eap_method_types[] = {
@@ -361,6 +363,7 @@ peerProcessChbindResponse(void *context, int code, int nsid,
     } /* else log failures? */
 }
 
+#ifdef HAVE_MOONSHOT_GET_IDENTITY
 static int cert_to_byte_array(X509 *cert, unsigned char **bytes)
 {
 	unsigned char *buf;
@@ -407,7 +410,6 @@ static int sha256(unsigned char *bytes, int len, unsigned char *hash)
 	return hash_len;
 }
 
-
 static int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
 {
     char                 *realm = NULL;
@@ -444,7 +446,7 @@ static int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
     wpa_printf(MSG_INFO, "peerValidateServerCert: Returning %d\n", ok_so_far);
     return ok_so_far;
 }
-
+#endif
 
 static OM_uint32
 peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
@@ -554,7 +556,9 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
         eapPeerConfig->private_key_passwd = (char *)cred->password.value;
     }
 
+#ifdef HAVE_MOONSHOT_GET_IDENTITY
     eapPeerConfig->server_cert_cb = peerValidateServerCert;
+#endif
     eapPeerConfig->server_cert_ctx = eapPeerConfig;
 
     *minor = 0;
@@ -1102,6 +1106,9 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
     krb5_data data;
     krb5_checksum cksum;
     gss_buffer_desc cksumBuffer;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto;
+#endif
 
     if (chanBindings == GSS_C_NO_CHANNEL_BINDINGS ||
         chanBindings->application_data.length == 0)
@@ -1113,10 +1120,25 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
 
     gssBufferToKrbData(&chanBindings->application_data, &data);
 
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_init(krbContext, &ctx->rfc3961Key, 0, &krbCrypto);
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_FAILURE;
+    }
+
+    code = krb5_create_checksum(krbContext, krbCrypto,
+                                KEY_USAGE_GSSEAP_CHBIND_MIC,
+                                ctx->checksumType,
+                                data.data, data.length,
+                                &cksum);
+    krb5_crypto_destroy(krbContext, krbCrypto);
+#else
     code = krb5_c_make_checksum(krbContext, ctx->checksumType,
                                 &ctx->rfc3961Key,
                                 KEY_USAGE_GSSEAP_CHBIND_MIC,
                                 &data, &cksum);
+#endif /* HAVE_HEIMDAL_VERSION */
     if (code != 0) {
         *minor = code;
         return GSS_S_FAILURE;
@@ -1127,14 +1149,14 @@ eapGssSmInitGssChannelBindings(OM_uint32 *minor,
 
     major = duplicateBuffer(minor, &cksumBuffer, outputToken);
     if (GSS_ERROR(major)) {
-        krb5_free_checksum_contents(krbContext, &cksum);
+        KRB_CHECKSUM_FREE(krbContext, &cksum);
         return major;
     }
 
     *minor = 0;
     *smFlags |= SM_FLAG_OUTPUT_TOKEN_CRITICAL;
 
-    krb5_free_checksum_contents(krbContext, &cksum);
+    KRB_CHECKSUM_FREE(krbContext, &cksum);
 
     return GSS_S_CONTINUE_NEEDED;
 }

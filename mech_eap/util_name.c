@@ -206,8 +206,13 @@ importServiceName(OM_uint32 *minor,
         *minor = GSSEAP_BAD_SERVICE_NAME;
     }
 
-    if (realm != NULL)
+    if (realm != NULL) {
+#ifdef HAVE_HEIMDAL_VERSION
+        krb5_xfree(realm);
+#else
         krb5_free_default_realm(krbContext, realm);
+#endif
+    }
     GSSEAP_FREE(service);
 
     return major;

@@ -688,6 +688,9 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
     krb5_data data;
     krb5_checksum cksum;
     krb5_boolean valid = FALSE;
+#ifdef HAVE_HEIMDAL_VERSION
+    krb5_crypto krbCrypto;
+#endif
 
     if (chanBindings == GSS_C_NO_CHANNEL_BINDINGS ||
         chanBindings->application_data.length == 0)
@@ -701,9 +704,29 @@ eapGssSmAcceptGssChannelBindings(OM_uint32 *minor,
 
     KRB_CHECKSUM_INIT(&cksum, ctx->checksumType, inputToken);
 
+#ifdef HAVE_HEIMDAL_VERSION
+    code = krb5_crypto_init(krbContext, &ctx->rfc3961Key, 0, &krbCrypto);
+    if (code != 0) {
+        *minor = code;
+        return GSS_S_FAILURE;
+    }
+
+    code = krb5_verify_checksum(krbContext, krbCrypto,
+                                KEY_USAGE_GSSEAP_CHBIND_MIC,
+                                data.data, data.length, &cksum);
+    if (code == KRB5KRB_AP_ERR_BAD_INTEGRITY) {
+        code = 0;
+        valid = FALSE;
+    } else if (code == 0) {
+        valid = TRUE;
+    }
+
+    krb5_crypto_destroy(krbContext, krbCrypto);
+#else
     code = krb5_c_verify_checksum(krbContext, &ctx->rfc3961Key,
                                   KEY_USAGE_GSSEAP_CHBIND_MIC,
                                   &data, &cksum, &valid);
+#endif /* HAVE_HEIMDAL_VERSION */
     if (code != 0) {
         *minor = code;
         return GSS_S_FAILURE;
