@@ -83,7 +83,7 @@ typedef const gss_OID_desc *gss_const_OID;
 
 /* Kerberos headers */
 #include <krb5.h>
-#include <com_err.h>
+#include <et/com_err.h>
 
 /* EAP headers */
 #include <includes.h>
@@ -101,6 +101,7 @@ typedef const gss_OID_desc *gss_const_OID;
 #include <radsec/radius.h>
 #endif
 
+#include "gssapi_headerfix.h"
 #include "gsseap_err.h"
 #include "radsec_err.h"
 #include "util.h"
@@ -251,6 +252,7 @@ struct gss_ctx_id_struct
     const struct gss_eap_token_buffer_set *inputTokens;
     const struct gss_eap_token_buffer_set *outputTokens;
 };
+
 
 #define TOK_FLAG_SENDER_IS_ACCEPTOR         0x01
 #define TOK_FLAG_WRAP_CONFIDENTIAL          0x02
