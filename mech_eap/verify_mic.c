@@ -36,12 +36,12 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32 GSSAPI_CALLCONV
-gss_verify_mic_iov(OM_uint32 *minor,
-                   gss_ctx_id_t ctx,
-                   gss_qop_t *qop_state,
-                   gss_iov_buffer_desc *iov,
-                   int iov_count)
+static OM_uint32
+gssEapVerifyMIC(OM_uint32 *minor,
+                gss_ctx_id_t ctx,
+                gss_qop_t *qop_state,
+                gss_iov_buffer_desc *iov,
+                int iov_count)
 {
     OM_uint32 major;
 
@@ -79,5 +79,15 @@ gss_verify_mic(OM_uint32 *minor,
     iov[1].type = GSS_IOV_BUFFER_TYPE_MIC_TOKEN;
     iov[1].buffer = *message_token;
 
-    return gss_verify_mic_iov(minor, (gss_ctx_id_t)ctx, qop_state, iov, 2);
+    return gssEapVerifyMIC(minor, (gss_ctx_id_t)ctx, qop_state, iov, 2);
+}
+
+OM_uint32 GSSAPI_CALLCONV
+gss_verify_mic_iov(OM_uint32 *minor,
+                   gss_ctx_id_t ctx,
+                   gss_qop_t *qop_state,
+                   gss_iov_buffer_desc *iov,
+                   int iov_count)
+{
+    return gssEapVerifyMIC(minor, ctx, qop_state, iov, iov_count);
 }

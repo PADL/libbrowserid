@@ -36,12 +36,12 @@
 
 #include "gssapiP_eap.h"
 
-OM_uint32 GSSAPI_CALLCONV
-gss_get_mic_iov(OM_uint32 *minor,
-                gss_ctx_id_t ctx,
-                gss_qop_t qop_req,
-                gss_iov_buffer_desc *iov,
-                int iov_count)
+static OM_uint32
+gssEapGetMIC(OM_uint32 *minor,
+             gss_ctx_id_t ctx,
+             gss_qop_t qop_req,
+             gss_iov_buffer_desc *iov,
+             int iov_count)
 {
     OM_uint32 major;
 
@@ -101,9 +101,19 @@ gss_get_mic(OM_uint32 *minor,
     iov[1].buffer.value = NULL;
     iov[1].buffer.length = 0;
 
-    major = gss_get_mic_iov(minor, (gss_ctx_id_t)ctx, qop_req, iov, 2);
+    major = gssEapGetMIC(minor, (gss_ctx_id_t)ctx, qop_req, iov, 2);
     if (major == GSS_S_COMPLETE)
         *message_token = iov[1].buffer;
 
     return major;
+}
+
+OM_uint32 GSSAPI_CALLCONV
+gss_get_mic_iov(OM_uint32 *minor,
+                gss_ctx_id_t ctx,
+                gss_qop_t qop_req,
+                gss_iov_buffer_desc *iov,
+                int iov_count)
+{
+    return gssEapGetMIC(minor, ctx, qop_req, iov, iov_count);
 }
