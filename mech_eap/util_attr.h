@@ -41,6 +41,8 @@
 #include <string>
 #include <new>
 
+#include "gssapi_headerfix.h"
+
 using namespace gss_eap_util;
 
 struct gss_eap_attr_provider;

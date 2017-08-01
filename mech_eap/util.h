@@ -71,6 +71,7 @@
 #include <errno.h>
 
 #include <krb5.h>
+#include "gssapi_headerfix.h"
 
 #ifdef WIN32
 # ifndef __cplusplus
