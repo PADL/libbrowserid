@@ -762,7 +762,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
      * context credential does not currently have the reauth creds.
      */
     if (GSSEAP_SM_STATE(ctx) == GSSEAP_STATE_INITIAL) {
-        if (!gssEapCanReauthP(cred, target, timeReq))
+      if (!gssEapCanReauthP(cred, (gss_name_t) target, timeReq))
             return GSS_S_CONTINUE_NEEDED;
 
         ctx->flags |= CTX_FLAG_KRB_REAUTH;
@@ -774,7 +774,7 @@ eapGssSmInitGssReauth(OM_uint32 *minor,
 
     GSSEAP_ASSERT(cred != GSS_C_NO_CREDENTIAL);
 
-    major = gssEapMechToGlueName(minor, target, &mechTarget);
+    major = gssEapMechToGlueName(minor, (gss_name_t) target, &mechTarget);
     if (GSS_ERROR(major))
         goto cleanup;
 

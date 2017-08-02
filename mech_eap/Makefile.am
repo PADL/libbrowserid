@@ -119,6 +119,7 @@ mech_eap_la_SOURCES =    			\
 	wrap_iov.c				\
 	wrap_iov_length.c			\
 	wrap_size_limit.c \
+	gssapi_headerfix.h \
 	gssapiP_eap.h \
 	util_attr.h \
 	util_base64.h \

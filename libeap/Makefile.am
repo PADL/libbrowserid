@@ -103,6 +103,7 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
 	src/utils/eloop.c \
 	src/utils/eloop.h \
+	src/utils/ext_password.h \
 	src/utils/ip_addr.c \
 	src/utils/radiotap.c \
 	src/utils/trace.c \
@@ -121,6 +122,7 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/list.h \
 	src/utils/os.h \
 	src/utils/pcsc_funcs.h \
+	src/utils/platform.h \
 	src/utils/radiotap.h \
 	src/utils/radiotap_iter.h \
 	src/utils/state_machine.h \
@@ -154,8 +156,10 @@ CRYPTO_SRCS = \
     src/crypto/random.h \
     src/crypto/sha1.h \
     src/crypto/sha256.h \
+    src/crypto/sha384.h \
 	src/crypto/sha256-tlsprf.c \
-    src/crypto/tls.h
+    src/crypto/tls.h \
+    src/crypto/tls_openssl.h
 
 
 #TLS_SRCS = \
