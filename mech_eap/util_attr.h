@@ -41,7 +41,9 @@
 #include <string>
 #include <new>
 
+#ifndef HAVE_HEIMDAL_VERSION
 #include "gssapi_headerfix.h"
+#endif
 
 using namespace gss_eap_util;
 

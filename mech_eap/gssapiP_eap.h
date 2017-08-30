@@ -83,7 +83,11 @@ typedef const gss_OID_desc *gss_const_OID;
 
 /* Kerberos headers */
 #include <krb5.h>
+#ifdef HAVE_HEIMDAL_VERSION
+#include <com_err.h>
+#else
 #include <et/com_err.h>
+#endif
 
 /* EAP headers */
 #include <includes.h>
@@ -101,7 +105,9 @@ typedef const gss_OID_desc *gss_const_OID;
 #include <radsec/radius.h>
 #endif
 
+#ifndef HAVE_HEIMDAL_VERSION
 #include "gssapi_headerfix.h"
+#endif
 #include "gsseap_err.h"
 #include "radsec_err.h"
 #include "util.h"

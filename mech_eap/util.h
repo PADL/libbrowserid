@@ -71,7 +71,9 @@
 #include <errno.h>
 
 #include <krb5.h>
+#ifndef HAVE_HEIMDAL_VERSION
 #include "gssapi_headerfix.h"
+#endif
 
 #ifdef WIN32
 # ifndef __cplusplus
