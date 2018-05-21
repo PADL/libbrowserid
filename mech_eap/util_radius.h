@@ -39,6 +39,8 @@
 
 #ifdef __cplusplus
 
+#include <utility>
+
 typedef std::pair <unsigned int, unsigned int> gss_eap_attrid;
 #ifdef GSSEAP_ENABLE_ACCEPTOR
 

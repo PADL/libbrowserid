@@ -247,7 +247,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 
     krbPrincComponentToGssBuffer(princ, 0, &nameBuf);
     if (nameBuf.length > 0) {
-        major = gssEapRadiusAddAttr(minor, &buf, PW_GSS_ACCEPTOR_SERVICE_NAME,
+        major = gssEapRadiusAddAttr(minor, &buf, RADIUS_ATTR_GSS_ACCEPTOR_SERVICE_NAME,
                                     0, &nameBuf);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -257,7 +257,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 
     krbPrincComponentToGssBuffer(princ, 1, &nameBuf);
     if (nameBuf.length > 0) {
-        major = gssEapRadiusAddAttr(minor, &buf, PW_GSS_ACCEPTOR_HOST_NAME,
+        major = gssEapRadiusAddAttr(minor, &buf, RADIUS_ATTR_GSS_ACCEPTOR_HOST_NAME,
                                     0, &nameBuf);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -273,7 +273,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 
     if (nameBuf.length > 0) {
         major = gssEapRadiusAddAttr(minor, &buf,
-                                    PW_GSS_ACCEPTOR_SERVICE_SPECIFICS,
+                                    RADIUS_ATTR_GSS_ACCEPTOR_SERVICE_SPECIFICS,
                                     0, &nameBuf);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -286,7 +286,7 @@ peerInitEapChannelBinding(OM_uint32 *minor, gss_ctx_id_t ctx)
 
     if (nameBuf.length > 0) {
         major = gssEapRadiusAddAttr(minor, &buf,
-                                    PW_GSS_ACCEPTOR_REALM_NAME,
+                                    RADIUS_ATTR_GSS_ACCEPTOR_REALM_NAME,
                                     0, &nameBuf);
         if (GSS_ERROR(major))
             goto cleanup;
@@ -339,16 +339,16 @@ peerProcessChbindResponse(void *context, int code, int nsid,
     while (radius_parser_parse_tlv(msg, &type, &vendor_id, &vsadata,
                                    &vsadata_len) == 0) {
         switch (type) {
-        case PW_GSS_ACCEPTOR_SERVICE_NAME:
+        case RADIUS_ATTR_GSS_ACCEPTOR_SERVICE_NAME:
             chbindRetFlags |= CHBIND_SERVICE_NAME_FLAG;
             break;
-        case PW_GSS_ACCEPTOR_HOST_NAME:
+        case RADIUS_ATTR_GSS_ACCEPTOR_HOST_NAME:
             chbindRetFlags |= CHBIND_HOST_NAME_FLAG;
             break;
-        case PW_GSS_ACCEPTOR_SERVICE_SPECIFICS:
+        case RADIUS_ATTR_GSS_ACCEPTOR_SERVICE_SPECIFICS:
             chbindRetFlags |= CHBIND_SERVICE_SPECIFIC_FLAG;
             break;
-        case PW_GSS_ACCEPTOR_REALM_NAME:
+        case RADIUS_ATTR_GSS_ACCEPTOR_REALM_NAME:
             chbindRetFlags |= CHBIND_REALM_NAME_FLAG;
             break;
         }
