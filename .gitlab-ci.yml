@@ -1,0 +1,88 @@
+variables:
+  DOCKER_DRIVER: overlay2
+
+stages:
+- build
+
+before_script:
+    - rm -fr build SOURCES RPMS
+
+debian8:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian8:latest
+  stage: build
+  script:
+    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=debian8 -o deps.zip"
+    - unzip deps.zip
+    - "dpkg -i build/*.deb || true"
+    - apt-get install -fy
+    - rm -fr build deps.zip
+    - autoreconf -fi
+    - ./configure
+    - make dist
+    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
+    - debuild -us -uc
+    - mkdir build
+    - cp ../*.deb build
+  artifacts:
+    paths:
+        - build/*.deb
+
+debian9:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
+  stage: build
+  script:
+    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=debian9 -o deps.zip"
+    - unzip deps.zip
+    - "dpkg -i build/*.deb || true"
+    - apt-get install -fy
+    - rm -fr build deps.zip
+    - autoreconf -fi
+    - ./configure
+    - make dist
+    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
+    - debuild -us -uc
+    - mkdir build
+    - cp ../*.deb build
+  artifacts:
+    paths:
+        - build/*.deb
+
+centos7:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos7:latest
+  stage: build
+  script:
+    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=centos7 -o deps.zip"
+    - unzip deps.zip
+    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/libradsec/-/jobs/artifacts/develop/download?job=centos7 -o deps.zip"
+    - unzip deps.zip
+    - yum -y install RPMS/x86_64/*.rpm
+    - rm -fr RPMS deps.zip
+    - sh autogen.sh
+    - ./configure
+    - make dist
+    - mkdir SOURCES
+    - mv mech_eap-1.0.1.tar.gz SOURCES
+    - rpmbuild -bb mech_eap.spec --define "_topdir `pwd`"
+  artifacts:
+    paths:
+        - RPMS
+
+centos6:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos6:latest
+  stage: build
+  script:
+    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=centos6 -o deps.zip"
+    - unzip deps.zip
+    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/libradsec/-/jobs/artifacts/develop/download?job=centos6 -o deps.zip"
+    - unzip deps.zip
+    - yum -y install RPMS/x86_64/*.rpm
+    - rm -fr RPMS deps.zip
+    - sh autogen.sh
+    - ./configure
+    - make dist
+    - mkdir SOURCES
+    - mv mech_eap-1.0.1.tar.gz SOURCES
+    - rpmbuild -bb mech_eap.spec --define "_topdir `pwd`"
+  artifacts:
+    paths:
+        - RPMS        
