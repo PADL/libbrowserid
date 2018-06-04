@@ -1,0 +1,4 @@
+* Not a release blocker for jessie although the security fix
+  confirmation above certainly is.  Upgrade to latest wpa_supplicant.
+  We have a procedure for doing that (subtree merge of our git master
+  branch), but we have higher priorities before the jessie freeze.
