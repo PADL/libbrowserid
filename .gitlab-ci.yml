@@ -96,13 +96,23 @@ debian9:
     - "dpkg -i build/*.deb || true"
     - apt-get install -fy
     - rm -fr build deps.zip
-    - autoreconf -fi
+    - sh autogen.sh
     - ./configure
     - make dist
     - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
     - debuild -us -uc
     - mkdir build
     - cp ../*.deb build
+    # Now, rebuild libevent-openssl with ssl1.0
+    - echo "deb-src http://deb.debian.org/debian stretch main" >> /etc/apt/sources.list
+    - apt-get update
+    - useradd tmpuser
+    - su tmpuser -c "apt-get source libevent"
+    - cd libevent-2.0.21-stable
+    - sed -i 's/libssl/libssl1.0/g' debian/control
+    - dch -l moonshot "Build with OpenSSL 1.0"
+    - debuild -us -uc
+    - cp ../*.deb ../build
   artifacts:
     paths:
         - build/*.deb
