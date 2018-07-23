@@ -7,14 +7,14 @@ stages:
 before_script:
     - rm -fr build SOURCES RPMS
 
-centos6:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos6:latest
+.centoscommon: &centoscommon
   stage: build
   tags:
     - moonshot
   script:
+    - yum -y upgrade
     - sed -i "s/\(.\)%{?dist}/\1b$CI_PIPELINE_ID%{?dist}/g" mech_eap.spec.in
-    - printf "[moonshot]\nname=moonshot\nbaseurl=https://$NEXUS_USER:$NEXUS_PWD@nexus.ci.ti.ja.net/repository/moonshot/centos6\nenabled=1\ngpgcheck=0" > /etc/yum.repos.d/moonshot.repo
+    - printf "[moonshot]\nname=moonshot\nbaseurl=https://$NEXUS_USER:$NEXUS_PWD@nexus.ci.ti.ja.net/repository/moonshot/$CI_JOB_NAME\nenabled=1\ngpgcheck=0" > /etc/yum.repos.d/moonshot.repo
     - yum -y install libradsec-devel moonshot-ui-devel
     - sh autogen.sh
     - ./configure
@@ -22,143 +22,59 @@ centos6:
     - mkdir SOURCES
     - mv mech_eap-1.0.1.tar.gz SOURCES
     - rpmbuild -bb mech_eap.spec --define "_topdir `pwd`"
-    - for i in RPMS/x86_64/*.rpm; do curl --user "$NEXUS_USER:$NEXUS_PWD" -f --upload-file "$i"  https://nexus.ci.ti.ja.net/repository/moonshot/centos6/; done
+    - for i in RPMS/x86_64/*.rpm; do curl --user "$NEXUS_USER:$NEXUS_PWD" -f --upload-file "$i"  https://nexus.ci.ti.ja.net/repository/moonshot/$CI_JOB_NAME/; done
   artifacts:
     paths:
-        - RPMS
+      - RPMS
+
+.debiancommon: &debiancommon
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/$CI_JOB_NAME:latest
+  stage: build
+  tags:
+    - moonshot
+  script:
+    - apt-get -y update && apt-get -y dist-upgrade
+    - dch -l "b$CI_PIPELINE_ID" "Include job ID"
+    - "wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip"
+    - unzip deps.zip
+    - "dpkg -i build/*.deb || true"
+    - apt-get install -fy
+    - rm -fr build deps.zip
+    - autoreconf -fi
+    - ./configure
+    - make dist
+    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
+    - debuild -us -uc
+    - mkdir build
+    - cp ../*.deb build
+  artifacts:
+    paths:
+        - build/*.deb
+
+centos6:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos6:latest
+  <<: *centoscommon
 
 centos7:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/centos7:latest
-  stage: build
-  tags:
-    - moonshot
-  script:
-    - sed -i "s/\(.\)%{?dist}/\1b$CI_PIPELINE_ID%{?dist}/g" mech_eap.spec.in
-    - printf "[moonshot]\nname=moonshot\nbaseurl=https://$NEXUS_USER:$NEXUS_PWD@nexus.ci.ti.ja.net/repository/moonshot/centos7\nenabled=1\ngpgcheck=0" > /etc/yum.repos.d/moonshot.repo
-    - yum -y install libradsec-devel moonshot-ui-devel
-    - sh autogen.sh
-    - ./configure
-    - make dist
-    - mkdir SOURCES
-    - mv mech_eap-1.0.1.tar.gz SOURCES
-    - rpmbuild -bb mech_eap.spec --define "_topdir `pwd`"
-    - for i in RPMS/x86_64/*.rpm; do curl --user "$NEXUS_USER:$NEXUS_PWD" -f --upload-file "$i"  https://nexus.ci.ti.ja.net/repository/moonshot/centos7/; done
-  artifacts:
-    paths:
-        - RPMS
+  <<: *centoscommon
 
 debian8:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/debian8:latest
-  stage: build
-  tags:
-    - moonshot
-  script:
-    - dch -l "b$CI_PIPELINE_ID" "Include job ID"
-    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=debian8 -o deps.zip"
-    - unzip deps.zip
-    - "dpkg -i build/*.deb || true"
-    - apt-get install -fy
-    - rm -fr build deps.zip
-    - autoreconf -fi
-    - ./configure
-    - make dist
-    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
-    - debuild -us -uc
-    - mkdir build
-    - cp ../*.deb build
-  artifacts:
-    paths:
-        - build/*.deb
+  <<: *debiancommon
 
 debian9:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
-  stage: build
-  tags:
-    - moonshot
-  script:
-    - dch -l "b$CI_PIPELINE_ID" "Include job ID"
-    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=debian9 -o deps.zip"
-    - unzip deps.zip
-    - "dpkg -i build/*.deb || true"
-    - apt-get install -fy
-    - rm -fr build deps.zip
-    - sh autogen.sh
-    - ./configure
-    - make dist
-    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
-    - debuild -us -uc
-    - mkdir build
-    - cp ../*.deb build
-  artifacts:
-    paths:
-        - build/*.deb
-
+  <<: *debiancommon
 
 ubuntu14:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu14:latest
-  stage: build
-  tags:
-    - moonshot
-  script:
-    - dch -l "b$CI_PIPELINE_ID" "Include job ID"
-    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=ubuntu14 -o deps.zip"
-    - unzip deps.zip
-    - "dpkg -i build/*.deb || true"
-    - apt-get install -fy
-    - rm -fr build deps.zip
-    - autoreconf -fi
-    - ./configure
-    - make dist
-    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
-    - debuild -us -uc
-    - mkdir build
-    - cp ../*.deb build
-  artifacts:
-    paths:
-        - build/*.deb
+  <<: *debiancommon
 
 ubuntu16:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu16:latest
-  stage: build
-  tags:
-    - moonshot
-  script:
-    - dch -l "b$CI_PIPELINE_ID" "Include job ID"
-    - "curl -L -H \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=ubuntu16 -o deps.zip"
-    - unzip deps.zip
-    - "dpkg -i build/*.deb || true"
-    - apt-get install -fy
-    - rm -fr build deps.zip
-    - autoreconf -fi
-    - ./configure
-    - make dist
-    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
-    - debuild -us -uc
-    - mkdir build
-    - cp ../*.deb build
-  artifacts:
-    paths:
-        - build/*.deb
+  <<: *debiancommon
 
 ubuntu18:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu18:latest
-  stage: build
-  tags:
-    - moonshot
-  script:
-    - dch -l "b$CI_PIPELINE_ID" "Include job ID"
-    - "wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=ubuntu18 -O deps.zip"
-    - unzip deps.zip
-    - "dpkg -i build/*.deb || true"
-    - apt-get install -fy
-    - rm -fr build deps.zip
-    - autoreconf -fi
-    - ./configure
-    - make dist
-    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
-    - debuild -us -uc
-    - mkdir build
-    - cp ../*.deb build
-  artifacts:
-    paths:
-        - build/*.deb
+  <<: *debiancommon
