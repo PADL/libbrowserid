@@ -43,7 +43,6 @@
 #include <xmltooling/XMLToolingConfig.h>
 #include <xmltooling/util/XMLHelper.h>
 #include <xmltooling/util/ParserPool.h>
-#include <xmltooling/util/DateTime.h>
 
 #include <saml/exceptions.h>
 #include <saml/SAMLConfig.h>
