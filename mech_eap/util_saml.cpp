@@ -44,6 +44,12 @@
 #include <xmltooling/util/XMLHelper.h>
 #include <xmltooling/util/ParserPool.h>
 
+// DateTime is no longer in XmlTooling v3, it uses the version from Xerces
+#include <xmltooling/version.h>
+#if XMLTOOLING_VERSION_MAJOR < 3
+#include <xmltooling/util/DateTime.h>
+#endif
+
 #include <saml/exceptions.h>
 #include <saml/SAMLConfig.h>
 #include <saml/saml1/core/Assertions.h>
