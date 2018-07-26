@@ -34,7 +34,7 @@ before_script:
     - moonshot
   script:
     - apt-get -y update && apt-get -y dist-upgrade
-    - dch -l "b$CI_PIPELINE_ID" "Include job ID"
+    - dch -l ".$CI_JOB_NAME.b$CI_PIPELINE_ID" "Include job ID"
     - "wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip"
     - unzip deps.zip
     - "dpkg -i build/*.deb || true"
