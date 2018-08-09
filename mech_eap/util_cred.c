@@ -248,8 +248,12 @@ cleanup:
         fclose(fp);
 
     if (GSS_ERROR(major)) {
-        gss_release_buffer(&tmpMinor, defaultIdentity);
-        zeroAndReleasePassword(defaultPassword);
+        if (defaultIdentity != GSS_C_NO_BUFFER)
+            gss_release_buffer(&tmpMinor, defaultIdentity);
+        if (defaultPassword != GSS_C_NO_BUFFER)
+            zeroAndReleasePassword(defaultPassword);
+        if (certFingerprint != GSS_C_NO_BUFFER)
+            gss_release_buffer(&tmpMinor, certFingerprint);
     }
 
     memset(buf, 0, sizeof(buf));
