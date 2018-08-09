@@ -42,6 +42,10 @@
 #else
 # include <pwd.h>
 #endif
+#include "openssl/err.h"
+#ifdef HAVE_MOONSHOT_GET_IDENTITY
+#include "libmoonshot.h"
+#endif
 
 OM_uint32
 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
@@ -133,7 +137,8 @@ gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 static OM_uint32
 readStaticIdentityFile(OM_uint32 *minor,
                        gss_buffer_t defaultIdentity,
-                       gss_buffer_t defaultPassword)
+                       gss_buffer_t defaultPassword,
+                       gss_buffer_t certFingerprint)
 {
     OM_uint32 major, tmpMinor;
     FILE *fp = NULL;
@@ -145,12 +150,19 @@ readStaticIdentityFile(OM_uint32 *minor,
     char pwbuf[BUFSIZ];
 #endif
 
-    defaultIdentity->length = 0;
-    defaultIdentity->value = NULL;
+    if (defaultIdentity != GSS_C_NO_BUFFER) {
+        defaultIdentity->length = 0;
+        defaultIdentity->value = NULL;
+    }
 
     if (defaultPassword != GSS_C_NO_BUFFER) {
         defaultPassword->length = 0;
         defaultPassword->value = NULL;
+    }
+
+    if (certFingerprint != GSS_C_NO_BUFFER) {
+        certFingerprint->length = 0;
+        certFingerprint->value = NULL;
     }
 
     ccacheName = getenv("GSSEAP_IDENTITY");
@@ -208,6 +220,8 @@ readStaticIdentityFile(OM_uint32 *minor,
             dst = defaultIdentity;
         else if (i == 1)
             dst = defaultPassword;
+        else if (i == 2)
+            dst = certFingerprint;
         else
             break;
 
@@ -220,7 +234,7 @@ readStaticIdentityFile(OM_uint32 *minor,
         i++;
     }
 
-    if (defaultIdentity->length == 0) {
+    if (defaultIdentity != GSS_C_NO_BUFFER && defaultIdentity->length == 0) {
         major = GSS_S_CRED_UNAVAIL;
         *minor = GSSEAP_NO_DEFAULT_CRED;
         goto cleanup;
@@ -379,7 +393,7 @@ staticIdentityFileResolveDefaultIdentity(OM_uint32 *minor,
 
     *pName = GSS_C_NO_NAME;
 
-    major = readStaticIdentityFile(minor, &defaultIdentity, GSS_C_NO_BUFFER);
+    major = readStaticIdentityFile(minor, &defaultIdentity, GSS_C_NO_BUFFER, GSS_C_NO_BUFFER);
     if (major == GSS_S_COMPLETE) {
         major = gssEapImportName(minor, &defaultIdentity, GSS_C_NT_USER_NAME,
                                  nameMech, pName);
@@ -712,6 +726,117 @@ cleanup:
     return major;
 }
 
+static int cert_to_byte_array(X509 *cert, unsigned char **bytes)
+{
+    unsigned char *buf;
+    unsigned char *p;
+
+    int len = i2d_X509(cert, NULL);
+    if (len <= 0) {
+        return -1;
+    }
+
+    p = buf = GSSEAP_MALLOC(len);
+    if (buf == NULL) {
+        return -1;
+    }
+
+    i2d_X509(cert, &buf);
+
+    *bytes = p;
+    return len;
+}
+
+static int sha256(unsigned char *bytes, int len, unsigned char *hash)
+{
+    EVP_MD_CTX ctx;
+    unsigned int hash_len;
+
+    EVP_MD_CTX_init(&ctx);
+    if (!EVP_DigestInit_ex(&ctx, EVP_sha256(), NULL)) {
+        fprintf(stderr, "sha256(init_sec_context.c): EVP_DigestInit_ex failed: %s",
+                ERR_error_string(ERR_get_error(), NULL));
+        return -1;
+    }
+    if (!EVP_DigestUpdate(&ctx, bytes, len)) {
+        fprintf(stderr, "sha256(init_sec_context.c): EVP_DigestUpdate failed: %s",
+                ERR_error_string(ERR_get_error(), NULL));
+        return -1;
+    }
+    if (!EVP_DigestFinal(&ctx, hash, &hash_len)) {
+        fprintf(stderr, "sha256(init_sec_context.c): EVP_DigestFinal failed: %s",
+                ERR_error_string(ERR_get_error(), NULL));
+        return -1;
+    }
+
+    return hash_len;
+}
+
+int staticConfirmServerCert (const unsigned char  *hash,
+                             int                   hash_len)
+{
+    OM_uint32 major, minor;
+    gss_buffer_desc certFingerprint = GSS_C_EMPTY_BUFFER;
+
+    major = readStaticIdentityFile(&minor, GSS_C_NO_BUFFER, GSS_C_NO_BUFFER, &certFingerprint);
+    if (major == GSS_S_COMPLETE) {
+        /* Convert hash byte array to string */
+        char hash_str[hash_len * 2 + 1];
+        int out = 0, i = 0;
+        for (i = 0; i < 32; i++) {
+            sprintf(&(hash_str[out]), "%02X", hash[i]);
+            out += 2;
+        }
+
+        if (strlen(hash_str) == certFingerprint.length && memcmp(hash_str, certFingerprint.value, certFingerprint.length) == 0)
+            return 1;
+
+        fprintf(stderr, "Certificate fingerprint mismatch! Server cert: %s\n", hash_str);
+    }
+    return 0;
+}
+
+int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
+{
+    char                 *realm = NULL;
+    unsigned char        *cert_bytes = NULL;
+    int                   cert_len;
+    unsigned char         hash[32];
+    int                   hash_len;
+    MoonshotError        *error = NULL;
+    struct eap_peer_config *eap_config = (struct eap_peer_config *) ca_ctx;
+    char *identity = strdup((const char *) eap_config->identity);
+
+    // Truncate the identity to just the username; make a separate string for the realm.
+    char* at = strchr(identity, '@');
+    if (at != NULL) {
+        realm = strdup(at + 1);
+        *at = '\0';
+    }
+
+    cert_len = cert_to_byte_array(cert, &cert_bytes);
+    hash_len = sha256(cert_bytes, cert_len, hash);
+    GSSEAP_FREE(cert_bytes);
+
+    if (hash_len != 32) {
+        fprintf(stderr, "peerValidateServerCert: Error: hash_len=%d, not 32!\n", hash_len);
+        return FALSE;
+    }
+
+#ifdef HAVE_MOONSHOT_GET_IDENTITY
+    ok_so_far = moonshot_confirm_ca_certificate(identity, realm, hash, 32, &error);
+    if (!ok_so_far)
+#endif
+        ok_so_far = staticConfirmServerCert(hash, 32);
+
+    free(identity);
+    if (realm != NULL) {
+        free(realm);
+    }
+    wpa_printf(MSG_INFO, "peerValidateServerCert: Returning %d\n", ok_so_far);
+    return ok_so_far;
+}
+
 static OM_uint32
 staticIdentityFileResolveInitiatorCred(OM_uint32 *minor, gss_cred_id_t cred)
 {
@@ -721,7 +846,7 @@ staticIdentityFileResolveInitiatorCred(OM_uint32 *minor, gss_cred_id_t cred)
     gss_buffer_desc defaultPassword = GSS_C_EMPTY_BUFFER;
     int isDefaultIdentity = FALSE;
 
-    major = readStaticIdentityFile(minor, &defaultIdentity, &defaultPassword);
+    major = readStaticIdentityFile(minor, &defaultIdentity, &defaultPassword, GSS_C_NO_BUFFER);
     if (GSS_ERROR(major))
         goto cleanup;
 

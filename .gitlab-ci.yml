@@ -35,8 +35,7 @@ before_script:
   script:
     - apt-get -y update && apt-get -y dist-upgrade
     - dch -l ".$CI_JOB_NAME.b$CI_PIPELINE_ID" "Include job ID"
-    - "wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/ui/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip"
-    - unzip deps.zip
+    - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
     - "dpkg -i build/*.deb || true"
     - apt-get install -fy
     - rm -fr build deps.zip
