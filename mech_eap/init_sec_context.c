@@ -39,7 +39,6 @@
 #include "radius/radius.h"
 #include "util_radius.h"
 #include "utils/radius_utils.h"
-#include "openssl/err.h"
 #ifdef HAVE_MOONSHOT_GET_IDENTITY
 #include "libmoonshot.h"
 #endif
@@ -362,91 +361,6 @@ peerProcessChbindResponse(void *context, int code, int nsid,
         ctx->gssFlags |= GSS_C_MUTUAL_FLAG;
     } /* else log failures? */
 }
-
-#ifdef HAVE_MOONSHOT_GET_IDENTITY
-static int cert_to_byte_array(X509 *cert, unsigned char **bytes)
-{
-	unsigned char *buf;
-    unsigned char *p;
-
-	int len = i2d_X509(cert, NULL);
-	if (len <= 0) {
-		return -1;
-    }
-
-	p = buf = GSSEAP_MALLOC(len);
-	if (buf == NULL) {
-		return -1;
-    }
-
-	i2d_X509(cert, &buf);
-
-    *bytes = p;
-    return len;
-}
-
-static int sha256(unsigned char *bytes, int len, unsigned char *hash)
-{
-	EVP_MD_CTX ctx;
-	unsigned int hash_len;
-
-	EVP_MD_CTX_init(&ctx);
-	if (!EVP_DigestInit_ex(&ctx, EVP_sha256(), NULL)) {
-		printf("sha256(init_sec_context.c): EVP_DigestInit_ex failed: %s",
-			   ERR_error_string(ERR_get_error(), NULL));
-		return -1;
-	}
-    if (!EVP_DigestUpdate(&ctx, bytes, len)) {
-		printf("sha256(init_sec_context.c): EVP_DigestUpdate failed: %s",
-				   ERR_error_string(ERR_get_error(), NULL));
-        return -1;
-	}
-	if (!EVP_DigestFinal(&ctx, hash, &hash_len)) {
-		printf("sha256(init_sec_context.c): EVP_DigestFinal failed: %s",
-				   ERR_error_string(ERR_get_error(), NULL));
-		return -1;
-	}
-
-	return hash_len;
-}
-
-static int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
-{
-    char                 *realm = NULL;
-    unsigned char        *cert_bytes = NULL;
-    int                   cert_len;
-    unsigned char         hash[32];
-    int                   hash_len;
-    MoonshotError        *error = NULL;
-    struct eap_peer_config *eap_config = (struct eap_peer_config *) ca_ctx;
-    char *identity = strdup((const char *) eap_config->identity);
-
-    // Truncate the identity to just the username; make a separate string for the realm.
-    char* at = strchr(identity, '@');
-    if (at != NULL) {
-        realm = strdup(at + 1);
-        *at = '\0';
-    }
-    
-    cert_len = cert_to_byte_array(cert, &cert_bytes);
-    hash_len = sha256(cert_bytes, cert_len, hash);
-    GSSEAP_FREE(cert_bytes);
-    
-    if (hash_len != 32) {
-        fprintf(stderr, "peerValidateServerCert: Error: hash_len=%d, not 32!\n", hash_len);
-        return FALSE;
-    }
-
-    ok_so_far = moonshot_confirm_ca_certificate(identity, realm, hash, 32, &error);
-    free(identity);
-    if (realm != NULL) {
-        free(realm);
-    }
-    
-    wpa_printf(MSG_INFO, "peerValidateServerCert: Returning %d\n", ok_so_far);
-    return ok_so_far;
-}
-#endif
 
 static OM_uint32
 peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)

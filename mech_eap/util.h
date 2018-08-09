@@ -255,6 +255,7 @@ gssEapVerifyTokenMIC(OM_uint32 *minor,
                      const gss_buffer_t tokenMIC);
 
 /* util_cred.c */
+int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx);
 OM_uint32 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 OM_uint32 gssEapReleaseCred(OM_uint32 *minor, gss_cred_id_t *pCred);
 
