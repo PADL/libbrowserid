@@ -18,7 +18,7 @@ before_script:
     - ./configure
     - make dist
     - mkdir SOURCES
-    - mv mech_eap-1.0.1.tar.gz SOURCES
+    - mv mech_eap*.tar.gz SOURCES
     - rpmbuild -bb mech_eap.spec --define "_topdir `pwd`"
   artifacts:
     paths:
@@ -39,7 +39,7 @@ before_script:
     - autoreconf -fi
     - ./configure
     - make dist
-    - mv mech_eap-1.0.1.tar.gz ../moonshot-gss-eap_1.0.1.orig.tar.gz
+    - mv mech_eap-1.1.0.tar.gz ../moonshot-gss-eap_1.1.0.orig.tar.gz
     - debuild -us -uc
     - mkdir build
     - cp ../*.deb build
