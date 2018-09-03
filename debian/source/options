@@ -1,0 +1,4 @@
+single-debian-patch
+extend-diff-ignore="tests/.*"
+extend-diff-ignore="libeap/eap_example/.*"
+extend-diff-ignore="libeap/hs20/server/ca/w1fi_logo.png"

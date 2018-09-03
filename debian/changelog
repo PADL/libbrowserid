@@ -1,0 +1,262 @@
+moonshot-gss-eap (1.1.0-0) unstable; urgency=medium
+
+  * Version number bump
+
+ -- Jisc <assent@jisc.ac.uk>  Thu, 30 Aug 2018 09:35:00 +0100
+
+moonshot-gss-eap (1.0.1-3) experimental; urgency=medium
+
+  * Fix warning redefinition of __bitwise, Closes: #866712
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 08 Nov 2017 10:14:39 -0500
+
+moonshot-gss-eap (1.0.1-2) experimental; urgency=medium
+
+  * I thought that libssl-dev|libssl1.0-dev would be enough to let the software build.  However because of libxmltooling-dev, libssl1.0-dev must come first.
+
+ -- Sam Hartman <hartmans@debian.org>  Tue, 07 Nov 2017 19:19:26 -0500
+
+moonshot-gss-eap (1.0.1-1) experimental; urgency=medium
+
+  * New upstream version
+  * supports openssl 1.1.0, Closes: #848680
+  * standards-version  4.1.1
+  * No longer create /usr/etc/gss/mech; that was never desired in Debian but could be triggered by modern libgssapi-krb5-2
+
+ -- Sam Hartman <hartmans@debian.org>  Mon, 30 Oct 2017 14:54:01 -0400
+
+moonshot-gss-eap (1.0.1-0) unstable; urgency=medium
+
+  * Fixed https://bugs.launchpad.net/moonshot/+bug/1707679
+
+ -- Painless Security <build@painless-security.com>  Mon, 31 Jul 2017 12:39:00 -0500
+
+moonshot-gss-eap (1.0.0-0) unstable; urgency=medium
+
+  * Fixed https://bugs.launchpad.net/moonshot/+bug/1705714.
+    Refactored a static object whose destructor was responsible for
+    de-initializing the ShibResolver library.
+
+ -- Painless Security <build@painless-security.com>  Mon, 24 Jul 2017 23:16:00 -0500
+
+moonshot-gss-eap (0.9.5-3) unstable; urgency=medium
+
+  * Build depend against openssl 1.0, Closes: #828440
+
+ -- Sam Hartman <hartmans@debian.org>  Mon, 19 Dec 2016 09:03:47 -0500
+
+
+moonshot-gss-eap (0.9.5-2) unstable; urgency=medium
+
+  * Fix FTBFS with gcc-6: auto_ptr is deprecated.  First, -Wdeprecated
+    should not cause an error for package builds.  Second, use unique_ptr,
+    Closes: #831187
+  * Upgrade standards version to 3.9.8 (no changes needed)
+
+ -- Sam Hartman <hartmans@debian.org>  Mon, 22 Aug 2016 21:38:12 -0400
+
+moonshot-gss-eap (0.9.5-1) unstable; urgency=medium
+
+  * New upstream version
+    - Include base64 decoding fix for newlines and internal spaces
+      - Include error table fix
+  * New upstream release including better error messages when GSSEAP_TRACE is set
+
+ -- Sam Hartman <hartmans@debian.org>  Tue, 14 Jul 2015 16:12:30 -0400
+
+moonshot-gss-eap (0.9.3~1) UNRELEASED; urgency=medium
+
+  * Native for now
+
+ -- Sam Hartman <hartmans@debian.org>  Thu, 12 Mar 2015 12:45:09 -0400
+
+moonshot-gss-eap (0.9.2-3) unstable; urgency=medium
+
+  * Review security of libeap/wpa_supplicant and send mail to security
+    team explaining why I believe moonshot-gss-eap is supportable, Closes:
+    #766476
+
+ -- Sam Hartman <hartmans@debian.org>  Thu, 23 Oct 2014 12:05:38 -0400
+
+moonshot-gss-eap (0.9.2-2) unstable; urgency=medium
+
+  * Incorporate ustream deltas:
+    -  fdc24ae Use C++ destructors not finalizers
+    -a743fc8 Mech_eap: only output debugging when GSSEAP_TRACE is set
+  * moonshot-gss-eap.conf not moonshot-gss-eap in /etc/gss/mech.d so the
+    library picks it up  
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 22 Oct 2014 15:13:00 -0400
+
+moonshot-gss-eap (0.9.2-1) unstable; urgency=medium
+
+  * New version
+  * This is ready for Debian unstable, although there are remaining issues
+    before I'd want to see it in a release.  I'll hold a serious bug on
+    the package until these are resolved; see debian/TODO.
+  * Upload to Debian, Closes: #761868
+
+ -- Sam Hartman <hartmans@debian.org>  Tue, 16 Sep 2014 08:38:39 -0400
+
+moonshot-gss-eap (0.9.1-1) unstable; urgency=medium
+
+  * new upstream release
+    - Includes support for CA certificates.
+
+ -- Sam Hartman <hartmans@debian.org>  Thu, 31 Jul 2014 16:34:02 -0400
+
+moonshot-gss-eap (0.9+20130927-12) unstable; urgency=low
+
+  * Ignore TLS errors before TLS calls are made
+
+ -- Sam Hartman <hartmans@debian.org>  Tue, 26 Nov 2013 08:07:51 -0500
+
+moonshot-gss-eap (0.9+20130927-11) unstable; urgency=low
+
+  * fix assert failure
+
+ -- Sam Hartman <hartmans@debian.org>  Thu, 21 Nov 2013 14:05:09 -0500
+
+moonshot-gss-eap (0.9+20130927-10) unstable; urgency=low
+
+  * Permit 1-component service names
+
+ -- Sam Hartman <hartmans@debian.org>  Thu, 21 Nov 2013 13:28:35 -0500
+
+moonshot-gss-eap (0.9+20130927-9) unstable; urgency=low
+
+  * Enable sha256 in libeap
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 20 Nov 2013 09:07:55 -0500
+
+moonshot-gss-eap (0.9+20130927-8) unstable; urgency=low
+
+  * Update from upstream to fix segfault on no hostname
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 13 Nov 2013 22:31:20 -0500
+
+moonshot-gss-eap (0.9+20130927-7) unstable; urgency=low
+
+  * Send flags token with mutual authentication forced
+  
+
+ -- Sam Hartman <hartmans@debian.org>  Tue, 29 Oct 2013 10:41:32 -0400
+
+moonshot-gss-eap (0.9+20130927-6) unstable; urgency=low
+
+  * Fix segfault (LP: #1237981
+    )
+
+ -- Sam Hartman <hartmans@debian.org>  Thu, 10 Oct 2013 10:21:57 -0400
+
+moonshot-gss-eap (0.9+20130927-5) unstable; urgency=low
+
+  * Create moonshot-gss-eap-dbg
+
+ -- Sam Hartman <hartmans@debian.org>  Thu, 10 Oct 2013 09:44:40 -0400
+
+moonshot-gss-eap (0.9+20130927-4) unstable; urgency=low
+
+  * autoreconf
+
+ -- Sam Hartman <hartmans@debian.org>  Fri, 04 Oct 2013 16:39:39 -0400
+
+moonshot-gss-eap (0.9+20130927-3) unstable; urgency=low
+
+  * Depend on moonshot-ui 0.6-2 to get libmoonshot1
+
+ -- Sam Hartman <hartmans@debian.org>  Fri, 04 Oct 2013 09:40:12 -0400
+
+moonshot-gss-eap (0.9+20130927-2) UNRELEASED; urgency=low
+
+  * Build depend on openssl
+
+ -- Sam Hartman <hartmans@debian.org>  Fri, 27 Sep 2013 08:53:26 -0400
+
+moonshot-gss-eap (0.9+20130927-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Sam Hartman <hartmans@debian.org>  Fri, 27 Sep 2013 08:52:58 -0400
+
+moonshot-gss-eap (0.1+20130404-1) unstable; urgency=low
+
+  * New upstream release
+    - ui displays proper service name, requests correct nai 
+
+ -- Kevin Wasserman <krwasserman@painless-security.com>  Thu, 04 Apr 2013 14:29:49 -0400
+
+moonshot-gss-eap (0.1+20121103-2) unstable; urgency=low
+
+  * Pull in upstream changes for empty acceptor name
+
+ -- Sam Hartman <hartmans@debian.org>  Thu, 15 Nov 2012 22:12:11 -0500
+
+moonshot-gss-eap (0.1+20121103-1) unstable; urgency=low
+
+  * New upstream version; 1.0 candidate
+  * Update build-depends and drop freeradius
+
+ -- Sam Hartman <hartmans@debian.org>  Sat, 03 Nov 2012 05:47:05 -0400
+
+moonshot-gss-eap (0.1+20111207-5) unstable; urgency=low
+
+  * Fix rest of subject name constraints
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 18 Jan 2012 08:12:30 -0500
+
+moonshot-gss-eap (0.1+20111207-3) unstable; urgency=low
+
+  * Fix empty certhash (LP: #917956)
+
+ -- Sam Hartman <hartmans@debian.org>  Tue, 17 Jan 2012 19:28:31 -0500
+
+moonshot-gss-eap (0.1+20111207-2) unstable; urgency=low
+
+  * Initialize shib resolver before opensaml
+
+ -- Sam Hartman <hartmans@debian.org>  Tue, 03 Jan 2012 15:41:40 -0500
+
+moonshot-gss-eap (0.1+20111207-1) unstable; urgency=low
+
+  * New upstream version
+  * Install multiarch krb5 plugin
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 07 Dec 2011 12:03:43 -0500
+
+moonshot-gss-eap (0.1+20110809-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Sam Hartman <hartmans@project-moonshot.org>  Tue, 09 Aug 2011 13:20:50 -0400
+
+moonshot-gss-eap (0.1+20110427-7) unstable; urgency=low
+
+  * Add build-conflicts on libgss-dev
+
+ -- Sam Hartman <hartmans@debian.org>  Sun, 15 May 2011 10:02:09 -0400
+
+moonshot-gss-eap (0.1+20110427-6) unstable; urgency=low
+
+  * Don't cast get_provider to const when not ssigning to a const
+    variable
+
+ -- Sam Hartman <hartmans@debian.org>  Mon, 09 May 2011 20:15:34 -0400
+
+moonshot-gss-eap (0.1+20110427-5) unstable; urgency=low
+
+  * Enable TLS in libeap
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 04 May 2011 18:42:08 -0400
+
+moonshot-gss-eap (0.1+20110427-2) unstable; urgency=low
+
+  * Force mutual authentication
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 04 May 2011 14:59:46 -0400
+
+moonshot-gss-eap (0.1+20110427-1) unstable; urgency=low
+
+  * Initial release
+
+ -- Sam Hartman <hartmans@debian.org>  Wed, 27 Apr 2011 08:53:16 -0400

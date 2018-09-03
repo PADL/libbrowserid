@@ -31,6 +31,7 @@
  */
 
 #include "gssapiP_eap.h"
+#include "util_base64.h"
 
 #ifdef HAVE_MOONSHOT_GET_IDENTITY
 #include <libmoonshot.h>

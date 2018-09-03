@@ -387,12 +387,12 @@ gss_eap_shib_attr_provider::getAttribute(const gss_buffer_t attr,
 
     binaryAttr = dynamic_cast<const BinaryAttribute *>(shibAttr);
     if (binaryAttr != NULL) {
-        std::string str = binaryAttr->getValues()[*more];
+        std::string str = binaryAttr->getValues()[i];
 
         valueBuf.value = (void *)str.data();
         valueBuf.length = str.size();
     } else {
-        std::string str = shibAttr->getSerializedValues()[*more];
+        std::string str = shibAttr->getSerializedValues()[i];
 
         valueBuf.value = (void *)str.c_str();
         valueBuf.length = str.length();
