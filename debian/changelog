@@ -1,4 +1,4 @@
-moonshot-gss-eap (1.1.0-0) unstable; urgency=medium
+moonshot-gss-eap (1.1.0-0.DIST) unstable; urgency=medium
 
   * Version number bump
 
@@ -84,7 +84,7 @@ moonshot-gss-eap (0.9.2-2) unstable; urgency=medium
     -  fdc24ae Use C++ destructors not finalizers
     -a743fc8 Mech_eap: only output debugging when GSSEAP_TRACE is set
   * moonshot-gss-eap.conf not moonshot-gss-eap in /etc/gss/mech.d so the
-    library picks it up  
+    library picks it up
 
  -- Sam Hartman <hartmans@debian.org>  Wed, 22 Oct 2014 15:13:00 -0400
 
@@ -138,7 +138,7 @@ moonshot-gss-eap (0.9+20130927-8) unstable; urgency=low
 moonshot-gss-eap (0.9+20130927-7) unstable; urgency=low
 
   * Send flags token with mutual authentication forced
-  
+
 
  -- Sam Hartman <hartmans@debian.org>  Tue, 29 Oct 2013 10:41:32 -0400
 
@@ -182,7 +182,7 @@ moonshot-gss-eap (0.9+20130927-1) unstable; urgency=low
 moonshot-gss-eap (0.1+20130404-1) unstable; urgency=low
 
   * New upstream release
-    - ui displays proper service name, requests correct nai 
+    - ui displays proper service name, requests correct nai
 
  -- Kevin Wasserman <krwasserman@painless-security.com>  Thu, 04 Apr 2013 14:29:49 -0400
 
