@@ -1,5 +1,5 @@
 AC_PREREQ([2.61])
-AC_INIT([mech_eap], [1.1.0], [assent@jisc.ac.uk])
+AC_INIT([mech_eap], [1.1.1], [assent@jisc.ac.uk])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 
