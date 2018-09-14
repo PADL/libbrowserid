@@ -210,9 +210,9 @@ isInternalAttributeP(rs_const_avp *vp)
 static bool
 isFragmentedAttributeP(const gss_eap_attrid &attrid)
 {
-    /* A bit of a hack for the PAC for now. Should be configurable. */
-    return (attrid.first == VENDORPEC_UKERNA) &&
-        !isInternalAttributeP(attrid);
+    /* Explicitly indicate here what attributes are fragmented.
+       At the moment ONLY SAML Assertion */
+    return (attrid.first == 0 && attrid.second == PW_SAML_AAA_ASSERTION);
 }
 
 /*
