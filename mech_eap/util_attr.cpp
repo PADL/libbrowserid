@@ -62,6 +62,9 @@ GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
 #ifdef HAVE_SHIBRESOLVER
     /* Allow Shibboleth initialization failure to be non-fatal */
     gssEapLocalAttrProviderInit(&minor);
+#else
+    /* The local attribute resolve has the same name than the Shibobleth one */
+    gssEapLocalAttrProviderInit(&minor);
 #endif
 #ifdef HAVE_OPENSAML
     wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Calling gssEapSamlAttrProvidersInit()");
@@ -126,8 +129,8 @@ namespace {
     } finalizer;
 }
 
-	    
-	
+
+
 static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX + 1];
 
 /*

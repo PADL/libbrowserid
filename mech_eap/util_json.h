@@ -105,6 +105,7 @@ namespace gss_eap_util {
         JSONObject(json_int_t value);
         JSONObject(double value);
         JSONObject(bool value);
+        JSONObject(json_t *obj, bool retain = true);
 
         void set(const char *key, JSONObject &value);
         void set(const char *key, const char *value);
@@ -157,12 +158,12 @@ namespace gss_eap_util {
             return *this;
         }
 
-    private:
-        friend class JSONIterator;
-
         json_t *get(void) const {
             return json_incref(m_obj);
         }
+
+    private:
+        friend class JSONIterator;
 
         void set(json_t *obj) {
             if (m_obj != obj) {
@@ -170,8 +171,6 @@ namespace gss_eap_util {
                 m_obj = json_incref(m_obj);
             }
         }
-
-        JSONObject(json_t *obj, bool retain = true);
 
         json_t *m_obj;
     };

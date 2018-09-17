@@ -34,7 +34,11 @@ mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
 endif
 mech_eap_la_DEPENDENCIES = $(GSSEAP_EXPORTS)
 
-mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
+mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\" \
+				       -DMOONSHOT_LOCAL_ATTRIBUTES='"$(sysconfdir)/moonshot/local-attributes.json"'
+
+
+
 mech_eap_la_CFLAGS   += \
 			@KRB5_CFLAGS@ @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_CXXFLAGS += \
@@ -128,7 +132,8 @@ mech_eap_la_SOURCES =    			\
 	util_radius.h \
 	util_reauth.h \
 	util_saml.h \
-	util_shib.h
+	util_shib.h \
+	util_local.h
 
 if LIBMOONSHOT
 mech_eap_la_SOURCES += util_moonshot.c
@@ -159,6 +164,8 @@ endif
 
 if SHIBRESOLVER
 mech_eap_la_SOURCES += util_shib.cpp
+else
+mech_eap_la_SOURCES += util_local.cpp
 endif
 
 endif
