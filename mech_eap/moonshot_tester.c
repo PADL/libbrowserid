@@ -199,8 +199,9 @@ int main() {
 
      while (1) {
         printf("Authentication roundtrip\n");
-        client_major = gss_init_sec_context(&minor, GSS_C_NO_CREDENTIAL, &client_ctx, target_name, &gss_eap_mechanism_oid_desc,
-                                     req_flags, 0, NULL, &server_token, NULL, &client_token, &ret_flags, NULL);
+        client_major = gss_init_sec_context(&minor, GSS_C_NO_CREDENTIAL, &client_ctx, target_name,
+                                            &gss_eap_mechanism_oid_desc, req_flags, 0, NULL,
+                                            &server_token, NULL, &client_token, &ret_flags, NULL);
 
         if (GSS_ERROR(client_major)) {
             display_status("gss_init_sec_context()", client_major, GSS_C_GSS_CODE);
@@ -212,8 +213,8 @@ int main() {
             break;
         }
 
-        server_major = gss_accept_sec_context(&minor, &server_ctx, GSS_C_NO_CREDENTIAL, &client_token, NULL,
-                                       &client_name, NULL, &server_token, &ret_flags, NULL, NULL);
+        server_major = gss_accept_sec_context(&minor, &server_ctx, GSS_C_NO_CREDENTIAL, &client_token,
+                                              NULL, &client_name, NULL, &server_token, &ret_flags, NULL, NULL);
 
         if (GSS_ERROR(server_major)) {
             display_status("gss_init_sec_context()", server_major, GSS_C_GSS_CODE);
