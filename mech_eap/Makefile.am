@@ -181,6 +181,12 @@ radius_ad_la_SOURCES = util_adshim.c authdata_plugin.h
 endif
 endif
 
+
+bin_PROGRAMS = moonshot_tester
+moonshot_tester_SOURCES = moonshot_tester.c
+moonshot_tester_LDADD = @KRB5_LIBS@
+
+
 gsseap_err.h gsseap_err.c: gsseap_err.et
 	$(COMPILE_ET) $<
 

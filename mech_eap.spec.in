@@ -56,6 +56,7 @@ fgrep $oid_aes256 $mechfile ||echo eap-aes256 $oid_aes256 mech_eap.so >>$mechfil
 %doc mech_eap/LICENSE
 %doc mech_eap/AUTHORS
 %{_libdir}/gss/mech_eap.so
+%{_bindir}/moonshot_tester
 %exclude %{_libdir}/gss/mech_eap.la
 %{_includedir}/gssapi/*.h
 %exclude %{_libdir}/krb5/plugins/authdata/*
