@@ -212,7 +212,7 @@ isFragmentedAttributeP(const gss_eap_attrid &attrid)
 {
     /* Explicitly indicate here what attributes are fragmented.
        At the moment ONLY SAML Assertion */
-    return (attrid.first == 0 && attrid.second == PW_SAML_AAA_ASSERTION);
+    return (attrid.first == VENDORPEC_UKERNA && attrid.second == PW_SAML_AAA_ASSERTION);
 }
 
 /*
