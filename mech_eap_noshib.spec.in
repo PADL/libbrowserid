@@ -1,5 +1,5 @@
 %global _moonshot_krb5 %{!?_moonshot_krb5:krb5-devel}%{?_moonshot_krb5}
-Name:		moonshot-gss-eap
+Name:		moonshot-gss-eap-noshib
 Version:	@VERSION@
 Release:	2%{?dist}
 Summary:	Moonshot GSS-API Mechanism
@@ -18,7 +18,8 @@ BuildRequires: libradsec-devel >= 0.0.3
 BuildRequires: shibboleth-devel >= 2.5
 BuildRequires: libshibresolver-devel
 
-Conflicts: moonshot-gss-eap-noshib
+Conflicts: moonshot-gss-eap
+Provides: moonshot-gss-eap = @VERSION@
 
 
 %description
@@ -30,7 +31,7 @@ Project Moonshot provides federated access management.
 
 
 %build
-%configure  --with-libmoonshot=%{_prefix} --with-krb5=%{_prefix} --enable-reauth LDFLAGs="${LDFLAGS} -L/opt/shibboleth/%{_lib} -Wl,--rpath=/opt/shibboleth/%{_lib}" CPPFLAGS="${CPPFLAGS} -I/opt/shibboleth/include"
+%configure --without-shibresolver  --with-libmoonshot=%{_prefix} --with-krb5=%{_prefix} --enable-reauth LDFLAGs="${LDFLAGS} -L/opt/shibboleth/%{_lib} -Wl,--rpath=/opt/shibboleth/%{_lib}" CPPFLAGS="${CPPFLAGS} -I/opt/shibboleth/include"
 make %{?_smp_mflags}
 
 
