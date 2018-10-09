@@ -755,7 +755,12 @@ static int sha256(unsigned char *bytes, int len, unsigned char *hash)
 {
     unsigned int hash_len = 0;
     int result = -1;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+#else
+    EVP_MD_CTX ctx_internal;
+    EVP_MD_CTX *ctx = &ctx_internal;
+#endif
     if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
         fprintf(stderr, "sha256(init_sec_context.c): EVP_DigestInit_ex failed: %s",
                 ERR_error_string(ERR_get_error(), NULL));
@@ -774,7 +779,9 @@ static int sha256(unsigned char *bytes, int len, unsigned char *hash)
     result = hash_len;
 
 cleanup:
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     EVP_MD_CTX_free(ctx);
+#endif
     return result;
 }
 
