@@ -21,6 +21,7 @@ before_script:
     - mv mech_eap*.tar.gz SOURCES
     - rpmbuild -bb mech_eap.spec --define "_topdir `pwd`"
   artifacts:
+    expire_in: 6 months
     paths:
       - RPMS
 
@@ -41,6 +42,7 @@ before_script:
     - mv mech_eap*.tar.gz SOURCES
     - rpmbuild -bb mech_eap_noshib.spec --define "_topdir `pwd`"
   artifacts:
+    expire_in: 6 months
     paths:
       - RPMS
 
@@ -63,6 +65,7 @@ before_script:
     - mkdir build
     - cp ../*.deb build
   artifacts:
+    expire_in: 6 months
     paths:
         - build/*.deb
 
@@ -87,6 +90,7 @@ before_script:
     - mkdir build
     - cp ../*.deb build
   artifacts:
+    expire_in: 6 months
     paths:
         - build/*.deb
 
