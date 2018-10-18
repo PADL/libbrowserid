@@ -761,6 +761,7 @@ static int sha256(unsigned char *bytes, int len, unsigned char *hash)
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 #else
     EVP_MD_CTX ctx_internal;
+    EVP_MD_CTX_init(&ctx_internal);
     EVP_MD_CTX *ctx = &ctx_internal;
 #endif
     if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
