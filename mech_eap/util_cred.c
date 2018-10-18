@@ -47,6 +47,8 @@
 #include "libmoonshot.h"
 #endif
 
+#include <openssl/opensslv.h>
+
 OM_uint32
 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
