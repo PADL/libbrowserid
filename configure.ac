@@ -91,5 +91,5 @@ fi
 
 AX_CHECK_LIBMOONSHOT
 AC_CONFIG_FILES([Makefile libeap/Makefile mech_eap/Makefile
-			  mech_eap.spec mech_eap_noshib.spec])
+			  mech_eap.spec mech_eap_noshib.spec APKBUILD])
 AC_OUTPUT

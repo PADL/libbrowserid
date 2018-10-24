@@ -163,3 +163,30 @@ ubuntu18-noshib:
     CI_JOB_NAME: ubuntu18
   image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu18:latest
   <<: *debiancommon-noshib
+
+alpine38:
+  stage: build
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/alpine38:latest
+  tags:
+    - moonshot
+  script:
+    - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
+    - apk add apks/*.apk --allow-untrusted
+    - rm -fr apks deps.zip
+    - adduser -D tmpuser
+    - adduser tmpuser abuild
+    - sh autogen.sh
+    - sed -i "s/GZIP_ENV = --best//g" Makefile.in
+    - ./configure
+    - sed -i "s/pkgrel=0/pkgrel=$CI_PIPELINE_ID/g" APKBUILD
+    - make dist
+    - chown tmpuser . -R
+    - sudo -u tmpuser abuild checksum
+    - sudo -u tmpuser abuild-keygen -an
+    - sudo -u tmpuser abuild -r
+    - mkdir apks
+    - cp /home/tmpuser/packages/moonshot/x86_64/*.apk apks
+  artifacts:
+    expire_in: 6 months
+    paths:
+        - apks
