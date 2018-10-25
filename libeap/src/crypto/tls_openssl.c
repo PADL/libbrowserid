@@ -59,7 +59,7 @@ typedef int stack_index_t;
 #endif /* SSL_set_tlsext_status_type */
 
 #if (OPENSSL_VERSION_NUMBER < 0x10100000L || \
-     defined(LIBRESSL_VERSION_NUMBER)) &&    \
+     (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER <  0x20700000L)) &&    \
     !defined(BORINGSSL_API_VERSION)
 /*
  * SSL_get_client_random() and SSL_get_server_random() were added in OpenSSL
@@ -922,7 +922,7 @@ void * tls_init(const struct tls_config *conf)
 		}
 #endif /* OPENSSL_FIPS */
 #endif /* CONFIG_FIPS */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 		SSL_load_error_strings();
 		SSL_library_init();
 #ifndef OPENSSL_NO_SHA256
@@ -1046,7 +1046,7 @@ void tls_deinit(void *ssl_ctx)
 
 	tls_openssl_ref_count--;
 	if (tls_openssl_ref_count == 0) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 // The next four lines, and two more just below, deal with de-initializing
 // global state in the OpenSSL engine. We (Moonshot) don't want that, since
 // we use OpenSSL elsewhere in our apps (i.e., not only via hostap / libeap.)
@@ -2359,7 +2359,7 @@ static int tls_connection_client_cert(struct tls_connection *conn,
 		return 0;
 
 #ifdef PKCS12_FUNCS
-#if OPENSSL_VERSION_NUMBER < 0x10002000L
+#if OPENSSL_VERSION_NUMBER < 0x10002000L || defined(LIBRESSL_VERSION_NUMBER)
 	/*
 	 * Clear previously set extra chain certificates, if any, from PKCS#12
 	 * processing in tls_parse_pkcs12() to allow OpenSSL to build a new
@@ -4040,7 +4040,7 @@ int tls_connection_set_params(void *tls_ctx, struct tls_connection *conn,
                                    params->ca_cert_blob,
                                    params->ca_cert_blob_len,
                                    params->ca_path,
-								   params->server_cert_cb, 
+								   params->server_cert_cb,
                                    params->server_cert_ctx))
 		return -1;
 
