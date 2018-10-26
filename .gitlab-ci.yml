@@ -100,7 +100,7 @@ before_script:
     - moonshot
   script:
     - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
-    - apk add apks/*.apk --allow-untrusted
+    - apk add apks/*/*.apk --allow-untrusted
     - rm -fr apks deps.zip
     - sed -i "s/pkgrel=0/pkgrel=$CI_PIPELINE_ID/g" APKBUILD.in
     - sh autogen.sh
