@@ -94,6 +94,31 @@ before_script:
     paths:
         - build/*.deb
 
+.alpinecommon: &alpinecommon
+  stage: build
+  tags:
+    - moonshot
+  script:
+    - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
+    - apk add apks/*.apk --allow-untrusted
+    - rm -fr apks deps.zip
+    - sed -i "s/pkgrel=0/pkgrel=$CI_PIPELINE_ID/g" APKBUILD.in
+    - sh autogen.sh
+    - adduser root abuild
+    - sed -i "s/GZIP_ENV = --best//g" Makefile.in
+    - ./configure
+    - make dist
+    - export forceroot="1"
+    - abuild checksum
+    - abuild-keygen -an
+    - sudo -E abuild -r
+    - mkdir apks
+    - mv /root/packages/moonshot/* apks
+  artifacts:
+    expire_in: 6 months
+    paths:
+        - apks/*/*.apk
+
 centos6:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/centos6:latest
   <<: *centoscommon
@@ -165,28 +190,9 @@ ubuntu18-noshib:
   <<: *debiancommon-noshib
 
 alpine38:
-  stage: build
   image: registry.ci.ti.ja.net/jisc/moonshot-build/alpine38:latest
-  tags:
-    - moonshot
-  script:
-    - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
-    - apk add apks/*.apk --allow-untrusted
-    - rm -fr apks deps.zip
-    - adduser -D tmpuser
-    - adduser tmpuser abuild
-    - sh autogen.sh
-    - sed -i "s/GZIP_ENV = --best//g" Makefile.in
-    - ./configure
-    - sed -i "s/pkgrel=0/pkgrel=$CI_PIPELINE_ID/g" APKBUILD
-    - make dist
-    - chown tmpuser . -R
-    - sudo -u tmpuser abuild checksum
-    - sudo -u tmpuser abuild-keygen -an
-    - sudo -u tmpuser abuild -r
-    - mkdir apks
-    - cp /home/tmpuser/packages/moonshot/x86_64/*.apk apks
-  artifacts:
-    expire_in: 6 months
-    paths:
-        - apks
+  <<: *alpinecommon
+
+alpine38_armhf:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/alpine38_arm:latest
+  <<: *alpinecommon
