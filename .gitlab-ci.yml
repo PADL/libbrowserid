@@ -103,17 +103,17 @@ before_script:
     - apk add apks/*/*.apk --allow-untrusted
     - rm -fr apks deps.zip
     - sed -i "s/pkgrel=0/pkgrel=$CI_PIPELINE_ID/g" APKBUILD.in
+    - adduser -D tmpuser -s /bin/sh
+    - adduser tmpuser abuild
     - sh autogen.sh
-    - adduser root abuild
     - sed -i "s/GZIP_ENV = --best//g" Makefile.in
     - ./configure
     - make dist
-    - export forceroot="1"
-    - abuild checksum
-    - abuild-keygen -an
-    - sudo -E abuild -r
+    - sudo -u tmpuser abuild checksum
+    - sudo -u tmpuser abuild-keygen -an
+    - sudo -u tmpuser abuild -r
     - mkdir apks
-    - mv /root/packages/moonshot/* apks
+    - mv /home/tmpuser/packages/moonshot/* apks
   artifacts:
     expire_in: 6 months
     paths:
