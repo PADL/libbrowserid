@@ -132,6 +132,7 @@ mech_eap_la_SOURCES =    			\
 	util_radius.h \
 	util_reauth.h \
 	util_saml.h \
+	util_simplesaml.h \
 	util_shib.h \
 	util_local.h
 
@@ -160,6 +161,8 @@ mech_eap_la_SOURCES +=				\
 
 if OPENSAML
 mech_eap_la_SOURCES += util_saml.cpp
+else
+mech_eap_la_SOURCES += util_simplesaml.cpp
 endif
 
 if SHIBRESOLVER

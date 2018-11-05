@@ -57,11 +57,9 @@ typedef bool
                                void *data);
 
 #define ATTR_TYPE_RADIUS            0U                  /* RADIUS AVPs */
-#ifdef HAVE_OPENSAML
 #define ATTR_TYPE_SAML_ASSERTION    1U                  /* SAML assertion */
 #define ATTR_TYPE_SAML              2U                  /* SAML attributes */
 #define ATTR_TYPE_NAMEID            3U                  /* SAML Name IDs */
-#endif
 #define ATTR_TYPE_LOCAL             4U                  /* Local attributes */
 #define ATTR_TYPE_MIN               ATTR_TYPE_RADIUS
 #define ATTR_TYPE_MAX               ATTR_TYPE_LOCAL
@@ -279,6 +277,7 @@ private:
 #include "util_radius.h"
 #include "util_saml.h"
 #include "util_shib.h"
+#include "util_simplesaml.h"
 
 #ifdef __cplusplus
 
