@@ -275,8 +275,14 @@ private:
 #endif /* __cplusplus */
 
 #include "util_radius.h"
+#ifdef HAVE_OPENSAML
 #include "util_saml.h"
+#else
+#include "util_local.h"
+#endif
+#ifdef HAVE_SHIBRESOLVER
 #include "util_shib.h"
+#endif
 #include "util_simplesaml.h"
 
 #ifdef __cplusplus

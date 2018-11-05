@@ -37,6 +37,7 @@
 #include "gssapiP_eap.h"
 #include "util_radius.h"
 #include "utils/radius_utils.h"
+#include <vector>
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR
 

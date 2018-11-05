@@ -92,8 +92,6 @@ private:
     bool m_authenticated;
 };
 
-
-
 extern "C" {
 #endif
 

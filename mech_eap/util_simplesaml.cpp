@@ -66,9 +66,10 @@ gss_eap_simplesaml_assertion_provider::initWithExistingContext(const gss_eap_att
         return false;
 
     saml = static_cast<const gss_eap_simplesaml_assertion_provider *>(ctx);
-    this->m_assertion = strdup(saml->m_assertion);
-    this->m_authenticated = saml->m_authenticated;
-
+    if (saml->m_assertion) {
+        this->m_assertion = strdup(saml->m_assertion);
+        this->m_authenticated = saml->m_authenticated;
+    }
     return true;
 }
 
@@ -225,6 +226,8 @@ gss_eap_simplesaml_assertion_provider::createAttrContext(void)
     return new gss_eap_simplesaml_assertion_provider;
 }
 
+
+
 OM_uint32
 gssEapSimpleSamlAttrProvidersInit(OM_uint32 *minor)
 {
@@ -244,3 +247,4 @@ gssEapSimpleSamlAttrProvidersFinalize(OM_uint32 *minor)
     *minor = 0;
     return GSS_S_COMPLETE;
 }
+
