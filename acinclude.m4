@@ -401,3 +401,40 @@ fi
     AM_CONDITIONAL(LIBMOONSHOT, test "x$found_libmoonshot" != "xno")
 ])dnl
 
+AC_DEFUN([AX_CHECK_XML2],
+[AC_MSG_CHECKING(for xml2)
+XML2_DIR=
+found_xml2="no"
+AC_ARG_WITH(xml2,
+    AC_HELP_STRING([--with-xml2],
+       [Use xml2 (in specified installation directory)]),
+    [check_xml2_dir="$withval"],
+    [check_xml2_dir=])
+for dir in $check_xml2_dir $prefix /usr /usr/local ; do
+   xml2dir="$dir"
+   if test -f "$dir/include/libxml2/libxml/tree.h"; then
+     found_xml2="yes";
+     XML2_DIR="${xml2dir}"
+     XML2_CFLAGS="-I$xml2dir/include/libxml2";
+     break;
+   fi
+done
+AC_MSG_RESULT($found_xml2)
+if test x_$found_xml2 != x_yes; then
+   AC_MSG_ERROR([
+----------------------------------------------------------------------
+  Cannot find xml2 libraries.
+
+  Please install libxml2 or specify installation directory with
+  --with-xml2=(dir).
+----------------------------------------------------------------------
+])
+else
+  printf "xml2 found in $xml2dir\n";
+  XML2_LIBS="-lxml2";
+  XML2_LDFLAGS="-L$xml2dir/lib";
+  AC_SUBST(XML2_CFLAGS)
+  AC_SUBST(XML2_LDFLAGS)
+  AC_SUBST(XML2_LIBS)
+fi
+])dnl

@@ -38,6 +38,8 @@
 #define _UTIL_SIMPLESAML_H_ 1
 
 #include "util_attr.h"
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 #ifdef __cplusplus
 
@@ -82,15 +84,63 @@ public:
         return m_authenticated;
     }
 
+    xmlDocPtr getAssertion(void) const {
+        return m_assertion;
+    }
+
     static bool init(void);
     static void finalize(void);
 
     static gss_eap_attr_provider *createAttrContext(void);
 
 private:
-    const char*  m_assertion;
+    xmlDocPtr m_assertion;
     bool m_authenticated;
 };
+
+struct gss_eap_nameid_attr_provider : gss_eap_attr_provider {
+public:
+    gss_eap_nameid_attr_provider(void) {}
+    ~gss_eap_nameid_attr_provider(void) {}
+
+    bool getAttributeTypes(gss_eap_attr_enumeration_cb, void *data) const;
+    bool setAttribute(int complete,
+                      const gss_buffer_t attr,
+                      const gss_buffer_t value);
+    bool deleteAttribute(const gss_buffer_t value);
+    bool getAttribute(const gss_buffer_t attr,
+                      int *authenticated,
+                      int *complete,
+                      gss_buffer_t value,
+                      gss_buffer_t display_value,
+                      int *more) const;
+    gss_any_t mapToAny(int authenticated,
+                       gss_buffer_t type_id) const;
+    void releaseAnyNameMapping(gss_buffer_t type_id,
+                               gss_any_t input) const;
+
+    const char *prefix(void) const;
+    const char *name(void) const {
+        return NULL;
+    }
+    bool initWithJsonObject(const gss_eap_attr_ctx *manager GSSEAP_UNUSED,
+                            JSONObject &object GSSEAP_UNUSED) {
+        return false;
+    }
+    JSONObject jsonRepresentation(void) const {
+        return JSONObject::null();
+    }
+
+    static bool init(void);
+    static void finalize(void);
+
+    static gss_eap_attr_provider *createAttrContext(void);
+
+private:
+    bool getAssertion(int *authenticated, xmlDocPtr *pAssertion) const;
+    xmlNodePtr getNameIDNode(xmlDocPtr assertion) const;
+};
+
 
 extern "C" {
 #endif

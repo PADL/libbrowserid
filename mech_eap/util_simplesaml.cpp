@@ -50,7 +50,7 @@ gss_eap_simplesaml_assertion_provider::gss_eap_simplesaml_assertion_provider(voi
 
 gss_eap_simplesaml_assertion_provider::~gss_eap_simplesaml_assertion_provider(void)
 {
-    delete m_assertion;
+    xmlFreeDoc(m_assertion);
 }
 
 bool
@@ -67,7 +67,7 @@ gss_eap_simplesaml_assertion_provider::initWithExistingContext(const gss_eap_att
 
     saml = static_cast<const gss_eap_simplesaml_assertion_provider *>(ctx);
     if (saml->m_assertion) {
-        this->m_assertion = strdup(saml->m_assertion);
+        this->m_assertion = xmlCopyDoc(saml->m_assertion, 1);
         this->m_authenticated = saml->m_authenticated;
     }
     return true;
@@ -94,10 +94,8 @@ gss_eap_simplesaml_assertion_provider::initWithGssContext(const gss_eap_attr_ctx
      */
     radius = static_cast<const gss_eap_radius_attr_provider *>
         (m_manager->getProvider(ATTR_TYPE_RADIUS));
-    if (radius != NULL &&
-        radius->getFragmentedAttribute(attrid, &authenticated, &complete, &value)) {
-        this->m_assertion = (char*) malloc(value.length + 1);
-        snprintf((char*) this->m_assertion, value.length + 1, "%s", (char*) value.value);
+    if (radius != NULL && radius->getFragmentedAttribute(attrid, &authenticated, &complete, &value)) {
+        this->m_assertion = xmlReadMemory((const char*) value.value, value.length, "noname.xml", NULL, 0);
         this->m_authenticated = authenticated;
         gss_release_buffer(&minor, &value);
     } else {
@@ -128,9 +126,8 @@ gss_eap_simplesaml_assertion_provider::setAttribute(int complete GSSEAP_UNUSED,
                                                     const gss_buffer_t value)
 {
     if (attr == GSS_C_NO_BUFFER || attr->length == 0) {
-        delete this->m_assertion;
-        this->m_assertion = (char*) malloc(value->length + 1);
-        snprintf((char*)this->m_assertion, value->length + 1, "%s", (char*) value->value);
+        xmlFreeDoc(m_assertion);
+        m_assertion = xmlReadMemory((const char*) value->value, value->length, "noname.xml", NULL, 0);
         return true;
     }
 
@@ -140,7 +137,7 @@ gss_eap_simplesaml_assertion_provider::setAttribute(int complete GSSEAP_UNUSED,
 bool
 gss_eap_simplesaml_assertion_provider::deleteAttribute(const gss_buffer_t value GSSEAP_UNUSED)
 {
-    delete m_assertion;
+    xmlFreeDoc(m_assertion);
     m_assertion = NULL;
     m_authenticated = false;
 
@@ -156,6 +153,8 @@ gss_eap_simplesaml_assertion_provider::getAttribute(const gss_buffer_t attr,
                                               int *more) const
 {
     gss_buffer_desc str;
+    OM_uint32 minor;
+    int xmllen = 0;
 
     if (attr != GSS_C_NO_BUFFER && attr->length != 0)
         return false;
@@ -171,8 +170,8 @@ gss_eap_simplesaml_assertion_provider::getAttribute(const gss_buffer_t attr,
     if (complete != NULL)
         *complete = true;
 
-    str.length = strlen(this->m_assertion);
-    str.value = (void*) this->m_assertion;
+    xmlDocDumpMemory(m_assertion, (xmlChar**) &str.value, &xmllen);
+    str.length = xmllen;
 
     if (value != NULL)
         duplicateBuffer(str, value);
@@ -181,6 +180,7 @@ gss_eap_simplesaml_assertion_provider::getAttribute(const gss_buffer_t attr,
 
     *more = 0;
 
+    gss_release_buffer(&minor, &str);
     return true;
 }
 
@@ -198,7 +198,7 @@ void
 gss_eap_simplesaml_assertion_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
                                                        gss_any_t input) const
 {
-    delete ((char *)input);
+    delete ((xmlDocPtr)input);
 }
 
 const char *
@@ -226,12 +226,189 @@ gss_eap_simplesaml_assertion_provider::createAttrContext(void)
     return new gss_eap_simplesaml_assertion_provider;
 }
 
+/*
+ * gss_eap_nameid_attr_provider is for retrieving the underlying NameID attributes.
+ */
+bool
+gss_eap_nameid_attr_provider::getAssertion(int *authenticated,
+                                         xmlDocPtr *pAssertion) const
+{
+    gss_eap_simplesaml_assertion_provider *saml;
+
+    if (authenticated != NULL)
+        *authenticated = false;
+    if (pAssertion != NULL)
+        *pAssertion = NULL;
+
+    saml = static_cast<gss_eap_simplesaml_assertion_provider *>
+        (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
+    if (saml == NULL)
+        return false;
+
+    if (authenticated != NULL)
+        *authenticated = saml->authenticated();
+    if (pAssertion != NULL)
+        *pAssertion = saml->getAssertion();
+
+    return true;
+}
+
+xmlNodePtr gss_eap_nameid_attr_provider::getNameIDNode(xmlDocPtr assertion) const
+{
+    // Search Subject
+    xmlNodePtr current = xmlDocGetRootElement(assertion);
+    for (current = current->children; current; current = current->next)
+        if (current->type == XML_ELEMENT_NODE && strcmp((const char*) current->name, "Subject") == 0)
+            break;
+    if (!current)
+        return NULL;
+
+    // Search NameID
+    for (current = current->children; current; current = current->next)
+        if (current->type == XML_ELEMENT_NODE && strcmp((const char*) current->name, "NameID") == 0)
+            break;
+    if (!current)
+        return NULL;
+
+    return current;
+}
+
+
+bool
+gss_eap_nameid_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
+                                              void *data) const
+{
+    xmlDocPtr assertion;
+    int authenticated;
+    xmlNodePtr name_id = NULL;
+    char* name_id_format = NULL;
+    if (!getAssertion(&authenticated, &assertion))
+        return true;
+
+    name_id = getNameIDNode(assertion);
+    if (!name_id)
+        return true;
+
+    name_id_format = (char*) xmlGetProp(name_id, (const xmlChar *) "Format");
+    if (!name_id_format)
+        name_id_format = (char*) "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified";
+
+    gss_buffer_desc utf8;
+    utf8.value = name_id_format;
+    utf8.length = strlen(name_id_format);
+
+    if (!addAttribute(m_manager, this, &utf8, data))
+        return false;
+
+    return true;
+}
+
+bool
+gss_eap_nameid_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
+                                         const gss_buffer_t attr GSSEAP_UNUSED,
+                                         const gss_buffer_t value GSSEAP_UNUSED)
+{
+    return false;
+}
+
+bool
+gss_eap_nameid_attr_provider::deleteAttribute(const gss_buffer_t attr GSSEAP_UNUSED)
+{
+    return false;
+}
+
+bool
+gss_eap_nameid_attr_provider::getAttribute(const gss_buffer_t attr,
+                                         int *authenticated,
+                                         int *complete,
+                                         gss_buffer_t value,
+                                         gss_buffer_t display_value,
+                                         int *more) const
+{
+    xmlDocPtr assertion;
+    xmlNodePtr name_id_node = NULL;
+    char *name_id_format = NULL;
+    char *name_id = NULL;
+
+    if (*more != -1)
+        return false;
+
+    if (!getAssertion(authenticated, &assertion))
+        return false;
+
+    name_id_node = getNameIDNode(assertion);
+    if (!name_id_node)
+        return false;
+
+    *more = 0;
+    *complete = 1;
+
+    name_id_format = (char*) xmlGetProp(name_id_node, (const xmlChar*) "Format");
+    if (!name_id_format)
+        name_id_format = (char*) "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified";
+
+    string str((const char *)attr->value, attr->length);
+    if (strcmp(name_id_format, str.c_str()))
+        return false;
+
+    name_id = (char*) xmlNodeListGetString(name_id_node->doc, name_id_node->children, 1);
+    if (value != NULL) {
+        value->value = strdup(name_id);
+        value->length = strlen(name_id);
+    }
+    if (display_value != NULL) {
+        display_value->value = strdup(name_id);
+        display_value->length = strlen(name_id);
+    }
+
+    return true;
+}
+
+gss_any_t
+gss_eap_nameid_attr_provider::mapToAny(int authenticated GSSEAP_UNUSED,
+                                     gss_buffer_t type_id GSSEAP_UNUSED) const
+{
+    return (gss_any_t)NULL;
+}
+
+void
+gss_eap_nameid_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
+                                                  gss_any_t input GSSEAP_UNUSED) const
+{
+}
+
+const char *
+gss_eap_nameid_attr_provider::prefix(void) const
+{
+    return "urn:ietf:params:gss:federated-saml-nameid";
+}
+
+bool
+gss_eap_nameid_attr_provider::init(void)
+{
+    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_NAMEID, createAttrContext);
+    return true;
+}
+
+void
+gss_eap_nameid_attr_provider::finalize(void)
+{
+    gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_NAMEID);
+}
+
+gss_eap_attr_provider *
+gss_eap_nameid_attr_provider::createAttrContext(void)
+{
+    return new gss_eap_nameid_attr_provider;
+}
+
 
 
 OM_uint32
 gssEapSimpleSamlAttrProvidersInit(OM_uint32 *minor)
 {
-    if (!gss_eap_simplesaml_assertion_provider::init()) {
+    if (!gss_eap_simplesaml_assertion_provider::init() ||
+        !gss_eap_nameid_attr_provider::init()) {
         *minor = GSSEAP_SAML_INIT_FAILURE;
         return GSS_S_FAILURE;
     }
@@ -242,6 +419,7 @@ gssEapSimpleSamlAttrProvidersInit(OM_uint32 *minor)
 OM_uint32
 gssEapSimpleSamlAttrProvidersFinalize(OM_uint32 *minor)
 {
+    gss_eap_nameid_attr_provider::finalize();
     gss_eap_simplesaml_assertion_provider::finalize();
 
     *minor = 0;

@@ -87,6 +87,7 @@ AX_CHECK_OPENSSL
 if test "x$acceptor" = "xyes" ; then
   AX_CHECK_RADSEC
   AX_CHECK_JANSSON
+  AX_CHECK_XML2
 fi
 
 AX_CHECK_LIBMOONSHOT
