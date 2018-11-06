@@ -14,6 +14,7 @@ BuildRequires:	 %{_moonshot_krb5} >= 1.9.1
 BuildRequires:	 moonshot-ui-devel
 BuildRequires: jansson-devel
 Requires:	moonshot-ui
+BuildRequires: libxml2-devel
 BuildRequires: libradsec-devel >= 0.0.3
 BuildRequires: shibboleth-devel >= 2.5
 BuildRequires: libshibresolver-devel

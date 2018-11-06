@@ -40,6 +40,7 @@
 #ifdef __cplusplus
 
 #include <map>
+using namespace std;
 
 typedef struct {
   gss_const_buffer_t name;

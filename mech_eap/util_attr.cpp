@@ -74,7 +74,12 @@ GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
         goto cleanup;
     }
 #else
-    wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Don't have OpenSAML; not calling gssEapSamlAttrProvidersInit()");
+    wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Calling gssEapSimpleSamlAttrProvidersInit()");
+    major = gssEapSimpleSamlAttrProvidersInit(&minor);
+    if (GSS_ERROR(major)) {
+        wpa_printf(MSG_ERROR, "### gssEapAttrProvidersInitInternal(): Error returned from gssEapSimpleSamlAttrProvidersInit; major code is %08X; minor is %08X", major, minor);
+        goto cleanup;
+    }
 #endif
 
 cleanup:
