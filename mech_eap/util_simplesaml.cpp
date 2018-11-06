@@ -291,7 +291,7 @@ gss_eap_nameid_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
 
     name_id_format = (char*) xmlGetProp(name_id, (const xmlChar *) "Format");
     if (!name_id_format)
-        name_id_format = (char*) "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified";
+        name_id_format = strdup("urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified");
 
     gss_buffer_desc utf8;
     utf8.value = name_id_format;
@@ -300,6 +300,7 @@ gss_eap_nameid_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addA
     if (!addAttribute(m_manager, this, &utf8, data))
         return false;
 
+    free(name_id_format);
     return true;
 }
 
@@ -360,7 +361,7 @@ gss_eap_nameid_attr_provider::getAttribute(const gss_buffer_t attr,
         display_value->value = strdup(name_id);
         display_value->length = strlen(name_id);
     }
-
+    free(name_id);
     return true;
 }
 
@@ -402,13 +403,209 @@ gss_eap_nameid_attr_provider::createAttrContext(void)
     return new gss_eap_nameid_attr_provider;
 }
 
+/*
+ * gss_eap_saml_attr_provider is for retrieving the underlying NameID attributes.
+ */
+bool
+gss_eap_saml_attr_provider::getAssertion(int *authenticated,
+                                         xmlDocPtr *pAssertion) const
+{
+    gss_eap_simplesaml_assertion_provider *saml;
+
+    if (authenticated != NULL)
+        *authenticated = false;
+    if (pAssertion != NULL)
+        *pAssertion = NULL;
+
+    saml = static_cast<gss_eap_simplesaml_assertion_provider *>
+        (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
+    if (saml == NULL)
+        return false;
+
+    if (authenticated != NULL)
+        *authenticated = saml->authenticated();
+    if (pAssertion != NULL)
+        *pAssertion = saml->getAssertion();
+
+    return true;
+}
+
+void gss_eap_saml_attr_provider::processAttribute(xmlNodePtr attribute, json_t *jattributes) const
+{
+    char *name = (char*) xmlGetProp(attribute, (const xmlChar*) "Name");
+    char *nameFormat = (char*) xmlGetProp(attribute, (const xmlChar*) "NameFormat");
+    xmlNodePtr value = NULL;
+    if (name && nameFormat) {
+        char* full_name = (char*) malloc(strlen(name) + strlen(nameFormat) + 2);
+        strcpy(full_name, name);
+        strcat(full_name, (char*) " ");
+        strcat(full_name, nameFormat);
+        json_t *values = json_array();
+        for (value = attribute->children; value; value = value->next)
+            if (value->type == XML_ELEMENT_NODE && strcmp((const char*) value->name, "AttributeValue") == 0) {
+                xmlChar* node_value = xmlNodeListGetString(value->doc, value->children, 1);
+                json_array_append_new(values, json_string((char*) node_value));
+                xmlFree(node_value);
+            }
+        json_object_set_new(jattributes, full_name, values);
+        free(full_name);
+    }
+    free(name);
+    free(nameFormat);
+}
+
+void gss_eap_saml_attr_provider::processAttributeStatement(xmlNodePtr attributeStatement, json_t *jattributes) const
+{
+    xmlNodePtr node = NULL;
+    for (node = attributeStatement->children; node; node = node->next) {
+        if (node->type == XML_ELEMENT_NODE && strcmp((const char*) node->name, "Attribute") == 0)
+            processAttribute(node, jattributes);
+    }
+}
+
+json_t* gss_eap_saml_attr_provider::assertion2json(xmlNodePtr assertion) const
+{
+    xmlNodePtr node = NULL;
+    json_t *jattributes = json_object();
+    for (node = assertion->children; node; node = node->next) {
+        if (node->type == XML_ELEMENT_NODE && strcmp((const char*) node->name, "AttributeStatement") == 0) {
+            processAttributeStatement(node, jattributes);
+        }
+    }
+    return jattributes;
+}
+
+
+bool
+gss_eap_saml_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
+                                              void *data) const
+{
+    xmlDocPtr assertion;
+    int authenticated;
+    json_t* jattributes = NULL;
+    const char *key = NULL;
+    json_t *value = NULL;
+
+    if (!getAssertion(&authenticated, &assertion))
+        return true;
+
+    jattributes = assertion2json(xmlDocGetRootElement(assertion));
+    json_object_foreach(jattributes, key, value) {
+        gss_buffer_desc utf8;
+        utf8.value = (void*) key;
+        utf8.length = strlen(key);
+        if (!addAttribute(m_manager, this, &utf8, data))
+            return false;
+    }
+
+    json_decref(jattributes);
+
+    return true;
+}
+
+bool
+gss_eap_saml_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
+                                         const gss_buffer_t attr GSSEAP_UNUSED,
+                                         const gss_buffer_t value GSSEAP_UNUSED)
+{
+    return false;
+}
+
+bool
+gss_eap_saml_attr_provider::deleteAttribute(const gss_buffer_t attr GSSEAP_UNUSED)
+{
+    return false;
+}
+
+bool
+gss_eap_saml_attr_provider::getAttribute(const gss_buffer_t attr,
+                                         int *authenticated,
+                                         int *complete,
+                                         gss_buffer_t value,
+                                         gss_buffer_t display_value,
+                                         int *more) const
+{
+    xmlDocPtr assertion;
+    json_t* jattributes = NULL;
+    json_t *values = NULL;
+    int i = *more, nvalues;
+    string attr_name((char *)attr->value, attr->length);
+    bool rv = false;
+
+    *complete = true;
+    *more = 0;
+    if (i == -1)
+        i = 0;
+
+    if (getAssertion(authenticated, &assertion)) {
+        jattributes = assertion2json(xmlDocGetRootElement(assertion));
+        values = json_object_get(jattributes, attr_name.c_str());
+
+        nvalues = json_array_size(values);
+        if (i < nvalues) {
+            const char *strvalue = json_string_value(json_array_get(values, i));
+            value->value = strdup(strvalue);
+            value->length = strlen(strvalue);
+            display_value->value = strdup(strvalue);
+            display_value->length = strlen(strvalue);
+            if (nvalues > ++i)
+                *more = i;
+            rv = true;
+        }
+    }
+
+    json_decref(jattributes);
+    return rv;
+}
+
+gss_any_t
+gss_eap_saml_attr_provider::mapToAny(int authenticated GSSEAP_UNUSED,
+                                     gss_buffer_t type_id GSSEAP_UNUSED) const
+{
+    return (gss_any_t)NULL;
+}
+
+void
+gss_eap_saml_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
+                                                  gss_any_t input GSSEAP_UNUSED) const
+{
+}
+
+const char *
+gss_eap_saml_attr_provider::prefix(void) const
+{
+    return "urn:ietf:params:gss:federated-saml-attribute";
+}
+
+bool
+gss_eap_saml_attr_provider::init(void)
+{
+    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_SAML, createAttrContext);
+    return true;
+}
+
+void
+gss_eap_saml_attr_provider::finalize(void)
+{
+    gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_SAML);
+}
+
+gss_eap_attr_provider *
+gss_eap_saml_attr_provider::createAttrContext(void)
+{
+    return new gss_eap_saml_attr_provider;
+}
+
+
+
 
 
 OM_uint32
 gssEapSimpleSamlAttrProvidersInit(OM_uint32 *minor)
 {
     if (!gss_eap_simplesaml_assertion_provider::init() ||
-        !gss_eap_nameid_attr_provider::init()) {
+        !gss_eap_nameid_attr_provider::init() ||
+        !gss_eap_saml_attr_provider::init()) {
         *minor = GSSEAP_SAML_INIT_FAILURE;
         return GSS_S_FAILURE;
     }
@@ -419,6 +616,7 @@ gssEapSimpleSamlAttrProvidersInit(OM_uint32 *minor)
 OM_uint32
 gssEapSimpleSamlAttrProvidersFinalize(OM_uint32 *minor)
 {
+    gss_eap_saml_attr_provider::finalize();
     gss_eap_nameid_attr_provider::finalize();
     gss_eap_simplesaml_assertion_provider::finalize();
 

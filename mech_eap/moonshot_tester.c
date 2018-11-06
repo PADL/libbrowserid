@@ -227,6 +227,9 @@ int main() {
     enumerateAttributes(&minor, client_name, TRUE);
     showLocalIdentity(&minor, client_name);
 
+    gss_delete_sec_context(&minor, &client_ctx, GSS_C_NO_BUFFER);
+    gss_delete_sec_context(&minor, &server_ctx, GSS_C_NO_BUFFER);
+
     return 0;
 cleanup:
     printf("ERROR\n");
