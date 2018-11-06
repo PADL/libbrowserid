@@ -278,12 +278,14 @@ private:
 #ifdef HAVE_OPENSAML
 #include "util_saml.h"
 #else
-#include "util_local.h"
+#include "util_simplesaml.h"
 #endif
 #ifdef HAVE_SHIBRESOLVER
 #include "util_shib.h"
+#else
+#include "util_local.h"
 #endif
-#include "util_simplesaml.h"
+
 
 #ifdef __cplusplus
 
