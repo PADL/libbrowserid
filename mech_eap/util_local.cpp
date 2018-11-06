@@ -157,13 +157,6 @@ gss_eap_local_attr_provider::getAttribute(const gss_buffer_t attr,
                                          int *more) const
 {
     string attr_name((char *)attr->value, attr->length);
-    int i = *more, nvalues;
-    *complete = true;
-    *authenticated = m_authenticated;
-    *more = 0;
-
-    if (i == -1)
-        i = 0;
 
     json_t *jsonattr = json_object_get(m_attributes, attr_name.c_str());
 
@@ -172,6 +165,13 @@ gss_eap_local_attr_provider::getAttribute(const gss_buffer_t attr,
         json_t* copyfrom = json_object_get(jsonattr, "copy_from");
 
         if (values && json_is_array(values)) {
+            int i = *more, nvalues;
+            *complete = true;
+            *authenticated = m_authenticated;
+            *more = 0;
+
+            if (i == -1)
+                i = 0;
             nvalues = json_array_size(values);
             if (i >= nvalues)
                 return false;
