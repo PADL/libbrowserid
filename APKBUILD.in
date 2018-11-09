@@ -1,6 +1,6 @@
 # Contributor: Alejandro Perez-Mendez <alex.perez-mendez@jisc.ac.uk>
 # Maintainer: Alejandro Perez-Mendez <alex.perez-mendez@jisc.ac.uk>
-pkgname=@PACKAGE@
+pkgname=moonshot-gss-eap
 pkgver=@PACKAGE_VERSION@
 pkgrel=0
 pkgdesc="Project Moonshot provides federated access management."
