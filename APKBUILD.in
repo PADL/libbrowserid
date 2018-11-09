@@ -1,6 +1,7 @@
 # Contributor: Alejandro Perez-Mendez <alex.perez-mendez@jisc.ac.uk>
 # Maintainer: Alejandro Perez-Mendez <alex.perez-mendez@jisc.ac.uk>
 pkgname=moonshot-gss-eap
+_pkgname=mech_eap
 pkgver=@PACKAGE_VERSION@
 pkgrel=0
 pkgdesc="Project Moonshot provides federated access management."
@@ -11,8 +12,8 @@ depends=""
 makedepends="alpine-sdk automake autoconf libtool libressl-dev jansson-dev moonshot-ui-dev libradsec-dev krb5-dev"
 install=""
 subpackages="$pkgname-dev"
-source="${pkgname}-${pkgver}.tar.gz"
-builddir="$srcdir/${pkgname}-${pkgver}"
+source="${_pkgname}-${pkgver}.tar.gz"
+builddir="$srcdir/${_pkgname}-${pkgver}"
 
 build() {
 	cd "$builddir"
