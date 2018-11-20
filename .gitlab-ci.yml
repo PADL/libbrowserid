@@ -135,6 +135,14 @@ debian9:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
   <<: *debiancommon
 
+raspbian8:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian8:latest
+  <<: *debiancommon
+
+raspbian9:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian9:latest
+  <<: *debiancommon
+
 ubuntu14:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu14:latest
   <<: *debiancommon
