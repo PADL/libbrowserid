@@ -179,6 +179,18 @@ debian9-noshib:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
   <<: *debiancommon-noshib
 
+raspbian8-noshib:
+  variables:
+    CI_JOB_NAME: raspbian8
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian8:latest
+  <<: *debiancommon-noshib
+
+raspbian9-noshib:
+  variables:
+    CI_JOB_NAME: raspbian9
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian9:latest
+  <<: *debiancommon-noshib
+
 ubuntu14-noshib:
   variables:
     CI_JOB_NAME: ubuntu14
