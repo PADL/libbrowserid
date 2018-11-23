@@ -31,7 +31,7 @@ before_script:
     - moonshot
   script:
     - yum -y upgrade
-    - sed -i "s/\(.\)%{?dist}/\1.$CI_PIPELINE_ID%{?dist}/g" mech_eap.spec.in
+    - sed -i "s/\(.\)%{?dist}/\1.$CI_PIPELINE_ID%{?dist}/g" mech_eap_noshib.spec.in
     - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
     - yum -y install RPMS/x86_64/*.rpm
     - rm -fr RPMS deps.zip
