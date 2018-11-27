@@ -62,6 +62,9 @@ GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
 #ifdef HAVE_SHIBRESOLVER
     /* Allow Shibboleth initialization failure to be non-fatal */
     gssEapLocalAttrProviderInit(&minor);
+#else
+    /* The local attribute resolve has the same name than the Shibobleth one */
+    gssEapLocalAttrProviderInit(&minor);
 #endif
 #ifdef HAVE_OPENSAML
     wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Calling gssEapSamlAttrProvidersInit()");
@@ -71,7 +74,12 @@ GSSEAP_ONCE_CALLBACK(gssEapAttrProvidersInitInternal)
         goto cleanup;
     }
 #else
-    wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Don't have OpenSAML; not calling gssEapSamlAttrProvidersInit()");
+    wpa_printf(MSG_INFO, "### gssEapAttrProvidersInitInternal(): Calling gssEapSimpleSamlAttrProvidersInit()");
+    major = gssEapSimpleSamlAttrProvidersInit(&minor);
+    if (GSS_ERROR(major)) {
+        wpa_printf(MSG_ERROR, "### gssEapAttrProvidersInitInternal(): Error returned from gssEapSimpleSamlAttrProvidersInit; major code is %08X; minor is %08X", major, minor);
+        goto cleanup;
+    }
 #endif
 
 cleanup:
@@ -126,8 +134,8 @@ namespace {
     } finalizer;
 }
 
-	    
-	
+
+
 static gss_eap_attr_create_provider gssEapAttrFactories[ATTR_TYPE_MAX + 1];
 
 /*

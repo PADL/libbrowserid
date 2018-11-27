@@ -11,8 +11,9 @@ Homepage: http://www.project-moonshot.org/
 Vcs-Git: http://www.project-moonshot.org/git/moonshot.git
 #Vcs-Browser: http://git.debian.org/?p=collab-maint/moonshot-gss-eap.git;a=summary
 
-Package: moonshot-gss-eap
-Conflicts: moonshot-gss-eap-noshib
+Package: moonshot-gss-eap-noshib
+Provides: moonshot-gss-eap (= ${binary:Version})
+Conflicts: moonshot-gss-eap
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Moonshot Federated Authentication - authentication mechanism
@@ -20,12 +21,12 @@ Description: Moonshot Federated Authentication - authentication mechanism
  and SAML to applications beyond the web platform. This package
  contains the client and server plugins to perform authentication.
 
-Package: moonshot-gss-eap-dbg
+Package: moonshot-gss-eap-dbg-noshib
 Architecture: any
 Section: debug
 Priority: extra
-Conflicts: moonshot-gss-eap-dbg-noshib
-Depends: ${shlibs:Depends}, ${misc:Depends}, moonshot-gss-eap (= ${binary:Version})
+Conflicts: moonshot-gss-eap-dbg
+Depends: ${shlibs:Depends}, ${misc:Depends}, moonshot-gss-eap-noshib (= ${binary:Version})
 Description: Moonshot Federated Authentication - debugging Symbols
  Project moonshot provides federated authentication using EAP, RADIUS
  and SAML to applications beyond the web platform. This package

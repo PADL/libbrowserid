@@ -1,5 +1,5 @@
 AC_PREREQ([2.61])
-AC_INIT([mech_eap], [1.1.0], [assent@jisc.ac.uk])
+AC_INIT([mech_eap], [1.1.1], [assent@jisc.ac.uk])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 
@@ -87,9 +87,10 @@ AX_CHECK_OPENSSL
 if test "x$acceptor" = "xyes" ; then
   AX_CHECK_RADSEC
   AX_CHECK_JANSSON
+  AX_CHECK_XML2
 fi
 
 AX_CHECK_LIBMOONSHOT
 AC_CONFIG_FILES([Makefile libeap/Makefile mech_eap/Makefile
-			  mech_eap.spec])
+			  mech_eap.spec mech_eap_noshib.spec APKBUILD])
 AC_OUTPUT

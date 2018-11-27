@@ -37,6 +37,7 @@
 #include "gssapiP_eap.h"
 #include "util_radius.h"
 #include "utils/radius_utils.h"
+#include <vector>
 
 #ifdef GSSEAP_ENABLE_ACCEPTOR
 
@@ -210,9 +211,9 @@ isInternalAttributeP(rs_const_avp *vp)
 static bool
 isFragmentedAttributeP(const gss_eap_attrid &attrid)
 {
-    /* A bit of a hack for the PAC for now. Should be configurable. */
-    return (attrid.first == VENDORPEC_UKERNA) &&
-        !isInternalAttributeP(attrid);
+    /* Explicitly indicate here what attributes are fragmented.
+       At the moment ONLY SAML Assertion */
+    return (attrid.first == VENDORPEC_UKERNA && attrid.second == PW_SAML_AAA_ASSERTION);
 }
 
 /*

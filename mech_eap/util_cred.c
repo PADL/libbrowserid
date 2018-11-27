@@ -47,6 +47,8 @@
 #include "libmoonshot.h"
 #endif
 
+#include <openssl/opensslv.h>
+
 OM_uint32
 gssEapAllocCred(OM_uint32 *minor, gss_cred_id_t *pCred)
 {
@@ -753,27 +755,37 @@ static int cert_to_byte_array(X509 *cert, unsigned char **bytes)
 
 static int sha256(unsigned char *bytes, int len, unsigned char *hash)
 {
-    EVP_MD_CTX ctx;
-    unsigned int hash_len;
-
-    EVP_MD_CTX_init(&ctx);
-    if (!EVP_DigestInit_ex(&ctx, EVP_sha256(), NULL)) {
+    unsigned int hash_len = 0;
+    int result = -1;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+#else
+    EVP_MD_CTX ctx_internal;
+    EVP_MD_CTX_init(&ctx_internal);
+    EVP_MD_CTX *ctx = &ctx_internal;
+#endif
+    if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
         fprintf(stderr, "sha256(init_sec_context.c): EVP_DigestInit_ex failed: %s",
                 ERR_error_string(ERR_get_error(), NULL));
-        return -1;
+        goto cleanup;
     }
-    if (!EVP_DigestUpdate(&ctx, bytes, len)) {
+    if (!EVP_DigestUpdate(ctx, bytes, len)) {
         fprintf(stderr, "sha256(init_sec_context.c): EVP_DigestUpdate failed: %s",
                 ERR_error_string(ERR_get_error(), NULL));
-        return -1;
+        goto cleanup;
     }
-    if (!EVP_DigestFinal(&ctx, hash, &hash_len)) {
+    if (!EVP_DigestFinal(ctx, hash, &hash_len)) {
         fprintf(stderr, "sha256(init_sec_context.c): EVP_DigestFinal failed: %s",
                 ERR_error_string(ERR_get_error(), NULL));
-        return -1;
+        goto cleanup;
     }
+    result = hash_len;
 
-    return hash_len;
+cleanup:
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    EVP_MD_CTX_free(ctx);
+#endif
+    return result;
 }
 
 int staticConfirmServerCert (const unsigned char  *hash,

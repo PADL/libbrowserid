@@ -1,4 +1,13 @@
-moonshot-gss-eap (1.1.0-0.DIST) unstable; urgency=medium
+moonshot-gss-eap (1.1.1-0.DIST) unstable; urgency=medium
+
+  * Add text UI
+  * Support for SAML nameid attributes
+  * Support server fingerprints in .gss_ea_id file
+  * Added monshot_tester_tool
+
+ -- Jisc <assent@jisc.ac.uk>  Tue, 27 Nov 2018 00:00:00 +0000
+
+moonshot-gss-eap (1.1.0-0) unstable; urgency=medium
 
   * Version number bump
 

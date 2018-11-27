@@ -756,11 +756,193 @@ gss_eap_saml_attr_provider::createAttrContext(void)
     return new gss_eap_saml_attr_provider;
 }
 
+/*
+ * gss_eap_nameid_attr_provider is for retrieving the underlying NameID attributes.
+ */
+bool
+gss_eap_nameid_attr_provider::getAssertion(int *authenticated,
+                                         saml2::Assertion **pAssertion,
+                                         bool createIfAbsent) const
+{
+    gss_eap_saml_assertion_provider *saml;
+
+    if (authenticated != NULL)
+        *authenticated = false;
+    if (pAssertion != NULL)
+        *pAssertion = NULL;
+
+    saml = static_cast<gss_eap_saml_assertion_provider *>
+        (m_manager->getProvider(ATTR_TYPE_SAML_ASSERTION));
+    if (saml == NULL)
+        return false;
+
+    if (authenticated != NULL)
+        *authenticated = saml->authenticated();
+    if (pAssertion != NULL)
+        *pAssertion = saml->getAssertion();
+
+    if (saml->getAssertion() == NULL) {
+        if (createIfAbsent) {
+            if (authenticated != NULL)
+                *authenticated = false;
+            if (pAssertion != NULL)
+                *pAssertion = saml->initAssertion();
+        } else
+            return false;
+    }
+
+    return true;
+}
+
+bool
+gss_eap_nameid_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAttribute,
+                                              void *data) const
+{
+    saml2::Assertion *assertion;
+    int authenticated;
+
+    if (!getAssertion(&authenticated, &assertion))
+        return true;
+
+    /*
+     * Note: the first prefix is added by the attribute provider manager
+     *
+     */
+    const saml2::Subject *subject = assertion->getSubject();
+    if (subject == NULL)
+        return true;
+    const saml2::NameID *nameID = subject->getNameID();
+    if (nameID == NULL)
+        return true;
+
+    const XMLCh *nameIdFormat = nameID->getFormat();
+
+    if (nameIdFormat == NULL || nameIdFormat[0] == '\0')
+        nameIdFormat = saml2::NameID::UNSPECIFIED;
+
+    gss_buffer_desc utf8;
+    utf8.value = (void *)toUTF8(nameIdFormat);
+    utf8.length = strlen((char *)utf8.value);
+
+    if (!addAttribute(m_manager, this, &utf8, data))
+        return false;
+
+    return true;
+}
+
+bool
+gss_eap_nameid_attr_provider::setAttribute(int complete GSSEAP_UNUSED,
+                                         const gss_buffer_t attr GSSEAP_UNUSED,
+                                         const gss_buffer_t value GSSEAP_UNUSED)
+{
+    return false;
+}
+
+bool
+gss_eap_nameid_attr_provider::deleteAttribute(const gss_buffer_t attr GSSEAP_UNUSED)
+{
+    return false;
+}
+
+bool
+gss_eap_nameid_attr_provider::getAttribute(const gss_buffer_t attr,
+                                         int *authenticated,
+                                         int *complete,
+                                         gss_buffer_t value,
+                                         gss_buffer_t display_value,
+                                         int *more) const
+{
+    saml2::Assertion *assertion;
+
+    if (!getAssertion(authenticated, &assertion))
+        return false;
+
+    if (*more != -1)
+        return false;
+
+    const saml2::Subject *subject = assertion->getSubject();
+    if (subject == NULL)
+        return false;
+    const saml2::NameID *nameID = subject->getNameID();
+    if (nameID == NULL)
+        return false;
+
+    *more = 0;
+    *complete = 1;
+
+    const XMLCh *nameIdFormat = nameID->getFormat();
+    if (nameIdFormat == NULL || nameIdFormat[0] == '\0')
+        nameIdFormat = saml2::NameID::UNSPECIFIED;
+
+    string str((const char *)attr->value, attr->length);
+    auto_ptr_XMLCh requestedFormat(str.c_str());
+
+    if (!XMLString::equals(nameIdFormat, requestedFormat.get()))
+        return false;
+
+    const XMLCh *nameIDvalue = nameID->getName();
+    if (nameIDvalue != NULL) {
+        if (value != NULL) {
+            value->value = toUTF8(nameIDvalue, true);
+            value->length = strlen((char*) value->value);
+        }
+        if (display_value != NULL) {
+            display_value->value = toUTF8(nameIDvalue, true);
+            display_value->length = strlen((char*) display_value->value);
+        }
+    }
+    else {
+        return false;
+    }
+
+    return true;
+}
+
+gss_any_t
+gss_eap_nameid_attr_provider::mapToAny(int authenticated GSSEAP_UNUSED,
+                                     gss_buffer_t type_id GSSEAP_UNUSED) const
+{
+    return (gss_any_t)NULL;
+}
+
+void
+gss_eap_nameid_attr_provider::releaseAnyNameMapping(gss_buffer_t type_id GSSEAP_UNUSED,
+                                                  gss_any_t input GSSEAP_UNUSED) const
+{
+}
+
+const char *
+gss_eap_nameid_attr_provider::prefix(void) const
+{
+    return "urn:ietf:params:gss:federated-saml-nameid";
+}
+
+bool
+gss_eap_nameid_attr_provider::init(void)
+{
+    gss_eap_attr_ctx::registerProvider(ATTR_TYPE_NAMEID, createAttrContext);
+    return true;
+}
+
+void
+gss_eap_nameid_attr_provider::finalize(void)
+{
+    gss_eap_attr_ctx::unregisterProvider(ATTR_TYPE_NAMEID);
+}
+
+gss_eap_attr_provider *
+gss_eap_nameid_attr_provider::createAttrContext(void)
+{
+    return new gss_eap_nameid_attr_provider;
+}
+
+
 OM_uint32
 gssEapSamlAttrProvidersInit(OM_uint32 *minor)
 {
     if (!gss_eap_saml_assertion_provider::init() ||
-        !gss_eap_saml_attr_provider::init()) {
+        !gss_eap_saml_attr_provider::init() ||
+        !gss_eap_nameid_attr_provider::init()) {
         *minor = GSSEAP_SAML_INIT_FAILURE;
         return GSS_S_FAILURE;
     }
@@ -771,6 +953,7 @@ gssEapSamlAttrProvidersInit(OM_uint32 *minor)
 OM_uint32
 gssEapSamlAttrProvidersFinalize(OM_uint32 *minor)
 {
+    gss_eap_nameid_attr_provider::finalize();
     gss_eap_saml_attr_provider::finalize();
     gss_eap_saml_assertion_provider::finalize();
 

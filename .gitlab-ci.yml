@@ -20,11 +20,31 @@ before_script:
     - mv mech_eap*.tar.gz SOURCES
     - rpmbuild -bb mech_eap.spec --define "_topdir `pwd`"
   artifacts:
+    expire_in: 6 months
+    paths:
+      - RPMS
+
+.centoscommon-noshib: &centoscommon-noshib
+  stage: build
+  tags:
+    - moonshot
+  script:
+    - yum -y upgrade
+    - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/master/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
+    - yum -y install RPMS/x86_64/*.rpm
+    - rm -fr RPMS deps.zip
+    - sh autogen.sh
+    - ./configure
+    - make dist
+    - mkdir SOURCES
+    - mv mech_eap*.tar.gz SOURCES
+    - rpmbuild -bb mech_eap_noshib.spec --define "_topdir `pwd`"
+  artifacts:
+    expire_in: 6 months
     paths:
       - RPMS
 
 .debiancommon: &debiancommon
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/$CI_JOB_NAME:latest
   stage: build
   tags:
     - moonshot
@@ -38,13 +58,63 @@ before_script:
     - autoreconf -fi
     - ./configure
     - make dist
-    - mv mech_eap-1.1.0.tar.gz ../moonshot-gss-eap_1.1.0.orig.tar.gz
+    - mv mech_eap-1.1.1.tar.gz ../moonshot-gss-eap_1.1.1.orig.tar.gz
     - debuild -us -uc
     - mkdir build
     - cp ../*.deb build
   artifacts:
+    expire_in: 6 months
     paths:
         - build/*.deb
+
+.debiancommon-noshib: &debiancommon-noshib
+  stage: build
+  tags:
+    - moonshot
+  script:
+    - apt-get -y update && apt-get -y dist-upgrade
+    - sed -i "s/DIST/$CI_JOB_NAME/g" debian/changelog
+    - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/master/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
+    - "dpkg -i build/*.deb || true"
+    - apt-get install -fy
+    - rm -fr build deps.zip
+    - cp debian/control_noshib debian/control
+    - cp debian/rules_noshib debian/rules
+    - autoreconf -fi
+    - ./configure
+    - make dist
+    - mv mech_eap-1.1.1.tar.gz ../moonshot-gss-eap_1.1.1.orig.tar.gz
+    - debuild -us -uc
+    - mkdir build
+    - cp ../*.deb build
+  artifacts:
+    expire_in: 6 months
+    paths:
+        - build/*.deb
+
+.alpinecommon: &alpinecommon
+  stage: build
+  tags:
+    - moonshot
+  script:
+    - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/moonshot/$i/-/jobs/artifacts/master/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
+    - apk add apks/*/*.apk --allow-untrusted
+    - rm -fr apks deps.zip
+    - adduser -D tmpuser -s /bin/sh
+    - adduser tmpuser abuild
+    - sh autogen.sh
+    - sed -i "s/GZIP_ENV = --best//g" Makefile.in
+    - ./configure
+    - make dist
+    - sudo -u tmpuser abuild checksum
+    - sudo -u tmpuser abuild-keygen -an
+    - sudo -u tmpuser abuild -r
+    - mkdir apks
+    - mv /home/tmpuser/packages/moonshot/* apks
+  artifacts:
+    expire_in: 6 months
+    paths:
+        - apks/*/*.apk
 
 centos6:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/centos6:latest
@@ -62,6 +132,14 @@ debian9:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
   <<: *debiancommon
 
+raspbian8:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian8:latest
+  <<: *debiancommon
+
+raspbian9:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian9:latest
+  <<: *debiancommon
+
 ubuntu14:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu14:latest
   <<: *debiancommon
@@ -73,3 +151,65 @@ ubuntu16:
 ubuntu18:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu18:latest
   <<: *debiancommon
+
+centos6-noshib:
+  variables:
+    CI_JOB_NAME: centos6
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos6:latest
+  <<: *centoscommon-noshib
+
+centos7-noshib:
+  variables:
+    CI_JOB_NAME: centos7
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos7:latest
+  <<: *centoscommon-noshib
+
+debian8-noshib:
+  variables:
+    CI_JOB_NAME: debian8
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian8:latest
+  <<: *debiancommon-noshib
+
+debian9-noshib:
+  variables:
+    CI_JOB_NAME: debian9
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
+  <<: *debiancommon-noshib
+
+raspbian8-noshib:
+  variables:
+    CI_JOB_NAME: raspbian8
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian8:latest
+  <<: *debiancommon-noshib
+
+raspbian9-noshib:
+  variables:
+    CI_JOB_NAME: raspbian9
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian9:latest
+  <<: *debiancommon-noshib
+
+ubuntu14-noshib:
+  variables:
+    CI_JOB_NAME: ubuntu14
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu14:latest
+  <<: *debiancommon-noshib
+
+ubuntu16-noshib:
+  variables:
+    CI_JOB_NAME: ubuntu16
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu16:latest
+  <<: *debiancommon-noshib
+
+ubuntu18-noshib:
+  variables:
+    CI_JOB_NAME: ubuntu18
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu18:latest
+  <<: *debiancommon-noshib
+
+alpine38:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/alpine38:latest
+  <<: *alpinecommon
+
+alpine38_armhf:
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/alpine38_arm:latest
+  <<: *alpinecommon

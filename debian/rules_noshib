@@ -1,0 +1,31 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+CFLAGS= $(shell dpkg-buildflags --get CFLAGS)
+CFLAGS+= -Wno-error=deprecated -Wno-error=deprecated-declarations
+CXXFLAGS=$(shell dpkg-buildflags --get CXXFLAGS)
+CXXFLAGS+= -Wno-error=deprecated -Wno-error=deprecated-declarations
+
+export CFLAGS
+
+%:
+	dh $@  --with autoreconf
+override_dh_auto_configure:
+	dh_auto_configure -- "CFLAGS=$(CFLAGS)" "CXXFLAGS=$(CXXFLAGS)" --without-shibresolver
+
+
+
+override_dh_strip:
+	dh_strip --dbg-package=moonshot-gss-eap-dbg-noshib
+
+override_dh_auto_install:
+	install -m644 mech_eap/mech debian/moonshot-gss-eap-noshib/etc/gss/mech.d/moonshot-gss-eap.conf
+	dh_auto_install --destdir=debian/moonshot-gss-eap-noshib
+	rm debian/moonshot-gss-eap-noshib/usr/lib/*/gss/*la

@@ -34,22 +34,26 @@ mech_eap_la_CXXFLAGS = -Werror -Wall -Wunused-parameter
 endif
 mech_eap_la_DEPENDENCIES = $(GSSEAP_EXPORTS)
 
-mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\"
+mech_eap_la_CPPFLAGS = -DBUILD_GSSEAP_LIB -DSYSCONFDIR=\"${sysconfdir}\" -DDATAROOTDIR=\"${datarootdir}\" \
+				       -DMOONSHOT_LOCAL_ATTRIBUTES='"$(sysconfdir)/moonshot/local-attributes.json"'
+
+
+
 mech_eap_la_CFLAGS   += \
-			@KRB5_CFLAGS@ @RADSEC_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
+			@KRB5_CFLAGS@ @RADSEC_CFLAGS@ @XML2_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_CXXFLAGS += \
-			@KRB5_CFLAGS@ @RADSEC_CFLAGS@ \
+			@KRB5_CFLAGS@ @RADSEC_CFLAGS@ @XML2_CFLAGS@ \
 		        @OPENSAML_CXXFLAGS@ @SHIBRESOLVER_CXXFLAGS@ @SHIBSP_CXXFLAGS@ \
 			@TARGET_CFLAGS@ $(EAP_CFLAGS)
 mech_eap_la_LDFLAGS  = -avoid-version -module \
 			-export-symbols $(GSSEAP_EXPORTS) -no-undefined \
-			@KRB5_LDFLAGS@ @RADSEC_LDFLAGS@ @TARGET_LDFLAGS@ @OPENSSL_LDFLAGS@
+			@KRB5_LDFLAGS@ @RADSEC_LDFLAGS@ @XML2_LDFLAGS@ @TARGET_LDFLAGS@ @OPENSSL_LDFLAGS@
 
 if TARGET_WINDOWS
 mech_eap_la_LDFLAGS += -debug
 endif
 
-mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ \
+mech_eap_la_LIBADD   = @KRB5_LIBS@ ../libeap/libeap.la @RADSEC_LIBS@ @XML2_LIBS@ \
 		       @OPENSAML_LIBS@ @SHIBRESOLVER_LIBS@ @SHIBSP_LIBS@ @JANSSON_LIBS@ \
 		       @OPENSSL_LIBS@
 mech_eap_la_SOURCES =    			\
@@ -128,7 +132,9 @@ mech_eap_la_SOURCES =    			\
 	util_radius.h \
 	util_reauth.h \
 	util_saml.h \
-	util_shib.h
+	util_simplesaml.h \
+	util_shib.h \
+	util_local.h
 
 if LIBMOONSHOT
 mech_eap_la_SOURCES += util_moonshot.c
@@ -155,10 +161,14 @@ mech_eap_la_SOURCES +=				\
 
 if OPENSAML
 mech_eap_la_SOURCES += util_saml.cpp
+else
+mech_eap_la_SOURCES += util_simplesaml.cpp
 endif
 
 if SHIBRESOLVER
 mech_eap_la_SOURCES += util_shib.cpp
+else
+mech_eap_la_SOURCES += util_local.cpp
 endif
 
 endif
@@ -180,6 +190,12 @@ radius_ad_la_LIBADD  = @KRB5_LIBS@
 radius_ad_la_SOURCES = util_adshim.c authdata_plugin.h
 endif
 endif
+
+
+bin_PROGRAMS = moonshot_tester
+moonshot_tester_SOURCES = moonshot_tester.c
+moonshot_tester_LDADD = @KRB5_LIBS@
+
 
 gsseap_err.h gsseap_err.c: gsseap_err.et
 	$(COMPILE_ET) $<
