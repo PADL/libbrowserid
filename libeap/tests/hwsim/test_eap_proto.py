@@ -803,7 +803,7 @@ def test_eap_proto_sake_errors(dev, apdev):
     for count, func in tests:
         with alloc_fail(dev[0], count, func):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
-                           eap="SAKE", identity="sake user",
+                           eap="SAKE", identity="sake user@domain",
                            password_hex="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
                            erp="1",
                            wait_connect=False)
@@ -1218,6 +1218,14 @@ def test_eap_proto_leap_errors(dev, apdev):
                                0x28, 0x48, 0xf8, 0x53, 0x82, 0x50, 0x00, 0x04,
                                0x93, 0x50, 0x30, 0xd7, 0x25, 0xea, 0x5f, 0x66)
 
+        idx += 1
+        if ctx['num'] == idx:
+            logger.info("Test: Valid challenge")
+            return struct.pack(">BBHBBBBLL", EAP_CODE_REQUEST, ctx['id'],
+                               4 + 1 + 3 + 8,
+                               EAP_TYPE_LEAP,
+                               1, 0, 8, 0, 0)
+
         return struct.pack(">BBH", EAP_CODE_FAILURE, ctx['id'], 4)
 
     srv = start_radius_server(leap_handler2)
@@ -1310,6 +1318,15 @@ def test_eap_proto_leap_errors(dev, apdev):
             dev[0].wait_disconnected()
 
         with fail_test(dev[0], 1, "hash_nt_password_hash;eap_leap_getKey"):
+            dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
+                           eap="LEAP", identity="user", password="password",
+                           wait_connect=False)
+            wait_fail_trigger(dev[0], "GET_FAIL")
+            dev[0].request("REMOVE_NETWORK all")
+            dev[0].wait_disconnected()
+
+        with fail_test(dev[0], 1,
+                       "nt_challenge_response;eap_leap_process_request"):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
                            eap="LEAP", identity="user", password="password",
                            wait_connect=False)
@@ -2261,7 +2278,7 @@ def test_eap_proto_eke(dev, apdev):
 
 def eap_eke_test_fail(dev, phase1=None, success=False):
     dev.connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
-                eap="EKE", identity="eke user", password="hello",
+                eap="EKE", identity="eke user@domain", password="hello",
                 phase1=phase1, erp="1", wait_connect=False)
     ev = dev.wait_event([ "CTRL-EVENT-EAP-FAILURE",
                           "CTRL-EVENT-EAP-SUCCESS" ], timeout=5)
@@ -2930,8 +2947,8 @@ def test_eap_proto_psk_errors(dev, apdev):
               (8, "aes_128_encrypt_block;eap_psk_derive_keys;eap_psk_process_3"),
               (9, "aes_128_encrypt_block;eap_psk_derive_keys;eap_psk_process_3"),
               (10, "aes_128_encrypt_block;eap_psk_derive_keys;eap_psk_process_3"),
-              (1, "aes_128_ctr_encrypt;aes_128_eax_decrypt;eap_psk_process_3"),
-              (1, "aes_128_ctr_encrypt;aes_128_eax_encrypt;eap_psk_process_3") ]
+              (1, "aes_ctr_encrypt;aes_128_eax_decrypt;eap_psk_process_3"),
+              (1, "aes_ctr_encrypt;aes_128_eax_encrypt;eap_psk_process_3") ]
     for count, func in tests:
         with fail_test(dev[0], count, func):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
@@ -3700,6 +3717,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Missing payload")
+            dev[0].note("Missing payload")
             return struct.pack(">BBHB", EAP_CODE_REQUEST, ctx['id'],
                                4 + 1,
                                EAP_TYPE_AKA_PRIME)
@@ -3707,6 +3725,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with no attributes")
+            dev[0].note("Challenge with no attributes")
             return struct.pack(">BBHBBH", EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3,
                                EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_CHALLENGE, 0)
@@ -3718,6 +3737,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with empty AT_KDF_INPUT")
+            dev[0].note("Challenge with empty AT_KDF_INPUT")
             return struct.pack(">BBHBBHBBH", EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 4,
                                EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_CHALLENGE, 0,
@@ -3730,6 +3750,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with AT_KDF_INPUT")
+            dev[0].note("Test: Challenge with AT_KDF_INPUT")
             return struct.pack(">BBHBBHBBHBBBB", EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8,
                                EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_CHALLENGE, 0,
@@ -3743,6 +3764,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with duplicated KDF")
+            dev[0].note("Challenge with duplicated KDF")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 3 * 4,
@@ -3760,6 +3782,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with multiple KDF proposals")
+            dev[0].note("Challenge with multiple KDF proposals (preparation)")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 3 * 4,
@@ -3772,6 +3795,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with incorrect KDF selected")
+            dev[0].note("Challenge with incorrect KDF selected")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 4 * 4,
@@ -3790,6 +3814,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with multiple KDF proposals")
+            dev[0].note("Challenge with multiple KDF proposals (preparation)")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 3 * 4,
@@ -3802,6 +3827,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with selected KDF not duplicated")
+            dev[0].note("Challenge with selected KDF not duplicated")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 3 * 4,
@@ -3819,6 +3845,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with multiple KDF proposals")
+            dev[0].note("Challenge with multiple KDF proposals (preparation)")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 3 * 4,
@@ -3831,6 +3858,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with selected KDF duplicated (missing MAC, RAND, AUTN)")
+            dev[0].note("Challenge with selected KDF duplicated (missing MAC, RAND, AUTN)")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 4 * 4,
@@ -3849,6 +3877,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with multiple unsupported KDF proposals")
+            dev[0].note("Challenge with multiple unsupported KDF proposals")
             return struct.pack(">BBHBBHBBHBBBBBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 2 * 4,
@@ -3865,6 +3894,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with multiple KDF proposals")
+            dev[0].note("Challenge with multiple KDF proposals (preparation)")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 3 * 4,
@@ -3877,6 +3907,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with invalid MAC, RAND, AUTN values)")
+            dev[0].note("Challenge with invalid MAC, RAND, AUTN values)")
             return struct.pack(">BBHBBHBBHBBBBBBHBBHBBHBBHBBH4LBBH4LBBH4L",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 4 * 4 + 20 + 20 + 20,
@@ -3898,6 +3929,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge - AMF separation bit not set)")
+            dev[0].note("Challenge - AMF separation bit not set)")
             return struct.pack(">BBHBBHBBHBBBBBBHBBH4LBBH4LBBH4L",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 4 + 20 + 20 + 20,
@@ -3917,6 +3949,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge - Invalid MAC")
+            dev[0].note("Challenge - Invalid MAC")
             return struct.pack(">BBHBBHBBHBBBBBBHBBH4LBBH4LBBH4L",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 4 + 20 + 20 + 20,
@@ -3936,6 +3969,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge - Valid MAC")
+            dev[0].note("Challenge - Valid MAC")
             return struct.pack(">BBHBBHBBHBBBBBBHBBH4LBBH4LBBH4L",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8 + 4 + 20 + 20 + 20,
@@ -3956,6 +3990,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Invalid AT_KDF_INPUT length")
+            dev[0].note("Invalid AT_KDF_INPUT length")
             return struct.pack(">BBHBBHBBHL", EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8,
                                EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_IDENTITY, 0,
@@ -3968,6 +4003,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Invalid AT_KDF length")
+            dev[0].note("Invalid AT_KDF length")
             return struct.pack(">BBHBBHBBHL", EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 8,
                                EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_IDENTITY, 0,
@@ -3980,6 +4016,7 @@ def test_eap_proto_aka_prime(dev, apdev):
         idx += 1
         if ctx['num'] == idx:
             logger.info("Test: Challenge with large number of KDF proposals")
+            dev[0].note("Challenge with large number of KDF proposals")
             return struct.pack(">BBHBBHBBHBBHBBHBBHBBHBBHBBHBBHBBHBBHBBHBBH",
                                EAP_CODE_REQUEST, ctx['id'],
                                4 + 1 + 3 + 12 * 4,
@@ -4001,6 +4038,67 @@ def test_eap_proto_aka_prime(dev, apdev):
             logger.info("Test: EAP-Failure")
             return struct.pack(">BBH", EAP_CODE_FAILURE, ctx['id'], 4)
 
+        idx += 1
+        if ctx['num'] == idx:
+            logger.info("Test: Challenge with multiple KDF proposals")
+            dev[0].note("Challenge with multiple KDF proposals (preparation)")
+            return struct.pack(">BBHBBHBBHBBBBBBHBBH",
+                               EAP_CODE_REQUEST, ctx['id'],
+                               4 + 1 + 3 + 8 + 2 * 4,
+                               EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_CHALLENGE, 0,
+                               EAP_SIM_AT_KDF_INPUT, 2, 1, ord('a'), ord('b'),
+                               ord('c'), ord('d'),
+                               EAP_SIM_AT_KDF, 1, 2,
+                               EAP_SIM_AT_KDF, 1, 1)
+        idx += 1
+        if ctx['num'] == idx:
+            logger.info("Test: Challenge with an extra KDF appended")
+            dev[0].note("Challenge with an extra KDF appended")
+            return struct.pack(">BBHBBHBBHBBBBBBHBBHBBHBBH",
+                               EAP_CODE_REQUEST, ctx['id'],
+                               4 + 1 + 3 + 8 + 4 * 4,
+                               EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_CHALLENGE, 0,
+                               EAP_SIM_AT_KDF_INPUT, 2, 1, ord('a'), ord('b'),
+                               ord('c'), ord('d'),
+                               EAP_SIM_AT_KDF, 1, 1,
+                               EAP_SIM_AT_KDF, 1, 2,
+                               EAP_SIM_AT_KDF, 1, 1,
+                               EAP_SIM_AT_KDF, 1, 0)
+        idx += 1
+        if ctx['num'] == idx:
+            logger.info("Test: EAP-Failure")
+            return struct.pack(">BBH", EAP_CODE_FAILURE, ctx['id'], 4)
+
+        idx += 1
+        if ctx['num'] == idx:
+            logger.info("Test: Challenge with multiple KDF proposals")
+            dev[0].note("Challenge with multiple KDF proposals (preparation)")
+            return struct.pack(">BBHBBHBBHBBBBBBHBBH",
+                               EAP_CODE_REQUEST, ctx['id'],
+                               4 + 1 + 3 + 8 + 2 * 4,
+                               EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_CHALLENGE, 0,
+                               EAP_SIM_AT_KDF_INPUT, 2, 1, ord('a'), ord('b'),
+                               ord('c'), ord('d'),
+                               EAP_SIM_AT_KDF, 1, 2,
+                               EAP_SIM_AT_KDF, 1, 1)
+        idx += 1
+        if ctx['num'] == idx:
+            logger.info("Test: Challenge with a modified KDF")
+            dev[0].note("Challenge with a modified KDF")
+            return struct.pack(">BBHBBHBBHBBBBBBHBBHBBH",
+                               EAP_CODE_REQUEST, ctx['id'],
+                               4 + 1 + 3 + 8 + 3 * 4,
+                               EAP_TYPE_AKA_PRIME, EAP_AKA_SUBTYPE_CHALLENGE, 0,
+                               EAP_SIM_AT_KDF_INPUT, 2, 1, ord('a'), ord('b'),
+                               ord('c'), ord('d'),
+                               EAP_SIM_AT_KDF, 1, 1,
+                               EAP_SIM_AT_KDF, 1, 0,
+                               EAP_SIM_AT_KDF, 1, 1)
+        idx += 1
+        if ctx['num'] == idx:
+            logger.info("Test: EAP-Failure")
+            return struct.pack(">BBH", EAP_CODE_FAILURE, ctx['id'], 4)
+
         return None
 
     srv = start_radius_server(aka_prime_handler)
@@ -4008,7 +4106,7 @@ def test_eap_proto_aka_prime(dev, apdev):
     try:
         hapd = start_ap(apdev[0])
 
-        for i in range(0, 16):
+        for i in range(0, 18):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
                            eap="AKA'", identity="6555444333222111",
                            password="5122250214c33e723a5dd523fc145fc0:981d464c7c52eb6e5036234984ad0bcf:000000000123",
@@ -4531,7 +4629,7 @@ def test_eap_proto_sim_errors(dev, apdev):
     for count, func in tests:
         with alloc_fail(dev[0], count, func):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
-                           eap="SIM", identity="1232010000000000",
+                           eap="SIM", identity="1232010000000000@domain",
                            password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581",
                            erp="1", wait_connect=False)
             wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
@@ -4630,7 +4728,7 @@ def test_eap_proto_aka_errors(dev, apdev):
     for count, func in tests:
         with alloc_fail(dev[0], count, func):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
-                           eap="AKA", identity="0232010000000000",
+                           eap="AKA", identity="0232010000000000@domain",
                            password="90dca4eda45b53cf0f12d7c9c3bc6a89:cb9cccc4b9258e6dca4760379fb82581:000000000123",
                            erp="1", wait_connect=False)
             wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
@@ -5107,7 +5205,7 @@ def test_eap_proto_ikev2(dev, apdev):
 
         def build_ke(next=0):
             ke = struct.pack(">BBHHH", next, 0, 4 + 4 + 192, 5, 0)
-            ke += 192*'\x00'
+            ke += 191*'\x00'+'\x02'
             return ke
 
         idx += 1
@@ -5311,7 +5409,7 @@ def test_eap_proto_ikev2_errors(dev, apdev):
     for count, func in tests:
         with alloc_fail(dev[0], count, func):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
-                           eap="IKEV2", identity="ikev2 user",
+                           eap="IKEV2", identity="ikev2 user@domain",
                            password="ike password", erp="1", wait_connect=False)
             ev = dev[0].wait_event(["CTRL-EVENT-EAP-PROPOSED-METHOD"],
                                    timeout=15)
@@ -5585,7 +5683,7 @@ def test_eap_proto_mschapv2(dev, apdev):
 
             auth_challenge = binascii.unhexlify("00112233445566778899aabbccddeeff")
             logger.info("auth_challenge: " + auth_challenge.encode("hex"))
- 
+
             auth_resp = GenerateAuthenticatorResponse("new-pw", nt_response,
                                                       peer_challenge,
                                                       auth_challenge, "user")
@@ -5633,7 +5731,7 @@ def test_eap_proto_mschapv2(dev, apdev):
 
             auth_challenge = binascii.unhexlify("00112233445566778899aabbccddeeff")
             logger.info("auth_challenge: " + auth_challenge.encode("hex"))
- 
+
             auth_resp = GenerateAuthenticatorResponse("new-pw", nt_response,
                                                       peer_challenge,
                                                       auth_challenge, "user")
@@ -6278,14 +6376,14 @@ def test_eap_proto_pwd_errors(dev, apdev):
     for func in funcs:
         with alloc_fail(dev[0], 1, func):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
-                           eap="PWD", identity="pwd user",
+                           eap="PWD", identity="pwd user@domain",
                            password="secret password", erp="1",
                            wait_connect=False)
             wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
             dev[0].request("REMOVE_NETWORK all")
             dev[0].wait_disconnected()
 
-    for i in range(1, 7):
+    for i in range(1, 5):
         with alloc_fail(dev[0], i, "eap_pwd_perform_id_exchange"):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
                            eap="PWD", identity="pwd user",
@@ -6319,7 +6417,7 @@ def test_eap_proto_pwd_errors(dev, apdev):
         dev[0].request("REMOVE_NETWORK all")
         dev[0].wait_disconnected()
 
-    for i in range(1, 4):
+    for i in range(1, 9):
         with alloc_fail(dev[0], i, "eap_pwd_perform_commit_exchange"):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
                            eap="PWD", identity="pwd user",
@@ -6389,7 +6487,7 @@ def test_eap_proto_pwd_errors(dev, apdev):
     dev[0].wait_disconnected()
 
     with fail_test(dev[0], 1,
-                   "hash_nt_password_hash;eap_pwd_perform_id_exchange"):
+                   "hash_nt_password_hash;eap_pwd_perform_commit_exchange"):
         dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
                        eap="PWD", identity="pwd-hash",
                        password_hex="hash:e3718ece8ab74792cbbfffd316d2d19a",
@@ -6414,6 +6512,20 @@ def test_eap_proto_pwd_errors(dev, apdev):
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
         dev[0].request("REMOVE_NETWORK all")
         dev[0].wait_disconnected()
+
+    for i in range(1, 5):
+        with fail_test(dev[0], i,
+                       "=crypto_ec_point_to_bin;eap_pwd_perform_confirm_exchange"):
+            dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
+                           eap="PWD", identity="pwd-hash",
+                           password_hex="hash:e3718ece8ab74792cbbfffd316d2d19a",
+                           wait_connect=False)
+            ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=10)
+            if ev is None:
+                raise Exception("No EAP-Failure reported")
+            dev[0].request("REMOVE_NETWORK all")
+            dev[0].wait_disconnected()
+            dev[0].dump_monitor()
 
 def test_eap_proto_erp(dev, apdev):
     """ERP protocol tests"""
@@ -6604,7 +6716,7 @@ def test_eap_proto_fast_errors(dev, apdev):
         with alloc_fail(dev[0], count, func):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
                            eap="FAST", anonymous_identity="FAST",
-                           identity="user", password="password",
+                           identity="user@example.com", password="password",
                            ca_cert="auth_serv/ca.pem", phase2="auth=GTC",
                            phase1="fast_provisioning=2",
                            pac_file="blob://fast_pac_auth_errors",
@@ -6867,7 +6979,7 @@ def test_eap_proto_ttls_errors(dev, apdev):
               (1, "eap_ttls_get_session_id",
                "DOMAIN\mschapv2 user", "auth=MSCHAPV2"),
               (1, "eap_ttls_get_emsk",
-               "DOMAIN\mschapv2 user", "auth=MSCHAPV2"),
+               "mschapv2 user@domain", "auth=MSCHAPV2"),
               (1, "wpabuf_alloc;eap_ttls_phase2_request_mschap",
                "mschap user", "auth=MSCHAP"),
               (1, "eap_peer_tls_derive_key;eap_ttls_phase2_request_mschap",
@@ -6924,6 +7036,23 @@ def test_eap_proto_ttls_errors(dev, apdev):
                            eap="TTLS", anonymous_identity="ttls",
                            identity="DOMAIN\mschapv2 user", password="password",
                            ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAPV2",
+                           erp="1", wait_connect=False)
+            ev = dev[0].wait_event(["CTRL-EVENT-EAP-PROPOSED-METHOD"],
+                                   timeout=15)
+            if ev is None:
+                raise Exception("Timeout on EAP start")
+            wait_fail_trigger(dev[0], "GET_FAIL",
+                              note="Test failure not triggered for: %d:%s" % (count, func))
+            dev[0].request("REMOVE_NETWORK all")
+            dev[0].wait_disconnected()
+
+    tests = [ (1, "nt_challenge_response;eap_ttls_phase2_request_mschap") ]
+    for count, func in tests:
+        with fail_test(dev[0], count, func):
+            dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
+                           eap="TTLS", anonymous_identity="ttls",
+                           identity="mschap user", password="password",
+                           ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAP",
                            erp="1", wait_connect=False)
             ev = dev[0].wait_event(["CTRL-EVENT-EAP-PROPOSED-METHOD"],
                                    timeout=15)
@@ -8029,6 +8158,14 @@ def run_eap_fast_phase2(dev, test_payload, test_failure=True):
     def ssl_info_callback(conn, where, ret):
         logger.debug("SSL: info where=%d ret=%d" % (where, ret))
 
+    def log_conn_state(conn):
+        try:
+            state = conn.state_string()
+        except AttributeError:
+            state = conn.get_state_string()
+        if state:
+            logger.info("State: " + state)
+
     def process_clienthello(ctx, payload):
         logger.info("Process ClientHello")
         ctx['sslctx'] = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
@@ -8037,31 +8174,31 @@ def run_eap_fast_phase2(dev, test_payload, test_failure=True):
         ctx['sslctx'].set_cipher_list("ADH-AES128-SHA")
         ctx['conn'] = OpenSSL.SSL.Connection(ctx['sslctx'], None)
         ctx['conn'].set_accept_state()
-        logger.info("State: " + ctx['conn'].state_string())
+        log_conn_state(ctx['conn'])
         ctx['conn'].bio_write(payload)
         try:
             ctx['conn'].do_handshake()
         except OpenSSL.SSL.WantReadError:
             pass
-        logger.info("State: " + ctx['conn'].state_string())
+        log_conn_state(ctx['conn'])
         data = ctx['conn'].bio_read(4096)
-        logger.info("State: " + ctx['conn'].state_string())
+        log_conn_state(ctx['conn'])
         return struct.pack(">BBHBB", EAP_CODE_REQUEST, ctx['id'],
                            4 + 1 + 1 + len(data),
                            EAP_TYPE_FAST, 0x01) + data
 
     def process_clientkeyexchange(ctx, payload, appl_data):
         logger.info("Process ClientKeyExchange")
-        logger.info("State: " + ctx['conn'].state_string())
+        log_conn_state(ctx['conn'])
         ctx['conn'].bio_write(payload)
         try:
             ctx['conn'].do_handshake()
         except OpenSSL.SSL.WantReadError:
             pass
         ctx['conn'].send(appl_data)
-        logger.info("State: " + ctx['conn'].state_string())
+        log_conn_state(ctx['conn'])
         data = ctx['conn'].bio_read(4096)
-        logger.info("State: " + ctx['conn'].state_string())
+        log_conn_state(ctx['conn'])
         return struct.pack(">BBHBB", EAP_CODE_REQUEST, ctx['id'],
                            4 + 1 + 1 + len(data),
                            EAP_TYPE_FAST, 0x01) + data

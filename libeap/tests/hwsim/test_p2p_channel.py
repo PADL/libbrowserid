@@ -190,6 +190,68 @@ def test_p2p_channel_avoid(dev):
         dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES")
         dev[1].flush_scan_cache()
 
+def test_p2p_channel_avoid2(dev):
+    """P2P and avoid frequencies driver event on 5 GHz"""
+    try:
+        set_country("US", dev[0])
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                               r_dev=dev[1], r_intent=0,
+                                               test_data=False,
+                                               i_max_oper_chwidth=80,
+                                               i_ht40=True, i_vht=True)
+        check_grpform_results(i_res, r_res)
+        freq = int(i_res['freq'])
+        if freq < 5000:
+            raise Exception("Unexpected channel %d MHz" % freq)
+
+        if "OK" not in dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES " + str(freq)):
+            raise Exception("Could not simulate driver event(2)")
+        ev = dev[0].wait_event(["CTRL-EVENT-AVOID-FREQ"], timeout=10)
+        if ev is None:
+            raise Exception("No CTRL-EVENT-AVOID-FREQ event")
+        ev = dev[0].wait_group_event(["CTRL-EVENT-CHANNEL-SWITCH"], timeout=10)
+        if ev is None:
+            raise Exception("No channel switch event seen")
+        if "ch_width=80 MHz" not in ev:
+            raise Exception("Could not move to a VHT80 channel")
+        ev = dev[0].wait_group_event(["AP-CSA-FINISHED"], timeout=1)
+        if ev is None:
+            raise Exception("No AP-CSA-FINISHED event seen")
+    finally:
+        set_country("00")
+        dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES")
+        dev[1].flush_scan_cache()
+
+def test_p2p_channel_avoid3(dev):
+    """P2P and avoid frequencies driver event on 5 GHz"""
+    try:
+        set_country("CN", dev[0])
+        form(dev[0], dev[1])
+        set_country("CN", dev[0])
+        [i_res, r_res] = invite_from_go(dev[0], dev[1], terminate=False,
+                                        extra="ht40 vht")
+        freq = int(i_res['freq'])
+        if freq < 5000:
+            raise Exception("Unexpected channel %d MHz" % freq)
+
+        if "OK" not in dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES 5180-5320,5500-5640"):
+            raise Exception("Could not simulate driver event(2)")
+        ev = dev[0].wait_event(["CTRL-EVENT-AVOID-FREQ"], timeout=10)
+        if ev is None:
+            raise Exception("No CTRL-EVENT-AVOID-FREQ event")
+        ev = dev[0].wait_group_event(["CTRL-EVENT-CHANNEL-SWITCH"], timeout=10)
+        if ev is None:
+            raise Exception("No channel switch event seen")
+        if "ch_width=80 MHz" not in ev:
+            raise Exception("Could not move to a VHT80 channel")
+        ev = dev[0].wait_group_event(["AP-CSA-FINISHED"], timeout=1)
+        if ev is None:
+            raise Exception("No AP-CSA-FINISHED event seen")
+    finally:
+        set_country("00")
+        dev[0].request("DRIVER_EVENT AVOID_FREQUENCIES")
+        dev[1].flush_scan_cache()
+
 @remote_compatible
 def test_autogo_following_bss(dev, apdev):
     """P2P autonomous GO operate on the same channel as station interface"""
@@ -538,7 +600,7 @@ def test_p2p_autogo_pref_chan_not_in_regulatory(dev, apdev):
             raise Exception("Unexpected number of network blocks: " + str(netw))
         id = netw[0]['id']
 
-        set_country("DE", dev[0])
+        set_country("SE", dev[0])
         res = autogo(dev[0], persistent=id)
         if res['freq'] == "5745":
             raise Exception("Unexpected channel selected(2): " + res['freq'])
@@ -1078,6 +1140,30 @@ def test_p2p_delay_go_csa(dev, apdev, params):
         finally:
             wpas.global_request("SET p2p_go_freq_change_policy 2")
 
+def test_p2p_channel_vht80(dev):
+    """P2P group formation with VHT 80 MHz"""
+    try:
+        set_country("FI", dev[0])
+        [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                               i_freq=5180,
+                                               i_max_oper_chwidth=80,
+                                               i_ht40=True, i_vht=True,
+                                               r_dev=dev[1], r_intent=0,
+                                               test_data=False)
+        check_grpform_results(i_res, r_res)
+        freq = int(i_res['freq'])
+        if freq < 5000:
+            raise Exception("Unexpected channel %d MHz - did not follow 5 GHz preference" % freq)
+        sig = dev[1].group_request("SIGNAL_POLL").splitlines()
+        if "FREQUENCY=5180" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
+        if "WIDTH=80 MHz" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+        remove_group(dev[0], dev[1])
+    finally:
+        set_country("00")
+        dev[1].flush_scan_cache()
+
 def test_p2p_channel_vht80p80(dev):
     """P2P group formation and VHT 80+80 MHz channel"""
     try:
@@ -1198,3 +1284,74 @@ def test_p2p_channel_vht80p80_persistent(dev):
     finally:
         set_country("00")
         dev[1].flush_scan_cache()
+
+def test_p2p_channel_drv_pref_go_neg(dev):
+    """P2P GO Negotiation with GO device channel preference"""
+    dev[0].global_request("SET get_pref_freq_list_override 3:2417 4:2422")
+    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                           r_dev=dev[1], r_intent=0,
+                                           test_data=False)
+    check_grpform_results(i_res, r_res)
+    freq = int(i_res['freq'])
+    if freq != 2417:
+        raise Exception("Unexpected channel selected: %d" % freq)
+    remove_group(dev[0], dev[1])
+
+def test_p2p_channel_drv_pref_go_neg2(dev):
+    """P2P GO Negotiation with P2P client device channel preference"""
+    dev[0].global_request("SET get_pref_freq_list_override 3:2417,2422")
+    dev[1].global_request("SET get_pref_freq_list_override 4:2422")
+    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                           r_dev=dev[1], r_intent=0,
+                                           test_data=False)
+    check_grpform_results(i_res, r_res)
+    freq = int(i_res['freq'])
+    if freq != 2422:
+        raise Exception("Unexpected channel selected: %d" % freq)
+    remove_group(dev[0], dev[1])
+
+def test_p2p_channel_drv_pref_go_neg3(dev):
+    """P2P GO Negotiation with GO device channel preference"""
+    dev[1].global_request("SET get_pref_freq_list_override 3:2417,2427 4:2422")
+    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=0,
+                                           r_dev=dev[1], r_intent=15,
+                                           test_data=False)
+    check_grpform_results(i_res, r_res)
+    freq = int(i_res['freq'])
+    if freq != 2417:
+        raise Exception("Unexpected channel selected: %d" % freq)
+    remove_group(dev[0], dev[1])
+
+def test_p2p_channel_drv_pref_go_neg4(dev):
+    """P2P GO Negotiation with P2P client device channel preference"""
+    dev[0].global_request("SET get_pref_freq_list_override 3:2417,2422,5180")
+    dev[1].global_request("P2P_SET override_pref_op_chan 115:36")
+    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                           r_dev=dev[1], r_intent=0,
+                                           test_data=False)
+    check_grpform_results(i_res, r_res)
+    freq = int(i_res['freq'])
+    if freq != 2417:
+        raise Exception("Unexpected channel selected: %d" % freq)
+    remove_group(dev[0], dev[1])
+
+def test_p2p_channel_drv_pref_go_neg5(dev):
+    """P2P GO Negotiation with P2P client device channel preference"""
+    dev[0].global_request("SET get_pref_freq_list_override 3:2417")
+    dev[1].global_request("SET get_pref_freq_list_override 4:2422")
+    dev[1].global_request("P2P_SET override_pref_op_chan 115:36")
+    [i_res, r_res] = go_neg_pin_authorized(i_dev=dev[0], i_intent=15,
+                                           r_dev=dev[1], r_intent=0,
+                                           test_data=False)
+    check_grpform_results(i_res, r_res)
+    freq = int(i_res['freq'])
+    if freq != 2417:
+        raise Exception("Unexpected channel selected: %d" % freq)
+    remove_group(dev[0], dev[1])
+
+def test_p2p_channel_drv_pref_autogo(dev):
+    """P2P autonomous GO with driver channel preference"""
+    dev[0].global_request("SET get_pref_freq_list_override 3:2417,2422,5180")
+    res_go = autogo(dev[0])
+    if res_go['freq'] != "2417":
+        raise Exception("Unexpected operating frequency: " + res_go['freq'])

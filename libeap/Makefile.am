@@ -99,6 +99,9 @@ AM_CFLAGS += -DEAP_TLS_OPENSSL
 AM_CFLAGS += -DPKCS12_FUNCS
 AM_CFLAGS += -DCONFIG_SHA256
 
+AM_CFLAGS += -DTLS_DEFAULT_CIPHERS='"DEFAULT:!EXP:!LOW"'
+
+
 UTILS_SRCS = src/utils/base64.c \
 	src/utils/common.c \
 	src/utils/eloop.c \
@@ -157,6 +160,7 @@ CRYPTO_SRCS = \
     src/crypto/sha1.h \
     src/crypto/sha256.h \
     src/crypto/sha384.h \
+    src/crypto/sha512.h \
 	src/crypto/sha256-tlsprf.c \
     src/crypto/tls.h \
     src/crypto/tls_openssl.h
@@ -192,8 +196,9 @@ CRYPTO_SRCS = \
 #    src/tls/tlsv1_record.h \
 #    src/tls/tlsv1_server.h \
 #    src/tls/tlsv1_server_i.h \
-#    src/tls/x509v3.h 
+#    src/tls/x509v3.h
 
 libeap_la_SOURCES = $(SOURCES_BOTH) $(SOURCES_peer) $(UTILS_SRCS) $(CRYPTO_SRCS)
+
 
 noinst_LTLIBRARIES = libeap.la

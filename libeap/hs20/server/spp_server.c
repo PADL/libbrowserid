@@ -57,19 +57,26 @@ static int db_add_session(struct hs20_svc *ctx,
 			  const char *user, const char *realm,
 			  const char *sessionid, const char *pw,
 			  const char *redirect_uri,
-			  enum hs20_session_operation operation)
+			  enum hs20_session_operation operation,
+			  const u8 *mac_addr)
 {
 	char *sql;
 	int ret = 0;
+	char addr[20];
 
+	if (mac_addr)
+		snprintf(addr, sizeof(addr), MACSTR, MAC2STR(mac_addr));
+	else
+		addr[0] = '\0';
 	sql = sqlite3_mprintf("INSERT INTO sessions(timestamp,id,user,realm,"
-			      "operation,password,redirect_uri) "
+			      "operation,password,redirect_uri,mac_addr,test) "
 			      "VALUES "
 			      "(strftime('%%Y-%%m-%%d %%H:%%M:%%f','now'),"
-			      "%Q,%Q,%Q,%d,%Q,%Q)",
+			      "%Q,%Q,%Q,%d,%Q,%Q,%Q,%Q)",
 			      sessionid, user ? user : "", realm ? realm : "",
 			      operation, pw ? pw : "",
-			      redirect_uri ? redirect_uri : "");
+			      redirect_uri ? redirect_uri : "",
+			      addr, ctx->test);
 	if (sql == NULL)
 		return -1;
 	debug_print(ctx, 1, "DB: %s", sql);
@@ -329,6 +336,29 @@ static void add_text_node_conf(struct hs20_svc *ctx, const char *realm,
 }
 
 
+static void add_text_node_conf_corrupt(struct hs20_svc *ctx, const char *realm,
+				       xml_node_t *parent, const char *name,
+				       const char *field)
+{
+	char *val;
+
+	val = db_get_osu_config_val(ctx, realm, field);
+	if (val) {
+		size_t len;
+
+		len = os_strlen(val);
+		if (len > 0) {
+			if (val[len - 1] == '0')
+				val[len - 1] = '1';
+			else
+				val[len - 1] = '0';
+		}
+	}
+	xml_node_create_text(ctx->xml, parent, NULL, name, val ? val : "");
+	os_free(val);
+}
+
+
 static int new_password(char *buf, int buflen)
 {
 	int i;
@@ -533,7 +563,8 @@ static xml_node_t * build_username_password(struct hs20_svc *ctx,
 
 
 static int add_username_password(struct hs20_svc *ctx, xml_node_t *cred,
-				 const char *user, const char *pw)
+				 const char *user, const char *pw,
+				 int machine_managed)
 {
 	xml_node_t *node;
 
@@ -541,7 +572,8 @@ static int add_username_password(struct hs20_svc *ctx, xml_node_t *cred,
 	if (node == NULL)
 		return -1;
 
-	add_text_node(ctx, node, "MachineManaged", "TRUE");
+	add_text_node(ctx, node, "MachineManaged",
+		      machine_managed ? "TRUE" : "FALSE");
 	add_text_node(ctx, node, "SoftTokenApp", "");
 	add_eap_ttls(ctx, node);
 
@@ -566,7 +598,7 @@ static void add_creation_date(struct hs20_svc *ctx, xml_node_t *cred)
 
 static xml_node_t * build_credential_pw(struct hs20_svc *ctx,
 					const char *user, const char *realm,
-					const char *pw)
+					const char *pw, int machine_managed)
 {
 	xml_node_t *cred;
 
@@ -576,7 +608,7 @@ static xml_node_t * build_credential_pw(struct hs20_svc *ctx,
 		return NULL;
 	}
 	add_creation_date(ctx, cred);
-	if (add_username_password(ctx, cred, user, pw) < 0) {
+	if (add_username_password(ctx, cred, user, pw, machine_managed) < 0) {
 		xml_node_free(ctx->xml, cred);
 		return NULL;
 	}
@@ -593,7 +625,7 @@ static xml_node_t * build_credential(struct hs20_svc *ctx,
 	if (new_password(new_pw, new_pw_len) < 0)
 		return NULL;
 	debug_print(ctx, 1, "Update password to '%s'", new_pw);
-	return build_credential_pw(ctx, user, realm, new_pw);
+	return build_credential_pw(ctx, user, realm, new_pw, 1);
 }
 
 
@@ -703,8 +735,23 @@ static xml_node_t * build_sub_rem_resp(struct hs20_svc *ctx,
 		cred = build_credential_cert(ctx, real_user ? real_user : user,
 					     realm, cert);
 	} else {
-		cred = build_credential(ctx, real_user ? real_user : user,
-					realm, new_pw, sizeof(new_pw));
+		char *pw;
+
+		pw = db_get_session_val(ctx, user, realm, session_id,
+					"password");
+		if (pw && pw[0]) {
+			debug_print(ctx, 1, "New password from the user: '%s'",
+				    pw);
+			snprintf(new_pw, sizeof(new_pw), "%s", pw);
+			free(pw);
+			cred = build_credential_pw(ctx,
+						   real_user ? real_user : user,
+						   realm, new_pw, 0);
+		} else {
+			cred = build_credential(ctx,
+						real_user ? real_user : user,
+						realm, new_pw, sizeof(new_pw));
+		}
 	}
 	free(real_user);
 	if (!cred) {
@@ -721,7 +768,7 @@ static xml_node_t * build_sub_rem_resp(struct hs20_svc *ctx,
 	}
 
 	snprintf(buf, sizeof(buf),
-		 "./Wi-Fi/%s/PerProviderSubscription/Credential1/Credential",
+		 "./Wi-Fi/%s/PerProviderSubscription/Cred01/Credential",
 		 realm);
 
 	if (add_update_node(ctx, spp_node, ns, buf, cred) < 0) {
@@ -742,7 +789,7 @@ static xml_node_t * build_sub_rem_resp(struct hs20_svc *ctx,
 		debug_print(ctx, 1, "Request DB password update on success "
 			    "notification");
 		db_add_session(ctx, user, realm, session_id, new_pw, NULL,
-			       UPDATE_PASSWORD);
+			       UPDATE_PASSWORD, NULL);
 	}
 
 	return spp_node;
@@ -771,7 +818,7 @@ static xml_node_t * policy_remediation(struct hs20_svc *ctx,
 		      "requires policy remediation", NULL);
 
 	db_add_session(ctx, user, realm, session_id, NULL, NULL,
-		       POLICY_REMEDIATION);
+		       POLICY_REMEDIATION, NULL);
 
 	policy = build_policy(ctx, user, realm, dmacc);
 	if (!policy) {
@@ -787,7 +834,7 @@ static xml_node_t * policy_remediation(struct hs20_svc *ctx,
 		return NULL;
 
 	snprintf(buf, sizeof(buf),
-		 "./Wi-Fi/%s/PerProviderSubscription/Credential1/Policy",
+		 "./Wi-Fi/%s/PerProviderSubscription/Cred01/Policy",
 		 realm);
 
 	if (add_update_node(ctx, spp_node, ns, buf, policy) < 0) {
@@ -844,7 +891,7 @@ static xml_node_t * user_remediation(struct hs20_svc *ctx, const char *user,
 		return NULL;
 
 	db_add_session(ctx, user, realm, session_id, NULL, redirect_uri,
-		       USER_REMEDIATION);
+		       USER_REMEDIATION, NULL);
 
 	snprintf(uri, sizeof(uri), "%s%s", val, session_id);
 	os_free(val);
@@ -866,7 +913,7 @@ static xml_node_t * free_remediation(struct hs20_svc *ctx,
 		return NULL;
 
 	db_add_session(ctx, user, realm, session_id, NULL, redirect_uri,
-		       FREE_REMEDIATION);
+		       FREE_REMEDIATION, NULL);
 
 	snprintf(uri, sizeof(uri), "%s%s", val, session_id);
 	os_free(val);
@@ -940,8 +987,10 @@ static xml_node_t * hs20_subscription_remediation(struct hs20_svc *ctx,
 				       redirect_uri);
 	else if (type && strcmp(type, "policy") == 0)
 		ret = policy_remediation(ctx, user, realm, session_id, dmacc);
-	else
+	else if (type && strcmp(type, "machine") == 0)
 		ret = machine_remediation(ctx, user, realm, session_id, dmacc);
+	else
+		ret = no_sub_rem(ctx, user, realm, session_id);
 	free(type);
 
 	return ret;
@@ -1033,7 +1082,8 @@ static xml_node_t * hs20_policy_update(struct hs20_svc *ctx,
 			"No update available at this time", NULL);
 	}
 
-	db_add_session(ctx, user, realm, session_id, NULL, NULL, POLICY_UPDATE);
+	db_add_session(ctx, user, realm, session_id, NULL, NULL, POLICY_UPDATE,
+		       NULL);
 
 	status = "Update complete, request sppUpdateResponse";
 	spp_node = build_post_dev_data_response(ctx, &ns, session_id, status,
@@ -1042,7 +1092,7 @@ static xml_node_t * hs20_policy_update(struct hs20_svc *ctx,
 		return NULL;
 
 	snprintf(buf, sizeof(buf),
-		 "./Wi-Fi/%s/PerProviderSubscription/Credential1/Policy",
+		 "./Wi-Fi/%s/PerProviderSubscription/Cred01/Policy",
 		 realm);
 
 	if (add_update_node(ctx, spp_node, ns, buf, policy) < 0) {
@@ -1146,14 +1196,15 @@ static xml_node_t * spp_exec_upload_mo(struct hs20_svc *ctx,
 static xml_node_t * hs20_subscription_registration(struct hs20_svc *ctx,
 						   const char *realm,
 						   const char *session_id,
-						   const char *redirect_uri)
+						   const char *redirect_uri,
+						   const u8 *mac_addr)
 {
 	xml_namespace_t *ns;
 	xml_node_t *spp_node, *exec_node;
 	char uri[300], *val;
 
 	if (db_add_session(ctx, NULL, realm, session_id, NULL, redirect_uri,
-			   SUBSCRIPTION_REGISTRATION) < 0)
+			   SUBSCRIPTION_REGISTRATION, mac_addr) < 0)
 		return NULL;
 	val = db_get_osu_config_val(ctx, realm, "signup_url");
 	if (val == NULL)
@@ -1213,9 +1264,9 @@ static char * db_get_osu_config_val(struct hs20_svc *ctx, const char *realm,
 static xml_node_t * build_pps(struct hs20_svc *ctx,
 			      const char *user, const char *realm,
 			      const char *pw, const char *cert,
-			      int machine_managed)
+			      int machine_managed, const char *test)
 {
-	xml_node_t *pps, *c, *trust, *aaa, *aaa1, *upd, *homesp;
+	xml_node_t *pps, *c, *trust, *aaa, *aaa1, *upd, *homesp, *p;
 	xml_node_t *cred, *eap, *userpw;
 
 	pps = xml_node_create_root(ctx->xml, NULL, NULL, NULL,
@@ -1225,7 +1276,7 @@ static xml_node_t * build_pps(struct hs20_svc *ctx,
 
 	add_text_node(ctx, pps, "UpdateIdentifier", "1");
 
-	c = xml_node_create(ctx->xml, pps, NULL, "Credential1");
+	c = xml_node_create(ctx->xml, pps, NULL, "Cred01");
 
 	add_text_node(ctx, c, "CredentialPriority", "1");
 
@@ -1233,18 +1284,51 @@ static xml_node_t * build_pps(struct hs20_svc *ctx,
 	aaa1 = xml_node_create(ctx->xml, aaa, NULL, "AAA1");
 	add_text_node_conf(ctx, realm, aaa1, "CertURL",
 			   "aaa_trust_root_cert_url");
-	add_text_node_conf(ctx, realm, aaa1, "CertSHA256Fingerprint",
-			   "aaa_trust_root_cert_fingerprint");
+	if (test && os_strcmp(test, "corrupt_aaa_hash") == 0) {
+		debug_print(ctx, 1,
+			    "TEST: Corrupt PPS/Cred*/AAAServerTrustRoot/Root*/CertSHA256FingerPrint");
+		add_text_node_conf_corrupt(ctx, realm, aaa1,
+					   "CertSHA256Fingerprint",
+					   "aaa_trust_root_cert_fingerprint");
+	} else {
+		add_text_node_conf(ctx, realm, aaa1, "CertSHA256Fingerprint",
+				   "aaa_trust_root_cert_fingerprint");
+	}
+
+	if (test && os_strcmp(test, "corrupt_polupd_hash") == 0) {
+		debug_print(ctx, 1,
+			    "TEST: Corrupt PPS/Cred*/Policy/PolicyUpdate/Trustroot/CertSHA256FingerPrint");
+		p = xml_node_create(ctx->xml, c, NULL, "Policy");
+		upd = xml_node_create(ctx->xml, p, NULL, "PolicyUpdate");
+		add_text_node(ctx, upd, "UpdateInterval", "30");
+		add_text_node(ctx, upd, "UpdateMethod", "SPP-ClientInitiated");
+		add_text_node(ctx, upd, "Restriction", "Unrestricted");
+		add_text_node_conf(ctx, realm, upd, "URI", "policy_url");
+		trust = xml_node_create(ctx->xml, upd, NULL, "TrustRoot");
+		add_text_node_conf(ctx, realm, trust, "CertURL",
+				   "policy_trust_root_cert_url");
+		add_text_node_conf_corrupt(ctx, realm, trust,
+					   "CertSHA256Fingerprint",
+					   "policy_trust_root_cert_fingerprint");
+	}
 
 	upd = xml_node_create(ctx->xml, c, NULL, "SubscriptionUpdate");
 	add_text_node(ctx, upd, "UpdateInterval", "4294967295");
-	add_text_node(ctx, upd, "UpdateMethod", "ClientInitiated");
+	add_text_node(ctx, upd, "UpdateMethod", "SPP-ClientInitiated");
 	add_text_node(ctx, upd, "Restriction", "HomeSP");
 	add_text_node_conf(ctx, realm, upd, "URI", "spp_http_auth_url");
 	trust = xml_node_create(ctx->xml, upd, NULL, "TrustRoot");
 	add_text_node_conf(ctx, realm, trust, "CertURL", "trust_root_cert_url");
-	add_text_node_conf(ctx, realm, trust, "CertSHA256Fingerprint",
-			   "trust_root_cert_fingerprint");
+	if (test && os_strcmp(test, "corrupt_subrem_hash") == 0) {
+		debug_print(ctx, 1,
+			    "TEST: Corrupt PPS/Cred*/SubscriptionUpdate/Trustroot/CertSHA256FingerPrint");
+		add_text_node_conf_corrupt(ctx, realm, trust,
+					   "CertSHA256Fingerprint",
+					   "trust_root_cert_fingerprint");
+	} else {
+		add_text_node_conf(ctx, realm, trust, "CertSHA256Fingerprint",
+				   "trust_root_cert_fingerprint");
+	}
 
 	homesp = xml_node_create(ctx->xml, c, NULL, "HomeSP");
 	add_text_node_conf(ctx, realm, homesp, "FriendlyName", "friendly_name");
@@ -1328,7 +1412,7 @@ static xml_node_t * hs20_user_input_registration(struct hs20_svc *ctx,
 	xml_node_t *pps, *tnds;
 	char buf[400];
 	char *str;
-	char *user, *realm, *pw, *type, *mm;
+	char *user, *realm, *pw, *type, *mm, *test;
 	const char *status;
 	int cert = 0;
 	int machine_managed = 0;
@@ -1387,9 +1471,15 @@ static xml_node_t * hs20_user_input_registration(struct hs20_svc *ctx,
 		return NULL;
 
 	fingerprint = db_get_session_val(ctx, NULL, NULL, session_id, "cert");
+	test = db_get_session_val(ctx, NULL, NULL, session_id, "test");
+	if (test)
+		debug_print(ctx, 1, "TEST: Requested special behavior: %s",
+			    test);
 	pps = build_pps(ctx, user, realm, pw,
-			fingerprint ? fingerprint : NULL, machine_managed);
+			fingerprint ? fingerprint : NULL, machine_managed,
+			test);
 	free(fingerprint);
+	free(test);
 	if (!pps) {
 		xml_node_free(ctx->xml, spp_node);
 		free(user);
@@ -1460,7 +1550,7 @@ static xml_node_t * hs20_user_input_free_remediation(struct hs20_svc *ctx,
 		return NULL;
 	}
 
-	cred = build_credential_pw(ctx, free_account, realm, pw);
+	cred = build_credential_pw(ctx, free_account, realm, pw, 1);
 	free(free_account);
 	free(pw);
 	if (!cred) {
@@ -1475,7 +1565,7 @@ static xml_node_t * hs20_user_input_free_remediation(struct hs20_svc *ctx,
 		return NULL;
 
 	snprintf(buf, sizeof(buf),
-		 "./Wi-Fi/%s/PerProviderSubscription/Credential1/Credential",
+		 "./Wi-Fi/%s/PerProviderSubscription/Cred01/Credential",
 		 realm);
 
 	if (add_update_node(ctx, spp_node, ns, buf, cred) < 0) {
@@ -1606,11 +1696,12 @@ static xml_node_t * hs20_spp_post_dev_data(struct hs20_svc *ctx,
 	char *req_reason_buf = NULL;
 	char str[200];
 	xml_node_t *ret = NULL, *devinfo = NULL, *devdetail = NULL;
-	xml_node_t *mo;
+	xml_node_t *mo, *macaddr;
 	char *version;
 	int valid;
 	char *supp, *pos;
 	char *err;
+	u8 wifi_mac_addr[ETH_ALEN];
 
 	version = xml_node_get_attr_value_ns(ctx->xml, node, SPP_NS_URI,
 					     "sppVersion");
@@ -1716,6 +1807,29 @@ static xml_node_t * hs20_spp_post_dev_data(struct hs20_svc *ctx,
 		goto out;
 	}
 	os_free(err);
+
+	os_memset(wifi_mac_addr, 0, ETH_ALEN);
+	macaddr = get_node(ctx->xml, devdetail,
+			   "Ext/org.wi-fi/Wi-Fi/Wi-FiMACAddress");
+	if (macaddr) {
+		char *addr, buf[50];
+
+		addr = xml_node_get_text(ctx->xml, macaddr);
+		if (addr && hwaddr_compact_aton(addr, wifi_mac_addr) == 0) {
+			snprintf(buf, sizeof(buf), "DevDetail MAC address: "
+				 MACSTR, MAC2STR(wifi_mac_addr));
+			hs20_eventlog(ctx, user, realm, session_id, buf, NULL);
+			xml_node_get_text_free(ctx->xml, addr);
+		} else {
+			hs20_eventlog(ctx, user, realm, session_id,
+				      "Could not extract MAC address from DevDetail",
+				      NULL);
+		}
+	} else {
+		hs20_eventlog(ctx, user, realm, session_id,
+			      "No MAC address in DevDetail", NULL);
+	}
+
 	if (user)
 		db_update_mo(ctx, user, realm, "devdetail", devdetail);
 
@@ -1762,7 +1876,7 @@ static xml_node_t * hs20_spp_post_dev_data(struct hs20_svc *ctx,
 			else
 				oper = NO_OPERATION;
 			if (db_add_session(ctx, user, realm, session_id, NULL,
-					   NULL, oper) < 0)
+					   NULL, oper, NULL) < 0)
 				goto out;
 
 			ret = spp_exec_upload_mo(ctx, session_id,
@@ -1799,7 +1913,8 @@ static xml_node_t * hs20_spp_post_dev_data(struct hs20_svc *ctx,
 
 	if (strcasecmp(req_reason, "Subscription registration") == 0) {
 		ret = hs20_subscription_registration(ctx, realm, session_id,
-						     redirect_uri);
+						     redirect_uri,
+						     wifi_mac_addr);
 		hs20_eventlog_node(ctx, user, realm, session_id,
 				   "subscription registration response",
 				   ret);
@@ -1823,10 +1938,8 @@ static xml_node_t * hs20_spp_post_dev_data(struct hs20_svc *ctx,
 	}
 
 	if (strcasecmp(req_reason, "User input completed") == 0) {
-		if (devinfo)
-			db_add_session_devinfo(ctx, session_id, devinfo);
-		if (devdetail)
-			db_add_session_devdetail(ctx, session_id, devdetail);
+		db_add_session_devinfo(ctx, session_id, devinfo);
+		db_add_session_devdetail(ctx, session_id, devdetail);
 		ret = hs20_user_input_complete(ctx, user, realm, dmacc,
 					       session_id);
 		hs20_eventlog_node(ctx, user, realm, session_id,
@@ -1950,13 +2063,15 @@ static int add_subscription(struct hs20_svc *ctx, const char *session_id)
 		goto out;
 	}
 
-	sql = sqlite3_mprintf("INSERT INTO users(identity,realm,phase2,"
-			      "methods,cert,cert_pem,machine_managed) VALUES "
-			      "(%Q,%Q,1,%Q,%Q,%Q,%d)",
+	str = db_get_session_val(ctx, NULL, NULL, session_id, "mac_addr");
+
+	sql = sqlite3_mprintf("INSERT INTO users(identity,realm,phase2,methods,cert,cert_pem,machine_managed,mac_addr) VALUES (%Q,%Q,1,%Q,%Q,%Q,%d,%Q)",
 			      user, realm, cert ? "TLS" : "TTLS-MSCHAPV2",
 			      fingerprint ? fingerprint : "",
 			      cert_pem ? cert_pem : "",
-			      pw_mm && atoi(pw_mm) ? 1 : 0);
+			      pw_mm && atoi(pw_mm) ? 1 : 0,
+			      str ? str : "");
+	free(str);
 	if (sql == NULL)
 		goto out;
 	debug_print(ctx, 1, "DB: %s", sql);
@@ -1996,6 +2111,32 @@ static int add_subscription(struct hs20_svc *ctx, const char *session_id)
 	if (str) {
 		db_update_mo_str(ctx, user, realm, "devdetail", str);
 		free(str);
+	}
+
+	if (cert && user) {
+		const char *serialnum;
+
+		str = db_get_session_val(ctx, NULL, NULL, session_id,
+					 "mac_addr");
+
+		if (os_strncmp(user, "cert-", 5) == 0)
+			serialnum = user + 5;
+		else
+			serialnum = "";
+		sql = sqlite3_mprintf("INSERT OR REPLACE INTO cert_enroll (mac_addr,user,realm,serialnum) VALUES(%Q,%Q,%Q,%Q)",
+				      str ? str : "", user, realm ? realm : "",
+				      serialnum);
+		free(str);
+		if (sql) {
+			debug_print(ctx, 1, "DB: %s", sql);
+			if (sqlite3_exec(ctx->db, sql, NULL, NULL, NULL) !=
+			    SQLITE_OK) {
+				debug_print(ctx, 1,
+					    "Failed to add cert_enroll entry into sqlite database: %s",
+					    sqlite3_errmsg(ctx->db));
+			}
+			sqlite3_free(sql);
+		}
 	}
 
 	if (ret == 0) {
@@ -2121,6 +2262,9 @@ static xml_node_t * hs20_spp_update_response(struct hs20_svc *ctx,
 					      "", dmacc);
 			free(val);
 		}
+		if (oper == POLICY_UPDATE)
+			db_update_val(ctx, user, realm, "polupd_done", "1",
+				      dmacc);
 		ret = build_spp_exchange_complete(
 			ctx, session_id,
 			"Exchange complete, release TLS connection", NULL);

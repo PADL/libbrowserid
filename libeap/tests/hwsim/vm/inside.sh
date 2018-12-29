@@ -90,6 +90,8 @@ if [ "$TIMEWARP" = "1" ] ; then
     ) &
 fi
 
+echo 8 8 8 8 > /proc/sys/kernel/printk
+
 # check if we're rebooting due to a kernel panic ...
 if grep -q 'Kernel panic' /tmp/logs/console ; then
 	echo "KERNEL CRASHED!" >/dev/ttyS0
@@ -111,7 +113,7 @@ else
 	dbus-daemon --config-file=$TESTDIR/vm/dbus.conf --fork
 
 	cd $TESTDIR
-	./run-all.sh $(cat /tmp/host$ARGS) </dev/ttyS0 >/dev/ttyS0 2>&1
+	./run-all.sh --vm $(cat /tmp/host$ARGS) </dev/ttyS0 >/dev/ttyS0 2>&1
 	if test -d /sys/kernel/debug/gcov ; then
 		cp -ar /sys/kernel/debug/gcov /tmp/logs/
 		# these are broken as they're updated while being read ...

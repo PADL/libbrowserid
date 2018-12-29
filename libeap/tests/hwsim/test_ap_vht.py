@@ -50,6 +50,9 @@ def test_ap_vht80(dev, apdev):
         est = dev[0].get_bss(bssid)['est_throughput']
         if est != "390001":
             raise Exception("Unexpected BSS est_throughput: " + est)
+        status = dev[0].get_status()
+        if status["ieee80211ac"] != "1":
+            raise Exception("Unexpected STATUS ieee80211ac value (STA)")
         status = hapd.get_status()
         logger.info("hostapd STATUS: " + str(status))
         if status["ieee80211n"] != "1":
@@ -62,6 +65,15 @@ def test_ap_vht80(dev, apdev):
             raise Exception("Unexpected STATUS vht_oper_chwidth value")
         if status["vht_oper_centr_freq_seg0_idx"] != "42":
             raise Exception("Unexpected STATUS vht_oper_centr_freq_seg0_idx value")
+        if "vht_caps_info" not in status:
+            raise Exception("Missing vht_caps_info")
+
+        sta = hapd.get_sta(dev[0].own_addr())
+        logger.info("hostapd STA: " + str(sta))
+        if "[HT]" not in sta['flags']:
+            raise Exception("Missing STA flag: HT")
+        if "[VHT]" not in sta['flags']:
+            raise Exception("Missing STA flag: VHT")
     except Exception, e:
         if isinstance(e, Exception) and str(e) == "AP startup failed":
             if not vht_supported():
@@ -299,10 +311,9 @@ def test_ap_vht_capab_not_supported(dev, apdev):
         subprocess.call(['iw', 'reg', 'set', '00'])
 
 def test_ap_vht160(dev, apdev):
-    """VHT with 160 MHz channel width"""
+    """VHT with 160 MHz channel width (1)"""
     try:
         hapd = None
-        hapd2 = None
         params = { "ssid": "vht",
                    "country_code": "FI",
                    "hw_mode": "a",
@@ -329,27 +340,6 @@ def test_ap_vht160(dev, apdev):
                 raise HwsimSkip("CRDA or wireless-regdb did not support 160 MHz")
             raise Exception("Unexpected interface state: " + state)
 
-        params = { "ssid": "vht2",
-                   "country_code": "FI",
-                   "hw_mode": "a",
-                   "channel": "104",
-                   "ht_capab": "[HT40-]",
-                   "ieee80211n": "1",
-                   "ieee80211ac": "1",
-                   "vht_oper_chwidth": "2",
-                   "vht_oper_centr_freq_seg0_idx": "114",
-                   'ieee80211d': '1',
-                   'ieee80211h': '1' }
-        hapd2 = hostapd.add_ap(apdev[1], params, wait_enabled=False)
-
-        ev = wait_dfs_event(hapd2, "DFS-CAC-START", 5)
-        if "DFS-CAC-START" not in ev:
-            raise Exception("Unexpected DFS event(2)")
-
-        state = hapd2.get_status_field("state")
-        if state != "DFS":
-            raise Exception("Unexpected interface state(2): " + state)
-
         logger.info("Waiting for CAC to complete")
 
         ev = wait_dfs_event(hapd, "DFS-CAC-COMPLETED", 70)
@@ -366,35 +356,10 @@ def test_ap_vht160(dev, apdev):
         if state != "ENABLED":
             raise Exception("Unexpected interface state")
 
-        ev = wait_dfs_event(hapd2, "DFS-CAC-COMPLETED", 70)
-        if "success=1" not in ev:
-            raise Exception("CAC failed(2)")
-        if "freq=5520" not in ev:
-            raise Exception("Unexpected DFS freq result(2)")
-
-        ev = hapd2.wait_event(["AP-ENABLED"], timeout=5)
-        if not ev:
-            raise Exception("AP setup timed out(2)")
-
-        state = hapd2.get_status_field("state")
-        if state != "ENABLED":
-            raise Exception("Unexpected interface state(2)")
-
-        freq = hapd2.get_status_field("freq")
-        if freq != "5520":
-            raise Exception("Unexpected frequency(2)")
-
         dev[0].connect("vht", key_mgmt="NONE", scan_freq="5180")
         hwsim_utils.test_connectivity(dev[0], hapd)
         sig = dev[0].request("SIGNAL_POLL").splitlines()
         if "FREQUENCY=5180" not in sig:
-            raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
-        if "WIDTH=160 MHz" not in sig:
-            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
-        dev[1].connect("vht2", key_mgmt="NONE", scan_freq="5520")
-        hwsim_utils.test_connectivity(dev[1], hapd2)
-        sig = dev[1].request("SIGNAL_POLL").splitlines()
-        if "FREQUENCY=5520" not in sig:
             raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
         if "WIDTH=160 MHz" not in sig:
             raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
@@ -405,21 +370,18 @@ def test_ap_vht160(dev, apdev):
         raise
     finally:
         dev[0].request("DISCONNECT")
-        dev[1].request("DISCONNECT")
         if hapd:
             hapd.request("DISABLE")
-        if hapd2:
-            hapd2.request("DISABLE")
         subprocess.call(['iw', 'reg', 'set', '00'])
         dev[0].flush_scan_cache()
-        dev[1].flush_scan_cache()
 
-def test_ap_vht160_no_dfs(dev, apdev):
-    """VHT with 160 MHz channel width and no DFS"""
+def test_ap_vht160b(dev, apdev):
+    """VHT with 160 MHz channel width (2)"""
     try:
         hapd = None
+
         params = { "ssid": "vht",
-                   "country_code": "ZA",
+                   "country_code": "FI",
                    "hw_mode": "a",
                    "channel": "104",
                    "ht_capab": "[HT40-]",
@@ -429,15 +391,40 @@ def test_ap_vht160_no_dfs(dev, apdev):
                    "vht_oper_centr_freq_seg0_idx": "114",
                    'ieee80211d': '1',
                    'ieee80211h': '1' }
-        hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
-        ev = hapd.wait_event(["AP-ENABLED"], timeout=2)
+        hapd = hostapd.add_ap(apdev[1], params, wait_enabled=False)
+
+        ev = wait_dfs_event(hapd, "DFS-CAC-START", 5)
+        if "DFS-CAC-START" not in ev:
+            raise Exception("Unexpected DFS event(2)")
+
+        state = hapd.get_status_field("state")
+        if state != "DFS":
+            if state == "DISABLED" and not os.path.exists("dfs"):
+                # Not all systems have recent enough CRDA version and
+                # wireless-regdb changes to support 160 MHz and DFS. For now,
+                # do not report failures for this test case.
+                raise HwsimSkip("CRDA or wireless-regdb did not support 160 MHz")
+            raise Exception("Unexpected interface state: " + state)
+
+        logger.info("Waiting for CAC to complete")
+
+        ev = wait_dfs_event(hapd, "DFS-CAC-COMPLETED", 70)
+        if "success=1" not in ev:
+            raise Exception("CAC failed(2)")
+        if "freq=5520" not in ev:
+            raise Exception("Unexpected DFS freq result(2)")
+
+        ev = hapd.wait_event(["AP-ENABLED"], timeout=5)
         if not ev:
-            cmd = subprocess.Popen(["iw", "reg", "get"], stdout=subprocess.PIPE)
-            reg = cmd.stdout.readlines()
-            for r in reg:
-                if "5490" in r and "DFS" in r:
-                    raise HwsimSkip("ZA regulatory rule did not have DFS requirement removed")
-            raise Exception("AP setup timed out")
+            raise Exception("AP setup timed out(2)")
+
+        state = hapd.get_status_field("state")
+        if state != "ENABLED":
+            raise Exception("Unexpected interface state(2)")
+
+        freq = hapd.get_status_field("freq")
+        if freq != "5520":
+            raise Exception("Unexpected frequency(2)")
 
         dev[0].connect("vht", key_mgmt="NONE", scan_freq="5520")
         hwsim_utils.test_connectivity(dev[0], hapd)
@@ -457,6 +444,119 @@ def test_ap_vht160_no_dfs(dev, apdev):
             hapd.request("DISABLE")
         subprocess.call(['iw', 'reg', 'set', '00'])
         dev[0].flush_scan_cache()
+
+def test_ap_vht160_no_dfs_100_plus(dev, apdev):
+    """VHT with 160 MHz channel width and no DFS (100 plus)"""
+    run_ap_vht160_no_dfs(dev, apdev, "100", "[HT40+]")
+
+def test_ap_vht160_no_dfs(dev, apdev):
+    """VHT with 160 MHz channel width and no DFS (104 minus)"""
+    run_ap_vht160_no_dfs(dev, apdev, "104", "[HT40-]")
+
+def test_ap_vht160_no_dfs_108_plus(dev, apdev):
+    """VHT with 160 MHz channel width and no DFS (108 plus)"""
+    run_ap_vht160_no_dfs(dev, apdev, "108", "[HT40+]")
+
+def test_ap_vht160_no_dfs_112_minus(dev, apdev):
+    """VHT with 160 MHz channel width and no DFS (112 minus)"""
+    run_ap_vht160_no_dfs(dev, apdev, "112", "[HT40-]")
+
+def test_ap_vht160_no_dfs_116_plus(dev, apdev):
+    """VHT with 160 MHz channel width and no DFS (116 plus)"""
+    run_ap_vht160_no_dfs(dev, apdev, "116", "[HT40+]")
+
+def test_ap_vht160_no_dfs_120_minus(dev, apdev):
+    """VHT with 160 MHz channel width and no DFS (120 minus)"""
+    run_ap_vht160_no_dfs(dev, apdev, "120", "[HT40-]")
+
+def test_ap_vht160_no_dfs_124_plus(dev, apdev):
+    """VHT with 160 MHz channel width and no DFS (124 plus)"""
+    run_ap_vht160_no_dfs(dev, apdev, "124", "[HT40+]")
+
+def test_ap_vht160_no_dfs_128_minus(dev, apdev):
+    """VHT with 160 MHz channel width and no DFS (128 minus)"""
+    run_ap_vht160_no_dfs(dev, apdev, "128", "[HT40-]")
+
+def run_ap_vht160_no_dfs(dev, apdev, channel, ht_capab):
+    try:
+        hapd = None
+        params = { "ssid": "vht",
+                   "country_code": "ZA",
+                   "hw_mode": "a",
+                   "channel": channel,
+                   "ht_capab": ht_capab,
+                   "ieee80211n": "1",
+                   "ieee80211ac": "1",
+                   "vht_oper_chwidth": "2",
+                   "vht_oper_centr_freq_seg0_idx": "114",
+                   'ieee80211d': '1',
+                   'ieee80211h': '1' }
+        hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
+        ev = hapd.wait_event(["AP-ENABLED"], timeout=2)
+        if not ev:
+            cmd = subprocess.Popen(["iw", "reg", "get"], stdout=subprocess.PIPE)
+            reg = cmd.stdout.readlines()
+            for r in reg:
+                if "5490" in r and "DFS" in r:
+                    raise HwsimSkip("ZA regulatory rule did not have DFS requirement removed")
+            raise Exception("AP setup timed out")
+
+        freq = str(int(channel) * 5 + 5000)
+        dev[0].connect("vht", key_mgmt="NONE", scan_freq=freq)
+        hwsim_utils.test_connectivity(dev[0], hapd)
+        sig = dev[0].request("SIGNAL_POLL").splitlines()
+        if "FREQUENCY=" + freq not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
+        if "WIDTH=160 MHz" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+    except Exception, e:
+        if isinstance(e, Exception) and str(e) == "AP startup failed":
+            if not vht_supported():
+                raise HwsimSkip("80/160 MHz channel not supported in regulatory information")
+        raise
+    finally:
+        dev[0].request("DISCONNECT")
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
+        dev[0].flush_scan_cache()
+
+def test_ap_vht160_no_ht40(dev, apdev):
+    """VHT with 160 MHz channel width and HT40 disabled"""
+    try:
+        hapd = None
+        params = { "ssid": "vht",
+                   "country_code": "ZA",
+                   "hw_mode": "a",
+                   "channel": "108",
+                   "ht_capab": "",
+                   "ieee80211n": "1",
+                   "ieee80211ac": "1",
+                   "vht_oper_chwidth": "2",
+                   "vht_oper_centr_freq_seg0_idx": "114",
+                   'ieee80211d': '1',
+                   'ieee80211h': '1' }
+        hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
+        ev = hapd.wait_event(["AP-ENABLED", "AP-DISABLED"], timeout=2)
+        if not ev:
+            cmd = subprocess.Popen(["iw", "reg", "get"], stdout=subprocess.PIPE)
+            reg = cmd.stdout.readlines()
+            for r in reg:
+                if "5490" in r and "DFS" in r:
+                    raise HwsimSkip("ZA regulatory rule did not have DFS requirement removed")
+            raise Exception("AP setup timed out")
+        if "AP-ENABLED" in ev:
+            # This was supposed to fail due to sec_channel_offset == 0
+            raise Exception("Unexpected AP-ENABLED")
+    except Exception, e:
+        if isinstance(e, Exception) and str(e) == "AP startup failed":
+            if not vht_supported():
+                raise HwsimSkip("80/160 MHz channel not supported in regulatory information")
+        raise
+    finally:
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
 
 def test_ap_vht80plus80(dev, apdev):
     """VHT with 80+80 MHz channel width"""
@@ -614,6 +714,144 @@ def test_ap_vht80_csa(dev, apdev):
         subprocess.call(['iw', 'reg', 'set', '00'])
         dev[0].flush_scan_cache()
 
+def test_ap_vht_csa_vht40(dev, apdev):
+    """VHT CSA with VHT40 getting enabled"""
+    csa_supported(dev[0])
+    try:
+        hapd = None
+        params = { "ssid": "vht",
+                   "country_code": "US",
+                   "hw_mode": "a",
+                   "channel": "149",
+                   "ht_capab": "[HT40+]",
+                   "ieee80211n": "1",
+                   "ieee80211ac": "0" }
+        hapd = hostapd.add_ap(apdev[0], params)
+        bssid = hapd.own_addr()
+
+        dev[0].connect("vht", key_mgmt="NONE", scan_freq="5745")
+        hwsim_utils.test_connectivity(dev[0], hapd)
+
+        hapd.request("CHAN_SWITCH 5 5765 sec_channel_offset=-1 center_freq1=5755 bandwidth=40 vht")
+        ev = hapd.wait_event(["AP-CSA-FINISHED"], timeout=10)
+        if ev is None:
+            raise Exception("CSA finished event timed out")
+        if "freq=5765" not in ev:
+            raise Exception("Unexpected channel in CSA finished event")
+        ev = dev[0].wait_event("CTRL-EVENT-CHANNEL-SWITCH", timeout=5)
+        if ev is None:
+            raise Exception("Channel switch event not seen")
+        if "freq=5765" not in ev:
+            raise Exception("Channel mismatch: " + ev)
+        ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.5)
+        if ev is not None:
+            raise Exception("Unexpected disconnection event from station")
+        hwsim_utils.test_connectivity(dev[0], hapd)
+
+        dev[1].connect("vht", key_mgmt="NONE", scan_freq="5765")
+        hwsim_utils.test_connectivity(dev[1], hapd)
+
+        if dev[1].get_status_field("ieee80211ac") != '1':
+            raise Exception("VHT not enabled as part of channel switch")
+    finally:
+        dev[0].request("DISCONNECT")
+        dev[1].request("DISCONNECT")
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
+        dev[0].flush_scan_cache()
+        dev[1].flush_scan_cache()
+
+def test_ap_vht_csa_vht20(dev, apdev):
+    """VHT CSA with VHT20 getting enabled"""
+    csa_supported(dev[0])
+    try:
+        hapd = None
+        params = { "ssid": "vht",
+                   "country_code": "US",
+                   "hw_mode": "a",
+                   "channel": "149",
+                   "ht_capab": "[HT40+]",
+                   "ieee80211n": "1",
+                   "ieee80211ac": "0" }
+        hapd = hostapd.add_ap(apdev[0], params)
+        bssid = hapd.own_addr()
+
+        dev[0].connect("vht", key_mgmt="NONE", scan_freq="5745")
+        hwsim_utils.test_connectivity(dev[0], hapd)
+
+        hapd.request("CHAN_SWITCH 5 5200 center_freq1=5200 bandwidth=20 vht")
+        ev = hapd.wait_event(["AP-CSA-FINISHED"], timeout=10)
+        if ev is None:
+            raise Exception("CSA finished event timed out")
+        if "freq=5200" not in ev:
+            raise Exception("Unexpected channel in CSA finished event")
+        time.sleep(0.5)
+        hwsim_utils.test_connectivity(dev[0], hapd)
+
+        dev[1].connect("vht", key_mgmt="NONE", scan_freq="5200")
+        hwsim_utils.test_connectivity(dev[1], hapd)
+
+        if dev[1].get_status_field("ieee80211ac") != '1':
+            raise Exception("VHT not enabled as part of channel switch")
+    finally:
+        dev[0].request("DISCONNECT")
+        dev[1].request("DISCONNECT")
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
+        dev[0].flush_scan_cache()
+        dev[1].flush_scan_cache()
+
+def test_ap_vht_csa_vht40_disable(dev, apdev):
+    """VHT CSA with VHT40 getting disabled"""
+    csa_supported(dev[0])
+    try:
+        hapd = None
+        params = { "ssid": "vht",
+                   "country_code": "US",
+                   "hw_mode": "a",
+                   "channel": "149",
+                   "ht_capab": "[HT40+]",
+                   "ieee80211n": "1",
+                   "ieee80211ac": "1",
+                   "vht_capab": "",
+                   "vht_oper_chwidth": "0",
+                   "vht_oper_centr_freq_seg0_idx": "0" }
+        hapd = hostapd.add_ap(apdev[0], params)
+        bssid = hapd.own_addr()
+
+        dev[0].connect("vht", key_mgmt="NONE", scan_freq="5745")
+        hwsim_utils.test_connectivity(dev[0], hapd)
+
+        hapd.request("CHAN_SWITCH 5 5200 center_freq1=5200 bandwidth=40 ht")
+        ev = hapd.wait_event(["AP-CSA-FINISHED"], timeout=10)
+        if ev is None:
+            raise Exception("CSA finished event timed out")
+        if "freq=5200" not in ev:
+            raise Exception("Unexpected channel in CSA finished event")
+        ev = dev[0].wait_event("CTRL-EVENT-CHANNEL-SWITCH", timeout=5)
+        if ev is None:
+            raise Exception("Channel switch event not seen")
+        if "freq=5200" not in ev:
+            raise Exception("Channel mismatch: " + ev)
+        time.sleep(0.5)
+        hwsim_utils.test_connectivity(dev[0], hapd)
+
+        dev[1].connect("vht", key_mgmt="NONE", scan_freq="5200")
+        hwsim_utils.test_connectivity(dev[1], hapd)
+
+        if dev[1].get_status_field("ieee80211ac") == '1':
+            raise Exception("VHT not disabled as part of channel switch")
+    finally:
+        dev[0].request("DISCONNECT")
+        dev[1].request("DISCONNECT")
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
+        dev[0].flush_scan_cache()
+        dev[1].flush_scan_cache()
+
 def test_ap_vht_on_24ghz(dev, apdev):
     """Subset of VHT features on 2.4 GHz"""
     hapd = None
@@ -740,6 +978,121 @@ def test_ap_vht_use_sta_nsts(dev, apdev):
 
         dev[0].connect("vht", key_mgmt="NONE", scan_freq="5180")
         hwsim_utils.test_connectivity(dev[0], hapd)
+    except Exception, e:
+        if isinstance(e, Exception) and str(e) == "AP startup failed":
+            if not vht_supported():
+                raise HwsimSkip("80 MHz channel not supported in regulatory information")
+        raise
+    finally:
+        dev[0].request("DISCONNECT")
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
+        dev[0].flush_scan_cache()
+
+def test_ap_vht_tkip(dev, apdev):
+    """VHT and TKIP"""
+    try:
+        hapd = None
+        params = { "ssid": "vht",
+                   "wpa": "1",
+                   "wpa_key_mgmt": "WPA-PSK",
+                   "wpa_pairwise": "TKIP",
+                   "wpa_passphrase": "12345678",
+                   "country_code": "FI",
+                   "hw_mode": "a",
+                   "channel": "36",
+                   "ht_capab": "[HT40+]",
+                   "ieee80211n": "1",
+                   "ieee80211ac": "1",
+                   "vht_oper_chwidth": "1",
+                   "vht_oper_centr_freq_seg0_idx": "42" }
+        hapd = hostapd.add_ap(apdev[0], params)
+        bssid = apdev[0]['bssid']
+
+        dev[0].connect("vht", psk="12345678", scan_freq="5180")
+        hwsim_utils.test_connectivity(dev[0], hapd)
+        sig = dev[0].request("SIGNAL_POLL").splitlines()
+        if "FREQUENCY=5180" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
+        if "WIDTH=20 MHz (no HT)" not in sig:
+            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+        status = hapd.get_status()
+        logger.info("hostapd STATUS: " + str(status))
+        if status["ieee80211n"] != "0":
+            raise Exception("Unexpected STATUS ieee80211n value")
+        if status["ieee80211ac"] != "0":
+            raise Exception("Unexpected STATUS ieee80211ac value")
+        if status["secondary_channel"] != "0":
+            raise Exception("Unexpected STATUS secondary_channel value")
+    except Exception, e:
+        if isinstance(e, Exception) and str(e) == "AP startup failed":
+            if not vht_supported():
+                raise HwsimSkip("80 MHz channel not supported in regulatory information")
+        raise
+    finally:
+        dev[0].request("DISCONNECT")
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
+        dev[0].flush_scan_cache()
+
+def test_ap_vht_40_fallback_to_20(devs, apdevs):
+    """VHT and 40 MHz channel configuration falling back to 20 MHz"""
+    dev = devs[0]
+    ap = apdevs[0]
+    try:
+        hapd = None
+        params = { "ssid": "test-vht40",
+                   "country_code": "US",
+                   "hw_mode": "a",
+                   "basic_rates": "60 120 240",
+                   "channel": "161",
+                   "ieee80211d": "1",
+                   "ieee80211h": "1",
+                   "ieee80211n": "1",
+                   "ieee80211ac": "1",
+                   "ht_capab": "[HT40+][SHORT-GI-20][SHORT-GI-40][DSSS_CCK-40]",
+                   "vht_capab": "[RXLDPC][SHORT-GI-80][TX-STBC-2BY1][RX-STBC1][MAX-MPDU-11454][MAX-A-MPDU-LEN-EXP7]",
+                   "vht_oper_chwidth": "0",
+                   "vht_oper_centr_freq_seg0_idx": "155",
+                 }
+        hapd = hostapd.add_ap(ap, params)
+        dev.connect("test-vht40", scan_freq="5805", key_mgmt="NONE")
+        hwsim_utils.test_connectivity(dev, hapd)
+    finally:
+        dev.request("DISCONNECT")
+        if hapd:
+            hapd.request("DISABLE")
+        subprocess.call(['iw', 'reg', 'set', '00'])
+        dev.flush_scan_cache()
+
+def test_ap_vht80_to_24g_ht(dev, apdev):
+    """VHT with 80 MHz channel width reconfigured to 2.4 GHz HT"""
+    try:
+        hapd = None
+        params = { "ssid": "vht",
+                   "country_code": "FI",
+                   "hw_mode": "a",
+                   "channel": "36",
+                   "ht_capab": "[HT40+]",
+                   "ieee80211n": "1",
+                   "ieee80211ac": "1",
+                   "vht_oper_chwidth": "1",
+                   "vht_capab": "[MAX-MPDU-11454]",
+                   "vht_oper_centr_freq_seg0_idx": "42" }
+        hapd = hostapd.add_ap(apdev[0], params)
+        bssid = apdev[0]['bssid']
+
+        hapd.disable()
+        hapd.set("ieee80211ac", "0")
+        hapd.set("hw_mode", "g")
+        hapd.set("channel", "1")
+        hapd.set("ht_capab", "")
+        hapd.set("vht_capab", "")
+        hapd.enable()
+
+        dev[0].connect("vht", key_mgmt="NONE", scan_freq="2412")
     except Exception, e:
         if isinstance(e, Exception) and str(e) == "AP startup failed":
             if not vht_supported():

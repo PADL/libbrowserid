@@ -22,7 +22,9 @@ CREATE TABLE sessions(
 	devinfo TEXT,
 	devdetail TEXT,
 	cert TEXT,
-	cert_pem TEXT
+	cert_pem TEXT,
+	mac_addr TEXT,
+	test TEXT
 );
 
 CREATE index sessions_id_index ON sessions(id);
@@ -50,10 +52,44 @@ CREATE TABLE users(
 	osu_password TEXT,
 	shared INTEGER,
 	cert TEXT,
-	cert_pem TEXT
+	cert_pem TEXT,
+	t_c_timestamp INTEGER,
+	mac_addr TEXT,
+	last_msk TEXT,
+	polupd_done TEXT,
 );
 
 CREATE TABLE wildcards(
 	identity TEXT PRIMARY KEY,
 	methods TEXT
+);
+
+CREATE TABLE authlog(
+	timestamp TEXT,
+	session TEXT,
+	nas_ip TEXT,
+	username TEXT,
+	note TEXT
+);
+
+CREATE TABLE pending_tc(
+	mac_addr TEXT PRIMARY KEY,
+	identity TEXT
+);
+
+CREATE TABLE current_sessions(
+	mac_addr TEXT PRIMARY KEY,
+	identity TEXT,
+	start_time TEXT,
+	nas TEXT,
+	hs20_t_c_filtering BOOLEAN,
+	waiting_coa_ack BOOLEAN,
+	coa_ack_received BOOLEAN
+);
+
+CREATE TABLE cert_enroll(
+	mac_addr TEXT PRIMARY KEY,
+	user TEXT,
+	realm TEXT,
+	serialnum TEXT
 );
