@@ -137,10 +137,12 @@ debian9:
 
 raspbian8:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian8:latest
+  when: manual
   <<: *debiancommon
 
 raspbian9:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian9:latest
+  when: manual
   <<: *debiancommon
 
 ubuntu14:
@@ -179,16 +181,25 @@ debian9-noshib:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
   <<: *debiancommon-noshib
 
+debian10-noshib:
+  variables:
+    CI_JOB_NAME: debian10
+  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian10:latest
+  when: manual
+  <<: *debiancommon-noshib
+
 raspbian8-noshib:
   variables:
     CI_JOB_NAME: raspbian8
   image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian8:latest
+  when: manual
   <<: *debiancommon-noshib
 
 raspbian9-noshib:
   variables:
     CI_JOB_NAME: raspbian9
   image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian9:latest
+  when: manual
   <<: *debiancommon-noshib
 
 ubuntu14-noshib:
@@ -215,4 +226,5 @@ alpine38:
 
 alpine38_armhf:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/alpine38_arm:latest
+  when: manual
   <<: *alpinecommon
