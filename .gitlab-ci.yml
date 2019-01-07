@@ -60,7 +60,7 @@ before_script:
     - autoreconf -fi
     - ./configure
     - make dist
-    - mv mech_eap-1.1.1.tar.gz ../moonshot-gss-eap_1.1.1.orig.tar.gz
+    - mv mech_eap-1.1.2.tar.gz ../moonshot-gss-eap_1.1.2.orig.tar.gz
     - debuild -us -uc
     - mkdir build
     - cp ../*.deb build
@@ -85,7 +85,7 @@ before_script:
     - autoreconf -fi
     - ./configure
     - make dist
-    - mv mech_eap-1.1.1.tar.gz ../moonshot-gss-eap_1.1.1.orig.tar.gz
+    - mv mech_eap-1.1.2.tar.gz ../moonshot-gss-eap_1.1.2.orig.tar.gz
     - debuild -us -uc
     - mkdir build
     - cp ../*.deb build
