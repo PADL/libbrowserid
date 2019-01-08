@@ -18,6 +18,8 @@
 extern "C" {
 #endif
 
+#define NO_EAP_METHOD_ERROR (-1)
+
 /* RFC 4137 - EAP Peer state machine */
 
 typedef enum {
@@ -208,6 +210,17 @@ struct eap_method {
 	 * that use method specific identity need to implement.
 	 */
 	const u8 * (*get_identity)(struct eap_sm *sm, void *priv, size_t *len);
+
+	/**
+	 * get_error_code - Get the latest EAP method error code
+	 * @priv: Pointer to private EAP method data from eap_method::init()
+	 * Returns: An int for the EAP method specific error code if exists or
+	 * NO_EAP_METHOD_ERROR otherwise.
+	 *
+	 * This method is an optional handler that only EAP methods that need to
+	 * report their error code need to implement.
+	 */
+	int (*get_error_code)(void *priv);
 
 	/**
 	 * free - Free EAP method data

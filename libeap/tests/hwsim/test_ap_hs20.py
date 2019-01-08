@@ -17,7 +17,7 @@ import socket
 import subprocess
 
 import hostapd
-from utils import HwsimSkip, skip_with_fips, alloc_fail, wait_fail_trigger
+from utils import HwsimSkip, skip_with_fips, alloc_fail, fail_test, wait_fail_trigger
 import hwsim_utils
 from tshark import run_tshark
 from wlantest import Wlantest
@@ -98,7 +98,7 @@ def check_sp_type(dev, sp_type):
     if type is None:
         raise Exception("sp_type not available")
     if type != sp_type:
-        raise Exception("sp_type did not indicate home network")
+        raise Exception("sp_type did not indicate %s network" % sp_type)
 
 def hlr_auc_gw_available():
     if not os.path.exists("/tmp/hlr_auc_gw.sock"):
@@ -186,6 +186,9 @@ def test_ap_anqp_sharing(dev, apdev):
     dev[0].scan_for_bss(bssid2, freq="2412")
     interworking_select(dev[0], None, "home", freq="2412")
     dev[0].dump_monitor()
+    state = dev[0].get_status_field('wpa_state')
+    if state != "DISCONNECTED":
+        raise Exception("Unexpected wpa_state after INTERWORKING_SELECT: " + state)
 
     logger.debug("BSS entries:\n" + dev[0].request("BSS RANGE=ALL"))
     res1 = dev[0].get_bss(bssid)
@@ -212,6 +215,31 @@ def test_ap_anqp_sharing(dev, apdev):
     res2 = dev[0].get_bss(bssid2)
     if res1['anqp_nai_realm'] == res2['anqp_nai_realm']:
         raise Exception("ANQP results were not unshared")
+
+def test_ap_anqp_domain_id(dev, apdev):
+    """ANQP Domain ID"""
+    check_eap_capa(dev[0], "MSCHAPV2")
+    dev[0].flush_scan_cache()
+
+    bssid = apdev[0]['bssid']
+    params = hs20_ap_params()
+    params['hessid'] = bssid
+    params['anqp_domain_id'] = '1234'
+    hostapd.add_ap(apdev[0], params)
+
+    bssid2 = apdev[1]['bssid']
+    params = hs20_ap_params()
+    params['hessid'] = bssid
+    params['anqp_domain_id'] = '1234'
+    hostapd.add_ap(apdev[1], params)
+
+    dev[0].hs20_enable()
+    id = dev[0].add_cred_values({ 'realm': "example.com", 'username': "test",
+                                  'password': "secret",
+                                  'domain': "example.com" })
+    dev[0].scan_for_bss(bssid, freq="2412")
+    dev[0].scan_for_bss(bssid2, freq="2412")
+    interworking_select(dev[0], None, "home", freq="2412")
 
 def test_ap_anqp_no_sharing_diff_ess(dev, apdev):
     """ANQP no sharing between ESSs"""
@@ -402,6 +430,13 @@ def _test_ap_interworking_scan_filtering(dev, apdev):
     Wlantest.setup(hapd0)
     wt = Wlantest()
     wt.flush()
+
+    # Make sure wlantest has seen both BSSs to avoid issues in trying to clear
+    # counters for non-existing BSS.
+    dev[0].scan_for_bss(bssid, freq="2412")
+    dev[0].scan_for_bss(bssid2, freq="2412")
+    wt.clear_bss_counters(bssid)
+    wt.clear_bss_counters(bssid2)
 
     logger.info("Check probe request filtering based on HESSID")
 
@@ -974,6 +1009,48 @@ def test_ap_hs20_roaming_consortium(dev, apdev):
         if ev is None:
             raise Exception("Timeout on already-connected event")
         dev[0].remove_cred(id)
+
+def test_ap_hs20_roaming_consortiums_match(dev, apdev):
+    """Hotspot 2.0 connection based on roaming_consortiums match"""
+    bssid = apdev[0]['bssid']
+    params = hs20_ap_params()
+    params['hessid'] = bssid
+    hostapd.add_ap(apdev[0], params)
+
+    dev[0].hs20_enable()
+    tests = [ ("112233", "112233"),
+              ("ffffff,1020304050,eeeeee", "1020304050") ]
+    for consortium,selected in tests:
+        id = dev[0].add_cred_values({ 'username': "user",
+                                      'password': "password",
+                                      'domain': "my.home.example.com",
+                                      'ca_cert': "auth_serv/ca.pem",
+                                      'roaming_consortiums': consortium,
+                                      'eap': "PEAP" })
+        interworking_select(dev[0], bssid, "roaming", freq="2412")
+        interworking_connect(dev[0], bssid, "PEAP")
+        check_sp_type(dev[0], "roaming")
+        network_id = dev[0].get_status_field("id")
+        sel = dev[0].get_network(network_id, "roaming_consortium_selection")
+        if sel != selected:
+            raise Exception("Unexpected roaming_consortium_selection value: " +
+                            sel)
+        dev[0].request("INTERWORKING_SELECT auto freq=2412")
+        ev = dev[0].wait_event(["INTERWORKING-ALREADY-CONNECTED"], timeout=15)
+        if ev is None:
+            raise Exception("Timeout on already-connected event")
+        dev[0].remove_cred(id)
+
+def test_ap_hs20_max_roaming_consortiums(dev, apdev):
+    """Maximum number of cred roaming_consortiums"""
+    id = dev[0].add_cred()
+    consortium = (36*",ffffff")[1:]
+    if "OK" not in dev[0].request('SET_CRED %d roaming_consortiums "%s"' % (id, consortium)):
+        raise Exception("Maximum number of consortium OIs rejected")
+    consortium = (37*",ffffff")[1:]
+    if "FAIL" not in dev[0].request('SET_CRED %d roaming_consortiums "%s"' % (id, consortium)):
+        raise Exception("Over maximum number of consortium OIs accepted")
+    dev[0].remove_cred(id)
 
 def test_ap_hs20_roaming_consortium_invalid(dev, apdev):
     """Hotspot 2.0 connection and invalid roaming consortium ANQP-element"""
@@ -2446,6 +2523,9 @@ def test_ap_hs20_deauth_req_without_pmf(dev, apdev):
     ev = dev[0].wait_event(["HS20-DEAUTH-IMMINENT-NOTICE"], timeout=0.2)
     if ev is not None:
         raise Exception("Deauth imminent notice without PMF accepted")
+    with alloc_fail(hapd, 1, "wpabuf_alloc;hostapd_ctrl_iface_hs20_deauth_req"):
+        if "FAIL" not in hapd.request("HS20_DEAUTH_REQ " + addr + " 1 120 http://example.com/"):
+            raise Exception("HS20_DEAUTH_REQ accepted during OOM")
 
 def test_ap_hs20_remediation_required(dev, apdev):
     """Hotspot 2.0 connection and remediation required from RADIUS"""
@@ -2515,6 +2595,8 @@ def _test_ap_hs20_remediation_required_ctrl(dev, apdev):
         raise Exception("Unexpected HS20_WNM_NOTIF success")
     if "FAIL" not in hapd.request("HS20_WNM_NOTIF " + addr + " https://12345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678927.very.long.example.com/"):
         raise Exception("Unexpected HS20_WNM_NOTIF success")
+    if "OK" not in hapd.request("HS20_WNM_NOTIF " + addr + " "):
+        raise Exception("HS20_WNM_NOTIF failed with empty URL")
 
 def test_ap_hs20_session_info(dev, apdev):
     """Hotspot 2.0 connection and session information from RADIUS"""
@@ -2564,7 +2646,7 @@ def test_ap_hs20_osen(dev, apdev):
                    scan_freq="2412", wait_connect=False)
     dev[0].flush_scan_cache()
     dev[0].connect("osen", proto="OSEN", key_mgmt="OSEN", pairwise="CCMP",
-                   group="GTK_NOT_USED",
+                   group="GTK_NOT_USED CCMP",
                    eap="WFA-UNAUTH-TLS", identity="osen@example.com",
                    ca_cert="auth_serv/ca.pem",
                    scan_freq="2412")
@@ -2580,11 +2662,46 @@ def test_ap_hs20_osen(dev, apdev):
     wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
     wpas.interface_add("wlan5", drv_params="force_connect_cmd=1")
     wpas.connect("osen", proto="OSEN", key_mgmt="OSEN", pairwise="CCMP",
-                 group="GTK_NOT_USED",
+                 group="GTK_NOT_USED CCMP",
                  eap="WFA-UNAUTH-TLS", identity="osen@example.com",
                  ca_cert="auth_serv/ca.pem",
                  scan_freq="2412")
     wpas.request("DISCONNECT")
+
+def test_ap_hs20_osen_single_ssid(dev, apdev):
+    """Hotspot 2.0 OSEN-single-SSID connection"""
+    bssid = apdev[0]['bssid']
+    params = hs20_ap_params()
+    params['wpa_key_mgmt'] = "WPA-EAP OSEN"
+    params['hessid'] = bssid
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    # RSN-OSEN (for OSU)
+    dev[0].connect("test-hs20", proto="OSEN", key_mgmt="OSEN", pairwise="CCMP",
+                   group="CCMP GTK_NOT_USED",
+                   eap="WFA-UNAUTH-TLS", identity="osen@example.com",
+                   ca_cert="auth_serv/ca.pem", ieee80211w='2',
+                   scan_freq="2412")
+    # RSN-EAP (for data connection)
+    dev[1].connect("test-hs20", key_mgmt="WPA-EAP", eap="TTLS",
+                   identity="hs20-test", password="password",
+                   ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAPV2",
+                   pairwise="CCMP", group="CCMP",
+                   ieee80211w='2', scan_freq="2412")
+
+    res = dev[0].get_bss(apdev[0]['bssid'])['flags']
+    if "[WPA2-EAP+OSEN-CCMP]" not in res:
+        raise Exception("OSEN not reported in BSS")
+    if "[WEP]" in res:
+        raise Exception("WEP reported in BSS")
+    res = dev[0].request("SCAN_RESULTS")
+    if "[WPA2-EAP+OSEN-CCMP]" not in res:
+        raise Exception("OSEN not reported in SCAN_RESULTS")
+
+    hwsim_utils.test_connectivity(dev[1], hapd)
+    hwsim_utils.test_connectivity(dev[0], hapd, broadcast=False)
+    hwsim_utils.test_connectivity(dev[0], hapd, timeout=1,
+                                  success_expected=False)
 
 def test_ap_hs20_network_preference(dev, apdev):
     """Hotspot 2.0 network selection with preferred home network"""
@@ -2993,6 +3110,140 @@ def test_ap_hs20_fetch_osu_no_icon(dev, apdev):
             os.remove(dir + "/" + f)
         os.rmdir(dir)
 
+def test_ap_hs20_fetch_osu_single_ssid(dev, apdev):
+    """Hotspot 2.0 OSU provider and single SSID"""
+    bssid = apdev[0]['bssid']
+    params = hs20_ap_params()
+    params['hs20_icon'] = "128:80:zxx:image/png:w1fi_logo:w1fi_logo-no-file.png"
+    params['osu_ssid'] = '"HS 2.0 OSU open"'
+    params['osu_method_list'] = "1"
+    params['osu_friendly_name'] = [ "eng:Test OSU", "fin:Testi-OSU" ]
+    params['osu_nai2'] = "osen@example.com"
+    params['osu_icon'] = "w1fi_logo"
+    params['osu_service_desc'] = [ "eng:Example services", "fin:Esimerkkipalveluja" ]
+    params['osu_server_uri'] = "https://example.com/osu/"
+    params['wpa_key_mgmt'] = "WPA-EAP OSEN"
+    hostapd.add_ap(apdev[0], params)
+
+    dev[0].hs20_enable()
+    dir = "/tmp/osu-fetch"
+    if os.path.isdir(dir):
+       files = [ f for f in os.listdir(dir) if f.startswith("osu-") ]
+       for f in files:
+           os.remove(dir + "/" + f)
+    else:
+        try:
+            os.makedirs(dir)
+        except:
+            pass
+    dev[0].scan_for_bss(bssid, freq="2412")
+    try:
+        dev[0].request("SET osu_dir " + dir)
+        dev[0].request("FETCH_OSU")
+        ev = dev[0].wait_event(["OSU provider fetch completed"], timeout=30)
+        if ev is None:
+            raise Exception("Timeout on OSU fetch")
+        osu_ssid = False
+        osu_ssid2 = False
+        osu_nai = False
+        osu_nai2 = False
+        with open(os.path.join(dir, "osu-providers.txt"), "r") as f:
+            for l in f.readlines():
+                logger.info(l.strip())
+                if l.strip() == "osu_ssid=HS 2.0 OSU open":
+                    osu_ssid = True
+                if l.strip() == "osu_ssid2=test-hs20":
+                    osu_ssid2 = True
+                if l.strip().startswith("osu_nai="):
+                    osu_nai = True
+                if l.strip() == "osu_nai2=osen@example.com":
+                    osu_nai2 = True
+        if not osu_ssid:
+            raise Exception("osu_ssid not reported")
+        if not osu_ssid2:
+            raise Exception("osu_ssid2 not reported")
+        if osu_nai:
+            raise Exception("osu_nai reported unexpectedly")
+        if not osu_nai2:
+            raise Exception("osu_nai2 not reported")
+    finally:
+        files = [ f for f in os.listdir(dir) if f.startswith("osu-") ]
+        for f in files:
+            os.remove(dir + "/" + f)
+        os.rmdir(dir)
+
+def test_ap_hs20_fetch_osu_single_ssid2(dev, apdev):
+    """Hotspot 2.0 OSU provider and single SSID (two OSU providers)"""
+    bssid = apdev[0]['bssid']
+    params = hs20_ap_params()
+    params['hs20_icon'] = "128:80:zxx:image/png:w1fi_logo:w1fi_logo-no-file.png"
+    params['osu_ssid'] = '"HS 2.0 OSU open"'
+    params['osu_method_list'] = "1"
+    params['osu_friendly_name'] = [ "eng:Test OSU", "fin:Testi-OSU" ]
+    params['osu_nai2'] = "osen@example.com"
+    params['osu_icon'] = "w1fi_logo"
+    params['osu_service_desc'] = [ "eng:Example services", "fin:Esimerkkipalveluja" ]
+    params['osu_server_uri'] = "https://example.com/osu/"
+    params['wpa_key_mgmt'] = "WPA-EAP OSEN"
+    hapd = hostapd.add_ap(apdev[0], params, no_enable=True)
+
+    hapd.set('osu_server_uri', 'https://another.example.com/osu/')
+    hapd.set('osu_method_list', "1")
+    hapd.set('osu_nai2', "osen@another.example.com")
+    hapd.enable()
+
+    dev[0].hs20_enable()
+    dir = "/tmp/osu-fetch"
+    if os.path.isdir(dir):
+       files = [ f for f in os.listdir(dir) if f.startswith("osu-") ]
+       for f in files:
+           os.remove(dir + "/" + f)
+    else:
+        try:
+            os.makedirs(dir)
+        except:
+            pass
+    dev[0].scan_for_bss(bssid, freq="2412")
+    try:
+        dev[0].request("SET osu_dir " + dir)
+        dev[0].request("FETCH_OSU")
+        ev = dev[0].wait_event(["OSU provider fetch completed"], timeout=30)
+        if ev is None:
+            raise Exception("Timeout on OSU fetch")
+        osu_ssid = False
+        osu_ssid2 = False
+        osu_nai = False
+        osu_nai2 = False
+        osu_nai2b = False
+        with open(os.path.join(dir, "osu-providers.txt"), "r") as f:
+            for l in f.readlines():
+                logger.info(l.strip())
+                if l.strip() == "osu_ssid=HS 2.0 OSU open":
+                    osu_ssid = True
+                if l.strip() == "osu_ssid2=test-hs20":
+                    osu_ssid2 = True
+                if l.strip().startswith("osu_nai="):
+                    osu_nai = True
+                if l.strip() == "osu_nai2=osen@example.com":
+                    osu_nai2 = True
+                if l.strip() == "osu_nai2=osen@another.example.com":
+                    osu_nai2b = True
+        if not osu_ssid:
+            raise Exception("osu_ssid not reported")
+        if not osu_ssid2:
+            raise Exception("osu_ssid2 not reported")
+        if osu_nai:
+            raise Exception("osu_nai reported unexpectedly")
+        if not osu_nai2:
+            raise Exception("osu_nai2 not reported")
+        if not osu_nai2b:
+            raise Exception("osu_nai2b not reported")
+    finally:
+        files = [ f for f in os.listdir(dir) if f.startswith("osu-") ]
+        for f in files:
+            os.remove(dir + "/" + f)
+        os.rmdir(dir)
+
 def get_icon(dev, bssid, iconname):
     icon = ""
     pos = 0
@@ -3023,7 +3274,9 @@ def test_ap_hs20_req_hs20_icon(dev, apdev):
     hostapd.add_ap(apdev[0], params)
 
     dev[0].scan_for_bss(bssid, freq="2412")
+    run_req_hs20_icon(dev, bssid)
 
+def run_req_hs20_icon(dev, bssid):
     # First, fetch two icons from the AP to wpa_supplicant
 
     if "OK" not in dev[0].request("REQ_HS20_ICON " + bssid + " w1fi_logo"):
@@ -3059,6 +3312,56 @@ def test_ap_hs20_req_hs20_icon(dev, apdev):
         raise Exception("DEL_HS20_ICON failed")
     if "OK" not in dev[0].request("DEL_HS20_ICON " + bssid + " test_logo"):
         raise Exception("DEL_HS20_ICON failed")
+
+def test_ap_hs20_req_operator_icon(dev, apdev):
+    """Hotspot 2.0 operator icons"""
+    bssid = apdev[0]['bssid']
+    params = hs20_ap_params()
+    params['hs20_icon'] = [ "128:80:zxx:image/png:w1fi_logo:w1fi_logo.png",
+                            "500:300:fi:image/png:test_logo:auth_serv/sha512-server.pem" ]
+    params['operator_icon'] = [ "w1fi_logo", "unknown_logo", "test_logo" ]
+    hostapd.add_ap(apdev[0], params)
+
+    value = struct.pack('<HH', 128, 80) + "zxx"
+    value += struct.pack('B', 9) + "image/png"
+    value += struct.pack('B', 9) + "w1fi_logo"
+
+    value += struct.pack('<HH', 500, 300) + "fi\0"
+    value += struct.pack('B', 9) + "image/png"
+    value += struct.pack('B', 9) + "test_logo"
+
+    dev[0].scan_for_bss(bssid, freq="2412")
+
+    if "OK" not in dev[0].request("ANQP_GET " + bssid + " hs20:12"):
+        raise Exception("ANQP_GET command failed")
+
+    ev = dev[0].wait_event(["GAS-QUERY-START"], timeout=5)
+    if ev is None:
+        raise Exception("GAS query start timed out")
+
+    ev = dev[0].wait_event(["GAS-QUERY-DONE"], timeout=10)
+    if ev is None:
+        raise Exception("GAS query timed out")
+
+    ev = dev[0].wait_event(["RX-HS20-ANQP"], timeout=1)
+    if ev is None or "Operator Icon Metadata" not in ev:
+        raise Exception("Did not receive Operator Icon Metadata")
+
+    ev = dev[0].wait_event(["ANQP-QUERY-DONE"], timeout=10)
+    if ev is None:
+        raise Exception("ANQP-QUERY-DONE event not seen")
+    if "result=SUCCESS" not in ev:
+        raise Exception("Unexpected result: " + ev)
+
+    bss = dev[0].get_bss(bssid)
+    if "hs20_operator_icon_metadata" not in bss:
+        raise Exception("hs20_operator_icon_metadata missing from BSS entry")
+    if bss["hs20_operator_icon_metadata"] != binascii.hexlify(value):
+        print binascii.hexlify(value)
+        raise Exception("Unexpected hs20_operator_icon_metadata value: " +
+                        bss["hs20_operator_icon_metadata"])
+
+    run_req_hs20_icon(dev, bssid)
 
 def test_ap_hs20_req_hs20_icon_oom(dev, apdev):
     """Hotspot 2.0 icon fetch OOM with REQ_HS20_ICON"""
@@ -3478,7 +3781,7 @@ def test_ap_hs20_ft(dev, apdev):
     params['r1_key_holder'] = "000102030405"
     params["mobility_domain"] = "a1b2"
     params["reassociation_deadline"] = "1000"
-    hostapd.add_ap(apdev[0], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].hs20_enable()
     id = dev[0].add_cred_values({ 'realm': "example.com",
@@ -3489,6 +3792,25 @@ def test_ap_hs20_ft(dev, apdev):
                                   'update_identifier': "1234" })
     interworking_select(dev[0], bssid, "home", freq="2412")
     interworking_connect(dev[0], bssid, "TTLS")
+    dev[0].dump_monitor()
+    # speed up testing by avoiding unnecessary scanning of other channels
+    nid = dev[0].get_status_field("id")
+    dev[0].set_network(nid, "scan_freq", "2412")
+
+    params = hs20_ap_params()
+    hapd2 = hostapd.add_ap(apdev[1], params)
+
+    hapd.disable()
+    ev = dev[0].wait_event(["CTRL-EVENT-BEACON-LOSS"], timeout=10)
+    if ev is None:
+        raise Exception("Beacon loss not reported")
+    ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=5)
+    if ev is None:
+        raise Exception("Disconnection not reported")
+    ev = dev[0].wait_event(["CTRL-EVENT-CONNECTED"], timeout=5)
+    if ev is None:
+        raise Exception("Connection to AP2 not reported")
+    print dev[0].request("STATUS")
 
 def test_ap_hs20_remediation_sql(dev, apdev, params):
     """Hotspot 2.0 connection and remediation required using SQLite for user DB"""
@@ -3567,9 +3889,14 @@ def test_ap_hs20_external_selection(dev, apdev):
     dev[0].connect("test-hs20", proto="RSN", key_mgmt="WPA-EAP", eap="TTLS",
                    identity="hs20-test", password="password",
                    ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAPV2",
-                   scan_freq="2412", update_identifier="54321")
+                   scan_freq="2412", update_identifier="54321",
+                   roaming_consortium_selection="1020304050")
     if dev[0].get_status_field("hs20") != "2":
         raise Exception("Unexpected hs20 indication")
+    network_id = dev[0].get_status_field("id")
+    sel = dev[0].get_network(network_id, "roaming_consortium_selection")
+    if sel != "1020304050":
+        raise Exception("Unexpected roaming_consortium_selection value: " + sel)
 
 def test_ap_hs20_random_mac_addr(dev, apdev):
     """Hotspot 2.0 connection with random MAC address"""
@@ -4212,26 +4539,12 @@ def _test_proxyarp_open(dev, apdev, params, ebtables=False):
 
     if ebtables:
         for chain in [ 'FORWARD', 'OUTPUT' ]:
-            subprocess.call(['ebtables', '-A', chain, '-p', 'ARP',
-                             '-d', 'Broadcast', '-o', apdev[0]['ifname'],
-                             '-j', 'DROP'])
-            subprocess.call(['ebtables', '-A', chain, '-d', 'Multicast',
-                             '-p', 'IPv6', '--ip6-protocol', 'ipv6-icmp',
-                             '--ip6-icmp-type', 'neighbor-solicitation',
-                             '-o', apdev[0]['ifname'], '-j', 'DROP'])
-            subprocess.call(['ebtables', '-A', chain, '-d', 'Multicast',
-                             '-p', 'IPv6', '--ip6-protocol', 'ipv6-icmp',
-                             '--ip6-icmp-type', 'neighbor-advertisement',
-                             '-o', apdev[0]['ifname'], '-j', 'DROP'])
-            subprocess.call(['ebtables', '-A', chain,
-                             '-p', 'IPv6', '--ip6-protocol', 'ipv6-icmp',
-                             '--ip6-icmp-type', 'router-solicitation',
-                             '-o', apdev[0]['ifname'], '-j', 'DROP'])
-            # Multicast Listener Report Message
-            subprocess.call(['ebtables', '-A', chain, '-d', 'Multicast',
-                             '-p', 'IPv6', '--ip6-protocol', 'ipv6-icmp',
-                             '--ip6-icmp-type', '143',
-                             '-o', apdev[0]['ifname'], '-j', 'DROP'])
+            try:
+                subprocess.call(['ebtables', '-A', chain, '-p', 'ARP',
+                                 '-d', 'Broadcast', '-o', apdev[0]['ifname'],
+                                 '-j', 'DROP'])
+            except:
+                raise HwsimSkip("No ebtables available")
 
     time.sleep(0.5)
     cmd = {}
@@ -4267,32 +4580,6 @@ def _test_proxyarp_open(dev, apdev, params, ebtables=False):
     addr0 = dev[0].p2p_interface_addr()
     addr1 = dev[1].p2p_interface_addr()
     addr2 = dev[2].p2p_interface_addr()
-
-    src_ll_opt0 = "\x01\x01" + binascii.unhexlify(addr0.replace(':',''))
-    src_ll_opt1 = "\x01\x01" + binascii.unhexlify(addr1.replace(':',''))
-
-    # DAD NS
-    send_ns(dev[0], ip_src="::", target="aaaa:bbbb:cccc::2")
-
-    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2")
-    # test frame without source link-layer address option
-    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2",
-            opt='')
-    # test frame with bogus option
-    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2",
-            opt="\x70\x01\x01\x02\x03\x04\x05\x05")
-    # test frame with truncated source link-layer address option
-    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2",
-            opt="\x01\x01\x01\x02\x03\x04")
-    # test frame with foreign source link-layer address option
-    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2",
-            opt="\x01\x01\x01\x02\x03\x04\x05\x06")
-
-    send_ns(dev[1], ip_src="aaaa:bbbb:dddd::2", target="aaaa:bbbb:dddd::2")
-
-    send_ns(dev[1], ip_src="aaaa:bbbb:eeee::2", target="aaaa:bbbb:eeee::2")
-    # another copy for additional code coverage
-    send_ns(dev[1], ip_src="aaaa:bbbb:eeee::2", target="aaaa:bbbb:eeee::2")
 
     pkt = build_dhcp_ack(dst_ll="ff:ff:ff:ff:ff:ff", src_ll=bssid,
                          ip_src="192.168.1.1", ip_dst="255.255.255.255",
@@ -4365,14 +4652,8 @@ def _test_proxyarp_open(dev, apdev, params, ebtables=False):
 
     matches = get_permanent_neighbors("ap-br0")
     logger.info("After connect: " + str(matches))
-    if len(matches) != 4:
+    if len(matches) != 1:
         raise Exception("Unexpected number of neighbor entries after connect")
-    if 'aaaa:bbbb:cccc::2 dev ap-br0 lladdr 02:00:00:00:00:00 PERMANENT' not in matches:
-        raise Exception("dev0 addr missing")
-    if 'aaaa:bbbb:dddd::2 dev ap-br0 lladdr 02:00:00:00:01:00 PERMANENT' not in matches:
-        raise Exception("dev1 addr(1) missing")
-    if 'aaaa:bbbb:eeee::2 dev ap-br0 lladdr 02:00:00:00:01:00 PERMANENT' not in matches:
-        raise Exception("dev1 addr(2) missing")
     if '192.168.1.123 dev ap-br0 lladdr 02:00:00:00:00:00 PERMANENT' not in matches:
         raise Exception("dev0 IPv4 addr missing")
 
@@ -4457,38 +4738,6 @@ def _test_proxyarp_open(dev, apdev, params, ebtables=False):
     # ARP Request to verify previous mapping
     send_arp(dev[1], sender_ip="192.168.1.127", target_ip="192.168.1.123")
     send_arp(dev[0], sender_ip="192.168.1.123", target_ip="192.168.1.127")
-
-    time.sleep(0.1)
-
-    send_ns(dev[0], target="aaaa:bbbb:dddd::2", ip_src="aaaa:bbbb:cccc::2")
-    time.sleep(0.1)
-    send_ns(dev[1], target="aaaa:bbbb:cccc::2", ip_src="aaaa:bbbb:dddd::2")
-    time.sleep(0.1)
-    send_ns(hapd, hapd_bssid=bssid, target="aaaa:bbbb:dddd::2",
-            ip_src="aaaa:bbbb:ffff::2")
-    time.sleep(0.1)
-    send_ns(dev[2], target="aaaa:bbbb:cccc::2", ip_src="aaaa:bbbb:ff00::2")
-    time.sleep(0.1)
-    send_ns(dev[2], target="aaaa:bbbb:dddd::2", ip_src="aaaa:bbbb:ff00::2")
-    time.sleep(0.1)
-    send_ns(dev[2], target="aaaa:bbbb:eeee::2", ip_src="aaaa:bbbb:ff00::2")
-    time.sleep(0.1)
-
-    # Try to probe for an already assigned address
-    send_ns(dev[1], target="aaaa:bbbb:cccc::2", ip_src="::")
-    time.sleep(0.1)
-    send_ns(hapd, hapd_bssid=bssid, target="aaaa:bbbb:cccc::2", ip_src="::")
-    time.sleep(0.1)
-    send_ns(dev[2], target="aaaa:bbbb:cccc::2", ip_src="::")
-    time.sleep(0.1)
-
-    # Unsolicited NA
-    send_na(dev[1], target="aaaa:bbbb:cccc:aeae::3",
-            ip_src="aaaa:bbbb:cccc:aeae::3", ip_dst="ff02::1")
-    send_na(hapd, hapd_bssid=bssid, target="aaaa:bbbb:cccc:aeae::4",
-            ip_src="aaaa:bbbb:cccc:aeae::4", ip_dst="ff02::1")
-    send_na(dev[2], target="aaaa:bbbb:cccc:aeae::5",
-            ip_src="aaaa:bbbb:cccc:aeae::5", ip_dst="ff02::1")
 
     try:
         hwsim_utils.test_connectivity_iface(dev[0], hapd, "ap-br0")
@@ -4581,6 +4830,198 @@ def _test_proxyarp_open(dev, apdev, params, ebtables=False):
     #     bssid, '192.168.1.101' ] not in arp_reply:
     #    raise Exception("br did not get ARP response for 192.168.1.123")
 
+def _test_proxyarp_open_ipv6(dev, apdev, params, ebtables=False):
+    prefix = "proxyarp_open"
+    if ebtables:
+        prefix += "_ebtables"
+    cap_br = os.path.join(params['logdir'], prefix + ".ap-br0.pcap")
+    cap_dev0 = os.path.join(params['logdir'],
+                            prefix + ".%s.pcap" % dev[0].ifname)
+    cap_dev1 = os.path.join(params['logdir'],
+                            prefix + ".%s.pcap" % dev[1].ifname)
+    cap_dev2 = os.path.join(params['logdir'],
+                            prefix + ".%s.pcap" % dev[2].ifname)
+
+    bssid = apdev[0]['bssid']
+    params = { 'ssid': 'open' }
+    params['proxy_arp'] = '1'
+    hapd = hostapd.add_ap(apdev[0], params, no_enable=True)
+    hapd.set("ap_isolate", "1")
+    hapd.set('bridge', 'ap-br0')
+    hapd.dump_monitor()
+    try:
+        hapd.enable()
+    except:
+        # For now, do not report failures due to missing kernel support
+        raise HwsimSkip("Could not start hostapd - assume proxyarp not supported in kernel version")
+    ev = hapd.wait_event(["AP-ENABLED", "AP-DISABLED"], timeout=10)
+    if ev is None:
+        raise Exception("AP startup timed out")
+    if "AP-ENABLED" not in ev:
+        raise Exception("AP startup failed")
+
+    params2 = { 'ssid': 'another' }
+    hapd2 = hostapd.add_ap(apdev[1], params2, no_enable=True)
+    hapd2.set('bridge', 'ap-br0')
+    hapd2.enable()
+
+    subprocess.call(['brctl', 'setfd', 'ap-br0', '0'])
+    subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'up'])
+
+    if ebtables:
+        for chain in [ 'FORWARD', 'OUTPUT' ]:
+            try:
+                subprocess.call(['ebtables', '-A', chain, '-d', 'Multicast',
+                                 '-p', 'IPv6', '--ip6-protocol', 'ipv6-icmp',
+                                 '--ip6-icmp-type', 'neighbor-solicitation',
+                                 '-o', apdev[0]['ifname'], '-j', 'DROP'])
+                subprocess.call(['ebtables', '-A', chain, '-d', 'Multicast',
+                                 '-p', 'IPv6', '--ip6-protocol', 'ipv6-icmp',
+                                 '--ip6-icmp-type', 'neighbor-advertisement',
+                                 '-o', apdev[0]['ifname'], '-j', 'DROP'])
+                subprocess.call(['ebtables', '-A', chain,
+                                 '-p', 'IPv6', '--ip6-protocol', 'ipv6-icmp',
+                                 '--ip6-icmp-type', 'router-solicitation',
+                                 '-o', apdev[0]['ifname'], '-j', 'DROP'])
+                # Multicast Listener Report Message
+                subprocess.call(['ebtables', '-A', chain, '-d', 'Multicast',
+                                 '-p', 'IPv6', '--ip6-protocol', 'ipv6-icmp',
+                                 '--ip6-icmp-type', '143',
+                                 '-o', apdev[0]['ifname'], '-j', 'DROP'])
+            except:
+                raise HwsimSkip("No ebtables available")
+
+    time.sleep(0.5)
+    cmd = {}
+    cmd[0] = subprocess.Popen(['tcpdump', '-p', '-U', '-i', 'ap-br0',
+                               '-w', cap_br, '-s', '2000'],
+                              stderr=open('/dev/null', 'w'))
+    cmd[1] = subprocess.Popen(['tcpdump', '-p', '-U', '-i', dev[0].ifname,
+                               '-w', cap_dev0, '-s', '2000'],
+                              stderr=open('/dev/null', 'w'))
+    cmd[2] = subprocess.Popen(['tcpdump', '-p', '-U', '-i', dev[1].ifname,
+                               '-w', cap_dev1, '-s', '2000'],
+                              stderr=open('/dev/null', 'w'))
+    cmd[3] = subprocess.Popen(['tcpdump', '-p', '-U', '-i', dev[2].ifname,
+                               '-w', cap_dev2, '-s', '2000'],
+                              stderr=open('/dev/null', 'w'))
+
+    dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
+    dev[1].connect("open", key_mgmt="NONE", scan_freq="2412")
+    dev[2].connect("another", key_mgmt="NONE", scan_freq="2412")
+    time.sleep(0.1)
+
+    brcmd = subprocess.Popen(['brctl', 'show'], stdout=subprocess.PIPE)
+    res = brcmd.stdout.read()
+    brcmd.stdout.close()
+    logger.info("Bridge setup: " + res)
+
+    brcmd = subprocess.Popen(['brctl', 'showstp', 'ap-br0'],
+                             stdout=subprocess.PIPE)
+    res = brcmd.stdout.read()
+    brcmd.stdout.close()
+    logger.info("Bridge showstp: " + res)
+
+    addr0 = dev[0].p2p_interface_addr()
+    addr1 = dev[1].p2p_interface_addr()
+    addr2 = dev[2].p2p_interface_addr()
+
+    src_ll_opt0 = "\x01\x01" + binascii.unhexlify(addr0.replace(':',''))
+    src_ll_opt1 = "\x01\x01" + binascii.unhexlify(addr1.replace(':',''))
+
+    # DAD NS
+    send_ns(dev[0], ip_src="::", target="aaaa:bbbb:cccc::2")
+
+    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2")
+    # test frame without source link-layer address option
+    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2",
+            opt='')
+    # test frame with bogus option
+    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2",
+            opt="\x70\x01\x01\x02\x03\x04\x05\x05")
+    # test frame with truncated source link-layer address option
+    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2",
+            opt="\x01\x01\x01\x02\x03\x04")
+    # test frame with foreign source link-layer address option
+    send_ns(dev[0], ip_src="aaaa:bbbb:cccc::2", target="aaaa:bbbb:cccc::2",
+            opt="\x01\x01\x01\x02\x03\x04\x05\x06")
+
+    send_ns(dev[1], ip_src="aaaa:bbbb:dddd::2", target="aaaa:bbbb:dddd::2")
+
+    send_ns(dev[1], ip_src="aaaa:bbbb:eeee::2", target="aaaa:bbbb:eeee::2")
+    # another copy for additional code coverage
+    send_ns(dev[1], ip_src="aaaa:bbbb:eeee::2", target="aaaa:bbbb:eeee::2")
+
+    macs = get_bridge_macs("ap-br0")
+    logger.info("After connect (showmacs): " + str(macs))
+
+    matches = get_permanent_neighbors("ap-br0")
+    logger.info("After connect: " + str(matches))
+    if len(matches) != 3:
+        raise Exception("Unexpected number of neighbor entries after connect")
+    if 'aaaa:bbbb:cccc::2 dev ap-br0 lladdr 02:00:00:00:00:00 PERMANENT' not in matches:
+        raise Exception("dev0 addr missing")
+    if 'aaaa:bbbb:dddd::2 dev ap-br0 lladdr 02:00:00:00:01:00 PERMANENT' not in matches:
+        raise Exception("dev1 addr(1) missing")
+    if 'aaaa:bbbb:eeee::2 dev ap-br0 lladdr 02:00:00:00:01:00 PERMANENT' not in matches:
+        raise Exception("dev1 addr(2) missing")
+
+    send_ns(dev[0], target="aaaa:bbbb:dddd::2", ip_src="aaaa:bbbb:cccc::2")
+    time.sleep(0.1)
+    send_ns(dev[1], target="aaaa:bbbb:cccc::2", ip_src="aaaa:bbbb:dddd::2")
+    time.sleep(0.1)
+    send_ns(hapd, hapd_bssid=bssid, target="aaaa:bbbb:dddd::2",
+            ip_src="aaaa:bbbb:ffff::2")
+    time.sleep(0.1)
+    send_ns(dev[2], target="aaaa:bbbb:cccc::2", ip_src="aaaa:bbbb:ff00::2")
+    time.sleep(0.1)
+    send_ns(dev[2], target="aaaa:bbbb:dddd::2", ip_src="aaaa:bbbb:ff00::2")
+    time.sleep(0.1)
+    send_ns(dev[2], target="aaaa:bbbb:eeee::2", ip_src="aaaa:bbbb:ff00::2")
+    time.sleep(0.1)
+
+    # Try to probe for an already assigned address
+    send_ns(dev[1], target="aaaa:bbbb:cccc::2", ip_src="::")
+    time.sleep(0.1)
+    send_ns(hapd, hapd_bssid=bssid, target="aaaa:bbbb:cccc::2", ip_src="::")
+    time.sleep(0.1)
+    send_ns(dev[2], target="aaaa:bbbb:cccc::2", ip_src="::")
+    time.sleep(0.1)
+
+    # Unsolicited NA
+    send_na(dev[1], target="aaaa:bbbb:cccc:aeae::3",
+            ip_src="aaaa:bbbb:cccc:aeae::3", ip_dst="ff02::1")
+    send_na(hapd, hapd_bssid=bssid, target="aaaa:bbbb:cccc:aeae::4",
+            ip_src="aaaa:bbbb:cccc:aeae::4", ip_dst="ff02::1")
+    send_na(dev[2], target="aaaa:bbbb:cccc:aeae::5",
+            ip_src="aaaa:bbbb:cccc:aeae::5", ip_dst="ff02::1")
+
+    try:
+        hwsim_utils.test_connectivity_iface(dev[0], hapd, "ap-br0")
+    except Exception, e:
+        logger.info("test_connectibity_iface failed: " + str(e))
+        raise HwsimSkip("Assume kernel did not have the required patches for proxyarp")
+    hwsim_utils.test_connectivity_iface(dev[1], hapd, "ap-br0")
+    hwsim_utils.test_connectivity(dev[0], dev[1])
+
+    dev[0].request("DISCONNECT")
+    dev[1].request("DISCONNECT")
+    time.sleep(0.5)
+    for i in range(len(cmd)):
+        cmd[i].terminate()
+    macs = get_bridge_macs("ap-br0")
+    logger.info("After disconnect (showmacs): " + str(macs))
+    matches = get_permanent_neighbors("ap-br0")
+    logger.info("After disconnect: " + str(matches))
+    if len(matches) > 0:
+        raise Exception("Unexpected neighbor entries after disconnect")
+    if ebtables:
+        cmd = subprocess.Popen(['ebtables', '-L', '--Lc'],
+                               stdout=subprocess.PIPE)
+        res = cmd.stdout.read()
+        cmd.stdout.close()
+        logger.info("ebtables results:\n" + res)
+
     ns = tshark_get_ns(cap_dev0)
     logger.info("dev0 seen NS: " + str(ns))
     na = tshark_get_na(cap_dev0)
@@ -4588,7 +5029,10 @@ def _test_proxyarp_open(dev, apdev, params, ebtables=False):
 
     if [ addr0, addr1, 'aaaa:bbbb:dddd::2', 'aaaa:bbbb:cccc::2',
          'aaaa:bbbb:dddd::2', addr1 ] not in na:
-        raise Exception("dev0 did not get NA for aaaa:bbbb:dddd::2")
+        # For now, skip the test instead of reporting the error since the IPv6
+        # proxyarp support is not yet in the upstream kernel tree.
+        #raise Exception("dev0 did not get NA for aaaa:bbbb:dddd::2")
+        raise HwsimSkip("Assume kernel did not have the required patches for proxyarp (IPv6)")
 
     if ebtables:
         for req in ns:
@@ -4635,6 +5079,16 @@ def test_proxyarp_open(dev, apdev, params):
         subprocess.call(['brctl', 'delbr', 'ap-br0'],
                         stderr=open('/dev/null', 'w'))
 
+def test_proxyarp_open_ipv6(dev, apdev, params):
+    """ProxyARP with open network (IPv6)"""
+    try:
+        _test_proxyarp_open_ipv6(dev, apdev, params)
+    finally:
+        subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'down'],
+                        stderr=open('/dev/null', 'w'))
+        subprocess.call(['brctl', 'delbr', 'ap-br0'],
+                        stderr=open('/dev/null', 'w'))
+
 def test_proxyarp_open_ebtables(dev, apdev, params):
     """ProxyARP with open network"""
     try:
@@ -4649,6 +5103,86 @@ def test_proxyarp_open_ebtables(dev, apdev, params):
                         stderr=open('/dev/null', 'w'))
         subprocess.call(['brctl', 'delbr', 'ap-br0'],
                         stderr=open('/dev/null', 'w'))
+
+def test_proxyarp_open_ebtables_ipv6(dev, apdev, params):
+    """ProxyARP with open network (IPv6)"""
+    try:
+        _test_proxyarp_open_ipv6(dev, apdev, params, ebtables=True)
+    finally:
+        try:
+            subprocess.call(['ebtables', '-F', 'FORWARD'])
+            subprocess.call(['ebtables', '-F', 'OUTPUT'])
+        except:
+            pass
+        subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'down'],
+                        stderr=open('/dev/null', 'w'))
+        subprocess.call(['brctl', 'delbr', 'ap-br0'],
+                        stderr=open('/dev/null', 'w'))
+
+def test_proxyarp_errors(dev, apdev, params):
+    """ProxyARP error cases"""
+    try:
+        run_proxyarp_errors(dev, apdev, params)
+    finally:
+        subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'down'],
+                        stderr=open('/dev/null', 'w'))
+        subprocess.call(['brctl', 'delbr', 'ap-br0'],
+                        stderr=open('/dev/null', 'w'))
+
+def run_proxyarp_errors(dev, apdev, params):
+    params = { 'ssid': 'open',
+               'proxy_arp': '1',
+               'ap_isolate': '1',
+               'bridge': 'ap-br0',
+               'disable_dgaf': '1' }
+    hapd = hostapd.add_ap(apdev[0], params, no_enable=True)
+    try:
+        hapd.enable()
+    except:
+        # For now, do not report failures due to missing kernel support
+        raise HwsimSkip("Could not start hostapd - assume proxyarp not supported in kernel version")
+    ev = hapd.wait_event(["AP-ENABLED", "AP-DISABLED"], timeout=10)
+    if ev is None:
+        raise Exception("AP startup timed out")
+    if "AP-ENABLED" not in ev:
+        raise Exception("AP startup failed")
+
+    hapd.disable()
+    with alloc_fail(hapd, 1, "l2_packet_init;x_snoop_get_l2_packet;dhcp_snoop_init"):
+        if "FAIL" not in hapd.request("ENABLE"):
+            raise Exception("ENABLE accepted unexpectedly")
+    with alloc_fail(hapd, 1, "l2_packet_init;x_snoop_get_l2_packet;ndisc_snoop_init"):
+        if "FAIL" not in hapd.request("ENABLE"):
+            raise Exception("ENABLE accepted unexpectedly")
+    with fail_test(hapd, 1, "l2_packet_set_packet_filter;x_snoop_get_l2_packet;ndisc_snoop_init"):
+        if "FAIL" not in hapd.request("ENABLE"):
+            raise Exception("ENABLE accepted unexpectedly")
+    with fail_test(hapd, 1, "l2_packet_set_packet_filter;x_snoop_get_l2_packet;dhcp_snoop_init"):
+        if "FAIL" not in hapd.request("ENABLE"):
+            raise Exception("ENABLE accepted unexpectedly")
+    hapd.enable()
+
+    subprocess.call(['brctl', 'setfd', 'ap-br0', '0'])
+    subprocess.call(['ip', 'link', 'set', 'dev', 'ap-br0', 'up'])
+
+    dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
+    addr0 = dev[0].own_addr()
+
+    pkt = build_ra(src_ll=apdev[0]['bssid'], ip_src="aaaa:bbbb:cccc::33",
+                   ip_dst="ff01::1")
+    with fail_test(hapd, 1, "x_snoop_mcast_to_ucast_convert_send"):
+        if "OK" not in hapd.request("DATA_TEST_FRAME ifname=ap-br0 " + binascii.hexlify(pkt)):
+            raise Exception("DATA_TEST_FRAME failed")
+        wait_fail_trigger(dev[0], "GET_FAIL")
+
+    with alloc_fail(hapd, 1, "sta_ip6addr_add"):
+        src_ll_opt0 = "\x01\x01" + binascii.unhexlify(addr0.replace(':',''))
+        pkt = build_ns(src_ll=addr0, ip_src="aaaa:bbbb:cccc::2",
+                       ip_dst="ff02::1:ff00:2", target="aaaa:bbbb:cccc::2",
+                       opt=src_ll_opt0)
+        if "OK" not in dev[0].request("DATA_TEST_FRAME " + binascii.hexlify(pkt)):
+            raise Exception("DATA_TEST_FRAME failed")
+        wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
 
 def test_ap_hs20_connect_deinit(dev, apdev):
     """Hotspot 2.0 connection interrupted with deinit"""
@@ -5387,3 +5921,285 @@ def test_ap_interworking_element_update(dev, apdev):
     logger.info("After update: " + str(bss))
     if '6b09f20208020000000300' not in bss['ie']:
         raise Exception("Expected Interworking element not seen after update")
+
+def test_ap_hs20_terms_and_conditions(dev, apdev):
+    """Hotspot 2.0 Terms and Conditions signaling"""
+    check_eap_capa(dev[0], "MSCHAPV2")
+    bssid = apdev[0]['bssid']
+    params = hs20_ap_params()
+    params['hessid'] = bssid
+    params['hs20_t_c_filename'] = 'terms-and-conditions'
+    params['hs20_t_c_timestamp'] = '123456789'
+
+    hostapd.add_ap(apdev[0], params)
+
+    dev[0].hs20_enable()
+    dev[0].connect("test-hs20", proto="RSN", key_mgmt="WPA-EAP", eap="TTLS",
+                   identity="hs20-t-c-test", password="password",
+                   ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAPV2",
+                   ieee80211w='2', scan_freq="2412")
+    ev = dev[0].wait_event(["HS20-T-C-ACCEPTANCE"], timeout=5)
+    if ev is None:
+        raise Exception("Terms and Conditions Acceptance notification not received")
+    url = "https://example.com/t_and_c?addr=%s&ap=123" % dev[0].own_addr()
+    if url not in ev:
+        raise Exception("Unexpected URL: " + ev)
+
+def test_ap_hs20_terms_and_conditions_coa(dev, apdev):
+    """Hotspot 2.0 Terms and Conditions signaling - CoA"""
+    try:
+        import pyrad.client
+        import pyrad.packet
+        import pyrad.dictionary
+        import radius_das
+    except ImportError:
+        raise HwsimSkip("No pyrad modules available")
+
+    check_eap_capa(dev[0], "MSCHAPV2")
+    bssid = apdev[0]['bssid']
+    params = hs20_ap_params()
+    params['hessid'] = bssid
+    params['hs20_t_c_filename'] = 'terms-and-conditions'
+    params['hs20_t_c_timestamp'] = '123456789'
+    params['own_ip_addr'] = "127.0.0.1"
+    params['radius_das_port'] = "3799"
+    params['radius_das_client'] = "127.0.0.1 secret"
+    params['radius_das_require_event_timestamp'] = "1"
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    dev[0].hs20_enable()
+    dev[0].connect("test-hs20", proto="RSN", key_mgmt="WPA-EAP", eap="TTLS",
+                   identity="hs20-t-c-test", password="password",
+                   ca_cert="auth_serv/ca.pem", phase2="auth=MSCHAPV2",
+                   ieee80211w='2', scan_freq="2412")
+
+    ev = hapd.wait_event(["HS20-T-C-FILTERING-ADD"], timeout=5)
+    if ev is None:
+        raise Exception("Terms and Conditions filtering not enabled")
+    if ev.split(' ')[1] != dev[0].own_addr():
+        raise Exception("Unexpected STA address for filtering: " + ev)
+
+    ev = dev[0].wait_event(["HS20-T-C-ACCEPTANCE"], timeout=5)
+    if ev is None:
+        raise Exception("Terms and Conditions Acceptance notification not received")
+    url = "https://example.com/t_and_c?addr=%s&ap=123" % dev[0].own_addr()
+    if url not in ev:
+        raise Exception("Unexpected URL: " + ev)
+
+    dict = pyrad.dictionary.Dictionary("dictionary.radius")
+
+    srv = pyrad.client.Client(server="127.0.0.1", acctport=3799,
+                              secret="secret", dict=dict)
+    srv.retries = 1
+    srv.timeout = 1
+
+    sta = hapd.get_sta(dev[0].own_addr())
+    multi_sess_id = sta['authMultiSessionId']
+
+    logger.info("CoA-Request with matching Acct-Session-Id")
+    vsa = binascii.unhexlify('00009f68090600000000')
+    req = radius_das.CoAPacket(dict=dict, secret="secret",
+                               NAS_IP_Address="127.0.0.1",
+                               Acct_Multi_Session_Id=multi_sess_id,
+                               Chargeable_User_Identity="hs20-cui",
+                               Event_Timestamp=int(time.time()),
+                               Vendor_Specific=vsa)
+    reply = srv.SendPacket(req)
+    logger.debug("RADIUS response from hostapd")
+    for i in reply.keys():
+        logger.debug("%s: %s" % (i, reply[i]))
+    if reply.code != pyrad.packet.CoAACK:
+        raise Exception("CoA-Request failed")
+
+    ev = hapd.wait_event(["HS20-T-C-FILTERING-REMOVE"], timeout=5)
+    if ev is None:
+        raise Exception("Terms and Conditions filtering not disabled")
+    if ev.split(' ')[1] != dev[0].own_addr():
+        raise Exception("Unexpected STA address for filtering: " + ev)
+
+def test_ap_hs20_terms_and_conditions_sql(dev, apdev, params):
+    """Hotspot 2.0 Terms and Conditions using SQLite for user DB"""
+    addr = dev[0].own_addr()
+    run_ap_hs20_terms_and_conditions_sql(dev, apdev, params,
+                                         "https://example.com/t_and_c?addr=@1@&ap=123",
+                                         "https://example.com/t_and_c?addr=" + addr + "&ap=123")
+
+def test_ap_hs20_terms_and_conditions_sql2(dev, apdev, params):
+    """Hotspot 2.0 Terms and Conditions using SQLite for user DB"""
+    addr = dev[0].own_addr()
+    run_ap_hs20_terms_and_conditions_sql(dev, apdev, params,
+                                         "https://example.com/t_and_c?addr=@1@",
+                                         "https://example.com/t_and_c?addr=" + addr)
+
+def run_ap_hs20_terms_and_conditions_sql(dev, apdev, params, url_template,
+                                         url_expected):
+    check_eap_capa(dev[0], "MSCHAPV2")
+    try:
+        import sqlite3
+    except ImportError:
+        raise HwsimSkip("No sqlite3 module available")
+    dbfile = os.path.join(params['logdir'], "eap-user.db")
+    try:
+        os.remove(dbfile)
+    except:
+        pass
+    con = sqlite3.connect(dbfile)
+    with con:
+        cur = con.cursor()
+        cur.execute("CREATE TABLE users(identity TEXT PRIMARY KEY, methods TEXT, password TEXT, remediation TEXT, phase2 INTEGER, t_c_timestamp INTEGER)")
+        cur.execute("CREATE TABLE wildcards(identity TEXT PRIMARY KEY, methods TEXT)")
+        cur.execute("INSERT INTO users(identity,methods,password,phase2) VALUES ('user-mschapv2','TTLS-MSCHAPV2','password',1)")
+        cur.execute("INSERT INTO wildcards(identity,methods) VALUES ('','TTLS,TLS')")
+        cur.execute("CREATE TABLE authlog(timestamp TEXT, session TEXT, nas_ip TEXT, username TEXT, note TEXT)")
+        cur.execute("CREATE TABLE pending_tc(mac_addr TEXT PRIMARY KEY, identity TEXT)")
+        cur.execute("CREATE TABLE current_sessions(mac_addr TEXT PRIMARY KEY, identity TEXT, start_time TEXT, nas TEXT, hs20_t_c_filtering BOOLEAN, waiting_coa_ack BOOLEAN, coa_ack_received BOOLEAN)")
+
+
+    try:
+        params = { "ssid": "as", "beacon_int": "2000",
+                   "radius_server_clients": "auth_serv/radius_clients.conf",
+                   "radius_server_auth_port": '18128',
+                   "eap_server": "1",
+                   "eap_user_file": "sqlite:" + dbfile,
+                   "ca_cert": "auth_serv/ca.pem",
+                   "server_cert": "auth_serv/server.pem",
+                   "private_key": "auth_serv/server.key" }
+        params['hs20_t_c_server_url'] = url_template
+        authsrv = hostapd.add_ap(apdev[1], params)
+
+        bssid = apdev[0]['bssid']
+        params = hs20_ap_params()
+        params['auth_server_port'] = "18128"
+        params['hs20_t_c_filename'] = 'terms-and-conditions'
+        params['hs20_t_c_timestamp'] = '123456789'
+        params['own_ip_addr'] = "127.0.0.1"
+        params['radius_das_port'] = "3799"
+        params['radius_das_client'] = "127.0.0.1 radius"
+        params['radius_das_require_event_timestamp'] = "1"
+        params['disable_pmksa_caching'] = '1'
+        hapd = hostapd.add_ap(apdev[0], params)
+
+        dev[0].request("SET pmf 1")
+        dev[0].hs20_enable()
+        id = dev[0].add_cred_values({ 'realm': "example.com",
+                                      'username': "user-mschapv2",
+                                      'password': "password",
+                                      'ca_cert': "auth_serv/ca.pem" })
+        interworking_select(dev[0], bssid, freq="2412")
+        interworking_connect(dev[0], bssid, "TTLS")
+
+        ev = hapd.wait_event(["HS20-T-C-FILTERING-ADD"], timeout=5)
+        if ev is None:
+            raise Exception("Terms and Conditions filtering not enabled")
+        hapd.dump_monitor()
+
+        ev = dev[0].wait_event(["HS20-T-C-ACCEPTANCE"], timeout=5)
+        if ev is None:
+            raise Exception("Terms and Conditions Acceptance notification not received")
+        url = ev.split(' ')[1]
+        if url != url_expected:
+            raise Exception("Unexpected URL delivered to the client: %s (expected %s)" % (url, url_expected))
+        dev[0].dump_monitor()
+
+        with con:
+            cur = con.cursor()
+            cur.execute("SELECT * from current_sessions")
+            rows = cur.fetchall()
+            if len(rows) != 1:
+                raise Exeception("Unexpected number of rows in current_sessions (%d; expected %d)" % (len(rows), 1))
+            logger.info("current_sessions: " + str(rows))
+
+        if "OK" not in authsrv.request("DAC_REQUEST coa %s t_c_clear" % dev[0].own_addr()):
+            raise Exception("DAC_REQUEST failed")
+
+        ev = hapd.wait_event(["HS20-T-C-FILTERING-REMOVE"], timeout=5)
+        if ev is None:
+            raise Exception("Terms and Conditions filtering not disabled")
+        if ev.split(' ')[1] != dev[0].own_addr():
+            raise Exception("Unexpected STA address for filtering: " + ev)
+
+        time.sleep(0.2)
+        with con:
+            cur = con.cursor()
+            cur.execute("SELECT * from current_sessions")
+            rows = cur.fetchall()
+            if len(rows) != 1:
+                raise Exeception("Unexpected number of rows in current_sessions (%d; expected %d)" % (len(rows), 1))
+            logger.info("current_sessions: " + str(rows))
+            if rows[0][4] != 0 or rows[0][5] != 0 or rows[0][6] != 1:
+                raise Exception("Unexpected current_sessions information after CoA-ACK")
+
+        dev[0].request("DISCONNECT")
+        dev[0].wait_disconnected()
+        dev[0].dump_monitor()
+
+        # Simulate T&C server operation on user reading the updated version
+        with con:
+            cur = con.cursor()
+            cur.execute("SELECT identity FROM pending_tc WHERE mac_addr='" +
+                        dev[0].own_addr() + "'")
+            rows = cur.fetchall()
+            if len(rows) != 1:
+                raise Exception("No pending_tc entry found")
+            if rows[0][0] != 'user-mschapv2':
+                raise Exception("Unexpected pending_tc identity value")
+
+            cur.execute("UPDATE users SET t_c_timestamp=123456789 WHERE identity='user-mschapv2'")
+
+        dev[0].request("RECONNECT")
+        dev[0].wait_connected()
+
+        ev = hapd.wait_event(["HS20-T-C-FILTERING-ADD"], timeout=0.1)
+        if ev is not None:
+            raise Exception("Terms and Conditions filtering enabled unexpectedly")
+        hapd.dump_monitor()
+
+        ev = dev[0].wait_event(["HS20-T-C-ACCEPTANCE"], timeout=0.1)
+        if ev is not None:
+            raise Exception("Unexpected Terms and Conditions Acceptance notification")
+        dev[0].dump_monitor()
+
+        dev[0].request("DISCONNECT")
+        dev[0].wait_disconnected()
+        dev[0].dump_monitor()
+
+        # New T&C available
+        hapd.set('hs20_t_c_timestamp', '123456790')
+
+        dev[0].request("RECONNECT")
+        dev[0].wait_connected()
+
+        ev = hapd.wait_event(["HS20-T-C-FILTERING-ADD"], timeout=5)
+        if ev is None:
+            raise Exception("Terms and Conditions filtering not enabled")
+        hapd.dump_monitor()
+
+        ev = dev[0].wait_event(["HS20-T-C-ACCEPTANCE"], timeout=5)
+        if ev is None:
+            raise Exception("Terms and Conditions Acceptance notification not received (2)")
+        dev[0].dump_monitor()
+
+        dev[0].request("DISCONNECT")
+        dev[0].wait_disconnected()
+        dev[0].dump_monitor()
+
+        # Simulate T&C server operation on user reading the updated version
+        with con:
+            cur = con.cursor()
+            cur.execute("UPDATE users SET t_c_timestamp=123456790 WHERE identity='user-mschapv2'")
+
+        dev[0].request("RECONNECT")
+        dev[0].wait_connected()
+
+        ev = hapd.wait_event(["HS20-T-C-FILTERING-ADD"], timeout=0.1)
+        if ev is not None:
+            raise Exception("Terms and Conditions filtering enabled unexpectedly")
+        hapd.dump_monitor()
+
+        ev = dev[0].wait_event(["HS20-T-C-ACCEPTANCE"], timeout=0.1)
+        if ev is not None:
+            raise Exception("Unexpected Terms and Conditions Acceptance notification (2)")
+        dev[0].dump_monitor()
+    finally:
+        os.remove(dbfile)
+        dev[0].request("SET pmf 0")
