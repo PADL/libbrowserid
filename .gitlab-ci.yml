@@ -6,6 +6,8 @@ before_script:
 
 .centoscommon: &centoscommon
   stage: build
+  except:
+    - tags
   tags:
     - moonshot
   script:
@@ -27,6 +29,8 @@ before_script:
 
 .centoscommon-noshib: &centoscommon-noshib
   stage: build
+  except:
+    - tags
   tags:
     - moonshot
   script:
@@ -48,6 +52,8 @@ before_script:
 
 .debiancommon: &debiancommon
   stage: build
+  except:
+    - tags
   tags:
     - moonshot
   script:
@@ -71,6 +77,8 @@ before_script:
 
 .debiancommon-noshib: &debiancommon-noshib
   stage: build
+  except:
+    - tags
   tags:
     - moonshot
   script:
@@ -96,6 +104,8 @@ before_script:
 
 .alpinecommon: &alpinecommon
   stage: build
+  except:
+    - tags
   tags:
     - moonshot
   script:
