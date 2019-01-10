@@ -191,11 +191,15 @@ radius_ad_la_SOURCES = util_adshim.c authdata_plugin.h
 endif
 endif
 
-
+if !HEIMDAL
+if !BUILD_ON_MACOS
 bin_PROGRAMS = moonshot_tester
 moonshot_tester_SOURCES = moonshot_tester.c
+moonshot_tester_CFLAGS = \
+			@KRB5_CFLAGS@ @RADSEC_CFLAGS@ @XML2_CFLAGS@ @TARGET_CFLAGS@ $(EAP_CFLAGS)
 moonshot_tester_LDADD = @KRB5_LIBS@
-
+endif
+endif
 
 gsseap_err.h gsseap_err.c: gsseap_err.et
 	$(COMPILE_ET) $<
