@@ -34,11 +34,11 @@
  * Local attribute provider implementation.
  */
 
-using namespace std;
 
 #include "gssapiP_eap.h"
 #include "util_local.h"
 #include <iostream>
+using namespace std;
 
 
 gss_eap_local_attr_provider::gss_eap_local_attr_provider(void)

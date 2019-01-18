@@ -392,7 +392,7 @@ AC_MSG_RESULT($found_libmoonshot)
 if test x_$found_libmoonshot = x_yes; then
     printf "libmoonshot found in $libmoonshotdir\n";
     LIBMOONSHOT_LIBS="-lmoonshot";
-    LIBMOONSHOT_LDFLAGS="-L$libmoonshot/lib";
+    LIBMOONSHOT_LDFLAGS="-L$libmoonshotdir/lib";
     AC_CHECK_LIB(moonshot, moonshot_get_identity, [AC_DEFINE_UNQUOTED([HAVE_MOONSHOT_GET_IDENTITY], 1, [Define if Moonshot identity selector is available])], [], "$LIBMOONSHOT_LIBS")
 fi
     AC_SUBST(LIBMOONSHOT_CFLAGS)
