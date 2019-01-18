@@ -27,9 +27,9 @@ override_dh_strip:
 override_dh_auto_install:
 # In Ubuntu 14.04, kerberos expects finding the mech file in /usr/etc/gss/mech
 ifeq ($(DIST_VERSION),14.04)
-	mkdir -p debian/moonshot-gss-eap/usr/etc/gss
-	install -m644 mech_eap/mech debian/moonshot-gss-eap/usr/etc/gss/mech
+	mkdir -p debian/moonshot-gss-eap-noshib/usr/etc/gss
+	install -m644 mech_eap/mech debian/moonshot-gss-eap-noshib/usr/etc/gss/mech
 endif
-	install -m644 mech_eap/mech debian/moonshot-gss-eap/etc/gss/mech.d/moonshot-gss-eap.conf
+	install -m644 mech_eap/mech debian/moonshot-gss-eap-noshib/etc/gss/mech.d/moonshot-gss-eap.conf
 	dh_auto_install --destdir=debian/moonshot-gss-eap-noshib
 	rm debian/moonshot-gss-eap-noshib/usr/lib/*/gss/*la
