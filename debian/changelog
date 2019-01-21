@@ -1,4 +1,10 @@
-moonshot-gss-eap (1.1.3-0.DIST) unstable; urgency=medium
+moonshot-gss-eap (1.1.4-0.DIST) unstable; urgency=medium
+
+  * TBD
+
+ -- Jisc <assent@jisc.ac.uk>  Fri, 18 Jan 2019 00:00:00 +0000
+
+moonshot-gss-eap (1.1.3-0) unstable; urgency=medium
 
   * Install mech file in the proper location for Ubuntu 14.04
 

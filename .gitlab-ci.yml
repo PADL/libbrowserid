@@ -66,7 +66,7 @@ before_script:
     - autoreconf -fi
     - ./configure
     - make dist
-    - mv mech_eap-1.1.3.tar.gz ../moonshot-gss-eap_1.1.3.orig.tar.gz
+    - mv mech_eap-1.1.4.tar.gz ../moonshot-gss-eap_1.1.4.orig.tar.gz
     - debuild -us -uc
     - mkdir build
     - cp ../*.deb build
@@ -93,7 +93,7 @@ before_script:
     - autoreconf -fi
     - ./configure
     - make dist
-    - mv mech_eap-1.1.3.tar.gz ../moonshot-gss-eap_1.1.3.orig.tar.gz
+    - mv mech_eap-1.1.4.tar.gz ../moonshot-gss-eap_1.1.4.orig.tar.gz
     - debuild -us -uc
     - mkdir build
     - cp ../*.deb build
@@ -147,7 +147,6 @@ debian9:
 
 debian10:
   image: registry.ci.ti.ja.net/jisc/moonshot-build/debian10:latest
-  when: manual
   <<: *debiancommon
 
 raspbian8:
@@ -200,7 +199,6 @@ debian10-noshib:
   variables:
     CI_JOB_NAME: debian10
   image: registry.ci.ti.ja.net/jisc/moonshot-build/debian10:latest
-  when: manual
   <<: *debiancommon-noshib
 
 raspbian8-noshib:
