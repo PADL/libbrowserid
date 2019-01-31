@@ -804,7 +804,7 @@ int staticConfirmServerCert (const unsigned char  *hash,
             out += 2;
         }
 
-        if (strlen(hash_str) == certFingerprint.length && memcmp(hash_str, certFingerprint.value, certFingerprint.length) == 0)
+        if (strlen(hash_str) == certFingerprint.length && strncasecmp(hash_str, certFingerprint.value, certFingerprint.length) == 0)
             return 1;
 
         wpa_printf(MSG_WARNING, "Certificate fingerprint mismatch! Server cert: %s\n", hash_str);
