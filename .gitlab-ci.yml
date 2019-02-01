@@ -21,11 +21,12 @@ before_script:
     - make dist
     - mkdir SOURCES
     - mv mech_eap*.tar.gz SOURCES
-    - rpmbuild -bb mech_eap.spec --define "_topdir `pwd`"
+    - rpmbuild -ba mech_eap.spec --define "_topdir `pwd`"
   artifacts:
     expire_in: 6 months
     paths:
       - RPMS
+      - SRPMS
 
 .centoscommon-noshib: &centoscommon-noshib
   stage: build
@@ -44,11 +45,12 @@ before_script:
     - make dist
     - mkdir SOURCES
     - mv mech_eap*.tar.gz SOURCES
-    - rpmbuild -bb mech_eap_noshib.spec --define "_topdir `pwd`"
+    - rpmbuild -ba mech_eap_noshib.spec --define "_topdir `pwd`"
   artifacts:
     expire_in: 6 months
     paths:
       - RPMS
+      - SRPMS
 
 .debiancommon: &debiancommon
   stage: build
@@ -63,17 +65,13 @@ before_script:
     - "dpkg -i build/*.deb || true"
     - apt-get install -fy
     - rm -fr build deps.zip
-    - autoreconf -fi
-    - ./configure
-    - make dist
-    - mv mech_eap-1.1.4.tar.gz ../moonshot-gss-eap_1.1.4.orig.tar.gz
     - debuild -us -uc
     - mkdir build
-    - cp ../*.deb build
+    - cp ../*.deb ../*.dsc ../*tar* build
   artifacts:
     expire_in: 6 months
     paths:
-        - build/*.deb
+        - build/*
 
 .debiancommon-noshib: &debiancommon-noshib
   stage: build
@@ -90,17 +88,13 @@ before_script:
     - rm -fr build deps.zip
     - cp debian/control_noshib debian/control
     - cp debian/rules_noshib debian/rules
-    - autoreconf -fi
-    - ./configure
-    - make dist
-    - mv mech_eap-1.1.4.tar.gz ../moonshot-gss-eap_1.1.4.orig.tar.gz
     - debuild -us -uc
     - mkdir build
-    - cp ../*.deb build
+    - cp ../*.deb ../*.dsc ../*tar* build
   artifacts:
     expire_in: 6 months
     paths:
-        - build/*.deb
+        - build/*
 
 .alpinecommon: &alpinecommon
   stage: build
