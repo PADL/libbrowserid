@@ -1,8 +1,9 @@
 moonshot-gss-eap (1.1.4.DIST) unstable; urgency=medium
 
-  * TBD
+  * Fingerprint comparison case insensitive for .gss_eap_id
+  * Generated source packages
 
- -- Jisc <assent@jisc.ac.uk>  Fri, 18 Jan 2019 00:00:00 +0000
+ -- Jisc <assent@jisc.ac.uk>  Sat, 2 Feb 2019 00:00:00 +0000
 
 moonshot-gss-eap (1.1.3-0) unstable; urgency=medium
 
