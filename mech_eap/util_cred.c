@@ -804,10 +804,10 @@ int staticConfirmServerCert (const unsigned char  *hash,
             out += 2;
         }
 
-        if (strlen(hash_str) == certFingerprint.length && memcmp(hash_str, certFingerprint.value, certFingerprint.length) == 0)
+        if (strlen(hash_str) == certFingerprint.length && strncasecmp(hash_str, certFingerprint.value, certFingerprint.length) == 0)
             return 1;
 
-        fprintf(stderr, "Certificate fingerprint mismatch! Server cert: %s\n", hash_str);
+        wpa_printf(MSG_WARNING, "Certificate fingerprint mismatch! Server cert: %s\n", hash_str);
     }
     return 0;
 }
@@ -835,7 +835,7 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
     GSSEAP_FREE(cert_bytes);
 
     if (hash_len != 32) {
-        fprintf(stderr, "peerValidateServerCert: Error: hash_len=%d, not 32!\n", hash_len);
+        wpa_printf(MSG_ERROR, "peerValidateServerCert: Error: hash_len=%d, not 32!\n", hash_len);
         return FALSE;
     }
 
