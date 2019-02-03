@@ -1,7 +1,7 @@
 %global _moonshot_krb5 %{!?_moonshot_krb5:krb5-devel}%{?_moonshot_krb5}
 Name:		moonshot-gss-eap
 Version:	@VERSION@
-Release:	2%{?dist}
+Release:	1%{?dist}
 Summary:	Moonshot GSS-API Mechanism
 
 Group:		Security Tools
