@@ -2011,11 +2011,11 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 
 #ifdef CONFIG_SHA256
 	if (depth == 0) {
-        if (conn->server_cert_cb) {
+        if (!preverify_ok && conn->server_cert_cb) {
             preverify_ok = conn->server_cert_cb(preverify_ok, err_cert, conn->server_cert_ctx);
             wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb: server_cert_cb returned %d", preverify_ok);
         }
-        if (conn->server_cert_only) {
+        if (!preverify_ok && conn->server_cert_only) {
             /*
              * Do not require preverify_ok so we can explicity allow otherwise
              * invalid pinned server certificates.
