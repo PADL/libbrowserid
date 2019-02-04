@@ -175,6 +175,7 @@ int main() {
     gss_buffer_desc name_buf = GSS_C_EMPTY_BUFFER;
     gss_name_t target_name = GSS_C_NO_NAME;
     gss_name_t client_name;
+    gss_cred_id_t server_creds;
     char acceptorname[1024];
 
     /* compute the acceptor name as test@hostname */
@@ -186,17 +187,21 @@ int main() {
     name_buf.value = acceptorname;
     name_buf.length = strlen(name_buf.value);
     client_major = gss_import_name(&minor, &name_buf, GSS_C_NT_HOSTBASED_SERVICE, &target_name);
-
     if (GSS_ERROR(client_major)) {
-        warnx("Could not import name\n");
+        display_status("gss_import_name()", client_major, minor);
         goto cleanup;
     }
 
     req_flags = GSS_C_MUTUAL_FLAG | GSS_C_REPLAY_FLAG;
 
+    server_major = gss_acquire_cred(&minor, target_name, 0, GSS_C_NO_OID, GSS_C_ACCEPT, &server_creds, NULL, NULL);
+    if (server_major != GSS_S_COMPLETE) {
+        display_status("acquiring credentials", server_major, minor);
+        goto cleanup;
+    }
+
     client_major = GSS_S_CONTINUE_NEEDED;
     server_major = GSS_S_CONTINUE_NEEDED;
-
      while (1) {
         printf("Authentication roundtrip\n");
         client_major = gss_init_sec_context(&minor, GSS_C_NO_CREDENTIAL, &client_ctx, target_name,
@@ -213,7 +218,7 @@ int main() {
             break;
         }
 
-        server_major = gss_accept_sec_context(&minor, &server_ctx, GSS_C_NO_CREDENTIAL, &client_token,
+        server_major = gss_accept_sec_context(&minor, &server_ctx, server_creds, &client_token,
                                               NULL, &client_name, NULL, &server_token, &ret_flags, NULL, NULL);
 
         if (GSS_ERROR(server_major)) {
