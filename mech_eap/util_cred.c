@@ -812,6 +812,91 @@ int staticConfirmServerCert (const unsigned char  *hash,
     return 0;
 }
 
+int authorizedAnchorsConfirmServerCert (const char* realm, const unsigned char *hash, int hash_len)
+{
+    FILE *fp = NULL;
+    char buf[BUFSIZ];
+    char *file_path;
+    int result = 0;
+    char hash_str[hash_len * 2 + 1];
+    int i = 0;
+
+#ifndef WIN32
+    struct passwd *pw = NULL, pwd;
+    char pwbuf[BUFSIZ];
+#endif
+    file_path = getenv("GSSEAP_AUTHORIZED_ANCHORS");
+    if (file_path == NULL) {
+#ifdef WIN32
+        TCHAR szPath[MAX_PATH];
+
+        if (!SUCCEEDED(SHGetFolderPath(NULL,
+                                       CSIDL_APPDATA, /* |CSIDL_FLAG_CREATE */
+                                       NULL, /* User access token */
+                                       0,    /* SHGFP_TYPE_CURRENT */
+                                       szPath))) {
+            goto cleanup;
+        }
+
+        snprintf(buf, sizeof(buf), "%s/.gss_eap_authorized_anchors", szPath);
+#else
+        if (getpwuid_r(getuid(), &pwd, pwbuf, sizeof(pwbuf), &pw) != 0 ||
+                pw == NULL || pw->pw_dir == NULL) {
+            goto cleanup;
+        }
+        snprintf(buf, sizeof(buf), "%s/.gss_eap_authorized_anchors", pw->pw_dir);
+#endif /* WIN32 */
+        file_path = buf;
+    }
+
+    fp = fopen(file_path, "r");
+    if (fp == NULL) {
+        goto cleanup;
+    }
+
+    /* Convert hash byte array to string */
+    for (i = 0; i < 32; i++)
+        sprintf(&(hash_str[i*2]), "%02X", hash[i]);
+
+    while (fgets(buf, sizeof(buf), fp) != NULL) {
+        size_t length = strlen(buf);
+
+        if (length == 0)
+            break;
+
+        if (buf[length - 1] == '\n') {
+            buf[length - 1] = '\0';
+            if (--length == 0)
+                break;
+        }
+
+        /* Lines consists of REALM:FINGERPRINT */
+        char* sep = strchr(buf, ':');
+        char* fingerprint = NULL;
+        if (sep != NULL) {
+            fingerprint = sep + 1;
+            *sep = '\0';
+        }
+
+        /* need to find a matching realm */
+        if (strcasecmp(buf, realm))
+            continue;
+
+        if (strcmp(fingerprint, "*") == 0 || strcasecmp(fingerprint, hash_str) == 0) {
+            result = 1;
+            wpa_printf(MSG_INFO, "Found matching trusted anchor [%s] for realm: [%s].", fingerprint, realm);
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    if (fp != NULL)
+        fclose(fp);
+    memset(buf, 0, sizeof(buf));
+
+    return result;
+}
+
 int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
 {
     char                 *realm = NULL;
@@ -843,7 +928,11 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
     ok_so_far = moonshot_confirm_ca_certificate(identity, realm, hash, 32, &error);
     if (!ok_so_far)
 #endif
+    {
         ok_so_far = staticConfirmServerCert(hash, 32);
+        if (!ok_so_far)
+            ok_so_far = authorizedAnchorsConfirmServerCert(realm, hash, 32);
+    }
 
     free(identity);
     if (realm != NULL) {
