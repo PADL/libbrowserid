@@ -66,6 +66,7 @@
 #include <shibresolver/resolver.h>
 
 #include <sstream>
+#include <memory>
 
 using namespace shibsp;
 using namespace shibresolver;
@@ -77,6 +78,14 @@ using namespace opensaml;
 #else
 using namespace xercesc;
 #endif
+
+// Use unique_ptr where available; auto_ptr otherwise.
+#if __cplusplus > 199711L
+#define UNIQUE_OR_AUTO_PTR unique_ptr
+#else
+#define UNIQUE_OR_AUTO_PTR auto_ptr
+#endif
+
 
 
 namespace {
@@ -175,7 +184,7 @@ gss_eap_shib_attr_provider::initWithGssContext(const gss_eap_attr_ctx *manager,
     if (!gss_eap_attr_provider::initWithGssContext(manager, gssCred, gssCtx))
         return false;
 
-    auto_ptr<ShibbolethResolver> resolver(ShibbolethResolver::create());
+    UNIQUE_OR_AUTO_PTR<ShibbolethResolver> resolver(ShibbolethResolver::create());
 
     /*
      * For now, leave ApplicationID defaulted.
