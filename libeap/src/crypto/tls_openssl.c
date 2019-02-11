@@ -2011,7 +2011,7 @@ static int tls_verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
 
 #ifdef CONFIG_SHA256
 	if (depth == 0) {
-        if (!preverify_ok && conn->server_cert_cb) {
+        if (conn->server_cert_cb) {
             preverify_ok = conn->server_cert_cb(preverify_ok, err_cert, conn->server_cert_ctx);
             wpa_printf(MSG_DEBUG, "TLS: tls_verify_cb: server_cert_cb returned %d", preverify_ok);
         }
