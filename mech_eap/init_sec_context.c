@@ -372,6 +372,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     gss_buffer_desc identity = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc realm = GSS_C_EMPTY_BUFFER;
     gss_cred_id_t cred = ctx->cred;
+    int bang_loc = 0;
 
     eapPeerConfig->identity = NULL;
     eapPeerConfig->identity_len = 0;
@@ -405,16 +406,24 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     krbPrincRealmToGssBuffer(cred->name->krbPrincipal, &realm);
 
     /* anonymous_identity */
-    eapPeerConfig->anonymous_identity = GSSEAP_MALLOC(realm.length + 2);
+
+    /* RFC7542 parsing */
+    char *p = strchr((char *)identity.value, '!');
+    if (p) {
+        bang_loc = p - (char *)identity.value + 1;
+    }
+
+    eapPeerConfig->anonymous_identity = GSSEAP_MALLOC(bang_loc + realm.length + 2);
     if (eapPeerConfig->anonymous_identity == NULL) {
         *minor = ENOMEM;
         return GSS_S_FAILURE;
     }
 
-    eapPeerConfig->anonymous_identity[0] = '@';
-    memcpy(eapPeerConfig->anonymous_identity + 1, realm.value, realm.length);
-    eapPeerConfig->anonymous_identity[1 + realm.length] = '\0';
-    eapPeerConfig->anonymous_identity_len = 1 + realm.length;
+    memcpy(eapPeerConfig->anonymous_identity, (unsigned char *)identity.value, bang_loc);
+    eapPeerConfig->anonymous_identity[bang_loc] = '@';
+    memcpy(eapPeerConfig->anonymous_identity + bang_loc + 1, realm.value, realm.length);
+    eapPeerConfig->anonymous_identity[1 + bang_loc + realm.length] = '\0';
+    eapPeerConfig->anonymous_identity_len = 1 + bang_loc + realm.length;
 
     /* password */
     if ((cred->flags & CRED_FLAG_CERTIFICATE) == 0) {
