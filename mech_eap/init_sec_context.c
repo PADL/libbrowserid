@@ -408,10 +408,9 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     /* anonymous_identity */
 
     /* RFC7542 parsing */
-    char *p = memchr(identity.value, '!', identity.length);
-    if (p) {
-        bang_loc = p - (char *)identity.value + 1;
-    }
+    char *bangptr = memchr(identity.value, '!', identity.length);
+    if (bangptr)
+        bang_loc = bangptr - (char *)identity.value + 1;
 
     eapPeerConfig->anonymous_identity = GSSEAP_MALLOC(bang_loc + realm.length + 2);
     if (eapPeerConfig->anonymous_identity == NULL) {
