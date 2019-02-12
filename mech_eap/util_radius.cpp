@@ -878,7 +878,10 @@ gssEapRadiusMapError(OM_uint32 *minor,
 {
     int code;
 
-    GSSEAP_ASSERT(err != NULL);
+    if (err == NULL) {
+        *minor = GSSEAP_RADSEC_CONTEXT_FAILURE;
+        return GSS_S_FAILURE;
+    }
 
     code = rs_err_code(err, 0);
 
