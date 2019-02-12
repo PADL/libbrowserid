@@ -408,7 +408,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     /* anonymous_identity */
 
     /* RFC7542 parsing */
-    char *p = strchr((char *)identity.value, '!');
+    char *p = memchr(identity.value, '!', identity.length);
     if (p) {
         bang_loc = p - (char *)identity.value + 1;
     }
