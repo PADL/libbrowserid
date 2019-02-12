@@ -418,7 +418,7 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
         return GSS_S_FAILURE;
     }
 
-    memcpy(eapPeerConfig->anonymous_identity, (unsigned char *)identity.value, bang_loc);
+    memcpy(eapPeerConfig->anonymous_identity, identity.value, bang_loc);
     eapPeerConfig->anonymous_identity[bang_loc] = '@';
     memcpy(eapPeerConfig->anonymous_identity + bang_loc + 1, realm.value, realm.length);
     eapPeerConfig->anonymous_identity[1 + bang_loc + realm.length] = '\0';
