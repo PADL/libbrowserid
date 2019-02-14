@@ -934,11 +934,12 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
             ok_so_far = authorizedAnchorsConfirmServerCert(realm, hash, 32);
     }
 
+    wpa_printf(MSG_INFO, "peerValidateServerCert for %s@%s: Returning %d\n", identity, realm, ok_so_far);
+
     free(identity);
     if (realm != NULL) {
         free(realm);
     }
-    wpa_printf(MSG_INFO, "peerValidateServerCert: Returning %d\n", ok_so_far);
     return ok_so_far;
 }
 
