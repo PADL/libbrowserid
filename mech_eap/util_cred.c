@@ -921,7 +921,8 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
 
     if (hash_len != 32) {
         wpa_printf(MSG_ERROR, "peerValidateServerCert: Error: hash_len=%d, not 32!\n", hash_len);
-        return FALSE;
+        ok_so_far = FALSE;
+        goto cleanup;
     }
 
 #ifdef HAVE_MOONSHOT_GET_IDENTITY
@@ -936,6 +937,7 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
 
     wpa_printf(MSG_INFO, "peerValidateServerCert for %s@%s: Returning %d\n", identity, realm, ok_so_far);
 
+cleanup:
     free(identity);
     if (realm != NULL) {
         free(realm);
