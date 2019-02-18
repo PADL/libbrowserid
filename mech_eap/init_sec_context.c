@@ -611,7 +611,7 @@ initBegin(OM_uint32 *minor,
 
         major = gssEapDuplicateName(minor, target, &ctx->acceptorName);
         if (GSS_ERROR(major)) {
-            GSSEAP_MUTEX_LOCK(&((gss_name_t)target)->mutex);
+            GSSEAP_MUTEX_UNLOCK(&((gss_name_t)target)->mutex);
             return major;
         }
 
