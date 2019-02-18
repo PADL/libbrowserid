@@ -151,7 +151,7 @@ base64Valid(const char *str)
     const char *p = str;
     int valid = 1;
 
-    while (*p && *p && (*p == '=' || strchr(base64_chars, *p))) {
+    while (*p && (*p == '=' || strchr(base64_chars, *p))) {
 	unsigned int val = token_decode(p);
 	if (val == DECODE_ERROR) {
             valid = 0;
