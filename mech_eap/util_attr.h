@@ -73,7 +73,10 @@ typedef bool
 struct gss_eap_attr_provider
 {
 public:
-    gss_eap_attr_provider(void) {}
+    gss_eap_attr_provider(void)
+    {
+      m_manager = NULL;
+    }
     virtual ~gss_eap_attr_provider(void) {}
 
     bool initWithManager(const gss_eap_attr_ctx *manager)

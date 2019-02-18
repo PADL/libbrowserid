@@ -61,22 +61,22 @@ gss_exchange_meta_data(OM_uint32 *minor,
     gss_ctx_id_t ctx = *context_handle;
     OM_uint32 major;
 
-    if (cred != GSS_C_NO_CREDENTIAL)
-        GSSEAP_MUTEX_LOCK(&cred->mutex);
-
     if (*context_handle != GSS_C_NO_CONTEXT)
         GSSEAP_MUTEX_LOCK(&ctx->mutex);
 
+    if (cred != GSS_C_NO_CREDENTIAL)
+        GSSEAP_MUTEX_LOCK(&cred->mutex);
+
     major = gssEapExchangeMetaData(minor, mech, cred, &ctx,
                                    name, req_flags, meta_data);
+
+    if (cred != GSS_C_NO_CREDENTIAL)
+        GSSEAP_MUTEX_UNLOCK(&cred->mutex);
 
     if (*context_handle != GSS_C_NO_CONTEXT)
         GSSEAP_MUTEX_UNLOCK(&ctx->mutex);
     else
         *context_handle = ctx;
-
-    if (cred != GSS_C_NO_CREDENTIAL)
-        GSSEAP_MUTEX_UNLOCK(&cred->mutex);
 
     return major;
 }
