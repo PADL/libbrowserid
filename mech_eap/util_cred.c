@@ -798,11 +798,9 @@ int staticConfirmServerCert (const unsigned char  *hash,
     if (major == GSS_S_COMPLETE) {
         /* Convert hash byte array to string */
         char hash_str[hash_len * 2 + 1];
-        int out = 0, i = 0;
-        for (i = 0; i < 32; i++) {
-            sprintf(&(hash_str[out]), "%02X", hash[i]);
-            out += 2;
-        }
+        int i = 0;
+        for (i = 0; i < hash_len; i++)
+            sprintf(&(hash_str[i * 2]), "%02X", hash[i]);
 
         if (strlen(hash_str) == certFingerprint.length && strncasecmp(hash_str, certFingerprint.value, certFingerprint.length) == 0)
             return 1;
