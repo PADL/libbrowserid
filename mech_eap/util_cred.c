@@ -915,7 +915,6 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
 
     cert_len = cert_to_byte_array(cert, &cert_bytes);
     hash_len = sha256(cert_bytes, cert_len, hash);
-    GSSEAP_FREE(cert_bytes);
 
     if (hash_len != 32) {
         wpa_printf(MSG_ERROR, "peerValidateServerCert: Error: hash_len=%d, not 32!\n", hash_len);
@@ -924,7 +923,7 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
     }
 
 #ifdef HAVE_MOONSHOT_GET_IDENTITY
-    ok_so_far = moonshot_confirm_ca_certificate(identity, realm, hash, 32, &error);
+    ok_so_far = moonshot_confirm_ca_certificate(identity, realm, cert_bytes, cert_len, &error);
     if (!ok_so_far)
 #endif
     {
@@ -936,6 +935,7 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
     wpa_printf(MSG_INFO, "peerValidateServerCert for %s@%s: Returning %d\n", identity, realm, ok_so_far);
 
 cleanup:
+    GSSEAP_FREE(cert_bytes);
     free(identity);
     if (realm != NULL) {
         free(realm);
