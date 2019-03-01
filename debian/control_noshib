@@ -14,7 +14,7 @@ Package: moonshot-gss-eap-noshib
 Provides: moonshot-gss-eap (= ${binary:Version})
 Conflicts: moonshot-gss-eap
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, moonshot-ui (>= 1.1.8)
 Description: Moonshot Federated Authentication - authentication mechanism
  Project moonshot provides federated authentication using EAP, RADIUS
  and SAML to applications beyond the web platform. This package

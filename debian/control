@@ -13,7 +13,7 @@ Vcs-Git: https://github.com/janetuk/mech_eap
 Package: moonshot-gss-eap
 Conflicts: moonshot-gss-eap-noshib
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, moonshot-ui (>= 1.1.8)
 Description: Moonshot Federated Authentication - authentication mechanism
  Project moonshot provides federated authentication using EAP, RADIUS
  and SAML to applications beyond the web platform. This package
