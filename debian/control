@@ -8,13 +8,12 @@ Build-Depends: debhelper (>= 9), autotools-dev, libshibsp-dev (>= 2.5+dfsg~moons
 Build-Conflicts: libgss-dev
 Standards-Version: 4.1.1
 Homepage: http://www.project-moonshot.org/
-Vcs-Git: http://www.project-moonshot.org/git/moonshot.git
-#Vcs-Browser: http://git.debian.org/?p=collab-maint/moonshot-gss-eap.git;a=summary
+Vcs-Git: https://github.com/janetuk/mech_eap
 
 Package: moonshot-gss-eap
 Conflicts: moonshot-gss-eap-noshib
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, moonshot-ui (>= 1.1.8)
 Description: Moonshot Federated Authentication - authentication mechanism
  Project moonshot provides federated authentication using EAP, RADIUS
  and SAML to applications beyond the web platform. This package

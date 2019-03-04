@@ -1,6 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: moonshot-gss-eap
-Source: git://git.project-moonshot.org/mech_eap.git
+Source: https://github.com/janetuk/mech_eap
 
 Files: *
 Copyright: 2010-2014 JANET(UK)

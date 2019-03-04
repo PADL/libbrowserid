@@ -11,7 +11,6 @@ before_script:
   tags:
     - moonshot
   script:
-    - yum -y upgrade
     - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/api/v4/projects/moonshot%2F$i/jobs/artifacts/master/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
     - yum -y install RPMS/x86_64/*.rpm
     - rm -fr RPMS SRPMS deps.zip
@@ -34,7 +33,6 @@ before_script:
   tags:
     - moonshot
   script:
-    - yum -y upgrade
     - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/api/v4/projects/moonshot%2F$i/jobs/artifacts/master/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
     - yum -y install RPMS/x86_64/*.rpm
     - rm -fr RPMS SRPMS deps.zip
@@ -57,7 +55,6 @@ before_script:
   tags:
     - moonshot
   script:
-    - apt-get -y update && apt-get -y dist-upgrade
     - sed -i "s/DIST/$CI_JOB_NAME/g" debian/changelog
     - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/api/v4/projects/moonshot%2F$i/jobs/artifacts/master/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
     - "dpkg -i build/*.deb || true"
@@ -78,7 +75,6 @@ before_script:
   tags:
     - moonshot
   script:
-    - apt-get -y update && apt-get -y dist-upgrade
     - sed -i "s/DIST/$CI_JOB_NAME/g" debian/changelog
     - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/api/v4/projects/moonshot%2F$i/jobs/artifacts/master/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
     - "dpkg -i build/*.deb || true"
@@ -121,109 +117,109 @@ before_script:
         - apks/*/*.apk
 
 centos6:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos6:latest
+  image: $DOCKER_REGISTRY_URL/centos6:latest
   <<: *centoscommon
 
 centos7:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos7:latest
+  image: $DOCKER_REGISTRY_URL/centos7:latest
   <<: *centoscommon
 
 debian8:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian8:latest
+  image: $DOCKER_REGISTRY_URL/debian8:latest
   <<: *debiancommon
 
 debian9:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
+  image: $DOCKER_REGISTRY_URL/debian9:latest
   <<: *debiancommon
 
 debian10:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian10:latest
+  image: $DOCKER_REGISTRY_URL/debian10:latest
   <<: *debiancommon
 
 raspbian8:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian8:latest
+  image: $DOCKER_REGISTRY_URL/raspbian8:latest
   <<: *debiancommon
 
 raspbian9:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian9:latest
+  image: $DOCKER_REGISTRY_URL/raspbian9:latest
   <<: *debiancommon
 
 ubuntu14:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu14:latest
+  image: $DOCKER_REGISTRY_URL/ubuntu14:latest
   <<: *debiancommon
 
 ubuntu16:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu16:latest
+  image: $DOCKER_REGISTRY_URL/ubuntu16:latest
   <<: *debiancommon
 
 ubuntu18:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu18:latest
+  image: $DOCKER_REGISTRY_URL/ubuntu18:latest
   <<: *debiancommon
 
 centos6-noshib:
   variables:
     CI_JOB_NAME: centos6
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos6:latest
+  image: $DOCKER_REGISTRY_URL/centos6:latest
   <<: *centoscommon-noshib
 
 centos7-noshib:
   variables:
     CI_JOB_NAME: centos7
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/centos7:latest
+  image: $DOCKER_REGISTRY_URL/centos7:latest
   <<: *centoscommon-noshib
 
 debian8-noshib:
   variables:
     CI_JOB_NAME: debian8
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian8:latest
+  image: $DOCKER_REGISTRY_URL/debian8:latest
   <<: *debiancommon-noshib
 
 debian9-noshib:
   variables:
     CI_JOB_NAME: debian9
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian9:latest
+  image: $DOCKER_REGISTRY_URL/debian9:latest
   <<: *debiancommon-noshib
 
 debian10-noshib:
   variables:
     CI_JOB_NAME: debian10
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/debian10:latest
+  image: $DOCKER_REGISTRY_URL/debian10:latest
   <<: *debiancommon-noshib
 
 raspbian8-noshib:
   variables:
     CI_JOB_NAME: raspbian8
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian8:latest
+  image: $DOCKER_REGISTRY_URL/raspbian8:latest
   <<: *debiancommon-noshib
 
 raspbian9-noshib:
   variables:
     CI_JOB_NAME: raspbian9
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/raspbian9:latest
+  image: $DOCKER_REGISTRY_URL/raspbian9:latest
   <<: *debiancommon-noshib
 
 ubuntu14-noshib:
   variables:
     CI_JOB_NAME: ubuntu14
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu14:latest
+  image: $DOCKER_REGISTRY_URL/ubuntu14:latest
   <<: *debiancommon-noshib
 
 ubuntu16-noshib:
   variables:
     CI_JOB_NAME: ubuntu16
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu16:latest
+  image: $DOCKER_REGISTRY_URL/ubuntu16:latest
   <<: *debiancommon-noshib
 
 ubuntu18-noshib:
   variables:
     CI_JOB_NAME: ubuntu18
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/ubuntu18:latest
+  image: $DOCKER_REGISTRY_URL/ubuntu18:latest
   <<: *debiancommon-noshib
 
 alpine38:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/alpine38:latest
+  image: $DOCKER_REGISTRY_URL/alpine38:latest
   <<: *alpinecommon
 
 alpine38_armhf:
-  image: registry.ci.ti.ja.net/jisc/moonshot-build/alpine38_arm:latest
+  image: $DOCKER_REGISTRY_URL/alpine38_arm:latest
   <<: *alpinecommon

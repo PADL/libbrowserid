@@ -1,19 +1,19 @@
 %global _moonshot_krb5 %{!?_moonshot_krb5:krb5-devel}%{?_moonshot_krb5}
 Name:		moonshot-gss-eap
 Version:	@VERSION@
-Release:	2%{?dist}
+Release:	1%{?dist}
 Summary:	Moonshot GSS-API Mechanism
 
 Group:		Security Tools
 License:	BSD
-URL:		http://www.project-moonshot.org/
+URL:		https://github.com/janetuk/mech_eap
 Source0:	mech_eap-%{version}.tar.gz
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildRequires:	 %{_moonshot_krb5} >= 1.9.1
 BuildRequires:	 moonshot-ui-devel
 BuildRequires: jansson-devel
-Requires:	moonshot-ui
+Requires:	moonshot-ui >= 1.1.8
 BuildRequires: libxml2-devel
 BuildRequires: libradsec-devel >= 0.0.3
 BuildRequires: shibboleth-devel >= 2.5
