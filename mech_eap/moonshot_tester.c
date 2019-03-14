@@ -194,7 +194,7 @@ int main() {
 
     req_flags = GSS_C_MUTUAL_FLAG | GSS_C_REPLAY_FLAG;
 
-    server_major = gss_acquire_cred(&minor, target_name, 0, GSS_C_NO_OID, GSS_C_ACCEPT, &server_creds, NULL, NULL);
+    server_major = gss_acquire_cred(&minor, target_name, 0, GSS_C_NO_OID_SET, GSS_C_ACCEPT, &server_creds, NULL, NULL);
     if (server_major != GSS_S_COMPLETE) {
         display_status("acquiring credentials", server_major, minor);
         goto cleanup;
