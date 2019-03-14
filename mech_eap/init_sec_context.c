@@ -428,6 +428,8 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
         snprintf(new_identity, identity.length, "%s@%s", bang + 1, (char*) identity.value);
         tmpBuffer.length = strlen(new_identity);
         major = gssEapReleaseName(minor, &cred->name);
+        if (GSS_ERROR(major))
+            return GSS_S_FAILURE;
         major = gssEapImportName(minor, &tmpBuffer, GSS_C_NT_USER_NAME, nameMech, &cred->name);
         if (GSS_ERROR(major))
             return GSS_S_FAILURE;

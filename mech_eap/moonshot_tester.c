@@ -174,7 +174,7 @@ int main() {
     gss_buffer_desc client_token = GSS_C_EMPTY_BUFFER;
     gss_buffer_desc name_buf = GSS_C_EMPTY_BUFFER;
     gss_name_t target_name = GSS_C_NO_NAME;
-    gss_name_t client_name;
+    gss_name_t client_name = GSS_C_NO_NAME;
     gss_cred_id_t server_creds;
     char acceptorname[1024];
 
@@ -200,8 +200,6 @@ int main() {
         goto cleanup;
     }
 
-    client_major = GSS_S_CONTINUE_NEEDED;
-    server_major = GSS_S_CONTINUE_NEEDED;
      while (1) {
         printf("Authentication roundtrip\n");
         client_major = gss_init_sec_context(&minor, GSS_C_NO_CREDENTIAL, &client_ctx, target_name,
