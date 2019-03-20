@@ -1,8 +1,8 @@
 moonshot-gss-eap (1.1.6.DIST) unstable; urgency=medium
 
-  * TBA
+  * Fix some issues found by CLANG static analyser
 
- -- Jisc <moonshot@jisc.ac.uk>  Wed, 5 Mar 2019 00:00:00 +0000
+ -- Jisc <moonshot@jisc.ac.uk>  Wed, 20 Mar 2019 00:00:00 +0000
 
 moonshot-gss-eap (1.1.5.DIST) unstable; urgency=medium
 
