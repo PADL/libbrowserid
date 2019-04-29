@@ -149,10 +149,6 @@ raspbian9:
   when: manual
   <<: *debiancommon
 
-ubuntu14:
-  image: $DOCKER_REGISTRY_URL/ubuntu14:latest
-  <<: *debiancommon
-
 ubuntu16:
   image: $DOCKER_REGISTRY_URL/ubuntu16:latest
   <<: *debiancommon
@@ -203,12 +199,6 @@ raspbian9-noshib:
     CI_JOB_NAME: raspbian9
   image: $DOCKER_REGISTRY_URL/raspbian9:latest
   when: manual
-  <<: *debiancommon-noshib
-
-ubuntu14-noshib:
-  variables:
-    CI_JOB_NAME: ubuntu14
-  image: $DOCKER_REGISTRY_URL/ubuntu14:latest
   <<: *debiancommon-noshib
 
 ubuntu16-noshib:
