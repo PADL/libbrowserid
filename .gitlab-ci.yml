@@ -21,6 +21,7 @@ before_script:
     - mkdir SOURCES
     - mv mech_eap*.tar.gz SOURCES
     - rpmbuild -ba mech_eap.spec --define "_topdir `pwd`"
+    - rpmbuild -ba moonshot.spec --define "_topdir `pwd`"
   artifacts:
     expire_in: 6 months
     paths:
@@ -44,6 +45,7 @@ before_script:
     - mkdir SOURCES
     - mv mech_eap*.tar.gz SOURCES
     - rpmbuild -ba mech_eap_noshib.spec --define "_topdir `pwd`"
+    - rpmbuild -ba moonshot_noshib.spec --define "_topdir `pwd`"
   artifacts:
     expire_in: 6 months
     paths:

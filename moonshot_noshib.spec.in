@@ -1,0 +1,19 @@
+Name:		moonshot-noshib
+Version:	@VERSION@
+Release:	1%{?dist}
+Summary:	Moonshot GSS-API Mechanism
+
+Group:		Security Tools
+License:	BSD
+URL:		https://github.com/janetuk/mech_eap
+
+Requires:   moonshot-ui
+Requires:   moonshot-gss-eap-noshib
+
+Conflicts: moonshot
+
+%description
+Project Moonshot provides federated access management - Virtual package.
+
+%files
+# intentionally empty
