@@ -1,6 +1,6 @@
 moonshot-gss-eap (1.1.7.DIST) unstable; urgency=medium
 
-  * TBD
+  * Add virtual packages "moonshot" and "moonshot-noshib"
 
  -- Jisc <moonshot@jisc.ac.uk>  Thu, 21 Mar 2019 00:00:00 +0000
 
