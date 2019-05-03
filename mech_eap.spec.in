@@ -65,9 +65,6 @@ fgrep $oid_aes256 $mechfile ||echo eap-aes256 $oid_aes256 mech_eap.so >>$mechfil
 %exclude %{_libdir}/krb5/plugins/authdata/*
 #%{_libdir}/krb5/plugins/authdata/*.so
 
-
-
 %changelog
 * Wed Sep 28 2011  <hartmans@moonbuildcentos.dev.ja.net> - @VERSION@-2
 - Add radius_ad plugin
-
