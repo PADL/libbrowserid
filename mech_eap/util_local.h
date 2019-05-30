@@ -92,6 +92,12 @@ private:
     map<string, string> m_aliases;
     bool m_initialized;
     bool m_authenticated;
+    bool copyAttributeFrom(const char* attr,
+                          int *authenticated,
+                          int *complete,
+                          gss_buffer_t value,
+                          gss_buffer_t display_value,
+                          int *more) const;
 };
 
 extern "C" {

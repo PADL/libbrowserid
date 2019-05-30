@@ -147,6 +147,29 @@ gss_eap_local_attr_provider::getAttributeTypes(gss_eap_attr_enumeration_cb addAt
     return true;
 }
 
+bool
+gss_eap_local_attr_provider::copyAttributeFrom(const char* attrname,
+                                               int *authenticated,
+                                               int *complete,
+                                               gss_buffer_t value,
+                                               gss_buffer_t display_value,
+                                               int *more) const
+{
+    gss_buffer_desc attribute;
+    gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
+    gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
+
+    attribute.value = (void*) attrname;
+    attribute.length = strlen(attrname);
+    m_manager->decomposeAttributeName(&attribute, &prefix, &suffix);
+    // we only copy from prefixed attributes, to avoid cycle loops
+    if (prefix.length != 0) {
+        return m_manager->getAttribute(&attribute, authenticated, complete,
+                                       value, display_value, more);
+    }
+    return false;
+}
+
 
 bool
 gss_eap_local_attr_provider::getAttribute(const gss_buffer_t attr,
@@ -188,18 +211,26 @@ gss_eap_local_attr_provider::getAttribute(const gss_buffer_t attr,
             }
         }
         else if (copyfrom && json_is_string(copyfrom) ) {
-            gss_buffer_desc attribute;
-            gss_buffer_desc prefix = GSS_C_EMPTY_BUFFER;
-            gss_buffer_desc suffix = GSS_C_EMPTY_BUFFER;
-
-            attribute.value = (void*) json_string_value(copyfrom);
-            attribute.length = strlen(json_string_value(copyfrom));
-            m_manager->decomposeAttributeName(&attribute, &prefix, &suffix);
-            // we only copy from prefixed attributes, to avoid cycle loops
-            if (prefix.length != 0) {
-                return m_manager->getAttribute(&attribute, authenticated, complete,
-                                               value, display_value, more);
+            return this->copyAttributeFrom(json_string_value(copyfrom),
+                                           authenticated, complete, value,
+                                           display_value, more);
+        }
+        else if (copyfrom && json_is_array(copyfrom) ) {
+            size_t index;
+            json_t *attrname;
+            json_array_foreach(copyfrom, index, attrname) {
+                if (json_is_string(attrname)) {
+                    int new_more = *more;
+                    bool result = this->copyAttributeFrom(json_string_value(attrname),
+                                                          authenticated, complete, value,
+                                                          display_value, &new_more);
+                    if (result) {
+                        *more = new_more;
+                        return true;
+                    }
+                }
             }
+            return false;
         }
 
     }
