@@ -1,3 +1,10 @@
+moonshot-gss-eap (1.1.8.DIST) unstable; urgency=medium
+
+  * Allow "copy_from" operator of the local-attributes.json file to accept
+    an array of attribute names.
+
+ -- Jisc <moonshot@jisc.ac.uk>  Mon, 3 Jun 2019 00:00:00 +0000
+
 moonshot-gss-eap (1.1.7.DIST) unstable; urgency=medium
 
   * Add virtual packages "moonshot" and "moonshot-noshib"
