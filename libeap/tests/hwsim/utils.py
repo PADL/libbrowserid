@@ -1,14 +1,18 @@
 # Testing utilities
-# Copyright (c) 2013-2015, Jouni Malinen <j@w1.fi>
+# Copyright (c) 2013-2019, Jouni Malinen <j@w1.fi>
 #
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
 
 import binascii
 import os
+import socket
 import struct
+import subprocess
 import time
 import remotehost
+import logging
+logger = logging.getLogger()
 
 def get_ifnames():
     ifnames = []
@@ -109,10 +113,77 @@ def parse_ie(buf):
     ret = {}
     data = binascii.unhexlify(buf)
     while len(data) >= 2:
-        ie,elen = struct.unpack('BB', data[0:2])
+        ie, elen = struct.unpack('BB', data[0:2])
         data = data[2:]
         if elen > len(data):
             break
         ret[ie] = data[0:elen]
         data = data[elen:]
     return ret
+
+def wait_regdom_changes(dev):
+    for i in range(10):
+        ev = dev.wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=0.1)
+        if ev is None:
+            break
+
+def clear_country(dev):
+    logger.info("Try to clear country")
+    id = dev[1].add_network()
+    dev[1].set_network(id, "mode", "2")
+    dev[1].set_network_quoted(id, "ssid", "country-clear")
+    dev[1].set_network(id, "key_mgmt", "NONE")
+    dev[1].set_network(id, "frequency", "2412")
+    dev[1].set_network(id, "scan_freq", "2412")
+    dev[1].select_network(id)
+    ev = dev[1].wait_event(["CTRL-EVENT-CONNECTED"])
+    if ev:
+        dev[0].connect("country-clear", key_mgmt="NONE", scan_freq="2412")
+        dev[1].request("DISCONNECT")
+        dev[0].wait_disconnected()
+        dev[0].request("DISCONNECT")
+        dev[0].request("ABORT_SCAN")
+        time.sleep(1)
+        dev[0].dump_monitor()
+        dev[1].dump_monitor()
+
+def clear_regdom(hapd, dev, count=1):
+    if hapd:
+        hapd.request("DISABLE")
+        time.sleep(0.1)
+    for i in range(count):
+        dev[i].request("DISCONNECT")
+    for i in range(count):
+        dev[i].disconnect_and_stop_scan()
+    subprocess.call(['iw', 'reg', 'set', '00'])
+    wait_regdom_changes(dev[0])
+    country = dev[0].get_driver_status_field("country")
+    logger.info("Country code at the end: " + country)
+    if country != "00":
+        clear_country(dev)
+    for i in range(count):
+        dev[i].flush_scan_cache()
+
+def radiotap_build():
+    radiotap_payload = struct.pack('BB', 0x08, 0)
+    radiotap_payload += struct.pack('BB', 0, 0)
+    radiotap_payload += struct.pack('BB', 0, 0)
+    radiotap_hdr = struct.pack('<BBHL', 0, 0, 8 + len(radiotap_payload),
+                               0xc002)
+    return radiotap_hdr + radiotap_payload
+
+def start_monitor(ifname, freq=2412):
+    subprocess.check_call(["iw", ifname, "set", "type", "monitor"])
+    subprocess.call(["ip", "link", "set", "dev", ifname, "up"])
+    subprocess.check_call(["iw", ifname, "set", "freq", str(freq)])
+
+    ETH_P_ALL = 3
+    sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
+                         socket.htons(ETH_P_ALL))
+    sock.bind((ifname, 0))
+    sock.settimeout(0.5)
+    return sock
+
+def stop_monitor(ifname):
+    subprocess.call(["ip", "link", "set", "dev", ifname, "down"])
+    subprocess.call(["iw", ifname, "set", "type", "managed"])

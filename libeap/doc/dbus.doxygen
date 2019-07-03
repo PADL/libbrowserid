@@ -735,6 +735,11 @@ fi.w1.wpa_supplicant1.CreateInterface.
       </li>
 
       <li>
+	<h3>Stations - ao - (read)</h3>
+	<p>List of D-Bus objects paths representing connected stations in AP mode.</p>
+      </li>
+
+      <li>
 	<h3>Networks - ao - (read)</h3>
 	<p>List of D-Bus objects paths representing configured networks.</p>
       </li>
@@ -765,8 +770,33 @@ fi.w1.wpa_supplicant1.CreateInterface.
       </li>
 
       <li>
+	<h3>AuthStatusCode - i - (read)</h3>
+	<p>The most recent IEEE 802.11 status code for authentication.</p>
+      </li>
+
+      <li>
 	<h3>AssocStatusCode - i - (read)</h3>
 	<p>The most recent IEEE 802.11 status code for association rejection.</p>
+      </li>
+
+      <li>
+	<h3>RoamTime - u - (read)</h3>
+	<p>The most recent roam time in milliseconds.</p>
+      </li>
+
+      <li>
+	<h3>RoamComplete - b - (read)</h3>
+	<p>The most recent roam success or failure.</p>
+      </li>
+
+      <li>
+	<h3>SessionLength - u - (read)</h3>
+	<p>The most recent BSS session length in milliseconds.</p>
+      </li>
+
+      <li>
+	<h3>BSSTMStatus - u - (read)</h3>
+	<p>The most recent BSS Transition Management status code.</p>
       </li>
 
       <li>
@@ -1123,6 +1153,32 @@ fi.w1.wpa_supplicant1.CreateInterface.
 	<dl>
 	  <dt>s : mac</dt>
 	  <dd>A mac address which has been deauthorized.</dd>
+	</dl>
+      </li>
+
+      <li>
+	<h3>StationAdded ( o : Station, a{sv} : properties )</h3>
+	<p>A new station has been added to the interface.</p>
+	<p>This signal complements StaAuthorized, passing the Station object and its properties.</p>
+	<h4>Arguments</h4>
+	<dl>
+	  <dt>o : Station</dt>
+	  <dd>A D-Bus path to an object representing the new Station.</dd>
+	</dl>
+	<dl>
+	  <dt>a{sv} : properties</dt>
+	  <dd>A dictionary containing properties of added Station.</dd>
+	</dl>
+      </li>
+
+      <li>
+	<h3>StationRemoved ( o : Station )</h3>
+	<p>The station has been removed from the interface.</p>
+	<p>This signal complements StaDeauthorized, passing the Station object.</p>
+	<h4>Arguments</h4>
+	<dl>
+	  <dt>o : Station</dt>
+	  <dd>A D-Bus path to an object representing the Station.</dd>
 	</dl>
       </li>
 
@@ -1972,7 +2028,7 @@ scan results.
 	<h3>RSN - a{sv} - (read)</h3>
 	<p>RSN information of the BSS. Empty dictionary indicates no RSN support. Dictionary entries are:</p>
 	<table>
-	  <tr><td>KeyMgmt</td><td>as</td><td>Key management suite. Possible array elements: "wpa-psk", "wpa-eap", "wpa-ft-psk", "wpa-ft-eap", "wpa-psk-sha256", "wpa-eap-sha256",</td>
+	  <tr><td>KeyMgmt</td><td>as</td><td>Key management suite. Possible array elements: "wpa-psk", "wpa-ft-psk", "wpa-psk-sha256", "wpa-eap", "wpa-ft-eap", "wpa-eap-sha256", "wpa-eap-suite-b", "wpa-eap-suite-b-192", "wpa-fils-sha256", "wpa-fils-sha384", "wpa-ft-fils-sha256", "wpa-ft-fils-sha384", "sae", "ft-sae", "wpa-none"</td>
 	  <tr><td>Pairwise</td><td>as</td><td>Pairwise cipher suites. Possible array elements: "ccmp", "tkip"</td>
 	  <tr><td>Group</td><td>s</td><td>Group cipher suite. Possible values are: "ccmp", "tkip", "wep104", "wep40"</td>
 	  <tr><td>MgmtGroup</td><td>s</td><td>Mangement frames cipher suite. Possible values are: "aes128cmac"</td>

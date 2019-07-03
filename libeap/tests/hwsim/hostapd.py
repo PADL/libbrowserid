@@ -1,5 +1,5 @@
 # Python class for controlling hostapd
-# Copyright (c) 2013-2014, Jouni Malinen <j@w1.fi>
+# Copyright (c) 2013-2019, Jouni Malinen <j@w1.fi>
 #
 # This software may be distributed under the terms of the BSD license.
 # See README for more details.
@@ -19,10 +19,10 @@ hapd_ctrl = '/var/run/hostapd'
 hapd_global = '/var/run/hostapd-global'
 
 def mac2tuple(mac):
-    return struct.unpack('6B', binascii.unhexlify(mac.replace(':','')))
+    return struct.unpack('6B', binascii.unhexlify(mac.replace(':', '')))
 
 class HostapdGlobal:
-    def __init__(self, apdev=None):
+    def __init__(self, apdev=None, global_ctrl_override=None):
         try:
             hostname = apdev['hostname']
             port = apdev['port']
@@ -33,8 +33,11 @@ class HostapdGlobal:
         self.hostname = hostname
         self.port = port
         if hostname is None:
-            self.ctrl = wpaspy.Ctrl(hapd_global)
-            self.mon = wpaspy.Ctrl(hapd_global)
+            global_ctrl = hapd_global
+            if global_ctrl_override:
+                global_ctrl = global_ctrl_override
+            self.ctrl = wpaspy.Ctrl(global_ctrl)
+            self.mon = wpaspy.Ctrl(global_ctrl)
             self.dbg = ""
         else:
             self.ctrl = wpaspy.Ctrl(hostname, port)
@@ -52,7 +55,7 @@ class HostapdGlobal:
                                     stdout=subprocess.PIPE, shell=shell)
             out = proc.communicate()[0]
             ret = proc.returncode
-            return ret, out
+            return ret, out.decode()
         else:
             return self.host.execute(cmd_array)
 
@@ -82,17 +85,17 @@ class HostapdGlobal:
         if driver:
             cmd += " " + driver
         res = self.request(cmd)
-        if not "OK" in res:
+        if "OK" not in res:
             raise Exception("Could not add hostapd interface " + ifname)
 
     def add_iface(self, ifname, confname):
         res = self.request("ADD " + ifname + " config=" + confname)
-        if not "OK" in res:
+        if "OK" not in res:
             raise Exception("Could not add hostapd interface")
 
     def add_bss(self, phy, confname, ignore_error=False):
         res = self.request("ADD bss_config=" + phy + ":" + confname)
-        if not "OK" in res:
+        if "OK" not in res:
             if not ignore_error:
                 raise Exception("Could not add hostapd BSS")
 
@@ -159,7 +162,7 @@ class Hostapd:
                                     stdout=subprocess.PIPE, shell=shell)
             out = proc.communicate()[0]
             ret = proc.returncode
-            return ret, out
+            return ret, out.decode()
         else:
             return self.host.execute(cmd_array)
 
@@ -184,7 +187,7 @@ class Hostapd:
         return "PONG" in self.request("PING")
 
     def set(self, field, value):
-        if not "OK" in self.request("SET " + field + " " + value):
+        if "OK" not in self.request("SET " + field + " " + value):
             raise Exception("Failed to set hostapd parameter " + field)
 
     def set_defaults(self):
@@ -230,11 +233,11 @@ class Hostapd:
         self.set("wep_key0", key)
 
     def enable(self):
-        if not "OK" in self.request("ENABLE"):
+        if "OK" not in self.request("ENABLE"):
             raise Exception("Failed to enable hostapd interface " + self.ifname)
 
     def disable(self):
-        if not "OK" in self.request("DISABLE"):
+        if "OK" not in self.request("DISABLE"):
             raise Exception("Failed to disable hostapd interface " + self.ifname)
 
     def dump_monitor(self):
@@ -264,7 +267,7 @@ class Hostapd:
         lines = res.splitlines()
         vals = dict()
         for l in lines:
-            [name,value] = l.split('=', 1)
+            [name, value] = l.split('=', 1)
             vals[name] = value
         return vals
 
@@ -279,7 +282,7 @@ class Hostapd:
         lines = res.splitlines()
         vals = dict()
         for l in lines:
-            [name,value] = l.split('=', 1)
+            [name, value] = l.split('=', 1)
             vals[name] = value
         return vals
 
@@ -294,7 +297,7 @@ class Hostapd:
         lines = res.splitlines()
         vals = dict()
         for l in lines:
-            [name,value] = l.split('=', 1)
+            [name, value] = l.split('=', 1)
             vals[name] = value
         return vals
 
@@ -326,7 +329,8 @@ class Hostapd:
     def mgmt_tx(self, msg):
         t = (msg['fc'], 0) + mac2tuple(msg['da']) + mac2tuple(msg['sa']) + mac2tuple(msg['bssid']) + (0,)
         hdr = struct.pack('<HH6B6B6BH', *t)
-        if "OK" not in self.request("MGMT_TX " + binascii.hexlify(hdr + msg['payload'])):
+        res = self.request("MGMT_TX " + binascii.hexlify(hdr + msg['payload']).decode())
+        if "OK" not in res:
             raise Exception("MGMT_TX command to hostapd failed")
 
     def get_sta(self, addr, info=None, next=False):
@@ -345,7 +349,7 @@ class Hostapd:
                 vals['addr'] = l
                 first = False
             else:
-                [name,value] = l.split('=', 1)
+                [name, value] = l.split('=', 1)
                 vals[name] = value
         return vals
 
@@ -369,7 +373,7 @@ class Hostapd:
             if addr not in l:
                 continue
             vals = dict()
-            [index,aa,pmkid,expiration,opportunistic] = l.split(' ')
+            [index, aa, pmkid, expiration, opportunistic] = l.split(' ')
             vals['index'] = index
             vals['pmkid'] = pmkid
             vals['expiration'] = expiration
@@ -377,7 +381,127 @@ class Hostapd:
             return vals
         return None
 
-def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30):
+    def dpp_qr_code(self, uri):
+        res = self.request("DPP_QR_CODE " + uri)
+        if "FAIL" in res:
+            raise Exception("Failed to parse QR Code URI")
+        return int(res)
+
+    def dpp_bootstrap_gen(self, type="qrcode", chan=None, mac=None, info=None,
+                          curve=None, key=None):
+        cmd = "DPP_BOOTSTRAP_GEN type=" + type
+        if chan:
+            cmd += " chan=" + chan
+        if mac:
+            if mac is True:
+                mac = self.own_addr()
+            cmd += " mac=" + mac.replace(':', '')
+        if info:
+            cmd += " info=" + info
+        if curve:
+            cmd += " curve=" + curve
+        if key:
+            cmd += " key=" + key
+        res = self.request(cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to generate bootstrapping info")
+        return int(res)
+
+    def dpp_listen(self, freq, netrole=None, qr=None, role=None):
+        cmd = "DPP_LISTEN " + str(freq)
+        if netrole:
+            cmd += " netrole=" + netrole
+        if qr:
+            cmd += " qr=" + qr
+        if role:
+            cmd += " role=" + role
+        if "OK" not in self.request(cmd):
+            raise Exception("Failed to start listen operation")
+
+    def dpp_auth_init(self, peer=None, uri=None, conf=None, configurator=None,
+                      extra=None, own=None, role=None, neg_freq=None,
+                      ssid=None, passphrase=None, expect_fail=False):
+        cmd = "DPP_AUTH_INIT"
+        if peer is None:
+            peer = self.dpp_qr_code(uri)
+        cmd += " peer=%d" % peer
+        if own is not None:
+            cmd += " own=%d" % own
+        if role:
+            cmd += " role=" + role
+        if extra:
+            cmd += " " + extra
+        if conf:
+            cmd += " conf=" + conf
+        if configurator is not None:
+            cmd += " configurator=%d" % configurator
+        if neg_freq:
+            cmd += " neg_freq=%d" % neg_freq
+        if ssid:
+            cmd += " ssid=" + binascii.hexlify(ssid.encode()).decode()
+        if passphrase:
+            cmd += " pass=" + binascii.hexlify(passphrase.encode()).decode()
+        res = self.request(cmd)
+        if expect_fail:
+            if "FAIL" not in res:
+                raise Exception("DPP authentication started unexpectedly")
+            return
+        if "OK" not in res:
+            raise Exception("Failed to initiate DPP Authentication")
+
+    def dpp_pkex_init(self, identifier, code, role=None, key=None, curve=None,
+                      extra=None, use_id=None):
+        if use_id is None:
+            id1 = self.dpp_bootstrap_gen(type="pkex", key=key, curve=curve)
+        else:
+            id1 = use_id
+        cmd = "own=%d " % id1
+        if identifier:
+            cmd += "identifier=%s " % identifier
+        cmd += "init=1 "
+        if role:
+            cmd += "role=%s " % role
+        if extra:
+            cmd += extra + " "
+        cmd += "code=%s" % code
+        res = self.request("DPP_PKEX_ADD " + cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to set PKEX data (initiator)")
+        return id1
+
+    def dpp_pkex_resp(self, freq, identifier, code, key=None, curve=None,
+                      listen_role=None):
+        id0 = self.dpp_bootstrap_gen(type="pkex", key=key, curve=curve)
+        cmd = "own=%d " % id0
+        if identifier:
+            cmd += "identifier=%s " % identifier
+        cmd += "code=%s" % code
+        res = self.request("DPP_PKEX_ADD " + cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to set PKEX data (responder)")
+        self.dpp_listen(freq, role=listen_role)
+
+    def dpp_configurator_add(self, curve=None, key=None):
+        cmd = "DPP_CONFIGURATOR_ADD"
+        if curve:
+            cmd += " curve=" + curve
+        if key:
+            cmd += " key=" + key
+        res = self.request(cmd)
+        if "FAIL" in res:
+            raise Exception("Failed to add configurator")
+        return int(res)
+
+    def dpp_configurator_remove(self, conf_id):
+        res = self.request("DPP_CONFIGURATOR_REMOVE %d" % conf_id)
+        if "OK" not in res:
+            raise Exception("DPP_CONFIGURATOR_REMOVE failed")
+
+    def note(self, txt):
+        self.request("NOTE " + txt)
+
+def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30,
+           global_ctrl_override=None):
         if isinstance(apdev, dict):
             ifname = apdev['ifname']
             try:
@@ -393,7 +517,8 @@ def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30):
             logger.info("Starting AP " + ifname + " (old add_ap argument type)")
             hostname = None
             port = 8878
-        hapd_global = HostapdGlobal(apdev)
+        hapd_global = HostapdGlobal(apdev,
+                                    global_ctrl_override=global_ctrl_override)
         hapd_global.remove(ifname)
         hapd_global.add(ifname)
         port = hapd_global.get_ctrl_iface_port(ifname)
@@ -401,14 +526,14 @@ def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30):
         if not hapd.ping():
             raise Exception("Could not ping hostapd")
         hapd.set_defaults()
-        fields = [ "ssid", "wpa_passphrase", "nas_identifier", "wpa_key_mgmt",
-                   "wpa",
-                   "wpa_pairwise", "rsn_pairwise", "auth_server_addr",
-                   "acct_server_addr", "osu_server_uri" ]
+        fields = ["ssid", "wpa_passphrase", "nas_identifier", "wpa_key_mgmt",
+                  "wpa",
+                  "wpa_pairwise", "rsn_pairwise", "auth_server_addr",
+                  "acct_server_addr", "osu_server_uri"]
         for field in fields:
             if field in params:
                 hapd.set(field, params[field])
-        for f,v in params.items():
+        for f, v in list(params.items()):
             if f in fields:
                 continue
             if isinstance(v, list):
@@ -486,9 +611,9 @@ def terminate(apdev):
     hapd_global.terminate()
 
 def wpa2_params(ssid=None, passphrase=None):
-    params = { "wpa": "2",
-               "wpa_key_mgmt": "WPA-PSK",
-               "rsn_pairwise": "CCMP" }
+    params = {"wpa": "2",
+              "wpa_key_mgmt": "WPA-PSK",
+              "rsn_pairwise": "CCMP"}
     if ssid:
         params["ssid"] = ssid
     if passphrase:
@@ -496,9 +621,9 @@ def wpa2_params(ssid=None, passphrase=None):
     return params
 
 def wpa_params(ssid=None, passphrase=None):
-    params = { "wpa": "1",
-               "wpa_key_mgmt": "WPA-PSK",
-               "wpa_pairwise": "TKIP" }
+    params = {"wpa": "1",
+              "wpa_key_mgmt": "WPA-PSK",
+              "wpa_pairwise": "TKIP"}
     if ssid:
         params["ssid"] = ssid
     if passphrase:
@@ -506,10 +631,10 @@ def wpa_params(ssid=None, passphrase=None):
     return params
 
 def wpa_mixed_params(ssid=None, passphrase=None):
-    params = { "wpa": "3",
-               "wpa_key_mgmt": "WPA-PSK",
-               "wpa_pairwise": "TKIP",
-               "rsn_pairwise": "CCMP" }
+    params = {"wpa": "3",
+              "wpa_key_mgmt": "WPA-PSK",
+              "wpa_pairwise": "TKIP",
+              "rsn_pairwise": "CCMP"}
     if ssid:
         params["ssid"] = ssid
     if passphrase:
@@ -517,10 +642,10 @@ def wpa_mixed_params(ssid=None, passphrase=None):
     return params
 
 def radius_params():
-    params = { "auth_server_addr": "127.0.0.1",
-               "auth_server_port": "1812",
-               "auth_server_shared_secret": "radius",
-               "nas_identifier": "nas.w1.fi" }
+    params = {"auth_server_addr": "127.0.0.1",
+              "auth_server_port": "1812",
+              "auth_server_shared_secret": "radius",
+              "nas_identifier": "nas.w1.fi"}
     return params
 
 def wpa_eap_params(ssid=None):
@@ -544,8 +669,8 @@ def wpa2_eap_params(ssid=None):
     return params
 
 def b_only_params(channel="1", ssid=None, country=None):
-    params = { "hw_mode" : "b",
-               "channel" : channel }
+    params = {"hw_mode": "b",
+              "channel": channel}
     if ssid:
         params["ssid"] = ssid
     if country:
@@ -553,8 +678,8 @@ def b_only_params(channel="1", ssid=None, country=None):
     return params
 
 def g_only_params(channel="1", ssid=None, country=None):
-    params = { "hw_mode" : "g",
-               "channel" : channel }
+    params = {"hw_mode": "g",
+              "channel": channel}
     if ssid:
         params["ssid"] = ssid
     if country:
@@ -562,8 +687,8 @@ def g_only_params(channel="1", ssid=None, country=None):
     return params
 
 def a_only_params(channel="36", ssid=None, country=None):
-    params = { "hw_mode" : "a",
-               "channel" : channel }
+    params = {"hw_mode": "a",
+              "channel": channel}
     if ssid:
         params["ssid"] = ssid
     if country:
@@ -571,9 +696,9 @@ def a_only_params(channel="36", ssid=None, country=None):
     return params
 
 def ht20_params(channel="1", ssid=None, country=None):
-    params = { "ieee80211n" : "1",
-               "channel" : channel,
-               "hw_mode" : "g" }
+    params = {"ieee80211n": "1",
+              "channel": channel,
+              "hw_mode": "g"}
     if int(channel) > 14:
         params["hw_mode"] = "a"
     if ssid:
