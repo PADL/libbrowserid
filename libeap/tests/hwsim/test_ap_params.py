@@ -28,6 +28,11 @@ def test_ap_fragmentation_rts_set_high(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
+    dev[0].request("DISCONNECT")
+    hapd.disable()
+    hapd.set('fragm_threshold', '-1')
+    hapd.set('rts_threshold', '-1')
+    hapd.enable()
 
 @remote_compatible
 def test_ap_fragmentation_open(dev, apdev):
@@ -39,6 +44,10 @@ def test_ap_fragmentation_open(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
+    dev[0].request("DISCONNECT")
+    hapd.disable()
+    hapd.set('fragm_threshold', '-1')
+    hapd.enable()
 
 @remote_compatible
 def test_ap_fragmentation_wpa2(dev, apdev):
@@ -50,6 +59,10 @@ def test_ap_fragmentation_wpa2(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, psk=passphrase, scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
+    dev[0].request("DISCONNECT")
+    hapd.disable()
+    hapd.set('fragm_threshold', '-1')
+    hapd.enable()
 
 def test_ap_vendor_elements(dev, apdev):
     """WPA2-PSK AP with vendor elements added"""
@@ -79,8 +92,8 @@ def test_ap_element_parse(dev, apdev):
     """Information element parsing - extra coverage"""
     bssid = apdev[0]['bssid']
     ssid = "test-wpa2-psk"
-    params = { 'ssid': ssid,
-               'vendor_elements': "380501020304059e009e009e009e009e009e00" }
+    params = {'ssid': ssid,
+              'vendor_elements': "380501020304059e009e009e009e009e009e00"}
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].scan_for_bss(apdev[0]['bssid'], freq="2412")
     bss = dev[0].get_bss(bssid)
@@ -92,8 +105,8 @@ def test_ap_element_parse_oom(dev, apdev):
     """Information element parsing OOM"""
     bssid = apdev[0]['bssid']
     ssid = "test-wpa2-psk"
-    params = { 'ssid': ssid,
-               'vendor_elements': "dd0d506f9a0a00000600411c440028" }
+    params = {'ssid': ssid,
+              'vendor_elements': "dd0d506f9a0a00000600411c440028"}
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].scan_for_bss(apdev[0]['bssid'], freq="2412")
     with alloc_fail(dev[0], 1, "wpabuf_alloc;ieee802_11_vendor_ie_concat"):
@@ -116,10 +129,11 @@ def test_ap_country(dev, apdev):
         dev[0].connect(ssid, psk=passphrase, scan_freq="5180")
         hwsim_utils.test_connectivity(dev[0], hapd)
     finally:
-        dev[0].request("DISCONNECT")
         if hapd:
             hapd.request("DISABLE")
+        dev[0].disconnect_and_stop_scan()
         hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', '00'])
+        dev[0].wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=0.5)
         dev[0].flush_scan_cache()
 
 def test_ap_acl_accept(dev, apdev):
@@ -415,11 +429,13 @@ def test_ap_spectrum_management_required(dev, apdev):
         hapd = None
         hapd = hostapd.add_ap(apdev[0], params)
         dev[0].connect(ssid, key_mgmt="NONE", scan_freq="5180")
+        dev[0].wait_regdom(country_ie=True)
     finally:
-        dev[0].request("DISCONNECT")
         if hapd:
             hapd.request("DISABLE")
+        dev[0].disconnect_and_stop_scan()
         hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', '00'])
+        dev[0].wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=0.5)
         dev[0].flush_scan_cache()
 
 @remote_compatible
@@ -469,7 +485,7 @@ def test_ap_max_num_sta_no_probe_resp(dev, apdev, params):
     dev[1].scan(freq=2412, type="ONLY")
     if seen:
         out = run_tshark(os.path.join(logdir, "hwsim0.pcapng"),
-                         "wlan.fc.type_subtype == 5", ["wlan.da" ])
+                         "wlan.fc.type_subtype == 5", ["wlan.da"])
         if out:
             if dev[0].own_addr() not in out:
                 # Discovery happened through Beacon frame reception. That's not
@@ -527,7 +543,7 @@ def test_ap_tx_queue_params_invalid(dev, apdev):
 
 def test_ap_beacon_rate_legacy(dev, apdev):
     """Open AP with Beacon frame TX rate 5.5 Mbps"""
-    hapd = hostapd.add_ap(apdev[0], { 'ssid': 'beacon-rate' })
+    hapd = hostapd.add_ap(apdev[0], {'ssid': 'beacon-rate'})
     res = hapd.get_driver_status_field('capa.flags')
     if (int(res, 0) & 0x0000080000000000) == 0:
         raise HwsimSkip("Setting Beacon frame TX rate not supported")
@@ -538,7 +554,7 @@ def test_ap_beacon_rate_legacy(dev, apdev):
 
 def test_ap_beacon_rate_legacy2(dev, apdev):
     """Open AP with Beacon frame TX rate 12 Mbps in VHT BSS"""
-    hapd = hostapd.add_ap(apdev[0], { 'ssid': 'beacon-rate' })
+    hapd = hostapd.add_ap(apdev[0], {'ssid': 'beacon-rate'})
     res = hapd.get_driver_status_field('capa.flags')
     if (int(res, 0) & 0x0000080000000000) == 0:
         raise HwsimSkip("Setting Beacon frame TX rate not supported")
@@ -565,7 +581,7 @@ def test_ap_beacon_rate_legacy2(dev, apdev):
 
 def test_ap_beacon_rate_ht(dev, apdev):
     """Open AP with Beacon frame TX rate HT-MCS 0"""
-    hapd = hostapd.add_ap(apdev[0], { 'ssid': 'beacon-rate' })
+    hapd = hostapd.add_ap(apdev[0], {'ssid': 'beacon-rate'})
     res = hapd.get_driver_status_field('capa.flags')
     if (int(res, 0) & 0x0000100000000000) == 0:
         raise HwsimSkip("Setting Beacon frame TX rate not supported")
@@ -576,7 +592,7 @@ def test_ap_beacon_rate_ht(dev, apdev):
 
 def test_ap_beacon_rate_ht2(dev, apdev):
     """Open AP with Beacon frame TX rate HT-MCS 1 in VHT BSS"""
-    hapd = hostapd.add_ap(apdev[0], { 'ssid': 'beacon-rate' })
+    hapd = hostapd.add_ap(apdev[0], {'ssid': 'beacon-rate'})
     res = hapd.get_driver_status_field('capa.flags')
     if (int(res, 0) & 0x0000100000000000) == 0:
         raise HwsimSkip("Setting Beacon frame TX rate not supported")
@@ -603,7 +619,7 @@ def test_ap_beacon_rate_ht2(dev, apdev):
 
 def test_ap_beacon_rate_vht(dev, apdev):
     """Open AP with Beacon frame TX rate VHT-MCS 0"""
-    hapd = hostapd.add_ap(apdev[0], { 'ssid': 'beacon-rate' })
+    hapd = hostapd.add_ap(apdev[0], {'ssid': 'beacon-rate'})
     res = hapd.get_driver_status_field('capa.flags')
     if (int(res, 0) & 0x0000200000000000) == 0:
         raise HwsimSkip("Setting Beacon frame TX rate not supported")
@@ -631,8 +647,8 @@ def test_ap_beacon_rate_vht(dev, apdev):
 def test_ap_wep_to_wpa(dev, apdev):
     """WEP to WPA2-PSK configuration change in hostapd"""
     hapd = hostapd.add_ap(apdev[0],
-                          { "ssid": "wep-to-wpa",
-                            "wep_key0": '"hello"' })
+                          {"ssid": "wep-to-wpa",
+                           "wep_key0": '"hello"'})
     dev[0].flush_scan_cache()
     dev[0].connect("wep-to-wpa", key_mgmt="NONE", wep_key0='"hello"',
                    scan_freq="2412")
@@ -659,7 +675,7 @@ def test_ap_missing_psk(dev, apdev):
         # "WPA-PSK enabled, but PSK or passphrase is not configured."
         hostapd.add_ap(apdev[0], params)
         raise Exception("AP setup succeeded unexpectedly")
-    except Exception, e:
+    except Exception as e:
         if "Failed to enable hostapd" in str(e):
             pass
         else:
@@ -703,7 +719,7 @@ def test_ap_eapol_version(dev, apdev):
 def test_ap_dtim_period(dev, apdev):
     """DTIM period configuration"""
     ssid = "dtim-period"
-    params = { 'ssid': ssid, 'dtim_period': "10" }
+    params = {'ssid': ssid, 'dtim_period': "10"}
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
@@ -729,7 +745,7 @@ def test_ap_dtim_period(dev, apdev):
 def test_ap_no_probe_resp(dev, apdev):
     """AP with Probe Response frame sending from hostapd disabled"""
     ssid = "no-probe-resp"
-    params = { 'ssid': ssid, 'send_probe_response': "0" }
+    params = {'ssid': ssid, 'send_probe_response': "0"}
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
     dev[0].scan_for_bss(bssid, freq="2412", passive=True)
@@ -743,9 +759,9 @@ def test_ap_no_probe_resp(dev, apdev):
 def test_ap_long_preamble(dev, apdev):
     """AP with long preamble"""
     ssid = "long-preamble"
-    params = { 'ssid': ssid, 'preamble': "0",
-               'hw_mode': 'b', 'ieee80211n': '0',
-               'supported_rates': '10', 'basic_rates': '10' }
+    params = {'ssid': ssid, 'preamble': "0",
+              'hw_mode': 'b', 'ieee80211n': '0',
+              'supported_rates': '10', 'basic_rates': '10'}
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
     dev[0].scan_for_bss(bssid, freq="2412")
@@ -755,7 +771,7 @@ def test_ap_long_preamble(dev, apdev):
 def test_ap_wmm_uapsd(dev, apdev):
     """AP with U-APSD advertisement"""
     ssid = "uapsd"
-    params = { 'ssid': ssid, 'uapsd_advertisement_enabled': "1" }
+    params = {'ssid': ssid, 'uapsd_advertisement_enabled': "1"}
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
     dev[0].scan_for_bss(bssid, freq="2412")
@@ -765,7 +781,7 @@ def test_ap_wmm_uapsd(dev, apdev):
 def test_ap_wowlan_triggers(dev, apdev):
     """AP with wowlan_triggers"""
     ssid = "wowlan"
-    params = { 'ssid': ssid, 'wowlan_triggers': "any" }
+    params = {'ssid': ssid, 'wowlan_triggers': "any"}
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
     dev[0].scan_for_bss(bssid, freq="2412")

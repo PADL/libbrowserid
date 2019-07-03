@@ -132,7 +132,8 @@ UTILS_SRCS = src/utils/base64.c \
 	src/utils/trace.h \
 	src/utils/uuid.h \
 	src/utils/wpabuf.h \
-	src/utils/wpa_debug.h
+	src/utils/wpa_debug.h \
+	src/utils/const_time.h
 
 
 CRYPTO_SRCS = \
@@ -161,7 +162,8 @@ CRYPTO_SRCS = \
     src/crypto/sha256.h \
     src/crypto/sha384.h \
     src/crypto/sha512.h \
-	src/crypto/sha256-tlsprf.c \
+    src/crypto/sha512.c \
+    src/crypto/sha256-tlsprf.c \
     src/crypto/tls.h \
     src/crypto/tls_openssl.h
 

@@ -1,3 +1,9 @@
+moonshot-gss-eap (1.1.9.DIST) unstable; urgency=medium
+
+  * Update to hostap 2.8
+
+ -- Jisc <moonshot@jisc.ac.uk>  Wed, 3 Jul 2019 00:00:00 +0000
+
 moonshot-gss-eap (1.1.8.DIST) unstable; urgency=medium
 
   * Allow "copy_from" operator of the local-attributes.json file to accept

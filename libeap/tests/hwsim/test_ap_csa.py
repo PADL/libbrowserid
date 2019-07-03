@@ -14,8 +14,8 @@ import hostapd
 from utils import HwsimSkip
 
 def connect(dev, apdev, **kwargs):
-    params = { "ssid": "ap-csa",
-               "channel": "1" }
+    params = {"ssid": "ap-csa",
+              "channel": "1"}
     params.update(kwargs)
     ap = hostapd.add_ap(apdev[0], params)
     dev.connect("ap-csa", key_mgmt="NONE", scan_freq="2412")
@@ -47,12 +47,26 @@ def csa_supported(dev):
 def test_ap_csa_1_switch(dev, apdev):
     """AP Channel Switch, one switch"""
     csa_supported(dev[0])
+    freq = int(dev[0].get_driver_status_field("freq"))
+    if freq != 0:
+        raise Exception("Unexpected driver freq=%d in beginning" % freq)
     ap = connect(dev[0], apdev)
+    freq = int(dev[0].get_driver_status_field("freq"))
+    if freq != 2412:
+        raise Exception("Unexpected driver freq=%d after association" % freq)
 
     hwsim_utils.test_connectivity(dev[0], ap)
     switch_channel(ap, 10, 2462)
     wait_channel_switch(dev[0], 2462)
     hwsim_utils.test_connectivity(dev[0], ap)
+    freq = int(dev[0].get_driver_status_field("freq"))
+    if freq != 2462:
+        raise Exception("Unexpected driver freq=%d after channel switch" % freq)
+    dev[0].request("DISCONNECT")
+    dev[0].wait_disconnected()
+    freq = int(dev[0].get_driver_status_field("freq"))
+    if freq != 0:
+        raise Exception("Unexpected driver freq=%d after disconnection" % freq)
 
 @remote_compatible
 def test_ap_csa_2_switches(dev, apdev):
@@ -146,7 +160,7 @@ def test_ap_csa_invalid(dev, apdev):
     csa_supported(dev[0])
     ap = connect(dev[0], apdev)
 
-    vals = [ 2461, 4900, 4901, 5181, 5746, 5699, 5895, 5899 ]
+    vals = [2461, 4900, 4901, 5181, 5746, 5699, 5895, 5899]
     for val in vals:
         if "FAIL" not in ap.request("CHAN_SWITCH 1 %d" % val):
             raise Exception("Invalid channel accepted: %d" % val)

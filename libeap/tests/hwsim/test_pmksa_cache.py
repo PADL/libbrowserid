@@ -132,6 +132,53 @@ def test_pmksa_cache_and_reauth(dev, apdev):
     if ev is None:
         raise Exception("EAP authentication did not succeed")
 
+def test_pmksa_cache_and_ptk_rekey_ap(dev, apdev):
+    """PMKSA caching and PTK rekey triggered by AP"""
+    params = hostapd.wpa2_eap_params(ssid="test-pmksa-cache")
+    params['wpa_ptk_rekey'] = '2'
+    hapd = hostapd.add_ap(apdev[0], params)
+    bssid = apdev[0]['bssid']
+    dev[0].connect("test-pmksa-cache", proto="RSN", key_mgmt="WPA-EAP",
+                   eap="GPSK", identity="gpsk user",
+                   password="abcdefghijklmnop0123456789abcdef",
+                   scan_freq="2412")
+
+    hostapd.add_ap(apdev[1], params)
+    bssid2 = apdev[1]['bssid']
+
+    dev[0].dump_monitor()
+    logger.info("Roam to AP2")
+    # It can take some time for the second AP to become ready to reply to Probe
+    # Request frames especially under heavy CPU load, so allow couple of rounds
+    # of scanning to avoid reporting errors incorrectly just because of scans
+    # not having seen the target AP.
+    for i in range(0, 10):
+        dev[0].scan(freq="2412")
+        if dev[0].get_bss(bssid2) is not None:
+            break
+        logger.info("Scan again to find target AP")
+    dev[0].request("ROAM " + bssid2)
+    ev = dev[0].wait_event(["CTRL-EVENT-EAP-SUCCESS"], timeout=10)
+    if ev is None:
+        raise Exception("EAP success timed out")
+    dev[0].wait_connected(timeout=10, error="Roaming timed out")
+
+    dev[0].dump_monitor()
+    logger.info("Roam back to AP1")
+    dev[0].scan(freq="2412")
+    dev[0].request("ROAM " + bssid)
+    ev = dev[0].wait_event(["CTRL-EVENT-EAP-STARTED",
+                            "CTRL-EVENT-CONNECTED"], timeout=10)
+    if ev is None:
+        raise Exception("Roaming with the AP timed out")
+    if "CTRL-EVENT-EAP-STARTED" in ev:
+        raise Exception("Unexpected EAP exchange")
+
+    # Verify PTK rekeying after PMKSA caching
+    ev = dev[0].wait_event(["WPA: Key negotiation completed"], timeout=3)
+    if ev is None:
+        raise Exception("PTK rekey timed out")
+
 def test_pmksa_cache_opportunistic_only_on_sta(dev, apdev):
     """Opportunistic PMKSA caching enabled only on station"""
     params = hostapd.wpa2_eap_params(ssid="test-pmksa-cache")
@@ -353,7 +400,7 @@ def test_pmksa_cache_and_cui(dev, apdev):
     pmksa = dev[0].get_pmksa(bssid)
     if pmksa is None:
         raise Exception("No PMKSA cache entry created")
-    ev = hapd.wait_event([ "AP-STA-CONNECTED" ], timeout=5)
+    ev = hapd.wait_event(["AP-STA-CONNECTED"], timeout=5)
     if ev is None:
         raise Exception("No connection event received from hostapd")
 
@@ -429,7 +476,7 @@ def generic_pmksa_cache_preauth(dev, apdev, extraparams, identity, databridge,
     try:
         params = hostapd.wpa2_eap_params(ssid="test-wpa2-eap")
         params['bridge'] = 'ap-br0'
-        for key, value in extraparams[0].iteritems():
+        for key, value in extraparams[0].items():
             params[key] = value
 
         hapd = hostapd.add_ap(apdev[0], params)
@@ -445,7 +492,7 @@ def generic_pmksa_cache_preauth(dev, apdev, extraparams, identity, databridge,
         params['bridge'] = 'ap-br0'
         params['rsn_preauth'] = '1'
         params['rsn_preauth_interfaces'] = databridge
-        for key, value in extraparams[1].iteritems():
+        for key, value in extraparams[1].items():
             params[key] = value
         hostapd.add_ap(apdev[1], params)
         bssid1 = apdev[1]['bssid']
@@ -616,7 +663,7 @@ def test_pmksa_cache_ap_expiration(dev, apdev):
                    eap="GPSK", identity="gpsk-user-session-timeout",
                    password="abcdefghijklmnop0123456789abcdef",
                    scan_freq="2412")
-    ev = hapd.wait_event([ "AP-STA-CONNECTED" ], timeout=5)
+    ev = hapd.wait_event(["AP-STA-CONNECTED"], timeout=5)
     if ev is None:
         raise Exception("No connection event received from hostapd")
     dev[0].request("DISCONNECT")
@@ -666,7 +713,7 @@ def test_pmksa_cache_multiple_sta(dev, apdev):
     bssid2 = apdev[1]['bssid']
 
     logger.info("Roam to AP2")
-    for sta in [ dev[1], dev[0], dev[2], wpas ]:
+    for sta in [dev[1], dev[0], dev[2], wpas]:
         sta.dump_monitor()
         sta.scan_for_bss(bssid2, freq="2412")
         if "OK" not in sta.request("ROAM " + bssid2):
@@ -678,7 +725,7 @@ def test_pmksa_cache_multiple_sta(dev, apdev):
         sta.dump_monitor()
 
     logger.info("Roam back to AP1")
-    for sta in [ dev[1], wpas, dev[0], dev[2] ]:
+    for sta in [dev[1], wpas, dev[0], dev[2]]:
         sta.dump_monitor()
         sta.scan(freq="2412")
         sta.dump_monitor()
@@ -689,7 +736,7 @@ def test_pmksa_cache_multiple_sta(dev, apdev):
     time.sleep(4)
 
     logger.info("Roam back to AP2")
-    for sta in [ dev[1], wpas, dev[0], dev[2] ]:
+    for sta in [dev[1], wpas, dev[0], dev[2]]:
         sta.dump_monitor()
         sta.scan(freq="2412")
         sta.dump_monitor()
@@ -708,7 +755,7 @@ def test_pmksa_cache_opportunistic_multiple_sta(dev, apdev):
     wpas = WpaSupplicant(global_iface='/tmp/wpas-wlan5')
     wpas.interface_add("wlan5")
     wpas.flush_scan_cache()
-    for sta in [ dev[0], dev[1], dev[2], wpas ]:
+    for sta in [dev[0], dev[1], dev[2], wpas]:
         sta.connect("test-pmksa-cache", proto="RSN", key_mgmt="WPA-EAP",
                     eap="GPSK", identity="gpsk user",
                     password="abcdefghijklmnop0123456789abcdef", okc=True,
@@ -718,7 +765,7 @@ def test_pmksa_cache_opportunistic_multiple_sta(dev, apdev):
     bssid2 = apdev[1]['bssid']
 
     logger.info("Roam to AP2")
-    for sta in [ dev[2], dev[0], wpas, dev[1] ]:
+    for sta in [dev[2], dev[0], wpas, dev[1]]:
         sta.dump_monitor()
         sta.scan_for_bss(bssid2, freq="2412")
         if "OK" not in sta.request("ROAM " + bssid2):
@@ -735,7 +782,7 @@ def test_pmksa_cache_opportunistic_multiple_sta(dev, apdev):
         sta.dump_monitor()
 
     logger.info("Roam back to AP1")
-    for sta in [ dev[0], dev[1], dev[2], wpas ]:
+    for sta in [dev[0], dev[1], dev[2], wpas]:
         sta.dump_monitor()
         sta.scan_for_bss(bssid, freq="2412")
         sta.request("ROAM " + bssid)
@@ -772,10 +819,10 @@ def _test_pmksa_cache_preauth_oom(dev, apdev):
     hapd = hostapd.add_ap(apdev[1], params)
     bssid1 = apdev[1]['bssid']
 
-    tests = [ (1, "rsn_preauth_receive"),
-              (2, "rsn_preauth_receive"),
-              (1, "rsn_preauth_send"),
-              (1, "wpa_auth_pmksa_add_preauth;rsn_preauth_finished") ]
+    tests = [(1, "rsn_preauth_receive"),
+             (2, "rsn_preauth_receive"),
+             (1, "rsn_preauth_send"),
+             (1, "wpa_auth_pmksa_add_preauth;rsn_preauth_finished")]
     for test in tests:
         hapd.request("DEAUTHENTICATE ff:ff:ff:ff:ff:ff")
         with alloc_fail(hapd, test[0], test[1]):
@@ -1038,29 +1085,29 @@ def test_rsn_preauth_processing(dev, apdev):
                          socket.htons(0x88c7))
     sock.bind(("lo", socket.htons(0x88c7)))
 
-    foreign = "\x02\x03\x04\x05\x06\x07"
-    proto = "\x88\xc7"
+    foreign = b"\x02\x03\x04\x05\x06\x07"
+    proto = b"\x88\xc7"
     tests = []
     # RSN: too short pre-auth packet (len=14)
-    tests += [ _bssid + foreign + proto ]
+    tests += [_bssid + foreign + proto]
     # Not EAPOL-Start
-    tests += [ _bssid + foreign + proto + struct.pack('>BBH', 0, 0, 0) ]
+    tests += [_bssid + foreign + proto + struct.pack('>BBH', 0, 0, 0)]
     # RSN: pre-auth for foreign address 02:03:04:05:06:07
-    tests += [ foreign + foreign + proto + struct.pack('>BBH', 0, 0, 0) ]
+    tests += [foreign + foreign + proto + struct.pack('>BBH', 0, 0, 0)]
     # RSN: pre-auth for already association STA 02:00:00:00:00:00
-    tests += [ _bssid + _addr + proto + struct.pack('>BBH', 0, 0, 0) ]
+    tests += [_bssid + _addr + proto + struct.pack('>BBH', 0, 0, 0)]
     # New STA
-    tests += [ _bssid + foreign + proto + struct.pack('>BBH', 0, 1, 1) ]
+    tests += [_bssid + foreign + proto + struct.pack('>BBH', 0, 1, 1)]
     # IEEE 802.1X: received EAPOL-Start from STA
-    tests += [ _bssid + foreign + proto + struct.pack('>BBH', 0, 1, 0) ]
+    tests += [_bssid + foreign + proto + struct.pack('>BBH', 0, 1, 0)]
     # frame too short for this IEEE 802.1X packet
-    tests += [ _bssid + foreign + proto + struct.pack('>BBH', 0, 1, 1) ]
+    tests += [_bssid + foreign + proto + struct.pack('>BBH', 0, 1, 1)]
     # EAPOL-Key - Dropped key data from unauthorized Supplicant
-    tests += [ _bssid + foreign + proto + struct.pack('>BBH', 2, 3, 0) ]
+    tests += [_bssid + foreign + proto + struct.pack('>BBH', 2, 3, 0)]
     # EAPOL-Encapsulated-ASF-Alert
-    tests += [ _bssid + foreign + proto + struct.pack('>BBH', 2, 4, 0) ]
+    tests += [_bssid + foreign + proto + struct.pack('>BBH', 2, 4, 0)]
     # unknown IEEE 802.1X packet type
-    tests += [ _bssid + foreign + proto + struct.pack('>BBH', 2, 255, 0) ]
+    tests += [_bssid + foreign + proto + struct.pack('>BBH', 2, 255, 0)]
     for t in tests:
         sock.send(t)
 
@@ -1077,9 +1124,9 @@ def test_rsn_preauth_local_errors(dev, apdev):
                          socket.htons(0x88c7))
     sock.bind(("lo", socket.htons(0x88c7)))
 
-    foreign = "\x02\x03\x04\x05\x06\x07"
-    foreign2 = "\x02\x03\x04\x05\x06\x08"
-    proto = "\x88\xc7"
+    foreign = b"\x02\x03\x04\x05\x06\x07"
+    foreign2 = b"\x02\x03\x04\x05\x06\x08"
+    proto = b"\x88\xc7"
 
     with alloc_fail(hapd, 1, "ap_sta_add;rsn_preauth_receive"):
         sock.send(_bssid + foreign + proto + struct.pack('>BBH', 2, 1, 0))
@@ -1096,12 +1143,12 @@ def test_rsn_preauth_local_errors(dev, apdev):
     sock.send(_bssid + foreign2 + proto + struct.pack('>BBH', 2, 1, 0))
 
     hapd.request("DISABLE")
-    tests = [ (1, "=rsn_preauth_iface_add"),
-              (2, "=rsn_preauth_iface_add"),
-              (1, "l2_packet_init;rsn_preauth_iface_add"),
-              (1, "rsn_preauth_iface_init"),
-              (1, "rsn_preauth_iface_init") ]
-    for count,func in tests:
+    tests = [(1, "=rsn_preauth_iface_add"),
+             (2, "=rsn_preauth_iface_add"),
+             (1, "l2_packet_init;rsn_preauth_iface_add"),
+             (1, "rsn_preauth_iface_init"),
+             (1, "rsn_preauth_iface_init")]
+    for count, func in tests:
         with alloc_fail(hapd, count, func):
             if "FAIL" not in hapd.request("ENABLE"):
                 raise Exception("ENABLE succeeded unexpectedly")

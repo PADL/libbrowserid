@@ -5,6 +5,7 @@
 # See README for more details.
 
 from remotehost import remote_compatible
+import binascii
 import time
 import subprocess
 import logging
@@ -31,9 +32,9 @@ def check_wpa2_connection(sta, ap, hapd, ssid, mixed=False):
     hwsim_utils.test_connectivity(sta, hapd)
 
 def ap_wps_params(ssid):
-    return { "ssid": ssid, "eap_server": "1", "wps_state": "2",
-             "wpa_passphrase": "12345678", "wpa": "2",
-             "wpa_key_mgmt": "WPA-PSK", "rsn_pairwise": "CCMP"}
+    return {"ssid": ssid, "eap_server": "1", "wps_state": "2",
+            "wpa_passphrase": "12345678", "wpa": "2",
+            "wpa_key_mgmt": "WPA-PSK", "rsn_pairwise": "CCMP"}
 
 @remote_compatible
 def test_nfc_wps_password_token_sta(dev, apdev):
@@ -103,7 +104,7 @@ def test_nfc_wps_config_token_init(dev, apdev):
     """NFC tag with configuration token from AP with auto configuration"""
     ssid = "test-wps-nfc-conf-token-init"
     hapd = hostapd.add_ap(apdev[0],
-                          { "ssid": ssid, "eap_server": "1", "wps_state": "1" })
+                          {"ssid": ssid, "eap_server": "1", "wps_state": "1"})
     logger.info("NFC configuration token from AP to station")
     conf = hapd.request("WPS_NFC_CONFIG_TOKEN NDEF").rstrip()
     if "FAIL" in conf:
@@ -120,7 +121,7 @@ def test_nfc_wps_password_token_sta_init(dev, apdev):
     """Initial AP configuration with first WPS NFC Enrollee"""
     ssid = "test-wps-nfc-pw-token-init"
     hapd = hostapd.add_ap(apdev[0],
-                          { "ssid": ssid, "eap_server": "1", "wps_state": "1" })
+                          {"ssid": ssid, "eap_server": "1", "wps_state": "1"})
     logger.info("WPS provisioning step using password token from station")
     pw = dev[0].request("WPS_NFC_TOKEN NDEF").rstrip()
     if "FAIL" in pw:
@@ -140,7 +141,7 @@ def test_nfc_wps_password_token_ap(dev, apdev):
     """WPS registrar configuring an AP using AP password token"""
     ssid = "test-wps-nfc-pw-token-init"
     hapd = hostapd.add_ap(apdev[0],
-                          { "ssid": ssid, "eap_server": "1", "wps_state": "1" })
+                          {"ssid": ssid, "eap_server": "1", "wps_state": "1"})
     logger.info("WPS configuration step")
     pw = hapd.request("WPS_NFC_TOKEN NDEF").rstrip()
     if "FAIL" in pw:
@@ -154,7 +155,10 @@ def test_nfc_wps_password_token_ap(dev, apdev):
     dev[0].dump_monitor()
     new_ssid = "test-wps-nfc-pw-token-new-ssid"
     new_passphrase = "1234567890"
-    res = dev[0].request("WPS_REG " + apdev[0]['bssid'] + " nfc-pw " + new_ssid.encode("hex") + " WPA2PSK CCMP " + new_passphrase.encode("hex"))
+    res = dev[0].request("WPS_REG " + apdev[0]['bssid'] + " nfc-pw " +
+                         binascii.hexlify(new_ssid.encode()).decode() +
+                         " WPA2PSK CCMP " +
+                         binascii.hexlify(new_passphrase.encode()).decode())
     if "FAIL" in res:
         raise Exception("Failed to start Registrar using NFC password token")
     dev[0].wait_connected(timeout=30)
@@ -185,7 +189,7 @@ def _test_nfc_wps_handover_init(dev, apdev):
     dev[0].request("SET ignore_old_scan_res 1")
     ssid = "test-wps-nfc-handover-init"
     hapd = hostapd.add_ap(apdev[0],
-                          { "ssid": ssid, "eap_server": "1", "wps_state": "1" })
+                          {"ssid": ssid, "eap_server": "1", "wps_state": "1"})
     logger.info("NFC connection handover")
     req = dev[0].request("NFC_GET_HANDOVER_REQ NDEF WPS-CR").rstrip()
     if "FAIL" in req:
@@ -223,7 +227,7 @@ def test_nfc_wps_handover_errors(dev, apdev):
     """WPS AP NFC handover report error cases"""
     ssid = "test-wps-nfc-handover"
     hapd = hostapd.add_ap(apdev[0],
-                          { "ssid": ssid, "eap_server": "1", "wps_state": "1" })
+                          {"ssid": ssid, "eap_server": "1", "wps_state": "1"})
     sel = hapd.request("NFC_GET_HANDOVER_SEL NDEF WPS-CR").rstrip()
     if "FAIL" in sel:
         raise Exception("Failed to generate NFC connection handover select")
@@ -427,15 +431,15 @@ def test_nfc_wps_handover_pk_hash_mismatch_ap(dev, apdev):
 def start_ap_er(er, ap, ssid):
     ap_pin = "12345670"
     ap_uuid = "27ea801a-9e5c-4e73-bd82-f89cbcd10d7e"
-    params = { "ssid": ssid, "eap_server": "1", "wps_state": "2",
-               "wpa_passphrase": "12345678", "wpa": "2",
-               "wpa_key_mgmt": "WPA-PSK", "rsn_pairwise": "CCMP",
-               "device_name": "Wireless AP", "manufacturer": "Company",
-               "model_name": "WAP", "model_number": "123",
-               "serial_number": "12345", "device_type": "6-0050F204-1",
-               "os_version": "01020300",
-               "config_methods": "label push_button",
-               "ap_pin": ap_pin, "uuid": ap_uuid, "upnp_iface": "lo"}
+    params = {"ssid": ssid, "eap_server": "1", "wps_state": "2",
+              "wpa_passphrase": "12345678", "wpa": "2",
+              "wpa_key_mgmt": "WPA-PSK", "rsn_pairwise": "CCMP",
+              "device_name": "Wireless AP", "manufacturer": "Company",
+              "model_name": "WAP", "model_number": "123",
+              "serial_number": "12345", "device_type": "6-0050F204-1",
+              "os_version": "01020300",
+              "config_methods": "label push_button",
+              "ap_pin": ap_pin, "uuid": ap_uuid, "upnp_iface": "lo"}
     hapd = hostapd.add_ap(ap, params)
     logger.info("Learn AP configuration")
     er.dump_monitor()
@@ -613,25 +617,50 @@ def _test_nfc_wps_er_handover_pk_hash_mismatch_er(dev, apdev):
 @remote_compatible
 def test_nfc_invalid_ndef_record(dev, apdev):
     """Invalid NFC NDEF record handling"""
-    tests = [ "11223344",
-              "00112233",
-              "0000112233445566",
-              "0800112233445566",
-              "080011223344",
-              "18000000",
-              "18010000",
-              "90000050",
-              "9000005000",
-              "9001013344",
-              "98010101334455",
-              "0017ffffffe3",
-              "0017ffffffe4",
-              "0017ffffffe9",
-              "0000fffffffa",
-              "0017ffffffe46170706c69636174696f6e2f766e642e7766612e777363",
-              "0017ffffffff6170706c69636174696f6e2f766e642e7766612e777363",
-              "0017000000006170706c69636174696f6e2f766e642e7766612e7773ff",
-              "080000000000" ]
+    tests = ["11223344",
+             "00112233",
+             "0000112233445566",
+             "0800112233445566",
+             "080011223344",
+             "18000000",
+             "18010000",
+             "90000050",
+             "9000005000",
+             "9001013344",
+             "98010101334455",
+             "0017ffffffe3",
+             "0017ffffffe4",
+             "0017ffffffe9",
+             "0000fffffffa",
+             "0017ffffffe46170706c69636174696f6e2f766e642e7766612e777363",
+             "0017ffffffff6170706c69636174696f6e2f766e642e7766612e777363",
+             "0017000000006170706c69636174696f6e2f766e642e7766612e7773ff",
+             "080000000000"]
     for test in tests:
         if "FAIL" not in dev[0].request("WPS_NFC_TAG_READ " + test):
             raise Exception("Invalid tag accepted: " + test)
+
+def test_nfc_wps_handover_failure(dev, apdev):
+    """Connect to WPS AP with NFC connection handover (local failure)"""
+    ssid = "test-wps-nfc-handover"
+    params = ap_wps_params(ssid)
+    hapd = hostapd.add_ap(apdev[0], params)
+    logger.info("NFC connection handover")
+    req = dev[0].request("NFC_GET_HANDOVER_REQ NDEF WPS-CR").rstrip()
+    if "FAIL" in req:
+        raise Exception("Failed to generate NFC connection handover request")
+    sel = hapd.request("NFC_GET_HANDOVER_SEL NDEF WPS-CR").rstrip()
+    if "FAIL" in sel:
+        raise Exception("Failed to generate NFC connection handover select")
+    res = hapd.request("NFC_REPORT_HANDOVER RESP WPS " + req + " " + sel)
+    if "FAIL" in res:
+        raise Exception("Failed to report NFC connection handover to to hostapd")
+    dev[0].dump_monitor()
+
+    with alloc_fail(hapd, 1, "wpabuf_dup;wps_build_public_key"):
+        res = dev[0].request("NFC_REPORT_HANDOVER INIT WPS " + req + " " + sel)
+        if "FAIL" in res:
+            raise Exception("Failed to report NFC connection handover to to wpa_supplicant")
+        ev = dev[0].wait_event(["WPS-FAIL"], timeout=10)
+        if ev is None:
+            raise Exception("WPS failure not reported")
