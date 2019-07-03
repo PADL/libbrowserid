@@ -1,8 +1,8 @@
 moonshot-gss-eap (1.1.9.DIST) unstable; urgency=medium
 
-  * TBD
+  * Update to hostap 2.8
 
- -- Jisc <moonshot@jisc.ac.uk>  Mon, 3 Jun 2019 00:00:00 +0000
+ -- Jisc <moonshot@jisc.ac.uk>  Wed, 3 Jul 2019 00:00:00 +0000
 
 moonshot-gss-eap (1.1.8.DIST) unstable; urgency=medium
 
