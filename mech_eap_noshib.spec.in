@@ -16,7 +16,6 @@ BuildRequires: jansson-devel
 Requires:	moonshot-ui
 BuildRequires: libxml2-devel
 BuildRequires: libradsec-devel >= 0.0.3
-BuildRequires: libshibresolver-devel
 
 Conflicts: moonshot-gss-eap
 Provides: moonshot-gss-eap = @VERSION@
