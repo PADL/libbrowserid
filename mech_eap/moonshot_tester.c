@@ -220,8 +220,8 @@ int main() {
                                               NULL, &client_name, NULL, &server_token, &ret_flags, NULL, NULL);
 
         if (GSS_ERROR(server_major)) {
-            display_status("gss_init_sec_context()", server_major, GSS_C_GSS_CODE);
-            display_status("gss_init_sec_context()", minor, GSS_C_MECH_CODE);
+            display_status("gss_accept_sec_context()", server_major, GSS_C_GSS_CODE);
+            display_status("gss_accept_sec_context()", minor, GSS_C_MECH_CODE);
             goto cleanup;
         }
     }
