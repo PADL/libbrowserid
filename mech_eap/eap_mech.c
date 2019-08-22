@@ -153,12 +153,15 @@ eapPeerRegisterMethods(OM_uint32 *minor)
 static OM_uint32
 gssEapInitLibEap(OM_uint32 *minor)
 {
-    char *debug_file = NULL;
+    char *debug_file = NULL, *debug_level = NULL;
     wpa_debug_level = MSG_ERROR;
     if ((debug_file = getenv("GSSEAP_TRACE")) != NULL) {
-	    wpa_debug_open_file(debug_file);
-	    wpa_debug_level = 0;
-	}
+        wpa_debug_open_file(debug_file);
+        wpa_debug_level = 0;
+    }
+    if ((debug_level = getenv("GSSEAP_TRACE_LEVEL")) != NULL) {
+        wpa_debug_level = strtol(debug_level, NULL, 10);
+    }
 
     return eapPeerRegisterMethods(minor);
 }

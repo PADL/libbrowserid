@@ -405,16 +405,38 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     krbPrincRealmToGssBuffer(cred->name->krbPrincipal, &realm);
 
     /* anonymous_identity */
-    eapPeerConfig->anonymous_identity = GSSEAP_MALLOC(realm.length + 2);
+    eapPeerConfig->anonymous_identity = GSSEAP_MALLOC(identity.length + 1);
     if (eapPeerConfig->anonymous_identity == NULL) {
         *minor = ENOMEM;
         return GSS_S_FAILURE;
     }
 
-    eapPeerConfig->anonymous_identity[0] = '@';
-    memcpy(eapPeerConfig->anonymous_identity + 1, realm.value, realm.length);
-    eapPeerConfig->anonymous_identity[1 + realm.length] = '\0';
-    eapPeerConfig->anonymous_identity_len = 1 + realm.length;
+    char *bang = memchr(identity.value, '!', identity.length);
+    if (!bang) {
+        snprintf((char*)eapPeerConfig->anonymous_identity, identity.length,
+                 "@%.*s", (int) realm.length, (char*) realm.value);
+    }
+    /* RFC7542 parsing. We have an identity as "home!username@proxy" */
+    else {
+        /* Undecorate inner identity. Make it "username@home" */
+        /* Note that we can mangle "identity" as it's not used hereafter */
+        char new_identity[identity.length + 1];
+        gss_buffer_desc tmpBuffer = {0, new_identity};
+        gss_OID nameMech = cred->name->mechanismUsed;
+        char *at = memchr(identity.value, '@', identity.length);
+        *at = *bang = '\0';
+        snprintf(new_identity, identity.length, "%s@%s", bang + 1, (char*) identity.value);
+        tmpBuffer.length = strlen(new_identity);
+        major = gssEapReleaseName(minor, &cred->name);
+        major = gssEapImportName(minor, &tmpBuffer, GSS_C_NT_USER_NAME, nameMech, &cred->name);
+        if (GSS_ERROR(major))
+            return GSS_S_FAILURE;
+
+        /* set anonymous identity to "home!@proxy". "realm" cannot be used as it has been removed with the name */
+        snprintf((char*)eapPeerConfig->anonymous_identity, identity.length,
+                 "%s!@%s", (char*) identity.value, at + 1);
+    }
+    eapPeerConfig->anonymous_identity_len = strlen((char*)eapPeerConfig->anonymous_identity);
 
     /* password */
     if ((cred->flags & CRED_FLAG_CERTIFICATE) == 0) {
@@ -589,7 +611,7 @@ initBegin(OM_uint32 *minor,
 
         major = gssEapDuplicateName(minor, target, &ctx->acceptorName);
         if (GSS_ERROR(major)) {
-            GSSEAP_MUTEX_LOCK(&((gss_name_t)target)->mutex);
+            GSSEAP_MUTEX_UNLOCK(&((gss_name_t)target)->mutex);
             return major;
         }
 
