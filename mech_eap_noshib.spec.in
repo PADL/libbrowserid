@@ -16,7 +16,6 @@ BuildRequires: jansson-devel
 Requires:	moonshot-ui
 BuildRequires: libxml2-devel
 BuildRequires: libradsec-devel >= 0.0.3
-BuildRequires: shibboleth-devel >= 2.5
 BuildRequires: libshibresolver-devel
 
 Conflicts: moonshot-gss-eap
@@ -69,6 +68,184 @@ fgrep $oid_aes256 $mechfile ||echo eap-aes256 $oid_aes256 mech_eap.so >>$mechfil
 
 
 %changelog
-* Wed Sep 28 2011  <hartmans@moonbuildcentos.dev.ja.net> - @VERSION@-2
-- Add radius_ad plugin
+* Wed Jul 03 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
+- TBD
 
+* Wed Jul 03 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.9
+- Update to hostap 2.8
+
+* Mon Jun 3 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.8
+- Allow "copy_from" operator of the local-attributes.json file to accept
+  an array of attribute names.
+
+* Thu Mar 21 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.7
+- Add virtual packages "moonshot" and "moonshot-noshib"
+
+* Wed Mar 20 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.6
+- Fix some issues found by CLANG static analyser
+
+* Mon Mar 04 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.5-1
+- Add support for "bangpath" RFC 7542 usernames
+- Add support for .gss_eap_authorized_anchors
+- Send full server certificate to the UI for Trust anchor confirmation
+- Update source URLs
+
+* Sat Feb 02 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.4
+- Fingerprint comparison case insensitive for .gss_eap_id
+- Generated source packages
+
+* Fri Jan 18 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.3-0
+- Install mech file in the proper location for Ubuntu 14.04
+
+* Mon Jan 07 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.2-0
+- Merge with hostap 2.7
+
+* Tue Nov 27 2018 Jisc <moonshot@jisc.ac.uk> - 1.1.1-0
+- Add text UI
+- Support for SAML nameid attributes
+- Support server fingerprints in .gss_ea_id file
+- Added monshot_tester_tool
+
+* Thu Aug 30 2018 Jisc <moonshot@jisc.ac.uk> - 1.1.0-0
+- Version number bump
+
+* Wed Nov 08 2017 Sam Hartman <hartmans@debian.org> - 1.0.1-3
+- Fix warning redefinition of __bitwise, Closes: #866712
+
+* Tue Nov 07 2017 Sam Hartman <hartmans@debian.org> - 1.0.1-2
+- I thought that libssl-dev|libssl1.0-dev would be enough to let the software 
+  build. However because of libxmltooling-dev, libssl1.0-dev must come first.
+
+* Mon Oct 30 2017 Sam Hartman <hartmans@debian.org> - 1.0.1-1
+- New upstream version
+- supports openssl 1.1.0, Closes: #848680
+- standards-version  4.1.1
+- No longer create /usr/etc/gss/mech; that was never desired in Debian but 
+  could be triggered by modern libgssapi-krb5-2
+
+* Mon Jul 31 2017 Painless Security <build@painless-security.com> - 1.0.1-0
+- Fixed https://bugs.launchpad.net/moonshot/+bug/1707679
+
+* Mon Jul 24 2017 Painless Security <build@painless-security.com> - 1.0.0-0
+- Fixed https://bugs.launchpad.net/moonshot/+bug/1705714.
+  Refactored a static object whose destructor was responsible for
+  de-initializing the ShibResolver library.
+
+* Mon Dec 19 2016 Sam Hartman <hartmans@debian.org> - 0.9.5-3
+- Build depend against openssl 1.0, Closes: #828440
+
+* Mon Aug 22 2016 Sam Hartman <hartmans@debian.org> - 0.9.5-2
+- Fix FTBFS with gcc-6: auto_ptr is deprecated.  First, -Wdeprecated
+  should not cause an error for package builds.  Second, use unique_ptr,
+  Closes: #831187
+- Upgrade standards version to 3.9.8 (no changes needed)
+
+* Tue Jul 14 2015 Sam Hartman <hartmans@debian.org> - 0.9.5-1
+- New upstream version
+- Include base64 decoding fix for newlines and internal spaces
+- Include error table fix
+- New upstream release including better error messages when GSSEAP_TRACE is set
+
+* Thu Mar 12 2015 Sam Hartman <hartmans@debian.org> - 0.9.3.1
+- Native for now
+
+* Thu Oct 23 2014 Sam Hartman <hartmans@debian.org> - 0.9.2-3
+- Review security of libeap/wpa_supplicant and send mail to security
+  team explaining why I believe moonshot-gss-eap is supportable, Closes: #766476
+
+* Wed Oct 22 2014 Sam Hartman <hartmans@debian.org> - 0.9.2-2
+- Incorporate ustream deltas:
+  * fdc24ae Use C++ destructors not finalizers
+  * a743fc8 Mech_eap: only output debugging when GSSEAP_TRACE is set
+- moonshot-gss-eap.conf not moonshot-gss-eap in /etc/gss/mech.d so the
+  library picks it up
+
+* Tue Sep 16 2014 Sam Hartman <hartmans@debian.org> - 0.9.2-1
+- New version
+- This is ready for Debian unstable, although there are remaining issues
+  before I'd want to see it in a release.  I'll hold a serious bug on
+  the package until these are resolved; see debian/TODO.
+- Upload to Debian, Closes: #761868
+
+* Thu Jul 31 2014 Sam Hartman <hartmans@debian.org> - 0.9.1-1
+- new upstream release
+  - Includes support for CA certificates.
+
+* Tue Nov 26 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-12
+- Ignore TLS errors before TLS calls are made
+
+* Thu Nov 21 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-11
+- fix assert failure
+
+* Thu Nov 21 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-10
+- Permit 1-component service names
+
+* Wed Nov 20 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-9
+- Enable sha256 in libeap
+
+* Wed Nov 13 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-8
+- Update from upstream to fix segfault on no hostname
+
+* Tue Oct 29 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-7
+- Send flags token with mutual authentication forced
+
+* Thu Oct 10 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-6
+- Fix segfault (LP: #1237981)
+
+* Thu Oct 10 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-5
+- Create moonshot-gss-eap-dbg
+
+* Fri Oct 04 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-4
+- autoreconf
+
+* Fri Oct 04 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-3
+- Depend on moonshot-ui 0.6-2 to get libmoonshot1
+
+* Fri Sep 27 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-2
+- Build depend on openssl
+
+* Fri Sep 27 2013 Sam Hartman <hartmans@debian.org> - 0.9.20130927-1
+- New upstream version
+
+* Thu Apr 04 2013 Kevin Wasserman <krwasserman@painless-security.com> - 0.1.20130404-1
+- New upstream release
+- ui displays proper service name, requests correct nai
+
+* Thu Nov 15 2012 Sam Hartman <hartmans@debian.org> - 0.1.20121103-2
+- Pull in upstream changes for empty acceptor name
+
+* Sat Nov 03 2012 Sam Hartman <hartmans@debian.org> - 0.1.20121103-1
+- New upstream version; 1.0 candidate
+- Update build-depends and drop freeradius
+
+* Wed Jan 18 2012 Sam Hartman <hartmans@debian.org> - 0.1.20111207-5
+- Fix rest of subject name constraints
+
+* Tue Jan 17 2012 Sam Hartman <hartmans@debian.org> - 0.1.20111207-3
+- Fix empty certhash (LP: #917956)
+
+* Tue Jan 03 2012 Sam Hartman <hartmans@debian.org> - 0.1.20111207-2
+- Initialize shib resolver before opensaml
+
+* Wed Dec 07 2011 Sam Hartman <hartmans@debian.org> - 0.1.20111207-1
+- New upstream version
+- Install multiarch krb5 plugin
+
+* Tue Aug 09 2011 Sam Hartman <hartmans@project-moonshot.org> - 0.1.20110809-1
+- New upstream version
+
+* Sun May 15 2011 Sam Hartman <hartmans@debian.org> - 0.1.20110427-7
+- Add build-conflicts on libgss-dev
+
+* Mon May 09 2011 Sam Hartman <hartmans@debian.org> - 0.1.20110427-6
+- Don't cast get_provider to const when not ssigning to a const
+  variable
+
+* Wed May 04 2011 Sam Hartman <hartmans@debian.org> - 0.1.20110427-5
+- Enable TLS in libeap
+
+* Wed May 04 2011 Sam Hartman <hartmans@debian.org> - 0.1.20110427-2
+- Force mutual authentication
+
+* Wed Apr 27 2011 Sam Hartman <hartmans@debian.org> - 0.1.20110427-1
+- Initial release
