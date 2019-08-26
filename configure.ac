@@ -1,5 +1,5 @@
 AC_PREREQ([2.61])
-AC_INIT([mech_eap], [1.1.6], [moonshot@jisc.ac.uk])
+AC_INIT([mech_eap], [1.1.7], [moonshot@jisc.ac.uk])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 
@@ -103,5 +103,5 @@ fi
 
 AX_CHECK_LIBMOONSHOT
 AC_CONFIG_FILES([Makefile libeap/Makefile mech_eap/Makefile
-			  mech_eap.spec mech_eap_noshib.spec APKBUILD])
+			  mech_eap.spec mech_eap_noshib.spec moonshot.spec moonshot_noshib.spec APKBUILD])
 AC_OUTPUT

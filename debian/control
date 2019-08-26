@@ -29,3 +29,9 @@ Description: Moonshot Federated Authentication - debugging Symbols
  Project moonshot provides federated authentication using EAP, RADIUS
  and SAML to applications beyond the web platform. This package
  contains debugging symbols.
+
+Package: moonshot
+Conflicts: moonshot-noshib
+Architecture: any
+Depends: moonshot-gss-eap (= ${binary:Version}), moonshot-ui
+Description: Moonshot Federated Authentication - Virtual package

@@ -11,7 +11,7 @@ license="BSD-3-Clause"
 depends=""
 makedepends="alpine-sdk automake autoconf libtool libressl-dev jansson-dev moonshot-ui-dev libradsec-dev krb5-dev"
 install=""
-subpackages="$pkgname-dev"
+subpackages="$pkgname-dev moonshot:moonshot"
 source="${_pkgname}-${pkgver}.tar.gz"
 builddir="$srcdir/${_pkgname}-${pkgver}"
 
@@ -34,4 +34,9 @@ package() {
 	make DESTDIR="$pkgdir" install
 	mkdir -p "$pkgdir"/usr/etc/gss/
 	install -m644 "$builddir"/mech_eap/mech "$pkgdir"/usr/etc/gss/mech
+}
+
+moonshot() {
+        depends="moonshot-gss-eap moonshot-ui"
+        mkdir -p "$subpkgdir"
 }

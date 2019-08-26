@@ -19,6 +19,7 @@ Description: Moonshot Federated Authentication - authentication mechanism
  Project moonshot provides federated authentication using EAP, RADIUS
  and SAML to applications beyond the web platform. This package
  contains the client and server plugins to perform authentication.
+ This version does not require Shibboleth libraries for attribute mapping.
 
 Package: moonshot-gss-eap-dbg-noshib
 Architecture: any
@@ -30,3 +31,9 @@ Description: Moonshot Federated Authentication - debugging Symbols
  Project moonshot provides federated authentication using EAP, RADIUS
  and SAML to applications beyond the web platform. This package
  contains debugging symbols.
+
+Package: moonshot-noshib
+Conflicts: moonshot
+Architecture: any
+Depends: moonshot-gss-eap-noshib (= ${binary:Version}), moonshot-ui
+Description: Moonshot Federated Authentication - Virtual package
