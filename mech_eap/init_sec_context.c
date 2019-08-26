@@ -447,9 +447,9 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
     }
 
     /* certs */
-    eapPeerConfig->ca_cert = (unsigned char *)cred->caCertificate.value;
-    eapPeerConfig->subject_match = (unsigned char *)cred->subjectNameConstraint.value;
-    eapPeerConfig->altsubject_match = (unsigned char *)cred->subjectAltNameConstraint.value;
+    eapPeerConfig->ca_cert = cred->caCertificate.value;
+    eapPeerConfig->subject_match = cred->subjectNameConstraint.value;
+    eapPeerConfig->altsubject_match = cred->subjectAltNameConstraint.value;
     configBlobs[CONFIG_BLOB_CA_CERT].data = cred->caCertificateBlob.value;
     configBlobs[CONFIG_BLOB_CA_CERT].len = cred->caCertificateBlob.length;
 
@@ -480,16 +480,16 @@ peerConfigInit(OM_uint32 *minor, gss_ctx_id_t ctx)
          * EAP implementation, rather than an indirected string pointer.
          */
         if (cred->flags & CRED_FLAG_CONFIG_BLOB) {
-            eapPeerConfig->client_cert = (unsigned char *)"blob://client-cert";
+            eapPeerConfig->client_cert = "blob://client-cert";
             configBlobs[CONFIG_BLOB_CLIENT_CERT].data = cred->clientCertificate.value;
             configBlobs[CONFIG_BLOB_CLIENT_CERT].len  = cred->clientCertificate.length;
 
-            eapPeerConfig->client_cert = (unsigned char *)"blob://private-key";
+            eapPeerConfig->client_cert = "blob://private-key";
             configBlobs[CONFIG_BLOB_PRIVATE_KEY].data = cred->clientCertificate.value;
             configBlobs[CONFIG_BLOB_PRIVATE_KEY].len  = cred->privateKey.length;
         } else {
-            eapPeerConfig->client_cert = (unsigned char *)cred->clientCertificate.value;
-            eapPeerConfig->private_key = (unsigned char *)cred->privateKey.value;
+            eapPeerConfig->client_cert = cred->clientCertificate.value;
+            eapPeerConfig->private_key = cred->privateKey.value;
         }
         eapPeerConfig->private_key_passwd = (char *)cred->password.value;
     }
