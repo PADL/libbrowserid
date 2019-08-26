@@ -1,8 +1,9 @@
 moonshot-gss-eap (1.1.10.DIST) unstable; urgency=medium
 
+  * Added macOS build integration
   * TBD
 
- -- Jisc <moonshot@jisc.ac.uk>  Wed, 3 Jul 2019 00:00:00 +0000
+ -- Jisc <moonshot@jisc.ac.uk>  Mon, 26 Aug 2019 00:00:00 +0000
 
 moonshot-gss-eap (1.1.9.DIST) unstable; urgency=medium
 
