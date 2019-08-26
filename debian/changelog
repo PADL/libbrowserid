@@ -1,3 +1,9 @@
+moonshot-gss-eap (1.1.6.DIST) unstable; urgency=medium
+
+  * Fix some issues found by CLANG static analyser
+
+ -- Jisc <moonshot@jisc.ac.uk>  Wed, 20 Mar 2019 00:00:00 +0000
+
 moonshot-gss-eap (1.1.5.DIST) unstable; urgency=medium
 
   * Add support for "bangpath" RFC 7542 usernames

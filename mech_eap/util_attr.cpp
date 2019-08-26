@@ -111,17 +111,17 @@ namespace {
     public:
 
         finalize_class() {
-            wpa_printf(MSG_INFO, "### finalize_class::finalize_class(): Constructing");
+            wpa_printf(MSG_DEBUG, "### finalize_class::finalize_class(): Constructing");
         }
 
       ~finalize_class()
 	    {
 		OM_uint32 minor = 0;
 
-        wpa_printf(MSG_INFO, "### ~finalize_class::~finalize_class() : initStatus=%08x", gssEapAttrProvidersInitStatus);
+        wpa_printf(MSG_DEBUG, "### ~finalize_class::~finalize_class() : initStatus=%08x", gssEapAttrProvidersInitStatus);
 
 		if (gssEapAttrProvidersInitStatus == GSS_S_COMPLETE) {
-            wpa_printf(MSG_INFO, "### ~finalize_class::~finalize_class() : really finalizing");
+            wpa_printf(MSG_DEBUG, "### ~finalize_class::~finalize_class() : really finalizing");
 
 #ifdef HAVE_OPENSAML
 		    gssEapSamlAttrProvidersFinalize(&minor);
