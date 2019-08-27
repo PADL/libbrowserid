@@ -16,7 +16,6 @@ BuildRequires: jansson-devel
 Requires:	moonshot-ui
 BuildRequires: libxml2-devel
 BuildRequires: libradsec-devel >= 0.0.3
-BuildRequires: libshibresolver-devel
 
 Conflicts: moonshot-gss-eap
 Provides: moonshot-gss-eap = @VERSION@
@@ -68,7 +67,8 @@ fgrep $oid_aes256 $mechfile ||echo eap-aes256 $oid_aes256 mech_eap.so >>$mechfil
 
 
 %changelog
-* Wed Jul 03 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
+* Mon Aug 26 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
+- Added macOS build integration
 - TBD
 
 * Wed Jul 03 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.9
