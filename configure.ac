@@ -18,6 +18,17 @@ AC_CHECK_HEADERS(stdarg.h stdio.h stdint.h sys/param.h stdlib.h)
 AC_REPLACE_FUNCS(vasprintf)
 AC_CHECK_FUNCS([ secure_getenv])
 
+# Platform check for macOS
+AC_CANONICAL_BUILD
+case "$build_os" in
+  *darwin*) 
+    building_on_macos=yes
+    ;;
+  *)
+    building_on_macos=no
+    ;;
+esac
+
 dnl Check if we're on Solaris and set CFLAGS accordingly
 dnl AC_CANONICAL_TARGET
 dnl case "${target_os}" in
