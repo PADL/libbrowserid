@@ -103,6 +103,7 @@ before_script:
   tags:
     - moonshot
   script:
+    - cp $APKBUILD APKBUILD.in
     - "for i in ui libradsec; do wget --header \"PRIVATE-TOKEN: $TOKEN\" https://gitlab.ci.ti.ja.net/api/v4/projects/moonshot%2F$i/jobs/artifacts/develop/download?job=$CI_JOB_NAME -O deps.zip; unzip deps.zip; done"
     - apk add apks/*/*.apk --allow-untrusted
     - rm -fr apks deps.zip
@@ -231,9 +232,26 @@ ubuntu18-noshib:
 
 alpine38:
   image: $DOCKER_REGISTRY_URL/alpine38:latest
+  variables:
+    APKBUILD: APKBUILD.in.alpine38
   <<: *alpinecommon
 
 alpine38_armhf:
   image: $DOCKER_REGISTRY_URL/alpine38_arm:latest
   when: manual
+  variables:
+    APKBUILD: APKBUILD.in.alpine38
+  <<: *alpinecommon
+
+alpine310:
+  image: $DOCKER_REGISTRY_URL/alpine310:latest
+  variables:
+    APKBUILD: APKBUILD.in.alpine310
+  <<: *alpinecommon
+
+alpine310_armhf:
+  image: $DOCKER_REGISTRY_URL/alpine310_arm:latest
+  when: manual
+  variables:
+    APKBUILD: APKBUILD.in.alpine310
   <<: *alpinecommon
