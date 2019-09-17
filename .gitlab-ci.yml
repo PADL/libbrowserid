@@ -243,15 +243,15 @@ alpine38_armhf:
     APKBUILD: APKBUILD.in.alpine38
   <<: *alpinecommon
 
-alpine310:
-  image: $DOCKER_REGISTRY_URL/alpine310:latest
+alpine39:
+  image: $DOCKER_REGISTRY_URL/alpine39:latest
   variables:
-    APKBUILD: APKBUILD.in.alpine310
+    APKBUILD: APKBUILD.in.alpine39
   <<: *alpinecommon
 
-alpine310_armhf:
-  image: $DOCKER_REGISTRY_URL/alpine310_arm:latest
+alpine39_armhf:
+  image: $DOCKER_REGISTRY_URL/alpine39_arm:latest
   when: manual
   variables:
-    APKBUILD: APKBUILD.in.alpine310
+    APKBUILD: APKBUILD.in.alpine39
   <<: *alpinecommon
