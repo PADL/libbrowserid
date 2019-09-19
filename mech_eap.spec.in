@@ -66,9 +66,9 @@ fgrep $oid_aes256 $mechfile ||echo eap-aes256 $oid_aes256 mech_eap.so >>$mechfil
 #%{_libdir}/krb5/plugins/authdata/*.so
 
 %changelog
-* Mon Aug 26 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
+* Thu Sep 19 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
 - Added macOS build integration
-- TBD
+- Added CI for Alpine 3.9 and Raspbian 10- TBD
 
 * Wed Jul 03 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.9
 - Update to hostap 2.8
