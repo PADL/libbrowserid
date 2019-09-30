@@ -179,6 +179,12 @@ centos7-noshib:
   image: $DOCKER_REGISTRY_URL/centos7:latest
   <<: *centoscommon-noshib
 
+centos8-noshib:
+  variables:
+    CI_JOB_NAME: centos8
+  image: $DOCKER_REGISTRY_URL/centos8:latest
+  <<: *centoscommon-noshib
+
 debian8-noshib:
   variables:
     CI_JOB_NAME: debian8
