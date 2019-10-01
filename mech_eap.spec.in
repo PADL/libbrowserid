@@ -16,8 +16,11 @@ BuildRequires: jansson-devel
 Requires:	moonshot-ui >= 1.1.8
 BuildRequires: libxml2-devel
 BuildRequires: libradsec-devel >= 0.0.3
+
+%if 0%{?rhel} < 8
 BuildRequires: shibboleth-devel >= 2.5
 BuildRequires: libshibresolver-devel
+%endif
 
 Conflicts: moonshot-gss-eap-noshib
 
