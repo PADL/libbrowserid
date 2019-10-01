@@ -132,6 +132,10 @@ centos7:
   image: $DOCKER_REGISTRY_URL/centos7:latest
   <<: *centoscommon
 
+centos8:
+  image: $DOCKER_REGISTRY_URL/centos8:latest
+  <<: *centoscommon
+
 debian8:
   image: $DOCKER_REGISTRY_URL/debian8:latest
   <<: *debiancommon
