@@ -245,6 +245,8 @@ json_t *gss_eap_simplesaml_assertion_provider::processSubject(xmlNodePtr subject
 
 json_t* gss_eap_simplesaml_assertion_provider::getJsonAssertion() const
 {
+    if (!this->m_assertion)
+        return NULL;
     xmlNodePtr assertion = xmlDocGetRootElement(this->m_assertion);
     xmlNodePtr node = NULL;
     json_t *jassertion = json_object();
