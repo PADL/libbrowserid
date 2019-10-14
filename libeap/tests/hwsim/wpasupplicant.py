@@ -838,6 +838,8 @@ class WpaSupplicant:
         raise Exception("P2P_CONNECT failed")
 
     def _wait_event(self, mon, pfx, events, timeout):
+        if not isinstance(events, list):
+            raise Exception("WpaSupplicant._wait_event() called with incorrect events argument type")
         start = os.times()[4]
         while True:
             while mon.pending():
@@ -864,6 +866,8 @@ class WpaSupplicant:
                                 events, timeout)
 
     def wait_group_event(self, events, timeout=10):
+        if not isinstance(events, list):
+            raise Exception("WpaSupplicant.wait_group_event() called with incorrect events argument type")
         if self.group_ifname and self.group_ifname != self.ifname:
             if self.gctrl_mon is None:
                 return None
@@ -1084,7 +1088,8 @@ class WpaSupplicant:
                       "dpp_netaccesskey", "dpp_netaccesskey_expiry",
                       "group_mgmt", "owe_group",
                       "roaming_consortium_selection", "ocv",
-                      "multi_ap_backhaul_sta", "rx_stbc", "tx_stbc"]
+                      "multi_ap_backhaul_sta", "rx_stbc", "tx_stbc",
+                      "ft_eap_pmksa_caching"]
         for field in not_quoted:
             if field in kwargs and kwargs[field]:
                 self.set_network(id, field, kwargs[field])
@@ -1449,7 +1454,8 @@ class WpaSupplicant:
 
     def dpp_auth_init(self, peer=None, uri=None, conf=None, configurator=None,
                       extra=None, own=None, role=None, neg_freq=None,
-                      ssid=None, passphrase=None, expect_fail=False):
+                      ssid=None, passphrase=None, expect_fail=False,
+                      tcp_addr=None, tcp_port=None):
         cmd = "DPP_AUTH_INIT"
         if peer is None:
             peer = self.dpp_qr_code(uri)
@@ -1470,6 +1476,10 @@ class WpaSupplicant:
             cmd += " ssid=" + binascii.hexlify(ssid.encode()).decode()
         if passphrase:
             cmd += " pass=" + binascii.hexlify(passphrase.encode()).decode()
+        if tcp_addr:
+            cmd += " tcp_addr=" + tcp_addr
+        if tcp_port:
+            cmd += " tcp_port=" + tcp_port
         res = self.request(cmd)
         if expect_fail:
             if "FAIL" not in res:

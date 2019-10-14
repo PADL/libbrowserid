@@ -13,16 +13,29 @@ import hwsim_utils
 import hostapd
 from utils import HwsimSkip
 
-def connect(dev, apdev, **kwargs):
+def connect(dev, apdev, scan_freq="2412", **kwargs):
     params = {"ssid": "ap-csa",
               "channel": "1"}
     params.update(kwargs)
     ap = hostapd.add_ap(apdev[0], params)
-    dev.connect("ap-csa", key_mgmt="NONE", scan_freq="2412")
+    dev.connect("ap-csa", key_mgmt="NONE", scan_freq=scan_freq)
     return ap
 
 def switch_channel(ap, count, freq):
     ap.request("CHAN_SWITCH " + str(count) + " " + str(freq))
+
+    ev = ap.wait_event(["CTRL-EVENT-STARTED-CHANNEL-SWITCH"], timeout=10)
+    if ev is None:
+        raise Exception("Channel switch start event not seen")
+    if "freq=" + str(freq) not in ev:
+        raise Exception("Unexpected channel in CS started event")
+
+    ev = ap.wait_event(["CTRL-EVENT-CHANNEL-SWITCH"], timeout=10)
+    if ev is None:
+        raise Exception("Channel switch completed event not seen")
+    if "freq=" + str(freq) not in ev:
+        raise Exception("Unexpected channel in CS completed event")
+
     ev = ap.wait_event(["AP-CSA-FINISHED"], timeout=10)
     if ev is None:
         raise Exception("CSA finished event timed out")
@@ -30,6 +43,12 @@ def switch_channel(ap, count, freq):
         raise Exception("Unexpected channel in CSA finished event")
 
 def wait_channel_switch(dev, freq):
+    ev = dev.wait_event(["CTRL-EVENT-STARTED-CHANNEL-SWITCH"], timeout=5)
+    if ev is None:
+        raise Exception("Channel switch start not reported")
+    if "freq=%d" % freq not in ev:
+        raise Exception("Unexpected frequency in channel switch started: " + ev)
+
     ev = dev.wait_event(["CTRL-EVENT-CHANNEL-SWITCH"], timeout=5)
     if ev is None:
         raise Exception("Channel switch not reported")
@@ -168,7 +187,7 @@ def test_ap_csa_invalid(dev, apdev):
 def test_ap_csa_disable(dev, apdev):
     """AP Channel Switch and DISABLE command before completion"""
     csa_supported(dev[0])
-    ap = connect(dev[0], apdev)
+    ap = connect(dev[0], apdev, scan_freq="2412 2462")
     if "OK" not in ap.request("CHAN_SWITCH 10 2462"):
         raise Exception("CHAN_SWITCH failed")
     ap.disable()

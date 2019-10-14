@@ -17,6 +17,7 @@ from tshark import run_tshark
 from wpasupplicant import WpaSupplicant
 from hwsim import HWSimRadio
 from p2p_utils import *
+from utils import clear_regdom_dev
 
 def set_country(country, dev=None):
     subprocess.call(['iw', 'reg', 'set', country])
@@ -609,7 +610,7 @@ def test_p2p_autogo_pref_chan_not_in_regulatory(dev, apdev):
         dev[0].remove_group(res['ifname'])
     finally:
         dev[0].global_request("SET p2p_pref_chan ")
-        set_country("00")
+        clear_regdom_dev(dev)
 
 def run_autogo(dev, param):
     if "OK" not in dev.global_request("P2P_GROUP_ADD " + param):
@@ -648,7 +649,7 @@ def test_autogo_ht_vht(dev):
         set_country("US", dev[0])
         _test_autogo_ht_vht(dev)
     finally:
-        set_country("00")
+        clear_regdom_dev(dev)
 
 def test_p2p_listen_chan_optimize(dev, apdev):
     """P2P listen channel optimization"""
@@ -729,8 +730,8 @@ def test_p2p_channel_5ghz_only(dev):
             raise Exception("Unexpected channel %d MHz" % freq)
         dev[0].remove_group()
     finally:
-        set_country("00")
         dev[0].global_request("P2P_SET disallow_freq ")
+        clear_regdom_dev(dev)
 
 def test_p2p_channel_5ghz_165_169_us(dev):
     """P2P GO and 5 GHz channels 165 (allowed) and 169 (disallowed) in US"""
@@ -745,7 +746,7 @@ def test_p2p_channel_5ghz_165_169_us(dev):
         if "FAIL" not in res:
             raise Exception("GO on channel 169 allowed unexpectedly")
     finally:
-        set_country("00")
+        clear_regdom_dev(dev)
 
 def wait_go_down_up(dev):
     ev = dev.wait_group_event(["AP-DISABLED"], timeout=5)
@@ -995,7 +996,7 @@ def _test_p2p_go_move_scm_peer_does_not_support(dev, apdev):
     finally:
         dev[0].global_request("SET p2p_go_freq_change_policy 2")
         dev[1].request("DRIVER_EVENT AVOID_FREQUENCIES")
-        set_country("00")
+        clear_regdom_dev(dev, 2)
 
 def test_p2p_go_move_scm_multi(dev, apdev):
     """P2P GO move due to SCM operation preference multiple times"""

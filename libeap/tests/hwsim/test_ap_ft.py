@@ -22,6 +22,7 @@ from utils import HwsimSkip, alloc_fail, fail_test, wait_fail_trigger, skip_with
 from wlantest import Wlantest
 from test_ap_psk import check_mib, find_wpas_process, read_process_memory, verify_not_present, get_key_locations
 from test_rrm import check_beacon_req
+from test_suite_b import check_suite_b_192_capa
 
 def ft_base_rsn():
     params = {"wpa": "2",
@@ -149,6 +150,8 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
     if ocv:
         copts["ocv"] = ocv
     if eap:
+        if pmksa_caching:
+            copts["ft_eap_pmksa_caching"] = "1"
         if also_non_ft:
             copts["key_mgmt"] = "WPA-EAP-SUITE-B-192 FT-EAP-SHA384" if sha384 else "WPA-EAP FT-EAP"
         else:
@@ -174,12 +177,16 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
         dev.request("DISCONNECT")
         dev.wait_disconnected()
         dev.request("RECONNECT")
-        ev = dev.wait_event(["CTRL-EVENT-CONNECTED", "CTRL-EVENT-DISCONNECTED"],
+        ev = dev.wait_event(["CTRL-EVENT-CONNECTED",
+                             "CTRL-EVENT-DISCONNECTED",
+                             "CTRL-EVENT-EAP-STARTED"],
                             timeout=15)
         if ev is None:
             raise Exception("Reconnect timed out")
         if "CTRL-EVENT-DISCONNECTED" in ev:
             raise Exception("Unexpected disconnection after RECONNECT")
+        if "CTRL-EVENT-EAP-STARTED" in ev:
+            raise Exception("Unexpected EAP start after RECONNECT")
 
     if dev.get_status_field('bssid') == apdev[0]['bssid']:
         ap1 = apdev[0]
@@ -192,6 +199,7 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
         hapd1ap = hapd1
         hapd2ap = hapd0
     if test_connectivity:
+        hapd1ap.wait_sta()
         if conndev:
             hwsim_utils.test_connectivity_iface(dev, hapd1ap, conndev)
         else:
@@ -217,6 +225,7 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
         if dev.get_status_field('bssid') != ap2['bssid']:
             raise Exception("Did not connect to correct AP")
         if (i == 0 or i == roams - 1) and test_connectivity:
+            hapd2ap.wait_sta()
             if conndev:
                 hwsim_utils.test_connectivity_iface(dev, hapd2ap, conndev)
             else:
@@ -239,6 +248,7 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
         if dev.get_status_field('bssid') != ap1['bssid']:
             raise Exception("Did not connect to correct AP")
         if (i == 0 or i == roams - 1) and test_connectivity:
+            hapd1ap.wait_sta()
             if conndev:
                 hwsim_utils.test_connectivity_iface(dev, hapd1ap, conndev)
             else:
@@ -2372,6 +2382,7 @@ def check_ptk_rekey(dev, hapd0=None, hapd1=None):
         hapd = hapd0
     else:
         hapd = hapd1
+    time.sleep(0.1)
     hwsim_utils.test_connectivity(dev, hapd)
 
 def test_ap_ft_ptk_rekey(dev, apdev):
@@ -2776,6 +2787,7 @@ def test_ap_ft_eap_sha384(dev, apdev):
 
 def test_ap_ft_eap_sha384_reassoc(dev, apdev):
     """WPA2-EAP-FT with SHA384 using REASSOCIATE"""
+    check_suite_b_192_capa(dev)
     ssid = "test-ft"
     passphrase = "12345678"
 
@@ -2845,3 +2857,49 @@ def test_ap_ft_roam_rrm(dev, apdev):
     dev[0].scan_for_bss(bssid0, freq=2412)
     dev[0].roam(bssid0)
     check_beacon_req(hapd0, addr, 3)
+
+def test_ap_ft_pmksa_caching(dev, apdev):
+    """FT-EAP and PMKSA caching for initial mobility domain association"""
+    ssid = "test-ft"
+    identity = "gpsk user"
+
+    radius = hostapd.radius_params()
+    params = ft_params1(ssid=ssid)
+    params['wpa_key_mgmt'] = "FT-EAP"
+    params["ieee8021x"] = "1"
+    params["mobility_domain"] = "c3d4"
+    params = dict(list(radius.items()) + list(params.items()))
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    params = ft_params2(ssid=ssid)
+    params['wpa_key_mgmt'] = "FT-EAP"
+    params["ieee8021x"] = "1"
+    params["mobility_domain"] = "c3d4"
+    params = dict(list(radius.items()) + list(params.items()))
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    run_roams(dev[0], apdev, hapd, hapd1, ssid, None, eap=True,
+              eap_identity=identity, pmksa_caching=True)
+
+def test_ap_ft_pmksa_caching_sha384(dev, apdev):
+    """FT-EAP-SHA384 and PMKSA caching for initial mobility domain association"""
+    ssid = "test-ft"
+    identity = "gpsk user"
+
+    radius = hostapd.radius_params()
+    params = ft_params1(ssid=ssid)
+    params['wpa_key_mgmt'] = "FT-EAP-SHA384"
+    params["ieee8021x"] = "1"
+    params["mobility_domain"] = "c3d4"
+    params = dict(list(radius.items()) + list(params.items()))
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    params = ft_params2(ssid=ssid)
+    params['wpa_key_mgmt'] = "FT-EAP-SHA384"
+    params["ieee8021x"] = "1"
+    params["mobility_domain"] = "c3d4"
+    params = dict(list(radius.items()) + list(params.items()))
+    hapd1 = hostapd.add_ap(apdev[1], params)
+
+    run_roams(dev[0], apdev, hapd, hapd1, ssid, None, eap=True,
+              eap_identity=identity, pmksa_caching=True, sha384=True)

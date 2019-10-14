@@ -246,6 +246,8 @@ class Hostapd:
             logger.debug(self.dbg + ": " + ev)
 
     def wait_event(self, events, timeout):
+        if not isinstance(events, list):
+            raise Exception("Hostapd.wait_event() called with incorrect events argument type")
         start = os.times()[4]
         while True:
             while self.mon.pending():
@@ -261,6 +263,13 @@ class Hostapd:
             if not self.mon.pending(timeout=remaining):
                 break
         return None
+
+    def wait_sta(self, addr=None, timeout=2):
+        ev = self.wait_event(["AP-STA-CONNECT"], timeout=timeout)
+        if ev is None:
+            raise Exception("AP did not report STA connection")
+        if addr and addr not in ev:
+            raise Exception("Unexpected STA address in connection event: " + ev)
 
     def get_status(self):
         res = self.request("STATUS")
@@ -501,7 +510,7 @@ class Hostapd:
         self.request("NOTE " + txt)
 
 def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30,
-           global_ctrl_override=None):
+           global_ctrl_override=None, driver=False):
         if isinstance(apdev, dict):
             ifname = apdev['ifname']
             try:
@@ -520,7 +529,7 @@ def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30,
         hapd_global = HostapdGlobal(apdev,
                                     global_ctrl_override=global_ctrl_override)
         hapd_global.remove(ifname)
-        hapd_global.add(ifname)
+        hapd_global.add(ifname, driver=driver)
         port = hapd_global.get_ctrl_iface_port(ifname)
         hapd = Hostapd(ifname, hostname=hostname, port=port)
         if not hapd.ping():
