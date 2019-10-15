@@ -858,6 +858,8 @@ struct eap_peer_config {
 		EXT_CERT_CHECK_BAD,
 	} pending_ext_cert_check;
 
+	int teap_anon_dh;
+
     /**
      * server_cert_cb -- if non-null, specifies a callback method that can
      * be used to override the validity of a peer (server/acceptor) certificate.

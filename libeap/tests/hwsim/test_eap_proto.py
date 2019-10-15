@@ -145,6 +145,9 @@ def start_radius_server(eap_handler):
                     else:
                         logger.error("Unexpected event in pyrad server main loop")
 
+            for fd in self.authfds + self.acctfds:
+                fd.close()
+
     srv = TestServer(dict=pyrad.dictionary.Dictionary("dictionary.radius"),
                      authport=18138, acctport=18139)
     srv.hosts["127.0.0.1"] = pyrad.server.RemoteHost("127.0.0.1",
@@ -821,7 +824,12 @@ def test_eap_proto_sake_errors(dev, apdev):
             dev[0].dump_monitor()
 
     tests = [(1, "os_get_random;eap_sake_process_challenge"),
-             (1, "eap_sake_derive_keys;eap_sake_process_challenge")]
+             (1, "eap_sake_derive_keys;eap_sake_process_challenge"),
+             (2, "eap_sake_derive_keys;eap_sake_process_challenge"),
+             (3, "eap_sake_derive_keys;eap_sake_process_challenge"),
+             (4, "eap_sake_derive_keys;eap_sake_process_challenge"),
+             (5, "eap_sake_derive_keys;eap_sake_process_challenge"),
+             (6, "eap_sake_derive_keys;eap_sake_process_challenge")]
     for count, func in tests:
         with fail_test(dev[0], count, func):
             dev[0].connect("eap-test", key_mgmt="WPA-EAP", scan_freq="2412",
@@ -1727,7 +1735,7 @@ def test_eap_proto_otp(dev, apdev):
             raise Exception("Request for password timed out")
         id = ev.split(':')[0].split('-')[-1]
         dev[0].request("CTRL-RSP-OTP-" + id + ":password")
-        ev = dev[0].wait_event("CTRL-EVENT-EAP-SUCCESS")
+        ev = dev[0].wait_event(["CTRL-EVENT-EAP-SUCCESS"])
         if ev is None:
             raise Exception("Success not reported")
     finally:
@@ -2881,6 +2889,8 @@ def test_eap_proto_eke_errors(dev, apdev):
              (1, "eap_eke_auth;eap_eke_process_confirm", None),
              (2, "eap_eke_auth;eap_eke_process_confirm", None),
              (1, "eap_eke_prot;eap_eke_process_confirm", None),
+             (1, "aes_128_cbc_encrypt;eap_eke_prot;eap_eke_process_confirm", None),
+             (1, "hmac_sha256;eap_eke_prot;eap_eke_process_confirm", None),
              (1, "eap_eke_derive_msk;eap_eke_process_confirm", None)]
     for count, func, phase1 in tests:
         with fail_test(dev[0], count, func):
@@ -10110,7 +10120,10 @@ def run_eap_fast_phase2(dev, test_payload, test_failure=True):
         ctx['sslctx'] = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
         ctx['sslctx'].set_info_callback(ssl_info_callback)
         ctx['sslctx'].load_tmp_dh("auth_serv/dh.conf")
-        ctx['sslctx'].set_cipher_list("ADH-AES128-SHA")
+        if OpenSSL.SSL.OPENSSL_VERSION_NUMBER >= 0x10100000:
+            ctx['sslctx'].set_cipher_list("ADH-AES128-SHA:@SECLEVEL=0")
+        else:
+            ctx['sslctx'].set_cipher_list("ADH-AES128-SHA")
         ctx['conn'] = OpenSSL.SSL.Connection(ctx['sslctx'], None)
         ctx['conn'].set_accept_state()
         log_conn_state(ctx['conn'])

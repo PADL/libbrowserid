@@ -75,6 +75,7 @@ def reset_devs(dev, apdev):
         hapd.remove('wlan3-2')
         for ap in apdev:
             hapd.remove(ap['ifname'])
+        hapd.remove('as-erp')
     except Exception as e:
         logger.info("Failed to remove hostapd interface")
         print(str(e))
@@ -256,7 +257,17 @@ def main():
     if args.tests:
         fail = False
         for t in args.tests:
-            if t not in test_names:
+            if t.endswith('*'):
+                prefix = t.rstrip('*')
+                found = False
+                for tn in test_names:
+                    if tn.startswith(prefix):
+                        found = True
+                        break
+                if not found:
+                    print('Invalid arguments - test "%s" wildcard did not match' % t)
+                    fail = True
+            elif t not in test_names:
                 print('Invalid arguments - test "%s" not known' % t)
                 fail = True
         if fail:
@@ -291,7 +302,11 @@ def main():
         for selected in args.tests:
             for t in tests:
                 name = t.__name__.replace('test_', '', 1)
-                if name == selected:
+                if selected.endswith('*'):
+                    prefix = selected.rstrip('*')
+                    if name.startswith(prefix):
+                        tests_to_run.append(t)
+                elif name == selected:
                     tests_to_run.append(t)
     else:
         for t in tests:

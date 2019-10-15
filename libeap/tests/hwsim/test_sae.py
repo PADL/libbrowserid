@@ -105,12 +105,18 @@ def test_sae_pmksa_caching(dev, apdev):
     ev = hapd.wait_event(["AP-STA-CONNECTED"], timeout=5)
     if ev is None:
         raise Exception("No connection event received from hostapd")
+    sta0 = hapd.get_sta(dev[0].own_addr())
+    if sta0['wpa'] != '2' or sta0['AKMSuiteSelector'] != '00-0f-ac-8':
+        raise Exception("SAE STA(0) AKM suite selector reported incorrectly")
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected()
     dev[0].request("RECONNECT")
     dev[0].wait_connected(timeout=15, error="Reconnect timed out")
     if dev[0].get_status_field('sae_group') is not None:
             raise Exception("SAE group claimed to have been used")
+    sta0 = hapd.get_sta(dev[0].own_addr())
+    if sta0['wpa'] != '2' or sta0['AKMSuiteSelector'] != '00-0f-ac-8':
+        raise Exception("SAE STA(0) AKM suite selector reported incorrectly after PMKSA caching")
 
 @remote_compatible
 def test_sae_pmksa_caching_disabled(dev, apdev):
@@ -150,13 +156,13 @@ def test_sae_groups(dev, apdev):
         logger.info("Add Brainpool EC groups since OpenSSL is new enough")
         sae_groups += [27, 28, 29, 30]
     heavy_groups = [14, 15, 16]
-    suitable_groups = [15, 16, 17, 18, 19, 20, 21, 28, 29, 30]
+    suitable_groups = [15, 16, 17, 18, 19, 20, 21]
     groups = [str(g) for g in sae_groups]
     params = hostapd.wpa2_params(ssid="test-sae-groups",
                                  passphrase="12345678")
     params['wpa_key_mgmt'] = 'SAE'
     params['sae_groups'] = ' '.join(groups)
-    hostapd.add_ap(apdev[0], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     for g in groups:
         logger.info("Testing SAE group " + g)
@@ -188,6 +194,11 @@ def test_sae_groups(dev, apdev):
                 raise Exception("Connection timed out with group " + g)
         if dev[0].get_status_field('sae_group') != g:
             raise Exception("Expected SAE group not used")
+        pmksa = dev[0].get_pmksa(hapd.own_addr())
+        if not pmksa:
+            raise Exception("No PMKSA cache entry added")
+        if pmksa['pmkid'] == '00000000000000000000000000000000':
+            raise Exception("All zeros PMKID derived for group %s" % g)
         dev[0].remove_network(id)
         dev[0].wait_disconnected()
         dev[0].dump_monitor()
@@ -271,13 +282,19 @@ def test_sae_mixed(dev, apdev):
     params = hostapd.wpa2_params(ssid="test-sae", passphrase="12345678")
     params['wpa_key_mgmt'] = 'SAE WPA-PSK'
     params['sae_anti_clogging_threshold'] = '0'
-    hostapd.add_ap(apdev[0], params)
+    hapd = hostapd.add_ap(apdev[0], params)
 
     dev[2].connect("test-sae", psk="12345678", scan_freq="2412")
     for i in range(0, 2):
         dev[i].request("SET sae_groups ")
         dev[i].connect("test-sae", psk="12345678", key_mgmt="SAE",
                        scan_freq="2412")
+    sta0 = hapd.get_sta(dev[0].own_addr())
+    sta2 = hapd.get_sta(dev[2].own_addr())
+    if sta0['wpa'] != '2' or sta0['AKMSuiteSelector'] != '00-0f-ac-8':
+        raise Exception("SAE STA(0) AKM suite selector reported incorrectly")
+    if sta2['wpa'] != '2' or sta2['AKMSuiteSelector'] != '00-0f-ac-2':
+        raise Exception("PSK STA(2) AKM suite selector reported incorrectly")
 
 def test_sae_and_psk(dev, apdev):
     """SAE and PSK enabled in network profile"""
@@ -1118,10 +1135,7 @@ def test_sae_no_random(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].request("SET sae_groups ")
-    tests = [(1, "os_get_random;sae_get_rand"),
-             (1, "os_get_random;get_rand_1_to_p_1"),
-             (1, "os_get_random;get_random_qr_qnr"),
-             (1, "os_get_random;sae_derive_pwe_ecc")]
+    tests = [(1, "os_get_random;sae_derive_pwe_ecc")]
     for count, func in tests:
         with fail_test(dev[0], count, func):
             dev[0].connect("test-sae", psk="12345678", key_mgmt="SAE",
@@ -1181,15 +1195,14 @@ def test_sae_bignum_failure(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
 
     dev[0].request("SET sae_groups 19")
-    tests = [(1, "crypto_bignum_init_set;get_rand_1_to_p_1"),
-             (1, "crypto_bignum_init;is_quadratic_residue_blind"),
-             (1, "crypto_bignum_mulmod;is_quadratic_residue_blind"),
-             (2, "crypto_bignum_mulmod;is_quadratic_residue_blind"),
-             (3, "crypto_bignum_mulmod;is_quadratic_residue_blind"),
-             (1, "crypto_bignum_legendre;is_quadratic_residue_blind"),
+    tests = [(1, "crypto_bignum_init_set;dragonfly_get_rand_1_to_p_1"),
+             (1, "crypto_bignum_init;dragonfly_is_quadratic_residue_blind"),
+             (1, "crypto_bignum_mulmod;dragonfly_is_quadratic_residue_blind"),
+             (2, "crypto_bignum_mulmod;dragonfly_is_quadratic_residue_blind"),
+             (3, "crypto_bignum_mulmod;dragonfly_is_quadratic_residue_blind"),
+             (1, "crypto_bignum_legendre;dragonfly_is_quadratic_residue_blind"),
              (1, "crypto_bignum_init_set;sae_test_pwd_seed_ecc"),
              (1, "crypto_ec_point_compute_y_sqr;sae_test_pwd_seed_ecc"),
-             (1, "crypto_bignum_init_set;get_random_qr_qnr"),
              (1, "crypto_bignum_to_bin;sae_derive_pwe_ecc"),
              (1, "crypto_ec_point_init;sae_derive_pwe_ecc"),
              (1, "crypto_ec_point_solve_y_coord;sae_derive_pwe_ecc"),
@@ -1202,7 +1215,7 @@ def test_sae_bignum_failure(dev, apdev):
              (1, "crypto_ec_point_add;sae_derive_k_ecc"),
              (2, "crypto_ec_point_mul;sae_derive_k_ecc"),
              (1, "crypto_ec_point_to_bin;sae_derive_k_ecc"),
-             (1, "crypto_bignum_legendre;get_random_qr_qnr"),
+             (1, "crypto_bignum_legendre;dragonfly_get_random_qr_qnr"),
              (1, "sha256_prf;sae_derive_keys"),
              (1, "crypto_bignum_init;sae_derive_keys"),
              (1, "crypto_bignum_init_set;sae_parse_commit_scalar"),
@@ -1221,7 +1234,8 @@ def test_sae_bignum_failure(dev, apdev):
     dev[0].request("SET sae_groups 15")
     tests = [(1, "crypto_bignum_init_set;sae_set_group"),
              (2, "crypto_bignum_init_set;sae_set_group"),
-             (1, "crypto_bignum_init_set;sae_get_rand"),
+             (1, "crypto_bignum_init;sae_derive_commit"),
+             (2, "crypto_bignum_init;sae_derive_commit"),
              (1, "crypto_bignum_init_set;sae_test_pwd_seed_ffc"),
              (1, "crypto_bignum_exptmod;sae_test_pwd_seed_ffc"),
              (1, "crypto_bignum_init;sae_derive_pwe_ffc"),
@@ -1641,6 +1655,7 @@ def run_sae_anti_clogging_during_attack(dev, apdev):
                 connected1 = True
         if connected0 and connected1:
             break
+        time.sleep(0.00000001)
     if not connected0:
         raise Exception("Real station(0) did not get connected")
     if not connected1:

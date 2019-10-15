@@ -148,9 +148,15 @@ def clear_country(dev):
         dev[1].dump_monitor()
 
 def clear_regdom(hapd, dev, count=1):
+    disable_hapd(hapd)
+    clear_regdom_dev(dev, count)
+
+def disable_hapd(hapd):
     if hapd:
         hapd.request("DISABLE")
         time.sleep(0.1)
+
+def clear_regdom_dev(dev, count=1):
     for i in range(count):
         dev[i].request("DISCONNECT")
     for i in range(count):

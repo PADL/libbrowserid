@@ -691,6 +691,19 @@ def test_wnm_bss_tm_req(dev, apdev):
     resp = rx_bss_tm_resp(hapd, expect_dialog=8, expect_status=7)
     dev[0].dump_monitor()
 
+    # Preferred Candidate List with truncated BSS Termination Duration
+    # WNM: Too short BSS termination duration
+    req = bss_tm_req(addr, apdev[0]['bssid'],
+                     req_mode=0x01, dialog_token=8)
+    # BSS Termination Duration (truncated)
+    subelems = struct.pack("<BBQB", 4, 9, 0, 10)
+    req['payload'] += struct.pack("<BB6BLBBB", 52, 13 + len(subelems),
+                                  1, 2, 3, 4, 5, 6,
+                                  0, 81, 1, 7) + subelems
+    hapd.mgmt_tx(req)
+    resp = rx_bss_tm_resp(hapd, expect_dialog=8, expect_status=7)
+    dev[0].dump_monitor()
+
     # Preferred Candidate List followed by vendor element
     req = bss_tm_req(addr, apdev[0]['bssid'],
                      req_mode=0x01, dialog_token=8)
@@ -1916,3 +1929,17 @@ def test_wnm_coloc_intf_reporting_errors(dev, apdev):
                 raise Exception("MGMT_RX_PROCESS failed")
 
     hapd.set("ext_mgmt_frame_handling", "0")
+
+def test_wnm_bss_transition_mgmt_disabled(dev, apdev):
+    """WNM BSS Transition Management disabled"""
+    hapd = start_wnm_ap(apdev[0])
+    try:
+        dev[0].set("disable_btm", "1")
+        dev[0].connect("test-wnm", key_mgmt="NONE", scan_freq="2412")
+        addr = dev[0].own_addr()
+        hapd.request("BSS_TM_REQ " + addr)
+        ev = hapd.wait_event(['BSS-TM-RESP'], timeout=0.5)
+        if ev is not None:
+            raise Exception("Unexpected BSS Transition Management Response")
+    finally:
+        dev[0].set("disable_btm", "0")

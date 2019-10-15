@@ -205,6 +205,36 @@ def test_radius_acct(dev, apdev):
     if acc_e < acc_s + 1:
         raise Exception("Unexpected RADIUS server auth MIB value")
 
+def test_radius_req_attr(dev, apdev, params):
+    """RADIUS request attributes"""
+    try:
+        import sqlite3
+    except ImportError:
+        raise HwsimSkip("No sqlite3 module available")
+    db = os.path.join(params['logdir'], "radius_req_attr.sqlite")
+    as_hapd = hostapd.Hostapd("as")
+    params = hostapd.wpa2_eap_params(ssid="radius-req-attr")
+    params['acct_server_addr'] = "127.0.0.1"
+    params['acct_server_port'] = "1813"
+    params['acct_server_shared_secret'] = "radius"
+    params['radius_auth_req_attr'] = ["126:s:Operator"]
+    params['radius_acct_req_attr'] = ["126:s:Operator"]
+    params['radius_req_attr_sqlite'] = db
+    hapd = hostapd.add_ap(apdev[0], params)
+
+    with sqlite3.connect(db) as conn:
+        sql = "INSERT INTO radius_attributes(sta,reqtype,attr) VALUES (?,?,?)"
+        for e in [(dev[0].own_addr(), "auth", "77:s:conn-info-0"),
+                  (dev[1].own_addr(), "auth", "77:s:conn-info-1"),
+                  (dev[1].own_addr(), "auth", "77:s:conn-info-1a"),
+                  (dev[1].own_addr(), "acct", "77:s:conn-info-1b")]:
+            conn.execute(sql, e)
+        conn.commit()
+
+    connect(dev[0], "radius-req-attr")
+    connect(dev[1], "radius-req-attr")
+    connect(dev[2], "radius-req-attr")
+
 def test_radius_acct_non_ascii_ssid(dev, apdev):
     """RADIUS Accounting and non-ASCII SSID"""
     params = hostapd.wpa2_eap_params()
@@ -1049,6 +1079,9 @@ def test_radius_protocol(dev, apdev):
                     else:
                         logger.error("Unexpected event in pyrad server main loop")
 
+            for fd in self.authfds + self.acctfds:
+                fd.close()
+
     srv = TestServer(dict=pyrad.dictionary.Dictionary("dictionary.radius"),
                      authport=18138, acctport=18139)
     srv.hosts["127.0.0.1"] = pyrad.server.RemoteHost("127.0.0.1",
@@ -1162,6 +1195,9 @@ def start_radius_psk_server(psk, invalid_code=False, acct_interim_interval=0,
                             logger.info("pyrad server received invalid packet: " + str(err))
                     else:
                         logger.error("Unexpected event in pyrad server main loop")
+
+            for fd in self.authfds + self.acctfds:
+                fd.close()
 
     srv = TestServer(dict=pyrad.dictionary.Dictionary("dictionary.radius"),
                      authport=18138, acctport=18139)
@@ -1440,6 +1476,9 @@ def test_ap_vlan_wpa2_psk_radius_required(dev, apdev):
                             logger.info("pyrad server received invalid packet: " + str(err))
                     else:
                         logger.error("Unexpected event in pyrad server main loop")
+
+            for fd in self.authfds + self.acctfds:
+                fd.close()
 
     srv = TestServer(dict=pyrad.dictionary.Dictionary("dictionary.radius"),
                      authport=18138, acctport=18139)

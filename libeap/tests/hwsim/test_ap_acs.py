@@ -9,7 +9,7 @@ logger = logging.getLogger()
 import time
 
 import hostapd
-from utils import skip_with_fips, alloc_fail, fail_test, HwsimSkip
+from utils import skip_with_fips, alloc_fail, fail_test, HwsimSkip, clear_regdom
 from test_ap_ht import clear_scan_cache
 from test_dfs import wait_dfs_event
 
@@ -160,12 +160,7 @@ def test_ap_acs_5ghz(dev, apdev):
         dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
         dev[0].wait_regdom(country_ie=True)
     finally:
-        if hapd:
-            hapd.request("DISABLE")
-        dev[0].disconnect_and_stop_scan()
-        hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', '00'])
-        dev[0].wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=0.5)
-        dev[0].flush_scan_cache()
+        clear_regdom(hapd, dev)
 
 def test_ap_acs_5ghz_40mhz(dev, apdev):
     """Automatic channel selection on 5 GHz for 40 MHz channel"""
@@ -190,12 +185,7 @@ def test_ap_acs_5ghz_40mhz(dev, apdev):
         dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
         dev[0].wait_regdom(country_ie=True)
     finally:
-        if hapd:
-            hapd.request("DISABLE")
-        dev[0].disconnect_and_stop_scan()
-        hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', '00'])
-        dev[0].wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=0.5)
-        dev[0].flush_scan_cache()
+        clear_regdom(hapd, dev)
 
 def test_ap_acs_vht(dev, apdev):
     """Automatic channel selection for VHT"""
@@ -222,12 +212,7 @@ def test_ap_acs_vht(dev, apdev):
         dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
         dev[0].wait_regdom(country_ie=True)
     finally:
-        if hapd:
-            hapd.request("DISABLE")
-        dev[0].disconnect_and_stop_scan()
-        hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', '00'])
-        dev[0].wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=0.5)
-        dev[0].flush_scan_cache()
+        clear_regdom(hapd, dev)
 
 def test_ap_acs_vht40(dev, apdev):
     """Automatic channel selection for VHT40"""
@@ -256,12 +241,7 @@ def test_ap_acs_vht40(dev, apdev):
         dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
         dev[0].wait_regdom(country_ie=True)
     finally:
-        if hapd:
-            hapd.request("DISABLE")
-        dev[0].disconnect_and_stop_scan()
-        hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', '00'])
-        dev[0].wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=0.5)
-        dev[0].flush_scan_cache()
+        clear_regdom(hapd, dev)
 
 def test_ap_acs_vht160(dev, apdev):
     """Automatic channel selection for VHT160"""
@@ -292,12 +272,7 @@ def test_ap_acs_vht160(dev, apdev):
             dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
             dev[0].wait_regdom(country_ie=True)
     finally:
-        if hapd:
-            hapd.request("DISABLE")
-        dev[0].disconnect_and_stop_scan()
-        hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', '00'])
-        dev[0].wait_event(["CTRL-EVENT-REGDOM-CHANGE"], timeout=0.5)
-        dev[0].flush_scan_cache()
+        clear_regdom(hapd, dev)
 
 def test_ap_acs_vht160_scan_disable(dev, apdev):
     """Automatic channel selection for VHT160 and DISABLE during scan"""
@@ -314,9 +289,7 @@ def test_ap_acs_vht160_scan_disable(dev, apdev):
     params['ieee80211h'] = '1'
     hapd = hostapd.add_ap(apdev[0], params, wait_enabled=False)
     time.sleep(3)
-    hapd.request("DISABLE")
-    hostapd.cmd_execute(apdev[0], ['iw', 'reg', 'set', '00'])
-    time.sleep(0.1)
+    clear_regdom(hapd, dev)
 
 def test_ap_acs_bias(dev, apdev):
     """Automatic channel selection with bias values"""

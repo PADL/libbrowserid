@@ -16,6 +16,7 @@ import subprocess
 import hostapd
 from wpasupplicant import WpaSupplicant
 from utils import HwsimSkip, fail_test, alloc_fail, wait_fail_trigger, parse_ie
+from utils import clear_regdom_dev
 from tshark import run_tshark
 from test_ap_csa import switch_channel, wait_channel_switch, csa_supported
 
@@ -161,6 +162,11 @@ def test_scan_bss_expiration_count(dev, apdev):
     if bssid not in dev[0].request("SCAN_RESULTS"):
         raise Exception("BSS not found in initial scan")
     hapd.request("DISABLE")
+    # Try to give enough time for hostapd to have stopped mac80211 from
+    # beaconing before checking a new scan. This is needed with UML time travel
+    # testing.
+    hapd.ping()
+    time.sleep(0.2)
     dev[0].scan(freq="2412", only_new=True)
     if bssid not in dev[0].request("SCAN_RESULTS"):
         raise Exception("BSS not found in first scan without match")
@@ -974,8 +980,7 @@ def test_scan_dfs(dev, apdev, params):
     try:
         _test_scan_dfs(dev, apdev, params)
     finally:
-        subprocess.call(['iw', 'reg', 'set', '00'])
-        time.sleep(0.1)
+        clear_regdom_dev(dev)
 
 def _test_scan_dfs(dev, apdev, params):
     subprocess.call(['iw', 'reg', 'set', 'US'])

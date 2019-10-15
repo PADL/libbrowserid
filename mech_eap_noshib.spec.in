@@ -37,19 +37,14 @@ make %{?_smp_mflags}
 %install
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
-
+%if 0%{?el6}
+install -Dm644 mech_eap/mech $RPM_BUILD_ROOT/%{_sysconfdir}/gss/mech
+%else
+install -Dm644 mech_eap/mech $RPM_BUILD_ROOT/%{_sysconfdir}/gss/mech.d/moonshot-gss-eap.conf
+%endif
 
 %clean
 rm -rf $RPM_BUILD_ROOT
-
-%post
-oid_aes128=1.3.6.1.5.5.15.1.1.17
-oid_aes256=1.3.6.1.5.5.15.1.1.18
-mechfile=%{_sysconfdir}/gss/mech
-mkdir -p %{_sysconfdir}/gss
-test -e $mechfile |touch $mechfile
-fgrep $oid_aes128 $mechfile ||echo eap-aes128 $oid_aes128 mech_eap.so >>$mechfile
-fgrep $oid_aes256 $mechfile ||echo eap-aes256 $oid_aes256 mech_eap.so >>$mechfile
 
 
 %files
@@ -62,14 +57,19 @@ fgrep $oid_aes256 $mechfile ||echo eap-aes256 $oid_aes256 mech_eap.so >>$mechfil
 %exclude %{_libdir}/gss/mech_eap.la
 %{_includedir}/gssapi/*.h
 %exclude %{_libdir}/krb5/plugins/authdata/*
-#%{_libdir}/krb5/plugins/authdata/*.so
-
+%if 0%{?el6}
+%{_sysconfdir}/gss/mech
+%else
+%{_sysconfdir}/gss/mech.d/moonshot-gss-eap.conf
+%endif
 
 
 %changelog
+* Thu Sep 19 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.11
+- Upgrade to Hostap 2.9
+
 * Mon Aug 26 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
 - Added macOS build integration
-- TBD
 
 * Wed Jul 03 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.9
 - Update to hostap 2.8
