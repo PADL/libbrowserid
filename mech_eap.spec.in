@@ -64,7 +64,7 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
-* Thu Sep 19 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.11
+* Tue Oct 14 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.11
 - Upgrade to Hostap 2.9
 
 * Thu Sep 19 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
