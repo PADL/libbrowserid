@@ -65,9 +65,11 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Thu Sep 19 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.11
+- Upgrade to Hostap 2.9
+
 * Mon Aug 26 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
 - Added macOS build integration
-- TBD
 
 * Wed Jul 03 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.9
 - Update to hostap 2.8

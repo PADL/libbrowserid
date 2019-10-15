@@ -65,11 +65,11 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Thu Sep 19 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.11
-- TBD
+- Upgrade to Hostap 2.9
 
 * Thu Sep 19 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.10
 - Added macOS build integration
-- Added CI for Alpine 3.9 and Raspbian 10- TBD
+- Added CI for Alpine 3.9 and Raspbian 10
 
 * Wed Jul 03 2019 Jisc <moonshot@jisc.ac.uk> - 1.1.9
 - Update to hostap 2.8
