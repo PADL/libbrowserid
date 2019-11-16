@@ -902,7 +902,9 @@ int peerValidateServerCert(int ok_so_far, X509* cert, void *ca_ctx)
     int                   cert_len;
     unsigned char         hash[32];
     int                   hash_len;
+#ifdef HAVE_MOONSHOT_GET_IDENTITY
     MoonshotError        *error = NULL;
+#endif
     struct eap_peer_config *eap_config = (struct eap_peer_config *) ca_ctx;
     char *identity = strdup((const char *) eap_config->identity);
 
